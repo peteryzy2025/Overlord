@@ -23,7 +23,7 @@
     .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
     .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
     .table-container { background-color: var(--bg-primary); border-radius: 12px; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); overflow-x: auto; max-height: 700px; overflow-y: auto; width: 100%; }
-    .table-container table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 4000px; } /* 增加最小宽度确保横向滚动 */
+    .table-container table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 4000px; }
     .table-container thead { position: sticky; top: 0; z-index: 10; background-color: var(--bg-secondary); }
     .table { width: 100%; margin: 0; color: var(--text-primary); }
     .table th { background-color: var(--bg-secondary); color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--border-color); padding: 1rem; white-space: nowrap; position: sticky; top: 0; z-index: 11; }
@@ -405,48 +405,40 @@ async function changePageSize(pageSize) {
 
 function updateFilterOptions(shops) {
     // 状态筛选器：固定显示所有可能状态
-    const statusSelect = document.getElementById('amazonShopStatusFilter');
-    // 保持原有选项不变（已在HTML中定义）
 
-    // 客户筛选器 - 修复：保持当前选中值
+    // 客户筛选器 - 保持当前选中值
     const customerSelect = document.getElementById('amazonCustomerFilter');
-    const currentCustomer = customerSelect.value; // 保存当前选中值
+    const currentCustomer = customerSelect.value;
     customerSelect.innerHTML = '<option value="">全部客户</option>';
     allCustomers.forEach(customer => {
         const option = document.createElement('option');
         option.value = customer;
         option.textContent = customer;
-        if (customer === currentCustomer) {
-            option.selected = true; // 恢复选中状态
-        }
+        if (customer === currentCustomer) option.selected = true;
         customerSelect.appendChild(option);
     });
 
-    // 运营人员筛选器（从OperationalAccount获取分组）
+    // 运营人员筛选器
     const operatorSelect = document.getElementById('amazonOperatorFilter');
-    const currentOperator = operatorSelect.value; // 保存当前选中值
+    const currentOperator = operatorSelect.value;
     operatorSelect.innerHTML = '<option value="">全部人员</option>';
     allOperators.forEach(op => {
         const option = document.createElement('option');
         option.value = op.id;
         option.textContent = `${op.first_name} (${op.group})`;
-        if (op.id == currentOperator) { // 注意：op.id 是数字，currentOperator 是字符串
-            option.selected = true;
-        }
+        if (op.id == currentOperator) option.selected = true;
         operatorSelect.appendChild(option);
     });
 
-    // 分组筛选器（从OperationalAccount获取）
+    // 分组筛选器
     const groupSelect = document.getElementById('amazonGroupFilter');
-    const currentGroup = groupSelect.value; // 保存当前选中值
+    const currentGroup = groupSelect.value;
     groupSelect.innerHTML = '<option value="">全部分组</option>';
     allGroups.forEach(group => {
         const option = document.createElement('option');
         option.value = group;
         option.textContent = group;
-        if (group === currentGroup) {
-            option.selected = true;
-        }
+        if (group === currentGroup) option.selected = true;
         groupSelect.appendChild(option);
     });
 }
@@ -465,11 +457,10 @@ async function loadShopsTable() {
         return;
     }
 
-    // 使用全局变量计算分页信息，避免NaN问题
+    // 使用全局变量计算分页信息
     const start = (currentPage - 1) * currentPageSize + 1;
     const end = start + data.length - 1;
 
-    // 修复：动态设置pageSizeSelect的选中状态
     const pageInfoHtml = `
         显示第 ${start} 到 ${end} 条，共 ${total} 条记录
         <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
@@ -588,7 +579,7 @@ function openEditModal(shopId) {
 
     document.getElementById('modalTitle').textContent = '编辑店铺';
 
-    // 从API获取完整店铺数据
+    // 从API获取完整店铺数据（后端已支持 id 精准查询）
     fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
         .then(response => response.json())
         .then(result => {
@@ -662,6 +653,10 @@ function generateModalForm(shopData = null) {
         <div class="form-group">
             <label>店铺渠道</label>
             <input type="text" id="modal-qu_dao" value="${data.qu_dao || ''}">
+        </div>
+        <div class="form-group">
+            <label>IP地址</label>
+            <input type="text" id="modal-ip_address" value="${data.ip_address || ''}">
         </div>
         <div class="form-group" style="grid-column: 1/-1;">
             <label>白名单</label>
@@ -800,55 +795,58 @@ function generateModalForm(shopData = null) {
 }
 
 async function saveShopModal() {
+    // 安全取值函数：没有该元素返回空串，避免抛错
+    const v = (id) => (document.getElementById(id)?.value || '').trim();
+
     // 收集所有表单数据
     const formData = {
         // 基本信息
-        shop_name: document.getElementById('modal-shop_name').value.trim(),
-        amazon_shop_name: document.getElementById('modal-amazon_shop_name').value.trim(),
-        customer: document.getElementById('modal-customer').value.trim(),
-        ops: document.getElementById('modal-ops').value,
-        shop_status: document.getElementById('modal-shop_status').value,
-        shop_number: document.getElementById('modal-shop_number').value,
-        shop_date: document.getElementById('modal-shop_date').value,
-        seller_mark: document.getElementById('modal-seller_mark').value.trim(),
-        qu_dao: document.getElementById('modal-qu_dao').value.trim(),
-        whitelist: document.getElementById('modal-whitelist').value.trim(),
-        ip_address: document.getElementById('modal-ip_address').value.trim(),
-        remark: document.getElementById('modal-remark').value.trim(),
+        shop_name: v('modal-shop_name'),
+        amazon_shop_name: v('modal-amazon_shop_name'),
+        customer: v('modal-customer'),
+        ops: v('modal-ops'),
+        shop_status: v('modal-shop_status'),
+        shop_number: v('modal-shop_number'),
+        shop_date: v('modal-shop_date'),
+        seller_mark: v('modal-seller_mark'),
+        qu_dao: v('modal-qu_dao'),
+        whitelist: v('modal-whitelist'),
+        ip_address: v('modal-ip_address'),
+        remark: v('modal-remark'),
         // 账号信息
-        email_account: document.getElementById('modal-email_account').value.trim(),
-        email_password: document.getElementById('modal-email_password').value.trim(),
-        shop_password: document.getElementById('modal-shop_password').value.trim(),
-        backup_email_or_phone: document.getElementById('modal-backup_email_or_phone').value.trim(),
-        voucher_163: document.getElementById('modal-voucher_163').value.trim(),
-        email_163_account: document.getElementById('modal-email_163_account').value.trim(),
-        browser: document.getElementById('modal-browser').value.trim(),
-        ling_xing_if: document.getElementById('modal-ling_xing_if').value,
-        divi_shop_id: document.getElementById('modal-divi_shop_id').value,
+        email_account: v('modal-email_account'),
+        email_password: v('modal-email_password'),
+        shop_password: v('modal-shop_password'),
+        backup_email_or_phone: v('modal-backup_email_or_phone'),
+        voucher_163: v('modal-voucher_163'),
+        email_163_account: v('modal-email_163_account'),
+        browser: v('modal-browser'),
+        ling_xing_if: v('modal-ling_xing_if'),
+        divi_shop_id: v('modal-divi_shop_id'),
         // 收款信息
-        credit_card_channel: document.getElementById('modal-credit_card_channel').value.trim(),
-        credit_card_number: document.getElementById('modal-credit_card_number').value.trim(),
-        credit_card_expiry: document.getElementById('modal-credit_card_expiry').value.trim(),
-        credit_card_cvv: document.getElementById('modal-credit_card_cvv').value.trim(),
-        is_consolidated: document.getElementById('modal-is_consolidated').value.trim(),
-        bind_collection: document.getElementById('modal-bind_collection').value.trim(),
-        collection_channel: document.getElementById('modal-collection_channel').value.trim(),
-        xunhui_login_account: document.getElementById('modal-xunhui_login_account').value.trim(),
-        login_password: document.getElementById('modal-login_password').value.trim(),
-        bind_phone: document.getElementById('modal-bind_phone').value.trim(),
-        collection_card_number: document.getElementById('modal-collection_card_number').value.trim(),
-        payment_password: document.getElementById('modal-payment_password').value.trim(),
+        credit_card_channel: v('modal-credit_card_channel'),
+        credit_card_number: v('modal-credit_card_number'),
+        credit_card_expiry: v('modal-credit_card_expiry'),
+        credit_card_cvv: v('modal-credit_card_cvv'),
+        is_consolidated: v('modal-is_consolidated'),
+        bind_collection: v('modal-bind_collection'),
+        collection_channel: v('modal-collection_channel'),
+        xunhui_login_account: v('modal-xunhui_login_account'),
+        login_password: v('modal-login_password'),
+        bind_phone: v('modal-bind_phone'),
+        collection_card_number: v('modal-collection_card_number'),
+        payment_password: v('modal-payment_password'),
         // 法人信息
-        id_number: document.getElementById('modal-id_number').value.trim(),
-        legal_person_phone: document.getElementById('modal-legal_person_phone').value.trim(),
-        company_name: document.getElementById('modal-company_name').value.trim(),
-        license_number: document.getElementById('modal-license_number').value.trim(),
-        business_license_date: document.getElementById('modal-business_license_date').value,
-        birth_date: document.getElementById('modal-birth_date').value,
-        id_expiry_date: document.getElementById('modal-id_expiry_date').value.trim(),
-        additional_remark: document.getElementById('modal-additional_remark').value.trim(),
+        id_number: v('modal-id_number'),
+        legal_person_phone: v('modal-legal_person_phone'),
+        company_name: v('modal-company_name'),
+        license_number: v('modal-license_number'),
+        business_license_date: v('modal-business_license_date'),
+        birth_date: v('modal-birth_date'),
+        id_expiry_date: v('modal-id_expiry_date'),
+        additional_remark: v('modal-additional_remark'),
         // 其他
-        img1: document.getElementById('modal-img1') ? document.getElementById('modal-img1').value.trim() : ''
+        img1: v('modal-img1'),
     };
 
     // 验证必填项
@@ -874,7 +872,7 @@ async function saveShopModal() {
             closeModal();
             loadShopsTable();
         } else {
-            alert('操作失败：' + result.error);
+            alert('操作失败：' + (result.error || '未知错误'));
         }
     } catch (error) {
         console.error('保存失败:', error);
@@ -926,4 +924,3 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 {% endblock %}
-

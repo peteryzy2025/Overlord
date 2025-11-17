@@ -123,7 +123,7 @@ def get_customers_api(request):
         }, status=500)
 
 
-# 获取Amazon店铺列表API（支持分页和筛选）
+# 获取Amazon店铺列表API（支持分页和筛选，含 id 精准查询）
 @require_GET
 @login_required
 def get_amazon_shops_api(request):
@@ -409,18 +409,85 @@ def create_amazon_shop_api(request):
 @csrf_exempt
 @login_required
 def update_amazon_shop_api(request, shop_id):
-    """通过店铺ID更新亚马逊店铺信息"""
+    """
+    通过店铺ID更新亚马逊店铺信息
+    请求体：与 create 接口相同字段
+    """
     try:
-        shop = AmazonShop.objects.get(id=shop_id)  # 确保获取到正确的店铺ID
-        # 后续更新店铺的逻辑
-        ...
-        return JsonResponse({
-            'success': True,
-            'message': '店铺信息更新成功'
-        })
+        shop = AmazonShop.objects.get(id=shop_id)
     except AmazonShop.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': '店铺不存在'
-        }, status=404)
+        return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
 
+    try:
+        data = json.loads(request.body or '{}')
+
+        # 简单校验
+        shop_name = (data.get('shop_name') or '').strip()
+        if not shop_name:
+            return JsonResponse({'success': False, 'error': '店铺名称不能为空'}, status=400)
+
+        # 可选：检查重名（排除自己）
+        if AmazonShop.objects.filter(shop_name=shop_name).exclude(id=shop_id).exists():
+            return JsonResponse({'success': False, 'error': '店铺名称已存在'}, status=400)
+
+        with transaction.atomic():
+            # 基本信息
+            shop.shop_name = shop_name
+            shop.shop_number = data.get('shop_number') or None
+            shop.amazon_shop_name = data.get('amazon_shop_name', '') or ''
+            shop.customer = data.get('customer', '') or ''
+            shop.ops_id = data.get('ops') or None
+            shop.shop_status = data.get('shop_status', '正常') or '正常'
+            shop.shop_date = data.get('shop_date') or None
+            shop.qu_dao = data.get('qu_dao', '') or ''
+            shop.seller_mark = data.get('seller_mark', '') or ''
+            shop.whitelist = data.get('whitelist', '') or ''
+            shop.ip_address = data.get('ip_address', '') or ''
+            shop.remark = data.get('remark', '') or ''
+
+            # 账号信息
+            shop.email_account = data.get('email_account', '') or ''
+            shop.email_password = data.get('email_password', '') or ''
+            shop.shop_password = data.get('shop_password', '') or ''
+            shop.backup_email_or_phone = data.get('backup_email_or_phone', '') or ''
+            shop.voucher_163 = data.get('voucher_163', '') or ''
+            shop.email_163_account = data.get('email_163_account', '') or ''
+            shop.browser = data.get('browser', '') or ''
+            shop.ling_xing_if = data.get('ling_xing_if', 0) or 0
+            shop.divi_shop_id = data.get('divi_shop_id') or None
+
+            # 收款信息
+            shop.credit_card_channel = data.get('credit_card_channel', '') or ''
+            shop.credit_card_number = data.get('credit_card_number', '') or ''
+            shop.credit_card_expiry = data.get('credit_card_expiry', '') or ''
+            shop.credit_card_cvv = data.get('credit_card_cvv', '') or ''
+            shop.is_consolidated = data.get('is_consolidated', '') or ''
+            shop.bind_collection = data.get('bind_collection', '') or ''
+            shop.collection_channel = data.get('collection_channel', '') or ''
+            shop.xunhui_login_account = data.get('xunhui_login_account', '') or ''
+            shop.login_password = data.get('login_password', '') or ''
+            shop.bind_phone = data.get('bind_phone', '') or ''
+            shop.collection_card_number = data.get('collection_card_number', '') or ''
+            shop.payment_password = data.get('payment_password', '') or ''
+
+            # 法人信息
+            shop.id_number = data.get('id_number', '') or ''
+            shop.legal_person_phone = data.get('legal_person_phone', '') or ''
+            shop.company_name = data.get('company_name', '') or ''
+            shop.license_number = data.get('license_number', '') or ''
+            shop.business_license_date = data.get('business_license_date') or None
+            shop.birth_date = data.get('birth_date') or None
+            shop.id_expiry_date = data.get('id_expiry_date', '') or ''
+            shop.additional_remark = data.get('additional_remark', '') or ''
+
+            # 其他
+            shop.img1 = data.get('img1', '') or ''
+
+            shop.save()
+
+        return JsonResponse({'success': True, 'message': '店铺信息更新成功'})
+
+    except Exception as e:
+        print(f"更新Amazon店铺错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
