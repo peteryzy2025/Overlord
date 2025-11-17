@@ -130,6 +130,12 @@ AUTH_USER_MODEL = 'General.User'  # 你的自定义用户模型路径
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
+MEDIA_ROOT = BASE_DIR / 'media'  # 或者可以设置为 D:/Y-Project/Overlord/media
+
+# 用户通过 URL 访问媒体文件时使用的路径
+MEDIA_URL = '/media/'
+
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
