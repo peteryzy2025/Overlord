@@ -20,6 +20,7 @@ from General import views, views_user_management, views_amazon_management
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', views.user_login, name='login'),
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
     path('main/', views.main_page, name='main'),
