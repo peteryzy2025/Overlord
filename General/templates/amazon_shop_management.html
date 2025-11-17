@@ -1,0 +1,929 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Amazon店铺管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 与user_management.html完全一致的样式 */
+    .content { max-width: 100vw; overflow-x: hidden; }
+    .tab-content { display: block; max-width: 100%; width: 100%; padding: 2rem; box-sizing: border-box; overflow-x: hidden; }
+    .page-header { margin-bottom: 0.2rem; display: flex; justify-content: space-between; align-items: center; }
+    .page-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
+    .page-subtitle { color: var(--text-secondary); }
+    .btn-create { background-color: #22c55e; color: white; }
+    .btn-create:hover { background-color: #16a34a; }
+    .filter-section { background-color: var(--bg-primary); border-radius: 12px; padding: 1.5rem; margin-bottom: 0.2rem; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); }
+    .filter-row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+    .filter-group { display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px; }
+    .filter-actions { display: flex; flex-direction: row; gap: 0.5rem; align-self: flex-end; margin-top: auto; }
+    .filter-label { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
+    .form-control, .form-select { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 0.5rem 0.75rem; transition: all 0.3s ease; }
+    .btn { background-color: var(--accent-color); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
+    .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
+    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
+    .table-container { background-color: var(--bg-primary); border-radius: 12px; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); overflow-x: auto; max-height: 700px; overflow-y: auto; width: 100%; }
+    .table-container table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 4000px; } /* 增加最小宽度确保横向滚动 */
+    .table-container thead { position: sticky; top: 0; z-index: 10; background-color: var(--bg-secondary); }
+    .table { width: 100%; margin: 0; color: var(--text-primary); }
+    .table th { background-color: var(--bg-secondary); color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--border-color); padding: 1rem; white-space: nowrap; position: sticky; top: 0; z-index: 11; }
+    .table td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; white-space: nowrap; }
+    .table tbody tr:hover { background-color: var(--bg-secondary); }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; }
+    .status-active { background-color: #C6F6D5; color: #22543D; }
+    .status-pending { background-color: #FEF3C7; color: #92400E; }
+    .status-inactive { background-color: #FED7D7; color: #742A2A; }
+    .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding: 1rem; background-color: var(--bg-primary); border-radius: 12px; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); }
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(4px); }
+    .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--bg-primary); border-radius: 16px; padding: 2rem; width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-heavy); border: 1px solid var(--border-color); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+    .modal-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
+    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; }
+    .modal-close:hover { background-color: var(--bg-secondary); color: var(--text-primary); }
+    .modal-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group label { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
+    .form-group input, .form-group select, .form-group textarea { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 0.75rem; transition: all 0.3s ease; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
+    .btn-cancel-modal { background-color: var(--bg-tertiary); color: var(--text-primary); }
+    .btn-save-modal { background-color: #22c55e; }
+    .btn-save-modal:hover { background-color: #16a34a; }
+    .password-input { font-family: monospace; }
+    .section-title { grid-column: 1 / -1; font-size: 1.2rem; font-weight: 600; color: var(--accent-color); margin: 1rem 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
+    .field-disabled { background-color: var(--bg-tertiary) !important; color: var(--text-secondary) !important; cursor: not-allowed; }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar">
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'user_management' %}" class="sidebar-link">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span>人员管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon_management' %}" class="sidebar-link active">
+                <i class="fab fa-amazon sidebar-icon"></i>
+                <span>Amazon店铺管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'temu_management' %}" class="sidebar-link">
+                <i class="fas fa-store sidebar-icon"></i>
+                <span>Temu店铺管理</span>
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="amazon-shops-tab" class="tab-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Amazon店铺管理</h1>
+            <p class="page-subtitle">管理Amazon店铺信息和配置</p>
+        </div>
+        <button class="btn btn-create" onclick="openCreateModal()">
+            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
+        </button>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">店铺状态</label>
+                <select class="form-select" id="amazonShopStatusFilter">
+                    <option value="">全部状态</option>
+                    <option value="正常">正常</option>
+                    <option value="停用">停用</option>
+                    <option value="注销">注销</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">客户</label>
+                <select class="form-select" id="amazonCustomerFilter">
+                    <option value="">全部客户</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">运营人员</label>
+                <select class="form-select" id="amazonOperatorFilter">
+                    <option value="">全部人员</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">运营分组</label>
+                <select class="form-select" id="amazonGroupFilter">
+                    <option value="">全部分组</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">搜索店铺</label>
+                <input type="text" class="form-control" id="amazonShopSearch" placeholder="搜索店铺名称/亚马逊名称">
+            </div>
+            <div class="filter-actions">
+                <button class="btn" onclick="filterAmazonShops()">筛选</button>
+                <button class="btn btn-secondary" onclick="resetAmazonShopFilters()">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table" id="amazonShopsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>店铺名称</th>
+                    <th>亚马逊名称</th>
+                    <th>客户</th>
+                    <th>运营人员</th>
+                    <th>运营分组</th>
+                    <th>状态</th>
+                    <th>下店日期</th>
+                    <th>店铺序号</th>
+                    <th>卖家记号</th>
+                    <th>店铺渠道</th>
+                    <th>IP地址</th>
+                    <th>白名单</th>
+                    <th>邮箱账号</th>
+                    <th>邮箱密码</th>
+                    <th>店铺密码</th>
+                    <th>备用邮箱/手机</th>
+                    <th>163凭证</th>
+                    <th>163大师号</th>
+                    <th>浏览器</th>
+                    <th>领星绑定</th>
+                    <th>迪唯ID</th>
+                    <th>信用卡渠道</th>
+                    <th>信用卡号</th>
+                    <th>有效期</th>
+                    <th>CVV</th>
+                    <th>是否归集</th>
+                    <th>绑定收款</th>
+                    <th>收款渠道</th>
+                    <th>寻汇账号</th>
+                    <th>登录密码</th>
+                    <th>绑定手机</th>
+                    <th>收款卡号</th>
+                    <th>支付密码</th>
+                    <th>身份证号</th>
+                    <th>法人手机</th>
+                    <th>单位名称</th>
+                    <th>执照号</th>
+                    <th>执照日期</th>
+                    <th>出生日期</th>
+                    <th>身份证到期</th>
+                    <th>备注</th>
+                    <th>附加备注</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="amazonShopsTableBody">
+                <!-- 动态生成内容 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-container">
+        <div class="pagination-info" data-total="0">
+            显示第 1 到 10 条，共 0 条记录
+            <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
+                <option value="10">10条/页</option>
+                <option value="20">20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+            </select>
+        </div>
+        <nav>
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">上一页</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 模态框 -->
+<div class="modal-overlay" id="shopModalOverlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- 动态生成表单内容 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// 全局变量
+let allOperators = [];      // 运营人员列表（含OperationalAccount信息）
+let allGroups = [];         // 运营分组列表（从OperationalAccount）
+let allCustomers = [];      // 客户列表
+let modalMode = null;       // 'create' | 'edit'
+let currentShopId = null;   // 当前编辑的店铺ID
+let currentPage = 1;        // 当前页码
+let currentPageSize = 10;   // 每页条数
+
+// ==========================================
+// API 数据获取
+// ==========================================
+
+async function loadShopsFromAPI(page = 1, pageSize = 10) {
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            page_size: pageSize,
+            status: document.getElementById('amazonShopStatusFilter').value,
+            operator: document.getElementById('amazonOperatorFilter').value,
+            ops_group: document.getElementById('amazonGroupFilter').value,
+            customer: document.getElementById('amazonCustomerFilter').value,
+            search: document.getElementById('amazonShopSearch').value
+        });
+
+        const response = await fetch(`/api/amazon-shops/?${params}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            return {
+                data: result.data,
+                total: result.total,
+                page: result.page,
+                page_size: result.page_size
+            };
+        }
+
+        console.error('获取店铺数据失败:', result.error);
+        alert('加载店铺数据失败: ' + result.error);
+        return { data: [], total: 0 };
+    } catch (error) {
+        console.error('API请求错误:', error);
+        alert('无法连接到服务器，请检查网络连接');
+        return { data: [], total: 0 };
+    }
+}
+
+async function loadOperatorsFromAPI() {
+    try {
+        const response = await fetch('/api/operators/');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            allOperators = result.data;
+            return true;
+        }
+
+        console.error('获取运营人员列表失败:', result.error);
+        allOperators = [];
+        return false;
+    } catch (error) {
+        console.error('运营人员API请求错误:', error);
+        allOperators = [];
+        return false;
+    }
+}
+
+async function loadGroupsFromAPI() {
+    try {
+        const response = await fetch('/api/ops-groups/');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            allGroups = result.data;
+            return true;
+        }
+
+        console.error('获取分组列表失败:', result.error);
+        allGroups = [];
+        return false;
+    } catch (error) {
+        console.error('分组API请求错误:', error);
+        allGroups = [];
+        return false;
+    }
+}
+
+async function loadCustomersFromAPI() {
+    try {
+        const response = await fetch('/api/customers/');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            allCustomers = result.data;
+            return true;
+        }
+
+        console.error('获取客户列表失败:', result.error);
+        allCustomers = [];
+        return false;
+    } catch (error) {
+        console.error('客户API请求错误:', error);
+        allCustomers = [];
+        return false;
+    }
+}
+
+// ==========================================
+// 分页控件渲染
+// ==========================================
+
+function renderPagination(totalItems, currentPage, pageSize) {
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const paginationHtml = [];
+
+    // 上一页
+    const prevDisabled = currentPage === 1 ? 'disabled' : '';
+    paginationHtml.push(`
+        <li class="page-item ${prevDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
+        </li>
+    `);
+
+    // 页码（显示最多5页）
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === currentPage ? 'active' : '';
+        paginationHtml.push(`
+            <li class="page-item ${active}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `);
+    }
+
+    // 下一页
+    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+    paginationHtml.push(`
+        <li class="page-item ${nextDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
+        </li>
+    `);
+
+    document.querySelector('.pagination').innerHTML = paginationHtml.join('');
+}
+
+async function changePage(page) {
+    const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
+    const totalPages = Math.ceil(totalItems / currentPageSize);
+
+    if (page < 1 || page > totalPages) return;
+
+    currentPage = page;
+    await loadShopsTable();
+}
+
+async function changePageSize(pageSize) {
+    currentPageSize = parseInt(pageSize);
+    currentPage = 1;
+    await loadShopsTable();
+}
+
+// ==========================================
+// 筛选器与表格渲染
+// ==========================================
+
+function updateFilterOptions(shops) {
+    // 状态筛选器：固定显示所有可能状态
+    const statusSelect = document.getElementById('amazonShopStatusFilter');
+    // 保持原有选项不变（已在HTML中定义）
+
+    // 客户筛选器 - 修复：保持当前选中值
+    const customerSelect = document.getElementById('amazonCustomerFilter');
+    const currentCustomer = customerSelect.value; // 保存当前选中值
+    customerSelect.innerHTML = '<option value="">全部客户</option>';
+    allCustomers.forEach(customer => {
+        const option = document.createElement('option');
+        option.value = customer;
+        option.textContent = customer;
+        if (customer === currentCustomer) {
+            option.selected = true; // 恢复选中状态
+        }
+        customerSelect.appendChild(option);
+    });
+
+    // 运营人员筛选器（从OperationalAccount获取分组）
+    const operatorSelect = document.getElementById('amazonOperatorFilter');
+    const currentOperator = operatorSelect.value; // 保存当前选中值
+    operatorSelect.innerHTML = '<option value="">全部人员</option>';
+    allOperators.forEach(op => {
+        const option = document.createElement('option');
+        option.value = op.id;
+        option.textContent = `${op.first_name} (${op.group})`;
+        if (op.id == currentOperator) { // 注意：op.id 是数字，currentOperator 是字符串
+            option.selected = true;
+        }
+        operatorSelect.appendChild(option);
+    });
+
+    // 分组筛选器（从OperationalAccount获取）
+    const groupSelect = document.getElementById('amazonGroupFilter');
+    const currentGroup = groupSelect.value; // 保存当前选中值
+    groupSelect.innerHTML = '<option value="">全部分组</option>';
+    allGroups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        if (group === currentGroup) {
+            option.selected = true;
+        }
+        groupSelect.appendChild(option);
+    });
+}
+
+async function loadShopsTable() {
+    const tbody = document.getElementById('amazonShopsTableBody');
+    tbody.innerHTML = '<tr><td colspan="42" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+
+    const { data, total, page, pageSize } = await loadShopsFromAPI(currentPage, currentPageSize);
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="42" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+        document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
+        document.querySelector('.pagination').innerHTML = '';
+        return;
+    }
+
+    // 使用全局变量计算分页信息，避免NaN问题
+    const start = (currentPage - 1) * currentPageSize + 1;
+    const end = start + data.length - 1;
+
+    // 修复：动态设置pageSizeSelect的选中状态
+    const pageInfoHtml = `
+        显示第 ${start} 到 ${end} 条，共 ${total} 条记录
+        <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
+            <option value="10" ${currentPageSize === 10 ? 'selected' : ''}>10条/页</option>
+            <option value="20" ${currentPageSize === 20 ? 'selected' : ''}>20条/页</option>
+            <option value="50" ${currentPageSize === 50 ? 'selected' : ''}>50条/页</option>
+            <option value="100" ${currentPageSize === 100 ? 'selected' : ''}>100条/页</option>
+        </select>
+    `;
+    document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
+    document.querySelector('.pagination-info').dataset.total = total;
+
+    updateFilterOptions(data);
+    renderShopRows(data);
+    renderPagination(total, page, pageSize);
+}
+
+function renderShopRows(shops) {
+    const tbody = document.getElementById('amazonShopsTableBody');
+    tbody.innerHTML = shops.map(shop => {
+        const statusClasses = {
+            '正常': 'status-active',
+            '停用': 'status-inactive',
+            '注销': 'status-inactive',
+            '审核中': 'status-pending'
+        };
+
+        return `
+            <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
+                <td class="field-id">${shop.id}</td>
+                <td class="field-shop_name">${shop.shop_name}</td>
+                <td class="field-amazon_shop_name">${shop.amazon_shop_name}</td>
+                <td class="field-customer">${shop.customer}</td>
+                <td class="field-ops_name">${shop.ops_first_name}</td>
+                <td class="field-ops_group">${shop.ops_group}</td>
+                <td class="field-shop_status">
+                    <span class="status-badge ${statusClasses[shop.shop_status] || 'status-inactive'}">${shop.shop_status}</span>
+                </td>
+                <td class="field-shop_date">${shop.shop_date}</td>
+                <td class="field-shop_number">${shop.shop_number || '-'}</td>
+                <td class="field-seller_mark">${shop.seller_mark}</td>
+                <td class="field-qu_dao">${shop.qu_dao}</td>
+                <td class="field-ip_address">${shop.ip_address}</td>
+                <td class="field-whitelist">${shop.whitelist || '-'}</td>
+                <td class="field-email_account">${shop.email_account || '-'}</td>
+                <td class="field-email_password">${shop.email_password || '-'}</td>
+                <td class="field-shop_password">${shop.shop_password || '-'}</td>
+                <td class="field-backup_email_or_phone">${shop.backup_email_or_phone || '-'}</td>
+                <td class="field-voucher_163">${shop.voucher_163 || '-'}</td>
+                <td class="field-email_163_account">${shop.email_163_account || '-'}</td>
+                <td class="field-browser">${shop.browser || '-'}</td>
+                <td class="field-ling_xing_if">${shop.ling_xing_if == 1 ? '是' : '否'}</td>
+                <td class="field-divi_shop_id">${shop.divi_shop_id || '-'}</td>
+                <td class="field-credit_card_channel">${shop.credit_card_channel || '-'}</td>
+                <td class="field-credit_card_number">${shop.credit_card_number || '-'}</td>
+                <td class="field-credit_card_expiry">${shop.credit_card_expiry || '-'}</td>
+                <td class="field-credit_card_cvv">${shop.credit_card_cvv || '-'}</td>
+                <td class="field-is_consolidated">${shop.is_consolidated || '-'}</td>
+                <td class="field-bind_collection">${shop.bind_collection || '-'}</td>
+                <td class="field-collection_channel">${shop.collection_channel || '-'}</td>
+                <td class="field-xunhui_login_account">${shop.xunhui_login_account || '-'}</td>
+                <td class="field-login_password">${shop.login_password || '-'}</td>
+                <td class="field-bind_phone">${shop.bind_phone || '-'}</td>
+                <td class="field-collection_card_number">${shop.collection_card_number || '-'}</td>
+                <td class="field-payment_password">${shop.payment_password || '-'}</td>
+                <td class="field-id_number">${shop.id_number || '-'}</td>
+                <td class="field-legal_person_phone">${shop.legal_person_phone || '-'}</td>
+                <td class="field-company_name">${shop.company_name || '-'}</td>
+                <td class="field-license_number">${shop.license_number || '-'}</td>
+                <td class="field-business_license_date">${shop.business_license_date || '-'}</td>
+                <td class="field-birth_date">${shop.birth_date || '-'}</td>
+                <td class="field-id_expiry_date">${shop.id_expiry_date || '-'}</td>
+                <td class="field-remark">${shop.remark}</td>
+                <td class="field-additional_remark">${shop.additional_remark || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function filterAmazonShops() {
+    currentPage = 1;
+    await loadShopsTable();
+}
+
+function resetAmazonShopFilters() {
+    document.getElementById('amazonShopStatusFilter').value = '';
+    document.getElementById('amazonCustomerFilter').value = '';
+    document.getElementById('amazonOperatorFilter').value = '';
+    document.getElementById('amazonGroupFilter').value = '';
+    document.getElementById('amazonShopSearch').value = '';
+    currentPage = 1;
+    loadShopsTable();
+}
+
+// ==========================================
+// 模态框操作
+// ==========================================
+
+function openCreateModal() {
+    modalMode = 'create';
+    currentShopId = null;
+    document.getElementById('modalTitle').textContent = '新建店铺';
+    document.getElementById('modalBody').innerHTML = generateModalForm();
+    document.getElementById('shopModalOverlay').style.display = 'block';
+}
+
+function openEditModal(shopId) {
+    modalMode = 'edit';
+    currentShopId = shopId;
+
+    const row = document.querySelector(`tr[data-shop-id="${shopId}"]`);
+    if (!row) return;
+
+    document.getElementById('modalTitle').textContent = '编辑店铺';
+
+    // 从API获取完整店铺数据
+    fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success && result.data.length > 0) {
+                const fullData = result.data[0];
+                document.getElementById('modalBody').innerHTML = generateModalForm(fullData);
+                document.getElementById('shopModalOverlay').style.display = 'block';
+            }
+        });
+}
+
+function closeModal() {
+    document.getElementById('shopModalOverlay').style.display = 'none';
+    modalMode = null;
+    currentShopId = null;
+}
+
+function generateModalForm(shopData = null) {
+    const isCreate = !shopData;
+    const data = shopData || {};
+
+    // 动态生成运营人员选项（显示OperationalAccount中的分组）
+    const operatorOptionsHtml = allOperators.map(op => {
+        const selected = data.ops_id == op.id ? 'selected' : '';
+        return `<option value="${op.id}" ${selected}>${op.first_name} (${op.group})</option>`;
+    }).join('');
+
+    return `
+        <div class="section-title">🔍 基本信息</div>
+        <div class="form-group">
+            <label>店铺ID</label>
+            <input type="text" value="${data.id || '自动生成'}" disabled class="field-disabled">
+        </div>
+        <div class="form-group">
+            <label>店铺名称 <span style="color:red;">*</span></label>
+            <input type="text" id="modal-shop_name" value="${data.shop_name || ''}" required>
+        </div>
+        <div class="form-group">
+            <label>亚马逊店铺名称</label>
+            <input type="text" id="modal-amazon_shop_name" value="${data.amazon_shop_name || ''}">
+        </div>
+        <div class="form-group">
+            <label>客户</label>
+            <input type="text" id="modal-customer" value="${data.customer || ''}">
+        </div>
+        <div class="form-group">
+            <label>运营人员</label>
+            <select id="modal-ops">${operatorOptionsHtml || '<option value="">无</option>'}</select>
+        </div>
+        <div class="form-group">
+            <label>状态</label>
+            <select id="modal-shop_status">
+                <option value="正常" ${data.shop_status === '正常' ? 'selected' : ''}>正常</option>
+                <option value="停用" ${data.shop_status === '停用' ? 'selected' : ''}>停用</option>
+                <option value="注销" ${data.shop_status === '注销' ? 'selected' : ''}>注销</option>
+                <option value="审核中" ${data.shop_status === '审核中' ? 'selected' : ''}>审核中</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>店铺序号</label>
+            <input type="number" id="modal-shop_number" value="${data.shop_number || ''}">
+        </div>
+        <div class="form-group">
+            <label>下店日期</label>
+            <input type="date" id="modal-shop_date" value="${data.shop_date || ''}">
+        </div>
+        <div class="form-group">
+            <label>卖家记号</label>
+            <input type="text" id="modal-seller_mark" value="${data.seller_mark || ''}">
+        </div>
+        <div class="form-group">
+            <label>店铺渠道</label>
+            <input type="text" id="modal-qu_dao" value="${data.qu_dao || ''}">
+        </div>
+        <div class="form-group" style="grid-column: 1/-1;">
+            <label>白名单</label>
+            <textarea id="modal-whitelist" rows="2" style="width: 100%;">${data.whitelist || ''}</textarea>
+        </div>
+
+        <div class="section-title">🔐 账号信息</div>
+        <div class="form-group">
+            <label>邮箱账号（店铺账号）</label>
+            <input type="text" id="modal-email_account" value="${data.email_account || ''}">
+        </div>
+        <div class="form-group">
+            <label>邮箱密码</label>
+            <input type="text" id="modal-email_password" class="password-input" value="${data.email_password || ''}">
+        </div>
+        <div class="form-group">
+            <label>店铺密码</label>
+            <input type="text" id="modal-shop_password" class="password-input" value="${data.shop_password || ''}">
+        </div>
+        <div class="form-group">
+            <label>备用邮箱或手机号</label>
+            <input type="text" id="modal-backup_email_or_phone" value="${data.backup_email_or_phone || ''}">
+        </div>
+        <div class="form-group">
+            <label>163邮箱凭证</label>
+            <input type="text" id="modal-voucher_163" value="${data.voucher_163 || ''}">
+        </div>
+        <div class="form-group">
+            <label>163大师账号</label>
+            <input type="text" id="modal-email_163_account" value="${data.email_163_account || ''}">
+        </div>
+        <div class="form-group">
+            <label>浏览器</label>
+            <input type="text" id="modal-browser" value="${data.browser || ''}">
+        </div>
+        <div class="form-group">
+            <label>迪唯店铺ID</label>
+            <input type="number" id="modal-divi_shop_id" value="${data.divi_shop_id || ''}">
+        </div>
+        <div class="form-group">
+            <label>是否绑定领星</label>
+            <select id="modal-ling_xing_if">
+                <option value="1" ${data.ling_xing_if == 1 ? 'selected' : ''}>是</option>
+                <option value="0" ${data.ling_xing_if == 0 ? 'selected' : ''}>否</option>
+            </select>
+        </div>
+
+        <div class="section-title">💳 收款信息</div>
+        <div class="form-group">
+            <label>信用卡渠道</label>
+            <input type="text" id="modal-credit_card_channel" value="${data.credit_card_channel || ''}">
+        </div>
+        <div class="form-group">
+            <label>信用卡号</label>
+            <input type="text" id="modal-credit_card_number" value="${data.credit_card_number || ''}">
+        </div>
+        <div class="form-group">
+            <label>有效期</label>
+            <input type="text" id="modal-credit_card_expiry" value="${data.credit_card_expiry || ''}" placeholder="MM/YY">
+        </div>
+        <div class="form-group">
+            <label>CVV后3位</label>
+            <input type="text" id="modal-credit_card_cvv" value="${data.credit_card_cvv || ''}" maxlength="3">
+        </div>
+        <div class="form-group">
+            <label>是否归集</label>
+            <input type="text" id="modal-is_consolidated" value="${data.is_consolidated || ''}">
+        </div>
+        <div class="form-group">
+            <label>绑定收款</label>
+            <input type="text" id="modal-bind_collection" value="${data.bind_collection || ''}">
+        </div>
+        <div class="form-group">
+            <label>收款渠道</label>
+            <input type="text" id="modal-collection_channel" value="${data.collection_channel || ''}">
+        </div>
+        <div class="form-group">
+            <label>寻汇登录账号</label>
+            <input type="text" id="modal-xunhui_login_account" value="${data.xunhui_login_account || ''}">
+        </div>
+        <div class="form-group">
+            <label>登录密码</label>
+            <input type="text" id="modal-login_password" class="password-input" value="${data.login_password || ''}">
+        </div>
+        <div class="form-group">
+            <label>绑定手机号</label>
+            <input type="text" id="modal-bind_phone" value="${data.bind_phone || ''}">
+        </div>
+        <div class="form-group">
+            <label>收款卡号</label>
+            <input type="text" id="modal-collection_card_number" value="${data.collection_card_number || ''}">
+        </div>
+        <div class="form-group">
+            <label>支付密码</label>
+            <input type="text" id="modal-payment_password" class="password-input" value="${data.payment_password || ''}">
+        </div>
+
+        <div class="section-title">👤 法人信息</div>
+        <div class="form-group">
+            <label>身份证号</label>
+            <input type="text" id="modal-id_number" value="${data.id_number || ''}">
+        </div>
+        <div class="form-group">
+            <label>法人手机号码</label>
+            <input type="text" id="modal-legal_person_phone" value="${data.legal_person_phone || ''}">
+        </div>
+        <div class="form-group">
+            <label>单位名称</label>
+            <input type="text" id="modal-company_name" value="${data.company_name || ''}">
+        </div>
+        <div class="form-group">
+            <label>执照号</label>
+            <input type="text" id="modal-license_number" value="${data.license_number || ''}">
+        </div>
+        <div class="form-group">
+            <label>营业执照日期</label>
+            <input type="date" id="modal-business_license_date" value="${data.business_license_date || ''}">
+        </div>
+        <div class="form-group">
+            <label>出生日期</label>
+            <input type="date" id="modal-birth_date" value="${data.birth_date || ''}">
+        </div>
+        <div class="form-group">
+            <label>身份证到期日</label>
+            <input type="text" id="modal-id_expiry_date" value="${data.id_expiry_date || ''}">
+        </div>
+        <div class="form-group" style="grid-column: 1/-1;">
+            <label>备注</label>
+            <textarea id="modal-remark" rows="3" style="width: 100%;">${data.remark || ''}</textarea>
+        </div>
+        <div class="form-group" style="grid-column: 1/-1;">
+            <label>附加备注</label>
+            <textarea id="modal-additional_remark" rows="3" style="width: 100%;">${data.additional_remark || ''}</textarea>
+        </div>
+    `;
+}
+
+async function saveShopModal() {
+    // 收集所有表单数据
+    const formData = {
+        // 基本信息
+        shop_name: document.getElementById('modal-shop_name').value.trim(),
+        amazon_shop_name: document.getElementById('modal-amazon_shop_name').value.trim(),
+        customer: document.getElementById('modal-customer').value.trim(),
+        ops: document.getElementById('modal-ops').value,
+        shop_status: document.getElementById('modal-shop_status').value,
+        shop_number: document.getElementById('modal-shop_number').value,
+        shop_date: document.getElementById('modal-shop_date').value,
+        seller_mark: document.getElementById('modal-seller_mark').value.trim(),
+        qu_dao: document.getElementById('modal-qu_dao').value.trim(),
+        whitelist: document.getElementById('modal-whitelist').value.trim(),
+        ip_address: document.getElementById('modal-ip_address').value.trim(),
+        remark: document.getElementById('modal-remark').value.trim(),
+        // 账号信息
+        email_account: document.getElementById('modal-email_account').value.trim(),
+        email_password: document.getElementById('modal-email_password').value.trim(),
+        shop_password: document.getElementById('modal-shop_password').value.trim(),
+        backup_email_or_phone: document.getElementById('modal-backup_email_or_phone').value.trim(),
+        voucher_163: document.getElementById('modal-voucher_163').value.trim(),
+        email_163_account: document.getElementById('modal-email_163_account').value.trim(),
+        browser: document.getElementById('modal-browser').value.trim(),
+        ling_xing_if: document.getElementById('modal-ling_xing_if').value,
+        divi_shop_id: document.getElementById('modal-divi_shop_id').value,
+        // 收款信息
+        credit_card_channel: document.getElementById('modal-credit_card_channel').value.trim(),
+        credit_card_number: document.getElementById('modal-credit_card_number').value.trim(),
+        credit_card_expiry: document.getElementById('modal-credit_card_expiry').value.trim(),
+        credit_card_cvv: document.getElementById('modal-credit_card_cvv').value.trim(),
+        is_consolidated: document.getElementById('modal-is_consolidated').value.trim(),
+        bind_collection: document.getElementById('modal-bind_collection').value.trim(),
+        collection_channel: document.getElementById('modal-collection_channel').value.trim(),
+        xunhui_login_account: document.getElementById('modal-xunhui_login_account').value.trim(),
+        login_password: document.getElementById('modal-login_password').value.trim(),
+        bind_phone: document.getElementById('modal-bind_phone').value.trim(),
+        collection_card_number: document.getElementById('modal-collection_card_number').value.trim(),
+        payment_password: document.getElementById('modal-payment_password').value.trim(),
+        // 法人信息
+        id_number: document.getElementById('modal-id_number').value.trim(),
+        legal_person_phone: document.getElementById('modal-legal_person_phone').value.trim(),
+        company_name: document.getElementById('modal-company_name').value.trim(),
+        license_number: document.getElementById('modal-license_number').value.trim(),
+        business_license_date: document.getElementById('modal-business_license_date').value,
+        birth_date: document.getElementById('modal-birth_date').value,
+        id_expiry_date: document.getElementById('modal-id_expiry_date').value.trim(),
+        additional_remark: document.getElementById('modal-additional_remark').value.trim(),
+        // 其他
+        img1: document.getElementById('modal-img1') ? document.getElementById('modal-img1').value.trim() : ''
+    };
+
+    // 验证必填项
+    if (!formData.shop_name) {
+        alert('店铺名称是必填项！');
+        return;
+    }
+
+    try {
+        const url = modalMode === 'create' ? '/api/amazon-shops/create/' : `/api/amazon-shops/${currentShopId}/update/`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify(formData),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(modalMode === 'create' ? '店铺创建成功！' : '店铺更新成功！');
+            closeModal();
+            loadShopsTable();
+        } else {
+            alert('操作失败：' + result.error);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败，请检查网络连接并重试');
+    }
+}
+
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
+}
+
+// ==========================================
+// 事件监听
+// ==========================================
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI(), loadCustomersFromAPI()]);
+    loadShopsTable();
+
+    if (window.anime) {
+        anime({
+            targets: '.sidebar',
+            translateX: [-280, 0],
+            opacity: [0, 1],
+            duration: 600,
+            easing: 'easeOutQuart'
+        });
+        anime({
+            targets: '.content',
+            translateY: [30, 0],
+            opacity: [0, 1],
+            duration: 800,
+            delay: 200,
+            easing: 'easeOutQuart'
+        });
+    }
+});
+
+document.getElementById('shopModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}
+

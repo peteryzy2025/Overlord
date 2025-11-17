@@ -1,0 +1,426 @@
+# General/views_amazon_management.py
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET, require_POST
+from General.models import User, AmazonShop, OperationalAccount
+from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
+from django.db.models import Q
+import json
+import traceback
+
+
+# Amazon店铺管理页面视图
+@login_required
+def amazon_management_view(request):
+    """渲染Amazon店铺管理页面"""
+    return render(request, 'amazon_shop_management.html')
+
+
+# 获取运营人员列表API（含OperationalAccount分组信息，按分组排序）
+@require_GET
+@login_required
+def get_operators_api(request):
+    """
+    API接口：获取所有运营人员列表（department包含"运营部门"）
+    返回: [{id: 1, first_name: '张三', group: 'A组'}, ...]
+    排序: 按分组名称升序，再按姓名升序
+    """
+    try:
+        # 查询department包含"运营部门"的用户，并关联OperationalAccount，按分组和姓名排序
+        operators = User.objects.filter(
+            department__icontains='运营部门'
+        ).select_related('operational_account').values(
+            'id', 'first_name', 'operational_account__ops_group'
+        ).order_by('operational_account__ops_group', 'first_name')
+
+        # 处理空值，使用OperationalAccount中的分组
+        operators_list = [
+            {
+                'id': op['id'],
+                'first_name': op['first_name'] or '-',
+                'group': op['operational_account__ops_group'] or '未分组'
+            }
+            for op in operators
+        ]
+
+        return JsonResponse({
+            'success': True,
+            'data': operators_list
+        })
+
+    except Exception as e:
+        print(f"获取运营人员列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+# 获取分组列表API（从OperationalAccount）
+@require_GET
+@login_required
+def get_ops_groups_api(request):
+    """
+    API接口：获取所有运营分组列表（从OperationalAccount.ops_group去重）
+    返回: ['A组', 'B组', 'C组', ...]
+    """
+    try:
+        # 从OperationalAccount查询ops_group，去重并排除空值
+        groups = OperationalAccount.objects.exclude(
+            ops_group__isnull=True
+        ).exclude(
+            ops_group=''
+        ).values_list('ops_group', flat=True).distinct().order_by('ops_group')
+
+        groups_list = list(groups)
+
+        return JsonResponse({
+            'success': True,
+            'data': groups_list
+        })
+
+    except Exception as e:
+        print(f"获取分组列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+# 获取客户列表API
+@require_GET
+@login_required
+def get_customers_api(request):
+    """
+    API接口：获取所有客户列表（从AmazonShop.customer去重）
+    返回: ['客户A', '客户B', ...]
+    """
+    try:
+        # 从AmazonShop查询customer，去重并排除空值
+        customers = AmazonShop.objects.exclude(
+            customer__isnull=True
+        ).exclude(
+            customer=''
+        ).values_list('customer', flat=True).distinct().order_by('customer')
+
+        customers_list = list(customers)
+
+        return JsonResponse({
+            'success': True,
+            'data': customers_list
+        })
+
+    except Exception as e:
+        print(f"获取客户列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+# 获取Amazon店铺列表API（支持分页和筛选）
+@require_GET
+@login_required
+def get_amazon_shops_api(request):
+    """
+    API接口：获取Amazon店铺列表（支持分页、多重筛选，或通过 id 精准查询）
+    支持参数:
+        - id=xxx（优先，单店铺查询）
+        - page, page_size
+        - status, operator, ops_group, customer, search
+    """
+    try:
+        # 优先处理指定 ID 查询
+        shop_id = request.GET.get('id')
+        if shop_id:
+            try:
+                shop = AmazonShop.objects.select_related('ops__operational_account').get(id=int(shop_id))
+
+                ops_group = '-'
+                if shop.ops and hasattr(shop.ops, 'operational_account'):
+                    ops_group = shop.ops.operational_account.ops_group or '-'
+
+                shop_dict = {
+                    'id': shop.id,
+                    'shop_name': shop.shop_name or '-',
+                    'amazon_shop_name': shop.amazon_shop_name or '-',
+                    'customer': shop.customer or '-',
+                    'ops_id': shop.ops.id if shop.ops else None,
+                    'ops_first_name': shop.ops.first_name if shop.ops else '-',
+                    'ops_group': ops_group,
+                    'shop_status': shop.shop_status or '-',
+                    'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
+                    'shop_number': shop.shop_number or '',
+                    'seller_mark': shop.seller_mark or '-',
+                    'qu_dao': shop.qu_dao or '-',
+                    'ip_address': shop.ip_address or '-',
+                    'whitelist': shop.whitelist or '-',
+                    'email_account': shop.email_account or '-',
+                    'email_password': shop.email_password or '-',
+                    'shop_password': shop.shop_password or '-',
+                    'backup_email_or_phone': shop.backup_email_or_phone or '-',
+                    'voucher_163': shop.voucher_163 or '-',
+                    'email_163_account': shop.email_163_account or '-',
+                    'browser': shop.browser or '-',
+                    'ling_xing_if': shop.ling_xing_if or 0,
+                    'divi_shop_id': shop.divi_shop_id or '',
+                    'credit_card_channel': shop.credit_card_channel or '-',
+                    'credit_card_number': shop.credit_card_number or '-',
+                    'credit_card_expiry': shop.credit_card_expiry or '-',
+                    'credit_card_cvv': shop.credit_card_cvv or '-',
+                    'is_consolidated': shop.is_consolidated or '-',
+                    'bind_collection': shop.bind_collection or '-',
+                    'collection_channel': shop.collection_channel or '-',
+                    'xunhui_login_account': shop.xunhui_login_account or '-',
+                    'login_password': shop.login_password or '-',
+                    'bind_phone': shop.bind_phone or '-',
+                    'collection_card_number': shop.collection_card_number or '-',
+                    'payment_password': shop.payment_password or '-',
+                    'id_number': shop.id_number or '-',
+                    'legal_person_phone': shop.legal_person_phone or '-',
+                    'company_name': shop.company_name or '-',
+                    'license_number': shop.license_number or '-',
+                    'business_license_date': shop.business_license_date.strftime('%Y-%m-%d') if shop.business_license_date else '-',
+                    'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
+                    'id_expiry_date': shop.id_expiry_date or '-',
+                    'remark': shop.remark or '-',
+                    'additional_remark': shop.additional_remark or '-',
+                    'img1': shop.img1 or '',
+                }
+
+                return JsonResponse({
+                    'success': True,
+                    'data': [shop_dict],  # 仍以列表返回，兼容前端 .data[0]
+                    'total': 1,
+                    'page': 1,
+                    'page_size': 1
+                })
+
+            except AmazonShop.DoesNotExist:
+                return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
+
+        # ====== 正常分页 / 筛选逻辑 ======
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 10))
+
+        status_filter = request.GET.get('status', '').strip()
+        operator_filter = request.GET.get('operator', '').strip()
+        ops_group_filter = request.GET.get('ops_group', '').strip()
+        customer_filter = request.GET.get('customer', '').strip()
+        search_term = request.GET.get('search', '').strip()
+
+        if page < 1: page = 1
+        if page_size not in [10, 20, 50, 100]: page_size = 10
+
+        query = AmazonShop.objects.select_related('ops').prefetch_related('ops__operational_account')
+
+        if status_filter:
+            query = query.filter(shop_status=status_filter)
+        if operator_filter:
+            query = query.filter(ops_id=int(operator_filter))
+        if ops_group_filter:
+            user_ids = OperationalAccount.objects.filter(ops_group=ops_group_filter).values_list('user_id', flat=True)
+            query = query.filter(ops_id__in=user_ids)
+        if customer_filter:
+            query = query.filter(customer=customer_filter)
+        if search_term:
+            query = query.filter(
+                Q(shop_name__icontains=search_term) |
+                Q(amazon_shop_name__icontains=search_term)
+            )
+
+        total_count = query.count()
+        offset = (page - 1) * page_size
+        shops = query.order_by('id')[offset:offset + page_size]
+
+        shops_data = []
+        for shop in shops:
+            ops_group = '-'
+            if shop.ops:
+                try:
+                    ops_group = shop.ops.operational_account.ops_group or '-'
+                except OperationalAccount.DoesNotExist:
+                    ops_group = '-'
+
+            shops_data.append({
+                'id': shop.id,
+                'shop_name': shop.shop_name or '-',
+                'amazon_shop_name': shop.amazon_shop_name or '-',
+                'customer': shop.customer or '-',
+                'ops_id': shop.ops.id if shop.ops else None,
+                'ops_first_name': shop.ops.first_name if shop.ops else '-',
+                'ops_group': ops_group,
+                'shop_status': shop.shop_status or '-',
+                'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
+                'shop_number': shop.shop_number or '',
+                'seller_mark': shop.seller_mark or '-',
+                'qu_dao': shop.qu_dao or '-',
+                'ip_address': shop.ip_address or '-',
+                'whitelist': shop.whitelist or '-',
+                'email_account': shop.email_account or '-',
+                'email_password': shop.email_password or '-',
+                'shop_password': shop.shop_password or '-',
+                'backup_email_or_phone': shop.backup_email_or_phone or '-',
+                'voucher_163': shop.voucher_163 or '-',
+                'email_163_account': shop.email_163_account or '-',
+                'browser': shop.browser or '-',
+                'ling_xing_if': shop.ling_xing_if or 0,
+                'divi_shop_id': shop.divi_shop_id or '',
+                'credit_card_channel': shop.credit_card_channel or '-',
+                'credit_card_number': shop.credit_card_number or '-',
+                'credit_card_expiry': shop.credit_card_expiry or '-',
+                'credit_card_cvv': shop.credit_card_cvv or '-',
+                'is_consolidated': shop.is_consolidated or '-',
+                'bind_collection': shop.bind_collection or '-',
+                'collection_channel': shop.collection_channel or '-',
+                'xunhui_login_account': shop.xunhui_login_account or '-',
+                'login_password': shop.login_password or '-',
+                'bind_phone': shop.bind_phone or '-',
+                'collection_card_number': shop.collection_card_number or '-',
+                'payment_password': shop.payment_password or '-',
+                'id_number': shop.id_number or '-',
+                'legal_person_phone': shop.legal_person_phone or '-',
+                'company_name': shop.company_name or '-',
+                'license_number': shop.license_number or '-',
+                'business_license_date': shop.business_license_date.strftime('%Y-%m-%d') if shop.business_license_date else '-',
+                'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
+                'id_expiry_date': shop.id_expiry_date or '-',
+                'remark': shop.remark or '-',
+                'additional_remark': shop.additional_remark or '-',
+                'img1': shop.img1 or '',
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': shops_data,
+            'total': total_count,
+            'page': page,
+            'page_size': page_size
+        })
+
+    except Exception as e:
+        print(f"获取Amazon店铺数据错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def create_amazon_shop_api(request):
+    """
+    API接口：创建新Amazon店铺（支持所有字段）
+    """
+    try:
+        data = json.loads(request.body)
+
+        # 验证必填项
+        shop_name = data.get('shop_name', '').strip()
+        if not shop_name:
+            return JsonResponse({
+                'success': False,
+                'error': '店铺名称不能为空'
+            }, status=400)
+
+        # 检查店铺名称是否已存在
+        if AmazonShop.objects.filter(shop_name=shop_name).exists():
+            return JsonResponse({
+                'success': False,
+                'error': '店铺名称已存在'
+            }, status=400)
+
+        # 使用事务确保数据一致性
+        with transaction.atomic():
+            shop = AmazonShop.objects.create(
+                # 基本信息
+                shop_name=shop_name,
+                shop_number=data.get('shop_number'),
+                amazon_shop_name=data.get('amazon_shop_name', ''),
+                customer=data.get('customer', ''),
+                ops_id=data.get('ops') if data.get('ops') else None,
+                shop_status=data.get('shop_status', '正常'),
+                shop_date=data.get('shop_date'),
+                qu_dao=data.get('qu_dao', ''),
+                seller_mark=data.get('seller_mark', ''),
+                whitelist=data.get('whitelist', ''),
+                ip_address=data.get('ip_address', ''),
+                remark=data.get('remark', ''),
+                # 账号信息
+                email_account=data.get('email_account', ''),
+                email_password=data.get('email_password', ''),
+                shop_password=data.get('shop_password', ''),
+                backup_email_or_phone=data.get('backup_email_or_phone', ''),
+                voucher_163=data.get('voucher_163', ''),
+                email_163_account=data.get('email_163_account', ''),
+                browser=data.get('browser', ''),
+                ling_xing_if=data.get('ling_xing_if', 0),
+                divi_shop_id=data.get('divi_shop_id'),
+                # 收款信息
+                credit_card_channel=data.get('credit_card_channel', ''),
+                credit_card_number=data.get('credit_card_number', ''),
+                credit_card_expiry=data.get('credit_card_expiry', ''),
+                credit_card_cvv=data.get('credit_card_cvv', ''),
+                is_consolidated=data.get('is_consolidated', ''),
+                bind_collection=data.get('bind_collection', ''),
+                collection_channel=data.get('collection_channel', ''),
+                xunhui_login_account=data.get('xunhui_login_account', ''),
+                login_password=data.get('login_password', ''),
+                bind_phone=data.get('bind_phone', ''),
+                collection_card_number=data.get('collection_card_number', ''),
+                payment_password=data.get('payment_password', ''),
+                # 法人信息
+                id_number=data.get('id_number', ''),
+                legal_person_phone=data.get('legal_person_phone', ''),
+                company_name=data.get('company_name', ''),
+                license_number=data.get('license_number', ''),
+                business_license_date=data.get('business_license_date'),
+                birth_date=data.get('birth_date'),
+                id_expiry_date=data.get('id_expiry_date', ''),
+                additional_remark=data.get('additional_remark', ''),
+                # 其他
+                img1=data.get('img1', ''),
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': '店铺创建成功',
+            'shop_id': shop.id
+        })
+
+    except Exception as e:
+        print(f"创建Amazon店铺错误: {str(e)}")
+        traceback.print_exc()
+
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def update_amazon_shop_api(request, shop_id):
+    """通过店铺ID更新亚马逊店铺信息"""
+    try:
+        shop = AmazonShop.objects.get(id=shop_id)  # 确保获取到正确的店铺ID
+        # 后续更新店铺的逻辑
+        ...
+        return JsonResponse({
+            'success': True,
+            'message': '店铺信息更新成功'
+        })
+    except AmazonShop.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': '店铺不存在'
+        }, status=404)
+

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Temu店铺管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 核心改动：限制内容宽度 */
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .tab-content {
+        display: block;
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: auto;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .coming-soon {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .coming-soon-icon {
+        font-size: 4rem;
+        margin-bottom: 2rem;
+    }
+
+    .coming-soon h3 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+
+    .coming-soon p {
+        color: var(--text-secondary);
+        margin-bottom: 2rem;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar">
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'user_management' %}" class="sidebar-link">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span>人员管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon_management' %}" class="sidebar-link">
+                <i class="fab fa-amazon sidebar-icon"></i>
+                <span>Amazon店铺管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'temu_management' %}" class="sidebar-link active">
+                <i class="fas fa-store sidebar-icon"></i>
+                <span>Temu店铺管理</span>
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="temu-shops-tab" class="tab-content">
+    <div class="page-header">
+        <h1 class="page-title">Temu店铺管理</h1>
+        <p class="page-subtitle">管理Temu店铺信息和配置</p>
+    </div>
+
+    <div class="coming-soon">
+        <div class="coming-soon-icon">🚀</div>
+        <h3>功能即将推出</h3>
+        <p>Temu店铺管理功能正在开发中，敬请期待！</p>
+        <button class="btn" onclick="window.location.href='{% url 'user_management' %}'">返回人员管理</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 页面初始化
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.anime) {
+        anime({
+            targets: '.sidebar',
+            translateX: [-280, 0],
+            opacity: [0, 1],
+            duration: 600,
+            easing: 'easeOutQuart'
+        });
+        anime({
+            targets: '.content',
+            translateY: [30, 0],
+            opacity: [0, 1],
+            duration: 800,
+            delay: 200,
+            easing: 'easeOutQuart'
+        });
+    }
+});
+</script>
+{% endblock %}

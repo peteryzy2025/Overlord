@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overlord - 登录</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        /* 保持原有样式不变 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #particles-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: #2D3748;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            font-weight: bold;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #2D3748;
+            margin-bottom: 10px;
+        }
+
+        .login-subtitle {
+            color: #4A5568;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #2D3748;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #E2E8F0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #A0AEC0;
+            z-index: 10;
+        }
+
+        .form-control.with-icon {
+            padding-left: 45px;
+        }
+
+        .error-message {
+            color: #E53E3E;
+            font-size: 0.875rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        @media (max-width: 576px) {
+            .login-card {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        .alert {
+            display: none;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particles-canvas"></canvas>
+
+    <div class="login-container">
+        <div class="login-card" id="loginCard">
+            <div class="login-logo">O</div>
+            <h1 class="login-title">Overlord</h1>
+            <p class="login-subtitle"></p>
+
+            <!-- 错误提示框 -->
+            <div class="alert alert-danger" id="errorAlert" role="alert"></div>
+
+            <form id="loginForm">
+                <!-- CSRF Token -->
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="username" class="form-label">用户名</label>
+                    <div class="input-group">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" class="form-control with-icon" id="username" name="username"
+                               placeholder="请输入用户名" required>
+                    </div>
+                    <div class="error-message" id="usernameError">请输入有效的用户名</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">密码</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" class="form-control with-icon" id="password" name="password"
+                               placeholder="请输入密码" required>
+                    </div>
+                    <div class="error-message" id="passwordError">密码不能为空</div>
+                </div>
+
+                <button type="submit" class="btn-login" id="loginBtn">
+                    <span id="btnText">登录</span>
+                    <div class="loading-spinner" id="loadingSpinner"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 粒子背景效果
+        class ParticleBackground {
+            constructor() {
+                this.canvas = document.getElementById('particles-canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.particles = [];
+                this.resize();
+                this.init();
+                this.animate();
+
+                window.addEventListener('resize', () => this.resize());
+            }
+
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            init() {
+                const particleCount = Math.floor((this.canvas.width * this.canvas.height) / 15000);
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push({
+                        x: Math.random() * this.canvas.width,
+                        y: Math.random() * this.canvas.height,
+                        vx: (Math.random() - 0.5) * 0.5,
+                        vy: (Math.random() - 0.5) * 0.5,
+                        radius: Math.random() * 3 + 1,
+                        opacity: Math.random() * 0.5 + 0.2
+                    });
+                }
+            }
+
+            animate() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.particles.forEach(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+
+                    if (particle.x < 0 || particle.x > this.canvas.width) particle.vx *= -1;
+                    if (particle.y < 0 || particle.y > this.canvas.height) particle.vy *= -1;
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `rgba(255, 255, 255, ${particle.opacity})`;
+                    this.ctx.fill();
+                });
+
+                for (let i = 0; i < this.particles.length; i++) {
+                    for (let j = i + 1; j < this.particles.length; j++) {
+                        const dx = this.particles[i].x - this.particles[j].x;
+                        const dy = this.particles[i].y - this.particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance < 100) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
+                            this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
+                            this.ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * (1 - distance / 100)})`;
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // 页面加载动画
+        document.addEventListener('DOMContentLoaded', function () {
+            // 初始化粒子背景
+            const particleBg = new ParticleBackground();
+
+            // 登录卡片动画
+            anime({
+                targets: '#loginCard',
+                translateY: [50, 0],
+                opacity: [0, 1],
+                duration: 800,
+                easing: 'easeOutQuart',
+                delay: 300
+            });
+        });
+
+        // 表单提交处理
+        document.getElementById('loginForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // 获取表单元素（添加空值保护）
+            const username = document.getElementById('username')?.value.trim() || '';
+            const password = document.getElementById('password')?.value.trim() || '';
+            const loginBtn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const errorAlert = document.getElementById('errorAlert');
+
+            // 验证DOM元素是否存在
+            if (!loginBtn || !btnText || !loadingSpinner || !errorAlert) {
+                console.error('关键DOM元素缺失');
+                return;
+            }
+
+            // 重置错误信息
+            document.querySelectorAll('.error-message').forEach(error => {
+                if (error) error.style.display = 'none';
+            });
+            errorAlert.style.display = 'none';
+
+            let hasError = false;
+
+            if (!username) {
+                const usernameError = document.getElementById('usernameError');
+                if (usernameError) usernameError.style.display = 'block';
+                hasError = true;
+            }
+            if (!password) {
+                const passwordError = document.getElementById('passwordError');
+                if (passwordError) passwordError.style.display = 'block';
+                hasError = true;
+            }
+
+            if (hasError) {
+                anime({
+                    targets: '#loginCard',
+                    translateX: [-10, 10, -10, 10, 0],
+                    duration: 400,
+                    easing: 'easeInOutQuart'
+                });
+                return;
+            }
+
+            // 显示加载状态（添加空值保护）
+            if (btnText) btnText.style.display = 'none';
+            if (loadingSpinner) loadingSpinner.style.display = 'block';
+            if (loginBtn) loginBtn.disabled = true;
+
+            // 获取CSRF Token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (!csrfToken) {
+                console.error('CSRF Token未找到');
+                errorAlert.textContent = '页面加载不完整，请刷新重试';
+                errorAlert.style.display = 'block';
+                return;
+            }
+
+            // 发送登录请求到后端
+            fetch('/login/', {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'X-CSRFToken': csrfToken.value,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'username': username,
+                    'password': password
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 成功动画并跳转
+                    anime({
+                        targets: '#loginCard',
+                        scale: [1, 0.95],
+                        opacity: [1, 0],
+                        duration: 300,
+                        easing: 'easeInQuart',
+                        complete: function () {
+            window.location.href = data.redirect_url || '/main/';
+        }
+                    });
+                } else {
+                    // 显示错误信息
+                    errorAlert.textContent = data.message;
+                    errorAlert.style.display = 'block';
+
+                    anime({
+                        targets: '#loginCard',
+                        translateX: [-10, 10, -10, 10, 0],
+                        duration: 400,
+                        easing: 'easeInOutQuart'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('登录请求失败:', error);
+                errorAlert.textContent = '网络错误，请稍后重试';
+                errorAlert.style.display = 'block';
+            })
+            .finally(() => {
+                // 恢复按钮状态（添加空值保护）
+                if (btnText) btnText.style.display = 'block';
+                if (loadingSpinner) loadingSpinner.style.display = 'none';
+                if (loginBtn) loginBtn.disabled = false;
+            });
+        });
+
+        // 输入框焦点效果
+        document.querySelectorAll('.form-control').forEach(input => {
+            if (input) {  // 添加空值保护
+                input.addEventListener('focus', function () {
+                    anime({
+                        targets: this,
+                        scale: [1, 1.02],
+                        duration: 200,
+                        easing: 'easeOutQuart'
+                    });
+                });
+
+                input.addEventListener('blur', function () {
+                    anime({
+                        targets: this,
+                        scale: [1.02, 1],
+                        duration: 200,
+                        easing: 'easeOutQuart'
+                    });
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1022 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}人员管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 核心改动：限制内容宽度 */
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    /* 新增：限制tab内容宽度并允许滚动 */
+    .tab-content {
+        display: block; /* 改为block以适应宽度限制 */
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: hidden; /* 隐藏横向溢出 */
+    }
+
+    /* 原有样式保持不变，但调整表格容器 */
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    /* 新增：新建按钮样式 */
+    .btn-create {
+        background-color: #22c55e;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #16a34a;
+    }
+
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end; /* 改为底部对齐，确保按钮组对齐 */
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
+
+    /* 新增：按钮组样式 - 水平排列 */
+    .filter-actions {
+        display: flex;
+        flex-direction: row; /* 明确设置为水平排列 */
+        gap: 0.5rem;
+        align-self: flex-end; /* 底部对齐 */
+        margin-top: auto; /* 自动顶部边距，确保在底部 */
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* 关键改动：表格容器允许横向滚动 */
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;  /* 允许表格横向滚动 */
+        max-height: 700px;
+        overflow-y: auto;
+        width: 100%; /* 确保容器宽度100% */
+    }
+
+    /* 添加：表格样式与management.html完全一致 */
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-container thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--bg-secondary);
+    }
+
+    /* 核心修复：表格宽度设置 */
+    .table {
+        width: 100%; /* 修改为100%，让表格撑满容器 */
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    /* 修复：表头单元格样式 - 与management.html一致 */
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600; /* 改为600 */
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem; /* 改为1rem */
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 11;
+    }
+
+    /* 修复：数据单元格样式 - 与management.html一致，并强制不换行 */
+    .table td {
+        padding: 1rem; /* 改为1rem */
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap; /* 强制内容在一行内显示 */
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem; /* 调整为与management一致 */
+        border-radius: 20px; /* 调整为与management一致 */
+        font-size: 0.75rem; /* 调整为与management一致 */
+        font-weight: 500;
+        text-transform: uppercase; /* 添加 */
+    }
+
+    .status-active {
+        background-color: #C6F6D5; /* 调整为与management一致 */
+        color: #22543D; /* 调整为与management一致 */
+    }
+
+    .status-inactive {
+        background-color: #FED7D7; /* 调整为与management一致 */
+        color: #742A2A; /* 调整为与management一致 */
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    /* 新增：模态框样式 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input:disabled {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-cancel-modal {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-save-modal {
+        background-color: #22c55e;
+    }
+
+    .btn-save-modal:hover {
+        background-color: #16a34a;
+    }
+
+    .password-input {
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
+
+{% block sidebar %}
+<div class="sidebar">
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'user_management' %}" class="sidebar-link active">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span>人员管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon_management' %}" class="sidebar-link">
+                <i class="fab fa-amazon sidebar-icon"></i>
+                <span>Amazon店铺管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'temu_management' %}" class="sidebar-link">
+                <i class="fas fa-store sidebar-icon"></i>
+                <span>Temu店铺管理</span>
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="users-tab" class="tab-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">人员管理</h1>
+            <p class="page-subtitle">管理团队成员信息、权限和外部平台账号</p>
+        </div>
+        <button class="btn btn-create" onclick="openCreateModal()">
+            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建用户
+        </button>
+    </div>
+
+    <div class="filter-section">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">角色筛选</label>
+                <select class="form-select" id="userRoleFilter">
+                    <option value="">全部角色</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">状态筛选</label>
+                <select class="form-select" id="userStatusFilter">
+                    <option value="">全部状态</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">部门</label>
+                <input type="text" class="form-control" id="userDepartmentFilter" placeholder="搜索部门">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">搜索</label>
+                <input type="text" class="form-control" id="userSearch" placeholder="搜索用户名/名字">
+            </div>
+            <div class="filter-actions">
+                <button class="btn" onclick="filterUsers()">筛选</button>
+                <button class="btn btn-secondary" onclick="resetUserFilters()">重置</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <table class="table" id="usersTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>用户名</th>
+                    <th>名字</th>
+                    <th>手机</th>
+                    <th>部门</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th>公司</th>
+                    <th>平台</th>
+                    <th>分组</th>
+                    <th>创建时间</th>
+                    <th>闪电云账号</th>
+                    <th>闪电云用户名</th>
+                    <th>闪电云密码</th>
+                    <th>领星用户名</th>
+                    <th>领星密码</th>
+                    <th>紫鸟公司</th>
+                    <th>紫鸟用户名</th>
+                    <th>紫鸟密码</th>
+                    <th>迪唯账号</th>
+                    <th>迪唯密码</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                <!-- 动态生成内容 -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-container">
+        <div class="pagination-info" data-total="0">
+            显示第 1 到 10 条，共 0 条记录
+            <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
+                <option value="10">10条/页</option>
+                <option value="20">20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+            </select>
+        </div>
+        <nav>
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">上一页</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 新增：模态框 -->
+<div class="modal-overlay" id="userModalOverlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">编辑用户</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- 动态生成表单内容 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveUserModal()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 全局变量
+let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
+let modalMode = null;       // 'create' | 'edit'
+let currentUserId = null;   // 当前编辑的用户ID
+let currentPage = 1;        // 当前页码
+let currentPageSize = 10;   // 每页条数
+
+// ==========================================
+// API 数据获取
+// ==========================================
+
+/**
+ * 从API加载用户列表数据（带分页）
+ * @param {number} page - 页码
+ * @param {number} pageSize - 每页条数
+ * @returns {Promise<{data: Array, total: number}>} 用户数据和总条数
+ */
+async function loadUsersFromAPI(page = 1, pageSize = 10) {
+    try {
+        const response = await fetch(`/api/users/?page=${page}&page_size=${pageSize}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            return {
+                data: result.data,
+                total: result.total,
+                page: result.page,
+                pageSize: result.page_size
+            };
+        }
+
+        console.error('获取用户数据失败:', result.error);
+        alert('加载用户数据失败: ' + result.error);
+        return { data: [], total: 0 };
+    } catch (error) {
+        console.error('API请求错误:', error);
+        alert('无法连接到服务器，请检查网络连接');
+        return { data: [], total: 0 };
+    }
+}
+
+/**
+ * 从API加载角色列表（从数据库去重获取）
+ * @returns {Promise<Array>} 角色数据数组
+ */
+async function loadRolesFromAPI() {
+    try {
+        const response = await fetch('/api/roles/');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+            allRoles = result.data; // 格式: [{key: 'role_name', name: 'role_name'}, ...]
+            return true;
+        }
+
+        console.error('获取角色列表失败:', result.error);
+        allRoles = [];
+        return false;
+    } catch (error) {
+        console.error('角色API请求错误:', error);
+        allRoles = [];
+        return false;
+    }
+}
+
+// ==========================================
+// 分页控件渲染
+// ==========================================
+
+/**
+ * 渲染分页控件
+ * @param {number} totalItems - 总条数
+ * @param {number} currentPage - 当前页
+ * @param {number} pageSize - 每页条数
+ */
+function renderPagination(totalItems, currentPage, pageSize) {
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const paginationHtml = [];
+
+    // 上一页
+    const prevDisabled = currentPage === 1 ? 'disabled' : '';
+    paginationHtml.push(`
+        <li class="page-item ${prevDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
+        </li>
+    `);
+
+    // 页码（显示最多5页）
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, startPage + 4);
+
+    for (let i = startPage; i <= endPage; i++) {
+        const active = i === currentPage ? 'active' : '';
+        paginationHtml.push(`
+            <li class="page-item ${active}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `);
+    }
+
+    // 下一页
+    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+    paginationHtml.push(`
+        <li class="page-item ${nextDisabled}">
+            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
+        </li>
+    `);
+
+    document.querySelector('.pagination').innerHTML = paginationHtml.join('');
+}
+
+/**
+ * 切换页码
+ * @param {number} page - 目标页码
+ */
+async function changePage(page) {
+    const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
+    const totalPages = Math.ceil(totalItems / currentPageSize);
+
+    if (page < 1 || page > totalPages) return;
+
+    currentPage = page;
+    await loadUsersTable();
+}
+
+/**
+ * 改变每页条数
+ * @param {number} pageSize - 新的每页条数
+ */
+async function changePageSize(pageSize) {
+    currentPageSize = parseInt(pageSize);
+    currentPage = 1; // 重置到第一页
+    await loadUsersTable();
+}
+
+// ==========================================
+// 筛选器与表格渲染
+// ==========================================
+
+/**
+ * 根据用户数据动态更新筛选器选项
+ * @param {Array} users - 用户数据数组
+ */
+function updateFilterOptions(users) {
+    // 角色筛选器：使用从数据库获取的所有角色
+    const roleSelect = document.getElementById('userRoleFilter');
+    roleSelect.innerHTML = '<option value="">全部角色</option>';
+    allRoles.forEach(roleDef => {
+        const option = document.createElement('option');
+        option.value = roleDef.key;
+        option.textContent = roleDef.name;
+        roleSelect.appendChild(option);
+    });
+
+    // 状态筛选器：从现有数据中动态提取
+    const statusMap = {'active': '正常', 'inactive': '停用', 'cancelled': '注销'};
+    const uniqueStatuses = [...new Set(users.map(u => u.status).filter(Boolean))];
+
+    const statusSelect = document.getElementById('userStatusFilter');
+    statusSelect.innerHTML = '<option value="">全部状态</option>';
+    uniqueStatuses.sort().forEach(status => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = statusMap[status] || status;
+        statusSelect.appendChild(option);
+    });
+}
+
+/**
+ * 加载并渲染用户表格（含分页）
+ */
+async function loadUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+
+    const { data, total, page, pageSize } = await loadUsersFromAPI(currentPage, currentPageSize);
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+        document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
+        document.querySelector('.pagination').innerHTML = '';
+        return;
+    }
+
+    // 更新分页信息
+    const start = (page - 1) * pageSize + 1;
+    const end = start + data.length - 1;
+    const pageInfoHtml = `
+        显示第 ${start} 到 ${end} 条，共 ${total} 条记录
+        <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
+            <option value="10" ${pageSize === 10 ? 'selected' : ''}>10条/页</option>
+            <option value="20" ${pageSize === 20 ? 'selected' : ''}>20条/页</option>
+            <option value="50" ${pageSize === 50 ? 'selected' : ''}>50条/页</option>
+            <option value="100" ${pageSize === 100 ? 'selected' : ''}>100条/页</option>
+        </select>
+    `;
+    document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
+    document.querySelector('.pagination-info').dataset.total = total;
+
+    // 渲染表格和分页控件
+    updateFilterOptions(await loadUsersFromAPI(1, 9999).then(r => r.data)); // 筛选器仍需要所有角色
+    renderUserRows(data);
+    renderPagination(total, page, pageSize);
+}
+
+/**
+ * 渲染用户表格行
+ * @param {Array} users - 用户数据数组
+ */
+function renderUserRows(users) {
+    const tbody = document.getElementById('usersTableBody');
+    const roleMap = {'admin': '管理员', 'operator': '运营', 'assistant': '运营助理', 'leader': '运营组长'};
+    const statusNames = {'active': '正常', 'inactive': '停用', 'cancelled': '注销'};
+    const statusClasses = {
+        'active': 'status-active',
+        'inactive': 'status-inactive',
+        'cancelled': 'status-inactive'
+    };
+
+    tbody.innerHTML = users.map(user => {
+        const account = user.operational_account || {};
+        return `
+            <tr data-user-id="${user.id}">
+                <td>${user.id}</td>
+                <td class="field-username">${user.username}</td>
+                <td class="field-first_name">${user.first_name || '-'}</td>
+                <td class="field-phone">${user.phone || '-'}</td>
+                <td class="field-department">${user.department || '-'}</td>
+                <td class="field-role">${roleMap[user.role] || user.role || '-'}</td>
+                <td class="field-status">
+                    <span class="status-badge ${statusClasses[user.status]}" data-status="${user.status}">
+                        ${statusNames[user.status] || '-'}
+                    </span>
+                </td>
+                <td class="field-company_name">${user.company_name || '-'}</td>
+                <td class="field-platform">${user.platform || '-'}</td>
+                <td class="field-ops_group">${user.ops_group || '-'}</td>
+                <td>${user.createdAt}</td>
+                <td class="field-shandianyun_account">${account.shandianyun_account || '-'}</td>
+                <td class="field-shandianyun_username">${account.shandianyun_username || '-'}</td>
+                <td class="field-shandianyun_password">${account.shandianyun_password || '-'}</td>
+                <td class="field-lingxing_username">${account.lingxing_username || '-'}</td>
+                <td class="field-lingxing_password">${account.lingxing_password || '-'}</td>
+                <td class="field-ziniao_company">${account.ziniao_company || '-'}</td>
+                <td class="field-ziniao_username">${account.ziniao_username || '-'}</td>
+                <td class="field-ziniao_password">${account.ziniao_password || '-'}</td>
+                <td class="field-diwei_account">${account.diwei_account || '-'}</td>
+                <td class="field-diwei_password">${account.diwei_password || '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * 执行用户筛选（带分页重置）
+ */
+async function filterUsers() {
+    currentPage = 1; // 筛选时重置到第一页
+    await loadUsersTable();
+}
+
+/**
+ * 重置所有筛选条件（带分页重置）
+ */
+function resetUserFilters() {
+    document.getElementById('userRoleFilter').value = '';
+    document.getElementById('userStatusFilter').value = '';
+    document.getElementById('userDepartmentFilter').value = '';
+    document.getElementById('userSearch').value = '';
+    currentPage = 1; // 重置页码
+    loadUsersTable();
+}
+
+// ==========================================
+// 模态框操作
+// ==========================================
+
+/**
+ * 打开新建用户模态框
+ */
+function openCreateModal() {
+    modalMode = 'create';
+    currentUserId = null;
+    document.getElementById('modalTitle').textContent = '新建用户';
+    document.getElementById('modalBody').innerHTML = generateModalForm();
+    document.getElementById('userModalOverlay').style.display = 'block';
+}
+
+/**
+ * 打开编辑用户模态框
+ * @param {number} userId - 用户ID
+ */
+function openEditModal(userId) {
+    modalMode = 'edit';
+    currentUserId = userId;
+
+    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    if (!row) return;
+
+    document.getElementById('modalTitle').textContent = '编辑用户';
+
+    // 提取行数据
+    const userData = {
+        id: userId,
+        username: row.querySelector('.field-username').textContent,
+        first_name: row.querySelector('.field-first_name').textContent,
+        phone: row.querySelector('.field-phone').textContent,
+        department: row.querySelector('.field-department').textContent,
+        role: row.querySelector('.field-role').textContent,
+        status: row.querySelector('.field-status .status-badge').dataset.status || 'active',
+        company_name: row.querySelector('.field-company_name').textContent,
+        platform: row.querySelector('.field-platform').textContent,
+        ops_group: row.querySelector('.field-ops_group').textContent,
+        operational_account: {
+            shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
+            shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
+            shandianyun_password: row.querySelector('.field-shandianyun_password').textContent,
+            lingxing_username: row.querySelector('.field-lingxing_username').textContent,
+            lingxing_password: row.querySelector('.field-lingxing_password').textContent,
+            ziniao_company: row.querySelector('.field-ziniao_company').textContent,
+            ziniao_username: row.querySelector('.field-ziniao_username').textContent,
+            ziniao_password: row.querySelector('.field-ziniao_password').textContent,
+            diwei_account: row.querySelector('.field-diwei_account').textContent,
+            diwei_password: row.querySelector('.field-diwei_password').textContent,
+        }
+    };
+
+    document.getElementById('modalBody').innerHTML = generateModalForm(userData);
+    document.getElementById('userModalOverlay').style.display = 'block';
+}
+
+/**
+ * 关闭模态框
+ */
+function closeModal() {
+    document.getElementById('userModalOverlay').style.display = 'none';
+    modalMode = null;
+    currentUserId = null;
+}
+
+/**
+ * 生成模态框表单HTML
+ * @param {Object} userData - 用户数据（编辑时传入）
+ * @returns {string} HTML字符串
+ */
+function generateModalForm(userData = null) {
+    const isCreate = !userData;
+    const data = userData || {};
+    const account = data.operational_account || {};
+
+    // 动态生成角色选项（来自数据库）
+    const roleOptionsHtml = allRoles.map(roleDef => {
+        const selected = data.role === roleDef.key ? 'selected' : '';
+        return `<option value="${roleDef.key}" ${selected}>${roleDef.name}</option>`;
+    }).join('');
+
+    return `
+        <div class="form-group">
+            <label>用户名 <span style="color:red;">*</span></label>
+            <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
+        </div>
+        <div class="form-group">
+            <label>名字</label>
+            <input type="text" id="modal-first_name" value="${data.first_name === '-' ? '' : (data.first_name || '')}">
+        </div>
+        <div class="form-group">
+            <label>手机</label>
+            <input type="text" id="modal-phone" value="${data.phone === '-' ? '' : (data.phone || '')}">
+        </div>
+        <div class="form-group">
+            <label>部门</label>
+            <input type="text" id="modal-department" value="${data.department === '-' ? '' : (data.department || '')}">
+        </div>
+        <div class="form-group">
+            <label>角色</label>
+            <select id="modal-role">${roleOptionsHtml}</select>
+        </div>
+        <div class="form-group">
+            <label>状态</label>
+            <select id="modal-status">
+                <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
+                <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
+                <option value="cancelled" ${data.status === 'cancelled' ? 'selected' : ''}>注销</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>公司</label>
+            <input type="text" id="modal-company_name" value="${data.company_name === '-' ? '' : (data.company_name || '')}">
+        </div>
+        <div class="form-group">
+            <label>平台</label>
+            <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
+        </div>
+        <div class="form-group">
+            <label>分组</label>
+            <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
+        </div>
+
+        <hr style="grid-column:1/-1; margin:1rem 0; border-color:var(--border-color);">
+        <h3 style="grid-column:1/-1; margin-bottom:0; color:var(--text-primary);">运营账号信息</h3>
+
+        <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
+        <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
+        <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
+        <div class="form-group"><label>领星用户名</label><input type="text" id="modal-lingxing_username" value="${account.lingxing_username === '-' ? '' : (account.lingxing_username || '')}"></div>
+        <div class="form-group"><label>领星密码</label><input type="text" id="modal-lingxing_password" class="password-input" value="${account.lingxing_password === '-' ? '' : (account.lingxing_password || '')}"></div>
+        <div class="form-group"><label>紫鸟公司</label><input type="text" id="modal-ziniao_company" value="${account.ziniao_company === '-' ? '' : (account.ziniao_company || '')}"></div>
+        <div class="form-group"><label>紫鸟用户名</label><input type="text" id="modal-ziniao_username" value="${account.ziniao_username === '-' ? '' : (account.ziniao_username || '')}"></div>
+        <div class="form-group"><label>紫鸟密码</label><input type="text" id="modal-ziniao_password" class="password-input" value="${account.ziniao_password === '-' ? '' : (account.ziniao_password || '')}"></div>
+        <div class="form-group"><label>迪唯账号</label><input type="text" id="modal-diwei_account" value="${account.diwei_account === '-' ? '' : (account.diwei_account || '')}"></div>
+        <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
+    `;
+}
+
+/**
+ * 保存模态框数据（新建或编辑）
+ */
+async function saveUserModal() {
+    // 收集表单数据
+    const formData = {
+        username: document.getElementById('modal-username').value.trim(),
+        first_name: document.getElementById('modal-first_name').value.trim(),
+        phone: document.getElementById('modal-phone').value.trim(),
+        department: document.getElementById('modal-department').value.trim(),
+        role: document.getElementById('modal-role').value,
+        status: document.getElementById('modal-status').value,
+        company_name: document.getElementById('modal-company_name').value.trim(),
+        platform: document.getElementById('modal-platform').value.trim(),
+        ops_group: document.getElementById('modal-ops_group').value.trim(),
+        operational_account: {
+            shandianyun_account: document.getElementById('modal-shandianyun_account').value.trim(),
+            shandianyun_username: document.getElementById('modal-shandianyun_username').value.trim(),
+            shandianyun_password: document.getElementById('modal-shandianyun_password').value.trim(),
+            lingxing_username: document.getElementById('modal-lingxing_username').value.trim(),
+            lingxing_password: document.getElementById('modal-lingxing_password').value.trim(),
+            ziniao_company: document.getElementById('modal-ziniao_company').value.trim(),
+            ziniao_username: document.getElementById('modal-ziniao_username').value.trim(),
+            ziniao_password: document.getElementById('modal-ziniao_password').value.trim(),
+            diwei_account: document.getElementById('modal-diwei_account').value.trim(),
+            diwei_password: document.getElementById('modal-diwei_password').value.trim(),
+        }
+    };
+
+    // 验证必填项
+    if (!formData.username) {
+        alert('用户名是必填项！');
+        return;
+    }
+
+    // 新建模式：验证用户名唯一性
+    if (modalMode === 'create') {
+        const allUsers = await loadUsersFromAPI();
+        if (allUsers.some(user => user.username === formData.username)) {
+            alert('用户名已存在，请使用其他用户名！');
+            return;
+        }
+    }
+
+    try {
+        const url = modalMode === 'create' ? '/api/users/create/' : `/api/users/${currentUserId}/update/`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify(formData),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！');
+            closeModal();
+            loadUsersTable();
+        } else {
+            alert('操作失败：' + result.error);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败，请检查网络连接并重试');
+    }
+}
+
+/**
+ * 获取CSRF Token
+ * @returns {string} CSRF Token值
+ */
+function getCSRFToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='))
+        ?.split('=')[1];
+    return cookieValue || '';
+}
+
+// ==========================================
+// 事件监听
+// ==========================================
+
+// 页面初始化
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadRolesFromAPI();  // 先加载角色
+    loadUsersTable();          // 再加载用户表格
+
+    // 页面动画效果
+    if (window.anime) {
+        anime({
+            targets: '.sidebar',
+            translateX: [-280, 0],
+            opacity: [0, 1],
+            duration: 600,
+            easing: 'easeOutQuart'
+        });
+        anime({
+            targets: '.content',
+            translateY: [30, 0],
+            opacity: [0, 1],
+            duration: 800,
+            delay: 200,
+            easing: 'easeOutQuart'
+        });
+    }
+});
+
+// 点击模态框外部关闭
+document.getElementById('userModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+// ESC键关闭模态框
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+</script>
+{% endblock %}
