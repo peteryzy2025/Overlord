@@ -11,17 +11,15 @@
         overflow-x: hidden;
     }
 
-    /* 新增：限制tab内容宽度并允许滚动 */
     .tab-content {
-        display: block; /* 改为block以适应宽度限制 */
+        display: block;
         max-width: 100%;
         width: 100%;
         padding: 2rem;
         box-sizing: border-box;
-        overflow-x: hidden; /* 隐藏横向溢出 */
+        overflow-x: hidden;
     }
 
-    /* 原有样式保持不变，但调整表格容器 */
     .page-header {
         margin-bottom: 0.2rem;
         display: flex;
@@ -40,7 +38,6 @@
         color: var(--text-secondary);
     }
 
-    /* 新增：新建按钮样式 */
     .btn-create {
         background-color: #22c55e;
         color: white;
@@ -62,7 +59,7 @@
     .filter-row {
         display: flex;
         gap: 1rem;
-        align-items: flex-end; /* 改为底部对齐，确保按钮组对齐 */
+        align-items: flex-end;
         flex-wrap: wrap;
     }
 
@@ -73,13 +70,12 @@
         min-width: 200px;
     }
 
-    /* 新增：按钮组样式 - 水平排列 */
     .filter-actions {
         display: flex;
-        flex-direction: row; /* 明确设置为水平排列 */
+        flex-direction: row;
         gap: 0.5rem;
-        align-self: flex-end; /* 底部对齐 */
-        margin-top: auto; /* 自动顶部边距，确保在底部 */
+        align-self: flex-end;
+        margin-top: auto;
     }
 
     .filter-label {
@@ -124,13 +120,22 @@
         border-radius: 12px;
         box-shadow: var(--shadow-light);
         border: 1px solid var(--border-color);
-        overflow-x: auto;  /* 允许表格横向滚动 */
+        overflow-x: auto;
         max-height: 700px;
         overflow-y: auto;
-        width: 100%; /* 确保容器宽度100% */
+        width: 100%;
     }
 
-    /* 添加：表格样式与management.html完全一致 */
+    /* 核心修复：操作列固定定位 */
+    .table-container th:last-child,
+    .table-container td:last-child {
+        position: sticky;
+        right: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+    }
+
     .table-container table {
         width: 100%;
         border-collapse: separate;
@@ -144,32 +149,29 @@
         background-color: var(--bg-secondary);
     }
 
-    /* 核心修复：表格宽度设置 */
     .table {
-        width: 100%; /* 修改为100%，让表格撑满容器 */
+        width: 100%;
         margin: 0;
         color: var(--text-primary);
     }
 
-    /* 修复：表头单元格样式 - 与management.html一致 */
     .table th {
         background-color: var(--bg-secondary);
         color: var(--text-primary);
-        font-weight: 600; /* 改为600 */
+        font-weight: 600;
         border-bottom: 1px solid var(--border-color);
-        padding: 1rem; /* 改为1rem */
+        padding: 1rem;
         white-space: nowrap;
         position: sticky;
         top: 0;
         z-index: 11;
     }
 
-    /* 修复：数据单元格样式 - 与management.html一致，并强制不换行 */
     .table td {
-        padding: 1rem; /* 改为1rem */
+        padding: 1rem;
         border-bottom: 1px solid var(--border-color);
         vertical-align: middle;
-        white-space: nowrap; /* 强制内容在一行内显示 */
+        white-space: nowrap;
     }
 
     .table tbody tr:hover {
@@ -177,21 +179,21 @@
     }
 
     .status-badge {
-        padding: 0.25rem 0.75rem; /* 调整为与management一致 */
-        border-radius: 20px; /* 调整为与management一致 */
-        font-size: 0.75rem; /* 调整为与management一致 */
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
         font-weight: 500;
-        text-transform: uppercase; /* 添加 */
+        text-transform: uppercase;
     }
 
     .status-active {
-        background-color: #C6F6D5; /* 调整为与management一致 */
-        color: #22543D; /* 调整为与management一致 */
+        background-color: #C6F6D5;
+        color: #22543D;
     }
 
     .status-inactive {
-        background-color: #FED7D7; /* 调整为与management一致 */
-        color: #742A2A; /* 调整为与management一致 */
+        background-color: #FED7D7;
+        color: #742A2A;
     }
 
     .pagination-container {
@@ -206,7 +208,7 @@
         border: 1px solid var(--border-color);
     }
 
-    /* 新增：模态框样式 */
+    /* 模态框样式 - 与Amazon店铺管理完全一致 */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -219,6 +221,7 @@
         backdrop-filter: blur(4px);
     }
 
+    /* 模态框容器 - 改为flex布局以便底部固定 */
     .modal-content {
         position: absolute;
         top: 50%;
@@ -233,15 +236,23 @@
         overflow-y: auto;
         box-shadow: var(--shadow-heavy);
         border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
     }
 
+    /* 模态框头部 - 增加sticky定位 */
     .modal-header {
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--border-color);
     }
 
     .modal-title {
@@ -265,7 +276,15 @@
         color: var(--text-primary);
     }
 
+    /* 模态框主体 - 修复：不设置display: grid，使用默认block */
     .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
+
+    /* 表单网格布局 - 在.modal-body内部使用wrapper */
+    .modal-form-wrapper {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 1rem;
@@ -305,13 +324,18 @@
         color: var(--text-secondary);
     }
 
+    /* 模态框底部 - 固定定位 */
     .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
         display: flex;
         justify-content: flex-end;
         gap: 1rem;
-        margin-top: 2rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border-color);
     }
 
     .btn-cancel-modal {
@@ -329,6 +353,22 @@
 
     .password-input {
         font-family: monospace;
+    }
+
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .field-disabled {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-secondary) !important;
+        cursor: not-allowed;
     }
 </style>
 {% endblock %}
@@ -842,60 +882,60 @@ function generateModalForm(userData = null) {
     }).join('');
 
     return `
-        <div class="form-group">
-            <label>用户名 <span style="color:red;">*</span></label>
-            <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
-        </div>
-        <div class="form-group">
-            <label>名字</label>
-            <input type="text" id="modal-first_name" value="${data.first_name === '-' ? '' : (data.first_name || '')}">
-        </div>
-        <div class="form-group">
-            <label>手机</label>
-            <input type="text" id="modal-phone" value="${data.phone === '-' ? '' : (data.phone || '')}">
-        </div>
-        <div class="form-group">
-            <label>部门</label>
-            <input type="text" id="modal-department" value="${data.department === '-' ? '' : (data.department || '')}">
-        </div>
-        <div class="form-group">
-            <label>角色</label>
-            <select id="modal-role">${roleOptionsHtml}</select>
-        </div>
-        <div class="form-group">
-            <label>状态</label>
-            <select id="modal-status">
-                <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
-                <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
-                <option value="cancelled" ${data.status === 'cancelled' ? 'selected' : ''}>注销</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>公司</label>
-            <input type="text" id="modal-company_name" value="${data.company_name === '-' ? '' : (data.company_name || '')}">
-        </div>
-        <div class="form-group">
-            <label>平台</label>
-            <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
-        </div>
-        <div class="form-group">
-            <label>分组</label>
-            <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
-        </div>
+        <div class="modal-form-wrapper">
+            <div class="form-group">
+                <label>用户名 <span style="color:red;">*</span></label>
+                <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
+            </div>
+            <div class="form-group">
+                <label>名字</label>
+                <input type="text" id="modal-first_name" value="${data.first_name === '-' ? '' : (data.first_name || '')}">
+            </div>
+            <div class="form-group">
+                <label>手机</label>
+                <input type="text" id="modal-phone" value="${data.phone === '-' ? '' : (data.phone || '')}">
+            </div>
+            <div class="form-group">
+                <label>部门</label>
+                <input type="text" id="modal-department" value="${data.department === '-' ? '' : (data.department || '')}">
+            </div>
+            <div class="form-group">
+                <label>角色</label>
+                <select id="modal-role">${roleOptionsHtml}</select>
+            </div>
+            <div class="form-group">
+                <label>状态</label>
+                <select id="modal-status">
+                    <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
+                    <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
+                    <option value="cancelled" ${data.status === 'cancelled' ? 'selected' : ''}>注销</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>公司</label>
+                <input type="text" id="modal-company_name" value="${data.company_name === '-' ? '' : (data.company_name || '')}">
+            </div>
+            <div class="form-group">
+                <label>平台</label>
+                <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
+            </div>
+            <div class="form-group">
+                <label>分组</label>
+                <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
+            </div>
 
-        <hr style="grid-column:1/-1; margin:1rem 0; border-color:var(--border-color);">
-        <h3 style="grid-column:1/-1; margin-bottom:0; color:var(--text-primary);">运营账号信息</h3>
-
-        <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
-        <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
-        <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
-        <div class="form-group"><label>领星用户名</label><input type="text" id="modal-lingxing_username" value="${account.lingxing_username === '-' ? '' : (account.lingxing_username || '')}"></div>
-        <div class="form-group"><label>领星密码</label><input type="text" id="modal-lingxing_password" class="password-input" value="${account.lingxing_password === '-' ? '' : (account.lingxing_password || '')}"></div>
-        <div class="form-group"><label>紫鸟公司</label><input type="text" id="modal-ziniao_company" value="${account.ziniao_company === '-' ? '' : (account.ziniao_company || '')}"></div>
-        <div class="form-group"><label>紫鸟用户名</label><input type="text" id="modal-ziniao_username" value="${account.ziniao_username === '-' ? '' : (account.ziniao_username || '')}"></div>
-        <div class="form-group"><label>紫鸟密码</label><input type="text" id="modal-ziniao_password" class="password-input" value="${account.ziniao_password === '-' ? '' : (account.ziniao_password || '')}"></div>
-        <div class="form-group"><label>迪唯账号</label><input type="text" id="modal-diwei_account" value="${account.diwei_account === '-' ? '' : (account.diwei_account || '')}"></div>
-        <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
+            <div class="section-title">运营账号信息</div>
+            <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
+            <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
+            <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
+            <div class="form-group"><label>领星用户名</label><input type="text" id="modal-lingxing_username" value="${account.lingxing_username === '-' ? '' : (account.lingxing_username || '')}"></div>
+            <div class="form-group"><label>领星密码</label><input type="text" id="modal-lingxing_password" class="password-input" value="${account.lingxing_password === '-' ? '' : (account.lingxing_password || '')}"></div>
+            <div class="form-group"><label>紫鸟公司</label><input type="text" id="modal-ziniao_company" value="${account.ziniao_company === '-' ? '' : (account.ziniao_company || '')}"></div>
+            <div class="form-group"><label>紫鸟用户名</label><input type="text" id="modal-ziniao_username" value="${account.ziniao_username === '-' ? '' : (account.ziniao_username || '')}"></div>
+            <div class="form-group"><label>紫鸟密码</label><input type="text" id="modal-ziniao_password" class="password-input" value="${account.ziniao_password === '-' ? '' : (account.ziniao_password || '')}"></div>
+            <div class="form-group"><label>迪唯账号</label><input type="text" id="modal-diwei_account" value="${account.diwei_account === '-' ? '' : (account.diwei_account || '')}"></div>
+            <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
+        </div>
     `;
 }
 
@@ -986,8 +1026,8 @@ function getCSRFToken() {
 
 // 页面初始化
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadRolesFromAPI();  // 先加载角色
-    loadUsersTable();          // 再加载用户表格
+    await loadRolesFromAPI();
+    loadUsersTable();
 
     // 页面动画效果
     if (window.anime) {
