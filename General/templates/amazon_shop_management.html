@@ -5,52 +5,395 @@
 
 {% block extra_css %}
 <style>
-    /* 与user_management.html完全一致的样式 */
-    .content { max-width: 100vw; overflow-x: hidden; }
-    .tab-content { display: block; max-width: 100%; width: 100%; padding: 2rem; box-sizing: border-box; overflow-x: hidden; }
-    .page-header { margin-bottom: 0.2rem; display: flex; justify-content: space-between; align-items: center; }
-    .page-title { font-size: 2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; }
-    .page-subtitle { color: var(--text-secondary); }
-    .btn-create { background-color: #22c55e; color: white; }
-    .btn-create:hover { background-color: #16a34a; }
-    .filter-section { background-color: var(--bg-primary); border-radius: 12px; padding: 1.5rem; margin-bottom: 0.2rem; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); }
-    .filter-row { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
-    .filter-group { display: flex; flex-direction: column; gap: 0.5rem; min-width: 200px; }
-    .filter-actions { display: flex; flex-direction: row; gap: 0.5rem; align-self: flex-end; margin-top: auto; }
-    .filter-label { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
-    .form-control, .form-select { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 0.5rem 0.75rem; transition: all 0.3s ease; }
-    .btn { background-color: var(--accent-color); color: white; border: none; border-radius: 8px; padding: 0.5rem 1rem; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
-    .btn-secondary { background-color: var(--bg-tertiary); color: var(--text-primary); }
-    .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.875rem; }
-    .table-container { background-color: var(--bg-primary); border-radius: 12px; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); overflow-x: auto; max-height: 700px; overflow-y: auto; width: 100%; }
-    .table-container table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 4000px; }
-    .table-container thead { position: sticky; top: 0; z-index: 10; background-color: var(--bg-secondary); }
-    .table { width: 100%; margin: 0; color: var(--text-primary); }
-    .table th { background-color: var(--bg-secondary); color: var(--text-primary); font-weight: 600; border-bottom: 1px solid var(--border-color); padding: 1rem; white-space: nowrap; position: sticky; top: 0; z-index: 11; }
-    .table td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; white-space: nowrap; }
-    .table tbody tr:hover { background-color: var(--bg-secondary); }
-    .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; text-transform: uppercase; }
-    .status-active { background-color: #C6F6D5; color: #22543D; }
-    .status-pending { background-color: #FEF3C7; color: #92400E; }
-    .status-inactive { background-color: #FED7D7; color: #742A2A; }
-    .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem; padding: 1rem; background-color: var(--bg-primary); border-radius: 12px; box-shadow: var(--shadow-light); border: 1px solid var(--border-color); }
-    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 2000; backdrop-filter: blur(4px); }
-    .modal-content { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: var(--bg-primary); border-radius: 16px; padding: 2rem; width: 90%; max-width: 1200px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-heavy); border: 1px solid var(--border-color); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-    .modal-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
-    .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; }
-    .modal-close:hover { background-color: var(--bg-secondary); color: var(--text-primary); }
-    .modal-body { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
-    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-    .form-group label { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
-    .form-group input, .form-group select, .form-group textarea { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 0.75rem; transition: all 0.3s ease; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border-color); }
-    .btn-cancel-modal { background-color: var(--bg-tertiary); color: var(--text-primary); }
-    .btn-save-modal { background-color: #22c55e; }
-    .btn-save-modal:hover { background-color: #16a34a; }
-    .password-input { font-family: monospace; }
-    .section-title { grid-column: 1 / -1; font-size: 1.2rem; font-weight: 600; color: var(--accent-color); margin: 1rem 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 2px solid var(--border-color); }
-    .field-disabled { background-color: var(--bg-tertiary) !important; color: var(--text-secondary) !important; cursor: not-allowed; }
+    /* 核心改动：限制内容宽度 */
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .tab-content {
+        display: block;
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .btn-create {
+        background-color: #22c55e;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #16a34a;
+    }
+
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
+
+    .filter-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        align-self: flex-end;
+        margin-top: auto;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* 关键改动：表格容器允许横向滚动 */
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+        width: 100%;
+    }
+
+    /* 核心修复：操作列固定定位 */
+    .table-container th:last-child,
+    .table-container td:last-child {
+        position: sticky;
+        right: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+    }
+
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 4000px;
+    }
+
+    .table-container thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--bg-secondary);
+    }
+
+    .table {
+        width: 100%;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 11;
+    }
+
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background-color: #C6F6D5;
+        color: #22543D;
+    }
+
+    .status-pending {
+        background-color: #FEF3C7;
+        color: #92400E;
+    }
+
+    .status-inactive {
+        background-color: #FED7D7;
+        color: #742A2A;
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .page-item {
+        margin: 0;
+    }
+
+    .page-link {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .page-link:hover {
+        background-color: var(--bg-tertiary);
+        color: var(--accent-color);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .page-item.disabled .page-link {
+        color: var(--text-tertiary);
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 1200px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
+
+    /* 核心修复：模态框底部固定 */
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-cancel-modal {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-save-modal {
+        background-color: #22c55e;
+    }
+
+    .btn-save-modal:hover {
+        background-color: #16a34a;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .field-disabled {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-secondary) !important;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
@@ -137,11 +480,11 @@
                 <tr>
                     <th>ID</th>
                     <th>店铺名称</th>
-                    <th>亚马逊名称</th>
                     <th>客户</th>
                     <th>运营人员</th>
                     <th>运营分组</th>
                     <th>状态</th>
+                    <th>亚马逊名称</th>
                     <th>下店日期</th>
                     <th>店铺序号</th>
                     <th>卖家记号</th>
@@ -198,7 +541,7 @@
             </select>
         </div>
         <nav>
-            <ul class="pagination">
+            <ul class="pagination" id="pagination">
                 <li class="page-item disabled">
                     <a class="page-link" href="#" tabindex="-1">上一页</a>
                 </li>
@@ -230,6 +573,7 @@
     </div>
 </div>
 {% endblock %}
+
 {% block extra_js %}
 <script>
 // 全局变量
@@ -344,12 +688,17 @@ async function loadCustomersFromAPI() {
 }
 
 // ==========================================
-// 分页控件渲染
+// 分页控件渲染 - 修复版
 // ==========================================
 
 function renderPagination(totalItems, currentPage, pageSize) {
     const totalPages = Math.ceil(totalItems / pageSize);
     const paginationHtml = [];
+
+    if (totalPages <= 1) {
+        document.getElementById('pagination').innerHTML = '';
+        return;
+    }
 
     // 上一页
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
@@ -359,15 +708,45 @@ function renderPagination(totalItems, currentPage, pageSize) {
         </li>
     `);
 
-    // 页码（显示最多5页）
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, startPage + 4);
+    // 页码显示逻辑
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
 
+    // 调整起始页，确保显示5个页码（如果可能）
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+
+    // 显示第一页和省略号
+    if (startPage > 1) {
+        paginationHtml.push(`
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(1)">1</a>
+            </li>
+        `);
+        if (startPage > 2) {
+            paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+        }
+    }
+
+    // 中间页码
     for (let i = startPage; i <= endPage; i++) {
         const active = i === currentPage ? 'active' : '';
         paginationHtml.push(`
             <li class="page-item ${active}">
                 <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>
+        `);
+    }
+
+    // 显示省略号和最后一页
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+        }
+        paginationHtml.push(`
+            <li class="page-item">
+                <a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>
             </li>
         `);
     }
@@ -380,7 +759,7 @@ function renderPagination(totalItems, currentPage, pageSize) {
         </li>
     `);
 
-    document.querySelector('.pagination').innerHTML = paginationHtml.join('');
+    document.getElementById('pagination').innerHTML = paginationHtml.join('');
 }
 
 async function changePage(page) {
@@ -400,13 +779,11 @@ async function changePageSize(pageSize) {
 }
 
 // ==========================================
-// 筛选器与表格渲染
+// 筛选器与表格渲染 - 修复列顺序
 // ==========================================
 
 function updateFilterOptions(shops) {
-    // 状态筛选器：固定显示所有可能状态
-
-    // 客户筛选器 - 保持当前选中值
+    // 客户筛选器
     const customerSelect = document.getElementById('amazonCustomerFilter');
     const currentCustomer = customerSelect.value;
     customerSelect.innerHTML = '<option value="">全部客户</option>';
@@ -453,14 +830,13 @@ async function loadShopsTable() {
     if (data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="42" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
         document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
-        document.querySelector('.pagination').innerHTML = '';
+        document.getElementById('pagination').innerHTML = '';
         return;
     }
 
-    // 使用全局变量计算分页信息
+    // 更新分页信息
     const start = (currentPage - 1) * currentPageSize + 1;
     const end = start + data.length - 1;
-
     const pageInfoHtml = `
         显示第 ${start} 到 ${end} 条，共 ${total} 条记录
         <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
@@ -475,7 +851,7 @@ async function loadShopsTable() {
 
     updateFilterOptions(data);
     renderShopRows(data);
-    renderPagination(total, page, pageSize);
+    renderPagination(total, currentPage, currentPageSize);
 }
 
 function renderShopRows(shops) {
@@ -492,13 +868,13 @@ function renderShopRows(shops) {
             <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
                 <td class="field-id">${shop.id}</td>
                 <td class="field-shop_name">${shop.shop_name}</td>
-                <td class="field-amazon_shop_name">${shop.amazon_shop_name}</td>
                 <td class="field-customer">${shop.customer}</td>
                 <td class="field-ops_name">${shop.ops_first_name}</td>
                 <td class="field-ops_group">${shop.ops_group}</td>
                 <td class="field-shop_status">
                     <span class="status-badge ${statusClasses[shop.shop_status] || 'status-inactive'}">${shop.shop_status}</span>
                 </td>
+                <td class="field-amazon_shop_name">${shop.amazon_shop_name}</td>
                 <td class="field-shop_date">${shop.shop_date}</td>
                 <td class="field-shop_number">${shop.shop_number || '-'}</td>
                 <td class="field-seller_mark">${shop.seller_mark}</td>
@@ -579,7 +955,6 @@ function openEditModal(shopId) {
 
     document.getElementById('modalTitle').textContent = '编辑店铺';
 
-    // 从API获取完整店铺数据（后端已支持 id 精准查询）
     fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
         .then(response => response.json())
         .then(result => {
@@ -601,7 +976,6 @@ function generateModalForm(shopData = null) {
     const isCreate = !shopData;
     const data = shopData || {};
 
-    // 动态生成运营人员选项（显示OperationalAccount中的分组）
     const operatorOptionsHtml = allOperators.map(op => {
         const selected = data.ops_id == op.id ? 'selected' : '';
         return `<option value="${op.id}" ${selected}>${op.first_name} (${op.group})</option>`;
@@ -618,16 +992,16 @@ function generateModalForm(shopData = null) {
             <input type="text" id="modal-shop_name" value="${data.shop_name || ''}" required>
         </div>
         <div class="form-group">
-            <label>亚马逊店铺名称</label>
-            <input type="text" id="modal-amazon_shop_name" value="${data.amazon_shop_name || ''}">
-        </div>
-        <div class="form-group">
             <label>客户</label>
             <input type="text" id="modal-customer" value="${data.customer || ''}">
         </div>
         <div class="form-group">
             <label>运营人员</label>
             <select id="modal-ops">${operatorOptionsHtml || '<option value="">无</option>'}</select>
+        </div>
+        <div class="form-group">
+            <label>运营分组</label>
+            <input type="text" id="modal-ops_group" value="${data.ops_group || ''}" disabled class="field-disabled">
         </div>
         <div class="form-group">
             <label>状态</label>
@@ -637,6 +1011,10 @@ function generateModalForm(shopData = null) {
                 <option value="注销" ${data.shop_status === '注销' ? 'selected' : ''}>注销</option>
                 <option value="审核中" ${data.shop_status === '审核中' ? 'selected' : ''}>审核中</option>
             </select>
+        </div>
+        <div class="form-group">
+            <label>亚马逊店铺名称</label>
+            <input type="text" id="modal-amazon_shop_name" value="${data.amazon_shop_name || ''}">
         </div>
         <div class="form-group">
             <label>店铺序号</label>
@@ -795,12 +1173,9 @@ function generateModalForm(shopData = null) {
 }
 
 async function saveShopModal() {
-    // 安全取值函数：没有该元素返回空串，避免抛错
     const v = (id) => (document.getElementById(id)?.value || '').trim();
 
-    // 收集所有表单数据
     const formData = {
-        // 基本信息
         shop_name: v('modal-shop_name'),
         amazon_shop_name: v('modal-amazon_shop_name'),
         customer: v('modal-customer'),
@@ -813,7 +1188,6 @@ async function saveShopModal() {
         whitelist: v('modal-whitelist'),
         ip_address: v('modal-ip_address'),
         remark: v('modal-remark'),
-        // 账号信息
         email_account: v('modal-email_account'),
         email_password: v('modal-email_password'),
         shop_password: v('modal-shop_password'),
@@ -823,7 +1197,6 @@ async function saveShopModal() {
         browser: v('modal-browser'),
         ling_xing_if: v('modal-ling_xing_if'),
         divi_shop_id: v('modal-divi_shop_id'),
-        // 收款信息
         credit_card_channel: v('modal-credit_card_channel'),
         credit_card_number: v('modal-credit_card_number'),
         credit_card_expiry: v('modal-credit_card_expiry'),
@@ -836,7 +1209,6 @@ async function saveShopModal() {
         bind_phone: v('modal-bind_phone'),
         collection_card_number: v('modal-collection_card_number'),
         payment_password: v('modal-payment_password'),
-        // 法人信息
         id_number: v('modal-id_number'),
         legal_person_phone: v('modal-legal_person_phone'),
         company_name: v('modal-company_name'),
@@ -845,11 +1217,9 @@ async function saveShopModal() {
         birth_date: v('modal-birth_date'),
         id_expiry_date: v('modal-id_expiry_date'),
         additional_remark: v('modal-additional_remark'),
-        // 其他
         img1: v('modal-img1'),
     };
 
-    // 验证必填项
     if (!formData.shop_name) {
         alert('店铺名称是必填项！');
         return;
