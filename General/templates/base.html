@@ -18,7 +18,6 @@
     <!-- Anime.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 
-    <!-- ECharts（仅子页面需要） -->
     {% block extra_css %}{% endblock %}
 
     <style>
@@ -135,7 +134,7 @@
         border-radius: 2px;
     }
 
-    /* 用户区域 */
+    /* 用户区域 - 新增下拉菜单样式 */
     .user-area {
         display: flex;
         align-items: center;
@@ -158,10 +157,24 @@
         color: var(--accent-color);
     }
 
-    .user-info {
+    /* 新增：用户菜单容器 */
+    .user-menu {
+        position: relative;
+        display: inline-block;
+    }
+
+    .user-avatar-wrapper {
+        cursor: pointer;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .user-avatar-wrapper:hover {
+        background-color: var(--bg-secondary);
     }
 
     .username {
@@ -177,7 +190,47 @@
         border: 2px solid var(--border-color);
     }
 
-    /* 主容器 - 使用 Flexbox 布局 */
+    /* 新增：下拉菜单样式 */
+    .user-menu-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-medium);
+        min-width: 180px;
+        display: none;
+        z-index: 1001;
+        margin-top: 0.5rem;
+        overflow: hidden;
+    }
+
+    .user-menu-dropdown.show {
+        display: block;
+    }
+
+    .user-menu-item {
+        padding: 0.75rem 1rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        display: block;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+    }
+
+    .user-menu-item:hover {
+        background-color: var(--bg-secondary);
+        color: var(--accent-color);
+    }
+
+    .user-menu-item i {
+        margin-right: 0.5rem;
+        width: 16px;
+        text-align: center;
+    }
+
+    /* 主容器 - Flexbox 布局 */
     .main-container {
         margin-top: 80px;
         display: flex;
@@ -185,7 +238,7 @@
         position: relative;
     }
 
-    /* 左侧侧边栏 - 使用 flex 布局而非 fixed */
+    /* 左侧侧边栏 */
     .sidebar {
         width: 280px;
         background-color: var(--bg-primary);
@@ -196,7 +249,7 @@
         height: calc(100vh - 80px);
         overflow-y: auto;
         transition: all 0.3s ease;
-        flex-shrink: 0; /* 防止侧边栏被压缩 */
+        flex-shrink: 0;
     }
 
     .sidebar-menu {
@@ -235,14 +288,14 @@
         text-align: center;
     }
 
-    /* 主内容区域 - 使用 flex 布局 */
+    /* 主内容区域 */
     .content {
         flex: 1;
-        display: flex;          /* 使其成为 flex 容器 */
-        flex-direction: column; /* 垂直方向排列 */
-        padding: 0;             /* 移除 padding，由子元素控制 */
+        display: flex;
+        flex-direction: column;
+        padding: 0;
         transition: all 0.3s ease;
-        overflow-y: auto;       /* 允许独立滚动 */
+        overflow-y: auto;
     }
 
     /* 移动端菜单按钮 */
@@ -264,7 +317,7 @@
 
     @media (max-width: 768px) {
         .main-container {
-            flex-direction: column; /* 移动端垂直布局 */
+            flex-direction: column;
         }
 
         .sidebar {
@@ -274,11 +327,11 @@
             height: auto;
             border-right: none;
             border-bottom: 1px solid var(--border-color);
-            order: -1; /* 确保侧边栏在顶部 */
+            order: -1;
         }
 
         .content {
-            padding: 0; /* 移动端也移除 padding */
+            padding: 0;
         }
 
         .navbar-nav {
@@ -289,9 +342,98 @@
             display: block;
         }
     }
-</style>
+
+    /* 加载动画 */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 1;
+        transition: opacity 0.5s ease;
+    }
+
+    .loading-overlay.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid var(--border-color);
+        border-top: 4px solid var(--accent-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* 通知样式 */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: var(--shadow-heavy);
+        border-left: 4px solid var(--accent-color);
+        z-index: 10000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        max-width: 400px;
+    }
+
+    .notification.show {
+        transform: translateX(0);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background-color: #C6F6D5;
+        color: #22543D;
+    }
+
+    .status-inactive {
+        background-color: #FED7D7;
+        color: #742A2A;
+    }
+
+    .status-pending {
+        background-color: #FEEBC8;
+        color: #744210;
+    }
+
+    .status-processing {
+        background-color: #E9D8FD;
+        color: #553C9A;
+    }
+    </style>
 </head>
 <body>
+    <!-- 加载遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
     <!-- 顶部导航栏 -->
     <nav class="navbar">
         <div class="container-fluid">
@@ -311,9 +453,23 @@
                     <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
                 </button>
 
-                <div class="user-info">
-                    <span class="username" id="username">{{ user.name|default:'用户名' }}</span>
-                    <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                <!-- 用户菜单 -->
+                <div class="user-menu">
+                    <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
+                        <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
+                        <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                        <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
+                    </div>
+
+                    <div class="user-menu-dropdown" id="userMenuDropdown">
+                        <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
+                            <i class="fas fa-cog"></i> 设置
+                        </a>
+                        <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
+                        <a href="{% url 'logout' %}" class="user-menu-item" onclick="return confirmLogout()">
+                            <i class="fas fa-sign-out-alt"></i> 退出登录
+                        </a>
+                    </div>
                 </div>
 
                 <button class="mobile-menu-toggle" onclick="showComingSoon()">
@@ -453,6 +609,25 @@
             showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
         }
 
+        // 切换用户菜单显示/隐藏
+        function toggleUserMenu() {
+            const dropdown = document.getElementById('userMenuDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // 点击页面其他地方关闭菜单
+        document.addEventListener('click', function(e) {
+            const userMenu = document.querySelector('.user-menu');
+            if (!userMenu.contains(e.target)) {
+                document.getElementById('userMenuDropdown').classList.remove('show');
+            }
+        });
+
+        // 退出登录确认
+        function confirmLogout() {
+            return confirm('确定要退出登录吗？');
+        }
+
         // 页面加载动画
         document.addEventListener('DOMContentLoaded', function() {
             if (window.anime) {
@@ -464,6 +639,34 @@
                     duration: 600,
                     easing: 'easeOutQuart'
                 });
+
+                // 侧边栏动画
+                anime({
+                    targets: '.sidebar',
+                    translateX: [-280, 0],
+                    opacity: [0, 1],
+                    duration: 600,
+                    delay: 200,
+                    easing: 'easeOutQuart'
+                });
+
+                // 内容区域动画
+                anime({
+                    targets: '.content',
+                    translateY: [30, 0],
+                    opacity: [0, 1],
+                    duration: 800,
+                    delay: 400,
+                    easing: 'easeOutQuart'
+                });
+
+                // 隐藏加载遮罩
+                setTimeout(() => {
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    if (loadingOverlay) {
+                        loadingOverlay.classList.add('hidden');
+                    }
+                }, 500);
             }
         });
     </script>

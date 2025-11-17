@@ -9,9 +9,9 @@ from General.models import User
 from django.forms.models import model_to_dict
 import json
 
+
 @ensure_csrf_cookie
 def user_login(request):
-    """登录：密码是555就通过"""
     if request.method == 'GET':
         return render(request, 'login.html')
 
@@ -25,19 +25,24 @@ def user_login(request):
             username = request.POST.get('username', '').strip()
             password = request.POST.get('password', '').strip()
 
+        # 验证必填项
         if not username or not password:
-            return JsonResponse({'success': False, 'message': '用户名和密码不能为空'}, status=400)
+            return JsonResponse({
+                'success': False,
+                'message': '用户名和密码不能为空'
+            }, status=400)
 
-        # 密码是555直接登录
-        if password == '555':
-            user, created = User.objects.get_or_create(
-                username=username,
-                defaults={
-                    'email': f'{username}@test.com',
-                    'is_active': True,
-                    'first_name': username
-                }
-            )
+        # 正常认证流程
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            # 检查用户是否激活
+            if not user.is_active:
+                return JsonResponse({
+                    'success': False,
+                    'message': '用户账号已停用'
+                }, status=403)
+
             login(request, user)
 
             # 返回用户基本信息
@@ -48,18 +53,12 @@ def user_login(request):
                 'user': user_data
             })
 
-        # 正常认证
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            user_data = model_to_dict(user, fields=['id', 'username', 'email', 'first_name', 'last_name'])
-            return JsonResponse({
-                'success': True,
-                'redirect_url': '/main/',
-                'user': user_data
-            })
+        # 认证失败
+        return JsonResponse({
+            'success': False,
+            'message': '用户名或密码错误'
+        }, status=401)
 
-        return JsonResponse({'success': False, 'message': '用户名或密码错误'}, status=401)
 
 @login_required
 def user_logout(request):
