@@ -518,8 +518,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script>
-// 全局变量
+    <script>
+    // 全局变量
 let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
 let modalMode = null;       // 'create' | 'edit'
 let currentUserId = null;   // 当前编辑的用户ID
@@ -531,14 +531,34 @@ let currentPageSize = 10;   // 每页条数
 // ==========================================
 
 /**
- * 从API加载用户列表数据（带分页）
+ * 从API加载用户列表数据（带分页和筛选）
  * @param {number} page - 页码
  * @param {number} pageSize - 每页条数
+ * @param {boolean} useFilters - 是否应用当前筛选条件
  * @returns {Promise<{data: Array, total: number}>} 用户数据和总条数
  */
-async function loadUsersFromAPI(page = 1, pageSize = 10) {
+async function loadUsersFromAPI(page = 1, pageSize = 10, useFilters = true) {
+    // 构建参数对象
+    const params = new URLSearchParams({
+        page: page,
+        page_size: pageSize,
+    });
+
+    // 如果使用筛选器，则添加筛选参数
+    if (useFilters) {
+        const role = document.getElementById('userRoleFilter')?.value;
+        const status = document.getElementById('userStatusFilter')?.value;
+        const department = document.getElementById('userDepartmentFilter')?.value;
+        const search = document.getElementById('userSearch')?.value;
+
+        if (role) params.append('role', role);
+        if (status) params.append('status', status);
+        if (department) params.append('department', department);
+        if (search) params.append('search', search);
+    }
+
     try {
-        const response = await fetch(`/api/users/?page=${page}&page_size=${pageSize}`);
+        const response = await fetch(`/api/users/?${params}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
@@ -721,8 +741,8 @@ async function loadUsersTable() {
     document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
     document.querySelector('.pagination-info').dataset.total = total;
 
-    // 渲染表格和分页控件
-    updateFilterOptions(await loadUsersFromAPI(1, 9999).then(r => r.data)); // 筛选器仍需要所有角色
+    // 获取所有用户数据（不应用筛选条件）用于更新筛选器选项
+    updateFilterOptions(await loadUsersFromAPI(1, 9999, false).then(r => r.data));
     renderUserRows(data);
     renderPagination(total, page, pageSize);
 }
@@ -976,7 +996,7 @@ async function saveUserModal() {
 
     // 新建模式：验证用户名唯一性
     if (modalMode === 'create') {
-        const allUsers = await loadUsersFromAPI();
+        const allUsers = await loadUsersFromAPI(1, 9999, false).then(r => r.data);
         if (allUsers.some(user => user.username === formData.username)) {
             alert('用户名已存在，请使用其他用户名！');
             return;
@@ -1029,6 +1049,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadRolesFromAPI();
     loadUsersTable();
 
+    // 添加回车键快捷键：在筛选区域按回车触发筛选
+    const filterSection = document.querySelector('.filter-section');
+    if (filterSection) {
+        filterSection.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                e.preventDefault(); // 阻止默认行为
+                filterUsers(); // 执行筛选
+            }
+        });
+    }
     // 页面动画效果
     if (window.anime) {
         anime({
@@ -1058,5 +1088,5 @@ document.getElementById('userModalOverlay').addEventListener('click', function(e
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
 });
-</script>
+    </script>
 {% endblock %}

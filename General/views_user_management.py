@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 import json
-
+from django.db.models import Q
 # 人员管理页面视图
 @login_required
 def user_management_view(request):
@@ -37,8 +37,13 @@ def temu_management_view(request):
 @login_required
 def get_users_api(request):
     """
-    API接口：获取用户列表及关联的运营账号信息（支持分页）
-    参数: page=1, page_size=10
+    API接口：获取用户列表及关联的运营账号信息（支持分页和筛选）
+    参数:
+        - page=1, page_size=10
+        - role=角色值
+        - status=状态值(active/inactive/cancelled)
+        - department=部门搜索词
+        - search=通用搜索词（搜索用户名/名字）
     返回: {success: true, data: [用户数据], total: 总条数, page: 当前页, page_size: 每页条数}
     """
     try:
@@ -50,15 +55,46 @@ def get_users_api(request):
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100]: page_size = 10
 
-        # 查询总条数
-        total_count = User.objects.count()
+        # 获取筛选参数
+        role_filter = request.GET.get('role', '').strip()
+        status_filter = request.GET.get('status', '').strip()
+        department_filter = request.GET.get('department', '').strip()
+        search_filter = request.GET.get('search', '').strip()
 
-        # 计算偏移量
+        # 构建基础查询集
+        queryset = User.objects.select_related('operational_account').all()
+
+        # 应用筛选条件
+        if role_filter:
+            queryset = queryset.filter(role=role_filter)
+
+        if status_filter:
+            # 将前端的status值转换为数据库值
+            status_map = {
+                'active': User.STATUS_NORMAL,
+                'inactive': User.STATUS_DISABLED,
+                'cancelled': User.STATUS_CANCELLED
+            }
+            db_status = status_map.get(status_filter)
+            if db_status is not None:
+                queryset = queryset.filter(status=db_status)
+
+        if department_filter:
+            queryset = queryset.filter(department__icontains=department_filter)
+
+        if search_filter:
+            # 搜索用户名或名字
+            queryset = queryset.filter(
+                Q(username__icontains=search_filter) |
+                Q(first_name__icontains=search_filter)
+            )
+
+        # 查询总条数（应用筛选后）
+        total_count = queryset.count()
+
+        # 计算偏移量并应用分页
         offset = (page - 1) * page_size
-        limit = page_size
-
-        # 使用select_related预取关联数据 + 分页查询 + ID排序
-        users = User.objects.select_related('operational_account').order_by('id')[offset:offset + limit]
+        users = queryset.order_by('id')[offset:offset + page_size]
 
         users_data = []
         for user in users:
@@ -109,9 +145,10 @@ def get_users_api(request):
         return JsonResponse({
             'success': True,
             'data': users_data,
-            'total': total_count,  # 总条数
-            'page': page,  # 当前页码
-            'page_size': page_size  # 每页条数
+            'total': total_count,
+            'page': page,
+            'page_size': page_size,
+            'filters_applied': bool(role_filter or status_filter or department_filter or search_filter)
         })
 
     except Exception as e:
@@ -121,7 +158,6 @@ def get_users_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
-
 
 @require_POST
 @csrf_exempt

@@ -1266,6 +1266,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI(), loadCustomersFromAPI()]);
     loadShopsTable();
 
+       // ✅ 添加回车键快捷键：在筛选区域按回车触发筛选
+    const filterSection = document.querySelector('.filter-section');
+    if (filterSection) {
+        filterSection.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                e.preventDefault(); // 阻止默认行为
+                filterAmazonShops(); // 执行店铺筛选
+            }
+        });
+    }
     if (window.anime) {
         anime({
             targets: '.sidebar',
@@ -1285,6 +1295,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
+
 document.getElementById('shopModalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
@@ -1293,4 +1304,7 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
 });
 </script>
+
+    script
+
 {% endblock %}
