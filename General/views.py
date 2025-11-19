@@ -1,4 +1,4 @@
-# General/views.py
+# General/amazon_views.py
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseRedirect
@@ -83,14 +83,7 @@ def management_page(request):
         'active_nav': 'management'
     })
 
-@login_required(login_url='/login/')
-def amazon_dashboard_page(request):
-    """Amazon驾驶舱"""
-    theme = request.COOKIES.get('theme', 'light')
-    return render(request, 'amazon_dashboard.html', {
-        'theme': theme,
-        'active_nav': 'amazon'
-    })
+
 
 def csrf_token_view(request):
     token = get_token(request)

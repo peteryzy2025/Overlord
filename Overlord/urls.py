@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from General import views, views_user_management, views_amazon_management
+from Amazon import amazon_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -30,7 +31,7 @@ urlpatterns = [
     path('api/users/<int:user_id>/update/', views_user_management.update_user_api, name='update_user_api'),
     path('management/amazon/', views_user_management.amazon_management_view, name='amazon_management'),
     path('management/temu/', views_user_management.temu_management_view, name='temu_management'),
-    path('amazon-dashboard/', views.amazon_dashboard_page, name='amazon_dashboard'),
+    path('amazon-dashboard/', amazon_views.amazon_dashboard_page, name='amazon_dashboard'),
     path('csrf/', views.csrf_token_view, name='csrf_token'),
     path('api/update-theme/', views.update_theme, name='update_theme'),
     path('api/users/', views_user_management.get_users_api, name='get_users_api'),
@@ -47,4 +48,7 @@ urlpatterns = [
     path('api/operators/', views_amazon_management.get_operators_api, name='get_operators_api'),
     path('api/ops-groups/', views_amazon_management.get_ops_groups_api, name='get_ops_groups_api'),
     path('api/customers/', views_amazon_management.get_customers_api, name='get_customers_api'),
+
+    path('api/filter-amazon-data/', amazon_views.filter_amazon_data_api, name='filter_amazon_data'),
+
 ]

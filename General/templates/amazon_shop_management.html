@@ -1,11 +1,10 @@
-{% extends 'base.html' %}
+{% extends 'base_r.html' %}
 {% load static %}
 
 {% block title %}Amazon店铺管理 - Overlord{% endblock %}
 
 {% block extra_css %}
 <style>
-    /* 核心改动：限制内容宽度 */
     .content {
         max-width: 100vw;
         overflow-x: hidden;
@@ -624,9 +623,15 @@ async function loadShopsFromAPI(page = 1, pageSize = 10) {
     }
 }
 
-async function loadOperatorsFromAPI() {
+async function loadOperatorsFromAPI(platform = '') {
     try {
-        const response = await fetch('/api/operators/');
+        // 构建URL，如果有platform参数则添加到查询字符串
+        const url = new URL('/api/operators/', window.location.origin);
+        if (platform) {
+            url.searchParams.set('platform', platform);
+        }
+
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
@@ -1263,7 +1268,7 @@ function getCSRFToken() {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI(), loadCustomersFromAPI()]);
+    await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI(), loadCustomersFromAPI()]);
     loadShopsTable();
 
        // ✅ 添加回车键快捷键：在筛选区域按回车触发筛选

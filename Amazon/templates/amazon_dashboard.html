@@ -1,0 +1,1183 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}Amazon驾驶舱 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* 页面专属样式 - 直接内联以避免冲突 */
+        :root {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .amazon-main {
+            margin: 20px;
+        }
+
+        /* 页面标题 */
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        /* 筛选控制面板 */
+        .control-panel {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 200px;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-control, .form-select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        /* 数据概览卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem 1.25rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .stat-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.75rem;
+            font-size: 1.25rem;
+            color: white;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            display: inline-block;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .stat-change.positive {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .stat-change.negative {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        .stat-change.neutral {
+            background-color: #E2E8F0;
+            color: #475569;
+        }
+
+        /* 图表区域 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+        }
+
+        /* 数据表格 */
+        .data-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .table-container table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table-container thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: var(--bg-secondary);
+        }
+
+        .table-container thead th {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 11;
+        }
+
+        .table {
+            width: 100%;
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .table th {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        /* 状态标签样式 */
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .status-badge.status-completed {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .status-badge.status-shipping {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        .status-badge.status-shipped {
+            background-color: #FEEBC8;
+            color: #744210;
+        }
+
+        .status-badge.status-processing {
+            background-color: #E9D8FD;
+            color: #553C9A;
+        }
+
+        /* 清理按钮样式 */
+        .filter-group {
+            position: relative;
+        }
+
+        .btn-clear-filter {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 2px 4px;
+            font-size: 0.875rem;
+            opacity: 0.7;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .btn-clear-filter:hover {
+            opacity: 1;
+            color: var(--text-primary);
+        }
+
+        /* 为select添加内边距，避免文字被按钮覆盖 */
+        #groupFilter, #operatorFilter {
+            padding-right: 28px;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 1200px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 1rem;
+            }
+
+            .stat-card {
+                padding: 1.25rem 1rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 1rem;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                width: 100%;
+                min-width: auto;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+
+            .stat-card {
+                padding: 1rem 0.5rem;
+            }
+
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 1.1rem;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+            }
+
+            .stat-label {
+                font-size: 0.8125rem;
+            }
+
+            .stat-change {
+                font-size: 0.6875rem;
+                padding: 0.2rem 0.4rem;
+            }
+        }
+
+        /* 刷新按钮动画 */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .spinner {
+            border: 3px solid var(--bg-secondary);
+            border-top: 3px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block page_content %}
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="amazon-main">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Amazon 驾驶舱</h1>
+                <p class="page-subtitle">实时监控Amazon店铺订单数据和销量趋势</p>
+            </div>
+            <div>
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选控制面板 -->
+        <div class="control-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">日期范围</label>
+                    <select class="form-select" id="dateRange">
+                        <option value="yesterday">昨日</option>
+                        <option value="today">今日</option>
+                        <option value="last7days">最近7天</option>
+                        <option value="last30days">最近30天</option>
+                        <option value="custom">自定义范围</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" id="customDateGroup" style="display: none;">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group" id="customDateGroup2" style="display: none;">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+
+                <!-- 分组筛选（带清理按钮） -->
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div style="position: relative;">
+                        <select class="form-select" id="groupFilter">
+                        </select>
+                        <button type="button" class="btn-clear-filter" onclick="clearFilter('group')" title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 人员筛选（带清理按钮） -->
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <div style="position: relative;">
+                        <select class="form-select" id="operatorFilter">
+                        </select>
+                        <button type="button" class="btn-clear-filter" onclick="clearFilter('operator')"
+                                title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-group" style="align-self: flex-end;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" onclick="applyFilters()">应用筛选</button>
+                        <button class="btn btn-secondary" onclick="resetFilters()">重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据概览卡片 -->
+        <div class="stats-grid">
+            <!-- 订单量 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="stat-value" id="orderCount">—</div>
+                <div class="stat-label">订单量</div>
+                <div class="stat-change" id="orderCountChange">—</div>
+            </div>
+
+            <!-- 销量 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-value" id="totalSalesQuantity">—</div>
+                <div class="stat-label">销量</div>
+                <div class="stat-change" id="totalSalesQuantityChange">—</div>
+            </div>
+
+            <!-- 营业额 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-value" id="totalRevenue">—</div>
+                <div class="stat-label">营业额</div>
+                <div class="stat-change" id="totalRevenueChange">—</div>
+            </div>
+
+            <!-- 客单价 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div class="stat-value" id="avgOrderValue">—</div>
+                <div class="stat-label">客单价</div>
+                <div class="stat-change" id="avgOrderValueChange">—</div>
+            </div>
+
+            <!-- FBA占比 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-warehouse"></i>
+                </div>
+                <div class="stat-value" id="fbaPercentage">—</div>
+                <div class="stat-label">FBA占比</div>
+                <div class="stat-change" id="fbaPercentageChange">—</div>
+            </div>
+
+            <!-- FBM占比 -->
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="stat-value" id="fbmPercentage">—</div>
+                <div class="stat-label">FBM占比</div>
+                <div class="stat-change" id="fbmPercentageChange">—</div>
+            </div>
+        </div>
+
+        <!-- 图表区域 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3 class="chart-title">销量趋势</h3>
+                <div id="ordersChart" class="chart-container"></div>
+            </div>
+
+            <div class="chart-card">
+                <h3 class="chart-title">运营人员业绩</h3>
+                <div id="operatorChart" class="chart-container"></div>
+            </div>
+        </div>
+
+        <!-- 详细数据表格 -->
+        <div class="data-section">
+            <h3 class="section-title">订单详情</h3>
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>订单ID</th>
+                        <th>店铺名称</th>
+                        <th>运营人员</th>
+                        <th>运营分组</th>
+                        <th>订单状态</th>
+                        <th>商品数量</th>
+                        <th>订单金额</th>
+                        <th>下单时间</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                    <!-- 动态加载的内容 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script>
+        // 全局变量
+        let allOperators = [];
+        let allGroups = [];
+        let currentFilters = {
+            date_range: 'yesterday',
+            start_date: '',
+            end_date: '',
+            operator_id: '', // 初始为空，由权限决定
+            group: ''
+        };
+
+        // 显示/隐藏加载动画
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (!overlay) {
+                console.error('ERROR: loadingOverlay element not found!');
+                return;
+            }
+            overlay.classList.remove('hidden');
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+            console.log(`Loading overlay ${show ? 'shown' : 'hidden'}`);
+        }
+
+        // 获取运营人员列表
+        async function loadOperatorsFromAPI() {
+            try {
+                const url = new URL('/api/operators/', window.location.origin);
+                url.searchParams.set('platform', '亚马逊');
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result.success) {
+                    allOperators = result.data;
+                    populateOperatorDropdown();
+                    return true;
+                } else {
+                    console.error('获取运营人员列表失败:', result.error);
+                    allOperators = [];
+                    return false;
+                }
+            } catch (error) {
+                console.error('运营人员API请求错误:', error);
+                allOperators = [];
+                return false;
+            }
+        }
+
+        // 获取分组列表
+        async function loadGroupsFromAPI() {
+            try {
+                const response = await fetch('/api/ops-groups/');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result.success) {
+                    allGroups = result.data;
+                    populateGroupDropdown();
+                    return true;
+                } else {
+                    console.error('获取分组列表失败:', result.error);
+                    allGroups = [];
+                    return false;
+                }
+            } catch (error) {
+                console.error('分组API请求错误:', error);
+                allGroups = [];
+                return false;
+            }
+        }
+
+        // 填充分组下拉框（已移除默认"全部分组"）
+        function populateGroupDropdown() {
+            const groupSelect = document.getElementById('groupFilter');
+            groupSelect.innerHTML = ''; // 清空选项
+
+            allGroups.forEach(group => {
+                const option = document.createElement('option');
+                option.value = group;
+                option.textContent = group;
+                groupSelect.appendChild(option);
+            });
+
+            // 如果没有选项，添加一个提示
+            if (allGroups.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '无可用选项';
+                groupSelect.appendChild(option);
+            }
+        }
+
+        // 填充运营人员下拉框（已移除默认"全部人员"）
+        function populateOperatorDropdown() {
+            const operatorSelect = document.getElementById('operatorFilter');
+            operatorSelect.innerHTML = ''; // 清空选项
+
+            allOperators.forEach(op => {
+                const option = document.createElement('option');
+                option.value = op.id;
+                // 特殊处理"全部人员"
+                if (op.id === 'all') {
+                    option.textContent = op.first_name; // 显示"全部人员"
+                } else {
+                    option.textContent = `${op.first_name} (${op.group})`;
+                }
+                operatorSelect.appendChild(option);
+            });
+
+            // 如果没有选项，添加一个提示
+            if (allOperators.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '无可用选项';
+                operatorSelect.appendChild(option);
+            }
+        }
+
+        // 处理日期范围变化
+        function handleDateRangeChange() {
+            const dateRange = document.getElementById('dateRange').value;
+            const customDateGroup = document.getElementById('customDateGroup');
+            const customDateGroup2 = document.getElementById('customDateGroup2');
+            if (dateRange === 'custom') {
+                customDateGroup.style.display = 'flex';
+                customDateGroup2.style.display = 'flex';
+            } else {
+                customDateGroup.style.display = 'none';
+                customDateGroup2.style.display = 'none';
+            }
+        }
+
+        // 收集当前筛选参数
+        function getCurrentFilters() {
+            const dateRange = document.getElementById('dateRange').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const operatorId = document.getElementById('operatorFilter').value;
+            const group = document.getElementById('groupFilter').value;
+            return {
+                date_range: dateRange,
+                start_date: dateRange === 'custom' ? startDate : '',
+                end_date: dateRange === 'custom' ? endDate : '',
+                operator_id: operatorId,
+                group: group
+            };
+        }
+
+        // 统一的设置默认筛选项函数（与重置逻辑完全一致）
+        function setDefaultFilters() {
+            const operatorSelect = document.getElementById('operatorFilter');
+            const groupSelect = document.getElementById('groupFilter');
+            const dateRangeSelect = document.getElementById('dateRange');
+
+            // 重置日期范围为昨日
+            dateRangeSelect.value = 'yesterday';
+            handleDateRangeChange(); // 隐藏自定义日期
+
+            // 设置分组默认值（优先级更高）
+            if (groupSelect.options.length > 0) {
+                // 优先选择 text 为 '全部分组' 的选项
+                const allGroupOption = Array.from(groupSelect.options).find(opt => opt.textContent === '全部分组');
+                groupSelect.value = allGroupOption ? '全部分组' : groupSelect.options[0].value;
+            }
+
+            // 设置运营人员默认值
+            if (operatorSelect.options.length > 0) {
+                // 优先选择 value 为 'all' 的选项
+                const allOperatorOption = Array.from(operatorSelect.options).find(opt => opt.value === 'all');
+                operatorSelect.value = allOperatorOption ? 'all' : operatorSelect.options[0].value;
+            }
+
+            // 清空自定义日期
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+        }
+
+        // 页面加载完成后的初始化（优化：先加载选项 → 设置值 → 加载数据）
+        document.addEventListener('DOMContentLoaded', async function () {
+            console.log('页面加载开始...');
+            showLoading(true);
+            try {
+                // 1. 只加载下拉框数据
+                console.log('开始加载下拉框数据...');
+                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                console.log('下拉框数据加载完成');
+
+                // 2. 设置默认值（与重置逻辑完全一致）
+                setDefaultFilters();
+
+                // 3. 绑定事件监听器
+                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+
+                // 4. 最后加载数据（此时筛选条件已正确设置）
+                console.log('自动调用API获取初始数据...');
+                await applyFilters();
+
+                console.log('页面初始化完成');
+            } catch (error) {
+                console.error('初始化过程错误:', error);
+                if (typeof showNotification === 'function') {
+                    showNotification('初始化失败: ' + error.message, 'error');
+                }
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // 应用筛选并加载真实数据
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+            console.log('发送筛选参数:', currentFilters);
+
+            try {
+                // 简单校验：如果权限不足，参数为空，给出提示
+                if (!currentFilters.operator_id && !currentFilters.group) {
+                    console.warn('无有效筛选条件，可能权限不足');
+                    if (typeof showNotification === 'function') {
+                        showNotification('无可用筛选条件，请检查权限', 'warning');
+                    }
+                    showLoading(false);
+                    return;
+                }
+
+                // 获取CSRF Token
+                let csrfToken = '';
+                const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfElement) csrfToken = csrfElement.value;
+                else {
+                    const match = document.cookie.match(/csrftoken=([^;]+)/);
+                    if (match) csrfToken = match[1];
+                }
+
+                const response = await fetch('/api/filter-amazon-data/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(currentFilters)
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (result.success) {
+                    console.log('API返回数据:', result.data);
+                    updateStatsWithRealData(result.data);
+                    updateChartsWithRealData(result.data);
+                    loadOrdersTable();
+                    if (typeof showNotification === 'function') {
+                        showNotification('数据已更新', 'success');
+                    }
+                } else {
+                    console.error('筛选失败:', result.error);
+                    if (typeof showNotification === 'function') {
+                        showNotification('筛选失败: ' + result.error, 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('API请求错误:', error);
+                if (typeof showNotification === 'function') {
+                    showNotification('数据请求失败: ' + error.message, 'error');
+                }
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 使用真实数据更新统计卡片
+        function updateStatsWithRealData(data) {
+            const current = data.current || {};
+            const comparison = data.comparison || {};
+
+            // 数字格式化
+            const formatter = new Intl.NumberFormat('zh-CN');
+
+            // 订单量
+            document.getElementById('orderCount').textContent = formatter.format(current.order_count || 0);
+            updateChangeIndicator('orderCountChange', comparison.order_count_change);
+
+            // 销量
+            document.getElementById('totalSalesQuantity').textContent = formatter.format(current.total_sales_quantity || 0);
+            updateChangeIndicator('totalSalesQuantityChange', comparison.total_sales_quantity_change);
+
+            // 营业额
+            document.getElementById('totalRevenue').textContent = '¥' + formatter.format(current.total_revenue || 0);
+            updateChangeIndicator('totalRevenueChange', comparison.total_revenue_change);
+
+            // 客单价
+            document.getElementById('avgOrderValue').textContent = '¥' + (current.avg_order_value || 0).toFixed(2);
+            updateChangeIndicator('avgOrderValueChange', comparison.avg_order_value_change);
+
+            // FBA占比
+            document.getElementById('fbaPercentage').textContent = current.fba_percentage || '0.0%';
+            updateChangeIndicator('fbaPercentageChange', comparison.fba_percentage_change);
+
+            // FBM占比
+            document.getElementById('fbmPercentage').textContent = current.fbm_percentage || '0.0%';
+            updateChangeIndicator('fbmPercentageChange', comparison.fbm_percentage_change);
+        }
+
+        // 更新变化指示器
+        function updateChangeIndicator(elementId, changeValue) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            element.classList.remove('positive', 'negative', 'neutral');
+
+            if (!changeValue || changeValue === '—') {
+                element.textContent = '—';
+                element.classList.add('neutral');
+                return;
+            }
+
+            const isPositive = changeValue.startsWith('+');
+            const isNegative = changeValue.startsWith('-');
+
+            if (isPositive) {
+                element.classList.add('positive');
+                element.textContent = `${changeValue} 环比`;
+            } else if (isNegative) {
+                element.classList.add('negative');
+                element.textContent = `${changeValue} 环比`;
+            } else {
+                element.classList.add('neutral');
+                element.textContent = '持平';
+            }
+        }
+
+        // 使用真实数据更新图表
+        function updateChartsWithRealData(data) {
+            if (!data.trend_data || data.trend_data.length === 0) {
+                console.warn('没有趋势数据');
+                return;
+            }
+            updateOrdersChart(data.trend_data);
+            initOperatorChartWithMockData();
+        }
+
+        // 更新订单趋势图
+        function updateOrdersChart(trendData) {
+            const ordersChart = echarts.init(document.getElementById('ordersChart'));
+            const dates = trendData.map(item => {
+                const date = new Date(item.date);
+                return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            });
+            const sales = trendData.map(item => item.sales || 0);
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                },
+                grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim()}
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim()},
+                    splitLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}}
+                },
+                series: [{
+                    data: sales,
+                    type: 'line',
+                    smooth: true,
+                    lineStyle: {color: '#667eea', width: 3},
+                    itemStyle: {color: '#667eea'},
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                {offset: 0, color: 'rgba(102, 126, 234, 0.3)'},
+                                {offset: 1, color: 'rgba(102, 126, 234, 0.1)'}
+                            ]
+                        }
+                    }
+                }]
+            };
+            ordersChart.setOption(option);
+        }
+
+        // 运营人员业绩假数据
+        function initOperatorChartWithMockData() {
+            const operatorChart = echarts.init(document.getElementById('operatorChart'));
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim(),
+                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
+                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                },
+                legend: {
+                    orient: 'vertical',
+                    left: 'left',
+                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                },
+                series: [{
+                    type: 'pie',
+                    radius: '50%',
+                    data: [
+                        {value: 335, name: '张三'},
+                        {value: 310, name: '李四'},
+                        {value: 234, name: '王五'},
+                        {value: 135, name: '赵六'},
+                        {value: 148, name: '孙七'}
+                    ],
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    },
+                    itemStyle: {
+                        color: function (params) {
+                            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'];
+                            return colors[params.dataIndex];
+                        }
+                    }
+                }]
+            };
+            operatorChart.setOption(option);
+        }
+
+        // 重置筛选项（复用统一逻辑）
+        function resetFilters() {
+            setDefaultFilters();
+            applyFilters();
+        }
+
+        // 刷新数据
+        function refreshData(event) {
+            const refreshBtn = event.target.closest('button');
+            const icon = refreshBtn.querySelector('i');
+            icon.style.animation = 'spin 1s linear infinite';
+            applyFilters().finally(() => {
+                icon.style.animation = '';
+            });
+        }
+
+        // 查看订单详情
+        function viewOrder(orderId) {
+            if (typeof showNotification === 'function') {
+                showNotification(`查看订单详情: ${orderId} - 功能开发中`, 'info', 3000);
+            }
+        }
+
+        // 编辑订单
+        function editOrder(orderId) {
+            if (typeof showNotification === 'function') {
+                showNotification(`编辑订单: ${orderId} - 功能开发中`, 'info', 3000);
+            }
+        }
+
+        // 加载订单表格
+        function loadOrdersTable() {
+            const tbody = document.getElementById('ordersTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                        <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>订单详情列表功能开发中</p>
+                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">当前仅展示统计数据</p>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // 响应式调整
+        window.addEventListener('resize', function () {
+            const ordersChart = echarts.getInstanceByDom(document.getElementById('ordersChart'));
+            const operatorChart = echarts.getInstanceByDom(document.getElementById('operatorChart'));
+            if (ordersChart) ordersChart.resize();
+            if (operatorChart) operatorChart.resize();
+        });
+
+        // 清理指定筛选条件
+        function clearFilter(filterType) {
+            if (filterType === 'group') {
+                document.getElementById('groupFilter').value = '';
+                console.log('已清理运营分组筛选条件');
+            } else if (filterType === 'operator') {
+                document.getElementById('operatorFilter').value = '';
+                console.log('已清理运营人员筛选条件');
+            }
+
+            // 可选：自动应用筛选以更新数据
+            // 如果希望清理后自动刷新，取消下一行的注释
+            // applyFilters();
+        }
+
+        // 根据权限动态显示/隐藏清理按钮
+        function updateClearButtonsVisibility() {
+            const user = window.currentUser || {}; // 假设用户信息存储在全局变量中
+            const permissions = user.permission || [];
+
+            const groupClearBtn = document.querySelector('#groupFilter').nextElementSibling;
+            const operatorClearBtn = document.querySelector('#operatorFilter').nextElementSibling;
+
+            // ops_all权限可以清理所有筛选
+            if (permissions.includes('ops_all')) {
+                groupClearBtn.style.display = 'block';
+                operatorClearBtn.style.display = 'block';
+            }
+            // ops_group权限只能清理人员筛选，不能清理分组
+            else if (permissions.includes('ops_group')) {
+                groupClearBtn.style.display = 'none'; // 强制分组不可清理
+                operatorClearBtn.style.display = 'block';
+            }
+            // ops权限不能清理任何筛选
+            else {
+                groupClearBtn.style.display = 'none';
+                operatorClearBtn.style.display = 'none';
+            }
+        }
+    </script>
+{% endblock %}

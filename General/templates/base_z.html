@@ -1,566 +1,75 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="zh-CN" data-theme="{{ theme|default:'light' }}">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Overlord{% endblock %}</title>
+{% extends 'base.html' %}
 
-    <!-- Bootstrap 5 -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+{% block layout_css %}
+    /* 主容器 - 内容居中布局 */
+    .main-container {
+        margin-top: 80px;
+        min-height: calc(100vh - 80px);
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 2rem;
+    }
 
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    .content {
+        width: 100%;
+{#        max-width: 1200px;#}
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    }
 
-    <!-- Anime.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
-
-    {% block extra_css %}{% endblock %}
-
-    <style>
-        :root {
-            --bg-primary: #FFFFFF;
-            --bg-secondary: #F7FAFC;
-            --bg-tertiary: #EDF2F7;
-            --text-primary: #1A202C;
-            --text-secondary: #4A5568;
-            --text-tertiary: #718096;
-            --border-color: #E2E8F0;
-            --accent-color: #667eea;
-            --accent-hover: #5a67d8;
-            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
-            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #1A202C;
-            --bg-secondary: #2D3748;
-            --bg-tertiary: #4A5568;
-            --text-primary: #F7FAFC;
-            --text-secondary: #E2E8F0;
-            --text-tertiary: #CBD5E0;
-            --border-color: #4A5568;
-            --accent-color: #667eea;
-            --accent-hover: #7c3aed;
-            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
-            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
-            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Noto Sans SC', sans-serif;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            min-height: 100vh;
-            transition: all 0.3s ease;
-        }
-
-        /* 顶部导航栏 */
-        .navbar {
-            background-color: var(--bg-primary);
-            box-shadow: var(--shadow-light);
-            padding: 0.75rem 1.5rem;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            font-weight: 700;
-            font-size: 1.5rem;
-            color: var(--text-primary);
-            text-decoration: none;
-        }
-
-        .navbar-brand img {
-            width: 40px;
-            height: 40px;
-            margin-right: 12px;
-            border-radius: 8px;
-        }
-
+    /* 响应式设计 */
+    @media (max-width: 768px) {
         .navbar-nav {
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            margin: 0;
-            flex-direction: row;
-        }
-
-        .nav-link {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .nav-link:hover {
-            color: var(--accent-color);
-            background-color: var(--bg-secondary);
-        }
-
-        .nav-link.active {
-            color: var(--accent-color);
-            background-color: var(--bg-secondary);
-        }
-
-        .nav-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 30px;
-            height: 3px;
-            background-color: var(--accent-color);
-            border-radius: 2px;
-        }
-
-        /* 用户区域 */
-        .user-area {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .theme-toggle {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .theme-toggle:hover {
-            background-color: var(--bg-secondary);
-            color: var(--accent-color);
-        }
-
-        /* 用户菜单 */
-        .user-menu {
-            position: relative;
-            display: inline-block;
-        }
-
-        .user-avatar-wrapper {
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .user-avatar-wrapper:hover {
-            background-color: var(--bg-secondary);
-        }
-
-        .username {
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--border-color);
-        }
-
-        .user-menu-dropdown {
-            position: absolute;
-            top: 100%;
-            right: 0;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: var(--shadow-medium);
-            min-width: 180px;
             display: none;
-            z-index: 1001;
-            margin-top: 0.5rem;
-            overflow: hidden;
         }
-
-        .user-menu-dropdown.show {
-            display: block;
-        }
-
-        .user-menu-item {
-            padding: 0.75rem 1rem;
-            color: var(--text-primary);
-            text-decoration: none;
-            display: block;
-            transition: all 0.3s ease;
-            font-size: 0.875rem;
-        }
-
-        .user-menu-item:hover {
-            background-color: var(--bg-secondary);
-            color: var(--accent-color);
-        }
-
-        .user-menu-item i {
-            margin-right: 0.5rem;
-            width: 16px;
-            text-align: center;
-        }
-
-        /* 主容器 - 内容居中布局 */
-        .main-container {
-            margin-top: 80px;
-            min-height: calc(100vh - 80px);
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 2rem;
-        }
-
-        .content {
-            width: 100%;
-            max-width: 1200px;
-        }
-
-        /* 移动端菜单按钮 */
         .mobile-menu-toggle {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
+            display: block;
         }
-
-        @media (max-width: 768px) {
-            .navbar-nav {
-                display: none;
-            }
-            .mobile-menu-toggle {
-                display: block;
-            }
-            .main-container {
-                padding: 1rem;
-            }
+        .main-container {
+            padding: 1rem;
         }
+    }
+{% endblock %}
 
-        /* 加载动画 */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: var(--bg-primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 1;
-            transition: opacity 0.5s ease;
-        }
-
-        .loading-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--accent-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* 状态标签 */
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .status-active {
-            background-color: #C6F6D5;
-            color: #22543D;
-        }
-
-        .status-inactive {
-            background-color: #FED7D7;
-            color: #742A2A;
-        }
-
-        .status-pending {
-            background-color: #FEEBC8;
-            color: #744210;
-        }
-
-        .status-processing {
-            background-color: #E9D8FD;
-            color: #553C9A;
-        }
-    </style>
-</head>
-<body>
-    <!-- 加载遮罩 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <!-- 顶部导航栏 -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'main' %}">
-                <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
-                Overlord
-            </a>
-
-            <div class="navbar-nav">
-                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}" href="{% url 'management' %}">管理</a>
-                <a class="nav-link {% if active_nav == 'amazon' %}active{% endif %}" href="{% url 'amazon_dashboard' %}">Amazon</a>
-                <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
-            </div>
-
-            <div class="user-area">
-                <button class="theme-toggle" id="themeToggle" title="切换主题">
-                    <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
-                </button>
-
-                <!-- 用户菜单 -->
-                <div class="user-menu">
-                    <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
-                        <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
-                        <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
-                        <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
-                    </div>
-
-                    <div class="user-menu-dropdown" id="userMenuDropdown">
-                        <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
-                            <i class="fas fa-cog"></i> 设置
-                        </a>
-                        <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
-                        <a href="{% url 'logout' %}" class="user-menu-item" onclick="return confirmLogout()">
-                            <i class="fas fa-sign-out-alt"></i> 退出登录
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
+{% block main_container %}
     <!-- 主容器 -->
     <div class="main-container">
         <div class="content">
             {% block page_content %}{% endblock %}
         </div>
     </div>
+{% endblock %}
 
-    <!-- 通知容器 -->
-    <div id="notificationContainer"></div>
-
-    <script>
-        // 主题切换功能
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            const html = document.documentElement;
-            const themeIcon = document.getElementById('themeIcon');
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-
-            // 发送主题更新请求到后端
-            fetch('/api/update-theme/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ theme: newTheme })
+{% block layout_js %}
+    // 页面加载动画
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.anime) {
+            // 导航栏动画
+            anime({
+                targets: '.navbar',
+                translateY: [-80, 0],
+                opacity: [0, 1],
+                duration: 600,
+                easing: 'easeOutQuart'
             });
 
-            // 动画效果
-            if (window.anime) {
-                anime({
-                    targets: themeIcon,
-                    rotate: '360deg',
-                    duration: 500,
-                    easing: 'easeInOutQuart',
-                    complete: function() {
-                        themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                        anime({
-                            targets: themeIcon,
-                            rotate: '0deg',
-                            duration: 0
-                        });
-                    }
-                });
+            // 内容区域动画
+            anime({
+                targets: '.content',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: 200,
+                easing: 'easeOutQuart'
+            });
+        }
+
+        // 隐藏加载遮罩
+        setTimeout(() => {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
             }
-        });
-
-        // 获取CSRF Token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-
-        // 显示通知
-        function showNotification(message, type = 'info', duration = 3000) {
-            const container = document.getElementById('notificationContainer');
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: var(--bg-primary);
-                color: var(--text-primary);
-                padding: 1rem 1.5rem;
-                border-radius: 8px;
-                box-shadow: var(--shadow-heavy);
-                border-left: 4px solid var(--accent-color);
-                z-index: 10000;
-                transform: translateX(100%);
-                transition: transform 0.3s ease;
-                max-width: 400px;
-            `;
-
-            const icons = {
-                success: 'fa-check-circle',
-                error: 'fa-exclamation-circle',
-                warning: 'fa-exclamation-triangle',
-                info: 'fa-info-circle'
-            };
-
-            notification.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <i class="fas ${icons[type]}" style="color: var(--accent-color);"></i>
-                    <span>${message}</span>
-                    <button onclick="this.parentElement.parentElement.remove()" style="
-                        background: none;
-                        border: none;
-                        color: var(--text-secondary);
-                        cursor: pointer;
-                        margin-left: auto;
-                    ">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-
-            container.appendChild(notification);
-
-            setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 10);
-
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.remove();
-                    }
-                }, 300);
-            }, duration);
-        }
-
-        // 显示即将推出提示
-        function showComingSoon() {
-            showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
-        }
-
-        // 切换用户菜单显示/隐藏
-        function toggleUserMenu() {
-            const dropdown = document.getElementById('userMenuDropdown');
-            dropdown.classList.toggle('show');
-        }
-
-        // 点击页面其他地方关闭菜单
-        document.addEventListener('click', function(e) {
-            const userMenu = document.querySelector('.user-menu');
-            if (!userMenu.contains(e.target)) {
-                document.getElementById('userMenuDropdown').classList.remove('show');
-            }
-        });
-
-        // 退出登录确认
-        function confirmLogout() {
-            return confirm('确定要退出登录吗？');
-        }
-
-        // 页面加载动画
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.anime) {
-                // 导航栏动画
-                anime({
-                    targets: '.navbar',
-                    translateY: [-80, 0],
-                    opacity: [0, 1],
-                    duration: 600,
-                    easing: 'easeOutQuart'
-                });
-
-                // 内容区域动画
-                anime({
-                    targets: '.content',
-                    translateY: [30, 0],
-                    opacity: [0, 1],
-                    duration: 800,
-                    delay: 200,
-                    easing: 'easeOutQuart'
-                });
-            }
-
-            // 隐藏加载遮罩
-            setTimeout(() => {
-                const loadingOverlay = document.getElementById('loadingOverlay');
-                if (loadingOverlay) {
-                    loadingOverlay.classList.add('hidden');
-                }
-            }, 500);
-        });
-    </script>
-
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+        }, 500);
+    });
+{% endblock %}

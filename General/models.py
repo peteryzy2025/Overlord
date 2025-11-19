@@ -31,7 +31,8 @@ class User(AbstractUser):
     role = models.CharField('角色', max_length=100, blank=True, null=True)
     company_name = models.CharField('公司名称', max_length=100, blank=True, null=True)
     platform = models.CharField('平台', max_length=255, blank=True, null=True)
-    ops_group = models.CharField('分组', max_length=255, blank=True, null=True)
+    # ops_group = models.CharField('分组-弃用', max_length=255, blank=True, null=True)
+    permission = models.CharField("权限", max_length=255, blank=True, null=True)
     wx_url = models.CharField('企业微信消息通知url', max_length=500, blank=True, null=True)
 
     # ========== 关键修复：显式定义groups和user_permissions以避免冲突 ==========

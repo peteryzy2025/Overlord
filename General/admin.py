@@ -22,6 +22,10 @@ class OperationalAccountInline(admin.StackedInline):
     }
 
     fieldsets = (
+        ('通用信息', {  # ✅ 新增：放置 ops_group 字段
+            'fields': ('ops_group',),
+            'classes': ('collapse',)
+        }),
         ('闪电云账号', {
             'fields': ('shandianyun_account', 'shandianyun_username', 'shandianyun_password'),
             'classes': ('collapse',)  # 可折叠
@@ -72,20 +76,12 @@ class UserAdmin(BaseUserAdmin):
         'is_staff', 'is_superuser', 'date_joined'
     )
 
-    # 隐藏原始的status字段，只显示彩色版本
-    def get_queryset(self, request):
-        return super().get_queryset(request)
-
     # 让status列可编辑
     list_editable = ('status', 'department', 'role')
 
-    # 隐藏status列的表头文字（可选）
-    def get_list_display(self, request):
-        return self.list_display
-
     list_filter = (
         'status', 'is_staff', 'is_superuser', 'department',
-        'role', 'platform', 'ops_group', 'date_joined'
+        'role', 'platform', 'date_joined'  # ✅ 移除：'ops_group'
     )
 
     search_fields = (
@@ -121,7 +117,7 @@ class UserAdmin(BaseUserAdmin):
         (_('个人信息'), {
             'fields': (
                 'first_name', 'phone', 'email', 'department',
-                'role', 'company_name', 'platform', 'ops_group'
+                'role', 'company_name', 'platform'  # ✅ 移除：'ops_group'
             )
         }),
         (_('状态信息'), {'fields': ('status',)}),
@@ -165,7 +161,7 @@ class UserAdmin(BaseUserAdmin):
 @admin.register(OperationalAccount)
 class OperationalAccountAdmin(admin.ModelAdmin):
     list_display = (
-        'user', 'shandianyun_account', 'lingxing_username',
+        'user', 'ops_group', 'shandianyun_account', 'lingxing_username',  # ✅ 新增：'ops_group'
         'ziniao_company', 'diwei_account'
     )
 
@@ -174,7 +170,7 @@ class OperationalAccountAdmin(admin.ModelAdmin):
         'shandianyun_account', 'lingxing_username', 'ziniao_username'
     )
 
-    list_filter = ('ziniao_company',)
+    list_filter = ('ziniao_company', 'ops_group',)  # ✅ 新增：'ops_group' 过滤
 
     # 使用原始ID字段，避免用户下拉列表过长
     raw_id_fields = ('user',)
@@ -185,7 +181,7 @@ class OperationalAccountAdmin(admin.ModelAdmin):
     }
 
     fieldsets = (
-        ('用户信息', {'fields': ('user',)}),
+        ('用户信息', {'fields': ('user', 'ops_group')}),  # ✅ 新增：'ops_group'
         ('闪电云账号', {
             'fields': ('shandianyun_account', 'shandianyun_username', 'shandianyun_password'),
             'classes': ('collapse',)

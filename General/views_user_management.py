@@ -33,8 +33,6 @@ def temu_management_view(request):
 
 
 # 修改 get_users_api 函数，支持分页参数
-@require_GET
-@login_required
 def get_users_api(request):
     """
     API接口：获取用户列表及关联的运营账号信息（支持分页和筛选）
@@ -61,7 +59,7 @@ def get_users_api(request):
         department_filter = request.GET.get('department', '').strip()
         search_filter = request.GET.get('search', '').strip()
 
-        # 构建基础查询集
+        # 构建基础查询集（使用 select_related 预加载关联数据）
         queryset = User.objects.select_related('operational_account').all()
 
         # 应用筛选条件
@@ -98,12 +96,15 @@ def get_users_api(request):
 
         users_data = []
         for user in users:
-            # 状态映射...
+            # 状态映射
             status_map = {
                 User.STATUS_NORMAL: 'active',
                 User.STATUS_DISABLED: 'inactive',
                 User.STATUS_CANCELLED: 'cancelled'
             }
+
+            # ✅ 关键修改：安全获取关联的运营账号对象
+            account = getattr(user, 'operational_account', None)
 
             user_dict = {
                 'id': user.id,
@@ -115,29 +116,26 @@ def get_users_api(request):
                 'status': status_map.get(user.status, 'inactive'),
                 'company_name': user.company_name or '-',
                 'platform': user.platform or '-',
-                'ops_group': user.ops_group or '-',
+                # ✅ 关键修改：从 operational_account 获取 ops_group
+                'ops_group': account.ops_group or '-' if account else '-',
                 'createdAt': user.date_joined.strftime('%Y-%m-%d') if user.date_joined else '-',
             }
 
-            # 关联的运营账号信息...
-            try:
-                account = user.operational_account
-                if account:
-                    user_dict['operational_account'] = {
-                        'shandianyun_account': account.shandianyun_account or '-',
-                        'shandianyun_username': account.shandianyun_username or '-',
-                        'shandianyun_password': account.shandianyun_password or '-',
-                        'lingxing_username': account.lingxing_username or '-',
-                        'lingxing_password': account.lingxing_password or '-',
-                        'ziniao_company': account.ziniao_company or '-',
-                        'ziniao_username': account.ziniao_username or '-',
-                        'ziniao_password': account.ziniao_password or '-',
-                        'diwei_account': account.diwei_account or '-',
-                        'diwei_password': account.diwei_password or '-',
-                    }
-                else:
-                    user_dict['operational_account'] = {}
-            except OperationalAccount.DoesNotExist:
+            # ✅ 优化：复用 account 变量，避免重复查询
+            if account:
+                user_dict['operational_account'] = {
+                    'shandianyun_account': account.shandianyun_account or '-',
+                    'shandianyun_username': account.shandianyun_username or '-',
+                    'shandianyun_password': account.shandianyun_password or '-',
+                    'lingxing_username': account.lingxing_username or '-',
+                    'lingxing_password': account.lingxing_password or '-',
+                    'ziniao_company': account.ziniao_company or '-',
+                    'ziniao_username': account.ziniao_username or '-',
+                    'ziniao_password': account.ziniao_password or '-',
+                    'diwei_account': account.diwei_account or '-',
+                    'diwei_password': account.diwei_password or '-',
+                }
+            else:
                 user_dict['operational_account'] = {}
 
             users_data.append(user_dict)
