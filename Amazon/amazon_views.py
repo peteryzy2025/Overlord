@@ -1053,3 +1053,5 @@ def assemble_response_data(filter_type, filter_value, current_start, current_end
     print(f"{'=' * 60}\n")
 
     return JsonResponse(response_data)
+
+

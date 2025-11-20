@@ -343,6 +343,7 @@
             <div class="navbar-nav">
                 <a class="nav-link {% if active_nav == 'management' %}active{% endif %}" href="{% url 'management' %}">管理</a>
                 <a class="nav-link {% if active_nav == 'amazon' %}active{% endif %}" href="{% url 'amazon_dashboard' %}">Amazon</a>
+                <a class="nav-link {% if active_nav == 'amazon_orders' %}active{% endif %}" href="{% url 'amazon_order_management' %}">订单管理</a>
                 <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
             </div>
 
