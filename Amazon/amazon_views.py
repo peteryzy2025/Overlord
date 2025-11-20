@@ -17,6 +17,110 @@ from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 from Api.divi.divi_order_service import query_divi_order
 
 
+def parse_permissions(user_permission):
+    """
+    统一权限解析函数
+    处理多种格式的权限数据：
+    - 字符串："ops,555,k1,k2" → ["ops", "555", "k1", "k2"]
+    - 列表：["ops", "k1"] → 保持不变
+    - 其他：返回空列表
+    """
+    if not user_permission:
+        return []
+
+    # 如果是字符串，按逗号分割并去除空白
+    if isinstance(user_permission, str):
+        return [perm.strip() for perm in user_permission.split(',') if perm.strip()]
+
+    # 如果是列表，直接返回
+    if isinstance(user_permission, list):
+        return user_permission
+
+    # 其他情况返回空列表
+    return []
+
+
+def determine_filter_type_and_value(request, data, permissions):
+    """
+    统一权限控制逻辑
+    返回: (filter_type, filter_value)
+    """
+    user = request.user
+
+    # 权限1: ops_all - 信任并使用前端传递的筛选参数
+    if 'ops_all' in permissions:
+        print("✅ 权限校验通过: ops_all，使用前端传递的筛选参数")
+        ops_id_raw = data.get('operator_id') or data.get('ops_id')
+        ops_group_raw = data.get('group') or data.get('ops_group')
+
+        if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+            return 'ops_group', ops_group_raw.strip()
+        elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+            return 'ops_id', int(ops_id_raw)
+        else:
+            return 'all', None
+
+    # 权限2: ops_group - 可查询自己分组，支持组内筛选具体人员
+    elif 'ops_group' in permissions:
+        print("✅ 权限校验通过: ops_group")
+        try:
+            ops_account = user.operational_account
+            user_group = ops_account.ops_group if ops_account else None
+
+            if not user_group:
+                print("⚠️ 用户未配置运营分组，返回空数据")
+                return 'none', None
+
+            ops_id_raw = data.get('operator_id') or data.get('ops_id')
+            ops_group_raw = data.get('group') or data.get('ops_group')
+
+            # 情况1：组内筛选具体人员（带权限验证）
+            if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                try:
+                    target_user_id = int(ops_id_raw)
+                    # 验证目标用户是否在用户所在分组内
+                    target_user = User.objects.filter(
+                        id=target_user_id,
+                        operational_account__ops_group=user_group
+                    ).first()
+
+                    if target_user:
+                        print(f"  组内筛选具体人员: {target_user.first_name} (ID: {target_user_id})")
+                        return 'ops_id', target_user_id
+                    else:
+                        print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组成员 {target_user_id}")
+                        return 'none', None
+                except (ValueError, TypeError):
+                    return 'none', None
+
+            # 情况2：筛选具体分组（验证是否是自己的组）
+            elif ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                if ops_group_raw.strip() == user_group:
+                    print(f"  筛选自己分组: {user_group}")
+                    return 'ops_group', user_group
+                else:
+                    print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组 '{ops_group_raw}'")
+                    return 'none', None
+
+            # 情况3：默认查询全组
+            else:
+                print(f"  默认查询全组: {user_group}")
+                return 'ops_group', user_group
+
+        except Exception as e:
+            print(f"  获取用户信息异常: {e}")
+            return 'none', None
+
+    # 权限3: ops - 强制查询自己
+    elif 'ops' in permissions:
+        print("✅ 权限校验通过: ops，强制查询自己")
+        return 'ops_id', user.id
+
+    # 无权限
+    else:
+        print("❌ 权限校验失败: 用户无任何运营权限，返回空数据")
+        return 'none', None
+
 @login_required(login_url='/login/')
 def amazon_dashboard_page(request):
     """Amazon驾驶舱页面渲染"""
@@ -291,71 +395,14 @@ def filter_amazon_data_api(request):
         # 解析请求数据
         data = json.loads(request.body)
         user = request.user
-        permissions = getattr(user, 'permission', []) or []
-        if isinstance(permissions, str):
-            permissions = [permissions]
+        permissions = parse_permissions(getattr(user, 'permission', []))
 
         print(f"\n{'=' * 60}")
         print(f"用户 {user.username} 的权限: {permissions}")
         print(f"接收到的原始参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
 
         # ============= 权限控制核心逻辑 =============
-        filter_type = None
-        filter_value = None
-
-        # 权限1: ops_all - 信任并使用前端传递的筛选参数
-        if 'ops_all' in permissions:
-            print("✅ 权限校验通过: ops_all，使用前端传递的筛选参数")
-
-            # 解析前端传递的筛选参数
-            ops_id_raw = data.get('operator_id') or data.get('ops_id')
-            ops_group_raw = data.get('group') or data.get('ops_group')
-
-            # 优先级：先判断分组，再判断人员
-            # 关键修复：同时检查 'all' 和 '全部分组' 这两个特殊值
-            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
-                # 优先使用分组筛选（优先级更高）
-                filter_type = 'ops_group'
-                filter_value = ops_group_raw.strip()
-            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
-                # 其次使用人员筛选
-                filter_type = 'ops_id'
-                filter_value = int(ops_id_raw)
-            else:
-                # 前端选择了"全部"选项
-                filter_type = 'all'
-                filter_value = None
-
-        # 权限2: ops_group - 强制查询自己分组，忽略前端无效参数
-        elif 'ops_group' in permissions:
-            print("✅ 权限校验通过: ops_group，强制查询自己分组")
-
-            # 获取当前用户的分组
-            try:
-                ops_account = user.operational_account
-                user_group = ops_account.ops_group if ops_account else None
-
-                if user_group:
-                    filter_type = 'ops_group'
-                    filter_value = user_group
-                else:
-                    print("⚠️ 用户未配置运营分组，返回空数据")
-                    filter_type = 'none'
-            except:
-                print("⚠️ 用户未配置运营分组，返回空数据")
-                filter_type = 'none'
-
-        # 权限3: ops - 强制查询自己，忽略前端任何参数
-        elif 'ops' in permissions:
-            print("✅ 权限校验通过: ops，强制查询自己")
-            filter_type = 'ops_id'
-            filter_value = user.id
-
-        # 无权限: 直接返回空数据
-        else:
-            print("❌ 权限校验失败: 用户无任何运营权限，返回空数据")
-            filter_type = 'none'
-
+        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
         print(f"最终确定的筛选条件: filter_type={filter_type}, filter_value={filter_value}")
         print(f"{'=' * 60}\n")
         # ============= 权限控制结束 =============
@@ -462,51 +509,14 @@ def get_amazon_orders_list_api(request):
         # 解析请求数据
         data = json.loads(request.body)
         user = request.user
-        permissions = getattr(user, 'permission', []) or []
-        if isinstance(permissions, str):
-            permissions = [permissions]
+        permissions = parse_permissions(getattr(user, 'permission', []))
 
         print(f"\n{'=' * 60}")
         print(f"📋 订单列表API - 用户 {user.username} 的权限: {permissions}")
         print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
 
-        # ============= 权限控制核心逻辑（复用） =============
-        filter_type = None
-        filter_value = None
-
-        if 'ops_all' in permissions:
-            print("✅ 权限校验通过: ops_all")
-            ops_id_raw = data.get('operator_id') or data.get('ops_id')
-            ops_group_raw = data.get('group') or data.get('ops_group')
-
-            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
-                filter_type = 'ops_group'
-                filter_value = ops_group_raw.strip()
-            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
-                filter_type = 'ops_id'
-                filter_value = int(ops_id_raw)
-            else:
-                filter_type = 'all'
-        elif 'ops_group' in permissions:
-            print("✅ 权限校验通过: ops_group")
-            try:
-                ops_account = user.operational_account
-                user_group = ops_account.ops_group if ops_account else None
-                if user_group:
-                    filter_type = 'ops_group'
-                    filter_value = user_group
-                else:
-                    filter_type = 'none'
-            except:
-                filter_type = 'none'
-        elif 'ops' in permissions:
-            print("✅ 权限校验通过: ops")
-            filter_type = 'ops_id'
-            filter_value = user.id
-        else:
-            print("❌ 权限校验失败: 无权限")
-            filter_type = 'none'
-
+        # ============= 权限控制核心逻辑（使用统一函数） =============
+        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
         print(f"最终筛选条件: filter_type={filter_type}, filter_value={filter_value}")
         # ============= 权限控制结束 =============
 
@@ -700,47 +710,14 @@ def update_divi_export_status_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = getattr(user, 'permission', []) or []
-        if isinstance(permissions, str):
-            permissions = [permissions]
+        permissions = parse_permissions(getattr(user, 'permission', []))
 
         print(f"\n{'=' * 60}")
         print(f"🔄 更新DIVI状态API - 用户 {user.username} 的权限: {permissions}")
         print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
 
-        # ============= 权限控制核心逻辑（复用） =============
-        filter_type = None
-        filter_value = None
-
-        if 'ops_all' in permissions:
-            ops_id_raw = data.get('operator_id')
-            ops_group_raw = data.get('group')
-
-            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
-                filter_type = 'ops_group'
-                filter_value = ops_group_raw.strip()
-            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
-                filter_type = 'ops_id'
-                filter_value = int(ops_id_raw)
-            else:
-                filter_type = 'all'
-        elif 'ops_group' in permissions:
-            try:
-                ops_account = user.operational_account
-                user_group = ops_account.ops_group if ops_account else None
-                if user_group:
-                    filter_type = 'ops_group'
-                    filter_value = user_group
-                else:
-                    filter_type = 'none'
-            except:
-                filter_type = 'none'
-        elif 'ops' in permissions:
-            filter_type = 'ops_id'
-            filter_value = user.id
-        else:
-            filter_type = 'none'
-
+        # ============= 权限控制核心逻辑（使用统一函数） =============
+        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
         print(f"最终筛选条件: filter_type={filter_type}, filter_value={filter_value}")
         # ============= 权限控制结束 =============
 
@@ -963,6 +940,7 @@ def update_divi_export_status_api(request):
             'message': f'服务器错误: {str(e)}'
         }, status=500)
 
+
 def assemble_and_print_response(current_stats, previous_stats, comparison, trend_data,
                                 filter_type, filter_value, current_start, current_end,
                                 previous_start, previous_end, shop_count, lingxing_shop_count):
@@ -1053,5 +1031,3 @@ def assemble_response_data(filter_type, filter_value, current_start, current_end
     print(f"{'=' * 60}\n")
 
     return JsonResponse(response_data)
-
-
