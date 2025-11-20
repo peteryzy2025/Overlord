@@ -38,12 +38,13 @@ async def get_lingxing_orders(sid_list: List[int], days: int = 3) -> List[Dict]:
     print(f"总共 {len(sid_list)} 个 sid，分成 {len(grouped_sids)} 组（每组最多 20 个）")
 
     all_orders: List[Dict] = []
-
+    current_time = datetime.today()# + timedelta(days=1)
+    thirty_days_ago_time = current_time - timedelta(days=1)
     for idx, group in enumerate(grouped_sids, start=1):
         req_body = {
             "sid_list": group,
             "date_type": 1,  # 订购时间
-            # "order_status": ["Pending", "Unshipped", "PartiallyShipped", "Shipped", "Canceled"],
+            "order_status": ["Pending", "Unshipped", "PartiallyShipped", "Shipped", "Canceled"],
             "start_date": start_time.strftime("%Y-%m-%d %H:%M:%S"),
             "end_date": current_time.strftime("%Y-%m-%d %H:%M:%S"),
             "length": 5000,

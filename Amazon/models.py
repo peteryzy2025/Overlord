@@ -125,7 +125,13 @@ class AmazonOrders(models.Model):
     """
     亚马逊订单主表
     """
-    amazon_order_id = models.CharField(max_length=50, primary_key=True, db_comment='亚马逊订单ID')
+    # 修改：使用自增主键，避免不同店铺订单号重复问题
+    id = models.BigAutoField(primary_key=True, db_comment='自增主键')
+    amazon_order_id = models.CharField(
+        max_length=50,
+        db_index=True,
+        db_comment='亚马逊订单ID'
+    )
 
     # 绑定到 LingXingAmazonShop（反向可查订单）
     lingxing_shop = models.ForeignKey(
@@ -180,11 +186,14 @@ class AmazonOrders(models.Model):
     shipment_date_utc = models.DateTimeField(blank=True, null=True)
     last_update_date_local = models.DateTimeField(blank=True, null=True)
     last_update_date_utc = models.DateTimeField(blank=True, null=True)
-
     gmt_modified = models.DateTimeField(blank=True, null=True)
     gmt_modified_utc = models.DateTimeField(blank=True, null=True)
-
     hide_time = models.DateTimeField(blank=True, null=True)
+    is_exported_to_divi = models.BooleanField(
+        default=False,
+        verbose_name='是否已导出DIVI',
+        help_text='勾选表示该订单已同步至DIVI系统'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
@@ -193,8 +202,17 @@ class AmazonOrders(models.Model):
         db_table = 'amazon_orders'
         db_table_comment = '亚马逊订单主表'
 
+        # 关键：使用店铺+订单号作为唯一约束
+        constraints = [
+            models.UniqueConstraint(
+                fields=['lingxing_shop', 'amazon_order_id'],
+                name='uniq_lingxing_shop_order_id'
+            )
+        ]
+
     def __str__(self):
-        return f"{self.amazon_order_id} ({self.order_status})"
+        shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
+        return f"{shop_name} - {self.amazon_order_id} ({self.order_status})"
 
 
 class AmazonOrderItem(models.Model):

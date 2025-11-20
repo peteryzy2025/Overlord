@@ -5,7 +5,6 @@
 
 {% block extra_css %}
     <style>
-        /* 页面专属样式 - 直接内联以避免冲突 */
         :root {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
             --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -22,7 +21,6 @@
             margin: 20px;
         }
 
-        /* 页面标题 */
         .page-header {
             margin-bottom: 2rem;
             display: flex;
@@ -41,7 +39,6 @@
             margin-top: 0.5rem;
         }
 
-        /* 筛选控制面板 */
         .control-panel {
             background-color: var(--bg-primary);
             border-radius: 12px;
@@ -49,6 +46,28 @@
             margin-bottom: 2rem;
             box-shadow: var(--shadow-light);
             border: 1px solid var(--border-color);
+        }
+
+        .btn-divi {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-divi:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-divi:disabled {
+            cursor: not-allowed;
+            background-color: var(--bg-tertiary);
+            opacity: 0.5;
+        }
+
+        .btn-divi:disabled i {
+            color: var(--text-secondary) !important;
         }
 
         .filter-row {
@@ -78,6 +97,18 @@
             border-radius: 8px;
             padding: 0.5rem 0.75rem;
             transition: all 0.3s ease;
+            width: 100%;
+
+            /* 重要：隐藏原生下拉箭头，只保留自定义的 */
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: none;
+        }
+
+        /* 兼容旧版 IE / Edge 的原生箭头 */
+        .form-select::-ms-expand {
+            display: none;
         }
 
         .form-control:focus, .form-select:focus {
@@ -111,7 +142,69 @@
             background-color: var(--border-color);
         }
 
-        /* 数据概览卡片 */
+        /* 智能选择框容器 */
+        .select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        /* select内边距为图标留空间 */
+        #groupFilter, #operatorFilter {
+            padding-right: 40px;
+            width: 100%;
+        }
+
+        /* 两个图标绝对定位（重叠但透明度切换） */
+        .select-arrow, .btn-clear-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.3s ease;
+        }
+
+        /* 下拉箭头（默认显示） */
+        .select-arrow {
+            color: var(--text-secondary);
+            pointer-events: none;
+            font-size: 0.875rem;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* 清除按钮（默认隐藏） */
+        .btn-clear-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.875rem;
+            opacity: 0;
+            visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-clear-toggle:hover {
+            color: var(--text-primary);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        /* 有值时显示清除按钮，隐藏箭头 */
+        .select-wrapper.has-value .select-arrow {
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        .select-wrapper.has-value .btn-clear-toggle {
+            opacity: 0.7 !important;
+            visibility: visible !important;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -127,8 +220,6 @@
             border: 1px solid var(--border-color);
             text-align: center;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
         }
 
         .stat-card:hover {
@@ -189,7 +280,6 @@
             color: #475569;
         }
 
-        /* 图表区域 */
         .charts-grid {
             display: grid;
             grid-template-columns: 2fr 1fr;
@@ -217,7 +307,6 @@
             height: 300px;
         }
 
-        /* 数据表格 */
         .data-section {
             background-color: var(--bg-primary);
             border-radius: 12px;
@@ -234,41 +323,28 @@
             margin-bottom: 1.5rem;
         }
 
+        /* 表格容器 - 支持固定表头 */
         .table-container {
             overflow-x: auto;
-            max-height: 400px;
+            max-height: 600px; /* 限制高度 */
             overflow-y: auto;
+            position: relative;
         }
 
-        .table-container table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-
-        .table-container thead {
+        /* 固定表头 */
+        .table thead th {
             position: sticky;
             top: 0;
             z-index: 10;
             background-color: var(--bg-secondary);
         }
 
-        .table-container thead th {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 11;
-        }
-
         .table {
             width: 100%;
             margin: 0;
             color: var(--text-primary);
+            border-collapse: separate;
+            border-spacing: 0;
         }
 
         .table th {
@@ -278,6 +354,9 @@
             border-bottom: 1px solid var(--border-color);
             padding: 1rem;
             white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 11;
         }
 
         .table td {
@@ -290,7 +369,6 @@
             background-color: var(--bg-secondary);
         }
 
-        /* 状态标签样式 */
         .status-badge {
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
@@ -319,38 +397,145 @@
             color: #553C9A;
         }
 
-        /* 清理按钮样式 */
-        .filter-group {
-            position: relative;
+        /* 分页控件样式 */
+        .pagination-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
         }
 
-        .btn-clear-filter {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
+        .page-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-size-selector label {
             color: var(--text-secondary);
-            cursor: pointer;
-            padding: 2px 4px;
             font-size: 0.875rem;
-            opacity: 0.7;
-            transition: all 0.3s ease;
-            z-index: 10;
         }
 
-        .btn-clear-filter:hover {
-            opacity: 1;
+        .page-size-selector select {
+            width: 80px;
+        }
+
+        .pagination-buttons {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin: 0 1rem;
+        }
+
+        .pagination-btn {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .pagination-btn.ellipsis {
+            background-color: transparent;
+            border: none;
+            cursor: default;
+            padding: 0.5rem 0.25rem;
+        }
+
+        .pagination-btn.ellipsis:hover {
+            background-color: transparent;
             color: var(--text-primary);
         }
 
-        /* 为select添加内边距，避免文字被按钮覆盖 */
-        #groupFilter, #operatorFilter {
-            padding-right: 28px;
+        /* 加载更多样式 */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
         }
 
-        /* 响应式设计 */
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .empty-state p {
+            margin: 0.5rem 0;
+        }
+
+        .empty-state p:last-child {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .spinner {
+            border: 3px solid var(--bg-secondary);
+            border-top: 3px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
         @media (max-width: 1200px) {
             .charts-grid {
                 grid-template-columns: 1fr;
@@ -370,10 +555,15 @@
             .stat-value {
                 font-size: 1.5rem;
             }
+
+            .pagination-controls {
+                flex-direction: column;
+                gap: 1rem;
+            }
         }
 
         @media (max-width: 768px) {
-            .main-container {
+            .amazon-main {
                 padding: 1rem;
             }
 
@@ -391,6 +581,11 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 1rem;
+            }
+
+            .pagination-buttons {
+                flex-wrap: wrap;
+                justify-content: center;
             }
         }
 
@@ -423,48 +618,6 @@
                 padding: 0.2rem 0.4rem;
             }
         }
-
-        /* 刷新按钮动画 */
-        @keyframes spin {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* 加载动画 */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-        }
-
-        .loading-content {
-            background: var(--bg-primary);
-            padding: 2rem;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: var(--shadow-heavy);
-        }
-
-        .spinner {
-            border: 3px solid var(--bg-secondary);
-            border-top: 3px solid var(--accent-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
     </style>
 {% endblock %}
 
@@ -477,7 +630,6 @@
     </div>
 
     <div class="amazon-main">
-        <!-- 页面标题 -->
         <div class="page-header">
             <div>
                 <h1 class="page-title">Amazon 驾驶舱</h1>
@@ -490,7 +642,6 @@
             </div>
         </div>
 
-        <!-- 筛选控制面板 -->
         <div class="control-panel">
             <div class="filter-row">
                 <div class="filter-group">
@@ -514,25 +665,24 @@
                     <input type="date" class="form-control" id="endDate">
                 </div>
 
-                <!-- 分组筛选（带清理按钮） -->
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <div style="position: relative;">
-                        <select class="form-select" id="groupFilter">
-                        </select>
-                        <button type="button" class="btn-clear-filter" onclick="clearFilter('group')" title="清除选择">
+                    <div class="select-wrapper" id="groupWrapper">
+                        <select class="form-select" id="groupFilter"></select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('group')"
+                                title="清除选择">
                             <i class="fas fa-times-circle"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- 人员筛选（带清理按钮） -->
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <div style="position: relative;">
-                        <select class="form-select" id="operatorFilter">
-                        </select>
-                        <button type="button" class="btn-clear-filter" onclick="clearFilter('operator')"
+                    <div class="select-wrapper" id="operatorWrapper">
+                        <select class="form-select" id="operatorFilter"></select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('operator')"
                                 title="清除选择">
                             <i class="fas fa-times-circle"></i>
                         </button>
@@ -548,86 +698,70 @@
             </div>
         </div>
 
-        <!-- 数据概览卡片 -->
         <div class="stats-grid">
-            <!-- 订单量 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-shopping-cart"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-shopping-cart"></i></div>
                 <div class="stat-value" id="orderCount">—</div>
                 <div class="stat-label">订单量</div>
                 <div class="stat-change" id="orderCountChange">—</div>
             </div>
 
-            <!-- 销量 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
                 <div class="stat-value" id="totalSalesQuantity">—</div>
                 <div class="stat-label">销量</div>
                 <div class="stat-change" id="totalSalesQuantityChange">—</div>
             </div>
 
-            <!-- 营业额 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-dollar-sign"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-dollar-sign"></i></div>
                 <div class="stat-value" id="totalRevenue">—</div>
                 <div class="stat-label">营业额</div>
                 <div class="stat-change" id="totalRevenueChange">—</div>
             </div>
 
-            <!-- 客单价 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-receipt"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-receipt"></i></div>
                 <div class="stat-value" id="avgOrderValue">—</div>
                 <div class="stat-label">客单价</div>
                 <div class="stat-change" id="avgOrderValueChange">—</div>
             </div>
 
-            <!-- FBA占比 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-warehouse"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-warehouse"></i></div>
                 <div class="stat-value" id="fbaPercentage">—</div>
                 <div class="stat-label">FBA占比</div>
                 <div class="stat-change" id="fbaPercentageChange">—</div>
             </div>
 
-            <!-- FBM占比 -->
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-user-shield"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-user-shield"></i></div>
                 <div class="stat-value" id="fbmPercentage">—</div>
                 <div class="stat-label">FBM占比</div>
                 <div class="stat-change" id="fbmPercentageChange">—</div>
             </div>
         </div>
 
-        <!-- 图表区域 -->
         <div class="charts-grid">
             <div class="chart-card">
                 <h3 class="chart-title">销量趋势</h3>
                 <div id="ordersChart" class="chart-container"></div>
             </div>
-
             <div class="chart-card">
                 <h3 class="chart-title">运营人员业绩</h3>
                 <div id="operatorChart" class="chart-container"></div>
             </div>
         </div>
 
-        <!-- 详细数据表格 -->
         <div class="data-section">
-            <h3 class="section-title">订单详情</h3>
-            <div class="table-container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title">订单详情</h3>
+                <button class="btn" onclick="updateDiviExportStatus()">
+                    <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
+                </button>
+            </div>
+
+            <div class="table-container" id="ordersTableContainer">
                 <table class="table">
                     <thead>
                     <tr>
@@ -639,13 +773,41 @@
                         <th>商品数量</th>
                         <th>订单金额</th>
                         <th>下单时间</th>
+                        <th>DIVI导单情况</th>
                         <th>操作</th>
                     </tr>
                     </thead>
                     <tbody id="ordersTableBody">
-                    <!-- 动态加载的内容 -->
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"应用筛选"</p>
+                            <p>订单数据将在此处显示</p>
+                        </td>
+                    </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-controls" id="paginationControls" style="display: none;">
+                <div class="page-size-selector">
+                    <label for="pageSize">每页显示：</label>
+                    <select class="form-select" id="pageSize" onchange="changePageSize()">
+                        <option value="10">10条</option>
+                        <option value="20" selected>20条</option>
+                        <option value="50">50条</option>
+                        <option value="100">100条</option>
+                    </select>
+                </div>
+
+                <div class="pagination-buttons" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+
+                <div class="pagination-info" id="paginationInfo">
+                    <!-- 动态生成 -->
+                </div>
             </div>
         </div>
     </div>
@@ -661,74 +823,67 @@
             date_range: 'yesterday',
             start_date: '',
             end_date: '',
-            operator_id: '', // 初始为空，由权限决定
+            operator_id: '',
             group: ''
         };
+        let ordersPagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
 
-        // 显示/隐藏加载动画
         function showLoading(show = true) {
             const overlay = document.getElementById('loadingOverlay');
-            if (!overlay) {
-                console.error('ERROR: loadingOverlay element not found!');
-                return;
-            }
-            overlay.classList.remove('hidden');
             overlay.style.display = show ? 'flex' : 'none';
             overlay.style.visibility = show ? 'visible' : 'hidden';
             overlay.style.opacity = show ? '1' : '0';
-            console.log(`Loading overlay ${show ? 'shown' : 'hidden'}`);
         }
 
-        // 获取运营人员列表
         async function loadOperatorsFromAPI() {
             try {
                 const url = new URL('/api/operators/', window.location.origin);
                 url.searchParams.set('platform', '亚马逊');
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.success) {
                     allOperators = result.data;
                     populateOperatorDropdown();
                     return true;
-                } else {
-                    console.error('获取运营人员列表失败:', result.error);
-                    allOperators = [];
-                    return false;
                 }
+                return false;
             } catch (error) {
                 console.error('运营人员API请求错误:', error);
-                allOperators = [];
                 return false;
             }
         }
 
-        // 获取分组列表
         async function loadGroupsFromAPI() {
             try {
                 const response = await fetch('/api/ops-groups/');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const result = await response.json();
                 if (result.success) {
                     allGroups = result.data;
                     populateGroupDropdown();
                     return true;
-                } else {
-                    console.error('获取分组列表失败:', result.error);
-                    allGroups = [];
-                    return false;
                 }
+                return false;
             } catch (error) {
                 console.error('分组API请求错误:', error);
-                allGroups = [];
                 return false;
             }
         }
 
-        // 填充分组下拉框（已移除默认"全部分组"）
+        // 分组下拉框，增加一个真正的"空白选项"
         function populateGroupDropdown() {
             const groupSelect = document.getElementById('groupFilter');
-            groupSelect.innerHTML = ''; // 清空选项
+            groupSelect.innerHTML = '';
+
+            // 空白选项（用于清空时选中）
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = ''; // 保持真的空白，如果想显示"全部分组"可以写文字
+            groupSelect.appendChild(emptyOption);
 
             allGroups.forEach(group => {
                 const option = document.createElement('option');
@@ -737,42 +892,36 @@
                 groupSelect.appendChild(option);
             });
 
-            // 如果没有选项，添加一个提示
             if (allGroups.length === 0) {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = '无可用选项';
-                groupSelect.appendChild(option);
+                emptyOption.textContent = '无可用选项';
             }
         }
 
-        // 填充运营人员下拉框（已移除默认"全部人员"）
+        // 运营人员下拉框，同样增加"空白选项"
         function populateOperatorDropdown() {
             const operatorSelect = document.getElementById('operatorFilter');
-            operatorSelect.innerHTML = ''; // 清空选项
+            operatorSelect.innerHTML = '';
+
+            // 空白选项
+            const emptyOption = document.createElement('option');
+            emptyOption.value = '';
+            emptyOption.textContent = ''; // 需要的话可以写"全部人员"
+            operatorSelect.appendChild(emptyOption);
 
             allOperators.forEach(op => {
                 const option = document.createElement('option');
                 option.value = op.id;
-                // 特殊处理"全部人员"
-                if (op.id === 'all') {
-                    option.textContent = op.first_name; // 显示"全部人员"
-                } else {
-                    option.textContent = `${op.first_name} (${op.group})`;
-                }
+                option.textContent = op.id === 'all'
+                    ? op.first_name
+                    : `${op.first_name} (${op.group})`;
                 operatorSelect.appendChild(option);
             });
 
-            // 如果没有选项，添加一个提示
             if (allOperators.length === 0) {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = '无可用选项';
-                operatorSelect.appendChild(option);
+                emptyOption.textContent = '无可用选项';
             }
         }
 
-        // 处理日期范围变化
         function handleDateRangeChange() {
             const dateRange = document.getElementById('dateRange').value;
             const customDateGroup = document.getElementById('customDateGroup');
@@ -786,108 +935,114 @@
             }
         }
 
-        // 收集当前筛选参数
         function getCurrentFilters() {
-            const dateRange = document.getElementById('dateRange').value;
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
-            const operatorId = document.getElementById('operatorFilter').value;
-            const group = document.getElementById('groupFilter').value;
             return {
-                date_range: dateRange,
-                start_date: dateRange === 'custom' ? startDate : '',
-                end_date: dateRange === 'custom' ? endDate : '',
-                operator_id: operatorId,
-                group: group
+                date_range: document.getElementById('dateRange').value,
+                start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
+                end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
+                operator_id: document.getElementById('operatorFilter').value,
+                group: document.getElementById('groupFilter').value
             };
         }
 
-        // 统一的设置默认筛选项函数（与重置逻辑完全一致）
         function setDefaultFilters() {
-            const operatorSelect = document.getElementById('operatorFilter');
             const groupSelect = document.getElementById('groupFilter');
-            const dateRangeSelect = document.getElementById('dateRange');
+            const operatorSelect = document.getElementById('operatorFilter');
 
-            // 重置日期范围为昨日
-            dateRangeSelect.value = 'yesterday';
-            handleDateRangeChange(); // 隐藏自定义日期
+            document.getElementById('dateRange').value = 'yesterday';
+            handleDateRangeChange();
 
-            // 设置分组默认值（优先级更高）
+            // 默认依然可以选"全部分组"/"all"，如果存在的话
             if (groupSelect.options.length > 0) {
-                // 优先选择 text 为 '全部分组' 的选项
-                const allGroupOption = Array.from(groupSelect.options).find(opt => opt.textContent === '全部分组');
-                groupSelect.value = allGroupOption ? '全部分组' : groupSelect.options[0].value;
+                const allGroup = Array.from(groupSelect.options).find(opt => opt.textContent === '全部分组');
+                groupSelect.value = allGroup ? allGroup.value : groupSelect.options[0].value;
             }
 
-            // 设置运营人员默认值
             if (operatorSelect.options.length > 0) {
-                // 优先选择 value 为 'all' 的选项
-                const allOperatorOption = Array.from(operatorSelect.options).find(opt => opt.value === 'all');
-                operatorSelect.value = allOperatorOption ? 'all' : operatorSelect.options[0].value;
+                const allOp = Array.from(operatorSelect.options).find(opt => opt.value === 'all');
+                operatorSelect.value = allOp ? 'all' : operatorSelect.options[0].value;
             }
 
-            // 清空自定义日期
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
         }
 
-        // 页面加载完成后的初始化（优化：先加载选项 → 设置值 → 加载数据）
-        document.addEventListener('DOMContentLoaded', async function () {
-            console.log('页面加载开始...');
-            showLoading(true);
-            try {
-                // 1. 只加载下拉框数据
-                console.log('开始加载下拉框数据...');
-                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
-                console.log('下拉框数据加载完成');
+        function initializeSmartClearButtons() {
+            document.getElementById('groupFilter').addEventListener('change', () => toggleClearIcon('group'));
+            document.getElementById('operatorFilter').addEventListener('change', () => toggleClearIcon('operator'));
+            toggleClearIcon('group');
+            toggleClearIcon('operator');
+        }
 
-                // 2. 设置默认值（与重置逻辑完全一致）
-                setDefaultFilters();
+        function toggleClearIcon(filterType) {
+            const select = document.getElementById(filterType + 'Filter');
+            const wrapper = document.getElementById(filterType + 'Wrapper');
+            const currentValue = select.value;
+            const hasValidValue = currentValue &&
+                currentValue !== 'all' &&
+                currentValue !== '全部分组' &&
+                currentValue !== '全部人员';
 
-                // 3. 绑定事件监听器
-                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-
-                // 4. 最后加载数据（此时筛选条件已正确设置）
-                console.log('自动调用API获取初始数据...');
-                await applyFilters();
-
-                console.log('页面初始化完成');
-            } catch (error) {
-                console.error('初始化过程错误:', error);
-                if (typeof showNotification === 'function') {
-                    showNotification('初始化失败: ' + error.message, 'error');
-                }
-            } finally {
-                showLoading(false);
+            // 有有效值 -> 显示清空按钮，隐藏下拉箭头
+            if (hasValidValue) {
+                wrapper.classList.add('has-value');
+            } else {
+                wrapper.classList.remove('has-value');
             }
-        });
 
-        // 应用筛选并加载真实数据
+            console.log(`${filterType}筛选: ${hasValidValue ? '有值' : '空值'}`);
+        }
+
+        // 点击清空按钮：
+        // 1）把 select 的 value 设成 ''
+        // 2）触发 change，toggleClearIcon 会移除 has-value，只显示下拉箭头
+        // 3）重新 applyFilters
+        function clearAndToggle(filterType) {
+            const select = document.getElementById(filterType + 'Filter');
+            select.value = '';  // 对应我们刚刚加的空白 option
+            const event = new Event('change', {bubbles: true});
+            select.dispatchEvent(event);
+            applyFilters();
+        }
+
+        function resetFilters() {
+            document.getElementById('groupFilter').value = '';
+            document.getElementById('operatorFilter').value = '';
+            document.getElementById('groupFilter').dispatchEvent(new Event('change'));
+            document.getElementById('operatorFilter').dispatchEvent(new Event('change'));
+            document.getElementById('dateRange').value = 'yesterday';
+            handleDateRangeChange();
+
+            // 重置分页
+            ordersPagination.page = 1;
+            ordersPagination.page_size = 20;
+            document.getElementById('pageSize').value = 20;
+
+            applyFilters();
+        }
+
+        function refreshData(event) {
+            const icon = event.target.closest('button').querySelector('i');
+            icon.style.animation = 'spin 1s linear infinite';
+            applyFilters().finally(() => {
+                icon.style.animation = '';
+            });
+        }
+
         async function applyFilters() {
             showLoading(true);
             currentFilters = getCurrentFilters();
-            console.log('发送筛选参数:', currentFilters);
 
             try {
-                // 简单校验：如果权限不足，参数为空，给出提示
                 if (!currentFilters.operator_id && !currentFilters.group) {
-                    console.warn('无有效筛选条件，可能权限不足');
-                    if (typeof showNotification === 'function') {
-                        showNotification('无可用筛选条件，请检查权限', 'warning');
-                    }
-                    showLoading(false);
+                    showNotification && showNotification('无可用筛选条件，请检查权限', 'warning');
                     return;
                 }
 
-                // 获取CSRF Token
-                let csrfToken = '';
-                const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
-                if (csrfElement) csrfToken = csrfElement.value;
-                else {
-                    const match = document.cookie.match(/csrftoken=([^;]+)/);
-                    if (match) csrfToken = match[1];
-                }
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
+                // 调用统计数据API
                 const response = await fetch('/api/filter-amazon-data/', {
                     method: 'POST',
                     headers: {
@@ -897,67 +1052,47 @@
                     body: JSON.stringify(currentFilters)
                 });
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
                 const result = await response.json();
                 if (result.success) {
-                    console.log('API返回数据:', result.data);
                     updateStatsWithRealData(result.data);
                     updateChartsWithRealData(result.data);
-                    loadOrdersTable();
-                    if (typeof showNotification === 'function') {
-                        showNotification('数据已更新', 'success');
-                    }
+                    // 加载订单列表
+                    await loadOrdersTable();
+                    showNotification && showNotification('数据已更新', 'success');
                 } else {
-                    console.error('筛选失败:', result.error);
-                    if (typeof showNotification === 'function') {
-                        showNotification('筛选失败: ' + result.error, 'error');
-                    }
+                    showNotification && showNotification('筛选失败: ' + result.error, 'error');
                 }
             } catch (error) {
-                console.error('API请求错误:', error);
-                if (typeof showNotification === 'function') {
-                    showNotification('数据请求失败: ' + error.message, 'error');
-                }
+                showNotification && showNotification('数据请求失败: ' + error.message, 'error');
             } finally {
                 showLoading(false);
             }
         }
 
-        // 使用真实数据更新统计卡片
         function updateStatsWithRealData(data) {
+            const formatter = new Intl.NumberFormat('zh-CN');
             const current = data.current || {};
             const comparison = data.comparison || {};
 
-            // 数字格式化
-            const formatter = new Intl.NumberFormat('zh-CN');
-
-            // 订单量
             document.getElementById('orderCount').textContent = formatter.format(current.order_count || 0);
             updateChangeIndicator('orderCountChange', comparison.order_count_change);
 
-            // 销量
             document.getElementById('totalSalesQuantity').textContent = formatter.format(current.total_sales_quantity || 0);
             updateChangeIndicator('totalSalesQuantityChange', comparison.total_sales_quantity_change);
 
-            // 营业额
             document.getElementById('totalRevenue').textContent = '¥' + formatter.format(current.total_revenue || 0);
             updateChangeIndicator('totalRevenueChange', comparison.total_revenue_change);
 
-            // 客单价
             document.getElementById('avgOrderValue').textContent = '¥' + (current.avg_order_value || 0).toFixed(2);
             updateChangeIndicator('avgOrderValueChange', comparison.avg_order_value_change);
 
-            // FBA占比
             document.getElementById('fbaPercentage').textContent = current.fba_percentage || '0.0%';
             updateChangeIndicator('fbaPercentageChange', comparison.fba_percentage_change);
 
-            // FBM占比
             document.getElementById('fbmPercentage').textContent = current.fbm_percentage || '0.0%';
             updateChangeIndicator('fbmPercentageChange', comparison.fbm_percentage_change);
         }
 
-        // 更新变化指示器
         function updateChangeIndicator(elementId, changeValue) {
             const element = document.getElementById(elementId);
             if (!element) return;
@@ -970,13 +1105,10 @@
                 return;
             }
 
-            const isPositive = changeValue.startsWith('+');
-            const isNegative = changeValue.startsWith('-');
-
-            if (isPositive) {
+            if (changeValue.startsWith('+')) {
                 element.classList.add('positive');
                 element.textContent = `${changeValue} 环比`;
-            } else if (isNegative) {
+            } else if (changeValue.startsWith('-')) {
                 element.classList.add('negative');
                 element.textContent = `${changeValue} 环比`;
             } else {
@@ -985,7 +1117,6 @@
             }
         }
 
-        // 使用真实数据更新图表
         function updateChartsWithRealData(data) {
             if (!data.trend_data || data.trend_data.length === 0) {
                 console.warn('没有趋势数据');
@@ -995,7 +1126,6 @@
             initOperatorChartWithMockData();
         }
 
-        // 更新订单趋势图
         function updateOrdersChart(trendData) {
             const ordersChart = echarts.init(document.getElementById('ordersChart'));
             const dates = trendData.map(item => {
@@ -1004,25 +1134,27 @@
             });
             const sales = trendData.map(item => item.sales || 0);
 
+            const rootStyle = getComputedStyle(document.documentElement);
+
             const option = {
                 tooltip: {
                     trigger: 'axis',
-                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim(),
-                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
-                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                    backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
+                    borderColor: rootStyle.getPropertyValue('--border-color').trim(),
+                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
                 },
                 grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
                 xAxis: {
                     type: 'category',
                     data: dates,
-                    axisLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}},
-                    axisLabel: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim()}
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
                 },
                 yAxis: {
                     type: 'value',
-                    axisLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}},
-                    axisLabel: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim()},
-                    splitLine: {lineStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim()}}
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()},
+                    splitLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}}
                 },
                 series: [{
                     data: sales,
@@ -1045,20 +1177,21 @@
             ordersChart.setOption(option);
         }
 
-        // 运营人员业绩假数据
         function initOperatorChartWithMockData() {
             const operatorChart = echarts.init(document.getElementById('operatorChart'));
+            const rootStyle = getComputedStyle(document.documentElement);
+
             const option = {
                 tooltip: {
                     trigger: 'item',
-                    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim(),
-                    borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim(),
-                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                    backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
+                    borderColor: rootStyle.getPropertyValue('--border-color').trim(),
+                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
                 },
                 legend: {
                     orient: 'vertical',
                     left: 'left',
-                    textStyle: {color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()}
+                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
                 },
                 series: [{
                     type: 'pie',
@@ -1088,51 +1221,273 @@
             operatorChart.setOption(option);
         }
 
-        // 重置筛选项（复用统一逻辑）
-        function resetFilters() {
-            setDefaultFilters();
-            applyFilters();
-        }
-
-        // 刷新数据
-        function refreshData(event) {
-            const refreshBtn = event.target.closest('button');
-            const icon = refreshBtn.querySelector('i');
-            icon.style.animation = 'spin 1s linear infinite';
-            applyFilters().finally(() => {
-                icon.style.animation = '';
-            });
-        }
-
-        // 查看订单详情
-        function viewOrder(orderId) {
-            if (typeof showNotification === 'function') {
-                showNotification(`查看订单详情: ${orderId} - 功能开发中`, 'info', 3000);
-            }
-        }
-
-        // 编辑订单
-        function editOrder(orderId) {
-            if (typeof showNotification === 'function') {
-                showNotification(`编辑订单: ${orderId} - 功能开发中`, 'info', 3000);
-            }
-        }
-
-        // 加载订单表格
-        function loadOrdersTable() {
+        async function loadOrdersTable() {
             const tbody = document.getElementById('ordersTableBody');
-            tbody.innerHTML = `
+            const paginationControls = document.getElementById('paginationControls');
+
+            showLoading(true);
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const requestData = {
+                    ...currentFilters,
+                    page: ordersPagination.page,
+                    page_size: ordersPagination.page_size
+                };
+
+                const response = await fetch('/api/amazon-orders-list/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    ordersPagination.total = data.total;
+                    ordersPagination.total_pages = data.total_pages;
+
+                    // 渲染订单表格
+                    renderOrdersTable(data.orders);
+
+                    // 渲染分页控件
+                    renderPagination();
+
+                    // 显示分页控件
+                    if (data.total > 0) {
+                        paginationControls.style.display = 'flex';
+                    } else {
+                        paginationControls.style.display = 'none';
+                    }
+                } else {
+                    tbody.innerHTML = `
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>加载失败: ${result.message || '未知错误'}</p>
+                        </td>
+                    </tr>
+                `;
+                    paginationControls.style.display = 'none';
+                }
+            } catch (error) {
+                tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                        <i class="fas fa-info-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                        <p>订单详情列表功能开发中</p>
-                        <p style="font-size: 0.875rem; margin-top: 0.5rem;">当前仅展示统计数据</p>
+                    <td colspan="10" class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>数据请求失败</p>
+                        <p>${error.message}</p>
                     </td>
                 </tr>
             `;
+                paginationControls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
         }
 
-        // 响应式调整
+        function renderDiviExportStatus(isExported) {
+            return isExported ?
+                '<i class="fas fa-check-circle" style="color: #10B981; font-size: 1.2rem;"></i>' :
+                '<i class="fas fa-times-circle" style="color: #EF4444; font-size: 1.2rem;"></i>';
+        }
+
+        function renderOrdersTable(orders) {
+            const tbody = document.getElementById('ordersTableBody');
+
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>暂无订单数据</p>
+                        <p>请调整筛选条件后重试</p>
+                    </td>
+                </tr>
+            `;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(order => `
+            <tr>
+                <td>${order.amazon_order_id || '-'}</td>
+                <td>${order.shop_name || '-'}</td>
+                <td>${order.operator_name || '-'}</td>
+                <td>${order.group || '-'}</td>
+                <td>${renderStatusBadge(order.order_status)}</td>
+                <td>${order.quantity || 0}</td>
+                <td>¥${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
+                <td>${order.purchase_date_local || '-'}</td>
+                <td>${renderDiviExportStatus(order.is_exported_to_divi)}</td>
+               <td>
+    ${order.fulfillment_channel === 'AFN' ?
+                '<button class="btn btn-sm btn-divi" disabled title="FBA订单无需导单">' +
+                '<i class="fas fa-ban" style="color: #9CA3AF;"></i>' +
+                '</button>' :
+                `<button class="btn btn-sm btn-divi"
+                 onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
+                 title="${order.is_exported_to_divi ? '已导出到DIVI' : '点击导单到DIVI'}">
+            <i class="${order.is_exported_to_divi ? 'fas fa-check-circle' : 'fas fa-share-square'}"></i>
+        </button>`
+            }
+</td>
+            </tr>
+        `).join('');
+        }
+
+        function renderStatusBadge(status) {
+            if (!status) return '<span class="status-badge status-processing">未知</span>';
+
+            const statusMap = {
+                'Pending': {text: '待处理', class: 'status-processing'},
+                'Unshipped': {text: '未发货', class: 'status-processing'},
+                'PartiallyShipped': {text: '部分发货', class: 'status-shipping'},
+                'Shipped': {text: '已发货', class: 'status-shipped'},
+                'InvoiceUnconfirmed': {text: '发票未确认', class: 'status-processing'},
+                'Canceled': {text: '已取消', class: 'status-completed'},
+                'Unfulfillable': {text: '无法履行', class: 'status-completed'}
+            };
+
+            const mapped = statusMap[status] || {text: status, class: 'status-processing'};
+            return `<span class="status-badge ${mapped.class}">${mapped.text}</span>`;
+        }
+
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const infoContainer = document.getElementById('paginationInfo');
+
+            const {page, page_size, total, total_pages} = ordersPagination;
+
+            // 更新分页信息
+            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+            // 生成分页按钮
+            let buttonsHTML = '';
+
+            // 上一页
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+            <i class="fas fa-chevron-left"></i> 上一页
+        </button>`;
+
+            // 页码按钮
+            const maxButtons = 7; // 最多显示7个页码按钮
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+            }
+
+            // 下一页
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+            下一页 <i class="fas fa-chevron-right"></i>
+        </button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > ordersPagination.total_pages) return;
+
+            ordersPagination.page = newPage;
+            loadOrdersTable();
+
+            // 滚动到表格顶部
+            document.getElementById('ordersTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function changePageSize() {
+            const newSize = parseInt(document.getElementById('pageSize').value);
+            ordersPagination.page_size = newSize;
+            ordersPagination.page = 1; // 重置到第一页
+            loadOrdersTable();
+        }
+
+        function viewOrderDetail(orderId) {
+            showNotification && showNotification(`查看订单详情: ${orderId}`, 'info');
+            // 这里可以跳转到订单详情页或打开模态框
+            console.log('查看订单:', orderId);
+        }
+
+        async function updateDiviExportStatus() {
+            showLoading(true);
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/update-divi-export-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        ...currentFilters,
+                        page: ordersPagination.page,
+                        page_size: ordersPagination.page_size
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    // 重新渲染表格
+                    renderOrdersTable(result.data.orders);
+                    // 更新分页信息
+                    ordersPagination.total = result.data.total;
+                    ordersPagination.total_pages = result.data.total_pages;
+                    renderPagination();
+                    showNotification && showNotification('DIVI导单状态已更新', 'success');
+                } else {
+                    showNotification && showNotification('更新失败: ' + (result.message || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showNotification && showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                setDefaultFilters();
+                initializeSmartClearButtons();
+                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+
+                // 首次加载数据
+                await applyFilters();
+            } catch (error) {
+                showNotification && showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
         window.addEventListener('resize', function () {
             const ordersChart = echarts.getInstanceByDom(document.getElementById('ordersChart'));
             const operatorChart = echarts.getInstanceByDom(document.getElementById('operatorChart'));
@@ -1140,43 +1495,98 @@
             if (operatorChart) operatorChart.resize();
         });
 
-        // 清理指定筛选条件
-        function clearFilter(filterType) {
-            if (filterType === 'group') {
-                document.getElementById('groupFilter').value = '';
-                console.log('已清理运营分组筛选条件');
-            } else if (filterType === 'operator') {
-                document.getElementById('operatorFilter').value = '';
-                console.log('已清理运营人员筛选条件');
+        // 监听筛选条件变化，自动刷新订单列表
+        document.getElementById('groupFilter').addEventListener('change', () => {
+            ordersPagination.page = 1;
+        });
+
+        document.getElementById('operatorFilter').addEventListener('change', () => {
+            ordersPagination.page = 1;
+        });
+
+        document.getElementById('dateRange').addEventListener('change', () => {
+            ordersPagination.page = 1;
+        });
+
+        async function exportOrderToDivi(orderId, event) {
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            // 防止重复点击
+            if (button.disabled) return;
+
+            // 检查是否是FBA订单（额外保护）
+            const orderData = Array.from(document.querySelectorAll('#ordersTableBody tr')).find(row =>
+                row.cells[0].textContent.includes(orderId)
+            );
+            if (orderData && orderData.cells[4].textContent.includes('FBA')) {
+                showNotification && showNotification('FBA订单无需导单到DIVI', 'info');
+                button.disabled = true;
+                icon.className = 'fas fa-ban';
+                button.style.color = '#9CA3AF';
+                return;
             }
 
-            // 可选：自动应用筛选以更新数据
-            // 如果希望清理后自动刷新，取消下一行的注释
-            // applyFilters();
-        }
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+            button.style.opacity = '0.7';
 
-        // 根据权限动态显示/隐藏清理按钮
-        function updateClearButtonsVisibility() {
-            const user = window.currentUser || {}; // 假设用户信息存储在全局变量中
-            const permissions = user.permission || [];
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-            const groupClearBtn = document.querySelector('#groupFilter').nextElementSibling;
-            const operatorClearBtn = document.querySelector('#operatorFilter').nextElementSibling;
+                const params = new URLSearchParams({
+                    order_id: orderId,
+                    has_logistics: '0'
+                });
 
-            // ops_all权限可以清理所有筛选
-            if (permissions.includes('ops_all')) {
-                groupClearBtn.style.display = 'block';
-                operatorClearBtn.style.display = 'block';
-            }
-            // ops_group权限只能清理人员筛选，不能清理分组
-            else if (permissions.includes('ops_group')) {
-                groupClearBtn.style.display = 'none'; // 强制分组不可清理
-                operatorClearBtn.style.display = 'block';
-            }
-            // ops权限不能清理任何筛选
-            else {
-                groupClearBtn.style.display = 'none';
-                operatorClearBtn.style.display = 'none';
+                const response = await fetch(`/api/add_divi_amazon_order/?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    }
+                });
+
+                const result = await response.json();
+
+                switch (result.status) {
+                    case 'imported':
+                        showNotification && showNotification(`订单 ${orderId} 成功导入DIVI！`, 'success');
+                        icon.className = 'fas fa-check-circle';
+                        button.style.color = '#10B981';
+                        button.style.opacity = '1';
+                        break;
+
+                    case 'exists':
+                        showNotification && showNotification(`订单 ${orderId} 已存在DIVI中`, 'info');
+                        icon.className = 'fas fa-check-circle';
+                        button.style.color = '#6B7280';
+                        button.style.opacity = '1';
+                        break;
+
+                    case 'error':
+                        showNotification && showNotification(`导单失败: ${result.message}`, 'error');
+                        icon.className = 'fas fa-share-square';
+                        button.style.color = '';
+                        button.style.opacity = '1';
+                        button.disabled = false;
+                        break;
+
+                    default:
+                        showNotification && showNotification('未知的响应状态', 'error');
+                        icon.className = 'fas fa-share-square';
+                        button.style.color = '';
+                        button.style.opacity = '1';
+                        button.disabled = false;
+                }
+
+            } catch (error) {
+                showNotification && showNotification(`请求失败: ${error.message}`, 'error');
+                console.error('导单请求错误:', error);
+                icon.className = 'fas fa-share-square';
+                button.style.color = '';
+                button.style.opacity = '1';
+                button.disabled = false;
             }
         }
     </script>

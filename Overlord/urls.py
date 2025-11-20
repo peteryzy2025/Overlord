@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from General import views, views_user_management, views_amazon_management
-from Amazon import amazon_views
+from Amazon import amazon_views,amazon_divi_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -50,5 +50,12 @@ urlpatterns = [
     path('api/customers/', views_amazon_management.get_customers_api, name='get_customers_api'),
 
     path('api/filter-amazon-data/', amazon_views.filter_amazon_data_api, name='filter_amazon_data'),
+    path('api/amazon-orders-list/', amazon_views.get_amazon_orders_list_api, name='get_amazon_orders_list_api'),
+    path('api/add_divi_amazon_order/', amazon_divi_views.add_divi_amazon_order, name='add_divi_amazon_order'),
+    # path('api/test/', amazon_divi_views.add_divi_order, name='test'),
+path('api/update-divi-export-status/', amazon_views.update_divi_export_status_api, name='update_divi_export_status'),
+
+
+
 
 ]

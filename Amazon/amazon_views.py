@@ -2,12 +2,19 @@
 from django.http import JsonResponse
 from django.db.models import Sum, Count, Q
 from django.db.models.functions import TruncDate
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+import json
+
+from django.shortcuts import render
+
+# 模型导入
 from General.models import User, AmazonShop, OperationalAccount
 from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-import json
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+
+# DIVI服务导入
+from Api.divi.divi_order_service import query_divi_order
 
 
 @login_required(login_url='/login/')
@@ -64,7 +71,11 @@ def get_order_statistics(lingxing_shop_ids, start_date, end_date):
     order_filter &= Q(purchase_date_local__date__gte=start_date)
     order_filter &= Q(purchase_date_local__date__lte=end_date)
 
-    orders = AmazonOrders.objects.filter(order_filter)
+    # 性能优化：只查询需要的字段
+    orders = AmazonOrders.objects.filter(order_filter).only(
+        'amazon_order_id', 'order_total_amount', 'fulfillment_channel'
+    )
+
     order_count = orders.count()
 
     if order_count == 0:
@@ -79,10 +90,12 @@ def get_order_statistics(lingxing_shop_ids, start_date, end_date):
             'fbm_percentage': '0.0%',
         }
 
-    # 计算销售量
-    order_ids = list(orders.values_list('amazon_order_id', flat=True))
+    # 修复1：使用订单自增ID（不是amazon_order_id）关联查询，解决模型结构变更问题
+    order_ids = list(orders.values_list('id', flat=True))
+
+    # 修复2：使用正确的关联字段查询订单明细，大幅提升性能
     quantity_agg = AmazonOrderItem.objects.filter(
-        order_id__in=order_ids
+        order_id__in=order_ids  # 关联的是AmazonOrders.id（自增主键）
     ).aggregate(total_quantity=Sum('quantity_ordered'))
     total_sales_quantity = quantity_agg['total_quantity'] or 0
 
@@ -93,7 +106,7 @@ def get_order_statistics(lingxing_shop_ids, start_date, end_date):
     # 计算客单价（营业额/订单量）
     avg_order_value = total_revenue / order_count if order_count > 0 else 0
 
-    # 计算FBA和FBM
+    # 计算FBA和FBM（保持逻辑不变）
     fulfillment_stats = orders.values('fulfillment_channel').annotate(
         count=Count('fulfillment_channel')
     )
@@ -224,7 +237,7 @@ def get_sales_trend_data(lingxing_shop_ids):
         print("⚠️ 没有店铺数据，返回空趋势数据")
         return []
 
-    # 使用 values + annotate 按日期分组
+    # 性能优化：使用更高效的查询，避免N+1问题
     daily_sales_raw = AmazonOrderItem.objects.filter(
         order__lingxing_shop_id__in=lingxing_shop_ids,
         order__purchase_date_local__date__gte=start_date,
@@ -435,6 +448,520 @@ def filter_amazon_data_api(request):
             }
         }, status=500)
 
+
+@login_required
+def get_amazon_orders_list_api(request):
+    """
+    获取订单列表（带分页和排序）
+    支持相同的权限控制逻辑
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+
+    try:
+        # 解析请求数据
+        data = json.loads(request.body)
+        user = request.user
+        permissions = getattr(user, 'permission', []) or []
+        if isinstance(permissions, str):
+            permissions = [permissions]
+
+        print(f"\n{'=' * 60}")
+        print(f"📋 订单列表API - 用户 {user.username} 的权限: {permissions}")
+        print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+
+        # ============= 权限控制核心逻辑（复用） =============
+        filter_type = None
+        filter_value = None
+
+        if 'ops_all' in permissions:
+            print("✅ 权限校验通过: ops_all")
+            ops_id_raw = data.get('operator_id') or data.get('ops_id')
+            ops_group_raw = data.get('group') or data.get('ops_group')
+
+            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                filter_type = 'ops_group'
+                filter_value = ops_group_raw.strip()
+            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                filter_type = 'ops_id'
+                filter_value = int(ops_id_raw)
+            else:
+                filter_type = 'all'
+        elif 'ops_group' in permissions:
+            print("✅ 权限校验通过: ops_group")
+            try:
+                ops_account = user.operational_account
+                user_group = ops_account.ops_group if ops_account else None
+                if user_group:
+                    filter_type = 'ops_group'
+                    filter_value = user_group
+                else:
+                    filter_type = 'none'
+            except:
+                filter_type = 'none'
+        elif 'ops' in permissions:
+            print("✅ 权限校验通过: ops")
+            filter_type = 'ops_id'
+            filter_value = user.id
+        else:
+            print("❌ 权限校验失败: 无权限")
+            filter_type = 'none'
+
+        print(f"最终筛选条件: filter_type={filter_type}, filter_value={filter_value}")
+        # ============= 权限控制结束 =============
+
+        # 分页参数
+        page = int(data.get('page', 1))
+        page_size = int(data.get('page_size', 20))
+        page_size = min(page_size, 100)  # 最大100条
+
+        # 日期参数
+        date_range_option = data.get('date_range', 'yesterday')
+        start_date_str = data.get('start_date', '')
+        end_date_str = data.get('end_date', '')
+
+        current_start, current_end = None, None
+        if start_date_str and end_date_str:
+            try:
+                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(date_range_option)
+
+        if not current_start or not current_end:
+            return JsonResponse({
+                'success': False,
+                'message': '请提供有效的日期范围'
+            }, status=400)
+
+        # 无权限或没店铺直接返回空
+        if filter_type == 'none':
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 获取店铺
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        shop_ids_list = list(shop_ids)
+
+        if not shop_ids_list:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 获取LingXing店铺
+        lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
+        lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+        if not lingxing_shop_ids:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 查询订单（按下单时间倒序）
+        order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
+        order_filter &= Q(purchase_date_local__date__gte=current_start)
+        order_filter &= Q(purchase_date_local__date__lte=current_end)
+
+        # 优化：只查询需要的字段，并使用select_related减少查询次数
+        orders_queryset = AmazonOrders.objects.filter(order_filter).select_related(
+            'lingxing_shop', 'amazon_shop'
+        ).only(
+            'id', 'amazon_order_id', 'lingxing_shop', 'amazon_shop',
+            'order_status', 'order_total_amount', 'purchase_date_local', 'is_exported_to_divi'
+        ).order_by('-purchase_date_local')  # 倒序排列
+
+        # 统计总数量
+        total = orders_queryset.count()
+
+        # 分页
+        paginator = Paginator(orders_queryset, page_size)
+        try:
+            orders_page = paginator.page(page)
+        except PageNotAnInteger:
+            orders_page = paginator.page(1)
+        except EmptyPage:
+            orders_page = paginator.page(paginator.num_pages)
+
+        # 组装订单数据
+        orders_data = []
+        for order in orders_page:
+            # 获取运营人员信息
+            operator_name = ''
+            group_name = ''
+
+            if order.amazon_shop and order.amazon_shop.ops:
+                operator_name = order.amazon_shop.ops.first_name or order.amazon_shop.ops.username
+                # 获取分组
+                try:
+                    op_account = order.amazon_shop.ops.operational_account
+                    group_name = op_account.ops_group if op_account else ''
+                except:
+                    group_name = ''
+
+            # 获取领星店铺名称
+            shop_name = order.lingxing_shop.name if order.lingxing_shop else '未知店铺'
+
+            orders_data.append({
+                'amazon_order_id': order.amazon_order_id,
+                'shop_name': shop_name,
+                'operator_name': operator_name,
+                'group': group_name,
+                'order_status': order.order_status or '',
+                'quantity': 0,  # 暂时为0，后续可以优化
+                'order_total_amount': str(order.order_total_amount or '0.00'),
+                'purchase_date_local': order.purchase_date_local.strftime(
+                    '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
+                'is_exported_to_divi': order.is_exported_to_divi,
+                'fulfillment_channel': order.fulfillment_channel or ''  # 添加这行
+            })
+
+        # 批量获取商品数量（性能优化）
+        order_ids = [order.id for order in orders_page]
+        quantity_map = dict(
+            AmazonOrderItem.objects.filter(
+                order_id__in=order_ids
+            ).values('order_id').annotate(
+                total_quantity=Sum('quantity_ordered')
+            ).values_list('order_id', 'total_quantity')
+        )
+
+        # 填充商品数量
+        for order_data in orders_data:
+            # 找到对应的order对象获取id
+            corresponding_order = next((o for o in orders_page if o.amazon_order_id == order_data['amazon_order_id']),
+                                       None)
+            if corresponding_order:
+                order_data['quantity'] = quantity_map.get(corresponding_order.id, 0)
+
+        response_data = {
+            'success': True,
+            'data': {
+                'orders': orders_data,
+                'total': total,
+                'page': orders_page.number,
+                'page_size': page_size,
+                'total_pages': paginator.num_pages
+            }
+        }
+
+        print(f"✅ 返回 {len(orders_data)} 条订单，总计 {total} 条，当前页 {orders_page.number}/{paginator.num_pages}")
+        print(f"{'=' * 60}\n")
+
+        return JsonResponse(response_data)
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"❌ 订单列表API错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print(f"{'=' * 60}\n")
+
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@login_required
+def update_divi_export_status_api(request):
+    """
+    批量更新订单的DIVI导出状态
+    根据当前筛选条件查询订单，检查每个订单在DIVI中的存在性
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        user = request.user
+        permissions = getattr(user, 'permission', []) or []
+        if isinstance(permissions, str):
+            permissions = [permissions]
+
+        print(f"\n{'=' * 60}")
+        print(f"🔄 更新DIVI状态API - 用户 {user.username} 的权限: {permissions}")
+        print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+
+        # ============= 权限控制核心逻辑（复用） =============
+        filter_type = None
+        filter_value = None
+
+        if 'ops_all' in permissions:
+            ops_id_raw = data.get('operator_id')
+            ops_group_raw = data.get('group')
+
+            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                filter_type = 'ops_group'
+                filter_value = ops_group_raw.strip()
+            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                filter_type = 'ops_id'
+                filter_value = int(ops_id_raw)
+            else:
+                filter_type = 'all'
+        elif 'ops_group' in permissions:
+            try:
+                ops_account = user.operational_account
+                user_group = ops_account.ops_group if ops_account else None
+                if user_group:
+                    filter_type = 'ops_group'
+                    filter_value = user_group
+                else:
+                    filter_type = 'none'
+            except:
+                filter_type = 'none'
+        elif 'ops' in permissions:
+            filter_type = 'ops_id'
+            filter_value = user.id
+        else:
+            filter_type = 'none'
+
+        print(f"最终筛选条件: filter_type={filter_type}, filter_value={filter_value}")
+        # ============= 权限控制结束 =============
+
+        # 解析日期参数
+        date_range_option = data.get('date_range', 'yesterday')
+        start_date_str = data.get('start_date', '')
+        end_date_str = data.get('end_date', '')
+
+        current_start, current_end = None, None
+        if start_date_str and end_date_str:
+            try:
+                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(date_range_option)
+
+        if not current_start or not current_end:
+            return JsonResponse({
+                'success': False,
+                'message': '请提供有效的日期范围'
+            }, status=400)
+
+        # 分页参数
+        page = int(data.get('page', 1))
+        page_size = int(data.get('page_size', 20))
+        page_size = min(page_size, 100)
+
+        # 无权限或没店铺直接返回空
+        if filter_type == 'none':
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 获取店铺
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        shop_ids_list = list(shop_ids)
+
+        if not shop_ids_list:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 获取LingXing店铺
+        lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
+        lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+        if not lingxing_shop_ids:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'orders': [],
+                    'total': 0,
+                    'page': page,
+                    'page_size': page_size,
+                    'total_pages': 0
+                }
+            })
+
+        # 查询需要更新的订单
+        order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
+        order_filter &= Q(purchase_date_local__date__gte=current_start)
+        order_filter &= Q(purchase_date_local__date__lte=current_end)
+
+        orders_queryset = AmazonOrders.objects.filter(order_filter)
+
+        # 统计总数量
+        total = orders_queryset.count()
+
+        # 分页处理
+        paginator = Paginator(orders_queryset, page_size)
+        try:
+            orders_page = paginator.page(page)
+        except PageNotAnInteger:
+            orders_page = paginator.page(1)
+        except EmptyPage:
+            orders_page = paginator.page(paginator.num_pages)
+
+        # 批量更新DIVI导出状态
+        updated_count = 0
+        skipped_orders = []  # 记录未更新的订单及原因
+
+        for order in orders_page:
+            order_id = order.amazon_order_id
+            try:
+                # 检查关联关系链
+                if not order.lingxing_shop:
+                    skipped_orders.append({
+                        'order_id': order_id,
+                        'reason': '未关联领星店铺'
+                    })
+                    continue
+
+                if not order.lingxing_shop.amazon_shop:
+                    skipped_orders.append({
+                        'order_id': order_id,
+                        'reason': '领星店铺未绑定本地AmazonShop'
+                    })
+                    continue
+
+                divi_shop_id = order.lingxing_shop.amazon_shop.divi_shop_id
+
+                if not divi_shop_id:
+                    skipped_orders.append({
+                        'order_id': order_id,
+                        'reason': '本地店铺未配置divi_shop_id'
+                    })
+                    continue
+
+                # 查询DIVI订单是否存在
+                exists, _, _ = query_divi_order(
+                    amazon_order_id=order_id,
+                    brand_id=divi_shop_id,
+                    has_logistics=False
+                )
+
+                # 更新状态
+                order.is_exported_to_divi = exists
+                order.save(update_fields=['is_exported_to_divi'])
+                updated_count += 1
+
+            except Exception as e:
+                skipped_orders.append({
+                    'order_id': order_id,
+                    'reason': f'查询异常: {str(e)}'
+                })
+                print(f"更新订单 {order_id} 失败: {e}")
+                continue
+
+        print(f"✅ 更新了 {updated_count} 条订单的DIVI导出状态")
+        if skipped_orders:
+            print(f"⚠️ 跳过了 {len(skipped_orders)} 条订单:")
+            for skipped in skipped_orders:
+                print(f"   - 订单 {skipped['order_id']}: {skipped['reason']}")
+
+        # 重新查询更新后的数据并组装返回
+        orders_data = []
+        for order in orders_page:
+            operator_name = ''
+            group_name = ''
+
+            if order.amazon_shop and order.amazon_shop.ops:
+                operator_name = order.amazon_shop.ops.first_name or order.amazon_shop.ops.username
+                try:
+                    op_account = order.amazon_shop.ops.operational_account
+                    group_name = op_account.ops_group if op_account else ''
+                except:
+                    group_name = ''
+
+            shop_name = order.lingxing_shop.name if order.lingxing_shop else '未知店铺'
+
+            orders_data.append({
+                'amazon_order_id': order.amazon_order_id,
+                'shop_name': shop_name,
+                'operator_name': operator_name,
+                'group': group_name,
+                'order_status': order.order_status or '',
+                'quantity': 0,
+                'order_total_amount': str(order.order_total_amount or '0.00'),
+                'purchase_date_local': order.purchase_date_local.strftime(
+                    '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
+                'is_exported_to_divi': order.is_exported_to_divi
+            })
+
+        # 批量获取商品数量
+        order_ids = [order.id for order in orders_page]
+        quantity_map = dict(
+            AmazonOrderItem.objects.filter(
+                order_id__in=order_ids
+            ).values('order_id').annotate(
+                total_quantity=Sum('quantity_ordered')
+            ).values_list('order_id', 'total_quantity')
+        )
+
+        for order_data in orders_data:
+            corresponding_order = next((o for o in orders_page if o.amazon_order_id == order_data['amazon_order_id']),
+                                       None)
+            if corresponding_order:
+                order_data['quantity'] = quantity_map.get(corresponding_order.id, 0)
+
+        print(f"✅ 返回 {len(orders_data)} 条订单，总计 {total} 条")
+        print(f"{'=' * 60}\n")
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'orders': orders_data,
+                'total': total,
+                'page': orders_page.number,
+                'page_size': page_size,
+                'total_pages': paginator.num_pages
+            }
+        })
+
+    except Exception as e:
+        print(f"\n{'=' * 60}")
+        print(f"❌ 更新DIVI状态API错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print(f"{'=' * 60}\n")
+
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
 
 def assemble_and_print_response(current_stats, previous_stats, comparison, trend_data,
                                 filter_type, filter_value, current_start, current_end,
