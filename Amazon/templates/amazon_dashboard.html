@@ -770,6 +770,7 @@
                         <th>运营人员</th>
                         <th>运营分组</th>
                         <th>订单状态</th>
+                        <th>订单类型</th>
                         <th>商品数量</th>
                         <th>订单金额</th>
                         <th>下单时间</th>
@@ -1321,8 +1322,9 @@
                 <td>${order.operator_name || '-'}</td>
                 <td>${order.group || '-'}</td>
                 <td>${renderStatusBadge(order.order_status)}</td>
+                <td>${order.fulfillment_channel || '-'}</td>
                 <td>${order.quantity || 0}</td>
-                <td>¥${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
+                <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
                 <td>${order.purchase_date_local || '-'}</td>
                 <td>${renderDiviExportStatus(order.is_exported_to_divi)}</td>
                <td>
