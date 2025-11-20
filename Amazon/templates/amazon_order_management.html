@@ -539,6 +539,20 @@
                     </div>
                 </div>
 
+                <div class="filter-group">
+                    <label class="filter-label">订单号</label>
+                    <input type="text" class="form-control" id="orderIdFilter"
+                           placeholder="输入订单号（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺名称</label>
+                    <input type="text" class="form-control" id="shopNameFilter"
+                           placeholder="输入店铺名称（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
                 <div class="filter-group" style="align-self: flex-end;">
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn" onclick="applyFilters()">应用筛选</button>
@@ -617,7 +631,9 @@
             start_date: '',
             end_date: '',
             operator_id: '',
-            group: ''
+            group: '',
+            order_id: '',
+            shop_name: ''
         };
         let ordersPagination = {
             page: 1,
@@ -728,7 +744,9 @@
                 start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
                 end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
                 operator_id: document.getElementById('operatorFilter').value,
-                group: document.getElementById('groupFilter').value
+                group: document.getElementById('groupFilter').value,
+                order_id: document.getElementById('orderIdFilter').value.trim(),
+                shop_name: document.getElementById('shopNameFilter').value.trim()
             };
         }
 
@@ -751,6 +769,8 @@
 
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
+            document.getElementById('orderIdFilter').value = '';
+            document.getElementById('shopNameFilter').value = '';
         }
 
         function initializeSmartClearButtons() {
@@ -787,6 +807,8 @@
         function resetFilters() {
             document.getElementById('groupFilter').value = '';
             document.getElementById('operatorFilter').value = '';
+            document.getElementById('orderIdFilter').value = '';
+            document.getElementById('shopNameFilter').value = '';
             document.getElementById('groupFilter').dispatchEvent(new Event('change'));
             document.getElementById('operatorFilter').dispatchEvent(new Event('change'));
             document.getElementById('dateRange').value = 'yesterday';
@@ -893,7 +915,13 @@
             }
         }
 
-        function renderDiviExportStatus(isExported, fulfillmentChannel) {
+        function renderDiviExportStatus(isExported, fulfillmentChannel, orderStatus) {
+            // 已取消订单显示特殊标记
+            if (orderStatus === 'Canceled') {
+                return '<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="已取消订单不可导单"></i>';
+            }
+
+            // FBA订单无需导单
             if (fulfillmentChannel === 'AFN') {
                 return '<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="FBA订单无需导单"></i>';
             }
@@ -932,10 +960,10 @@
                     <td>${order.quantity || 0}</td>
                     <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
                     <td>${order.purchase_date_local || '-'}</td>
-                    <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel)}</td>
+                    <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
                     <td>
-                        ${order.fulfillment_channel === 'AFN' ?
-                            '<button class="btn-divi" disabled title="FBA订单无需导单">' +
+                        ${order.fulfillment_channel === 'AFN' || order.order_status === 'Canceled' ?
+                            '<button class="btn-divi" disabled title="该订单不可导单">' +
                                 '<i class="fas fa-ban" style="color: #9CA3AF;"></i>' +
                             '</button>' :
                             `<button class="btn-divi" onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
@@ -1100,7 +1128,10 @@
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#10B981';
                         button.style.opacity = '1';
-                        setTimeout(() => loadOrdersTable(), 1000);
+                        // 成功后1秒自动刷新表格数据
+                        setTimeout(() => {
+                            loadOrdersTable();
+                        }, 1000);
                         break;
 
                     case 'exists':
@@ -1108,6 +1139,8 @@
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#6B7280';
                         button.style.opacity = '1';
+                        // 状态已存在时也刷新表格
+                        setTimeout(() => loadOrdersTable(), 500);
                         break;
 
                     case 'error':

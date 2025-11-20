@@ -237,7 +237,8 @@ def divi_add_order(
     """
 
     endpoint_path = "/partnerTaskOrder/addPartnerUserOrder"
-
+    if address.get("phone") == "":
+        address["phone"] = "+1 123456"
     order_payload = {
         "shippingAddressCity":         address.get("city"),
         "shippingAddressStateOrRegion": address.get("region"),

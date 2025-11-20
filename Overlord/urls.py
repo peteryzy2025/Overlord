@@ -51,7 +51,7 @@ urlpatterns = [
     path('api/amazon/ops-groups/', amazon_views_jc.get_ops_groups_api), # 亚马逊筛选数据
 
     path('amazon-order-management/', amazon_order_views.amazon_order_management_page, name='amazon_order_management'), # 亚马逊订单管理页面
-    path('api/amazon-orders-list/', amazon_views.get_amazon_orders_list_api, name='get_amazon_orders_list_api'), # 亚马逊订单api
+    path('api/amazon-orders-list/', amazon_order_views.get_amazon_orders_list_api, name='get_amazon_orders_list_api'), # 亚马逊订单api
     path('api/add_divi_amazon_order/', amazon_divi_views.add_divi_amazon_order, name='add_divi_amazon_order'), # 导单接口
     # path('api/test/', amazon_divi_views.add_divi_order, name='test'),
     path('api/update-divi-export-status/', amazon_views.update_divi_export_status_api,
