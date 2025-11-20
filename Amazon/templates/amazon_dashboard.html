@@ -1010,10 +1010,10 @@
             document.getElementById('totalSalesQuantity').textContent = formatter.format(current.total_sales_quantity || 0);
             updateChangeIndicator('totalSalesQuantityChange', comparison.total_sales_quantity_change);
 
-            document.getElementById('totalRevenue').textContent = '¥' + formatter.format(current.total_revenue || 0);
+            document.getElementById('totalRevenue').textContent = '$' + formatter.format(current.total_revenue || 0);
             updateChangeIndicator('totalRevenueChange', comparison.total_revenue_change);
 
-            document.getElementById('avgOrderValue').textContent = '¥' + (current.avg_order_value || 0).toFixed(2);
+            document.getElementById('avgOrderValue').textContent = '$' + (current.avg_order_value || 0).toFixed(2);
             updateChangeIndicator('avgOrderValueChange', comparison.avg_order_value_change);
 
             document.getElementById('fbaPercentage').textContent = current.fba_percentage || '0.0%';
