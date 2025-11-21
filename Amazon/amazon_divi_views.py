@@ -125,6 +125,6 @@ def add_divi_amazon_order(request):
 
     except Exception as e:
         print(f'导单出错：{e}')
-        import traceback
-        traceback.print_exc()
+        # import traceback
+        # traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=500)

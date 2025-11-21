@@ -498,7 +498,6 @@ def filter_amazon_data_api(request):
 
 
 @login_required
-@login_required
 def update_divi_export_status_api(request):
     """
     批量更新订单的DIVI导出状态

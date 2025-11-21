@@ -556,7 +556,7 @@
                 <div class="filter-group" style="align-self: flex-end;">
                     <div style="display: flex; gap: 0.5rem;">
                         <button class="btn" onclick="applyFilters()">应用筛选</button>
-                        <button class="btn btn-secondary" onclick="resetFilters()">重置</button>
+                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
                     </div>
                 </div>
             </div>
@@ -641,6 +641,9 @@
             total: 0,
             total_pages: 0
         };
+
+        // 不可导单的订单状态（根据order_status字段判断）
+        const NON_EXPORTABLE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled'];
 
         function showLoading(show = true) {
             const overlay = document.getElementById('loadingOverlay');
@@ -804,21 +807,48 @@
             applyFilters();
         }
 
-        function resetFilters() {
-            document.getElementById('groupFilter').value = '';
-            document.getElementById('operatorFilter').value = '';
-            document.getElementById('orderIdFilter').value = '';
-            document.getElementById('shopNameFilter').value = '';
-            document.getElementById('groupFilter').dispatchEvent(new Event('change'));
-            document.getElementById('operatorFilter').dispatchEvent(new Event('change'));
-            document.getElementById('dateRange').value = 'yesterday';
-            handleDateRangeChange();
+        async function resetFilters(event) {
+            const icon = event?.target?.querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
 
-            ordersPagination.page = 1;
-            ordersPagination.page_size = 20;
-            document.getElementById('pageSize').value = 20;
+            showLoading(true);
 
-            applyFilters();
+            try {
+                // 重新加载下拉框数据（确保数据最新）
+                if (allOperators.length === 0 || allGroups.length === 0) {
+                    await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                }
+
+                // 使用与页面初始化相同的逻辑设置默认值
+                setDefaultFilters();
+
+                // 手动触发change事件以更新清除按钮状态
+                document.getElementById('groupFilter').dispatchEvent(new Event('change'));
+                document.getElementById('operatorFilter').dispatchEvent(new Event('change'));
+
+                // 重置其他筛选条件
+                document.getElementById('orderIdFilter').value = '';
+                document.getElementById('shopNameFilter').value = '';
+
+                // 重置分页
+                ordersPagination.page = 1;
+                ordersPagination.page_size = 20;
+                document.getElementById('pageSize').value = 20;
+
+                // 应用筛选
+                await applyFilters();
+
+                showNotification('筛选条件已重置为默认值', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            }
         }
 
         function refreshData(event) {
@@ -916,9 +946,17 @@
         }
 
         function renderDiviExportStatus(isExported, fulfillmentChannel, orderStatus) {
-            // 已取消订单显示特殊标记
-            if (orderStatus === 'Canceled') {
-                return '<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="已取消订单不可导单"></i>';
+            // 判断是否为不可导单的状态（根据order_status字段）
+            const isNonExportableStatus = NON_EXPORTABLE_STATUSES.includes(orderStatus);
+
+            if (isNonExportableStatus) {
+                const statusText = {
+                    'PendingAvailability': '预售订单不可导单',
+                    'Pending': '待付款订单不可导单',
+                    'Canceled': '已取消订单不可导单'
+                }[orderStatus];
+
+                return `<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="${statusText}"></i>`;
             }
 
             // FBA订单无需导单
@@ -949,41 +987,48 @@
                 return;
             }
 
-            tbody.innerHTML = orders.map(order => `
-                <tr>
-                    <td>${order.amazon_order_id || '-'}</td>
-                    <td>${order.shop_name || '-'}</td>
-                    <td>${order.operator_name || '-'}</td>
-                    <td>${order.group || '-'}</td>
-                    <td>${renderStatusBadge(order.order_status)}</td>
-                    <td>${order.fulfillment_channel || '-'}</td>
-                    <td>${order.quantity || 0}</td>
-                    <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
-                    <td>${order.purchase_date_local || '-'}</td>
-                    <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
-                    <td>
-                        ${order.fulfillment_channel === 'AFN' || order.order_status === 'Canceled' ?
-                            '<button class="btn-divi" disabled title="该订单不可导单">' +
-                                '<i class="fas fa-ban" style="color: #9CA3AF;"></i>' +
-                            '</button>' :
-                            `<button class="btn-divi" onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
-                                title="${order.is_exported_to_divi ? '已导出到DIVI' : '点击导单到DIVI'}"
-                                ${order.is_exported_to_divi ? 'disabled' : ''}>
+            tbody.innerHTML = orders.map(order => {
+                // 判断是否为不可导单的状态（根据order_status字段）
+                const isNonExportableStatus = NON_EXPORTABLE_STATUSES.includes(order.order_status);
+                // 判断是否为FBA订单
+                const isFBA = order.fulfillment_channel === 'AFN';
+                // 按钮禁用条件：不可导单状态 或 FBA 或 已导出
+                const isButtonDisabled = isNonExportableStatus || isFBA || order.is_exported_to_divi;
+
+                return `
+                    <tr>
+                        <td>${order.amazon_order_id || '-'}</td>
+                        <td>${order.shop_name || '-'}</td>
+                        <td>${order.operator_name || '-'}</td>
+                        <td>${order.group || '-'}</td>
+                        <td>${renderStatusBadge(order.order_status)}</td>
+                        <td>${order.fulfillment_channel || '-'}</td>
+                        <td>${order.quantity || 0}</td>
+                        <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
+                        <td>${order.purchase_date_local || '-'}</td>
+                        <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
+                        <td>
+                            <button class="btn-divi"
+                                    onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
+                                    title="${isButtonDisabled ? '该订单不可导单' : '点击导单到DIVI'}"
+                                    ${isButtonDisabled ? 'disabled' : ''}>
                                 <i class="${order.is_exported_to_divi ? 'fas fa-check-circle' : 'fas fa-share-square'}"></i>
-                            </button>`
-                        }
-                    </td>
-                </tr>
-            `).join('');
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function renderStatusBadge(status) {
             if (!status) return '<span class="status-badge status-processing">未知</span>';
 
+            // 严格按照order_status字段值映射
             const statusMap = {
-                'Pending': {text: '待处理', class: 'status-processing'},
-                'Unshipped': {text: '未发货', class: 'status-processing'},
-                'PartiallyShipped': {text: '部分发货', class: 'status-shipping'},
+                'PendingAvailability': {text: '待付款-预售', class: 'status-processing'},
+                'Pending': {text: '待付款', class: 'status-processing'},
+                'Unshipped': {text: '待发货', class: 'status-shipping'},
+                'PartiallyShipped': {text: '已发货-部分发货', class: 'status-shipped'},
                 'Shipped': {text: '已发货', class: 'status-shipped'},
                 'InvoiceUnconfirmed': {text: '发票未确认', class: 'status-processing'},
                 'Canceled': {text: '已取消', class: 'status-completed'},
@@ -1128,7 +1173,6 @@
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#10B981';
                         button.style.opacity = '1';
-                        // 成功后1秒自动刷新表格数据
                         setTimeout(() => {
                             loadOrdersTable();
                         }, 1000);
@@ -1139,7 +1183,6 @@
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#6B7280';
                         button.style.opacity = '1';
-                        // 状态已存在时也刷新表格
                         setTimeout(() => loadOrdersTable(), 500);
                         break;
 
