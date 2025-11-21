@@ -416,8 +416,12 @@
         }
 
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         @media (max-width: 992px) {
@@ -1007,14 +1011,18 @@
                         <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
                         <td>${order.purchase_date_local || '-'}</td>
                         <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
-                        <td>
-                            <button class="btn-divi"
-                                    onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
-                                    title="${isButtonDisabled ? '该订单不可导单' : '点击导单到DIVI'}"
-                                    ${isButtonDisabled ? 'disabled' : ''}>
-                                <i class="${order.is_exported_to_divi ? 'fas fa-check-circle' : 'fas fa-share-square'}"></i>
-                            </button>
-                        </td>
+                  <td>
+    <button class="btn-divi"
+            onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
+            data-sid="${order.sid || ''}"
+            data-divi-shop-id="${order.divi_shop_id || ''}"
+            data-fulfillment-channel="${order.fulfillment_channel}"
+            data-order-status="${order.order_status}"
+            title="${isButtonDisabled ? '该订单不可导单' : '点击导单到DIVI'}"
+            ${isButtonDisabled ? 'disabled' : ''}>
+        <i class="${order.is_exported_to_divi ? 'fas fa-check-circle' : 'fas fa-share-square'}"></i>
+    </button>
+</td>
                     </tr>
                 `;
             }).join('');
@@ -1157,6 +1165,15 @@
                     order_id: orderId,
                     has_logistics: '0'
                 });
+                const sid = button.dataset.sid;
+                if (sid) {
+                    params.set('sid', sid);
+                }
+                const diviShopId = button.dataset.diviShopId;
+                if (diviShopId) {
+                    params.set('brand_id', diviShopId);
+                    console.log(`📦 使用前端传入的 divi_shop_id: ${diviShopId}`);
+                }
 
                 const response = await fetch(`/api/add_divi_amazon_order/?${params}`, {
                     method: 'GET',
@@ -1166,24 +1183,24 @@
                 });
 
                 const result = await response.json();
-
+                let statusChanged = false;
                 switch (result.status) {
                     case 'imported':
+                    case 'imported_updated':  // 新增：处理导入并更新的状态
                         showNotification(`订单 ${orderId} 成功导入DIVI！`, 'success');
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#10B981';
                         button.style.opacity = '1';
-                        setTimeout(() => {
-                            loadOrdersTable();
-                        }, 1000);
+                        statusChanged = true;
                         break;
 
                     case 'exists':
+                    case 'exists_updated':  // 新增：处理已存在并更新的状态
                         showNotification(`订单 ${orderId} 已存在DIVI中`, 'info');
                         icon.className = 'fas fa-check-circle';
                         button.style.color = '#6B7280';
                         button.style.opacity = '1';
-                        setTimeout(() => loadOrdersTable(), 500);
+                        statusChanged = true;
                         break;
 
                     case 'error':
@@ -1192,15 +1209,35 @@
                         button.style.color = '';
                         button.style.opacity = '1';
                         button.disabled = false;
-                        break;
+                        return; // 不更新状态，直接返回
 
                     default:
-                        showNotification('未知的响应状态', 'error');
+                        showNotification(`未知的响应状态: ${result.status}`, 'error');
+                        console.error('未知状态详情:', result); // 打印详细日志用于调试
                         icon.className = 'fas fa-share-square';
                         button.style.color = '';
                         button.style.opacity = '1';
                         button.disabled = false;
+                        return; // 不更新状态，直接返回
                 }
+
+// ✅ 关键：直接更新该行的DIVI状态显示
+                if (statusChanged) {
+                    const row = button.closest('tr');
+                    const diviStatusCell = row.cells[9]; // 第10列（索引9）
+                    const fulfillmentChannel = button.dataset.fulfillmentChannel;
+                    const orderStatus = button.dataset.orderStatus;
+
+                    diviStatusCell.innerHTML = renderDiviExportStatus(true, fulfillmentChannel, orderStatus);
+
+                    // 禁用按钮
+                    button.disabled = true;
+                }
+
+// 延迟后刷新整个表格（确保数据一致性）
+                // setTimeout(() => {
+                // loadOrdersTable();
+                // }, 1000);
 
             } catch (error) {
                 showNotification(`请求失败: ${error.message}`, 'error');

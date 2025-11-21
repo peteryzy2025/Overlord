@@ -2,6 +2,7 @@
 
 from django.db import models
 
+
 class LingXingAmazonShop(models.Model):
     """
     领星-亚马逊店铺（按站点维度存储）
@@ -198,6 +199,67 @@ class AmazonOrders(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
 
+    # ===== DIVI系统专用字段（全部带divi_前缀） =====
+    divi_import_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='DIVI导入时间',
+        db_comment='订单导入DIVI系统时间(createTime)'
+    )
+
+    divi_payment_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='DIVI付款时间',
+        db_comment='买家付款时间(paymentTime)'
+    )
+
+    divi_audit_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='DIVI审核时间',
+        db_comment='订单审核通过时间'
+    )
+
+    divi_dispatch_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='DIVI派单时间',
+        db_comment='订单派发给仓库时间(sendOrderTime)'
+    )
+
+    divi_shipment_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='DIVI发货时间',
+        db_comment='仓库实际发货时间(sendGoodsTime)'
+    )
+
+    divi_logistics_method = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='DIVI物流方式',
+        db_comment='物流渠道名称(logisticsMethodName)'
+    )
+
+    divi_tracking_number = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='DIVI跟踪号',
+        db_comment='物流跟踪号(trackingNumber)'
+    )
+
+    # DIVI订单状态
+    DIVI_STATUS_CHOICES = [
+        (0, '取消订单'),
+        (1, '未付货款'),
+        (2, '未审核'),
+        (3, '排单中'),
+        (4, '生产中'),
+        (5, '已发货'),
+    ]
+    divi_order_status = models.SmallIntegerField(
+        choices=DIVI_STATUS_CHOICES,
+        blank=True, null=True,
+        verbose_name='DIVI订单状态',
+        db_comment='DIVI系统订单状态(status)'
+    )
+
     class Meta:
         db_table = 'amazon_orders'
         db_table_comment = '亚马逊订单主表'
@@ -232,6 +294,12 @@ class AmazonOrderItem(models.Model):
     local_name = models.CharField(max_length=200, blank=True, null=True)
     order_status = models.CharField(max_length=50, blank=True, null=True)
     quantity_ordered = models.IntegerField(default=1)
+    divi_product_name = models.CharField(
+        max_length=200,
+        blank=True, null=True,
+        verbose_name='DIVI商品名称',
+        db_comment='商品名称(productName)'
+    )
 
     class Meta:
         db_table = 'amazon_order_item'
