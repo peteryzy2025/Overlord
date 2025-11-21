@@ -121,6 +121,7 @@ def determine_filter_type_and_value(request, data, permissions):
         print("❌ 权限校验失败: 用户无任何运营权限，返回空数据")
         return 'none', None
 
+
 @login_required(login_url='/login/')
 def amazon_dashboard_page(request):
     """Amazon驾驶舱页面渲染"""
@@ -496,7 +497,6 @@ def filter_amazon_data_api(request):
         }, status=500)
 
 
-
 @login_required
 def update_divi_export_status_api(request):
     """
@@ -504,6 +504,7 @@ def update_divi_export_status_api(request):
     根据当前筛选条件查询订单，检查每个订单在DIVI中的存在性
     """
     if request.method != 'POST':
+        print("❌ 错误: 只支持POST请求")
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
 
     try:
@@ -512,12 +513,13 @@ def update_divi_export_status_api(request):
         permissions = parse_permissions(getattr(user, 'permission', []))
 
         print(f"\n{'=' * 60}")
-        print(f"🔄 更新DIVI状态API - 用户 {user.username} 的权限: {permissions}")
-        print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+        print(f"🔄 批量更新DIVI状态API - 用户: {user.username} (权限: {permissions})")
+        print(f"📋 接收参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
 
         # ============= 权限控制核心逻辑（使用统一函数） =============
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
-        print(f"最终筛选条件: filter_type={filter_type}, filter_value={filter_value}")
+        print(f"🔐 权限校验结果: filter_type={filter_type}, filter_value={filter_value}")
+
         # ============= 权限控制结束 =============
 
         # 解析日期参数
@@ -530,13 +532,17 @@ def update_divi_export_status_api(request):
             try:
                 current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
                 current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+                print(f"📅 使用自定义日期: {current_start} 至 {current_end}")
             except:
+                print(f"⚠️ 日期解析失败，将使用快捷选项")
                 pass
 
         if not current_start or not current_end:
             current_start, current_end = get_date_range_from_option(date_range_option)
+            print(f"📅 使用快捷日期({date_range_option}): {current_start} 至 {current_end}")
 
         if not current_start or not current_end:
+            print("❌ 错误: 未提供有效的日期范围")
             return JsonResponse({
                 'success': False,
                 'message': '请提供有效的日期范围'
@@ -546,9 +552,11 @@ def update_divi_export_status_api(request):
         page = int(data.get('page', 1))
         page_size = int(data.get('page_size', 20))
         page_size = min(page_size, 100)
+        print(f"📄 分页参数: page={page}, page_size={page_size}")
 
         # 无权限或没店铺直接返回空
         if filter_type == 'none':
+            print("⚠️ 权限不足，返回空数据")
             return JsonResponse({
                 'success': True,
                 'data': {
@@ -561,10 +569,13 @@ def update_divi_export_status_api(request):
             })
 
         # 获取店铺
+        print(f"🔍 查询符合条件的店铺...")
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
         shop_ids_list = list(shop_ids)
+        print(f"✅ 找到 {len(shop_ids_list)} 个AmazonShop: {shop_ids_list}")
 
         if not shop_ids_list:
+            print("⚠️ 未找到任何店铺，返回空数据")
             return JsonResponse({
                 'success': True,
                 'data': {
@@ -577,10 +588,13 @@ def update_divi_export_status_api(request):
             })
 
         # 获取LingXing店铺
+        print(f"🔍 查询绑定的LingXing店铺...")
         lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
         lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+        print(f"✅ 找到 {len(lingxing_shop_ids)} 个LingXing店铺")
 
         if not lingxing_shop_ids:
+            print("⚠️ 未找到LingXing店铺，返回空数据")
             return JsonResponse({
                 'success': True,
                 'data': {
@@ -593,14 +607,18 @@ def update_divi_export_status_api(request):
             })
 
         # 查询需要更新的订单
+        print(f"🔍 构建订单查询条件...")
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
+        print(f"📋 查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
 
-        orders_queryset = AmazonOrders.objects.filter(order_filter)
-
-        # 统计总数量
+        orders_queryset = AmazonOrders.objects.filter(order_filter).order_by(
+            '-purchase_date_local',
+            'id'
+        )
         total = orders_queryset.count()
+        print(f"📊 符合筛选条件的订单总数: {total}")
 
         # 分页处理
         paginator = Paginator(orders_queryset, page_size)
@@ -611,64 +629,101 @@ def update_divi_export_status_api(request):
         except EmptyPage:
             orders_page = paginator.page(paginator.num_pages)
 
+        print(f"📄 当前页: {orders_page.number}/{paginator.num_pages}, 本页订单数: {len(orders_page)}")
+
         # 批量更新DIVI导出状态
         updated_count = 0
         skipped_orders = []  # 记录未更新的订单及原因
+        processed_orders = []  # 记录处理过的订单
 
-        for order in orders_page:
+        print(f"\n{'=' * 40}")
+        print(f"开始逐笔更新订单DIVI状态...")
+        print(f"{'=' * 40}")
+
+        for idx, order in enumerate(orders_page, 1):
             order_id = order.amazon_order_id
+            print(f"\n【{idx}/{len(orders_page)}】处理订单: {order_id}")
+
             try:
                 # 检查关联关系链
                 if not order.lingxing_shop:
+                    reason = '未关联领星店铺'
+                    print(f"   ⚠️ 跳过: {reason}")
                     skipped_orders.append({
                         'order_id': order_id,
-                        'reason': '未关联领星店铺'
+                        'reason': reason
                     })
                     continue
 
                 if not order.lingxing_shop.amazon_shop:
+                    reason = '领星店铺未绑定本地AmazonShop'
+                    print(f"   ⚠️ 跳过: {reason}")
                     skipped_orders.append({
                         'order_id': order_id,
-                        'reason': '领星店铺未绑定本地AmazonShop'
+                        'reason': reason
                     })
                     continue
 
                 divi_shop_id = order.lingxing_shop.amazon_shop.divi_shop_id
+                print(f"   🔍 店铺配置: divi_shop_id={divi_shop_id}")
 
                 if not divi_shop_id:
+                    reason = '本地店铺未配置divi_shop_id'
+                    print(f"   ⚠️ 跳过: {reason}")
                     skipped_orders.append({
                         'order_id': order_id,
-                        'reason': '本地店铺未配置divi_shop_id'
+                        'reason': reason
                     })
                     continue
 
                 # 查询DIVI订单是否存在
+                print(f"   🔍 查询DIVI系统...")
                 exists, _, _ = query_divi_order(
                     amazon_order_id=order_id,
                     brand_id=divi_shop_id,
                     has_logistics=False
                 )
+                print(f"   📊 DIVI查询结果: exists={exists}")
 
                 # 更新状态
+                old_status = order.is_exported_to_divi
                 order.is_exported_to_divi = exists
                 order.save(update_fields=['is_exported_to_divi'])
+
+                status_changed = old_status != exists
+                print(f"   ✅ 本地状态更新: {old_status} → {exists} {'(有变化)' if status_changed else ''}")
+
                 updated_count += 1
+                processed_orders.append({
+                    'order_id': order_id,
+                    'old_status': old_status,
+                    'new_status': exists,
+                    'changed': status_changed
+                })
 
             except Exception as e:
+                reason = f'查询异常: {str(e)}'
+                print(f"   ❌ 异常: {reason}")
                 skipped_orders.append({
                     'order_id': order_id,
-                    'reason': f'查询异常: {str(e)}'
+                    'reason': reason
                 })
-                print(f"更新订单 {order_id} 失败: {e}")
                 continue
 
-        print(f"✅ 更新了 {updated_count} 条订单的DIVI导出状态")
+        print(f"\n{'=' * 40}")
+        print(f"批量更新完成总结:")
+        print(f"   - 成功处理: {updated_count} 条")
+        print(f"   - 跳过处理: {len(skipped_orders)} 条")
+        print(f"   - 状态变化: {sum(1 for p in processed_orders if p['changed'])} 条")
+        print(f"{'=' * 40}\n")
+
         if skipped_orders:
-            print(f"⚠️ 跳过了 {len(skipped_orders)} 条订单:")
-            for skipped in skipped_orders:
-                print(f"   - 订单 {skipped['order_id']}: {skipped['reason']}")
+            print(f"⚠️ 跳过的订单详情:")
+            for skip in skipped_orders:
+                print(f"   - {skip['order_id']}: {skip['reason']}")
 
         # 重新查询更新后的数据并组装返回
+        print(f"🔍 重新查询更新后的订单数据...")
         orders_data = []
         for order in orders_page:
             operator_name = ''
@@ -694,26 +749,37 @@ def update_divi_export_status_api(request):
                 'order_total_amount': str(order.order_total_amount or '0.00'),
                 'purchase_date_local': order.purchase_date_local.strftime(
                     '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
-                'is_exported_to_divi': order.is_exported_to_divi
+                'is_exported_to_divi': order.is_exported_to_divi,
+                'fulfillment_channel': order.fulfillment_channel or ''
             })
 
         # 批量获取商品数量
         order_ids = [order.id for order in orders_page]
-        quantity_map = dict(
-            AmazonOrderItem.objects.filter(
-                order_id__in=order_ids
-            ).values('order_id').annotate(
-                total_quantity=Sum('quantity_ordered')
-            ).values_list('order_id', 'total_quantity')
-        )
+        print(f"🔍 批量查询商品数量，订单ID列表: {order_ids}")
 
+        if order_ids:
+            quantity_map = dict(
+                AmazonOrderItem.objects.filter(
+                    order_id__in=order_ids
+                ).values('order_id').annotate(
+                    total_quantity=Sum('quantity_ordered')
+                ).values_list('order_id', 'total_quantity')
+            )
+            print(f"✅ 商品数量查询完成，结果: {quantity_map}")
+        else:
+            quantity_map = {}
+            print("⚠️ 订单ID列表为空，跳过商品数量查询")
+
+        # 填充商品数量
         for order_data in orders_data:
             corresponding_order = next((o for o in orders_page if o.amazon_order_id == order_data['amazon_order_id']),
                                        None)
             if corresponding_order:
-                order_data['quantity'] = quantity_map.get(corresponding_order.id, 0)
+                qty = quantity_map.get(corresponding_order.id, 0)
+                order_data['quantity'] = qty
+                print(f"   - 订单 {order_data['amazon_order_id']}: 商品数量={qty}")
 
-        print(f"✅ 返回 {len(orders_data)} 条订单，总计 {total} 条")
+        print(f"\n✅ 准备返回数据: 共 {len(orders_data)} 条订单")
         print(f"{'=' * 60}\n")
 
         return JsonResponse({
@@ -729,7 +795,7 @@ def update_divi_export_status_api(request):
 
     except Exception as e:
         print(f"\n{'=' * 60}")
-        print(f"❌ 更新DIVI状态API错误: {str(e)}")
+        print(f"❌ 批量更新DIVI状态API异常: {str(e)}")
         import traceback
         traceback.print_exc()
         print(f"{'=' * 60}\n")
