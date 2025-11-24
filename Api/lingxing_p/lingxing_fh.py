@@ -84,8 +84,6 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "DHL": "500518-22809",
         "顺丰": "500518-21734",
         "UNIUNI": "500518-21736",
-        "UNI UNI": "500518-21736",
-        "UU": "500518-21736",
     }
     for key, code in contain_map.items():
         if key in method:
@@ -93,7 +91,6 @@ def get_divi_logistics_code(divi_logistics_method: str,
 
     print(f"未匹配到物流方式: {divi_logistics_method}")
     return ""
-
 
 # ==================== 新增：订单号同步函数 ====================
 async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple[bool, str]:
@@ -267,8 +264,8 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
                                                                         rounding=ROUND_HALF_UP) if total_quantity > 0 else Decimal(
         '0.00')
 
-    logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "")
     waybill_no = order.divi_tracking_number or ""
+    logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
     freight = str(order.divi_shipping_amount or "0")
 
     print(f"领星订单号: {order_no}")
