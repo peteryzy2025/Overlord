@@ -4,6 +4,7 @@ import django
 import asyncio
 from decimal import Decimal, ROUND_HALF_UP
 from asgiref.sync import sync_to_async
+from datetime import datetime, timedelta  # 新增导入
 
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +15,7 @@ django.setup()
 
 from Amazon.models import AmazonOrders
 from Api.lingxing.Y_OpenApi import get_api_resp
-
+from Api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
 
 # ==================== 物流匹配 ====================
 from typing import Optional
@@ -94,6 +95,56 @@ def get_divi_logistics_code(divi_logistics_method: str,
     return ""
 
 
+# ==================== 新增：订单号同步函数 ====================
+async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple[bool, str]:
+    """
+    如果订单 order_no 为空，则从领星API同步并更新数据库
+    返回: (是否成功, 订单号或错误信息)
+    """
+    if order.order_no:
+        return True, order.order_no
+
+    print(f"\n⚠️  【警告】订单 {amazon_order_id} 的 order_no 为空，尝试从领星API同步...")
+
+    try:
+        # 调用API获取最近10天的自发货订单
+        zifa_data = await get_lingxing_zifa_order(sid=str(sid), days=10)
+
+        if not zifa_data:
+            return False, "领星API返回空数据"
+
+        # 建立 platform_order_id -> order_number 映射
+        order_map = {}
+        for item in zifa_data:
+            order_number = item.get('order_number')
+            platform_list = item.get('platform_list', [])
+
+            if not order_number or not platform_list:
+                continue
+
+            for platform_id in platform_list:
+                order_map[platform_id] = order_number
+
+        # 查找当前订单
+        if amazon_order_id in order_map:
+            order_number = order_map[amazon_order_id]
+
+            # 更新数据库和对象
+            @sync_to_async
+            def update_order():
+                order.order_no = order_number
+                order.save(update_fields=['order_no'])
+                return order_number
+
+            await update_order()
+            print(f"✅  【成功】已同步订单号: {order_number}")
+            return True, order_number
+        else:
+            return False, f"在领星API中未找到订单 {amazon_order_id}"
+
+    except Exception as e:
+        return False, f"同步失败: {type(e).__name__}: {e}"
+
 
 # ==================== 核心函数（仅打印传参 + 可选执行）===================
 async def step1_set_sku(sku: str, cg_price: str, execute: bool = True):
@@ -143,7 +194,8 @@ async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True
     print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
 
 
-async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, waybill_no: str, freight: str, execute: bool = True):
+async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, waybill_no: str, freight: str,
+                              execute: bool = True):
     print(f"\n【步骤4】快速出库 fastOutbound 传参：")
     print(f"   → global_order_no    = {global_order_no}")
     print(f"   → wid                = 509522")
@@ -198,14 +250,26 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
 
     order = await get_full_order(sid, amazon_order_id)
 
+    # ==================== 关键修复：自动同步订单号 ====================
+    success, result = await sync_order_no_if_empty(order, sid, amazon_order_id)
+    if not success:
+        print(f"\n【致命错误】{result}，终止处理")
+        return
+
+    # 重新获取order_no（可能已被更新）
+    order_no = result
+
+    # ==================== 原有逻辑继续 ====================
+
     total_payment = Decimal(str(order.divi_goods_payment_total or 0))
     total_quantity = sum(item.quantity_ordered for item in order.items.all())
-    price_per_unit = (total_payment / Decimal(total_quantity)).quantize(Decimal('0.00'), rounding=ROUND_HALF_UP) if total_quantity > 0 else Decimal('0.00')
+    price_per_unit = (total_payment / Decimal(total_quantity)).quantize(Decimal('0.00'),
+                                                                        rounding=ROUND_HALF_UP) if total_quantity > 0 else Decimal(
+        '0.00')
 
     logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "")
     waybill_no = order.divi_tracking_number or ""
     freight = str(order.divi_shipping_amount or "0")
-    order_no = order.order_no
 
     print(f"领星订单号: {order_no}")
     print(f"总货款: {total_payment} | 总件数: {total_quantity} → 每件成本价: {price_per_unit}")
@@ -264,14 +328,15 @@ def lingxing_ship_order(sid: int, amazon_order_id: str, mode: str = "full_shipme
     # 同步环境中跑异步的 process_order
     asyncio.run(process_order(sid, amazon_order_id, mode=mode))
 
+
 # ==================== 主函数-对内 ====================
 async def main():
     sid = 521354
     amazon_order_id = "114-5198099-8179439"
     # 改这里就行！
     # MODE = "preview"  # 现在会打印全部5步传参！
-    MODE = "up_to_outbound"  #执行到出库为止
-    # MODE = "full_shipment"  # 完整一键发货
+    # MODE = "up_to_outbound"  # 执行到出库为止
+    MODE = "full_shipment"  # 完整一键发货
 
     await process_order(sid, amazon_order_id, mode=MODE)
 
