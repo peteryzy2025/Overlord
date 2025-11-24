@@ -331,8 +331,8 @@ def lingxing_ship_order(sid: int, amazon_order_id: str, mode: str = "full_shipme
 
 # ==================== 主函数-对内 ====================
 async def main():
-    sid = 521354
-    amazon_order_id = "114-5198099-8179439"
+    sid = 521925
+    amazon_order_id = "113-6214019-0037034"
     # 改这里就行！
     # MODE = "preview"  # 现在会打印全部5步传参！
     # MODE = "up_to_outbound"  # 执行到出库为止

@@ -211,7 +211,7 @@ def build_goods_from_lingxing_items(
         goods_list.append({
             "orderItemId":     item.get("order_item_id"),
             "quantityOrdered": item.get("quantity_ordered"),
-            "title":           item.get("title"),
+            "title":           item.get("title").replace("*","x"),
             "shippingTax":     str(item.get("shipping_tax_amount", "0")),
             "shippingPrice":   str(item.get("shipping_price_amount", "0")),
             "itemPrice":       str(item.get("item_price_amount", "0")),
