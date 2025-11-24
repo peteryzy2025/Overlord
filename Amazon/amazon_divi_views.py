@@ -12,7 +12,10 @@ from Api.divi.divi_order_service import (
     import_order_from_lingxing_to_divi,
     get_divi_brand_id_from_sid,
 )
-from Amazon.models import AmazonOrders, AmazonOrderItem
+from Amazon.models import AmazonOrders, AmazonOrderItem,LingXingAmazonShop
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
+from typing import Optional
 
 
 def parse_divi_time(time_str):
@@ -25,6 +28,24 @@ def parse_divi_time(time_str):
     except:
         return None
 
+def parse_divi_time(time_str: str) -> Optional[datetime]:
+    """解析 DIVI 时间字符串为 datetime"""
+    if not time_str:
+        return None
+    try:
+        return datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return None
+
+
+def parse_divi_amount(amount) -> Optional[Decimal]:
+    """解析金额为 Decimal"""
+    if amount is None or amount == '':
+        return None
+    try:
+        return Decimal(str(amount))
+    except (InvalidOperation, TypeError):
+        return None
 
 def update_divi_order_fields(order, divi_order_data):
     """
@@ -37,6 +58,8 @@ def update_divi_order_fields(order, divi_order_data):
         'divi_payment_time': parse_divi_time(divi_order_data.get('paymentTime')),
         'divi_dispatch_time': parse_divi_time(divi_order_data.get('sendOrderTime')),
         'divi_shipment_time': parse_divi_time(divi_order_data.get('sendGoodsTime')),
+        'divi_shipping_amount': parse_divi_amount(divi_order_data.get('goodsShippingTotal')),
+        'divi_goods_payment_total': parse_divi_amount(divi_order_data.get('goodsPaymentTotal')),
         'divi_logistics_method': divi_order_data.get('logisticsMethodName'),
         'divi_tracking_number': divi_order_data.get('trackingNumber'),
         'divi_order_status': divi_order_data.get('status'),
@@ -175,7 +198,7 @@ def add_divi_amazon_order(request):
         print(f"🎯 订单不存在于DIVI，准备执行导入...")
         divi_result = import_order_from_lingxing_to_divi(
             order_id=amazon_order_id,
-            print_if=False,
+            print_if=True,
         )
         print(f"📦 DIVI导入完成，结果: {divi_result}")
 

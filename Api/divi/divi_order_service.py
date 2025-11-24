@@ -183,10 +183,11 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
             if k in order and order.get(k):
                 return order.get(k)
         return default
-
+    raw_phone = pick("Phone", "phone")
+    clean_phone = raw_phone.split('ext.')[0].strip() if raw_phone else ''
     return {
         "name":         pick("Name", "buyer_name"),
-        "phone":        pick("Phone", "phone"),
+        "phone":        clean_phone,
         "line1":        pick("AddressLine1", "address_line1"),
         "city":         pick("City", "city"),
         "region":       pick("StateOrRegion", "state_or_region"),
@@ -238,7 +239,7 @@ def divi_add_order(
 
     endpoint_path = "/partnerTaskOrder/addPartnerUserOrder"
     if address.get("phone") == "":
-        address["phone"] = "+1 123456"
+        address["phone"] = "1234567890"
     order_payload = {
         "shippingAddressCity":         address.get("city"),
         "shippingAddressStateOrRegion": address.get("region"),
@@ -288,7 +289,79 @@ def import_order_from_lingxing_to_divi(
             api_path="/erp/sc/data/mws/orderDetail",
         )
     )
+    if y_resp and y_resp.data and len(y_resp.data) > 0:
+        lx_order_data = y_resp.data[0]
+        print(f"🔄 准备用领星数据更新本地订单...")
 
+        try:
+            from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+
+            sid = lx_order_data.get('sid')
+            amazon_order_id = lx_order_data.get('amazon_order_id')
+
+            if sid and amazon_order_id:
+                # 查找领星店铺
+                lingxing_shop = LingXingAmazonShop.objects.filter(sid=sid).first()
+                if lingxing_shop:
+                    # 查找本地订单
+                    order = AmazonOrders.objects.filter(
+                        lingxing_shop=lingxing_shop,
+                        amazon_order_id=amazon_order_id
+                    ).first()
+
+                    if order:
+                        update_fields = []
+
+                        # 更新买家信息
+                        if lx_order_data.get('buyer_name'):
+                            order.buyer_name = lx_order_data['buyer_name']
+                            update_fields.append('buyer_name')
+                        if lx_order_data.get('buyer_email'):
+                            order.buyer_email = lx_order_data['buyer_email']
+                            update_fields.append('buyer_email')
+                        if phone_raw := lx_order_data.get('phone'):
+                            order.phone = phone_raw.split('ext.')[0].strip()
+                            update_fields.append('phone')
+                        if lx_order_data.get('shipping_address'):
+                            order.address = str(lx_order_data['shipping_address'])
+                            update_fields.append('address')
+                        if lx_order_data.get('postal_code'):
+                            order.postal_code = lx_order_data['postal_code']
+                            update_fields.append('postal_code')
+
+                        # 保存订单更新
+                        if update_fields:
+                            order.save(update_fields=update_fields)
+                            print(f"   ✅ 更新订单主表 {len(update_fields)} 个字段: {update_fields}")
+
+                        # 更新商品明细
+                        item_list = lx_order_data.get('item_list', [])
+                        for item_data in item_list:
+                            seller_sku = item_data.get('seller_sku')
+                            if seller_sku:
+                                defaults = {
+                                    'quantity_ordered': item_data.get('quantity_ordered', 1)
+                                }
+                                if item_data.get('title'):
+                                    defaults['local_name'] = item_data['title']
+                                if item_data.get('asin'):
+                                    defaults['asin'] = item_data['asin']
+
+                                AmazonOrderItem.objects.update_or_create(
+                                    order=order,
+                                    seller_sku=seller_sku,
+                                    defaults=defaults
+                                )
+                        print(f"   ✅ 更新/创建 {len(item_list)} 个商品明细")
+                    else:
+                        print(f"⚠️ 未找到本地订单 {amazon_order_id}，跳过更新")
+                else:
+                    print(f"⚠️ 未找到sid={sid}的领星店铺，跳过更新")
+        except Exception as e:
+            print(f"⚠️ 更新本地订单时出错（不影响后续流程）: {str(e)}")
+            # 不抛出异常，让后续流程继续执行
+
+    # ==================== 更新逻辑结束 ====================
     if not y_resp.data:
         raise ValueError(f"未找到订单 {order_id} 的领星详情")
 

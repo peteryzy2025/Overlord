@@ -128,12 +128,19 @@ class AmazonOrders(models.Model):
     """
     # 修改：使用自增主键，避免不同店铺订单号重复问题
     id = models.BigAutoField(primary_key=True, db_comment='自增主键')
+
     amazon_order_id = models.CharField(
         max_length=50,
         db_index=True,
         db_comment='亚马逊订单ID'
     )
+    order_no = models.CharField(
+        max_length=50,
+        db_index=True,
+        db_comment="领星订单号",
+        blank=True,
 
+    )
     # 绑定到 LingXingAmazonShop（反向可查订单）
     lingxing_shop = models.ForeignKey(
         'LingXingAmazonShop',
@@ -199,6 +206,7 @@ class AmazonOrders(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
 
+
     # ===== DIVI系统专用字段（全部带divi_前缀） =====
     divi_import_time = models.DateTimeField(
         blank=True, null=True,
@@ -243,6 +251,20 @@ class AmazonOrders(models.Model):
         verbose_name='DIVI跟踪号',
         db_comment='物流跟踪号(trackingNumber)'
     )
+    divi_shipping_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        db_comment='运费金额'
+    )
+    divi_goods_payment_total =models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        db_comment='货款总计'
+    )
 
     # DIVI订单状态
     DIVI_STATUS_CHOICES = [
@@ -258,6 +280,11 @@ class AmazonOrders(models.Model):
         blank=True, null=True,
         verbose_name='DIVI订单状态',
         db_comment='DIVI系统订单状态(status)'
+    )
+    masked_single = models.BooleanField(
+        default=False,
+        verbose_name="假发货",
+        db_comment="是否假面单"
     )
 
     class Meta:

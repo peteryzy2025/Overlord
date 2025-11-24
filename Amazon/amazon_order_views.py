@@ -15,6 +15,7 @@ from Amazon.amazon_views import parse_permissions, determine_filter_type_and_val
     get_date_range_from_option
 # DIVI服务导入
 from Api.divi.divi_order_service import query_divi_order
+from Amazon.amazon_divi_views import update_divi_order_fields
 
 
 @login_required(login_url='/login/')
@@ -35,7 +36,7 @@ def amazon_order_management_page(request):
     return render(request, 'amazon_order_management.html', {
         'theme': theme,
         'active_nav': 'amazon_orders',
-        'orders': orders,          # 关键：把订单数据传给模板！
+        'orders': orders,  # 关键：把订单数据传给模板！
     })
 
 
@@ -85,6 +86,35 @@ def get_amazon_orders_list_api(request):
         shop_name_filter = data.get('shop_name', '').strip()
         if shop_name_filter:
             print(f"🔍 店铺名称筛选: {shop_name_filter}")
+
+        # ========== 新增筛选项处理 ==========
+        # 1. 订单状态筛选
+        order_status_filter = data.get('order_status', '').strip()
+        if order_status_filter:
+            print(f"🔍 订单状态筛选: {order_status_filter}")
+
+        # 2. 订单类型筛选
+        fulfillment_channel_filter = data.get('fulfillment_channel', '').strip()
+        if fulfillment_channel_filter:
+            print(f"🔍 订单类型筛选: {fulfillment_channel_filter}")
+
+        # 3. DIVI导单情况筛选
+        divi_export_filter = data.get('divi_export', '').strip()
+        if divi_export_filter:
+            print(f"🔍 DIVI导单情况筛选: {divi_export_filter}")
+
+        # 4. DIVI订单状态筛选
+        divi_order_status_filter = data.get('divi_order_status', '').strip()
+        if divi_order_status_filter:
+            print(f"🔍 DIVI订单状态筛选: {divi_order_status_filter}")
+
+        # 5. DIVI是否有面单筛选
+        divi_tracking_filter = data.get('divi_tracking', '').strip()
+        if divi_tracking_filter:
+            print(f"🔍 DIVI是否有面单筛选: {divi_tracking_filter}")
+        masked_single_filter = data.get('masked_single', '').strip()
+        if masked_single_filter:
+            print(f"🔍 是否假面单发货筛选: {masked_single_filter}")
 
         current_start, current_end = None, None
         if start_date_str and end_date_str:
@@ -164,7 +194,46 @@ def get_amazon_orders_list_api(request):
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
-        print(f"📋 查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
+        print(f"📋 基础查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
+
+        # ========== 应用新增筛选项 ==========
+        # 1. 订单状态筛选
+        if order_status_filter:
+            order_filter &= Q(order_status=order_status_filter)
+            print(f"📋 添加订单状态筛选: {order_status_filter}")
+
+        # 2. 订单类型筛选
+        if fulfillment_channel_filter:
+            order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
+            print(f"📋 添加订单类型筛选: {fulfillment_channel_filter}")
+
+        # 3. DIVI导单情况筛选
+        if divi_export_filter:
+            divi_export_bool = divi_export_filter.lower() == 'true'
+            order_filter &= Q(is_exported_to_divi=divi_export_bool)
+            print(f"📋 添加DIVI导单筛选: {divi_export_bool}")
+
+        # 4. DIVI订单状态筛选
+        if divi_order_status_filter:
+            order_filter &= Q(divi_order_status=int(divi_order_status_filter))
+            print(f"📋 添加DIVI订单状态筛选: {divi_order_status_filter}")
+
+        # 5. DIVI是否有面单筛选
+        if divi_tracking_filter:
+            if divi_tracking_filter == 'has':
+                order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
+                print(f"📋 添加DIVI有面单筛选")
+            elif divi_tracking_filter == 'none':
+                order_filter &= Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number='')
+                print(f"📋 添加DIVI无面单筛选")
+        # 是否假面单发货 masked_single
+        if masked_single_filter:
+            if masked_single_filter == 'true':
+                order_filter &= Q(masked_single=True)
+                print("📋 添加筛选：仅假面单发货订单 (masked_single=True)")
+            elif masked_single_filter == 'false':
+                order_filter &= Q(masked_single=False)
+                print("📋 添加筛选：排除假面单，仅正常面单订单 (masked_single=False)")
 
         # 订单号筛选（模糊查询）
         if order_id_filter:
@@ -224,8 +293,10 @@ def get_amazon_orders_list_api(request):
         ).only(
             'id', 'amazon_order_id', 'lingxing_shop', 'amazon_shop',
             'order_status', 'order_total_amount', 'purchase_date_local', 'is_exported_to_divi',
-            'fulfillment_channel'
-        ).order_by('-purchase_date_local')  # 倒序排列
+            'fulfillment_channel', 'divi_order_status', 'divi_tracking_number',
+            'divi_logistics_method',  # 新增
+            'masked_single',  # 新增
+        ).order_by('-purchase_date_local')
 
         # 统计总数量
         total = orders_queryset.count()
@@ -278,8 +349,13 @@ def get_amazon_orders_list_api(request):
                     '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
                 'is_exported_to_divi': order.is_exported_to_divi,
                 'fulfillment_channel': order.fulfillment_channel or '',
+                'divi_order_status': order.divi_order_status,  # 返回DIVI订单状态给前端
                 'sid': order.lingxing_shop.sid if order.lingxing_shop else None,
                 'divi_shop_id': order.lingxing_shop.amazon_shop.divi_shop_id if order.lingxing_shop and order.lingxing_shop.amazon_shop else None,
+                'divi_logistics_method': order.divi_logistics_method or '',
+                'divi_tracking_number': order.divi_tracking_number or '',
+                'masked_single': order.masked_single,
+
             }
 
             orders_data.append(order_data)
@@ -355,45 +431,6 @@ def parse_divi_time(time_str):
         return timezone.make_aware(dt)
     except:
         return None
-
-
-def update_divi_order_fields(order, divi_order_data):
-    """
-    更新订单的DIVI字段（包括商品明细）
-    """
-    # 更新主订单字段
-    update_data = {
-        'is_exported_to_divi': True,
-        'divi_import_time': parse_divi_time(divi_order_data.get('createTime')),
-        'divi_payment_time': parse_divi_time(divi_order_data.get('paymentTime')),
-        'divi_dispatch_time': parse_divi_time(divi_order_data.get('sendOrderTime')),
-        'divi_shipment_time': parse_divi_time(divi_order_data.get('sendGoodsTime')),
-        'divi_logistics_method': divi_order_data.get('logisticsMethodName'),
-        'divi_tracking_number': divi_order_data.get('trackingNumber'),
-        'divi_order_status': divi_order_data.get('status'),
-    }
-
-    # 审核时间特殊处理
-    if divi_order_data.get('status') >= 3 and not order.divi_audit_time:
-        update_data['divi_audit_time'] = timezone.now()
-
-    # 使用update批量更新字段
-    AmazonOrders.objects.filter(id=order.id).update(**update_data)
-
-    # 更新商品明细
-    order_goods_list = divi_order_data.get('orderGoodsList', [])
-    for goods in order_goods_list:
-        item_defaults = {
-            'divi_product_name': goods.get('productName'),
-        }
-
-        AmazonOrderItem.objects.update_or_create(
-            order=order,
-            seller_sku=goods.get('sellerSku'),
-            defaults=item_defaults
-        )
-
-    return True
 
 
 @login_required

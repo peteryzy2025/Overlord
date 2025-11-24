@@ -14,8 +14,6 @@ from General.models import User, AmazonShop, OperationalAccount
 from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 
 
-
-
 def parse_permissions(user_permission):
     """
     统一权限解析函数
