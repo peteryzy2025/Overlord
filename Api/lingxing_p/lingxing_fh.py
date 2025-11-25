@@ -64,6 +64,8 @@ def get_divi_logistics_code(divi_logistics_method: str,
             # 例：420383059261290304442265416750
             # DHL
             return "500518-22809"
+        if "LS" in tracking:
+            return "500518-21735"
 
         print(f"F-USPS 单号未能识别承运商: {tracking_no}")
         return ""

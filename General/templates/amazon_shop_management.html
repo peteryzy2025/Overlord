@@ -145,7 +145,7 @@
     .table-container thead {
         position: sticky;
         top: 0;
-        z-index: 10;
+        z-index: 12;
         background-color: var(--bg-secondary);
     }
 
@@ -650,9 +650,14 @@ async function loadOperatorsFromAPI(platform = '') {
     }
 }
 
-async function loadGroupsFromAPI() {
+async function loadGroupsFromAPI(platform = '') {
     try {
-        const response = await fetch('/api/ops-groups/');
+        const url = new URL('/api/ops-groups/', window.location.origin);
+        if (platform) {
+            url.searchParams.set('platform', platform);
+        }
+
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
@@ -1268,7 +1273,7 @@ function getCSRFToken() {
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', async function() {
-    await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI(), loadCustomersFromAPI()]);
+    await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI("亚马逊"), loadCustomersFromAPI()]);
     loadShopsTable();
 
        // ✅ 添加回车键快捷键：在筛选区域按回车触发筛选

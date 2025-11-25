@@ -168,3 +168,30 @@ class AmazonShop(models.Model):
         db_table = 'amazon_shop'
         db_table_comment = '亚马逊店铺信息表'
 
+
+class TemuShop(models.Model):
+    id = models.BigIntegerField(primary_key=True, db_comment='主键')
+    shop_name = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺名称')
+    ops_id = models.IntegerField(blank=True, null=True, db_comment='运营id')
+    divi_shop_id = models.IntegerField(blank=True, null=True, db_comment='迪唯店铺id')
+    shop_entity = models.CharField(max_length=255, blank=True, null=True, db_comment='主体公司')
+    shop_account = models.CharField(max_length=255, blank=True, null=True, db_comment='登录账号')
+    shop_password = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺的登录密码')
+    invitation_code = models.CharField(max_length=255, blank=True, null=True, db_comment='邀请码')
+    verification_email = models.CharField(max_length=255, blank=True, null=True, db_comment='邮箱地址')
+    email_password = models.CharField(max_length=255, blank=True, null=True, db_comment='登录密码')
+    shop_temu_id = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺Temu_ID')
+    compliance_center = models.CharField(max_length=255, blank=True, null=True, db_comment='合规中心')
+    new_principal_info = models.CharField(max_length=255, blank=True, null=True, db_comment='负责人信息申报新增负责人信息')
+    new_manufacturer_info = models.CharField(max_length=255, blank=True, null=True, db_comment='制造商信息申报新增制造商信息申报')
+    phone_account_holder = models.CharField(max_length=255, blank=True, null=True, db_comment='手机号码开户人')
+    phone_current_location = models.CharField(max_length=255, blank=True, null=True, db_comment='手机号码现存放')
+    shop_nature = models.CharField(max_length=255, blank=True, null=True, db_comment='性质')
+    place_of_origin = models.CharField(max_length=255, blank=True, null=True, db_comment='归属地')
+    legal_person = models.CharField(max_length=255, blank=True, null=True, db_comment='法人')
+    customer = models.CharField(max_length=255, blank=True, null=True, db_comment='客户')
+    shop_status = models.SmallIntegerField(blank=True, null=True, db_comment='店铺状态')
+
+    class Meta:
+        db_table = 'temu_shop'
+        db_table_comment = 'temu店铺表'

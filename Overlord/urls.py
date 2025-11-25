@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from General import views, views_user_management, views_amazon_management
+from General import views, views_user_management, views_amazon_management,views_temu_management
 from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views
 
 urlpatterns = [
@@ -63,6 +63,10 @@ urlpatterns = [
     path("api/ship-order/", amazon_order_api_views.api_ship_order, name="api_ship_order"),
     path("api/mark-real-shipment/", amazon_order_api_views.api_mark_real_shipment, name="api_mark_real_shipment"),# 标注真发
 
-
-
+    # Temu API接口
+    path('api/operators/', views_temu_management.get_all_operators_api, name='get_operators'),
+    path('api/temu-customers/', views_temu_management.get_customers_api, name='get_temu_customers'),
+    path('api/temu-shops/', views_temu_management.get_temu_shops_api, name='get_temu_shops'),
+    path('api/temu-shops/create/', views_temu_management.create_temu_shop_api, name='create_temu_shop'),
+    path('api/temu-shops/<int:shop_id>/update/', views_temu_management.update_temu_shop_api, name='update_temu_shop'),
 ]

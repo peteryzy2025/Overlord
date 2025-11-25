@@ -77,19 +77,32 @@ def get_all_operators_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
+
+
 @require_GET
 @login_required
 def get_all_ops_groups_api(request):
     """
-    API接口：获取所有运营分组列表（无权限限制）
+    API接口：获取所有运营分组列表（支持按平台筛选）
+    参数:
+        - platform: 可选，平台名称 ('亚马逊' 或 'Temu')
     返回: ['A组', 'B组', 'C组', ...]
     """
     try:
-        groups = OperationalAccount.objects.exclude(
+        platform = request.GET.get('platform', '').strip()
+
+        # 基础查询：排除空值
+        queryset = OperationalAccount.objects.exclude(
             ops_group__isnull=True
         ).exclude(
             ops_group=''
-        ).values_list('ops_group', flat=True).distinct().order_by('ops_group')
+        )
+
+        # 如果指定了平台，通过关联User进行筛选
+        if platform:
+            queryset = queryset.filter(user__platform=platform)
+
+        groups = queryset.values_list('ops_group', flat=True).distinct().order_by('ops_group')
 
         return JsonResponse({
             'success': True,
@@ -104,7 +117,6 @@ def get_all_ops_groups_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
-
 # 获取客户列表API
 @require_GET
 @login_required
