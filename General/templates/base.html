@@ -10,7 +10,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
 
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -21,431 +22,522 @@
     {% block extra_css %}{% endblock %}
 
     <style>
-    :root {
-        --bg-primary: #FFFFFF;
-        --bg-secondary: #F7FAFC;
-        --bg-tertiary: #EDF2F7;
-        --text-primary: #1A202C;
-        --text-secondary: #4A5568;
-        --text-tertiary: #718096;
-        --border-color: #E2E8F0;
-        --accent-color: #667eea;
-        --accent-hover: #5a67d8;
-        --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
-        --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
-        --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
-    }
+        :root {
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F7FAFC;
+            --bg-tertiary: #EDF2F7;
+            --text-primary: #1A202C;
+            --text-secondary: #4A5568;
+            --text-tertiary: #718096;
+            --border-color: #E2E8F0;
+            --accent-color: #667eea;
+            --accent-hover: #5a67d8;
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
 
-    [data-theme="dark"] {
-        --bg-primary: #1A202C;
-        --bg-secondary: #2D3748;
-        --bg-tertiary: #4A5568;
-        --text-primary: #F7FAFC;
-        --text-secondary: #E2E8F0;
-        --text-tertiary: #CBD5E0;
-        --border-color: #4A5568;
-        --accent-color: #667eea;
-        --accent-hover: #7c3aed;
-        --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
-        --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
-        --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
-    }
+        [data-theme="dark"] {
+            --bg-primary: #1A202C;
+            --bg-secondary: #2D3748;
+            --bg-tertiary: #4A5568;
+            --text-primary: #F7FAFC;
+            --text-secondary: #E2E8F0;
+            --text-tertiary: #CBD5E0;
+            --border-color: #4A5568;
+            --accent-color: #667eea;
+            --accent-hover: #7c3aed;
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
 
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-        font-family: 'Noto Sans SC', sans-serif;
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
-        min-height: 100vh;
-        transition: all 0.3s ease;
-    }
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
 
-    /* 顶部导航栏 */
-    .navbar {
-        background-color: var(--bg-primary);
-        box-shadow: var(--shadow-light);
-        padding: 0.75rem 1.5rem;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        transition: all 0.3s ease;
-    }
+        /* 顶部导航栏 */
+        .navbar {
+            background-color: var(--bg-primary);
+            box-shadow: var(--shadow-light);
+            padding: 0.75rem 1.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
 
-    .navbar-brand {
-        display: flex;
-        align-items: center;
-        font-weight: 700;
-        font-size: 1.5rem;
-        color: var(--text-primary);
-        text-decoration: none;
-    }
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
 
-    .navbar-brand img {
-        width: 40px;
-        height: 40px;
-        margin-right: 12px;
-        border-radius: 8px;
-    }
+        .navbar-brand img {
+            width: 40px;
+            height: 40px;
+            margin-right: 12px;
+            border-radius: 8px;
+        }
 
-    .navbar-nav {
-        display: flex;
-        align-items: center;
-        gap: 2rem;
-        margin: 0;
-        flex-direction: row;
-    }
+        .navbar-nav {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            margin: 0;
+            flex-direction: row;
+        }
 
-    .nav-link {
-        color: var(--text-secondary);
-        text-decoration: none;
-        font-weight: 500;
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        position: relative;
-    }
+        /* ========== 导航项包裹容器（新增） ========== */
+        .nav-item-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
 
-    .nav-link:hover {
-        color: var(--accent-color);
-        background-color: var(--bg-secondary);
-    }
+        /* 主链接样式（保持不变） */
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            display: block;
+        }
 
-    .nav-link.active {
-        color: var(--accent-color);
-        background-color: var(--bg-secondary);
-    }
+        .nav-link:hover {
+            color: var(--accent-color);
+            background-color: var(--bg-secondary);
+        }
 
-    .nav-link.active::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 30px;
-        height: 3px;
-        background-color: var(--accent-color);
-        border-radius: 2px;
-    }
+        .nav-link.active {
+            color: var(--accent-color);
+            background-color: var(--bg-secondary);
+        }
 
-    /* 用户区域 */
-    .user-area {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
+        .nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background-color: var(--accent-color);
+            border-radius: 2px;
+        }
 
-    .theme-toggle {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 1.2rem;
-        cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 50%;
-        transition: all 0.3s ease;
-    }
+        /* ========== 下拉菜单样式（新增） ========== */
+        .nav-dropdown {
+            position: absolute;
+            top: 100%;
+            left:-50%;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-medium);
+            /*min-width: 200px;*/
+            width: 200%;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1001;
+            overflow: hidden;
+        }
 
-    .theme-toggle:hover {
-        background-color: var(--bg-secondary);
-        color: var(--accent-color);
-    }
+        /* 鼠标悬浮时显示下拉菜单 */
+        .nav-item-wrapper:hover .nav-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
 
-    /* 用户菜单 */
-    .user-menu {
-        position: relative;
-        display: inline-block;
-    }
+        .nav-dropdown-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
 
-    .user-avatar-wrapper {
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
+        .nav-dropdown-item:last-child {
+            border-bottom: none;
+        }
 
-    .user-avatar-wrapper:hover {
-        background-color: var(--bg-secondary);
-    }
+        .nav-dropdown-item:hover {
+            background-color: var(--bg-secondary);
+            color: var(--accent-color);
+            padding-left: 1.25rem;
+        }
 
-    .username {
-        font-weight: 500;
-        color: var(--text-primary);
-    }
+        .nav-dropdown-item i {
+            margin-right: 0.5rem;
+            width: 16px;
+            text-align: center;
+        }
 
-    .user-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid var(--border-color);
-    }
+        /* 下拉箭头指示器 */
+        .dropdown-arrow {
+            margin-left: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            transition: transform 0.3s ease;
+        }
 
-    .user-menu-dropdown {
-        position: absolute;
-        top: 100%;
-        right: 0;
-        background-color: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        box-shadow: var(--shadow-medium);
-        min-width: 180px;
-        display: none;
-        z-index: 1001;
-        margin-top: 0.5rem;
-        overflow: hidden;
-    }
+        .nav-item-wrapper:hover .dropdown-arrow {
+            transform: rotate(180deg);
+            color: var(--accent-color);
+        }
 
-    .user-menu-dropdown.show {
-        display: block;
-    }
+        /* 用户区域 */
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
 
-    .user-menu-item {
-        padding: 0.75rem 1rem;
-        color: var(--text-primary);
-        text-decoration: none;
-        display: block;
-        transition: all 0.3s ease;
-        font-size: 0.875rem;
-    }
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
 
-    .user-menu-item:hover {
-        background-color: var(--bg-secondary);
-        color: var(--accent-color);
-    }
+        .theme-toggle:hover {
+            background-color: var(--bg-secondary);
+            color: var(--accent-color);
+        }
 
-    .user-menu-item i {
-        margin-right: 0.5rem;
-        width: 16px;
-        text-align: center;
-    }
+        /* 用户菜单 */
+        .user-menu {
+            position: relative;
+            display: inline-block;
+        }
 
-    /* 移动端菜单按钮 */
-    .mobile-menu-toggle {
-        display: none;
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 1.5rem;
-        cursor: pointer;
-    }
+        .user-avatar-wrapper {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
 
-    /* 加载动画 */
-    .loading-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: var(--bg-primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        opacity: 1;
-        transition: opacity 0.5s ease;
-    }
+        .user-avatar-wrapper:hover {
+            background-color: var(--bg-secondary);
+        }
 
-    .loading-overlay.hidden {
-        opacity: 0;
-        pointer-events: none;
-    }
+        .username {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
 
-    .loading-spinner {
-        width: 50px;
-        height: 50px;
-        border: 4px solid var(--border-color);
-        border-top: 4px solid var(--accent-color);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border-color);
+        }
 
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
+        .user-menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-medium);
+            min-width: 180px;
+            display: none;
+            z-index: 1001;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
 
-    /* 通知样式 */
-    .notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--bg-primary);
-        color: var(--text-primary);
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: var(--shadow-heavy);
-        border-left: 4px solid var(--accent-color);
-        z-index: 10000;
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        max-width: 400px;
-    }
+        .user-menu-dropdown.show {
+            display: block;
+        }
 
-    .notification.show {
-        transform: translateX(0);
-    }
+        .user-menu-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
 
-    .status-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-    }
+        .user-menu-item:hover {
+            background-color: var(--bg-secondary);
+            color: var(--accent-color);
+        }
 
-    .status-active {
-        background-color: #C6F6D5;
-        color: #22543D;
-    }
+        .user-menu-item i {
+            margin-right: 0.5rem;
+            width: 16px;
+            text-align: center;
+        }
 
-    .status-inactive {
-        background-color: #FED7D7;
-        color: #742A2A;
-    }
+        /* 移动端菜单按钮 */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
 
-    .status-pending {
-        background-color: #FEEBC8;
-        color: #744210;
-    }
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 1;
+            transition: opacity 0.5s ease;
+        }
 
-    .status-processing {
-        background-color: #E9D8FD;
-        color: #553C9A;
-    }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
 
-    {% block layout_css %}{% endblock %}
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .navbar-nav {
+                display: none;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            .navbar-nav.show {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background-color: var(--bg-primary);
+                flex-direction: column;
+                padding: 1rem;
+                box-shadow: var(--shadow-medium);
+                display: flex;
+            }
+
+            /* 移动端下拉菜单改为点击展开 */
+            .nav-item-wrapper:hover .nav-dropdown {
+                opacity: 0;
+                visibility: hidden;
+            }
+
+            .nav-item-wrapper.mobile-open .nav-dropdown {
+                position: static;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                box-shadow: none;
+                margin-top: 0.5rem;
+                width: 100%;
+            }
+        }
+
+        {% block layout_css %}{% endblock %}
     </style>
 </head>
 <body>
-    <!-- 加载遮罩 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
+<!-- 加载遮罩 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
 
-    <!-- 顶部导航栏 -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'main' %}">
-                <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
-                Overlord
-            </a>
+<!-- 顶部导航栏 -->
+<nav class="navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'main' %}">
+            <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
+            Overlord
+        </a>
 
-            <div class="navbar-nav">
-                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}" href="{% url 'management' %}">管理</a>
-                <a class="nav-link {% if active_nav == 'amazon' %}active{% endif %}" href="{% url 'amazon_dashboard' %}">Amazon</a>
-                <a class="nav-link {% if active_nav == 'amazon_orders' %}active{% endif %}" href="{% url 'amazon_order_management' %}">订单管理</a>
-                <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
+        <div class="navbar-nav">
+            <!-- ========== 改造后的管理导航项 ========== -->
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}" href="{% url 'management' %}">
+                    管理
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'user_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-users"></i> 人员管理
+                    </a>
+                    <a href="{% url 'performance_targets' %}" class="nav-dropdown-item">
+                        <i class="fas fa-chart-line"></i> 绩效管理
+                    </a>
+                    <a href="{% url 'amazon_management' %}" class="nav-dropdown-item">
+                        <i class="fab fa-amazon"></i> Amazon店铺
+                    </a>
+                    <a href="{% url 'temu_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-store"></i> Temu店铺
+                    </a>
+                </div>
             </div>
 
-            <div class="user-area">
-                <button class="theme-toggle" id="themeToggle" title="切换主题">
-                    <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
-                </button>
+            <!-- 其他导航项保持不变 -->
+            <a class="nav-link {% if active_nav == 'amazon' %}active{% endif %}" href="{% url 'amazon_dashboard' %}">Amazon</a>
+            <a class="nav-link {% if active_nav == 'amazon_orders' %}active{% endif %}"
+               href="{% url 'amazon_order_management' %}">订单管理</a>
+            <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
+        </div>
 
-                <!-- 用户菜单 -->
-                <div class="user-menu">
-                    <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
-                        <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
-                        <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
-                        <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
-                    </div>
+        <div class="user-area">
+            <button class="theme-toggle" id="themeToggle" title="切换主题">
+                <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
+            </button>
 
-                    <div class="user-menu-dropdown" id="userMenuDropdown">
-                        <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
-                            <i class="fas fa-cog"></i> 设置
-                        </a>
-                        <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
-                        <a href="{% url 'logout' %}" class="user-menu-item" onclick="return confirmLogout()">
-                            <i class="fas fa-sign-out-alt"></i> 退出登录
-                        </a>
-                    </div>
+            <!-- 用户菜单 -->
+            <div class="user-menu">
+                <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
+                    <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
+                    <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                    <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
                 </div>
 
-                <button class="mobile-menu-toggle" onclick="showComingSoon()">
-                    <i class="fas fa-bars"></i>
-                </button>
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
+                        <i class="fas fa-cog"></i> 设置
+                    </a>
+                    <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
+                    <a href="{% url 'logout' %}" class="user-menu-item" onclick="return confirmLogout()">
+                        <i class="fas fa-sign-out-alt"></i> 退出登录
+                    </a>
+                </div>
             </div>
+
+            <button class="mobile-menu-toggle" onclick="showComingSoon()">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <!-- 主容器 -->
-    {% block main_container %}{% endblock %}
+<!-- 主容器 -->
+{% block main_container %}{% endblock %}
 
-    <!-- 通知容器 -->
-    <div id="notificationContainer"></div>
+<!-- 通知容器 -->
+<div id="notificationContainer"></div>
 
-    <script>
-        // 主题切换功能
-        document.getElementById('themeToggle').addEventListener('click', function() {
-            const html = document.documentElement;
-            const themeIcon = document.getElementById('themeIcon');
-            const currentTheme = html.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+<script>
+    // 主题切换功能
+    document.getElementById('themeToggle').addEventListener('click', function () {
+        const html = document.documentElement;
+        const themeIcon = document.getElementById('themeIcon');
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
 
-            // 发送主题更新请求到后端
-            fetch('/api/update-theme/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ theme: newTheme })
-            });
-
-            // 动画效果
-            if (window.anime) {
-                anime({
-                    targets: themeIcon,
-                    rotate: '360deg',
-                    duration: 500,
-                    easing: 'easeInOutQuart',
-                    complete: function() {
-                        themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                        anime({
-                            targets: themeIcon,
-                            rotate: '0deg',
-                            duration: 0
-                        });
-                    }
-                });
-            }
+        // 发送主题更新请求到后端
+        fetch('/api/update-theme/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({theme: newTheme})
         });
 
-        // 获取CSRF Token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+        // 动画效果
+        if (window.anime) {
+            anime({
+                targets: themeIcon,
+                rotate: '360deg',
+                duration: 500,
+                easing: 'easeInOutQuart',
+                complete: function () {
+                    themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+                    anime({
+                        targets: themeIcon,
+                        rotate: '0deg',
+                        duration: 0
+                    });
+                }
+            });
+        }
+    });
+
+    // 获取CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
+        return cookieValue;
+    }
 
-        // 显示通知
-        function showNotification(message, type = 'info', duration = 3000) {
-            const container = document.getElementById('notificationContainer');
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
-            notification.style.cssText = `
+    // 显示通知
+    function showNotification(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('notificationContainer');
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.style.cssText = `
                 position: fixed;
                 top: 20px;
                 right: 20px;
@@ -461,14 +553,14 @@
                 max-width: 400px;
             `;
 
-            const icons = {
-                success: 'fa-check-circle',
-                error: 'fa-exclamation-circle',
-                warning: 'fa-exclamation-triangle',
-                info: 'fa-info-circle'
-            };
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
 
-            notification.innerHTML = `
+        notification.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <i class="fas ${icons[type]}" style="color: var(--accent-color);"></i>
                     <span>${message}</span>
@@ -484,49 +576,49 @@
                 </div>
             `;
 
-            container.appendChild(notification);
+        container.appendChild(notification);
 
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
             setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 10);
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 300);
+        }, duration);
+    }
 
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.remove();
-                    }
-                }, 300);
-            }, duration);
+    // 显示即将推出提示
+    function showComingSoon() {
+        showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
+    }
+
+    // 切换用户菜单显示/隐藏
+    function toggleUserMenu() {
+        const dropdown = document.getElementById('userMenuDropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    // 点击页面其他地方关闭菜单
+    document.addEventListener('click', function (e) {
+        const userMenu = document.querySelector('.user-menu');
+        if (!userMenu.contains(e.target)) {
+            document.getElementById('userMenuDropdown').classList.remove('show');
         }
+    });
 
-        // 显示即将推出提示
-        function showComingSoon() {
-            showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
-        }
+    // 退出登录确认
+    function confirmLogout() {
+        return confirm('确定要退出登录吗？');
+    }
 
-        // 切换用户菜单显示/隐藏
-        function toggleUserMenu() {
-            const dropdown = document.getElementById('userMenuDropdown');
-            dropdown.classList.toggle('show');
-        }
+    {% block layout_js %}{% endblock %}
+</script>
 
-        // 点击页面其他地方关闭菜单
-        document.addEventListener('click', function(e) {
-            const userMenu = document.querySelector('.user-menu');
-            if (!userMenu.contains(e.target)) {
-                document.getElementById('userMenuDropdown').classList.remove('show');
-            }
-        });
-
-        // 退出登录确认
-        function confirmLogout() {
-            return confirm('确定要退出登录吗？');
-        }
-
-        {% block layout_js %}{% endblock %}
-    </script>
-
-    {% block extra_js %}{% endblock %}
+{% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -69,6 +69,20 @@ class User(AbstractUser):
         """检查用户状态是否为正常"""
         return self.status == self.STATUS_NORMAL
 
+    def is_group_leader(self):
+        """判断用户是否为运营组长"""
+        return self.role == '运营组长'
+
+    def get_ops_group(self):
+        """获取用户的运营分组"""
+        if hasattr(self, 'operational_account') and self.operational_account.ops_group:
+            return self.operational_account.ops_group
+        return None
+
+    def can_manage_group_targets(self):
+        """判断是否可以管理组目标（permission包含555）"""
+        return self.permission and '555' in self.permission.split(',')
+
 
 class OperationalAccount(models.Model):
     """
@@ -202,40 +216,35 @@ class TemuShop(models.Model):
         db_table_comment = 'temu店铺表'
 
 
-
-class PerformanceTarget(models.Model):
+class GroupPerformanceTarget(models.Model):
     """
-    运营人员绩效目标
+    运营组绩效目标表
+    只有permission包含555的用户可以创建
     """
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
-
-    # 关联的运营人员
-    user = models.ForeignKey(
-        'General.User',
-        on_delete=models.CASCADE,
-        verbose_name='运营人员',
-        related_name='performance_targets'
-    )
 
     # 目标月份 (格式: YYYY-MM)
     month = models.CharField('目标月份', max_length=7)
 
-    # 目标业绩（单量）
-    target_performance = models.IntegerField('目标业绩/单', default=0)
+    # 运营分组（从OperationalAccount.ops_group去重获取）
+    ops_group = models.CharField('运营分组', max_length=255)
 
-    # 冲单业绩目标（必须大于目标业绩）
-    stretch_target = models.IntegerField('冲单业绩目标/单', default=0)
+    # 组目标业绩（单量）
+    target_performance = models.IntegerField('组目标业绩/单', default=0)
+
+    # 冲单业绩目标
+    stretch_target = models.IntegerField('组冲单目标/单', default=0)
 
     # 备注
     note = models.TextField('备注', blank=True, null=True)
 
-    # 创建人（只有permission=555的用户可创建）
+    # 创建人（permission包含555的用户）
     created_by = models.ForeignKey(
-        'General.User',
+        User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='created_performance_targets',
+        related_name='created_group_targets',
         verbose_name='创建人'
     )
 
@@ -244,19 +253,110 @@ class PerformanceTarget(models.Model):
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
-        db_table = 'user_performance_targets'
-        verbose_name = '绩效目标'
+        db_table = 'group_performance_targets'
+        verbose_name = '组绩效目标'
         verbose_name_plural = verbose_name
-        # 每个用户每月只能有一个目标
+        # 每个分组每月只能有一个目标
+        unique_together = ['ops_group', 'month']
+        indexes = [
+            models.Index(fields=['month', 'ops_group']),
+        ]
+
+    def __str__(self):
+        return f"{self.ops_group} - {self.month}: {self.target_performance}单"
+
+    def clean(self):
+        """模型验证"""
+        if self.stretch_target <= self.target_performance:
+            raise ValidationError('组冲单目标必须大于组目标业绩')
+
+    def get_current_member_total(self):
+        """获取当前该组所有成员的个人目标总和"""
+        from django.db.models import Sum
+        total = PersonalPerformanceTarget.objects.filter(
+            ops_group=self.ops_group,
+            month=self.month
+        ).aggregate(Sum('target_performance'))['target_performance__sum'] or 0
+
+        stretch_total = PersonalPerformanceTarget.objects.filter(
+            ops_group=self.ops_group,
+            month=self.month
+        ).aggregate(Sum('stretch_target'))['stretch_target__sum'] or 0
+
+        return {
+            'target_total': total,
+            'stretch_total': stretch_total,
+            'matches_group_target': total == self.target_performance and stretch_total == self.stretch_target
+        }
+
+
+class PersonalPerformanceTarget(models.Model):
+    """
+    个人绩效目标表
+    由运营组长为自己的组员批量设置
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+
+    # 关联的运营人员
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        verbose_name='运营人员',
+        related_name='personal_performance_targets'
+    )
+
+    # 运营分组（冗余字段，方便查询）
+    ops_group = models.CharField('运营分组', max_length=255, blank=True, null=True)
+
+    # 目标月份 (格式: YYYY-MM)
+    month = models.CharField('目标月份', max_length=7)
+
+    # 目标业绩（单量）
+    target_performance = models.IntegerField('个人目标业绩/单', default=0)
+
+    # 冲单业绩目标
+    stretch_target = models.IntegerField('个人冲单目标/单', default=0)
+
+    # 备注
+    note = models.TextField('备注', blank=True, null=True)
+
+    # 创建人（通常是运营组长）
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_personal_targets',
+        verbose_name='创建人'
+    )
+
+    # 创建和更新时间
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'personal_performance_targets'
+        verbose_name = '个人绩效目标'
+        verbose_name_plural = verbose_name
+        # 每个人每月只能有一个目标
         unique_together = ['user', 'month']
         indexes = [
-            models.Index(fields=['month', 'user']),
+            models.Index(fields=['month', 'ops_group']),
+            models.Index(fields=['user', 'month']),
         ]
 
     def __str__(self):
         return f"{self.user.first_name} - {self.month}: {self.target_performance}单"
 
+    def save(self, *args, **kwargs):
+        # 自动从user的operational_account获取ops_group
+        if self.user:
+            self.ops_group = self.user.get_ops_group()
+        super().save(*args, **kwargs)
+
     def clean(self):
         """模型验证"""
         if self.stretch_target <= self.target_performance:
-            raise ValidationError('冲单业绩目标必须大于目标业绩')
+            raise ValidationError('个人冲单目标必须大于个人目标业绩')
+
+

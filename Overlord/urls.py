@@ -70,13 +70,23 @@ urlpatterns = [
     path('api/temu-shops/create/', views_temu_management.create_temu_shop_api, name='create_temu_shop'),
     path('api/temu-shops/<int:shop_id>/update/', views_temu_management.update_temu_shop_api, name='update_temu_shop'),
 
-    # 绩效目标管理页面
-    path('performance-targets/', views_performance.performance_targets, name='performance_targets'),
+    # 绩效管理页面
+    path('performance/', views_performance.performance_targets_view, name='performance_targets'),
 
-    # API接口
-    path('api/group-targets/', views_performance.get_group_targets, name='api_group_targets'),
-    path('api/performance-targets/', views_performance.get_performance_targets, name='api_performance_targets'),
-    path('api/group-targets/create/', views_performance.create_group_target, name='api_create_group_target'),
-    path('api/performance-targets/<int:target_id>/update/', views_performance.update_performance_target,
-         name='api_update_performance_target'),
+    # 组目标API
+    path('api/performance/group_targets/', views_performance.get_group_targets_api, name='api_group_targets'),
+    path('api/performance/group_targets/create/', views_performance.create_group_target_api, name='api_group_create'),
+    path('api/performance/group_targets/<int:target_id>/update/', views_performance.update_group_target_api,
+         name='api_group_update'),
+
+    # 个人目标API
+    path('api/performance/personal_targets/', views_performance.get_personal_targets_api, name='api_personal_targets'),
+    path('api/performance/personal_targets/batch/', views_performance.batch_create_personal_targets_api,
+         name='api_personal_batch'),
+
+    # 筛选选项API
+    path('api/performance/ops_groups/', views_performance.get_ops_groups_for_filter_api, name='api_ops_groups_filter'),
+    path('api/performance/operators_by_group/', views_performance.get_operators_by_group_api,
+         name='api_operators_by_group'),
 ]
+
