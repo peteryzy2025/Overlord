@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from General import views, views_user_management, views_amazon_management,views_temu_management
+from General import views, views_user_management, views_amazon_management,views_temu_management,views_performance
 from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views
 
 urlpatterns = [
@@ -69,4 +69,14 @@ urlpatterns = [
     path('api/temu-shops/', views_temu_management.get_temu_shops_api, name='get_temu_shops'),
     path('api/temu-shops/create/', views_temu_management.create_temu_shop_api, name='create_temu_shop'),
     path('api/temu-shops/<int:shop_id>/update/', views_temu_management.update_temu_shop_api, name='update_temu_shop'),
+
+    # 绩效目标管理页面
+    path('performance-targets/', views_performance.performance_targets, name='performance_targets'),
+
+    # API接口
+    path('api/group-targets/', views_performance.get_group_targets, name='api_group_targets'),
+    path('api/performance-targets/', views_performance.get_performance_targets, name='api_performance_targets'),
+    path('api/group-targets/create/', views_performance.create_group_target, name='api_create_group_target'),
+    path('api/performance-targets/<int:target_id>/update/', views_performance.update_performance_target,
+         name='api_update_performance_target'),
 ]

@@ -1531,7 +1531,7 @@
                 if (result.success) {
                     showNotification('订单 ' + orderId + ' 发货成功！', 'success');
                     icon.className = 'fas fa-check-circle';
-                    setTimeout(() => loadOrdersTable(), 1000);
+                    {#setTimeout(() => loadOrdersTable(), 1000);#}
                 } else {
                     showNotification('发货失败: ' + result.message, 'error');
                     icon.className = 'fas fa-truck';

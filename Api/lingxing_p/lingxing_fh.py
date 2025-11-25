@@ -254,6 +254,8 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
     if not success:
         print(f"\n【致命错误】{result}，终止处理")
         return
+    else:
+        print(result)
 
     # 重新获取order_no（可能已被更新）
     order_no = result

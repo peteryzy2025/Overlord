@@ -2,6 +2,7 @@
 
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
+from pydantic import ValidationError
 
 
 class User(AbstractUser):
@@ -109,6 +110,7 @@ class OperationalAccount(models.Model):
     def __str__(self):
         return f"{self.user.first_name} - 运营账号"
 
+
 class AmazonShop(models.Model):
     id = models.BigIntegerField(primary_key=True, db_comment='主键')
     ops = models.ForeignKey(
@@ -137,7 +139,8 @@ class AmazonShop(models.Model):
     credit_card_number = models.CharField(max_length=40, blank=True, null=True, db_comment='信用卡')
     credit_card_expiry = models.CharField(max_length=10, blank=True, null=True, db_comment='有效期')
     credit_card_cvv = models.CharField(max_length=3, blank=True, null=True, db_comment='信用卡安全码后3位')
-    is_consolidated = models.CharField(max_length=255, blank=True, null=True, db_comment='是否归集（寻汇子账号是否归集到寻汇总账号）')
+    is_consolidated = models.CharField(max_length=255, blank=True, null=True,
+                                       db_comment='是否归集（寻汇子账号是否归集到寻汇总账号）')
     bind_collection = models.CharField(max_length=50, blank=True, null=True, db_comment='绑定收款')
     collection_channel = models.CharField(max_length=50, blank=True, null=True, db_comment='收款渠道')
     xunhui_login_account = models.CharField(max_length=150, blank=True, null=True, db_comment='寻汇登录账号')
@@ -182,8 +185,10 @@ class TemuShop(models.Model):
     email_password = models.CharField(max_length=255, blank=True, null=True, db_comment='登录密码')
     shop_temu_id = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺Temu_ID')
     compliance_center = models.CharField(max_length=255, blank=True, null=True, db_comment='合规中心')
-    new_principal_info = models.CharField(max_length=255, blank=True, null=True, db_comment='负责人信息申报新增负责人信息')
-    new_manufacturer_info = models.CharField(max_length=255, blank=True, null=True, db_comment='制造商信息申报新增制造商信息申报')
+    new_principal_info = models.CharField(max_length=255, blank=True, null=True,
+                                          db_comment='负责人信息申报新增负责人信息')
+    new_manufacturer_info = models.CharField(max_length=255, blank=True, null=True,
+                                             db_comment='制造商信息申报新增制造商信息申报')
     phone_account_holder = models.CharField(max_length=255, blank=True, null=True, db_comment='手机号码开户人')
     phone_current_location = models.CharField(max_length=255, blank=True, null=True, db_comment='手机号码现存放')
     shop_nature = models.CharField(max_length=255, blank=True, null=True, db_comment='性质')
@@ -195,3 +200,63 @@ class TemuShop(models.Model):
     class Meta:
         db_table = 'temu_shop'
         db_table_comment = 'temu店铺表'
+
+
+
+class PerformanceTarget(models.Model):
+    """
+    运营人员绩效目标
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+
+    # 关联的运营人员
+    user = models.ForeignKey(
+        'General.User',
+        on_delete=models.CASCADE,
+        verbose_name='运营人员',
+        related_name='performance_targets'
+    )
+
+    # 目标月份 (格式: YYYY-MM)
+    month = models.CharField('目标月份', max_length=7)
+
+    # 目标业绩（单量）
+    target_performance = models.IntegerField('目标业绩/单', default=0)
+
+    # 冲单业绩目标（必须大于目标业绩）
+    stretch_target = models.IntegerField('冲单业绩目标/单', default=0)
+
+    # 备注
+    note = models.TextField('备注', blank=True, null=True)
+
+    # 创建人（只有permission=555的用户可创建）
+    created_by = models.ForeignKey(
+        'General.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_performance_targets',
+        verbose_name='创建人'
+    )
+
+    # 创建和更新时间
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'user_performance_targets'
+        verbose_name = '绩效目标'
+        verbose_name_plural = verbose_name
+        # 每个用户每月只能有一个目标
+        unique_together = ['user', 'month']
+        indexes = [
+            models.Index(fields=['month', 'user']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.first_name} - {self.month}: {self.target_performance}单"
+
+    def clean(self):
+        """模型验证"""
+        if self.stretch_target <= self.target_performance:
+            raise ValidationError('冲单业绩目标必须大于目标业绩')
