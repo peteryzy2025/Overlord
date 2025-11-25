@@ -11,8 +11,9 @@ from Api.lingxing_p.lingxing_fh import lingxing_ship_order  # 你已经改好的
 @csrf_exempt
 def api_ship_order(request):
     """
-    一键发货 API
+    一键发货 API（增强版）
     前端会传 sid + order_id
+    后端必须完整验证所有业务条件，防止绕过前端
     """
     if request.method != "POST":
         return JsonResponse({"success": False, "message": "只支持 POST 请求"})
@@ -29,9 +30,12 @@ def api_ship_order(request):
         return JsonResponse({"success": False, "message": "缺少 sid 或 order_id"})
 
     try:
-        # 找对应订单
+        # 找对应订单（带关联查询，减少数据库访问）
         try:
-            order = AmazonOrders.objects.select_related("lingxing_shop").get(
+            order = AmazonOrders.objects.select_related(
+                "lingxing_shop",
+                "amazon_shop"
+            ).get(
                 amazon_order_id=amazon_order_id,
                 lingxing_shop__sid=sid
             )
@@ -41,23 +45,60 @@ def api_ship_order(request):
                 "message": "未找到对应订单（请检查 sid 与 order_id）"
             })
 
+        # ========== ⭐ 核心业务验证（防止绕过前端）⭐ ==========
 
-        # ⭐ 执行 Divi 完整发货流程
+        # 验证1：订单状态必须是 Unshipped
+        if order.order_status != 'Unshipped':
+            return JsonResponse({
+                "success": False,
+                "message": f"订单状态为 '{order.order_status}'，不是待发货状态，无法发货"
+            })
+
+        # 验证2：必须是FBM订单
+        if order.fulfillment_channel != 'MFN':
+            return JsonResponse({
+                "success": False,
+                "message": f"订单类型为 '{order.fulfillment_channel}'，不是FBM订单，无法发货"
+            })
+
+        # 验证3：DIVI状态必须在允许范围内 [3,4,5]
+        if order.divi_order_status not in [3, 4, 5]:
+            return JsonResponse({
+                "success": False,
+                "message": f"DIVI订单状态为 '{order.divi_order_status}'，未达到可发货状态（需为排单中、生产中或已发货）"
+            })
+
+        # 验证4：物流方式不能为空
+        logistics_method = (order.divi_logistics_method or "").strip()
+        if not logistics_method:
+            return JsonResponse({
+                "success": False,
+                "message": "DIVI物流方式为空，无法发货"
+            })
+
+        # 验证5：跟踪号不能为空
+        tracking_number = (order.divi_tracking_number or "").strip()
+        if not tracking_number:
+            return JsonResponse({
+                "success": False,
+                "message": "DIVI跟踪号为空，无法发货"
+            })
+        # ========== 业务验证通过，执行发货 ==========
+
+        # 执行 Divi 完整发货流程
         lingxing_ship_order(sid, amazon_order_id, mode="full_shipment")
 
-        # ⭐ 发货后重新拿一下订单最新数据（含 divi_logistics_method / divi_tracking_number）
+        # 发货后重新获取订单最新数据
         order.refresh_from_db()
 
-        # ⭐ 新：根据物流方式 + 跟踪号 判断是否为“假面单发货”
-        # 定义：divi_logistics_method == "F-USPS" 且 跟踪号包含 "LS"
+        # 自动标记假面单（保持原有逻辑）
         logistics_method = (order.divi_logistics_method or "").strip()
         tracking_number = (order.divi_tracking_number or "").strip()
 
-        # 只在「满足条件且当前还不是假面单」时，自动标记为假面单
         if (
-            logistics_method == "F-USPS" and
-            tracking_number and "LS" in tracking_number and
-            not order.masked_single
+                logistics_method == "F-USPS" and
+                tracking_number and "LS" in tracking_number and
+                not order.masked_single
         ):
             order.masked_single = True
             order.save(update_fields=["masked_single"])

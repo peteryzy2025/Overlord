@@ -1117,12 +1117,12 @@
             }
         }
 
-function renderOrdersTable(orders) {
-    const tbody = document.getElementById('ordersTableBody');
-    if (!tbody) return;
+        function renderOrdersTable(orders) {
+            const tbody = document.getElementById('ordersTableBody');
+            if (!tbody) return;
 
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = `
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `
             <tr>
                 <td colspan="12" class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -1130,72 +1130,81 @@ function renderOrdersTable(orders) {
                 </td>
             </tr>
         `;
-        return;
-    }
-
-    // DIVI 状态
-    const diviStatusMap = {
-        0: '取消订单',
-        1: '未付货款',
-        2: '未审核',
-        3: '排单中',
-        4: '生产中',
-        5: '已发货'
-    };
-
-    tbody.innerHTML = orders.map(order => {
-
-        // -----------------------
-        // 1. DIVI 状态文字
-        // -----------------------
-        const rawStatus = order.divi_order_status;
-        const diviStatusText =
-            rawStatus === null || rawStatus === undefined
-                ? '-'
-                : (diviStatusMap[rawStatus] || rawStatus);
-
-        // -----------------------
-        // 2. 发货按钮可用性
-        // -----------------------
-        const canShip =
-            order.order_status === 'Unshipped' &&
-            order.fulfillment_channel === 'MFN' &&
-            [4, 5].includes(order.divi_order_status);
-
-        let shipButtonTooltip = '';
-        if (!canShip) {
-            if (order.order_status !== 'Unshipped') {
-                shipButtonTooltip = '订单不是待发货状态';
-            } else if (order.fulfillment_channel !== 'MFN') {
-                shipButtonTooltip = '订单不是FBM订单';
-            } else if (![4, 5].includes(order.divi_order_status)) {
-                shipButtonTooltip = '订单在DIVI状态不允许发货';
+                return;
             }
-        } else if (order.divi_order_status === 4) {
-            shipButtonTooltip = 'DIVI状态生产中，点击发货将二次确认';
-        }
 
-        // -----------------------
-        // 3. 导单按钮可用性
-        // -----------------------
-        let canExportToDivi = true;
-        let exportTooltip = '导单到 DIVI';
+            // DIVI 状态映射
+            const diviStatusMap = {
+                0: '取消订单',
+                1: '未付货款',
+                2: '未审核',
+                3: '排单中',
+                4: '生产中',
+                5: '已发货'
+            };
 
-        if (order.fulfillment_channel === 'AFN') {
-            canExportToDivi = false;
-            exportTooltip = 'FBA订单不可导单';
-        } else if (order.is_exported_to_divi) {
-            canExportToDivi = false;
-            exportTooltip = '已导单';
-        } else if (['Pending', 'PendingAvailability', 'Canceled'].includes(order.order_status)) {
-            canExportToDivi = false;
-            exportTooltip = '该订单类型不支持导单';
-        }
+            tbody.innerHTML = orders.map(order => {
+                // 1. DIVI 状态文字
+                const rawStatus = order.divi_order_status;
+                const diviStatusText =
+                    rawStatus === null || rawStatus === undefined
+                        ? '-'
+                        : (diviStatusMap[rawStatus] || rawStatus);
 
-        // -----------------------
-        // 4. 假面单 — 显示标注真发按钮
-        // -----------------------
-        const markRealBtn = order.masked_single ? `
+                // 2. 物流信息有效性检查
+                const hasValidLogistics =
+                    order.divi_logistics_method &&
+                    order.divi_tracking_number &&
+                    order.divi_logistics_method.trim() !== '' &&
+                    order.divi_tracking_number.trim() !== '';
+
+                // 3. 发货按钮可用性判断
+                const canShip =
+                    order.order_status === 'Unshipped' &&
+                    order.fulfillment_channel === 'MFN' &&
+                    hasValidLogistics &&
+                    [3, 4, 5].includes(order.divi_order_status);
+
+                // 4. Tooltip 提示（修复关键部分）
+                let shipButtonTooltip = '';
+                if (!canShip) {
+                    if (order.order_status !== 'Unshipped') {
+                        shipButtonTooltip = '订单不是待发货状态';
+                    } else if (order.fulfillment_channel !== 'MFN') {
+                        shipButtonTooltip = '订单不是FBM订单';
+                    } else if (!order.divi_logistics_method || order.divi_logistics_method.trim() === '') {
+                        shipButtonTooltip = 'DIVI物流方式不能为空';
+                    } else if (!order.divi_tracking_number || order.divi_tracking_number.trim() === '') {
+                        shipButtonTooltip = 'DIVI跟踪号不能为空';
+                    } else if (![3, 4, 5].includes(order.divi_order_status)) {
+                        shipButtonTooltip = 'DIVI订单状态未达标（需排单中或更高）';
+                    }
+                } else {
+                    if (order.divi_order_status === 3) {
+                        shipButtonTooltip = 'DIVI状态：排单中（点击发货将二次确认）';
+                    } else if (order.divi_order_status === 4) {
+                        shipButtonTooltip = 'DIVI状态：生产中（点击发货将二次确认）';
+                    } else {
+                        shipButtonTooltip = '点击执行发货操作';
+                    }
+                }
+
+                // 5. 导单按钮可用性
+                let canExportToDivi = true;
+                let exportTooltip = '导单到 DIVI';
+                if (order.fulfillment_channel === 'AFN') {
+                    canExportToDivi = false;
+                    exportTooltip = 'FBA订单不可导单';
+                } else if (order.is_exported_to_divi) {
+                    canExportToDivi = false;
+                    exportTooltip = '已导单';
+                } else if (['Pending', 'PendingAvailability', 'Canceled'].includes(order.order_status)) {
+                    canExportToDivi = false;
+                    exportTooltip = '该订单类型不支持导单';
+                }
+
+                // 6. 假面单按钮
+                const markRealBtn = order.masked_single ? `
             <button class="btn-action btn-mark-real"
                     onclick="markRealShipment('${order.amazon_order_id}', event)"
                     data-sid="${order.sid || ''}"
@@ -1204,7 +1213,8 @@ function renderOrdersTable(orders) {
             </button>
         ` : '';
 
-        return `
+                // 返回HTML
+                return `
             <tr>
                 <td>${order.amazon_order_id || '-'}</td>
                 <td>${order.shop_name || '-'}</td>
@@ -1215,23 +1225,15 @@ function renderOrdersTable(orders) {
                 <td>${order.quantity || 0}</td>
                 <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
                 <td>${order.purchase_date_local || '-'}</td>
-
-                <!-- DIVI 导单状态 -->
                 <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
-
-                <!-- DIVI详情列 -->
                 <td>
                     <div>状态：${diviStatusText}</div>
                     <div>物流：${order.divi_logistics_method || '-'}</div>
                     <div>跟踪号：${order.divi_tracking_number || '-'}</div>
                     ${order.masked_single ? '<div style="color:#EF4444;">假面单发货</div>' : ''}
                 </td>
-
-                <!-- 操作 -->
                 <td>
                     <div class="action-buttons">
-
-                        <!-- 导单按钮 -->
                         <button class="btn-action btn-divi"
                                 onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
                                 data-sid="${order.sid || ''}"
@@ -1242,27 +1244,23 @@ function renderOrdersTable(orders) {
                                 ${!canExportToDivi ? 'disabled' : ''}>
                             <i class="fas fa-file-export"></i>
                         </button>
-
-                        <!-- 发货按钮 -->
                         <button class="btn-action btn-ship"
                                 onclick="shipOrder('${order.amazon_order_id}', event)"
                                 data-sid="${order.sid || ''}"
                                 data-order-status="${order.order_status}"
                                 data-fulfillment-channel="${order.fulfillment_channel}"
                                 data-divi-status="${order.divi_order_status || ''}"
-                                title="${shipButtonTooltip || '点击执行发货操作'}"
+                                title="${shipButtonTooltip}"
                                 ${!canShip ? 'disabled' : ''}>
                             <i class="fas fa-truck"></i>
                         </button>
-
-                        <!-- 标注真发（仅假面单显示） -->
                         ${markRealBtn}
                     </div>
                 </td>
             </tr>
         `;
-    }).join('');
-}
+            }).join('');
+        }
 
         function renderStatusBadge(status) {
             if (!status) return '<span class="status-badge status-processing">未知</span>';
@@ -1476,35 +1474,46 @@ function renderOrdersTable(orders) {
 
             if (button.disabled) return;
 
-            // ✅ 从按钮 dataset 读取 sid（每个订单自己的）
             const sid = button.dataset.sid;
-
             if (!sid) {
-                showNotification(`订单缺少店铺 SID，无法发货`, 'error');
+                showNotification('订单缺少店铺 SID，无法发货', 'error');
                 return;
             }
 
-            // DIVI 订单状态（4 = 生产中 → 需要弹窗提醒）
             const diviStatus = parseInt(button.dataset.diviStatus || '', 10);
 
-            if (diviStatus === 4) {
-                const confirmed = window.confirm(`该订单【${orderId}】仍在生产中，是否确定发货？`);
-                if (!confirmed) return;
+            // 状态3和4都需要二次确认
+            if (diviStatus === 3 || diviStatus === 4) {
+                const statusText = diviStatus === 3 ? '排单中' : '生产中';
+
+                // 从DOM获取物流信息
+                const detailsCell = button.closest('tr').querySelector('td:nth-child(11)');
+                const logisticsMethod = detailsCell && detailsCell.children[1] ?
+                    detailsCell.children[1].textContent.replace('物流：', '') : '';
+                const trackingNumber = detailsCell && detailsCell.children[2] ?
+                    detailsCell.children[2].textContent.replace('跟踪号：', '') : '';
+
+                const message = [
+                    '注意：该订单【' + orderId + '】DIVI状态为"' + statusText + '"',
+                    '',
+                    '请确认：',
+                    '物流方式：' + logisticsMethod,
+                    '跟踪号：' + trackingNumber,
+                    '',
+                    '是否确定执行发货？'
+                ].join('\n');
+
+                if (!window.confirm(message)) return;
             }
 
-            // 按钮 UI 状态
             button.disabled = true;
             icon.className = 'fas fa-spinner fa-spin';
             button.style.opacity = '0.7';
 
             try {
-                // 获取 CSRF
-                const csrfToken =
-                    document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] ||
-                    '';
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-                // ⭐⭐⭐ 调用后端发货 API ⭐⭐⭐
                 const response = await fetch('/api/ship-order/', {
                     method: 'POST',
                     headers: {
@@ -1512,25 +1521,25 @@ function renderOrdersTable(orders) {
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        sid: Number(sid),      // 每个订单自己的 sid
-                        order_id: orderId      // 亚马逊订单号
-                        // mode 不发则默认 full_shipment
+                        sid: Number(sid),
+                        order_id: orderId
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification(`订单 ${orderId} 发货成功！`, 'success');
+                    showNotification('订单 ' + orderId + ' 发货成功！', 'success');
                     icon.className = 'fas fa-check-circle';
+                    setTimeout(() => loadOrdersTable(), 1000);
                 } else {
-                    showNotification(`发货失败: ${result.message}`, 'error');
+                    showNotification('发货失败: ' + result.message, 'error');
                     icon.className = 'fas fa-truck';
                     button.disabled = false;
                 }
 
             } catch (error) {
-                showNotification(`发货请求失败: ${error.message}`, 'error');
+                showNotification('发货请求失败: ' + error.message, 'error');
                 button.disabled = false;
                 icon.className = 'fas fa-truck';
             } finally {
