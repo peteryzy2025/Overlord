@@ -46,7 +46,7 @@ def get_divi_logistics_code(divi_logistics_method: str,
         # 单号前缀判断：GOFO
         if tracking.startswith("YT") or tracking.startswith("GFU"):
             # GOFO
-            return "500518-21734"
+            return "500518-21672"
 
         # 按长度区分不同承运商（根据你举的几个例子来写）：
         length = len(tracking)
@@ -82,7 +82,7 @@ def get_divi_logistics_code(divi_logistics_method: str,
     contain_map = {
         "USPS": "500518-21735",
         "FEDEX": "500518-22808",
-        "GOFO": "500518-21734",
+        "GOFO": "500518-21672",
         "DHL": "500518-22809",
         "顺丰": "500518-21734",
         "UNIUNI": "500518-21736",
