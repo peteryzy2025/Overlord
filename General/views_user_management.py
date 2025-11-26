@@ -199,7 +199,6 @@ def create_user_api(request):
                 }.get(data.get('status'), User.STATUS_NORMAL),
                 company_name=data.get('company_name', ''),
                 platform=data.get('platform', ''),
-                ops_group=data.get('ops_group', ''),
             )
 
             # 设置默认密码（可以根据需要修改）
@@ -211,6 +210,7 @@ def create_user_api(request):
             if any(account_data.values()):  # 只有当至少有一个字段有值时才创建
                 OperationalAccount.objects.create(
                     user=user,
+                    ops_group=account_data.get('ops_group', ''),
                     shandianyun_account=account_data.get('shandianyun_account', ''),
                     shandianyun_username=account_data.get('shandianyun_username', ''),
                     shandianyun_password=account_data.get('shandianyun_password', ''),
@@ -278,7 +278,6 @@ def update_user_api(request, user_id):
 
             user.company_name = data.get('company_name', user.company_name)
             user.platform = data.get('platform', user.platform)
-            user.ops_group = data.get('ops_group', user.ops_group)
             user.save()
 
             # 更新运营账号信息
@@ -288,6 +287,7 @@ def update_user_api(request, user_id):
                 account, created = OperationalAccount.objects.get_or_create(
                     user=user,
                     defaults={
+                        'ops_group': account_data.get('ops_group', ''),
                         'shandianyun_account': account_data.get('shandianyun_account', ''),
                         'shandianyun_username': account_data.get('shandianyun_username', ''),
                         'shandianyun_password': account_data.get('shandianyun_password', ''),
@@ -303,6 +303,7 @@ def update_user_api(request, user_id):
 
                 # 如果账号已存在，更新所有字段
                 if not created:
+                    account.ops_group = account_data.get('ops_group', account.ops_group)
                     account.shandianyun_account = account_data.get('shandianyun_account', account.shandianyun_account)
                     account.shandianyun_username = account_data.get('shandianyun_username',
                                                                     account.shandianyun_username)
