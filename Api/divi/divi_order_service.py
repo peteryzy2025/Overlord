@@ -94,7 +94,7 @@ def get_default_divi_time_range(days: int = 15) -> Tuple[str, str]:
 # ================== 1. 查询 Divi 订单 ==================
 
 def query_divi_order(
-    amazon_order_id: str,
+    amazon_order_id: str | None,
     brand_id: int,
     has_logistics: bool = False,
     days: int = 15,
@@ -116,8 +116,9 @@ def query_divi_order(
         "importTimeStart": import_time_start,
         "importTimeEnd": import_time_end,
         "brandIds": [brand_id],
-        "amazonOrderId": amazon_order_id,
     }
+    if amazon_order_id:
+        data_dict["amazonOrderId"] = amazon_order_id
     if has_logistics:
         data_dict["hasLogistics"] = 1
 

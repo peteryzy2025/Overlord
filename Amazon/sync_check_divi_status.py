@@ -16,6 +16,8 @@ import sys
 import django
 from datetime import datetime
 
+from Api.Y.y_tiem import Timer
+
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -36,8 +38,8 @@ EXCLUDE_AMAZON_STATUS = {'PendingAvailability', 'Pending', 'Canceled'}
 
 # ============ 核心配置：直接修改此变量切换模式 ============
 # 设置为 True 启用补导模式，False 仅同步字段
-# ENABLE_REIMPORT = False  # 修改这个值即可切换模式！
-ENABLE_REIMPORT = True # 修改这个值即可切换模式！
+ENABLE_REIMPORT = False  # 修改这个值即可切换模式！
+# ENABLE_REIMPORT = True # 修改这个值即可切换模式！
 # ===========================================================
 
 # ============ 日期配置 ============
@@ -123,7 +125,7 @@ def sync_orders(queryset, total, is_reimport_mode=False):
     mode_desc = "（含刚补导的订单）" if is_reimport_mode else ""
     print(f"\n【同步阶段】找到 {total} 条订单{mode_desc}，开始同步最新字段...\n")
     success = error = 0
-
+    print(queryset)
     for i, order in enumerate(queryset, 1):
         order_id = order.amazon_order_id
         print(f"[同步 {i:>4}/{total}] {order_id}", end="  ")
@@ -202,4 +204,8 @@ def process_orders(target_date_str, force_reimport):
 
 if __name__ == '__main__':
     # 直接调用，不再需要命令行参数
+    t = Timer()
+    t.start()
     process_orders(TARGET_DATE, ENABLE_REIMPORT)
+    t.stop()
+    print("运行时长：", t)

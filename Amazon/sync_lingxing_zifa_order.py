@@ -15,6 +15,8 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.db.models import Q  # 正确导入路径
 
+from Api.Y.y_tiem import Timer
+
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -278,4 +280,9 @@ async def main():
 
 if __name__ == '__main__':
     # 运行异步主函数
+    t = Timer()
+    t.start()
+    # main()
     asyncio.run(main())
+    t.stop()
+    print("运行时长：", t)

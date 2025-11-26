@@ -331,3 +331,4 @@ class AmazonOrderItem(models.Model):
     class Meta:
         db_table = 'amazon_order_item'
         db_table_comment = '亚马逊订单商品明细'
+        unique_together = ['order', 'seller_sku']

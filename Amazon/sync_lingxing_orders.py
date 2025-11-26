@@ -10,6 +10,8 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
+from Api.Y.y_tiem import Timer
+
 # ====== Django 初始化部分（照抄你原来的） ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -240,4 +242,8 @@ def main():
 
 
 if __name__ == "__main__":
+    t = Timer()
+    t.start()
     main()
+    t.stop()
+    print("运行时长：", t)

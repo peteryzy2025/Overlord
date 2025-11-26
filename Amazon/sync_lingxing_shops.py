@@ -15,7 +15,7 @@ sys.path.append(PROJECT_ROOT)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
-
+from Api.Y.y_tiem import Timer
 from Amazon.models import LingXingAmazonShop
 from General.models import AmazonShop
 from Api.lingxing_p.lingxing_jc1 import get_lingxing_shop
@@ -76,4 +76,9 @@ def main():
 
 
 if __name__ == "__main__":
+    t = Timer()
+    t.start()
     main()
+    t.stop()
+    print("运行时长：",t)
+
