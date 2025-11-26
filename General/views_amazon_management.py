@@ -168,9 +168,10 @@ def get_amazon_shops_api(request):
                 shop = AmazonShop.objects.select_related('ops__operational_account').get(id=int(shop_id))
 
                 ops_group = '-'
+                ops_role = '-'  # 新增：获取角色
                 if shop.ops and hasattr(shop.ops, 'operational_account'):
                     ops_group = shop.ops.operational_account.ops_group or '-'
-
+                    ops_role = shop.ops.role or '-'
                 shop_dict = {
                     'id': shop.id,
                     'shop_name': shop.shop_name or '-',
@@ -178,6 +179,7 @@ def get_amazon_shops_api(request):
                     'customer': shop.customer or '-',
                     'ops_id': shop.ops.id if shop.ops else None,
                     'ops_first_name': shop.ops.first_name if shop.ops else '-',
+                    'ops_role': ops_role,  # 新增：返回角色字段
                     'ops_group': ops_group,
                     'shop_status': shop.shop_status or '-',
                     'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
@@ -241,7 +243,7 @@ def get_amazon_shops_api(request):
         search_term = request.GET.get('search', '').strip()
 
         if page < 1: page = 1
-        if page_size not in [10, 20, 50, 100]: page_size = 10
+        if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
         query = AmazonShop.objects.select_related('ops').prefetch_related('ops__operational_account')
 
@@ -280,6 +282,7 @@ def get_amazon_shops_api(request):
                 'customer': shop.customer or '-',
                 'ops_id': shop.ops.id if shop.ops else None,
                 'ops_first_name': shop.ops.first_name if shop.ops else '-',
+                'ops_role': shop.ops.role if shop.ops else '-',
                 'ops_group': ops_group,
                 'shop_status': shop.shop_status or '-',
                 'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',

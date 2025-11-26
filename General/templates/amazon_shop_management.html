@@ -46,6 +46,17 @@
         background-color: #16a34a;
     }
 
+    /* 新增导出按钮样式 */
+    .btn-export {
+        background-color: #3b82f6;
+        color: white;
+        margin-left: 1rem;
+    }
+
+    .btn-export:hover {
+        background-color: #2563eb;
+    }
+
     .filter-section {
         background-color: var(--bg-primary);
         border-radius: 12px;
@@ -113,7 +124,6 @@
         font-size: 0.875rem;
     }
 
-    /* 关键改动：表格容器允许横向滚动 */
     .table-container {
         background-color: var(--bg-primary);
         border-radius: 12px;
@@ -125,7 +135,6 @@
         width: 100%;
     }
 
-    /* 核心修复：操作列固定定位 */
     .table-container th:last-child,
     .table-container td:last-child {
         position: sticky;
@@ -328,7 +337,6 @@
         padding-bottom: 1rem;
     }
 
-    /* 核心修复：模态框底部固定 */
     .modal-footer {
         position: sticky;
         bottom: 0;
@@ -434,9 +442,14 @@
             <h1 class="page-title">Amazon店铺管理</h1>
             <p class="page-subtitle">管理Amazon店铺信息和配置</p>
         </div>
-        <button class="btn btn-create" onclick="openCreateModal()">
-            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
-        </button>
+        <div>
+            <button class="btn btn-create" onclick="openCreateModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
+            </button>
+            <button class="btn btn-export" onclick="exportToExcel()">
+                <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
+            </button>
+        </div>
     </div>
 
     <div class="filter-section">
@@ -487,6 +500,7 @@
                     <th>店铺名称</th>
                     <th>客户</th>
                     <th>运营人员</th>
+                    <th>角色</th>  <!-- 新增角色列 -->
                     <th>运营分组</th>
                     <th>状态</th>
                     <th>亚马逊名称</th>
@@ -580,6 +594,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- 引入SheetJS库 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 // 全局变量
 let allOperators = [];      // 运营人员列表（含OperationalAccount信息）
@@ -631,7 +647,6 @@ async function loadShopsFromAPI(page = 1, pageSize = 10) {
 
 async function loadOperatorsFromAPI(platform = '') {
     try {
-        // 构建URL，如果有platform参数则添加到查询字符串
         const url = new URL('/api/operators/', window.location.origin);
         if (platform) {
             url.searchParams.set('platform', platform);
@@ -716,7 +731,6 @@ function renderPagination(totalItems, currentPage, pageSize) {
         return;
     }
 
-    // 上一页
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
     paginationHtml.push(`
         <li class="page-item ${prevDisabled}">
@@ -724,16 +738,13 @@ function renderPagination(totalItems, currentPage, pageSize) {
         </li>
     `);
 
-    // 页码显示逻辑
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, startPage + 4);
 
-    // 调整起始页，确保显示5个页码（如果可能）
     if (endPage - startPage < 4) {
         startPage = Math.max(1, endPage - 4);
     }
 
-    // 显示第一页和省略号
     if (startPage > 1) {
         paginationHtml.push(`
             <li class="page-item">
@@ -745,7 +756,6 @@ function renderPagination(totalItems, currentPage, pageSize) {
         }
     }
 
-    // 中间页码
     for (let i = startPage; i <= endPage; i++) {
         const active = i === currentPage ? 'active' : '';
         paginationHtml.push(`
@@ -755,7 +765,6 @@ function renderPagination(totalItems, currentPage, pageSize) {
         `);
     }
 
-    // 显示省略号和最后一页
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
@@ -767,7 +776,6 @@ function renderPagination(totalItems, currentPage, pageSize) {
         `);
     }
 
-    // 下一页
     const nextDisabled = currentPage === totalPages ? 'disabled' : '';
     paginationHtml.push(`
         <li class="page-item ${nextDisabled}">
@@ -799,7 +807,6 @@ async function changePageSize(pageSize) {
 // ==========================================
 
 function updateFilterOptions(shops) {
-    // 客户筛选器
     const customerSelect = document.getElementById('amazonCustomerFilter');
     const currentCustomer = customerSelect.value;
     customerSelect.innerHTML = '<option value="">全部客户</option>';
@@ -811,7 +818,6 @@ function updateFilterOptions(shops) {
         customerSelect.appendChild(option);
     });
 
-    // 运营人员筛选器
     const operatorSelect = document.getElementById('amazonOperatorFilter');
     const currentOperator = operatorSelect.value;
     operatorSelect.innerHTML = '<option value="">全部人员</option>';
@@ -823,7 +829,6 @@ function updateFilterOptions(shops) {
         operatorSelect.appendChild(option);
     });
 
-    // 分组筛选器
     const groupSelect = document.getElementById('amazonGroupFilter');
     const currentGroup = groupSelect.value;
     groupSelect.innerHTML = '<option value="">全部分组</option>';
@@ -838,19 +843,18 @@ function updateFilterOptions(shops) {
 
 async function loadShopsTable() {
     const tbody = document.getElementById('amazonShopsTableBody');
-    tbody.innerHTML = '<tr><td colspan="42" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="43" style="text-align:center;padding:2rem;">加载中...</td></tr>';
 
     const { data, total, page, pageSize } = await loadShopsFromAPI(currentPage, currentPageSize);
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="42" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="43" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
         document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
         document.getElementById('pagination').innerHTML = '';
         return;
     }
 
-    // 更新分页信息
     const start = (currentPage - 1) * currentPageSize + 1;
     const end = start + data.length - 1;
     const pageInfoHtml = `
@@ -886,6 +890,7 @@ function renderShopRows(shops) {
                 <td class="field-shop_name">${shop.shop_name}</td>
                 <td class="field-customer">${shop.customer}</td>
                 <td class="field-ops_name">${shop.ops_first_name}</td>
+                <td class="field-ops_role">${shop.ops_role || '-'}</td>  <!-- 新增角色列 -->
                 <td class="field-ops_group">${shop.ops_group}</td>
                 <td class="field-shop_status">
                     <span class="status-badge ${statusClasses[shop.shop_status] || 'status-inactive'}">${shop.shop_status}</span>
@@ -1275,6 +1280,77 @@ function getCSRFToken() {
 }
 
 // ==========================================
+// 新增：导出Excel功能
+// ==========================================
+async function exportToExcel() {
+    try {
+        // 使用当前筛选条件，拉取全部分页数据（不分页）
+        const params = new URLSearchParams({
+            page: 1,
+            page_size: 5000, // 一次性拉取全部
+            status: document.getElementById('amazonShopStatusFilter').value,
+            operator: document.getElementById('amazonOperatorFilter').value,
+            ops_group: document.getElementById('amazonGroupFilter').value,
+            customer: document.getElementById('amazonCustomerFilter').value,
+            search: document.getElementById('amazonShopSearch').value
+        });
+
+        const response = await fetch(`/api/amazon-shops/?${params}`);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const result = await response.json();
+        if (!result.success) {
+            alert('导出失败：' + result.error);
+            return;
+        }
+
+        const shops = result.data || [];
+        if (shops.length === 0) {
+            alert('当前没有可导出的数据');
+            return;
+        }
+
+        const headers = ['店铺名称', '客户', '运营人员', '角色', '运营分组', '店铺状态'];
+        const data = [headers];
+
+        shops.forEach(shop => {
+            data.push([
+                shop.shop_name || '-',
+                shop.customer || '-',
+                shop.ops_first_name || '-',
+                shop.ops_role || '-',
+                shop.ops_group || '-',
+                shop.shop_status || '-'
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Amazon店铺列表');
+
+        ws['!cols'] = [
+            { wch: 25 },
+            { wch: 20 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 10 }
+        ];
+
+        const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+        const fileName = `Amazon店铺列表_${dateStr}.xlsx`;
+
+        XLSX.writeFile(wb, fileName);
+
+        console.log(`成功导出 ${shops.length} 条记录`);
+    } catch (error) {
+        console.error('导出失败:', error);
+        alert('导出失败，请重试：' + error.message);
+    }
+}
+
+
+// ==========================================
 // 事件监听
 // ==========================================
 
@@ -1282,16 +1358,16 @@ document.addEventListener('DOMContentLoaded', async function() {
     await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI("亚马逊"), loadCustomersFromAPI()]);
     loadShopsTable();
 
-       // ✅ 添加回车键快捷键：在筛选区域按回车触发筛选
     const filterSection = document.querySelector('.filter-section');
     if (filterSection) {
         filterSection.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-                e.preventDefault(); // 阻止默认行为
-                filterAmazonShops(); // 执行店铺筛选
+                e.preventDefault();
+                filterAmazonShops();
             }
         });
     }
+
     if (window.anime) {
         anime({
             targets: '.sidebar',
@@ -1300,6 +1376,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             duration: 600,
             easing: 'easeOutQuart'
         });
+
         anime({
             targets: '.content',
             translateY: [30, 0],
@@ -1311,7 +1388,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-
 document.getElementById('shopModalOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
@@ -1320,7 +1396,4 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeModal();
 });
 </script>
-
-    script
-
 {% endblock %}
