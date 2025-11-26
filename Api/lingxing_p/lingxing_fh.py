@@ -103,7 +103,7 @@ async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple
     if order.order_no:
         return True, order.order_no
 
-    print(f"\n⚠️  【警告】订单 {amazon_order_id} 的 order_no 为空，尝试从领星API同步...")
+    print(f"⚠️  【警告】订单 {amazon_order_id} 的 order_no 为空，尝试从领星API同步...")
 
     try:
         # 调用API获取最近10天的自发货订单
@@ -153,9 +153,10 @@ async def step1_set_sku(sku: str, cg_price: str, execute: bool = True):
     if not execute:
         print("   → [预览模式] 不执行")
         return
-    req_body = {"sku": sku, "product_name": sku, "cg_price": cg_price}
+    req_body = {"sku": sku, "product_name": sku, "sku_identifier":sku,"cg_price": cg_price}
     resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/product/set")
-    print(f"   → 返回结果   = {resp.dict().get('msg', 'OK')}")
+    print(f"   → 新建产品结果 = {resp}")
+    # print(f"   → 返回结果   = {resp.dict().get('msg', 'OK')}")
 
 
 async def step2_update_order_binding(global_order_no: str, items: list, execute: bool = True):
@@ -172,7 +173,7 @@ async def step2_update_order_binding(global_order_no: str, items: list, execute:
     req_body = {"order_list": [{"global_order_no": global_order_no, "order_item_list": order_item_list}]}
     resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder")
     # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
-    print(f"   → 返回结果 = {resp.data}")
+    print(f"   → 绑定结果 = {resp}")
 
 
 async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True):
@@ -191,7 +192,9 @@ async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True
     ]
     req_body = {"sys_wid": 509522, "type": 1, "product_list": product_list}
     resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd")
-    print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
+    # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
+    print(f"   → 入库结果 = {resp}")
+
 
 
 async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, waybill_no: str, freight: str,
@@ -216,6 +219,7 @@ async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, wayb
     }
     resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/fastOutbound")
     # print(f"   → 出库结果 = {resp.dict().get('msg', 'OK')}")
+    print(f"   → 出库结果 = {resp}")
 
 
 async def step5_delivery_goods(order_no: str, execute: bool = True):
@@ -226,10 +230,10 @@ async def step5_delivery_goods(order_no: str, execute: bool = True):
         return
     req_body = {"order_number_list": order_no}
     resp1 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
-    print(f"   → 第一次标发 = {resp1.dict().get('msg', 'OK')}")
+    print(f"   → 第一次标发 = {resp1}")
     await asyncio.sleep(2.5)
     resp2 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
-    print(f"   → 第二次标发 = {resp2.dict().get('msg', 'OK')}")
+    print(f"   → 第二次标发 = {resp2}")
 
 
 # ==================== 查询订单 ====================
@@ -255,12 +259,9 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
     if not success:
         print(f"\n【致命错误】{result}，终止处理")
         return
-    else:
-        print(result)
 
     # 重新获取order_no（可能已被更新）
     order_no = result
-
     # ==================== 原有逻辑继续 ====================
 
     total_payment = Decimal(str(order.divi_goods_payment_total or 0))
@@ -307,7 +308,7 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
     await step2_update_order_binding(order_no, items, execute=execute_step2)
     await step3_add_warehousing(items, execute=execute_step3)
     await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4)
-    await step5_delivery_goods(order_no, execute=execute_step5)
+    # await step5_delivery_goods(order_no, execute=execute_step5)
 
     print(f"\n{'=' * 100}")
     print(f"订单 {order_no} 处理完成！模式: {mode}")

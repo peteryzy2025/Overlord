@@ -56,26 +56,26 @@ def get_amazon_orders_list_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        print(f"\n{'=' * 60}")
-        print(f"📋 订单列表API - 用户 {user.username} 的权限: {permissions}")
-        print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+        # print(f"\n{'=' * 60}")
+        # print(f"📋 订单列表API - 用户 {user.username} 的权限: {permissions}")
+        # print(f"接收到的参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
 
         # ============= 权限控制核心逻辑（使用统一函数） =============
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
-        print(f"🔐 权限校验结果: filter_type={filter_type}, filter_value={filter_value}")
+        # print(f"🔐 权限校验结果: filter_type={filter_type}, filter_value={filter_value}")
         # ============= 权限控制结束 =============
 
         # 分页参数
         page = int(data.get('page', 1))
         page_size = int(data.get('page_size', 20))
         page_size = min(page_size, 100)  # 最大100条
-        print(f"📄 分页参数: page={page}, page_size={page_size}")
+        # print(f"📄 分页参数: page={page}, page_size={page_size}")
 
         # 日期参数
         date_range_option = data.get('date_range', 'yesterday')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
-        print(f"📅 日期参数: date_range={date_range_option}, start={start_date_str}, end={end_date_str}")
+        # print(f"📅 日期参数: date_range={date_range_option}, start={start_date_str}, end={end_date_str}")
 
         # 订单号筛选
         order_id_filter = data.get('order_id', '').strip()
@@ -121,14 +121,14 @@ def get_amazon_orders_list_api(request):
             try:
                 current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
                 current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
-                print(f"✅ 使用自定义日期范围: {current_start} 至 {current_end}")
+                # print(f"✅ 使用自定义日期范围: {current_start} 至 {current_end}")
             except:
                 print(f"⚠️ 日期解析失败，将使用快捷选项")
                 pass
 
         if not current_start or not current_end:
             current_start, current_end = get_date_range_from_option(date_range_option)
-            print(f"✅ 使用快捷日期范围({date_range_option}): {current_start} 至 {current_end}")
+            # print(f"✅ 使用快捷日期范围({date_range_option}): {current_start} 至 {current_end}")
 
         if not current_start or not current_end:
             print("❌ 错误: 未提供有效的日期范围")
@@ -152,10 +152,10 @@ def get_amazon_orders_list_api(request):
             })
 
         # 获取店铺（权限范围内的店铺）
-        print(f"🔍 查询权限范围内的店铺...")
+        # print(f"🔍 查询权限范围内的店铺...")
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
         shop_ids_list = list(shop_ids)
-        print(f"✅ 找到 {len(shop_ids_list)} 个店铺: {shop_ids_list}")
+        # print(f"✅ 找到 {len(shop_ids_list)} 个店铺: {shop_ids_list}")
 
         if not shop_ids_list:
             print("⚠️ 未找到任何店铺，返回空数据")
@@ -171,10 +171,10 @@ def get_amazon_orders_list_api(request):
             })
 
         # 获取LingXing店铺
-        print(f"🔍 查询LingXing店铺...")
+        # print(f"🔍 查询LingXing店铺...")
         lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
         lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
-        print(f"✅ 找到 {len(lingxing_shop_ids)} 个LingXing店铺: {lingxing_shop_ids}")
+        # print(f"✅ 找到 {len(lingxing_shop_ids)} 个LingXing店铺: {lingxing_shop_ids}")
 
         if not lingxing_shop_ids:
             print("⚠️ 未找到LingXing店铺，返回空数据")
@@ -190,50 +190,50 @@ def get_amazon_orders_list_api(request):
             })
 
         # 查询订单（按下单时间倒序）
-        print(f"🔍 构建订单查询条件...")
+        # print(f"🔍 构建订单查询条件...")
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
-        print(f"📋 基础查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
+        # print(f"📋 基础查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
 
         # ========== 应用新增筛选项 ==========
         # 1. 订单状态筛选
         if order_status_filter:
             order_filter &= Q(order_status=order_status_filter)
-            print(f"📋 添加订单状态筛选: {order_status_filter}")
+            # print(f"📋 添加订单状态筛选: {order_status_filter}")
 
         # 2. 订单类型筛选
         if fulfillment_channel_filter:
             order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
-            print(f"📋 添加订单类型筛选: {fulfillment_channel_filter}")
+            # print(f"📋 添加订单类型筛选: {fulfillment_channel_filter}")
 
         # 3. DIVI导单情况筛选
         if divi_export_filter:
             divi_export_bool = divi_export_filter.lower() == 'true'
             order_filter &= Q(is_exported_to_divi=divi_export_bool)
-            print(f"📋 添加DIVI导单筛选: {divi_export_bool}")
+            # print(f"📋 添加DIVI导单筛选: {divi_export_bool}")
 
         # 4. DIVI订单状态筛选
         if divi_order_status_filter:
             order_filter &= Q(divi_order_status=int(divi_order_status_filter))
-            print(f"📋 添加DIVI订单状态筛选: {divi_order_status_filter}")
+            # print(f"📋 添加DIVI订单状态筛选: {divi_order_status_filter}")
 
         # 5. DIVI是否有面单筛选
         if divi_tracking_filter:
             if divi_tracking_filter == 'has':
                 order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
-                print(f"📋 添加DIVI有面单筛选")
+                # print(f"📋 添加DIVI有面单筛选")
             elif divi_tracking_filter == 'none':
                 order_filter &= Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number='')
-                print(f"📋 添加DIVI无面单筛选")
+                # print(f"📋 添加DIVI无面单筛选")
         # 是否假面单发货 masked_single
         if masked_single_filter:
             if masked_single_filter == 'true':
                 order_filter &= Q(masked_single=True)
-                print("📋 添加筛选：仅假面单发货订单 (masked_single=True)")
+                # print("📋 添加筛选：仅假面单发货订单 (masked_single=True)")
             elif masked_single_filter == 'false':
                 order_filter &= Q(masked_single=False)
-                print("📋 添加筛选：排除假面单，仅正常面单订单 (masked_single=False)")
+                # print("📋 添加筛选：排除假面单，仅正常面单订单 (masked_single=False)")
 
         # 订单号筛选（模糊查询）
         if order_id_filter:
@@ -259,7 +259,7 @@ def get_amazon_orders_list_api(request):
                     })
 
             order_filter &= Q(amazon_order_id__icontains=order_id_filter)
-            print(f"🔍 添加订单号模糊筛选: {order_id_filter}")
+            # print(f"🔍 添加订单号模糊筛选: {order_id_filter}")
 
         # 店铺名称筛选（模糊查询，新增）
         if shop_name_filter:
@@ -300,13 +300,13 @@ def get_amazon_orders_list_api(request):
 
         # 统计总数量
         total = orders_queryset.count()
-        print(f"📊 符合筛选条件的订单总数: {total}")
+        # print(f"📊 符合筛选条件的订单总数: {total}")
 
         # 分页
         paginator = Paginator(orders_queryset, page_size)
         try:
             orders_page = paginator.page(page)
-            print(f"📄 分页成功: 当前页 {orders_page.number}/{paginator.num_pages}, 本页记录数: {len(orders_page)}")
+            # print(f"📄 分页成功: 当前页 {orders_page.number}/{paginator.num_pages}, 本页记录数: {len(orders_page)}")
         except PageNotAnInteger:
             print(f"⚠️ 页码不是整数，使用第1页")
             orders_page = paginator.page(1)
@@ -316,9 +316,9 @@ def get_amazon_orders_list_api(request):
 
         # 组装订单数据
         orders_data = []
-        print(f"\n{'=' * 40}")
-        print(f"开始组装订单数据...")
-        print(f"{'=' * 40}\n")
+        # print(f"\n{'=' * 40}")
+        # print(f"开始组装订单数据...")
+        # print(f"{'=' * 40}\n")
 
         for idx, order in enumerate(orders_page, 1):
             # 获取运营人员信息
@@ -359,15 +359,15 @@ def get_amazon_orders_list_api(request):
             }
 
             orders_data.append(order_data)
-            print(f"【{idx}/{len(orders_page)}】订单: {order.amazon_order_id}")
-            print(f"   - 店铺: {shop_name}, 运营: {operator_name} ({group_name})")
-            print(f"   - 状态: {order.order_status}, 金额: {order.order_total_amount}")
-            print(
-                f"   - DIVI状态: {'已导出' if order.is_exported_to_divi else '未导出'}, 渠道: {order.fulfillment_channel}")
+            # print(f"【{idx}/{len(orders_page)}】订单: {order.amazon_order_id}")
+            # print(f"   - 店铺: {shop_name}, 运营: {operator_name} ({group_name})")
+            # print(f"   - 状态: {order.order_status}, 金额: {order.order_total_amount}")
+            # print(
+            #     f"   - DIVI状态: {'已导出' if order.is_exported_to_divi else '未导出'}, 渠道: {order.fulfillment_channel}")
 
         # 批量获取商品数量（性能优化）
         order_ids = [order.id for order in orders_page]
-        print(f"\n🔍 批量查询商品数量，订单ID: {order_ids}")
+        # print(f"\n🔍 批量查询商品数量，订单ID: {order_ids}")
 
         if order_ids:
             quantity_map = dict(
@@ -377,7 +377,7 @@ def get_amazon_orders_list_api(request):
                     total_quantity=Sum('quantity_ordered')
                 ).values_list('order_id', 'total_quantity')
             )
-            print(f"✅ 商品数量查询完成: {quantity_map}")
+            # print(f"✅ 商品数量查询完成: {quantity_map}")
         else:
             quantity_map = {}
             print("⚠️ 订单ID列表为空")
@@ -389,10 +389,10 @@ def get_amazon_orders_list_api(request):
             if corresponding_order:
                 qty = quantity_map.get(corresponding_order.id, 0)
                 order_data['quantity'] = qty
-                print(f"   - 订单 {order_data['amazon_order_id']}: 商品数量={qty}")
+                # print(f"   - 订单 {order_data['amazon_order_id']}: 商品数量={qty}")
 
-        print(f"\n✅ 订单数据组装完成，共 {len(orders_data)} 条")
-        print(f"{'=' * 60}\n")
+        # print(f"\n✅ 订单数据组装完成，共 {len(orders_data)} 条")
+        # print(f"{'=' * 60}\n")
 
         response_data = {
             'success': True,
