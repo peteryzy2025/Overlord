@@ -35,7 +35,7 @@ class User(AbstractUser):
     # ops_group = models.CharField('分组-弃用', max_length=255, blank=True, null=True)
     permission = models.CharField("权限", max_length=255, blank=True, null=True)
     wx_url = models.CharField('企业微信消息通知url', max_length=500, blank=True, null=True)
-
+    remark = models.TextField('备注', blank=True, null=True)
     # ========== 关键修复：显式定义groups和user_permissions以避免冲突 ==========
     groups = models.ManyToManyField(
         Group,

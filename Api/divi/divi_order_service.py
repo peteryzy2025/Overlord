@@ -384,7 +384,12 @@ def import_order_from_lingxing_to_divi(
     item_list = order.get("item_list") or []
     if not item_list:
         raise ValueError(f"订单 {order_id} 的 item_list 为空，无法导入 Divi")
-
+    for item in item_list:
+        title = item.get("title", "").strip()
+        if not title:
+            raise ValueError(
+                f"订单 {order_id} 中商品 (sku: {item.get('seller_sku')}) 的 title 为空，禁止导入"
+            )
     order_goods_list = build_goods_from_lingxing_items(item_list)
 
     # 5) 其他字段

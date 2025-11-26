@@ -223,7 +223,7 @@ async def process_sid_orders(sid, amazon_order_ids):
     return success_count, fail_count
 
 
-async def main():
+async def lx_zf_main():
     """主流程控制器"""
     print("\n" + "=" * 96)
     print("🚀 领星自发货订单号同步脚本启动")
@@ -283,6 +283,6 @@ if __name__ == '__main__':
     t = Timer()
     t.start()
     # main()
-    asyncio.run(main())
+    asyncio.run(lx_zf_main())
     t.stop()
     print("运行时长：", t)

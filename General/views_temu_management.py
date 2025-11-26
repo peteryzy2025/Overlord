@@ -165,6 +165,7 @@ def get_temu_shops_api(request):
                         ops_first_name = user.first_name or '-'
                         if hasattr(user, 'operational_account'):
                             ops_group = user.operational_account.ops_group or '-'
+                        ops_role = user.role or '-'
                     except User.DoesNotExist:
                         pass
 
@@ -189,6 +190,7 @@ def get_temu_shops_api(request):
                     'shop_status': shop.shop_status or 1,
                     'ops_id': shop.ops_id,
                     'ops_first_name': ops_first_name,
+                    'ops_role': ops_role,
                     'ops_group': ops_group,
                     'divi_shop_id': shop.divi_shop_id or '',
                 }
@@ -215,7 +217,7 @@ def get_temu_shops_api(request):
         search_term = request.GET.get('search', '').strip()
 
         if page < 1: page = 1
-        if page_size not in [10, 20, 50, 100]: page_size = 10
+        if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
         query = TemuShop.objects.all()
 
@@ -249,7 +251,8 @@ def get_temu_shops_api(request):
                 group = user.operational_account.ops_group if hasattr(user, 'operational_account') else '-'
                 users_info[user.id] = {
                     'first_name': user.first_name or '-',
-                    'group': group or '-'
+                    'group': group or '-',
+                    'role': user.role or '-'
                 }
 
         shops_data = []
@@ -276,6 +279,7 @@ def get_temu_shops_api(request):
                 'shop_status': shop.shop_status or 1,
                 'ops_id': shop.ops_id,
                 'ops_first_name': ops_info['first_name'],
+                'ops_role': ops_info['role'],
                 'ops_group': ops_info['group'],
                 'divi_shop_id': shop.divi_shop_id or '',
             })

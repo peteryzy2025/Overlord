@@ -44,8 +44,8 @@ EXCLUDE_AMAZON_STATUS = {'PendingAvailability', 'Pending', 'Canceled'}
 
 # ============ 核心配置：直接修改此变量切换模式 ============
 # 设置为 True 启用补导模式，False 仅同步字段
-ENABLE_REIMPORT = False  # 修改这个值即可切换模式！
-# ENABLE_REIMPORT = True  # 修改这个值即可切换模式！
+# ENABLE_REIMPORT = False  # 修改这个值即可切换模式！
+ENABLE_REIMPORT = True  # 修改这个值即可切换模式！
 # ===========================================================
 
 # ============ 日期配置 ============
@@ -236,7 +236,7 @@ def sync_brand_orders(brand_ids):
     return total_success, total_error
 
 
-def process_orders(target_date_str, force_reimport):
+def divi_process_orders(target_date_str, force_reimport):
     """主流程：根据模式执行补导 + 批量同步"""
     start_datetime = datetime.strptime(f"{target_date_str} 00:00:00", "%Y-%m-%d %H:%M:%S")
 
@@ -279,6 +279,6 @@ def process_orders(target_date_str, force_reimport):
 if __name__ == '__main__':
     t = Timer()
     t.start()
-    process_orders(TARGET_DATE, ENABLE_REIMPORT)
+    divi_process_orders(TARGET_DATE, ENABLE_REIMPORT)
     t.stop()
     print("运行时长：", t)

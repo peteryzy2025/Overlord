@@ -189,8 +189,13 @@ def sync_amazon_orders(data_list):
             # 简单粗暴：先删后插（DELETE 一条 SQL，后面 bulk_create 一条 SQL）
             AmazonOrderItem.objects.filter(order=order).delete()
 
+            seen = set()
             order_items = []
             for row in item_list:
+                key = (order.id, row.get("seller_sku"))
+                if key in seen:
+                    continue
+                seen.add(key)
                 order_items.append(
                     AmazonOrderItem(
                         order=order,
@@ -212,7 +217,7 @@ def sync_amazon_orders(data_list):
     )
 
 
-def main():
+def lx_order_main():
     print("开始同步亚马逊订单数据…")
 
     # 1. 从 LingXingAmazonShop 表中获取需要同步的店铺 sid
@@ -244,6 +249,6 @@ def main():
 if __name__ == "__main__":
     t = Timer()
     t.start()
-    main()
+    lx_order_main()
     t.stop()
     print("运行时长：", t)

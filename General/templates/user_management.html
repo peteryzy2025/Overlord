@@ -303,7 +303,8 @@
         }
 
         .form-group input,
-        .form-group select {
+        .form-group select,
+        .form-group textarea {
             background-color: var(--bg-secondary);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
@@ -313,13 +314,15 @@
         }
 
         .form-group input:focus,
-        .form-group select:focus {
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
             border-color: var(--accent-color);
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
-        .form-group input:disabled {
+        .form-group input:disabled,
+        .form-group textarea:disabled {
             background-color: var(--bg-tertiary);
             color: var(--text-secondary);
         }
@@ -459,6 +462,7 @@
                     <th>公司</th>
                     <th>平台</th>
                     <th>分组</th>
+                    <th>备注</th>
                     <th>创建时间</th>
                     <th>闪电云账号</th>
                     <th>闪电云用户名</th>
@@ -787,6 +791,7 @@
                 <td class="field-company_name">${user.company_name || '-'}</td>
                 <td class="field-platform">${user.platform || '-'}</td>
                 <td class="field-ops_group">${user.ops_group || '-'}</td>
+                <td class="field-remark">${user.remark || '-'}</td>
                 <td>${user.createdAt}</td>
                 <td class="field-shandianyun_account">${account.shandianyun_account || '-'}</td>
                 <td class="field-shandianyun_username">${account.shandianyun_username || '-'}</td>
@@ -866,6 +871,7 @@
                 company_name: row.querySelector('.field-company_name').textContent,
                 platform: row.querySelector('.field-platform').textContent,
                 ops_group: row.querySelector('.field-ops_group').textContent,
+                remark: row.querySelector('.field-remark').textContent,
                 operational_account: {
                     shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
                     shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
@@ -931,6 +937,7 @@
                 <label>角色</label>
                 <select id="modal-role">${roleOptionsHtml}</select>
             </div>
+
             <div class="form-group">
                 <label>状态</label>
                 <select id="modal-status">
@@ -951,6 +958,10 @@
                 <label>分组</label>
                 <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
             </div>
+<div class="form-group">
+    <label>备注</label>
+    <textarea id="modal-remark" rows="3">${data.remark === '-' ? '' : (data.remark || '')}</textarea>
+</div>
 
             <div class="section-title">运营账号信息</div>
             <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
@@ -981,6 +992,7 @@
                 status: document.getElementById('modal-status').value,
                 company_name: document.getElementById('modal-company_name').value.trim(),
                 platform: document.getElementById('modal-platform').value.trim(),
+                remark: document.getElementById('modal-remark').value.trim(),
                 operational_account: {
                     ops_group: document.getElementById('modal-ops_group').value.trim(),
                     shandianyun_account: document.getElementById('modal-shandianyun_account').value.trim(),

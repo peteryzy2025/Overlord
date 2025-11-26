@@ -46,6 +46,17 @@
             background-color: #16a34a;
         }
 
+        /* 新增导出按钮样式 */
+        .btn-export {
+            background-color: #3b82f6;
+            color: white;
+            margin-left: 1rem;
+        }
+
+        .btn-export:hover {
+            background-color: #2563eb;
+        }
+
         .filter-section {
             background-color: var(--bg-primary);
             border-radius: 12px;
@@ -139,7 +150,7 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            min-width: 3000px;
+            min-width: 3200px;
         }
 
         .table-container thead {
@@ -437,9 +448,14 @@
                 <h1 class="page-title">Temu店铺管理</h1>
                 <p class="page-subtitle">管理Temu店铺信息和配置</p>
             </div>
-            <button class="btn btn-create" onclick="openCreateModal()">
-                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
-            </button>
+            <div>
+                <button class="btn btn-create" onclick="openCreateModal()">
+                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
+                </button>
+                <button class="btn btn-export" onclick="exportToExcel()">
+                    <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
+                </button>
+            </div>
         </div>
 
         <div class="filter-section">
@@ -490,6 +506,7 @@
                     <th>店铺名称</th>
                     <th>客户</th>
                     <th>运营人员</th>
+                    <th>角色</th>
                     <th>运营分组</th>
                     <th>状态</th>
                     <th>登录账号</th>
@@ -563,6 +580,8 @@
 {% endblock %}
 
 {% block extra_js %}
+    <!-- 引入SheetJS库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
         // 全局变量
         let allOperators = [];
@@ -820,13 +839,13 @@
 
         async function loadShopsTable() {
             const tbody = document.getElementById('temuShopsTableBody');
-            tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="23" style="text-align:center;padding:2rem;">加载中...</td></tr>';
 
             const {data, total, page, pageSize} = await loadShopsFromAPI(currentPage, currentPageSize);
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="23" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
                 document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
                 document.getElementById('pagination').innerHTML = '';
                 return;
@@ -868,6 +887,7 @@
                 <td class="field-shop_name">${shop.shop_name}</td>
                 <td class="field-customer">${shop.customer}</td>
                 <td class="field-ops_name">${shop.ops_first_name}</td>
+                <td class="field-ops_role">${shop.ops_role || '-'}</td>
                 <td class="field-ops_group">${shop.ops_group}</td>
                 <td class="field-shop_status">
                     <span class="status-badge ${statusClasses[shop.shop_status] || 'status-inactive'}">${statusMap[shop.shop_status] || '未知'}</span>
@@ -1126,6 +1146,74 @@
                 .find(row => row.startsWith('csrftoken='))
                 ?.split('=')[1];
             return cookieValue || '';
+        }
+
+        // ==========================================
+        // 新增：导出Excel功能
+        // ==========================================
+        async function exportToExcel() {
+            try {
+                // 使用当前筛选条件，拉取全部分页数据（不分页）
+                const params = new URLSearchParams({
+                    page: 1,
+                    page_size: 5000, // 一次性拉取全部
+                    status: document.getElementById('temuShopStatusFilter').value,
+                    operator: document.getElementById('temuOperatorFilter').value,
+                    ops_group: document.getElementById('temuGroupFilter').value,
+                    customer: document.getElementById('temuCustomerFilter').value,
+                    search: document.getElementById('temuShopSearch').value
+                });
+
+                const response = await fetch(`/api/temu-shops/?${params}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (!result.success) {
+                    alert('导出失败：' + result.error);
+                    return;
+                }
+
+                const shops = result.data || [];
+                if (shops.length === 0) {
+                    alert('当前没有可导出的数据');
+                    return;
+                }
+
+                const headers = ['店铺名称', '客户', '运营人员', '角色', '运营分组'];
+                const data = [headers];
+
+                shops.forEach(shop => {
+                    data.push([
+                        shop.shop_name || '-',
+                        shop.customer || '-',
+                        shop.ops_first_name || '-',
+                        shop.ops_role || '-',
+                        shop.ops_group || '-'
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Temu店铺列表');
+
+                ws['!cols'] = [
+                    {wch: 25},
+                    {wch: 20},
+                    {wch: 15},
+                    {wch: 15},
+                    {wch: 15}
+                ];
+
+                const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+                const fileName = `Temu店铺列表_${dateStr}.xlsx`;
+
+                XLSX.writeFile(wb, fileName);
+
+                console.log(`成功导出 ${shops.length} 条记录`);
+            } catch (error) {
+                console.error('导出失败:', error);
+                alert('导出失败，请重试：' + error.message);
+            }
         }
 
         // ==========================================

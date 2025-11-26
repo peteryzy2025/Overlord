@@ -67,7 +67,7 @@ def sync_lingxing_shops(data_list):
             print(f"  -> AmazonShop(id={amazon_shop.id}) 标记已绑定 ling_xing_if=1")
 
 
-def main():
+def lx_shop_main():
     print("开始同步店铺数据…")
     # 这里只是为了拿异步结果，用 asyncio.run 包一下就行
     resp_data = asyncio.run(get_lingxing_shop())
@@ -78,7 +78,7 @@ def main():
 if __name__ == "__main__":
     t = Timer()
     t.start()
-    main()
+    lx_shop_main()
     t.stop()
     print("运行时长：",t)
 

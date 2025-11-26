@@ -116,7 +116,7 @@ def get_users_api(request):
                 'status': status_map.get(user.status, 'inactive'),
                 'company_name': user.company_name or '-',
                 'platform': user.platform or '-',
-                # ✅ 关键修改：从 operational_account 获取 ops_group
+                'remark': user.remark or '',
                 'ops_group': account.ops_group or '-' if account else '-',
                 'createdAt': user.date_joined.strftime('%Y-%m-%d') if user.date_joined else '-',
             }
@@ -199,6 +199,7 @@ def create_user_api(request):
                 }.get(data.get('status'), User.STATUS_NORMAL),
                 company_name=data.get('company_name', ''),
                 platform=data.get('platform', ''),
+                remark=data.get('remark', ''),
             )
 
             # 设置默认密码（可以根据需要修改）
@@ -278,6 +279,7 @@ def update_user_api(request, user_id):
 
             user.company_name = data.get('company_name', user.company_name)
             user.platform = data.get('platform', user.platform)
+            user.remark = data.get('remark', user.remark)
             user.save()
 
             # 更新运营账号信息
