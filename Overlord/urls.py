@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from General import views, views_user_management, views_amazon_management,views_temu_management,views_performance
+from General import views, views_user_management, views_amazon_management,views_temu_management,views_performance,demo_view
 from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views
 
 urlpatterns = [
@@ -88,5 +88,6 @@ urlpatterns = [
     path('api/performance/ops_groups/', views_performance.get_ops_groups_for_filter_api, name='api_ops_groups_filter'),
     path('api/performance/operators_by_group/', views_performance.get_operators_by_group_api,
          name='api_operators_by_group'),
+    path('demo1/',demo_view.demo_view),
 ]
 

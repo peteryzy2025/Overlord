@@ -171,7 +171,8 @@ async def step2_update_order_binding(global_order_no: str, items: list, execute:
     order_item_list = [{"sku": it['sku'], "msku": it['sku'], "type": 3} for it in items]
     req_body = {"order_list": [{"global_order_no": global_order_no, "order_item_list": order_item_list}]}
     resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder")
-    print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
+    # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
+    print(f"   → 返回结果 = {resp.data}")
 
 
 async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True):
