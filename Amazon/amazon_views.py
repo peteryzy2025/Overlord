@@ -10,8 +10,293 @@ import json
 from django.shortcuts import render
 
 # 模型导入
-from General.models import User, AmazonShop, OperationalAccount
+from General.models import User, AmazonShop, OperationalAccount, TemuShop
 from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from Temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
+
+
+@login_required
+def get_operator_pie_chart_api(request):
+    """
+    运营人员业绩饼图数据
+    GET参数:
+      - date_range / start_date / end_date: 日期范围
+      - operator_id / group: 筛选条件
+    返回: {name: '张三', value: 45} 格式的列表
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
+
+    try:
+        # 解析参数
+        data = {
+            'date_range': request.GET.get('date_range', 'yesterday'),
+            'start_date': request.GET.get('start_date', ''),
+            'end_date': request.GET.get('end_date', ''),
+            'operator_id': request.GET.get('operator_id', ''),
+            'group': request.GET.get('group', '')
+        }
+
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        # 权限判断 + 平台识别
+        filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
+            request, data, permissions
+        )
+
+        # 日期范围
+        current_start, current_end = None, None
+        if data['start_date'] and data['end_date']:
+            try:
+                current_start = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+                current_end = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(data['date_range'])
+
+        if not current_start or not current_end:
+            return JsonResponse({'success': False, 'message': '无效日期'}, status=400)
+
+        # 获取店铺ID（平台区分）
+        shop_ids_by_platform = {}
+        if filter_type != 'none':
+            shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
+                filter_type, filter_value, platform_info
+            )
+
+        # 根据filter_type决定聚合维度
+        pie_data = []
+
+        # ========== 场景1：全部分组/全部人员 ==========
+        if filter_type == 'all' or (filter_type == 'ops_id' and filter_value == 'all'):
+            # 返回所有一级分组（ops_group）的单量占比
+            groups = OperationalAccount.objects.exclude(
+                ops_group__isnull=True
+            ).exclude(
+                ops_group=''
+            ).values_list('ops_group', flat=True).distinct()
+
+            for group in groups:
+                # 获取组内所有用户ID
+                user_ids = OperationalAccount.objects.filter(
+                    ops_group=group
+                ).values_list('user_id', flat=True)
+
+                # 分别统计Amazon和Temu
+                amazon_count = 0
+                temu_count = 0
+
+                if shop_ids_by_platform.get('amazon'):
+                    amazon_shops = AmazonShop.objects.filter(ops_id__in=user_ids)
+                    amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
+                    lingxing_shops = LingXingAmazonShop.objects.filter(
+                        amazon_shop_id__in=amazon_shop_ids
+                    )
+                    lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+                    amazon_count = AmazonOrders.objects.filter(
+                        lingxing_shop_id__in=lingxing_shop_ids,
+                        purchase_date_local__date__gte=current_start,
+                        purchase_date_local__date__lte=current_end
+                    ).count()
+
+                if shop_ids_by_platform.get('temu'):
+                    temu_shops = TemuShop.objects.filter(ops_id__in=user_ids)
+                    temu_shop_ids = list(temu_shops.values_list('id', flat=True))
+
+                    temu_count = TemuOrder.objects.filter(
+                        lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).count()
+
+                total = amazon_count + temu_count
+                if total > 0:
+                    pie_data.append({
+                        'name': group,
+                        'value': total
+                    })
+
+        # ========== 场景2：具体分组 ==========
+        elif filter_type == 'ops_group':
+            # 返回组内每个人员的单量占比
+            user_ids = OperationalAccount.objects.filter(
+                ops_group=filter_value
+            ).values_list('user_id', flat=True)
+
+            users = User.objects.filter(id__in=user_ids)
+
+            for u in users:
+                # 统计该成员的订单
+                amazon_count = 0
+                temu_count = 0
+
+                if shop_ids_by_platform.get('amazon'):
+                    amazon_shops = AmazonShop.objects.filter(ops_id=u.id)
+                    amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
+                    lingxing_shops = LingXingAmazonShop.objects.filter(
+                        amazon_shop_id__in=amazon_shop_ids
+                    )
+                    lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+                    amazon_count = AmazonOrders.objects.filter(
+                        lingxing_shop_id__in=lingxing_shop_ids,
+                        purchase_date_local__date__gte=current_start,
+                        purchase_date_local__date__lte=current_end
+                    ).count()
+
+                if shop_ids_by_platform.get('temu'):
+                    temu_shops = TemuShop.objects.filter(ops_id=u.id)
+                    temu_shop_ids = list(temu_shops.values_list('id', flat=True))
+
+                    temu_count = TemuOrder.objects.filter(
+                        lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).count()
+
+                total = amazon_count + temu_count
+                if total > 0:
+                    pie_data.append({
+                        'name': u.first_name or u.username,
+                        'value': total
+                    })
+
+        # ========== 场景3：具体人员 ==========
+        elif filter_type == 'ops_id':
+            # 返回该人员的店铺单量占比
+            amazon_count = 0
+            temu_count = 0
+
+            # Amazon店铺
+            if shop_ids_by_platform.get('amazon'):
+                amazon_shops = AmazonShop.objects.filter(ops_id=filter_value)
+                for shop in amazon_shops:
+                    lingxing_shop = LingXingAmazonShop.objects.filter(
+                        amazon_shop_id=shop.id
+                    ).first()
+                    if lingxing_shop:
+                        count = AmazonOrders.objects.filter(
+                            lingxing_shop_id=lingxing_shop.sid,
+                            purchase_date_local__date__gte=current_start,
+                            purchase_date_local__date__lte=current_end
+                        ).count()
+                        if count > 0:
+                            pie_data.append({
+                                'name': shop.shop_name,
+                                'value': count
+                            })
+
+            # Temu店铺
+            if shop_ids_by_platform.get('temu'):
+                temu_shops = TemuShop.objects.filter(ops_id=filter_value)
+                for shop in temu_shops:
+                    count = TemuOrder.objects.filter(
+                        lingxing_shop__temu_shop_id=shop.id,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).count()
+                    if count > 0:
+                        pie_data.append({
+                            'name': shop.shop_name,
+                            'value': count
+                        })
+
+        # 无饼图数据时返回空列表
+        if not pie_data:
+            return JsonResponse({
+                'success': True,
+                'data': [],
+                'message': '暂无数据'
+            })
+
+        # 按值降序排序
+        pie_data.sort(key=lambda x: x['value'], reverse=True)
+
+        return JsonResponse({
+            'success': True,
+            'data': pie_data,
+            'filter_info': {
+                'filter_type': filter_type,
+                'filter_value': filter_value,
+                'platform_source': platform_info.get('source')
+            }
+        })
+
+    except Exception as e:
+        print(f"\n❌ 饼图API错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+def detect_platform_by_user(user):
+    """
+    检测用户的主运营平台
+    返回: "亚马逊" | "Temu" | "unknown"
+    """
+    if not hasattr(user, 'department') or user.department != "运营部门":
+        return "unknown"
+
+    # platform字段可能是 "亚马逊" 或 "Temu" 或逗号分隔的多值
+    # 这里简单判断包含关系
+    platform_str = (user.platform or "").strip()
+
+    if "Temu" in platform_str:
+        return "Temu"
+    elif "亚马逊" in platform_str:
+        return "亚马逊"
+    return "unknown"
+
+
+def determine_filter_type_and_value_with_platform(request, data, permissions):
+    """
+    增强版：返回 (filter_type, filter_value, platform_info)
+    platform_info: {"source": "amazon_only" | "temu_only" | "mixed", "detected": "亚马逊|Temu"}
+    """
+    user = request.user
+    base_result = determine_filter_type_and_value(request, data, permissions)
+    filter_type, filter_value = base_result
+
+    # ops_all且选择"全部" → 混合查询
+    if 'ops_all' in permissions:
+        if filter_type == 'all' or (not data.get('group') and not data.get('operator_id')):
+            # 用户选择了"全部"
+            return filter_type, filter_value, {"source": "mixed"}
+
+    # 其他情况，自动识别平台
+    platform = detect_platform_by_user(user)
+
+    # 如果是按人员/组筛选，需要验证目标对象的平台
+    if filter_type == 'ops_id':
+        # ==================== 修复核心：基于实际店铺判断平台 ====================
+        # 直接查询数据库，看该用户实际绑定了哪些平台的店铺
+        has_amazon = AmazonShop.objects.filter(ops_id=filter_value).exists()
+        has_temu = TemuShop.objects.filter(ops_id=filter_value).exists()
+
+        # 根据实际绑定情况决定查询范围
+        if has_amazon and has_temu:
+            platform_info = {"source": "mixed"}
+        elif has_amazon:
+            platform_info = {"source": "amazon_only", "detected": "亚马逊"}
+        elif has_temu:
+            platform_info = {"source": "temu_only", "detected": "Temu"}
+        else:
+            # 用户无绑定店铺时，兜底策略：查两个平台（都会返回空，但不会漏数据）
+            platform_info = {"source": "mixed"}
+        # ===================================================================
+
+    elif filter_type == 'ops_group':
+        # 检查组内是否全是Temu/亚马逊运营（MVP简化：默认mixed，让后续查询自行处理）
+        platform_info = {"source": "mixed"}
+    else:
+        platform_info = {"source": f"{platform.lower()}_only", "detected": platform}
+
+    return filter_type, filter_value, platform_info
 
 
 def parse_permissions(user_permission):
@@ -123,7 +408,7 @@ def determine_filter_type_and_value(request, data, permissions):
 def amazon_dashboard_page(request):
     """Amazon驾驶舱页面渲染"""
     theme = request.COOKIES.get('theme', 'light')
-    return render(request, 'amazon_dashboard.html', {
+    return render(request, 'dashboard.html', {
         'theme': theme,
         'active_nav': 'amazon'
     })
@@ -277,6 +562,45 @@ def calculate_all_change_rates(current_stats, previous_stats):
     return comparison
 
 
+def merge_trend_data(amazon_trend, temu_trend, shop_ids_by_platform):
+    """
+    合并Amazon和Temu趋势数据，返回三条线
+    格式: [{'date': '2025-11-18', 'amazon_sales': 156, 'temu_sales': 89, 'total_sales': 245}, ...]
+    """
+    # 将两个列表转为字典 {date: sales}
+    amazon_dict = {item['date']: item['sales'] for item in (amazon_trend or [])}
+    temu_dict = {item['date']: item['sales'] for item in (temu_trend or [])}
+
+    # 获取所有日期
+    all_dates = set(amazon_dict.keys()) | set(temu_dict.keys())
+    all_dates = sorted(list(all_dates))
+
+    result = []
+    for date_str in all_dates:
+        amazon_sales = amazon_dict.get(date_str, 0)
+        temu_sales = temu_dict.get(date_str, 0)
+        result.append({
+            'date': date_str,
+            'amazon_sales': amazon_sales,
+            'temu_sales': temu_sales,
+            'total_sales': amazon_sales + temu_sales
+        })
+
+    # 如果没有日期，返回14天空数据
+    if not result:
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=13)
+        for i in range(14):
+            date = start_date + timedelta(days=i)
+            result.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'amazon_sales': 0,
+                'temu_sales': 0,
+                'total_sales': 0
+            })
+
+    return result
+
 def get_shop_ids_by_filter(filter_type, filter_value):
     """
     根据筛选类型获取AmazonShop的ID列表（支持权限控制）
@@ -320,6 +644,57 @@ def get_shop_ids_by_filter(filter_type, filter_value):
     else:
         print(f"⚠️ 未知的筛选类型: {filter_type}")
         return AmazonShop.objects.none().values_list('id', flat=True)
+def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_info):
+    """
+    重构版：返回平台区分的店铺ID
+    返回: {
+        'amazon': [1, 2, ...],  # AmazonShop.id列表
+        'temu': [101, 102, ...]  # TemuShop.id列表（注意是BigInteger）
+    }
+    """
+    result = {'amazon': [], 'temu': []}
+
+    # ========== 亚马逊店铺 ==========
+    if platform_info['source'] in ['amazon_only', 'mixed']:
+        if filter_type == 'ops_id':
+            # 通过 ops_id 查找 AmazonShop
+            result['amazon'] = list(AmazonShop.objects.filter(
+                ops_id=filter_value
+            ).values_list('id', flat=True))
+
+        elif filter_type == 'ops_group':
+            # 查找组内所有用户的AmazonShop
+            user_ids = OperationalAccount.objects.filter(
+                ops_group=filter_value
+            ).values_list('user_id', flat=True)
+            result['amazon'] = list(AmazonShop.objects.filter(
+                ops_id__in=list(user_ids)
+            ).values_list('id', flat=True))
+
+        elif filter_type == 'all':
+            result['amazon'] = list(AmazonShop.objects.all().values_list('id', flat=True))
+
+    # ========== Temu店铺 ==========
+    if platform_info['source'] in ['temu_only', 'mixed']:
+        if filter_type == 'ops_id':
+            # 通过 ops_id 查找 TemuShop
+            result['temu'] = list(TemuShop.objects.filter(
+                ops_id=filter_value
+            ).values_list('id', flat=True))
+
+        elif filter_type == 'ops_group':
+            # 查找组内所有用户的TemuShop
+            user_ids = OperationalAccount.objects.filter(
+                ops_group=filter_value
+            ).values_list('user_id', flat=True)
+            result['temu'] = list(TemuShop.objects.filter(
+                ops_id__in=list(user_ids)
+            ).values_list('id', flat=True))
+
+        elif filter_type == 'all':
+            result['temu'] = list(TemuShop.objects.all().values_list('id', flat=True))
+
+    return result
 
 
 def get_sales_trend_data(lingxing_shop_ids):
@@ -377,14 +752,7 @@ def get_sales_trend_data(lingxing_shop_ids):
 @login_required
 def filter_amazon_data_api(request):
     """
-    筛选亚马逊订单数据（带严格权限控制）
-    权限:
-      - ops_all: 可使用前端传递的任意筛选条件
-      - ops_group: 只能查询自己分组的数据（忽略前端传递的无效参数）
-      - ops: 只能查询自己的数据
-      - 无权限: 直接返回空数据
-
-    优先级：先判断分组，再判断人员
+    筛选亚马逊订单数据（支持多平台合并）
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -395,17 +763,12 @@ def filter_amazon_data_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # print(f"\n{'=' * 60}")
-        # print(f"用户 {user.username} 的权限: {permissions}")
-        # print(f"接收到的原始参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+        # ========== 增强版权限判断 + 平台识别 ==========
+        filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
+            request, data, permissions
+        )
 
-        # ============= 权限控制核心逻辑 =============
-        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
-        # print(f"最终确定的筛选条件: filter_type={filter_type}, filter_value={filter_value}")
-        # print(f"{'=' * 60}\n")
-        # ============= 权限控制结束 =============
-
-        # 处理日期参数（保持不变）
+        # 处理日期参数
         date_range_option = data.get('date_range', '')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
@@ -429,52 +792,114 @@ def filter_amazon_data_api(request):
 
         previous_start, previous_end = get_previous_period(current_start, current_end)
 
-        # 筛选店铺（保持不变）
+        # ========== 获取平台区分的店铺ID ==========
         if filter_type == 'none':
-            return assemble_response_data(
-                filter_type='none',
-                filter_value=None,
-                current_start=current_start,
-                current_end=current_end,
-                previous_start=previous_start,
-                previous_end=previous_end,
-                shop_count=0,
-                lingxing_shop_count=0,
-                trend_data=[]
+            shop_ids_by_platform = {'amazon': [], 'temu': []}
+        else:
+            shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
+                filter_type, filter_value, platform_info
             )
 
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
-        shop_ids_list = list(shop_ids)
-        shop_count = len(shop_ids_list)
+        # ========== 分别统计两个平台 ==========
+        # Amazon统计
+        amazon_stats = {
+            'current': {
+                'order_count': 0, 'total_sales_quantity': 0, 'total_revenue': 0.0,
+                'avg_order_value': 0.0, 'fba_percentage': '0.0%', 'fbm_percentage': '0.0%'
+            },
+            'previous': {
+                'order_count': 0, 'total_sales_quantity': 0, 'total_revenue': 0.0,
+                'avg_order_value': 0.0, 'fba_percentage': '0.0%', 'fbm_percentage': '0.0%'
+            },
+            'trend': []
+        }
 
-        if shop_count == 0:
-            return assemble_response_data(
-                filter_type=filter_type,
-                filter_value=filter_value,
-                current_start=current_start,
-                current_end=current_end,
-                previous_start=previous_start,
-                previous_end=previous_end,
-                shop_count=0,
-                lingxing_shop_count=0,
-                trend_data=[]
+        # 如果有亚马逊店铺
+        if shop_ids_by_platform['amazon']:
+            lingxing_shops = LingXingAmazonShop.objects.filter(
+                amazon_shop_id__in=shop_ids_by_platform['amazon']
             )
+            lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
 
-        # 获取LingXing店铺ID
-        lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
-        lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
-        lingxing_shop_count = len(lingxing_shop_ids)
+            if lingxing_shop_ids:
+                amazon_stats['current'] = get_order_statistics(
+                    lingxing_shop_ids, current_start, current_end
+                )
+                amazon_stats['previous'] = get_order_statistics(
+                    lingxing_shop_ids, previous_start, previous_end
+                )
+                amazon_stats['trend'] = get_sales_trend_data(lingxing_shop_ids)
 
-        # 计算统计数据
-        current_stats = get_order_statistics(lingxing_shop_ids, current_start, current_end)
-        previous_stats = get_order_statistics(lingxing_shop_ids, previous_start, previous_end)
-        comparison = calculate_all_change_rates(current_stats, previous_stats)
-        trend_data = get_sales_trend_data(lingxing_shop_ids)
+        # Temu统计
+        temu_stats = {
+            'current': {
+                'order_count': 0, 'total_sales_quantity': 0, 'total_revenue': 0.0,
+                'avg_order_value': 0.0, 'fba_percentage': '0.0%', 'fbm_percentage': '0.0%'
+            },
+            'previous': {
+                'order_count': 0, 'total_sales_quantity': 0, 'total_revenue': 0.0,
+                'avg_order_value': 0.0, 'fba_percentage': '0.0%', 'fbm_percentage': '0.0%'
+            },
+            'trend': []
+        }
 
+        # 如果有Temu店铺
+        if shop_ids_by_platform['temu']:
+            temu_stats['current'] = get_temu_order_statistics(
+                shop_ids_by_platform['temu'], current_start, current_end
+            )
+            temu_stats['previous'] = get_temu_order_statistics(
+                shop_ids_by_platform['temu'], previous_start, previous_end
+            )
+            temu_stats['trend'] = get_temu_sales_trend_data(shop_ids_by_platform['temu'])
+
+        # 合并统计结果
+        def merge_stats(current, previous):
+            return {
+                'order_count': current['order_count'] + previous['order_count'],
+                'total_sales_quantity': current['total_sales_quantity'] + previous['total_sales_quantity'],
+                'total_revenue': round(current['total_revenue'] + previous['total_revenue'], 2),
+                'avg_order_value': round(
+                    (current['total_revenue'] + previous['total_revenue']) /
+                    (current['order_count'] + previous['order_count'])
+                    if (current['order_count'] + previous['order_count']) > 0 else 0, 2
+                ),
+                'fba_percentage': current['fba_percentage'],
+                'fbm_percentage': current['fbm_percentage'],
+            }
+
+        merged_current = merge_stats(amazon_stats['current'], temu_stats['current'])
+        merged_previous = merge_stats(amazon_stats['previous'], temu_stats['previous'])
+
+        # 计算环比
+        comparison = calculate_all_change_rates(merged_current, merged_previous)
+
+        # 合并趋势数据
+        merged_trend = merge_trend_data(
+            amazon_stats['trend'],
+            temu_stats['trend'],
+            shop_ids_by_platform
+        )
+
+        # 判断平台来源类型
+        platform_source = "unknown"
+        if shop_ids_by_platform['amazon'] and shop_ids_by_platform['temu']:
+            platform_source = "mixed"
+        elif shop_ids_by_platform['amazon']:
+            platform_source = "amazon_only"
+        elif shop_ids_by_platform['temu']:
+            platform_source = "temu_only"
+        else:
+            platform_source = "none"
+
+        # 组装响应
         return assemble_and_print_response(
-            current_stats, previous_stats, comparison, trend_data,
+            merged_current, merged_previous, comparison, merged_trend,
             filter_type, filter_value, current_start, current_end,
-            previous_start, previous_end, shop_count, lingxing_shop_count
+            previous_start, previous_end,
+            shop_count=len(shop_ids_by_platform['amazon']) + len(shop_ids_by_platform['temu']),
+            lingxing_shop_count=len(lingxing_shop_ids) if 'lingxing_shop_ids' in locals() else 0,
+            platform_source=platform_source
         )
 
     except Exception as e:
@@ -493,14 +918,107 @@ def filter_amazon_data_api(request):
             }
         }, status=500)
 
+def get_temu_order_statistics(temu_shop_ids, start_date, end_date):
+    """
+    Temu核心统计函数（仅订单量+件数）
+    """
+    if not temu_shop_ids:
+        return {
+            'order_count': 0,
+            'total_sales_quantity': 0,
+            'total_revenue': 0.0,
+            'avg_order_value': 0.0,
+            'fba_count': 0,
+            'fbm_count': 0,
+            'fba_percentage': '0.0%',
+            'fbm_percentage': '0.0%',
+        }
 
+    # Temu订单筛选
+    order_filter = Q(lingxing_shop__temu_shop_id__in=temu_shop_ids)
+    order_filter &= Q(global_purchase_time__date__gte=start_date)
+    order_filter &= Q(global_purchase_time__date__lte=end_date)
+
+    # 订单量
+    orders = TemuOrder.objects.filter(order_filter)
+    order_count = orders.count()
+
+    if order_count == 0:
+        return {
+            'order_count': 0,
+            'total_sales_quantity': 0,
+            'total_revenue': 0.0,
+            'avg_order_value': 0.0,
+            'fba_count': 0,
+            'fbm_count': 0,
+            'fba_percentage': '0.0%',
+            'fbm_percentage': '0.0%',
+        }
+
+    # 件数（通过订单项汇总）
+    order_nos = list(orders.values_list('global_order_no', flat=True))
+    quantity_agg = TemuOrderItem.objects.filter(
+        order__global_order_no__in=order_nos
+    ).aggregate(total_quantity=Sum('quantity'))
+    total_sales_quantity = quantity_agg['total_quantity'] or 0
+
+    # Temu不计算金额，保持为0
+    return {
+        'order_count': order_count,
+        'total_sales_quantity': total_sales_quantity,
+        'total_revenue': 0.0,
+        'avg_order_value': 0.0,
+        'fba_count': 0,
+        'fbm_count': 0,
+        'fba_percentage': '0.0%',
+        'fbm_percentage': '0.0%',
+    }
+
+
+def get_temu_sales_trend_data(temu_shop_ids):
+    """
+    Temu最近14天销量趋势
+    """
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=13)
+
+    if not temu_shop_ids:
+        return []
+
+    # 按天聚合销量
+    daily_sales_raw = TemuOrderItem.objects.filter(
+        order__lingxing_shop__temu_shop_id__in=temu_shop_ids,
+        order__global_purchase_time__date__gte=start_date,
+        order__global_purchase_time__date__lte=end_date
+    ).values(
+        date=TruncDate('order__global_purchase_time')
+    ).annotate(
+        sales=Sum('quantity')
+    ).order_by('date')
+
+    sales_dict = {item['date']: item['sales'] or 0 for item in daily_sales_raw}
+
+    # 补全14天
+    result = []
+    for i in range(14):
+        date = start_date + timedelta(days=i)
+        sales = sales_dict.get(date, 0)
+        result.append({
+            'date': date.strftime('%Y-%m-%d'),
+            'sales': sales
+        })
+
+    return result
 
 
 def assemble_and_print_response(current_stats, previous_stats, comparison, trend_data,
                                 filter_type, filter_value, current_start, current_end,
-                                previous_start, previous_end, shop_count, lingxing_shop_count):
-    """组装响应数据并打印完整日志"""
-
+                                previous_start, previous_end, shop_count, lingxing_shop_count,
+                                platform_source="unknown"):
+    """
+    组装响应数据并打印完整日志
+    platform_source: 新增参数，标识数据来源平台
+    """
     # 组装完整响应
     response_data = {
         'success': True,
@@ -530,7 +1048,8 @@ def assemble_and_print_response(current_stats, previous_stats, comparison, trend
                 'previous_date_range': f"{previous_start} to {previous_end}",
                 'days': (current_end - current_start).days + 1,
                 'shop_count': shop_count,
-                'lingxing_shop_count': lingxing_shop_count
+                'lingxing_shop_count': lingxing_shop_count,
+                'platform_source': platform_source  # 新增：平台来源标识
             }
         }
     }

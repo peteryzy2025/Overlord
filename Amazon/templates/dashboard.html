@@ -796,7 +796,6 @@
         async function loadOperatorsFromAPI() {
             try {
                 const url = new URL('/api/amazon/operators/', window.location.origin);
-                url.searchParams.set('platform', '亚马逊');
                 const response = await fetch(url);
                 const result = await response.json();
                 if (result.success) {
@@ -963,41 +962,41 @@
         }
 
         async function applyFilters() {
-            showLoading(true);
-            currentFilters = getCurrentFilters();
+    showLoading(true);
+    currentFilters = getCurrentFilters();
 
-            try {
-                if (!currentFilters.operator_id && !currentFilters.group) {
-                    showNotification('无可用筛选条件，请检查权限', 'warning');
-                    return;
-                }
+    try {
+        // 加载统计数据
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        const response = await fetch('/api/filter-amazon-data/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(currentFilters)
+        });
 
-                const response = await fetch('/api/filter-amazon-data/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(currentFilters)
-                });
+        const result = await response.json();
+        if (result.success) {
+            updateStatsWithRealData(result.data);
+            updateChartsWithRealData(result.data);
 
-                const result = await response.json();
-                if (result.success) {
-                    updateStatsWithRealData(result.data);
-                    updateChartsWithRealData(result.data);
-                    showNotification && showNotification('数据已更新', 'success');
-                } else {
-                    showNotification && showNotification('筛选失败: ' + result.error, 'error');
-                }
-            } catch (error) {
-                showNotification && showNotification('数据请求失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+            // 新增：加载饼图
+            await loadOperatorPieChart();
+
+            showNotification && showNotification('数据已更新', 'success');
+        } else {
+            showNotification && showNotification('筛选失败: ' + result.error, 'error');
         }
+    } catch (error) {
+        showNotification && showNotification('数据请求失败: ' + error.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
 
         function updateStatsWithRealData(data) {
             const formatter = new Intl.NumberFormat('zh-CN');
@@ -1047,48 +1046,23 @@
             }
         }
 
-        function updateChartsWithRealData(data) {
-            if (!data.trend_data || data.trend_data.length === 0) {
-                console.warn('没有趋势数据');
-                return;
-            }
-            updateOrdersChart(data.trend_data);
-            initOperatorChartWithMockData();
-        }
-
-        function updateOrdersChart(trendData) {
+        // 在 updateOrdersChart 函数中修改
+        function updateOrdersChart(trendData, platformSource) {
             const ordersChart = echarts.init(document.getElementById('ordersChart'));
+
             const dates = trendData.map(item => {
                 const date = new Date(item.date);
                 return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             });
-            const sales = trendData.map(item => item.sales || 0);
 
-            const rootStyle = getComputedStyle(document.documentElement);
+            const series = [];
+            const legendData = [];
 
-            const option = {
-                tooltip: {
-                    trigger: 'axis',
-                    backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
-                    borderColor: rootStyle.getPropertyValue('--border-color').trim(),
-                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
-                },
-                grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
-                xAxis: {
-                    type: 'category',
-                    data: dates,
-                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
-                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
-                },
-                yAxis: {
-                    type: 'value',
-                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
-                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()},
-                    splitLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}}
-                },
-                series: [{
-                    data: sales,
+            if (platformSource === 'amazon_only') {
+                series.push({
+                    name: 'Amazon',
                     type: 'line',
+                    data: trendData.map(item => item.amazon_sales || item.sales || 0),
                     smooth: true,
                     lineStyle: {color: '#667eea', width: 3},
                     itemStyle: {color: '#667eea'},
@@ -1102,53 +1076,188 @@
                             ]
                         }
                     }
-                }]
-            };
-            ordersChart.setOption(option);
-        }
+                });
+                legendData.push('Amazon');
 
-        function initOperatorChartWithMockData() {
-            const operatorChart = echarts.init(document.getElementById('operatorChart'));
+            } else if (platformSource === 'temu_only') {
+                series.push({
+                    name: 'Temu',
+                    type: 'line',
+                    data: trendData.map(item => item.temu_sales || item.sales || 0),
+                    smooth: true,
+                    lineStyle: {color: '#f5576c', width: 3},
+                    itemStyle: {color: '#f5576c'},
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                {offset: 0, color: 'rgba(245, 87, 108, 0.3)'},
+                                {offset: 1, color: 'rgba(245, 87, 108, 0.1)'}
+                            ]
+                        }
+                    }
+                });
+                legendData.push('Temu');
+
+            } else if (platformSource === 'mixed') {
+                series.push({
+                    name: 'Amazon',
+                    type: 'line',
+                    data: trendData.map(item => item.amazon_sales || 0),
+                    smooth: true,
+                    lineStyle: {color: '#667eea', width: 3},
+                    itemStyle: {color: '#667eea'},
+                });
+
+                series.push({
+                    name: 'Temu',
+                    type: 'line',
+                    data: trendData.map(item => item.temu_sales || 0),
+                    smooth: true,
+                    lineStyle: {color: '#f5576c', width: 3},
+                    itemStyle: {color: '#f5576c'},
+                });
+
+                series.push({
+                    name: '总计',
+                    type: 'line',
+                    data: trendData.map(item => item.total_sales || 0),
+                    smooth: true,
+                    lineStyle: {color: '#10b981', width: 3, type: 'dashed'},
+                    itemStyle: {color: '#10b981'},
+                });
+
+                legendData.push('Amazon', 'Temu', '总计');
+
+            } else {
+                series.push({
+                    name: '销量',
+                    type: 'line',
+                    data: trendData.map(item => item.sales || 0),
+                    smooth: true,
+                    lineStyle: {color: '#94a3b8', width: 2},
+                    itemStyle: {color: '#94a3b8'},
+                });
+                legendData.push('销量');
+            }
+
             const rootStyle = getComputedStyle(document.documentElement);
 
             const option = {
                 tooltip: {
-                    trigger: 'item',
+                    trigger: 'axis',
                     backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
                     borderColor: rootStyle.getPropertyValue('--border-color').trim(),
                     textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
                 },
-                legend: {
-                    orient: 'vertical',
-                    left: 'left',
+                legend: legendData.length > 1 ? {
+                    data: legendData,
                     textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
+                } : undefined,
+                grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
                 },
-                series: [{
-                    type: 'pie',
-                    radius: '50%',
-                    data: [
-                        {value: 335, name: '张三'},
-                        {value: 310, name: '李四'},
-                        {value: 234, name: '王五'},
-                        {value: 135, name: '赵六'},
-                        {value: 148, name: '孙七'}
-                    ],
-                    emphasis: {
-                        itemStyle: {
-                            shadowBlur: 10,
-                            shadowOffsetX: 0,
-                            shadowColor: 'rgba(0, 0, 0, 0.5)'
-                        }
-                    },
-                    itemStyle: {
-                        color: function (params) {
-                            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'];
-                            return colors[params.dataIndex];
-                        }
-                    }
-                }]
+                yAxis: {
+                    type: 'value',
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()},
+                    splitLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}}
+                },
+                series: series
             };
-            operatorChart.setOption(option);
+
+            ordersChart.setOption(option);
+        }
+
+        function updateChartsWithRealData(data) {
+            if (!data.trend_data || data.trend_data.length === 0) {
+                console.warn('没有趋势数据');
+                return;
+            }
+
+            const platformSource = data.filter_info?.platform_source || 'unknown';
+            updateOrdersChart(data.trend_data, platformSource);
+        }
+
+        // 删除原有的假数据函数，替换为：
+
+        async function loadOperatorPieChart() {
+            const container = document.getElementById('operatorChart');
+            if (!container) return;
+
+            const operatorChart = echarts.init(container);
+            const filters = getCurrentFilters();
+
+            try {
+                // 构建查询参数
+                const params = new URLSearchParams();
+                params.set('date_range', filters.date_range);
+                if (filters.start_date) params.set('start_date', filters.start_date);
+                if (filters.end_date) params.set('end_date', filters.end_date);
+                if (filters.operator_id) params.set('operator_id', filters.operator_id);
+                if (filters.group) params.set('group', filters.group);
+
+                const response = await fetch(`/api/amazon/operator-pie-chart/?${params}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.error('饼图数据加载失败:', result.message);
+                    return;
+                }
+
+                // 无数据时清空图表
+                if (!result.data || result.data.length === 0) {
+                    operatorChart.clear();
+                    return;
+                }
+
+                // 渲染饼图
+                const rootStyle = getComputedStyle(document.documentElement);
+
+                const option = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{a} <br/>{b}: {c}单 ({d}%)'
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: 'left',
+                        textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
+                    },
+                    series: [{
+                        name: '订单分布',
+                        type: 'pie',
+                        radius: '50%',
+                        data: result.data,
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        itemStyle: {
+                            color: function (params) {
+                                const colors = ['#667eea', '#f5576c', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
+                                return colors[params.dataIndex % colors.length];
+                            }
+                        },
+                        label: {
+                            formatter: '{b}\n{c}单\n({d}%)'
+                        }
+                    }]
+                };
+
+                operatorChart.setOption(option);
+
+            } catch (error) {
+                console.error('饼图加载异常:', error);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async function () {

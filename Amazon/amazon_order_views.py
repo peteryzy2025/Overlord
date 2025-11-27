@@ -11,8 +11,7 @@ from django.utils import timezone
 
 from django.shortcuts import render
 from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value, get_shop_ids_by_filter, \
-    get_date_range_from_option
+from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value, get_date_range_from_option,get_shop_ids_by_filter
 # DIVI服务导入
 from Api.divi.divi_order_service import query_divi_order
 from Amazon.amazon_divi_views import update_divi_order_fields

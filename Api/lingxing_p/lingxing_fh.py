@@ -44,9 +44,11 @@ def get_divi_logistics_code(divi_logistics_method: str,
             return "500518-21736"
 
         # 单号前缀判断：GOFO
-        if tracking.startswith("YT") or tracking.startswith("GFU"):
+        if tracking.startswith("YT") :
             # GOFO
             return "500518-21672"
+        if tracking.startswith("GFU"):
+            return "500518-22837"
 
         # 按长度区分不同承运商（根据你举的几个例子来写）：
         length = len(tracking)
@@ -75,6 +77,8 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "威速易美国小货专线": "500518-22812",
         "云途全球专线挂号（标快普货）": "500518-22810",
         "京东普货标准专线-IE-01": "500518-22811",
+        "GOFO Parcel Pickup": "500518-21672",
+        "美国GOFO EXPRESS Service": "500518-22837",
     }
     if method in exact_map:
         return exact_map[method]
@@ -82,7 +86,7 @@ def get_divi_logistics_code(divi_logistics_method: str,
     contain_map = {
         "USPS": "500518-21735",
         "FEDEX": "500518-22808",
-        "GOFO": "500518-21672",
+        # "GOFO": "500518-21672",
         "DHL": "500518-22809",
         "顺丰": "500518-21734",
         "UNIUNI": "500518-21736",

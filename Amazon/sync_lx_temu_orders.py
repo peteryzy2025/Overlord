@@ -207,7 +207,7 @@ def main():
 
     # 2. 拉取订单数据（默认3天）
     try:
-        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=3))
+        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=30))
     except Exception as e:
         print(f"调用领星 API 失败: {e}")
         return
