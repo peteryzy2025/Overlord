@@ -17,8 +17,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 from Api.Y.y_tiem import Timer
 from Amazon.models import LingXingAmazonShop
-from General.models import AmazonShop
+from Temu.models import LingXingTemuShop
+from General.models import AmazonShop, TemuShop
 from Api.lingxing_p.lingxing_jc1 import get_lingxing_shop
+from Api.lingxing_p.lingxing_temu import get_lx_temu_shops
 
 
 def sync_lingxing_shops(data_list):
@@ -67,18 +69,70 @@ def sync_lingxing_shops(data_list):
             print(f"  -> AmazonShop(id={amazon_shop.id}) 标记已绑定 ling_xing_if=1")
 
 
+def sync_lingxing_temu_shops(data_list):
+    """把领星Temu数据写入并绑定 TemuShop"""
+    for item in data_list:
+        store_id = item.get("store_id")
+        if not store_id:
+            print("跳过：没有 store_id:", item)
+            continue
+
+        defaults = {
+            "sid": item.get("sid"),
+            "store_name": item.get("store_name"),
+            "platform_code": item.get("platform_code"),
+            "platform_name": item.get("platform_name"),
+            "currency": item.get("currency"),
+            "is_sync": item.get("is_sync"),
+            "status": item.get("status"),
+            "country_code": item.get("country_code"),
+        }
+
+        obj, created = LingXingTemuShop.objects.update_or_create(
+            store_id=store_id,
+            defaults=defaults
+        )
+
+        print(f"{'新增' if created else '更新'}：LingXingTemuShop: {obj}")
+
+        # 提取店铺名称（格式：项目-店铺名-产品名），并去除前后空格
+        store_name = item.get("store_name", "")
+        shop_name_to_match = store_name.split('-')[
+            1].strip() if store_name and '-' in store_name else store_name.strip()
+
+        temu_shop = TemuShop.objects.filter(shop_name=shop_name_to_match).first()
+
+        if not temu_shop:
+            print(f"  -> 未找到本地 TemuShop.shop_name='{shop_name_to_match}'（原始：{store_name}），跳过绑定")
+            continue
+
+        if obj.temu_shop_id != temu_shop.id:
+            obj.temu_shop = temu_shop
+            obj.save(update_fields=["temu_shop"])
+            print(f"  -> 已绑定 TemuShop(id={temu_shop.id})")
+
+
 def lx_shop_main():
-    print("开始同步店铺数据…")
-    # 这里只是为了拿异步结果，用 asyncio.run 包一下就行
+    print("开始同步Amazon店铺数据…")
     resp_data = asyncio.run(get_lingxing_shop())
     sync_lingxing_shops(resp_data)
-    print("完成")
+    print("Amazon店铺同步完成")
     return ""
+
+
+def lx_shop_main2():
+    print("开始同步Temu店铺数据…")
+    resp_data = asyncio.run(get_lx_temu_shops())
+    sync_lingxing_temu_shops(resp_data)
+    print("Temu店铺同步完成")
+    return ""
+
 
 if __name__ == "__main__":
     t = Timer()
     t.start()
-    lx_shop_main()
+    lx_shop_main()  # 同步Amazon店铺
+    print("\n" + "=" * 50 + "\n")
+    lx_shop_main2()  # 同步Temu店铺
     t.stop()
-    print("运行时长：",t)
-
+    print("总运行时长：", t)
