@@ -73,7 +73,7 @@ def lx_shop_main():
     resp_data = asyncio.run(get_lingxing_shop())
     sync_lingxing_shops(resp_data)
     print("完成")
-
+    return ""
 
 if __name__ == "__main__":
     t = Timer()

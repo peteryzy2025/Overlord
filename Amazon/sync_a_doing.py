@@ -6,10 +6,11 @@ from Api.Y.y_tiem import Timer
 import asyncio
 import time
 if __name__ == '__main__':
+    t = Timer()
     while True:
-        t = Timer()
         t.start()
         lx_shop_main()
+
         t.stop()
         print(f"时间：{t}")
         lx_order_main()
