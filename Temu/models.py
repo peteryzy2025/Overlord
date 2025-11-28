@@ -271,3 +271,5 @@ class TemuOrderItem(models.Model):
 
     def __str__(self):
         return f"{self.order.global_order_no} - {self.msku or self.product_no}"
+
+

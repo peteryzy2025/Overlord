@@ -191,7 +191,7 @@ def sync_temu_orders(data_dict):
         f"\n同步完成 - 订单总计: {total_orders}, 新增: {created_orders}, 更新: {updated_orders}, 跳过: {skipped_orders}, 商品明细总数: {total_items}")
 
 
-def main():
+def temu_orders():
     """主入口函数"""
     print("=" * 50)
     print("开始同步 Temu 订单数据...")
@@ -207,7 +207,7 @@ def main():
 
     # 2. 拉取订单数据（默认3天）
     try:
-        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=30))
+        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=7))
     except Exception as e:
         print(f"调用领星 API 失败: {e}")
         return
@@ -224,4 +224,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    temu_orders()

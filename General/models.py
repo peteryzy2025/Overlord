@@ -3,7 +3,8 @@
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from pydantic import ValidationError
-
+from django.utils import timezone
+from datetime import timedelta
 
 class User(AbstractUser):
     """
@@ -358,5 +359,89 @@ class PersonalPerformanceTarget(models.Model):
         """模型验证"""
         if self.stretch_target <= self.target_performance:
             raise ValidationError('个人冲单目标必须大于个人目标业绩')
+
+
+class Announcement(models.Model):
+    """
+    系统公告表
+    存储所有系统公告内容，支持多公告并行展示
+    """
+    PRIORITY_HIGH = 'high'
+    PRIORITY_MEDIUM = 'medium'
+    PRIORITY_LOW = 'low'
+    PRIORITY_CHOICES = [
+        (PRIORITY_HIGH, '高优先级'),
+        (PRIORITY_MEDIUM, '中优先级'),
+        (PRIORITY_LOW, '低优先级'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键', db_comment='公告唯一标识ID')
+    title = models.CharField('公告标题', max_length=200, db_comment='公告标题，显示在弹窗顶部')
+    content = models.TextField('公告内容', db_comment='公告正文内容，支持HTML格式')
+    priority = models.CharField('优先级', max_length=10, choices=PRIORITY_CHOICES,
+                                default=PRIORITY_MEDIUM, db_comment='公告优先级：high/medium/low')
+
+    # 有效期控制
+    valid_from = models.DateTimeField('生效时间', default=timezone.now, db_comment='公告开始显示时间')
+    valid_to = models.DateTimeField('过期时间', default=timezone.now() + timedelta(days=7),
+                                    db_comment='公告停止显示时间')
+
+    # 状态控制
+    is_active = models.BooleanField('是否激活', default=True, db_comment='后台控制是否启用该公告')
+
+    # 弹窗控制
+    is_dismissible = models.BooleanField('允许关闭', default=True, db_comment='是否显示"关闭"按钮')
+    can_mark_read = models.BooleanField('允许标记已读', default=True, db_comment='是否显示"不再提示"按钮')
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True, db_comment='公告创建时间')
+    updated_at = models.DateTimeField('更新时间', auto_now=True, db_comment='公告最后修改时间')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
+                                   verbose_name='创建人', related_name='created_announcements',
+                                   db_comment='发布公告的用户ID')
+
+    class Meta:
+        db_table = 'system_announcements'
+        verbose_name = '系统公告'
+        verbose_name_plural = verbose_name
+        ordering = ['-priority', '-created_at']  # 按优先级和时间排序
+        indexes = [
+            models.Index(fields=['is_active', 'valid_from', 'valid_to', 'priority'],
+                         name='idx_announcement_active_time'),
+        ]
+
+    def __str__(self):
+        return f"[{self.get_priority_display()}] {self.title}"
+
+    def is_currently_valid(self):
+        """检查公告当前是否在有效期内"""
+        now = timezone.now()
+        return self.is_active and self.valid_from <= now <= self.valid_to
+
+
+class UserAnnouncementRead(models.Model):
+    """
+    用户公告已读记录表
+    记录每个用户已读过的公告，用于下次不再显示
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键', db_comment='记录ID')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='用户',
+                             db_comment='已读公告的用户ID', related_name='read_announcements')
+    announcement = models.ForeignKey(Announcement, on_delete=models.CASCADE, verbose_name='公告',
+                                     db_comment='被标记已读的的公告ID', related_name='user_reads')
+    read_at = models.DateTimeField('已读时间', auto_now_add=True, db_comment='用户点击"不再提示"的时间')
+    dismissed_at = models.DateTimeField('关闭时间', null=True, blank=True,
+                                        db_comment='用户仅点击关闭的时间（可记录但不影响逻辑）')
+
+    class Meta:
+        db_table = 'user_announcement_reads'
+        verbose_name = '用户已读记录'
+        verbose_name_plural = verbose_name
+        unique_together = ['user', 'announcement']  # 确保每个用户对每条公告只记录一次
+        indexes = [
+            models.Index(fields=['user', 'read_at'], name='idx_user_read_time'),
+        ]
+
+    def __str__(self):
+        return f"{self.user.first_name} - {self.announcement.title}"
 
 

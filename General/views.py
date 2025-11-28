@@ -5,11 +5,38 @@ from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from General.models import User
+from General.models import Announcement, UserAnnouncementRead
 from django.forms.models import model_to_dict
 import json
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_protect
 
 
+@require_http_methods(["POST"])
+@csrf_protect
+def mark_announcement_as_read(request):
+    """标记公告为已读"""
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': '未登录'}, status=401)
+
+    try:
+        data = json.loads(request.body)
+        announcement_id = data.get('announcement_id')
+
+        announcement = Announcement.objects.get(id=announcement_id)
+
+        # 创建或获取已读记录
+        UserAnnouncementRead.objects.get_or_create(
+            user=request.user,
+            announcement=announcement,
+            defaults={'read_at': timezone.now()}
+        )
+
+        return JsonResponse({'success': True})
+    except Announcement.DoesNotExist:
+        return JsonResponse({'error': '公告不存在'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 @ensure_csrf_cookie
 def user_login(request):
     if request.method == 'GET':

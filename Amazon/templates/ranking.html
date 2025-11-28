@@ -1,0 +1,712 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}运营排名 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ranking-main {
+        margin: 20px;
+    }
+
+    .page-header {
+        margin-bottom: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .filter-panel {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .quick-date-buttons {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .quick-date-btn {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.5rem 0.75rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.875rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .quick-date-btn:hover {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .quick-date-btn.active {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .date-inputs-row {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    /* 其余样式保持不变... */
+    .filter-row {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-control {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        height: fit-content;
+    }
+
+    .btn:hover {
+        background-color: var(--accent-hover);
+        transform: translateY(-1px);
+    }
+
+    .chart-card {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        margin-bottom: 2rem;
+    }
+
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .chart-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .chart-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    #rankingChart {
+        width: 100%;
+        height: 600px;
+    }
+
+    .stats-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .summary-card {
+        background-color: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .summary-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .summary-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    @media (max-width: 768px) {
+        .ranking-main {
+            padding: 1rem;
+        }
+
+        .quick-date-buttons {
+            justify-content: center;
+        }
+
+        .date-inputs-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+
+        #rankingChart {
+            height: 400px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="ranking-main">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">运营排名</h1>
+            <p class="page-subtitle">按订单量统计所有运营人员业绩排名</p>
+        </div>
+    </div>
+
+    <!-- 统计概览 -->
+    <div class="stats-summary" id="statsSummary">
+        <div class="summary-card">
+            <div class="summary-value" id="totalOperators">—</div>
+            <div class="summary-label">参与排名</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="totalOrders">—</div>
+            <div class="summary-label">总订单量</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="totalSalesQuantity">—</div>
+            <div class="summary-label">总销售量</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="avgOrders">—</div>
+            <div class="summary-label">平均订单量</div>
+        </div>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div class="filter-panel">
+        <!-- ========== 新增：快捷日期按钮 ========== -->
+        <div class="quick-date-buttons" id="quickDateButtons">
+            <button class="quick-date-btn" data-range="today">今日</button>
+            <button class="quick-date-btn" data-range="yesterday">昨日</button>
+            <button class="quick-date-btn" data-range="last3days">近3日</button>
+            <button class="quick-date-btn" data-range="last7days">近7日</button>
+            <button class="quick-date-btn active" data-range="last30days">近30日</button>
+            <button class="quick-date-btn" data-range="thisweek">本周</button>
+            <button class="quick-date-btn" data-range="lastweek">上周</button>
+            <button class="quick-date-btn" data-range="thismonth">本月</button>
+            <button class="quick-date-btn" data-range="lastmonth">上月</button>
+        </div>
+
+        <div class="date-inputs-row">
+            <div class="filter-group">
+                <label class="filter-label">开始日期</label>
+                <input type="date" class="form-control" id="startDate">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">结束日期</label>
+                <input type="date" class="form-control" id="endDate">
+            </div>
+            <div class="filter-group" style="align-self: flex-end;">
+                <button class="btn" onclick="loadRankingData()">查询排名</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 排名图表 -->
+    <div class="chart-card">
+        <div class="chart-header">
+            <div>
+                <h3 class="chart-title">运营人员业绩排名</h3>
+                <p class="chart-subtitle">按订单量排序，点击柱子查看详情</p>
+            </div>
+            <div id="chartLegend" style="display: flex; gap: 1rem; font-size: 0.875rem;">
+                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <div style="width: 12px; height: 12px; background-color: #667eea; border-radius: 2px;"></div>
+                    <span style="color: var(--text-secondary);">订单量</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.25rem;">
+                    <div style="width: 12px; height: 12px; background-color: #f5576c; border-radius: 2px;"></div>
+                    <span style="color: var(--text-secondary);">销售量</span>
+                </div>
+            </div>
+        </div>
+        <div id="rankingChart"></div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p>数据加载中...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<script>
+    // 全局变量
+    let rankingChart = null;
+    let currentQuickRange = 'last30days'; // 默认选中近30日
+
+    // 初始化日期
+    function initializeDates() {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 29); // 默认30天
+
+        document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+        document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+    }
+
+    // 显示/隐藏加载动画
+    function showLoading(show = true) {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = show ? 'flex' : 'none';
+        overlay.style.visibility = show ? 'visible' : 'hidden';
+        overlay.style.opacity = show ? '1' : '0';
+    }
+
+    // 格式化数字
+    function formatNumber(num) {
+        return new Intl.NumberFormat('zh-CN').format(num);
+    }
+
+    // 日期计算工具函数
+    function getDateRange(rangeType) {
+        const today = new Date();
+        const startDate = new Date();
+        const endDate = new Date();
+
+        switch (rangeType) {
+            case 'today':
+                startDate.setDate(today.getDate());
+                endDate.setDate(today.getDate());
+                break;
+            case 'yesterday':
+                startDate.setDate(today.getDate() - 1);
+                endDate.setDate(today.getDate() - 1);
+                break;
+            case 'last3days':
+                startDate.setDate(today.getDate() - 2);
+                break;
+            case 'last7days':
+                startDate.setDate(today.getDate() - 6);
+                break;
+            case 'last30days':
+                startDate.setDate(today.getDate() - 29);
+                break;
+            case 'thisweek':
+                // 本周一
+                startDate.setDate(today.getDate() - today.getDay() + 1);
+                break;
+            case 'lastweek':
+                // 上周一
+                startDate.setDate(today.getDate() - today.getDay() - 6);
+                // 上周日
+                endDate.setDate(today.getDate() - today.getDay());
+                break;
+            case 'thismonth':
+                startDate.setDate(1);
+                break;
+            case 'lastmonth':
+                // 上月第一天
+                startDate.setDate(1);
+                startDate.setMonth(today.getMonth() - 1);
+                // 上月最后一天
+                endDate.setDate(0);
+                endDate.setMonth(today.getMonth());
+                break;
+        }
+
+        return {
+            start: startDate.toISOString().split('T')[0],
+            end: endDate.toISOString().split('T')[0]
+        };
+    }
+
+    // 快捷日期按钮点击处理
+    function handleQuickDateClick(rangeType) {
+        // 更新按钮高亮
+        document.querySelectorAll('.quick-date-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        currentQuickRange = rangeType;
+
+        // 计算并填充日期
+        const dates = getDateRange(rangeType);
+        document.getElementById('startDate').value = dates.start;
+        document.getElementById('endDate').value = dates.end;
+
+        // 自动触发查询
+        loadRankingData();
+    }
+
+    // 加载排名数据
+    async function loadRankingData() {
+        showLoading(true);
+
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        if (!startDate || !endDate) {
+            showNotification && showNotification('请选择开始和结束日期', 'warning');
+            showLoading(false);
+            return;
+        }
+
+        if (new Date(startDate) > new Date(endDate)) {
+            showNotification && showNotification('开始日期不能晚于结束日期', 'warning');
+            showLoading(false);
+            return;
+        }
+
+        try {
+            // 构建查询参数
+            const params = new URLSearchParams({
+                'start_date': startDate,
+                'end_date': endDate
+            });
+
+            const response = await fetch(`/api/ranking-data/?${params}`);
+            const result = await response.json();
+
+            if (result.success) {
+                updateStatsSummary(result.data);
+                updateRankingChart(result.data);
+                showNotification && showNotification('排名数据已更新', 'success');
+            } else {
+                showNotification && showNotification('加载失败: ' + result.message, 'error');
+            }
+        } catch (error) {
+            showNotification && showNotification('请求失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // 更新统计概览
+    function updateStatsSummary(data) {
+        if (!data || data.length === 0) {
+            document.getElementById('totalOperators').textContent = '0';
+            document.getElementById('totalOrders').textContent = '0';
+            document.getElementById('totalSalesQuantity').textContent = '0';
+            document.getElementById('avgOrders').textContent = '0';
+            return;
+        }
+
+        const totalOps = data.length;
+        const totalOrders = data.reduce((sum, item) => sum + item.total_orders, 0);
+        const totalSalesQuantity = data.reduce((sum, item) => sum + item.total_sales_quantity, 0);
+        const avgOrders = Math.round(totalOrders / totalOps);
+
+        document.getElementById('totalOperators').textContent = formatNumber(totalOps);
+        document.getElementById('totalOrders').textContent = formatNumber(totalOrders);
+        document.getElementById('totalSalesQuantity').textContent = formatNumber(totalSalesQuantity);
+        document.getElementById('avgOrders').textContent = formatNumber(avgOrders);
+    }
+
+    // 更新排名图表
+    function updateRankingChart(data) {
+        const chartDom = document.getElementById('rankingChart');
+
+        // 销毁旧图表
+        if (rankingChart) {
+            rankingChart.dispose();
+        }
+
+        rankingChart = echarts.init(chartDom);
+
+        if (!data || data.length === 0) {
+            rankingChart.setOption({
+                title: {
+                    text: '暂无数据',
+                    left: 'center',
+                    top: 'center',
+                    textStyle: {
+                        color: 'var(--text-secondary)'
+                    }
+                }
+            });
+            return;
+        }
+
+        // 准备数据（按订单量降序）
+        const names = data.map(item => item.operator_name);
+        const orderCounts = data.map(item => item.total_orders);
+        const salesQuantities = data.map(item => item.total_sales_quantity);
+
+        // ========== 视觉调整：销售量数据增加30% ==========
+        const scaledSalesQuantities = salesQuantities.map(qty => Math.ceil(qty * 1.3));
+
+        const rootStyle = getComputedStyle(document.documentElement);
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: {
+                    type: 'shadow'
+                },
+                backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
+                borderColor: rootStyle.getPropertyValue('--border-color').trim(),
+                textStyle: {
+                    color: rootStyle.getPropertyValue('--text-primary').trim()
+                },
+                formatter: function (params) {
+                    const item = data[params[0].dataIndex];
+                    return `<strong>${item.operator_name}</strong><br/>
+                        🏆 排名: 第${item.rank}名<br/>
+                        🔢 订单量: ${formatNumber(item.total_orders)}<br/>
+                        📦 销售量: ${formatNumber(item.total_sales_quantity)}件<br/>
+                        🏷️ 分组: ${item.group}`;
+                }
+            },
+            legend: {
+                data: ['订单量', '销售量'],
+                textStyle: {
+                    color: rootStyle.getPropertyValue('--text-primary').trim()
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                top: '10%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: names,
+                axisLabel: {
+                    interval: 0,
+                    rotate: 45,
+                    color: rootStyle.getPropertyValue('--text-secondary').trim()
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: rootStyle.getPropertyValue('--border-color').trim()
+                    }
+                }
+            },
+            yAxis: [
+                {
+                    type: 'value',
+                    name: '订单量',
+                    position: 'left',
+                    axisLabel: {
+                        color: rootStyle.getPropertyValue('--text-secondary').trim(),
+                        formatter: function (value) {
+                            return formatNumber(value);
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: rootStyle.getPropertyValue('--border-color').trim()
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: rootStyle.getPropertyValue('--border-color').trim()
+                        }
+                    }
+                },
+                {
+                    type: 'value',
+                    name: '销售量（件）',
+                    position: 'right',
+                    axisLabel: {
+                        color: rootStyle.getPropertyValue('--text-secondary').trim(),
+                        formatter: function (value) {
+                            return formatNumber(value) + '件';
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: rootStyle.getPropertyValue('--border-color').trim()
+                        }
+                    }
+                }
+            ],
+            series: [
+                {
+                    name: '订单量',
+                    type: 'bar',
+                    data: orderCounts,
+                    itemStyle: {
+                        color: function (params) {
+                            // 前三名特殊颜色
+                            if (params.dataIndex === 0) return '#FFD700'; // 金色
+                            if (params.dataIndex === 1) return '#C0C0C0'; // 银色
+                            if (params.dataIndex === 2) return '#CD7F32'; // 铜色
+                            return '#667eea';
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: function (params) {
+                            return formatNumber(params.value);
+                        },
+                        fontWeight: 'bold'
+                    }
+                },
+                {
+                    name: '销售量',
+                    type: 'line',
+                    yAxisIndex: 1,
+                    data: scaledSalesQuantities, // 使用缩放后的数据
+                    smooth: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    lineStyle: {
+                        color: '#f5576c',
+                        width: 3
+                    },
+                    itemStyle: {
+                        color: '#f5576c'
+                    },
+                    // ========== 显示销售量标签 ==========
+                    label: {
+                        show: true,
+                        position: 'top',
+                        distance: 15, // 向上偏移15像素，避免重叠
+                        formatter: function (params) {
+                            // 显示原始销售量（不是缩放后的）
+                            const originalValue = salesQuantities[params.dataIndex];
+                            return formatNumber(originalValue) + '件';
+                        },
+                        color: '#f5576c',
+                        fontWeight: 'bold',
+                        fontSize: 11
+                    },
+                    // ========== 视觉映射：线位于柱子上方 ==========
+                    emphasis: {
+                        focus: 'series',
+                        lineStyle: {
+                            width: 4
+                        }
+                    }
+                }
+            ],
+            dataZoom: [
+                {
+                    type: 'inside',
+                    start: 0,
+                    end: 100
+                },
+                {
+                    start: 0,
+                    end: 100,
+                    handleSize: '80%',
+                    handleStyle: {
+                        color: '#fff',
+                        shadowBlur: 3,
+                        shadowColor: 'rgba(0, 0, 0, 0.6)',
+                        shadowOffsetX: 2,
+                        shadowOffsetY: 2
+                    }
+                }
+            ]
+        };
+
+        rankingChart.setOption(option);
+
+        // 点击事件
+        rankingChart.on('click', function (params) {
+            const item = data[params.dataIndex];
+            showNotification && showNotification(`已选择: ${item.operator_name} (${item.group})`, 'info');
+        });
+
+        // 响应式
+        window.addEventListener('resize', function () {
+            if (rankingChart) {
+                rankingChart.resize();
+            }
+        });
+    }
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeDates();
+
+        // ========== 绑定快捷按钮事件 ==========
+        document.querySelectorAll('.quick-date-btn').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                handleQuickDateClick(this.dataset.range);
+            });
+        });
+
+        // 监听回车键
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                loadRankingData();
+            }
+        });
+
+        // 自动加载数据（使用默认选中的快捷按钮范围）
+        handleQuickDateClick(currentQuickRange);
+    });
+</script>
+{% endblock %}

@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from General import views, views_user_management, views_amazon_management,views_temu_management,views_performance,demo_view
-from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views
+from General import views, views_user_management, views_amazon_management, views_temu_management, views_performance, \
+    demo_view
+from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views, \
+    views_ranking
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -31,7 +33,7 @@ urlpatterns = [
     path('api/users/<int:user_id>/update/', views_user_management.update_user_api, name='update_user_api'),  # 更新用户数据api
     path('management/temu/', views_user_management.temu_management_view, name='temu_management'),  # 管理temu店铺主页
     path('dashboard/', amazon_views.amazon_dashboard_page, name='dashboard'),  # 驾驶舱 从亚马逊驾驶舱改编
-path('api/amazon/operator-pie-chart/', amazon_views.get_operator_pie_chart_api, name='amazon_operator_pie_chart'),
+    path('api/amazon/operator-pie-chart/', amazon_views.get_operator_pie_chart_api, name='amazon_operator_pie_chart'),
     path('csrf/', views.csrf_token_view, name='csrf_token'),
     path('api/update-theme/', views.update_theme, name='update_theme'),  # 主题api
     path('api/users/', views_user_management.get_users_api, name='get_users_api'),  # 获取用户数据，这个api接口只给人员管理用！
@@ -62,7 +64,8 @@ path('api/amazon/operator-pie-chart/', amazon_views.get_operator_pie_chart_api, 
 
     # ⭐ 一键发货 API
     path("api/ship-order/", amazon_order_api_views.api_ship_order, name="api_ship_order"),
-    path("api/mark-real-shipment/", amazon_order_api_views.api_mark_real_shipment, name="api_mark_real_shipment"),# 标注真发
+    path("api/mark-real-shipment/", amazon_order_api_views.api_mark_real_shipment, name="api_mark_real_shipment"),
+    # 标注真发
 
     # Temu API接口
     path('api/operators/', views_temu_management.get_all_operators_api, name='get_operators'),
@@ -89,6 +92,10 @@ path('api/amazon/operator-pie-chart/', amazon_views.get_operator_pie_chart_api, 
     path('api/performance/ops_groups/', views_performance.get_ops_groups_for_filter_api, name='api_ops_groups_filter'),
     path('api/performance/operators_by_group/', views_performance.get_operators_by_group_api,
          name='api_operators_by_group'),
-    path('demo1/',demo_view.demo_view),
-]
 
+    path('ranking/', views_ranking.ranking_page, name='ranking_page'),
+    path('api/ranking-data/', views_ranking.get_ranking_data_api, name='ranking_data_api'),
+    path('demo1/', demo_view.demo_view),
+    path('api/announcement/mark-as-read/', views.mark_announcement_as_read, name='mark_announcement_read'),
+
+]
