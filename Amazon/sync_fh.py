@@ -160,7 +160,7 @@ def process_auto_ship():
     return success_count, error_count
 
 
-def main():
+def amazon_fh():
     """主函数入口"""
     timer = Timer()
     timer.start()
@@ -185,4 +185,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    amazon_fh()

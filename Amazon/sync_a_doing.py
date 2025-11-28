@@ -3,16 +3,19 @@ from Amazon.sync_lingxing_orders import lx_order_main
 from Amazon.sync_lingxing_zifa_order import lx_zf_main
 from Amazon.sync_check_divi_status_v2 import divi_process_orders
 from Amazon.sync_lx_temu_orders import temu_orders
+from Amazon.sync_fh import amazon_fh
+from Amazon.sync_lx_temu_orders import temu_orders
 from Api.Y.y_tiem import Timer
 import asyncio
 import time
 
 if __name__ == '__main__':
     t = Timer()
+    a = 0
     while True:
+        a =a+1
         t.start()
         lx_shop_main()
-
         t.stop()
         print(f"时间：{t}")
         lx_order_main()
@@ -25,7 +28,12 @@ if __name__ == '__main__':
         divi_process_orders("2025-11-19", True)
         t.stop()
         print(f"时间：{t}")
-        temu_orders()
+        amazon_fh()
         t.stop()
         print(f"时间：{t}")
+        if a == 20:
+            a = 0
+            temu_orders()
+            t.stop()
+            print(f"时间：{t}")
         time.sleep(60)

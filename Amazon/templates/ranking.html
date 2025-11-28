@@ -277,7 +277,7 @@
         <div class="chart-header">
             <div>
                 <h3 class="chart-title">运营人员业绩排名</h3>
-                <p class="chart-subtitle">按订单量排序，点击柱子查看详情</p>
+                <p class="chart-subtitle">按订单量排序</p>
             </div>
             <div id="chartLegend" style="display: flex; gap: 1rem; font-size: 0.875rem;">
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
@@ -387,23 +387,28 @@
     }
 
     // 快捷日期按钮点击处理
-    function handleQuickDateClick(rangeType) {
-        // 更新按钮高亮
-        document.querySelectorAll('.quick-date-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        event.target.classList.add('active');
-        currentQuickRange = rangeType;
+ // 快捷日期按钮点击处理
+function handleQuickDateClick(rangeType) {
+    // 更新按钮高亮（不依赖 event 对象）
+    document.querySelectorAll('.quick-date-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
 
-        // 计算并填充日期
-        const dates = getDateRange(rangeType);
-        document.getElementById('startDate').value = dates.start;
-        document.getElementById('endDate').value = dates.end;
-
-        // 自动触发查询
-        loadRankingData();
+    // 直接通过 data-range 属性找到并激活对应按钮
+    const targetBtn = document.querySelector(`[data-range="${rangeType}"]`);
+    if (targetBtn) {
+        targetBtn.classList.add('active');
     }
+    currentQuickRange = rangeType;
 
+    // 计算并填充日期
+    const dates = getDateRange(rangeType);
+    document.getElementById('startDate').value = dates.start;
+    document.getElementById('endDate').value = dates.end;
+
+    // 自动触发查询
+    loadRankingData();
+}
     // 加载排名数据
     async function loadRankingData() {
         showLoading(true);
