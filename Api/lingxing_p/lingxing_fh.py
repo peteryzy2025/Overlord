@@ -19,6 +19,12 @@ from Api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
 
 # ==================== 物流匹配 ====================
 from typing import Optional
+from asgiref.sync import async_to_sync
+
+# ==================== 异常定义 ====================
+class LingxingAPIException(Exception):
+    """领星API调用异常"""
+    pass
 
 
 def get_divi_logistics_code(divi_logistics_method: str,
@@ -77,8 +83,8 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "威速易美国小货专线": "500518-22812",
         "云途全球专线挂号（标快普货）": "500518-22810",
         "京东普货标准专线-IE-01": "500518-22811",
-        "GOFO Parcel Pickup": "500518-21672",
-        "美国GOFO EXPRESS Service": "500518-22837",
+        "GOFO PARCEL PICKUP": "500518-21672",
+        "美西GOFO EXPRESS SERVICE": "500518-22837",
     }
     if method in exact_map:
         return exact_map[method]
@@ -224,6 +230,11 @@ async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, wayb
     resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/fastOutbound")
     # print(f"   → 出库结果 = {resp.dict().get('msg', 'OK')}")
     print(f"   → 出库结果 = {resp}")
+    if resp.code != 0:
+        raise LingxingAPIException(
+            f"快速出库失败: code={resp.code}, message='{resp.message}'"
+        )
+    print("   → 快速出库成功 ✓")
 
 
 async def step5_delivery_goods(order_no: str, execute: bool = True):
@@ -255,68 +266,79 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
     print(f"开始处理订单 | MODE = {mode.upper()}")
     print(f"SID = {sid} | 亚马逊订单号 = {amazon_order_id}")
     print(f"{'=' * 100}")
+    try:
+        order = await get_full_order(sid, amazon_order_id)
 
-    order = await get_full_order(sid, amazon_order_id)
+        # ==================== 关键修复：自动同步订单号 ====================
+        success, result = await sync_order_no_if_empty(order, sid, amazon_order_id)
+        if not success:
+            print(f"\n【致命错误】{result}，终止处理")
+            return
 
-    # ==================== 关键修复：自动同步订单号 ====================
-    success, result = await sync_order_no_if_empty(order, sid, amazon_order_id)
-    if not success:
-        print(f"\n【致命错误】{result}，终止处理")
-        return
+        # 重新获取order_no（可能已被更新）
+        order_no = result
+        # ==================== 原有逻辑继续 ====================
 
-    # 重新获取order_no（可能已被更新）
-    order_no = result
-    # ==================== 原有逻辑继续 ====================
+        total_payment = Decimal(str(order.divi_goods_payment_total or 0))
+        total_quantity = sum(item.quantity_ordered for item in order.items.all())
+        price_per_unit = (total_payment / Decimal(total_quantity)).quantize(Decimal('0.00'),
+                                                                            rounding=ROUND_HALF_UP) if total_quantity > 0 else Decimal(
+            '0.00')
 
-    total_payment = Decimal(str(order.divi_goods_payment_total or 0))
-    total_quantity = sum(item.quantity_ordered for item in order.items.all())
-    price_per_unit = (total_payment / Decimal(total_quantity)).quantize(Decimal('0.00'),
-                                                                        rounding=ROUND_HALF_UP) if total_quantity > 0 else Decimal(
-        '0.00')
+        waybill_no = order.divi_tracking_number or ""
+        logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
+        freight = str(order.divi_shipping_amount or "0")
 
-    waybill_no = order.divi_tracking_number or ""
-    logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
-    freight = str(order.divi_shipping_amount or "0")
+        print(f"领星订单号: {order_no}")
+        print(f"总货款: {total_payment} | 总件数: {total_quantity} → 每件成本价: {price_per_unit}")
+        print(f"物流方式: {order.divi_logistics_method} → 物流ID: {logistics_type_id}")
+        print(f"跟踪号: {waybill_no} | 运费: {freight}")
 
-    print(f"领星订单号: {order_no}")
-    print(f"总货款: {total_payment} | 总件数: {total_quantity} → 每件成本价: {price_per_unit}")
-    print(f"物流方式: {order.divi_logistics_method} → 物流ID: {logistics_type_id}")
-    print(f"跟踪号: {waybill_no} | 运费: {freight}")
+        items = []
+        for item in order.items.all():
+            sku = item.seller_sku or item.local_sku or item.asin
+            items.append({
+                "sku": sku,
+                "quantity": item.quantity_ordered,
+                "price_per_unit": str(price_per_unit)
+            })
+            print(f"  商品: {sku} × {item.quantity_ordered} | ASIN: {item.asin}")
 
-    items = []
-    for item in order.items.all():
-        sku = item.seller_sku or item.local_sku or item.asin
-        items.append({
-            "sku": sku,
-            "quantity": item.quantity_ordered,
-            "price_per_unit": str(price_per_unit)
-        })
-        print(f"  商品: {sku} × {item.quantity_ordered} | ASIN: {item.asin}")
+        # ==================== 关键：preview 模式也打印全部传参！====================
+        execute_step1 = execute_step2 = execute_step3 = execute_step4 = execute_step5 = (mode != "preview")
 
-    # ==================== 关键：preview 模式也打印全部传参！====================
-    execute_step1 = execute_step2 = execute_step3 = execute_step4 = execute_step5 = (mode != "preview")
+        if mode == "preview":
+            print(f"\n{'*' * 40} PREVIEW 模式：展示所有真实传参 {'*' * 40}")
+        elif mode == "up_to_outbound":
+            execute_step5 = False
+            print(f"\n{'*' * 40} 执行到第4步出库（不标发） {'*' * 40}")
+        elif mode == "full_shipment":
+            print(f"\n{'*' * 40} 完整发货模式（5步全执行） {'*' * 40}")
 
-    if mode == "preview":
-        print(f"\n{'*' * 40} PREVIEW 模式：展示所有真实传参 {'*' * 40}")
-    elif mode == "up_to_outbound":
-        execute_step5 = False
-        print(f"\n{'*' * 40} 执行到第4步出库（不标发） {'*' * 40}")
-    elif mode == "full_shipment":
-        print(f"\n{'*' * 40} 完整发货模式（5步全执行） {'*' * 40}")
+        await step1_set_sku(items[0]['sku'], items[0]['price_per_unit'], execute=execute_step1)
+        if len(items) > 1:
+            for it in items[1:]:
+                await step1_set_sku(it['sku'], it['price_per_unit'], execute=execute_step1)
 
-    await step1_set_sku(items[0]['sku'], items[0]['price_per_unit'], execute=execute_step1)
-    if len(items) > 1:
-        for it in items[1:]:
-            await step1_set_sku(it['sku'], it['price_per_unit'], execute=execute_step1)
+        await step2_update_order_binding(order_no, items, execute=execute_step2)
+        await step3_add_warehousing(items, execute=execute_step3)
+        await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4)
+        # await step5_delivery_goods(order_no, execute=execute_step5)
 
-    await step2_update_order_binding(order_no, items, execute=execute_step2)
-    await step3_add_warehousing(items, execute=execute_step3)
-    await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4)
-    # await step5_delivery_goods(order_no, execute=execute_step5)
+        print(f"\n{'=' * 100}")
+        print(f"订单 {order_no} 处理完成！模式: {mode}")
+        print(f"{'=' * 100}\n")
+    except LingxingAPIException as e:
+        # 捕获出库失败，打印并重新抛出
+        print(f"\n❌ 订单处理失败: {str(e)}")
+        print(f"{'=' * 100}\n")
+        raise  # 重新抛出给上层调用
 
-    print(f"\n{'=' * 100}")
-    print(f"订单 {order_no} 处理完成！模式: {mode}")
-    print(f"{'=' * 100}\n")
+    except Exception as e:
+        # 其他异常也打印并抛出
+        print(f"\n❌ 订单处理异常: {type(e).__name__}: {e}")
+        print(f"{'=' * 100}\n")
+        raise
 
 
 def lingxing_ship_order(sid: int, amazon_order_id: str, mode: str = "full_shipment"):
@@ -333,7 +355,7 @@ def lingxing_ship_order(sid: int, amazon_order_id: str, mode: str = "full_shipme
         # mode = "full_shipment"
     # mode = "preview"
     # 同步环境中跑异步的 process_order
-    asyncio.run(process_order(sid, amazon_order_id, mode=mode))
+    async_to_sync(process_order)(sid, amazon_order_id, mode=mode)
 
 
 # ==================== 主函数-对内 ====================
