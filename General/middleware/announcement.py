@@ -36,12 +36,10 @@ class AnnouncementMiddleware:
         from General.models import Announcement, UserAnnouncementRead
 
         now = timezone.now()
-        three_days_ago = now - timedelta(days=3)
 
         # 1. 查询3天内生效且未过期的公告（最多10条）
         recent_announcements = Announcement.objects.filter(
             is_active=True,
-            valid_from__gte=three_days_ago,
             valid_to__gte=now
         ).select_related('created_by').order_by('-priority', '-created_at')[:10]
 

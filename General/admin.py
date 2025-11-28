@@ -12,7 +12,7 @@ from django.http import HttpResponse
 import csv
 from datetime import datetime
 
-from .models import User, OperationalAccount
+from .models import User, OperationalAccount,Announcement,UserAnnouncementRead
 
 
 # ========== 内联管理运营账号（在User编辑页面显示） ==========
@@ -204,3 +204,68 @@ class OperationalAccountAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+# ========== 公告管理配置 ==========
+@admin.register(Announcement)
+class AnnouncementAdmin(admin.ModelAdmin):
+    list_display = (
+        'title', 'priority_colored', 'is_active',
+        'valid_from', 'valid_to', 'created_by', 'created_at'
+    )
+    list_filter = ('priority', 'is_active', 'is_dismissible', 'can_mark_read', 'created_at')
+    search_fields = ('title', 'content')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-valid_from',)
+
+    # 优先级颜色显示
+    def priority_colored(self, obj):
+        color_map = {
+            Announcement.PRIORITY_HIGH: '#e53e3e',
+            Announcement.PRIORITY_MEDIUM: '#dd6b20',
+            Announcement.PRIORITY_LOW: '#3182ce',
+        }
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color_map.get(obj.priority, '#718096'),
+            obj.get_priority_display()
+        )
+
+    priority_colored.short_description = '优先级'
+
+    fieldsets = (
+        ('公告内容', {
+            'fields': ('title', 'content', 'priority')
+        }),
+        ('有效期设置', {
+            'fields': ('valid_from', 'valid_to'),
+            'description': '设置公告的显示时间范围，超过有效期后将自动停止显示'
+        }),
+        ('显示控制', {
+            'fields': ('is_active', 'is_dismissible', 'can_mark_read'),
+            'description': 'is_active: 总开关；is_dismissible: 是否显示关闭按钮；can_mark_read: 是否允许用户标记已读'
+        }),
+        ('系统信息', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        """自动设置创建人"""
+        if not obj.pk:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(UserAnnouncementRead)
+class UserAnnouncementReadAdmin(admin.ModelAdmin):
+    list_display = ('user', 'announcement', 'read_at')
+    list_filter = ('read_at', 'announcement__priority')
+    search_fields = ('user__username', 'user__first_name', 'announcement__title')
+    readonly_fields = ('read_at', 'dismissed_at')
+    ordering = ('-read_at',)
+
+    def has_add_permission(self, request):
+        """禁止手动添加已读记录（应该由用户操作自动生成）"""
+        return False

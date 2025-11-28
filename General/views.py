@@ -4,11 +4,12 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from General.models import Announcement, UserAnnouncementRead
 from django.forms.models import model_to_dict
 import json
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.views.decorators.csrf import csrf_protect
 
 
@@ -130,3 +131,55 @@ def update_theme(request):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=400)
     return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+
+
+@require_POST
+def mark_announcement_as_read(request):
+    """
+    标记公告为已读 API
+    POST /api/announcement/mark-as-read/
+    请求体: {"announcement_id": 123}
+    返回: {"success": true, "message": "已标记为已读"}
+
+    幂等性：重复标记不报错
+    """
+    try:
+        # 解析JSON请求体
+        data = json.loads(request.body)
+        announcement_id = data.get('announcement_id')
+
+        if not announcement_id:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少announcement_id参数'
+            }, status=400)
+
+        # 验证公告是否存在
+        if not Announcement.objects.filter(id=announcement_id).exists():
+            return JsonResponse({
+                'success': False,
+                'message': '公告不存在'
+            }, status=404)
+
+        # 幂等处理：get_or_create 避免重复记录
+        UserAnnouncementRead.objects.get_or_create(
+            user=request.user,
+            announcement_id=announcement_id,
+            defaults={'read_at': timezone.now()}
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': '已标记为已读'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': '请求数据格式错误（需JSON）'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
