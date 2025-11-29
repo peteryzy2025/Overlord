@@ -14,7 +14,7 @@ from Api.lingxing.resp_schema import ResponseResult
 
 from Amazon.models import LingXingAmazonShop
 from General.models import AmazonShop
-
+import random
 
 # ================== 通用 Divi 请求封装（就是你原来的签名逻辑） ==================
 
@@ -22,12 +22,91 @@ PARTNER_CODE = "7607f3480484b48235"
 SECRET = "655d0d4e9534f0e37381"
 BASE_URL = "http://www.dividiy.com/partner/use/service"
 
+# 企业微信Webhook URL列表
+WECHAT_WEBHOOK_URLS = [
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=229c4401-fd45-49b1-b15e-3d46c8b9d7ac",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=cc812cc6-1c28-4f3c-9806-d388e7940ab9",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b1f40747-a641-4886-b81d-a998f5e9095a",
+]
+
+
+def check_and_send_wechat_notification(order_goods_list: list, amazon_order_id: str) -> None:
+    """
+    识别订单类型并发送企业微信通知
+
+    :param order_goods_list: DIVI商品列表
+    :param amazon_order_id: 亚马逊订单号
+    """
+    # 情况1：多SKU订单
+    if len(order_goods_list) > 1:
+        sku_count = len(order_goods_list)
+        message = f"订单号：{amazon_order_id}\n类型：多SKU订单\nSKU数量：{sku_count}"
+        send_wechat_with_retry(message)
+        return
+
+    # 情况2：单SKU但数量>1
+    if len(order_goods_list) == 1:
+        quantity = order_goods_list[0].get("quantityOrdered", 1)
+        if quantity > 1:
+            message = f"订单号：{amazon_order_id}\n类型：单SKU多数量\nSKU数量：{quantity}"
+            send_wechat_with_retry(message)
+            return
+
+    # 情况3：单SKU数量为1（不发送通知）
+    print(f"📋 订单 {amazon_order_id} 为普通单SKU订单，无需通知")
+
+
+def send_wechat_with_retry(message: str) -> None:
+    """
+    发送企业微信消息（无限重试直到成功）
+
+    :param message: 要发送的文本内容
+    """
+    attempt_count = 0
+
+    while True:
+        attempt_count += 1
+        # 随机选择一个URL
+        webhook_url = random.choice(WECHAT_WEBHOOK_URLS)
+
+        try:
+            payload = {
+                "msgtype": "text",
+                "text": {"content": message}
+            }
+
+            response = requests.post(
+                webhook_url,
+                json=payload,
+                timeout=5,
+                headers={"Content-Type": "application/json"}
+            )
+
+            # 检查HTTP状态码
+            if response.status_code == 200:
+                result = response.json()
+                # 检查企业微信返回的errcode
+                if result.get("errcode") == 0:
+                    print(f"✅ 消息发送成功（第{attempt_count}次尝试）")
+                    return  # 成功则退出循环
+                else:
+                    print(f"❌ 消息发送失败：errcode={result.get('errcode')}, errmsg={result.get('errmsg')}")
+            else:
+                print(f"❌ HTTP请求失败：状态码 {response.status_code}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ 请求异常：{str(e)}")
+
+        # 失败时等待1秒后重试
+        print(f"⏳ 等待1秒后重试...（当前已尝试{attempt_count}次）")
+        time.sleep(1)
+
 
 def get_divi_api_resp(
-    endpoint_path: str,
-    data_dict: Dict[str, Any],
-    timeout: int = 10,
-    print_if: bool = False,
+        endpoint_path: str,
+        data_dict: Dict[str, Any],
+        timeout: int = 10,
+        print_if: bool = False,
 ) -> requests.Response:
     """
     Divi 通用请求函数（带签名）
@@ -94,12 +173,12 @@ def get_default_divi_time_range(days: int = 15) -> Tuple[str, str]:
 # ================== 1. 查询 Divi 订单 ==================
 
 def query_divi_order(
-    amazon_order_id: str | None,
-    brand_id: int,
-    has_logistics: bool = False,
-    days: int = 15,
-    timeout: int = 10,
-    print_if: bool = False,
+        amazon_order_id: str | None,
+        brand_id: int,
+        has_logistics: bool = False,
+        days: int = 15,
+        timeout: int = 10,
+        print_if: bool = False,
 ) -> Tuple[bool, List[Dict[str, Any]], Dict[str, Any]]:
     """
     查询 Divi 是否存在指定订单（同一店铺维度），以及是否有面单（has_logistics 控制）
@@ -184,16 +263,17 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
             if k in order and order.get(k):
                 return order.get(k)
         return default
+
     raw_phone = pick("Phone", "phone")
     clean_phone = raw_phone.split('ext.')[0].strip() if raw_phone else ''
     return {
-        "name":         pick("Name", "buyer_name"),
-        "phone":        clean_phone,
-        "line1":        pick("AddressLine1", "address_line1"),
-        "city":         pick("City", "city"),
-        "region":       pick("StateOrRegion", "state_or_region"),
-        "postal_code":  pick("PostalCode", "postal_code"),
-        "email":        order.get("buyer_email", ""),
+        "name": pick("Name", "buyer_name"),
+        "phone": clean_phone,
+        "line1": pick("AddressLine1", "address_line1"),
+        "city": pick("City", "city"),
+        "region": pick("StateOrRegion", "state_or_region"),
+        "postal_code": pick("PostalCode", "postal_code"),
+        "email": order.get("buyer_email", ""),
         "country_code": pick("CountryCode", "country_code", default="US"),
     }
 
@@ -201,7 +281,7 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
 # ================== 4. 商品列表构建 ==================
 
 def build_goods_from_lingxing_items(
-    item_list: List[Dict[str, Any]]
+        item_list: List[Dict[str, Any]]
 ) -> List[Dict[str, Any]]:
     """
     领星 item_list -> Divi orderGoodsList（列表）
@@ -210,14 +290,14 @@ def build_goods_from_lingxing_items(
 
     for item in item_list:
         goods_list.append({
-            "orderItemId":     item.get("order_item_id"),
+            "orderItemId": item.get("order_item_id"),
             "quantityOrdered": item.get("quantity_ordered"),
-            "title":           item.get("title").replace("*","x"),
-            "shippingTax":     str(item.get("shipping_tax_amount", "0")),
-            "shippingPrice":   str(item.get("shipping_price_amount", "0")),
-            "itemPrice":       str(item.get("item_price_amount", "0")),
-            "itemTax":         str(item.get("item_tax_amount", "0")),
-            "sellerSku":       item.get("seller_sku"),
+            "title": item.get("title").replace("*", "x"),
+            "shippingTax": str(item.get("shipping_tax_amount", "0")),
+            "shippingPrice": str(item.get("shipping_price_amount", "0")),
+            "itemPrice": str(item.get("item_price_amount", "0")),
+            "itemTax": str(item.get("item_tax_amount", "0")),
+            "sellerSku": item.get("seller_sku"),
         })
 
     return goods_list
@@ -226,13 +306,13 @@ def build_goods_from_lingxing_items(
 # ================== 5. Divi 下单 ==================
 
 def divi_add_order(
-    brand_id: int,
-    address: Dict[str, Any],
-    order_goods_list: List[Dict[str, Any]],
-    amazon_order_id: str,
-    currency: str = "USD",
-    timeout: int = 10,
-    print_if: bool = False,
+        brand_id: int,
+        address: Dict[str, Any],
+        order_goods_list: List[Dict[str, Any]],
+        amazon_order_id: str,
+        currency: str = "USD",
+        timeout: int = 10,
+        print_if: bool = False,
 ) -> ResponseResult:
     """
     调用 Divi 下单接口 /partnerTaskOrder/addPartnerUserOrder
@@ -242,19 +322,19 @@ def divi_add_order(
     if address.get("phone") == "":
         address["phone"] = "1234567890"
     order_payload = {
-        "shippingAddressCity":         address.get("city"),
+        "shippingAddressCity": address.get("city"),
         "shippingAddressStateOrRegion": address.get("region"),
-        "orderGoodsList":              order_goods_list,
-        "amazonOrderId":               amazon_order_id,
-        "buyerEmail":                  address.get("email"),
-        "shippingAddressName":         address.get("name"),
-        "buyerPhoneNumber":            address.get("phone"),
-        "buyerName":                   address.get("name"),
-        "shippingAddressPhone":        address.get("phone"),
-        "shippingAddressLine1":        address.get("line1"),
-        "shippingAddressCountryCode":  address.get("country_code", "US"),
-        "currency":                    currency,
-        "shippingAddressPostalCode":   address.get("postal_code"),
+        "orderGoodsList": order_goods_list,
+        "amazonOrderId": amazon_order_id,
+        "buyerEmail": address.get("email"),
+        "shippingAddressName": address.get("name"),
+        "buyerPhoneNumber": address.get("phone"),
+        "buyerName": address.get("name"),
+        "shippingAddressPhone": address.get("phone"),
+        "shippingAddressLine1": address.get("line1"),
+        "shippingAddressCountryCode": address.get("country_code", "US"),
+        "currency": currency,
+        "shippingAddressPostalCode": address.get("postal_code"),
     }
 
     data_dict = {
@@ -275,8 +355,8 @@ def divi_add_order(
 # ================== 6. 导入订单：从领星 -> Divi ==================
 
 def import_order_from_lingxing_to_divi(
-    order_id: str,
-    print_if: bool = False,
+        order_id: str,
+        print_if: bool = False,
 ) -> ResponseResult:
     """
     导入订单（去领星获取数据并在 Divi 创建订单）
@@ -406,5 +486,13 @@ def import_order_from_lingxing_to_divi(
         timeout=10,
         print_if=print_if,
     )
+    try:
+        if result and getattr(result, 'code', 200) == 200:
+            # 只有导单成功才发送通知
+            check_and_send_wechat_notification(order_goods_list, amazon_order_id)
+        else:
+            print(f"⚠️ 订单 {amazon_order_id} 导单未成功，跳过通知发送")
+    except Exception as e:
+        # 即使消息发送失败，也不影响主流程
+        print(f"⚠️ 消息发送异常（不影响导单结果）：{str(e)}")
     return result
-
