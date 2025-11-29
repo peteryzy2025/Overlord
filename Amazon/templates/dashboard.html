@@ -1070,19 +1070,20 @@
             if (!element) return;
 
             element.classList.remove('positive', 'negative', 'neutral');
+
             if (!changeValue || changeValue === '—') {
                 element.textContent = '—';
                 element.classList.add('neutral');
                 return;
             }
 
-            // 退货类指标反向颜色：下降=绿色（好事），上升=红色（坏事）
-            const isReturnMetric = elementId.includes('return');
+            // ✅ 正确：所有指标都反向显示
+            // 上升(+) → 红色(negative)  下降(-) → 绿色(positive)
             if (changeValue.startsWith('+')) {
-                element.classList.add(isReturnMetric ? 'negative' : 'positive');
+                element.classList.add('negative'); // 上升用红色
                 element.textContent = `${changeValue} 环比`;
             } else if (changeValue.startsWith('-')) {
-                element.classList.add(isReturnMetric ? 'positive' : 'negative');
+                element.classList.add('positive'); // 下降用绿色
                 element.textContent = `${changeValue} 环比`;
             } else {
                 element.classList.add('neutral');
@@ -1092,182 +1093,182 @@
 
         // 在 updateOrdersChart 函数中修改
         function updateOrdersChart(trendData, platformSource) {
-    // ========== 修复：在创建新图表前先销毁旧实例 ==========
-    const chartDom = document.getElementById('ordersChart');
-    const oldChart = echarts.getInstanceByDom(chartDom);
-    if (oldChart) {
-        oldChart.dispose(); // 完全销毁旧实例，防止数据残留
-    }
-
-    const ordersChart = echarts.init(chartDom);
-
-    // ========== 修复：根据平台类型强制清理数据 ==========
-    // 深拷贝数据，防止污染原始数据
-    trendData = JSON.parse(JSON.stringify(trendData));
-
-    // 强制清理不符合平台类型的数据
-    if (platformSource === 'amazon_only') {
-        trendData = trendData.map(item => ({
-            date: item.date,
-            amazon_sales: Number(item.amazon_sales || item.sales || 0),
-            temu_sales: 0, // 强制设为0
-            total_sales: Number(item.amazon_sales || item.sales || 0),
-            sales: Number(item.amazon_sales || item.sales || 0)
-        }));
-    } else if (platformSource === 'temu_only') {
-        trendData = trendData.map(item => ({
-            date: item.date,
-            amazon_sales: 0, // 强制设为0
-            temu_sales: Number(item.temu_sales || item.sales || 0),
-            total_sales: Number(item.temu_sales || item.sales || 0),
-            sales: Number(item.temu_sales || item.sales || 0)
-        }));
-    } else if (platformSource === 'mixed') {
-        trendData = trendData.map(item => ({
-            date: item.date,
-            amazon_sales: Number(item.amazon_sales || 0),
-            temu_sales: Number(item.temu_sales || 0),
-            total_sales: Number(item.total_sales || (item.amazon_sales + item.temu_sales) || 0),
-            sales: Number(item.total_sales || 0)
-        }));
-    } else {
-        // 未知平台，默认当作 amazon_only 处理
-        trendData = trendData.map(item => ({
-            date: item.date,
-            amazon_sales: Number(item.sales || 0),
-            temu_sales: 0,
-            total_sales: Number(item.sales || 0),
-            sales: Number(item.sales || 0)
-        }));
-    }
-    // ========== 数据清理结束 ==========
-
-    const dates = trendData.map(item => {
-        const date = new Date(item.date);
-        return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    });
-
-    const series = [];
-    const legendData = [];
-
-    // 根据平台类型构建数据系列
-    if (platformSource === 'amazon_only') {
-        series.push({
-            name: 'Amazon',
-            type: 'line',
-            data: trendData.map(item => item.amazon_sales),
-            smooth: true,
-            lineStyle: {color: '#667eea', width: 3},
-            itemStyle: {color: '#667eea'},
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [
-                        {offset: 0, color: 'rgba(102, 126, 234, 0.3)'},
-                        {offset: 1, color: 'rgba(102, 126, 234, 0.1)'}
-                    ]
-                }
+            // ========== 修复：在创建新图表前先销毁旧实例 ==========
+            const chartDom = document.getElementById('ordersChart');
+            const oldChart = echarts.getInstanceByDom(chartDom);
+            if (oldChart) {
+                oldChart.dispose(); // 完全销毁旧实例，防止数据残留
             }
-        });
-        legendData.push('Amazon');
 
-    } else if (platformSource === 'temu_only') {
-        series.push({
-            name: 'Temu',
-            type: 'line',
-            data: trendData.map(item => item.temu_sales),
-            smooth: true,
-            lineStyle: {color: '#f5576c', width: 3},
-            itemStyle: {color: '#f5576c'},
-            areaStyle: {
-                color: {
-                    type: 'linear',
-                    x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [
-                        {offset: 0, color: 'rgba(245, 87, 108, 0.3)'},
-                        {offset: 1, color: 'rgba(245, 87, 108, 0.1)'}
-                    ]
-                }
+            const ordersChart = echarts.init(chartDom);
+
+            // ========== 修复：根据平台类型强制清理数据 ==========
+            // 深拷贝数据，防止污染原始数据
+            trendData = JSON.parse(JSON.stringify(trendData));
+
+            // 强制清理不符合平台类型的数据
+            if (platformSource === 'amazon_only') {
+                trendData = trendData.map(item => ({
+                    date: item.date,
+                    amazon_sales: Number(item.amazon_sales || item.sales || 0),
+                    temu_sales: 0, // 强制设为0
+                    total_sales: Number(item.amazon_sales || item.sales || 0),
+                    sales: Number(item.amazon_sales || item.sales || 0)
+                }));
+            } else if (platformSource === 'temu_only') {
+                trendData = trendData.map(item => ({
+                    date: item.date,
+                    amazon_sales: 0, // 强制设为0
+                    temu_sales: Number(item.temu_sales || item.sales || 0),
+                    total_sales: Number(item.temu_sales || item.sales || 0),
+                    sales: Number(item.temu_sales || item.sales || 0)
+                }));
+            } else if (platformSource === 'mixed') {
+                trendData = trendData.map(item => ({
+                    date: item.date,
+                    amazon_sales: Number(item.amazon_sales || 0),
+                    temu_sales: Number(item.temu_sales || 0),
+                    total_sales: Number(item.total_sales || (item.amazon_sales + item.temu_sales) || 0),
+                    sales: Number(item.total_sales || 0)
+                }));
+            } else {
+                // 未知平台，默认当作 amazon_only 处理
+                trendData = trendData.map(item => ({
+                    date: item.date,
+                    amazon_sales: Number(item.sales || 0),
+                    temu_sales: 0,
+                    total_sales: Number(item.sales || 0),
+                    sales: Number(item.sales || 0)
+                }));
             }
-        });
-        legendData.push('Temu');
+            // ========== 数据清理结束 ==========
 
-    } else if (platformSource === 'mixed') {
-        series.push({
-            name: 'Amazon',
-            type: 'line',
-            data: trendData.map(item => item.amazon_sales),
-            smooth: true,
-            lineStyle: {color: '#667eea', width: 3},
-            itemStyle: {color: '#667eea'},
-        });
+            const dates = trendData.map(item => {
+                const date = new Date(item.date);
+                return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            });
 
-        series.push({
-            name: 'Temu',
-            type: 'line',
-            data: trendData.map(item => item.temu_sales),
-            smooth: true,
-            lineStyle: {color: '#f5576c', width: 3},
-            itemStyle: {color: '#f5576c'},
-        });
+            const series = [];
+            const legendData = [];
 
-        series.push({
-            name: '总计',
-            type: 'line',
-            data: trendData.map(item => item.total_sales),
-            smooth: true,
-            lineStyle: {color: '#10b981', width: 3, type: 'dashed'},
-            itemStyle: {color: '#10b981'},
-        });
+            // 根据平台类型构建数据系列
+            if (platformSource === 'amazon_only') {
+                series.push({
+                    name: 'Amazon',
+                    type: 'line',
+                    data: trendData.map(item => item.amazon_sales),
+                    smooth: true,
+                    lineStyle: {color: '#667eea', width: 3},
+                    itemStyle: {color: '#667eea'},
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                {offset: 0, color: 'rgba(102, 126, 234, 0.3)'},
+                                {offset: 1, color: 'rgba(102, 126, 234, 0.1)'}
+                            ]
+                        }
+                    }
+                });
+                legendData.push('Amazon');
 
-        legendData.push('Amazon', 'Temu', '总计');
-    } else {
-        series.push({
-            name: '销量',
-            type: 'line',
-            data: trendData.map(item => item.sales),
-            smooth: true,
-            lineStyle: {color: '#94a3b8', width: 2},
-            itemStyle: {color: '#94a3b8'},
-        });
-        legendData.push('销量');
-    }
+            } else if (platformSource === 'temu_only') {
+                series.push({
+                    name: 'Temu',
+                    type: 'line',
+                    data: trendData.map(item => item.temu_sales),
+                    smooth: true,
+                    lineStyle: {color: '#f5576c', width: 3},
+                    itemStyle: {color: '#f5576c'},
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                {offset: 0, color: 'rgba(245, 87, 108, 0.3)'},
+                                {offset: 1, color: 'rgba(245, 87, 108, 0.1)'}
+                            ]
+                        }
+                    }
+                });
+                legendData.push('Temu');
 
-    const rootStyle = getComputedStyle(document.documentElement);
+            } else if (platformSource === 'mixed') {
+                series.push({
+                    name: 'Amazon',
+                    type: 'line',
+                    data: trendData.map(item => item.amazon_sales),
+                    smooth: true,
+                    lineStyle: {color: '#667eea', width: 3},
+                    itemStyle: {color: '#667eea'},
+                });
 
-    const option = {
-        tooltip: {
-            trigger: 'axis',
-            backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
-            borderColor: rootStyle.getPropertyValue('--border-color').trim(),
-            textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
-        },
-        legend: legendData.length > 1 ? {
-            data: legendData,
-            textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
-        } : undefined,
-        grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
-        xAxis: {
-            type: 'category',
-            data: dates,
-            axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
-            axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
-        },
-        yAxis: {
-            type: 'value',
-            axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
-            axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()},
-            splitLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}}
-        },
-        series: series
-    };
+                series.push({
+                    name: 'Temu',
+                    type: 'line',
+                    data: trendData.map(item => item.temu_sales),
+                    smooth: true,
+                    lineStyle: {color: '#f5576c', width: 3},
+                    itemStyle: {color: '#f5576c'},
+                });
 
-    ordersChart.setOption(option);
+                series.push({
+                    name: '总计',
+                    type: 'line',
+                    data: trendData.map(item => item.total_sales),
+                    smooth: true,
+                    lineStyle: {color: '#10b981', width: 3, type: 'dashed'},
+                    itemStyle: {color: '#10b981'},
+                });
 
-    // ========== 修复：确保图表立即渲染 ==========
-    ordersChart.resize();
-}
+                legendData.push('Amazon', 'Temu', '总计');
+            } else {
+                series.push({
+                    name: '销量',
+                    type: 'line',
+                    data: trendData.map(item => item.sales),
+                    smooth: true,
+                    lineStyle: {color: '#94a3b8', width: 2},
+                    itemStyle: {color: '#94a3b8'},
+                });
+                legendData.push('销量');
+            }
+
+            const rootStyle = getComputedStyle(document.documentElement);
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
+                    borderColor: rootStyle.getPropertyValue('--border-color').trim(),
+                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
+                },
+                legend: legendData.length > 1 ? {
+                    data: legendData,
+                    textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
+                } : undefined,
+                grid: {left: '3%', right: '4%', bottom: '3%', containLabel: true},
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
+                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()},
+                    splitLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}}
+                },
+                series: series
+            };
+
+            ordersChart.setOption(option);
+
+            // ========== 修复：确保图表立即渲染 ==========
+            ordersChart.resize();
+        }
 
         function updateChartsWithRealData(data, platformSource) {
             // ========== 修复：强制根据后端返回的平台类型渲染 ==========
@@ -1361,30 +1362,30 @@
         }
 
         document.addEventListener('DOMContentLoaded', async function () {
-    showLoading(true);
+            showLoading(true);
 
-    // ========== 修复：页面加载时销毁所有旧图表 ==========
-    const ordersChartDom = document.getElementById('ordersChart');
-    const operatorChartDom = document.getElementById('operatorChart');
+            // ========== 修复：页面加载时销毁所有旧图表 ==========
+            const ordersChartDom = document.getElementById('ordersChart');
+            const operatorChartDom = document.getElementById('operatorChart');
 
-    const oldOrdersChart = echarts.getInstanceByDom(ordersChartDom);
-    const oldOperatorChart = echarts.getInstanceByDom(operatorChartDom);
-    if (oldOrdersChart) oldOrdersChart.dispose();
-    if (oldOperatorChart) oldOperatorChart.dispose();
-    // ========== 清理结束 ==========
+            const oldOrdersChart = echarts.getInstanceByDom(ordersChartDom);
+            const oldOperatorChart = echarts.getInstanceByDom(operatorChartDom);
+            if (oldOrdersChart) oldOrdersChart.dispose();
+            if (oldOperatorChart) oldOperatorChart.dispose();
+            // ========== 清理结束 ==========
 
-    try {
-        await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
-        setDefaultFilters();
-        initializeSmartClearButtons();
-        document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-        await applyFilters();
-    } catch (error) {
-        showNotification('初始化失败: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
-    }
-});
+            try {
+                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                setDefaultFilters();
+                initializeSmartClearButtons();
+                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+                await applyFilters();
+            } catch (error) {
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
 
         window.addEventListener('resize', function () {
             const ordersChart = echarts.getInstanceByDom(document.getElementById('ordersChart'));
