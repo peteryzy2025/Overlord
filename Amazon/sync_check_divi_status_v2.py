@@ -1,20 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-终极精准补导 + 字段同步脚本（v2 - 按品牌批量高效版）
+终极精准补导 + 字段同步脚本（v2.1 - 增加店铺状态过滤）
 
 核心改进：
-1. 按 brand_id 批量拉取 DIVI 订单，不再是逐单请求（效率提升 10-100 倍）
-2. 使用字典映射实现 O(1) 快速匹配
-3. SID → BrandID 映射添加缓存，避免重复调用
-4. 一次性批量查询和更新本地订单
-
-使用方式：
-    直接运行：python sync_check_divi_status_v2.py
-
-配置项：
-    ENABLE_REIMPORT = True   # 启用补导模式（先补漏单再批量同步）
-    ENABLE_REIMPORT = False  # 仅批量同步字段模式
+1. 按 brand_id 批量拉取 DIVI 订单，不再是逐单请求
+2. 从源头过滤：只查询店铺状态为"正常"的订单
+3. 使用 select_related 优化查询性能
+4. 对于没有关联 amazon_shop 的订单自动排除（外键为NULL）
 """
 
 import os
@@ -44,7 +37,6 @@ EXCLUDE_AMAZON_STATUS = {'PendingAvailability', 'Pending', 'Canceled'}
 
 # ============ 核心配置：直接修改此变量切换模式 ============
 # 设置为 True 启用补导模式，False 仅同步字段
-# ENABLE_REIMPORT = False  # 修改这个值即可切换模式！
 ENABLE_REIMPORT = True  # 修改这个值即可切换模式！
 # ===========================================================
 
@@ -59,26 +51,34 @@ _BRAND_ID_CACHE = {}
 
 
 def query_reimport_orders(start_datetime):
-    """查询需要补导的订单：本地标记为未导出"""
+    """查询需要补导的订单：本地标记为未导出 + 店铺状态正常"""
     return (AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
         is_exported_to_divi=False,  # 核心条件：只找漏单
+        amazon_shop__shop_status='正常',  # ⭐ 新增：只查询正常状态的店铺
     ).exclude(
         divi_order_status__in={0, 5}
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
-    ).select_related('lingxing_shop', 'amazon_shop').order_by('purchase_date_local'))
+    ).select_related(
+        'lingxing_shop',
+        'amazon_shop'  # ⭐ 新增：优化查询
+    ).order_by('purchase_date_local'))
 
 
 def query_sync_orders(start_datetime):
-    """查询需要同步的订单：用于兼容保留"""
+    """查询需要同步的订单：店铺状态必须为正常"""
     return AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
+        amazon_shop__shop_status='正常',  # ⭐ 新增：只查询正常状态的店铺
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
-    ).select_related('lingxing_shop', 'amazon_shop').order_by('purchase_date_local')
+    ).select_related(
+        'lingxing_shop',
+        'amazon_shop'  # ⭐ 新增：优化查询
+    ).order_by('purchase_date_local')
 
 
 def reimport_orders(queryset, total):
@@ -125,13 +125,11 @@ def reimport_orders(queryset, total):
 
     return success, error
 
-
 def get_brand_id_with_cache(sid):
     """带缓存的 SID 到 BrandID 映射（避免重复调用）"""
     if sid not in _BRAND_ID_CACHE:
         _BRAND_ID_CACHE[sid] = get_divi_brand_id_from_sid(sid)
     return _BRAND_ID_CACHE[sid]
-
 
 def extract_unique_brand_ids(start_datetime):
     """
@@ -139,9 +137,11 @@ def extract_unique_brand_ids(start_datetime):
     通过 SID → BrandID 映射，并自动去重
     """
     # 1. 先获取所有待同步订单的店铺 SID（去重）
+    # ⭐ 注意：这里已经通过 query_sync_orders 过滤了店铺状态
     orders_with_sid = AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
+        amazon_shop__shop_status='正常',  # ⭐ 确保只查询正常店铺
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).exclude(
@@ -157,7 +157,6 @@ def extract_unique_brand_ids(start_datetime):
             brand_ids.add(brand_id)
 
     return list(brand_ids)
-
 
 def sync_brand_orders(brand_ids):
     """
@@ -192,18 +191,22 @@ def sync_brand_orders(brand_ids):
             # 3. 提取所有订单 ID，用于一次性查询本地订单
             divi_order_ids = list(divi_dict.keys())
 
-            # 4. 批量查询本地待同步订单（一次数据库查询）
+            # 4. 批量查询本地待同步订单（一次数据库查询，已过滤店铺状态）
             local_orders = AmazonOrders.objects.filter(
                 amazon_order_id__in=divi_order_ids,
                 fulfillment_channel='MFN',
                 purchase_date_local__gte=datetime.strptime(f"{TARGET_DATE} 00:00:00",
                                                            "%Y-%m-%d %H:%M:%S"),
+                amazon_shop__shop_status='正常',  # ⭐ 确保只查询正常店铺
             ).exclude(
                 order_status__in=EXCLUDE_AMAZON_STATUS
-            ).select_related('lingxing_shop')
+            ).select_related(
+                'lingxing_shop',
+                'amazon_shop'  # ⭐ 确保能访问店铺状态
+            )
 
             print(f"  📦 DIVI 返回 {len(divi_orders)} 条订单")
-            print(f"  🎯 本地匹配到 {local_orders.count()} 条待更新订单")
+            print(f"  🎯 本地匹配到 {local_orders.count()} 条待更新订单（店铺状态正常）")
 
             # 5. 批量更新
             success_batch, error_batch = 0, 0
@@ -235,28 +238,40 @@ def sync_brand_orders(brand_ids):
 
     return total_success, total_error
 
-
 def divi_process_orders(target_date_str, force_reimport):
     """主流程：根据模式执行补导 + 批量同步"""
     start_datetime = datetime.strptime(f"{target_date_str} 00:00:00", "%Y-%m-%d %H:%M:%S")
 
     print(f"\n{'=' * 96}")
-    print(f"精准补导 + 字段同步脚本启动 (v2 - 按品牌批量)")
-    print(f"目标日期：{target_date_str} 及之后 | MFN订单")
+    print(f"精准补导 + 字段同步脚本启动 (v2.1 - 增加店铺状态过滤)")
+    print(f"目标日期：{target_date_str} 及之后 | MFN订单 | 仅处理店铺状态=正常的订单")
     print(f"补导模式：{'开启' if force_reimport else '关闭'}")
     print(f"{'=' * 96}\n")
 
-    # 步骤1：补导模式才执行的补漏单操作（逐单处理）
+    # 步骤1：补导模式才执行的补漏单操作（查询时已过滤店铺状态）
     reimport_success = reimport_errors = 0
     if force_reimport:
         reimport_queryset = query_reimport_orders(start_datetime)
         reimport_total = reimport_queryset.count()
-        reimport_success, reimport_errors = reimport_orders(reimport_queryset, reimport_total)
 
-    # 步骤2：所有模式都执行的批量字段同步操作
+        # ⭐ 打印过滤后的数量
+        all_queryset = AmazonOrders.objects.filter(
+            fulfillment_channel='MFN',
+            purchase_date_local__gte=start_datetime,
+            is_exported_to_divi=False,
+        ).exclude(order_status__in=EXCLUDE_AMAZON_STATUS)
+        total_without_status_filter = all_queryset.count()
+
+        print(f"【补导阶段】原始漏单数量: {total_without_status_filter}")
+        print(f"【补导阶段】过滤后（店铺状态正常）: {reimport_total}\n")
+
+        if reimport_total > 0:
+            reimport_success, reimport_errors = reimport_orders(reimport_queryset, reimport_total)
+
+    # 步骤2：所有模式都执行的批量字段同步操作（已过滤店铺状态）
     print("\n【批量同步阶段】正在提取需要同步的品牌...")
     brand_ids = extract_unique_brand_ids(start_datetime)
-    print(f"🚀 准备同步 {len(brand_ids)} 个品牌的数据...")
+    print(f"🚀 准备同步 {len(brand_ids)} 个品牌的数据（已过滤店铺状态）...")
 
     sync_success, sync_errors = sync_brand_orders(brand_ids)
 
@@ -264,17 +279,16 @@ def divi_process_orders(target_date_str, force_reimport):
     print(f"\n{'=' * 96}")
     print("任务完成！最终统计：")
     if force_reimport:
-        print(f"  补导成功             : {reimport_success}")
+        print(f"  补导成功（店铺正常）: {reimport_success}")
         print(f"  补导失败             : {reimport_errors}")
     print(f"  字段同步成功         : {sync_success}")
     print(f"  字段同步失败         : {sync_errors}")
     print(f"{'=' * 96}")
     if force_reimport:
-        print("✓ 补导模式：漏单已补导，所有进行中订单字段已同步")
+        print("✓ 补导模式：已跳过非正常店铺，完成补导和同步")
     else:
-        print("✓ 同步模式：所有进行中订单字段已更新")
+        print("✓ 同步模式：已跳过非正常店铺，完成字段同步")
     print("✅ 完美结束！去页面看看吧～")
-
 
 if __name__ == '__main__':
     t = Timer()

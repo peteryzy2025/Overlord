@@ -83,6 +83,12 @@ def api_ship_order(request):
                 "success": False,
                 "message": "DIVI跟踪号为空，无法发货"
             })
+        if not order.amazon_shop or order.amazon_shop.shop_status != '正常':
+            current_status = order.amazon_shop.shop_status if order.amazon_shop else '未知'
+            return JsonResponse({
+                "success": False,
+                "message": f"店铺状态为 '{current_status}'，无法执行发货操作"
+            })
         # ========== 业务验证通过，执行发货 ==========
 
         # 执行 Divi 完整发货流程

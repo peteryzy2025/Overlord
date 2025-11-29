@@ -85,6 +85,9 @@ def get_amazon_orders_list_api(request):
         shop_name_filter = data.get('shop_name', '').strip()
         if shop_name_filter:
             print(f"🔍 店铺名称筛选: {shop_name_filter}")
+        shop_status_filter = data.get('shop_status', '').strip()
+        if shop_status_filter:
+            print(f"🔍 店铺状态筛选: {shop_status_filter}")
 
         # ========== 新增筛选项处理 ==========
         # 1. 订单状态筛选
@@ -225,6 +228,9 @@ def get_amazon_orders_list_api(request):
             elif divi_tracking_filter == 'none':
                 order_filter &= Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number='')
                 # print(f"📋 添加DIVI无面单筛选")
+        if shop_status_filter:
+            order_filter &= Q(amazon_shop__shop_status=shop_status_filter)
+            # print(f"📋 添加店铺状态筛选: {shop_status_filter}")
         # 是否假面单发货 masked_single
         if masked_single_filter:
             if masked_single_filter == 'true':
@@ -335,10 +341,11 @@ def get_amazon_orders_list_api(request):
 
             # 获取领星店铺名称
             shop_name = order.lingxing_shop.name if order.lingxing_shop else '未知店铺'
-
+            shop_status = order.amazon_shop.shop_status if order.amazon_shop else ''
             order_data = {
                 'amazon_order_id': order.amazon_order_id,
                 'shop_name': shop_name,
+                'shop_status': shop_status,
                 'operator_name': operator_name,
                 'group': group_name,
                 'order_status': order.order_status or '',
