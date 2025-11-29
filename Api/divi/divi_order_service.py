@@ -24,37 +24,50 @@ BASE_URL = "http://www.dividiy.com/partner/use/service"
 
 # 企业微信Webhook URL列表
 WECHAT_WEBHOOK_URLS = [
-    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=229c4401-fd45-49b1-b15e-3d46c8b9d7ac",
-    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=cc812cc6-1c28-4f3c-9806-d388e7940ab9",
-    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=b1f40747-a641-4886-b81d-a998f5e9095a",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=d910f7a2-bb75-435e-a8ce-777efdab8eab",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=4391c008-ea12-4243-a0aa-72f12b31cb21",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=a4bbf1b1-fb28-42a0-a291-bcf207180d4c",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=f5482538-c667-4525-bab6-ae8334d03548",
+    "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=874e31e7-d6d5-4016-b6b3-478ed60a2fc0",
 ]
 
 
 def check_and_send_wechat_notification(order_goods_list: list, amazon_order_id: str) -> None:
     """
-    识别订单类型并发送企业微信通知
+    识别订单类型并发送企业微信通知（详细版）
 
     :param order_goods_list: DIVI商品列表
     :param amazon_order_id: 亚马逊订单号
     """
     # 情况1：多SKU订单
     if len(order_goods_list) > 1:
-        sku_count = len(order_goods_list)
-        message = f"订单号：{amazon_order_id}\n类型：多SKU订单\nSKU数量：{sku_count}"
+        message = f"订单号：{amazon_order_id}\n类型：多SKU订单\n数量：{len(order_goods_list)}"
+        # 追加每个商品的详细信息
+        for item in order_goods_list:
+            sku = item.get("sellerSku", "")
+            title = item.get("title", "")
+            quantity = item.get("quantityOrdered", 1)
+            message += f"\nsku-title:{sku}-{title}-{quantity}"
+
         send_wechat_with_retry(message)
         return
 
     # 情况2：单SKU但数量>1
     if len(order_goods_list) == 1:
-        quantity = order_goods_list[0].get("quantityOrdered", 1)
+        item = order_goods_list[0]
+        quantity = item.get("quantityOrdered", 1)
         if quantity > 1:
-            message = f"订单号：{amazon_order_id}\n类型：单SKU多数量\nSKU数量：{quantity}"
+            sku = item.get("sellerSku", "")
+            title = item.get("title", "")
+
+            message = f"订单号：{amazon_order_id}\n类型：单SKU多数量\n数量：{quantity}"
+            message += f"\nsku-title:{sku}-{title}-{quantity}"
+
             send_wechat_with_retry(message)
             return
 
     # 情况3：单SKU数量为1（不发送通知）
     print(f"📋 订单 {amazon_order_id} 为普通单SKU订单，无需通知")
-
 
 def send_wechat_with_retry(message: str) -> None:
     """
