@@ -32,7 +32,7 @@ if __name__ == '__main__':
             amazon_fh()
             t.stop()
             print(f"时间：{t}")
-            if a == 20:
+            if a == 10:
                 a = 0
                 temu_orders()
                 t.stop()

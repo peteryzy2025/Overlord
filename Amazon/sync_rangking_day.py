@@ -34,7 +34,8 @@ from encouragement_bank import get_encouragement
 
 # ===== 运行配置 =====
 PERIOD = "day"  # "day" 或 "week"
-TEST_MODE = True  # True=只发自己；False=发自己+目标用户
+# TEST_MODE = True  # True=只发自己；False=发自己+目标用户
+TEST_MODE = False  # True=只发自己；False=发自己+目标用户
 
 # 企业微信Webhook配置
 WX_MAIN = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=8ca94212-ea84-4b4e-a294-55e713dcef67"
@@ -614,10 +615,9 @@ def render_manager_report(
         groups_data: Dict[str, List[Tuple[User, Dict[str, Any]]]],
         period: str = "day"
 ) -> str:
-    """渲染经理报告Markdown（含分平台数据、小组目标进度）"""
+    """渲染经理报告Markdown（含分平台数据、公司/小组目标进度）"""
 
     # ========== 1. 分平台统计公司数据 ==========
-    # 亚马逊总计
     amazon_total_orders = sum(
         s['order_count'] for _, s in all_operators
         if s['has_amazon_shop']
@@ -627,7 +627,6 @@ def render_manager_report(
         if s['has_amazon_shop']
     )
 
-    # Temu总计
     temu_total_orders = sum(
         s['order_count'] for _, s in all_operators
         if s['has_temu_shop']
@@ -637,18 +636,15 @@ def render_manager_report(
         if s['has_temu_shop']
     )
 
-    # 公司合计
     total_orders = amazon_total_orders + temu_total_orders
     total_sales = amazon_total_sales + temu_total_sales
 
     # ========== 2. 计算公司环比 ==========
-    # 对比日期
     if period == "day":
         compare_date = target_date - timedelta(days=1)
     else:
         compare_date = target_date - timedelta(days=7)
 
-    # 获取对比日期的分平台数据
     prev_amazon_orders = 0
     prev_amazon_sales = 0
     prev_temu_orders = 0
@@ -656,15 +652,13 @@ def render_manager_report(
 
     for user, current_stats in all_operators:
         prev_stats = get_single_operator_stats(user.id, compare_date)
-        # 根据当前拥有的平台类型来累加对应数据
-        if current_stats['has_amazon_shop']:  # ← 修复：使用 has_amazon_shop
+        if current_stats['has_amazon_shop']:
             prev_amazon_orders += prev_stats['order_count']
             prev_amazon_sales += prev_stats['sales_quantity']
-        if current_stats['has_temu_shop']:  # ← 修复：使用 has_temu_shop
+        if current_stats['has_temu_shop']:
             prev_temu_orders += prev_stats['order_count']
             prev_temu_sales += prev_stats['sales_quantity']
 
-    # 计算环比
     def calc_change(current, previous):
         if previous == 0:
             return f"<font color='red'>↑100%</font>" if current > 0 else ""
@@ -682,21 +676,18 @@ def render_manager_report(
     total_orders_change = calc_change(total_orders, prev_amazon_orders + prev_temu_orders)
     total_sales_change = calc_change(total_sales, prev_amazon_sales + prev_temu_sales)
 
-    # ========== 3. 分组排名（按订单量）==========
-    # 计算前一天/上周各组数据用于环比
+    # ========== 3. 小组排名 ==========
     prev_groups_data = {}
     for group_name, members in groups_data.items():
         prev_groups_data[group_name] = {
             'orders': sum(get_single_operator_stats(m.id, compare_date)['order_count'] for m, _ in members)
         }
 
-    # 当前各组数据
     group_totals = []
     for group_name, members in groups_data.items():
         group_orders = sum(s['order_count'] for _, s in members)
         prev_orders = prev_groups_data.get(group_name, {'orders': 0})['orders']
         orders_chg = calc_change(group_orders, prev_orders)
-
         group_totals.append((group_name, group_orders, orders_chg))
 
     group_totals.sort(key=lambda x: -x[1])
@@ -709,21 +700,35 @@ def render_manager_report(
     total_idle_amazon = sum(len(s['idle_shops']['amazon']) for _, s in all_operators)
     total_idle_temu = sum(len(s['idle_shops']['temu']) for _, s in all_operators)
 
-    # ========== 5. 小组目标进度（关键修复：正确使用u变量）==========
+    # ========== 5. 公司整体进度 + 小组目标进度 ==========
     month_start = target_date.replace(day=1)
 
-    # 获取所有小组的目标（修复：使用u而不是user）
-    group_progress = []
-    all_groups = list(groups_data.keys())
+    company_month_sales = sum(s['month_sales'] for _, s in all_operators)
 
+    all_groups = list(groups_data.keys())
+    company_month_target = 0
+    for group_name in all_groups:
+        try:
+            group_target = GroupPerformanceTarget.objects.get(
+                ops_group=group_name,
+                month=month_start.strftime('%Y-%m')
+            ).target_performance
+            company_month_target += group_target or 0
+        except:
+            continue
+
+    if company_month_target > 0:
+        company_progress_rate = company_month_sales / company_month_target * 100
+        company_progress_text = f"{company_month_sales}/{company_month_target}（{company_progress_rate:.2f}%）"
+    else:
+        company_progress_text = f"{company_month_sales}/—（未设置总目标）"
+
+    group_progress = []
     for group_name in sorted(all_groups):
-        # 计算该组当月总销量（修复：遍历all_operators，使用u.get_ops_group()）
         group_month_sales = sum(
-            s['month_sales'] for u, s in all_operators  # <-- 修复：u 不是 user
+            s['month_sales'] for u, s in all_operators
             if (u.get_ops_group() or '未分组') == group_name
         )
-
-        # 获取组目标
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=group_name,
@@ -737,7 +742,6 @@ def render_manager_report(
             progress_str = f"{group_month_sales}/{group_target}（{rate:.2f}%）"
         else:
             progress_str = f"{group_month_sales}/—（未设置目标）"
-
         group_progress.append((group_name, progress_str))
 
     # ========== 6. 鼓励语 ==========
@@ -755,6 +759,9 @@ def render_manager_report(
 {group_ranking}
 
 > **闲置店铺总计**：亚马逊 <font color='skyblue'>{total_idle_amazon}</font> 家，{f"Temu <font color='skyblue'>{total_idle_temu}</font> 家" if total_idle_temu > 0 else ""}
+
+### 公司整体目标进度（当月，销量/目标）
+- 全公司：{company_progress_text}
 
 ### 小组目标进度（当月，销量/目标，亚马逊+Temu）
 {chr(10).join([f"- {name}：{prog}" for name, prog in group_progress])}

@@ -69,6 +69,7 @@ def check_and_send_wechat_notification(order_goods_list: list, amazon_order_id: 
     # 情况3：单SKU数量为1（不发送通知）
     print(f"📋 订单 {amazon_order_id} 为普通单SKU订单，无需通知")
 
+
 def send_wechat_with_retry(message: str) -> None:
     """
     发送企业微信消息（无限重试直到成功）
@@ -187,9 +188,11 @@ def get_default_divi_time_range(days: int = 15) -> Tuple[str, str]:
 
 def query_divi_order(
         amazon_order_id: str | None,
-        brand_id: int,
+        brand_id: int | None,
         has_logistics: bool = False,
-        days: int = 15,
+        days: int | None = 15,
+        start_time: str = "",
+        end_time: str = "",
         timeout: int = 10,
         print_if: bool = False,
 ) -> Tuple[bool, List[Dict[str, Any]], Dict[str, Any]]:
@@ -201,14 +204,18 @@ def query_divi_order(
     :param has_logistics: True 时带 hasLogistics=1（查询有面单的订单）
     :return: (exists, orders, raw_json)
     """
-    import_time_start, import_time_end = get_default_divi_time_range(days)
+    if days is None:
+        import_time_start, import_time_end = start_time, end_time
+    else:
+        import_time_start, import_time_end = get_default_divi_time_range(days)
 
     endpoint_path = "/partnerTaskOrder/listPartnerUserOrder"
     data_dict: Dict[str, Any] = {
         "importTimeStart": import_time_start,
         "importTimeEnd": import_time_end,
-        "brandIds": [brand_id],
     }
+    if brand_id:
+        data_dict["brandId"] = brand_id
     if amazon_order_id:
         data_dict["amazonOrderId"] = amazon_order_id
     if has_logistics:
@@ -499,13 +506,14 @@ def import_order_from_lingxing_to_divi(
         timeout=10,
         print_if=print_if,
     )
-    try:
-        if result and getattr(result, 'code', 200) == 200:
-            # 只有导单成功才发送通知
-            check_and_send_wechat_notification(order_goods_list, amazon_order_id)
-        else:
-            print(f"⚠️ 订单 {amazon_order_id} 导单未成功，跳过通知发送")
-    except Exception as e:
-        # 即使消息发送失败，也不影响主流程
-        print(f"⚠️ 消息发送异常（不影响导单结果）：{str(e)}")
+    # 不用这个了
+    # try:
+    #     if result and getattr(result, 'code', 200) == 200:
+    #         # 只有导单成功才发送通知
+    #         check_and_send_wechat_notification(order_goods_list, amazon_order_id)
+    #     else:
+    #         print(f"⚠️ 订单 {amazon_order_id} 导单未成功，跳过通知发送")
+    # except Exception as e:
+    #     # 即使消息发送失败，也不影响主流程
+    #     print(f"⚠️ 消息发送异常（不影响导单结果）：{str(e)}")
     return result
