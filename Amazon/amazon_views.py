@@ -239,6 +239,7 @@ def get_operator_pie_chart_api(request):
             'message': f'服务器错误: {str(e)}'
         }, status=500)
 
+
 def detect_platform_by_user(user):
     """
     检测用户的主运营平台
@@ -419,6 +420,7 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
     # ========== 无权限 ==========
     else:
         return 'none', None, {"source": "amazon_only"}
+
 
 def parse_permissions(user_permission):
     """
@@ -895,6 +897,7 @@ def get_sales_trend_data(lingxing_shop_ids):
 
     return result
 
+
 @login_required
 def filter_amazon_data_api(request):
     """
@@ -948,7 +951,7 @@ def filter_amazon_data_api(request):
             )
 
         # ========== 调试日志：输出实际查询的店铺明细 ==========
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"🔍 实际查询的店铺明细:")
         print(f"  用户: {user.first_name} (ID: {user.id})")
         print(f"  权限: {permissions}")
@@ -967,7 +970,7 @@ def filter_amazon_data_api(request):
             temu_shops = TemuShop.objects.filter(id__in=shop_ids_by_platform['temu'])
             print(f"  Temu 店铺名称: {list(temu_shops.values_list('shop_name', flat=True))}")
 
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
         # ========== 调试日志结束 ==========
 
         # ========== 分别统计两个平台 ==========
@@ -1028,7 +1031,7 @@ def filter_amazon_data_api(request):
             temu_stats['trend'] = get_temu_sales_trend_data(shop_ids_by_platform['temu'])
 
         # 合并统计结果
-        def merge_stats(current, previous):
+        def merge_stats(current, previous, amazon_order_count):
             """合并两个平台的统计数据（支持退货指标）"""
             # 基础字段直接相加
             order_count = current['order_count'] + previous['order_count']
@@ -1041,13 +1044,15 @@ def filter_amazon_data_api(request):
             # 客单价
             avg_order_value = round(total_revenue / order_count, 2) if order_count > 0 else 0.0
 
-            # FBA/FBM
+            # FBA/FBM - 只计算Amazon的，使用Amazon订单数作为分母
             fba_count = current.get('fba_count', 0) + previous.get('fba_count', 0)
             fbm_count = current.get('fbm_count', 0) + previous.get('fbm_count', 0)
-            fba_percentage = f"{fba_count / order_count * 100:.1f}%" if order_count > 0 else "0.0%"
-            fbm_percentage = f"{fbm_count / order_count * 100:.1f}%" if order_count > 0 else "0.0%"
 
-            # 退货率
+            # 核心修复：使用amazon_order_count作为分母，而不是总order_count
+            fba_percentage = f"{fba_count / amazon_order_count * 100:.1f}%" if amazon_order_count > 0 else "0.0%"
+            fbm_percentage = f"{fbm_count / amazon_order_count * 100:.1f}%" if amazon_order_count > 0 else "0.0%"
+
+            # 退货率（退货率应基于总订单数）
             total_order_combined = order_count + return_order_count
             return_rate = f"{return_order_count / total_order_combined * 100:.1f}%" if total_order_combined > 0 else "0.0%"
 
@@ -1064,8 +1069,19 @@ def filter_amazon_data_api(request):
 
             return result
 
-        merged_current = merge_stats(amazon_stats['current'], temu_stats['current'])
-        merged_previous = merge_stats(amazon_stats['previous'], temu_stats['previous'])
+        amazon_order_count_current = amazon_stats['current']['order_count']
+        amazon_order_count_previous = amazon_stats['previous']['order_count']
+
+        merged_current = merge_stats(
+            amazon_stats['current'],
+            temu_stats['current'],
+            amazon_order_count_current
+        )
+        merged_previous = merge_stats(
+            amazon_stats['previous'],
+            temu_stats['previous'],
+            amazon_order_count_previous
+        )
 
         # 计算环比
         comparison = calculate_all_change_rates(merged_current, merged_previous)
@@ -1113,6 +1129,7 @@ def filter_amazon_data_api(request):
                 'error_detail': str(e)
             }
         }, status=500)
+
 
 def get_temu_order_statistics(temu_shop_ids, start_date, end_date):
     """
@@ -1256,6 +1273,7 @@ def get_temu_sales_trend_data(temu_shop_ids):
     print(f"{'=' * 60}\n")
 
     return result
+
 
 def assemble_and_print_response(current_stats, previous_stats, comparison, trend_data,
                                 filter_type, filter_value, current_start, current_end,
