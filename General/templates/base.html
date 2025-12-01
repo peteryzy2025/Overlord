@@ -640,8 +640,24 @@
                 </div>
             </div>
 
-            <a class="nav-link {% if active_nav == 'amazon_orders' %}active{% endif %}"
-               href="{% url 'amazon_order_management' %}">订单管理</a>
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'amazon' or active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
+                   href="{% url 'amazon_order_management' %}">
+                    Amazon
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'amazon_order_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-shopping-cart"></i> 订单管理
+                    </a>
+                    <a href="{% url 'amazon_performance_notifications' %}" class="nav-dropdown-item">
+                        <i class="fas fa-bell"></i> 绩效通知
+                    </a>
+                    <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
+                        <i class="fas fa-clipboard-check"></i> 巡店报告
+                    </a>
+                </div>
+            </div>
             <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
         </div>
 

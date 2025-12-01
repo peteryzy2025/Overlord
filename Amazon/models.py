@@ -206,7 +206,6 @@ class AmazonOrders(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
 
-
     # ===== DIVI系统专用字段（全部带divi_前缀） =====
     divi_import_time = models.DateTimeField(
         blank=True, null=True,
@@ -258,7 +257,7 @@ class AmazonOrders(models.Model):
         null=True,
         db_comment='运费金额'
     )
-    divi_goods_payment_total =models.DecimalField(
+    divi_goods_payment_total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         blank=True,
@@ -332,3 +331,152 @@ class AmazonOrderItem(models.Model):
         db_table = 'amazon_order_item'
         db_table_comment = '亚马逊订单商品明细'
         unique_together = ['order', 'seller_sku']
+
+
+class AmazonShopDailyCheck(models.Model):
+    """
+    亚马逊巡店日报模型
+    记录运营人员每日对店铺的巡检操作
+    """
+
+    id = models.BigAutoField(primary_key=True, db_comment='主键')
+
+    # 关联亚马逊店铺
+    shop = models.ForeignKey(
+        'General.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='daily_checks',
+        db_comment='关联的亚马逊店铺'
+    )
+
+    # 巡检日期
+    check_date = models.DateField(
+        db_comment='巡店日期'
+    )
+
+    # 巡检操作状态（布尔值）
+    visited = models.BooleanField(
+        default=False,
+        db_comment='是否进入店铺'
+    )
+
+    performance_checked = models.BooleanField(
+        default=False,
+        db_comment='是否进行绩效通知检查'
+    )
+
+    withdrawal_processed = models.BooleanField(
+        default=False,
+        db_comment='是否进行提现操作'
+    )
+
+    # 记录时间
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_comment='创建时间'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        db_comment='更新时间'
+    )
+
+    class Meta:
+        db_table = 'amazon_shop_daily_check'
+        db_table_comment = '亚马逊巡店日报表'
+        verbose_name = '亚马逊巡店日报'
+        verbose_name_plural = verbose_name
+
+        # 核心约束：每个店铺每天只能有一条记录
+        constraints = [
+            models.UniqueConstraint(
+                fields=['shop', 'check_date'],
+                name='uniq_shop_daily_check'
+            )
+        ]
+
+        # 常用查询索引
+        indexes = [
+            models.Index(fields=['shop', 'check_date'], name='idx_check_shop_date'),
+            models.Index(fields=['check_date'], name='idx_check_date'),
+            models.Index(fields=['visited'], name='idx_check_visited'),
+            models.Index(fields=['performance_checked'], name='idx_check_performance'),
+            models.Index(fields=['withdrawal_processed'], name='idx_check_withdrawal'),
+        ]
+
+    def __str__(self):
+        shop_name = self.shop.shop_name if self.shop else '未知店铺'
+        return f"{shop_name} - {self.check_date} 巡检记录"
+
+
+class AmazonPerformanceNotification(models.Model):
+    """
+    亚马逊绩效通知模型
+    用于记录店铺收到的绩效通知，如政策警告、绩效指标异常等
+    """
+
+    id = models.BigAutoField(primary_key=True, db_comment='主键')
+
+    # 关联店铺
+    shop = models.ForeignKey(
+        'General.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='performance_notifications',
+        db_comment='关联的亚马逊店铺'
+    )
+
+    # 通知主题（限250字符）
+    subject = models.CharField(
+        max_length=250,
+        db_comment='通知主题'
+    )
+
+    # 通知日期
+    date = models.DateField(
+        db_comment='通知日期'
+    )
+
+    # 状态标记字段
+    needs_attention = models.SmallIntegerField(
+        default=0,
+        db_comment='是否需要注意（0=否，1=是）',
+        verbose_name='需要注意'
+    )
+
+    is_processed = models.SmallIntegerField(
+        default=0,
+        db_comment='是否已处理（0=否，1=是）',
+        verbose_name='已处理'
+    )
+
+    # 记录时间
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_comment='创建时间'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        db_comment='更新时间'
+    )
+
+    class Meta:
+        db_table = 'amazon_performance_notification'
+        db_table_comment = '亚马逊绩效通知表'
+        verbose_name = '亚马逊绩效通知'
+        verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['shop', 'subject', 'date'],
+                name='uniq_shop_subject_date'
+            )
+        ]
+        # 建议添加索引优化查询
+        indexes = [
+            models.Index(fields=['shop', 'date'], name='idx_shop_date'),
+            models.Index(fields=['needs_attention'], name='idx_needs_attention'),
+            models.Index(fields=['is_processed'], name='idx_is_processed'),
+        ]
+
+    def __str__(self):
+        return f"{self.shop.shop_name} - {self.subject[:50]} ({self.date})"

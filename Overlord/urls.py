@@ -19,7 +19,7 @@ from django.urls import path
 from General import views, views_user_management, views_amazon_management, views_temu_management, views_performance, \
     demo_view
 from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views, \
-    views_ranking
+    views_ranking,amazon_jx_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -98,4 +98,23 @@ urlpatterns = [
     path('demo1/', demo_view.demo_view),
     path('api/announcement/mark-as-read/', views.mark_announcement_as_read, name='mark_announcement_read'),
 
+    # 亚马逊绩效通知管理
+    path('amazon/performance/notifications/',
+         amazon_jx_views.amazon_performance_notifications_page,
+         name='amazon_performance_notifications'),
+
+    # 绩效通知API
+    path('api/amazon-performance-notifications/',
+         amazon_jx_views.get_amazon_performance_notifications_api,
+         name='api_amazon_performance_notifications'),
+
+    # 标记已处理API
+    path('api/amazon-performance-notifications/<int:notification_id>/mark-processed/',
+         amazon_jx_views.mark_notification_processed_api,
+         name='mark_notification_processed'),
+
+    # 绩效模块运营人员列表API
+    path('api/amazon/performance/operators/',
+         amazon_jx_views.get_performance_operators_api,
+         name='api_performance_operators'),
 ]
