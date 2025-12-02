@@ -533,7 +533,7 @@ def amazon_dashboard_page(request):
     theme = request.COOKIES.get('theme', 'light')
     return render(request, 'dashboard.html', {
         'theme': theme,
-        'active_nav': 'amazon'
+        'active_nav': 'dashboard'
     })
 
 
@@ -1373,3 +1373,4 @@ def assemble_response_data(filter_type, filter_value, current_start, current_end
     print(f"{'=' * 60}\n")
 
     return JsonResponse(response_data)
+

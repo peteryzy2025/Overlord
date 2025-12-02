@@ -215,12 +215,12 @@ def query_divi_order(
         "importTimeEnd": import_time_end,
     }
     if brand_id:
-        data_dict["brandId"] = brand_id
+        data_dict["brandId"] = [brand_id]
     if amazon_order_id:
         data_dict["amazonOrderId"] = amazon_order_id
     if has_logistics:
         data_dict["hasLogistics"] = 1
-
+    print(data_dict)
     resp = get_divi_api_resp(
         endpoint_path=endpoint_path,
         data_dict=data_dict,
@@ -232,7 +232,6 @@ def query_divi_order(
     # 兼容几种结构：data 是 list / data.list / data.rows
     orders: List[Dict[str, Any]] = []
     data = resp_json.get("data")
-
     if isinstance(data, list):
         orders = data
     elif isinstance(data, dict):

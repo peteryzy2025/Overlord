@@ -626,7 +626,7 @@
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'amazon' %}active{% endif %}" href="{% url 'dashboard' %}">
+                <a class="nav-link {% if active_nav == 'dashboard' or active_nav == 'ranking' %}active{% endif %}" href="{% url 'dashboard' %}">
                     驾驶舱
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
@@ -641,7 +641,7 @@
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'amazon' or active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
                    href="{% url 'amazon_order_management' %}">
                     Amazon
                     <i class="fas fa-chevron-down dropdown-arrow"></i>

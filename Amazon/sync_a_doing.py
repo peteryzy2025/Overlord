@@ -1,7 +1,7 @@
 from Amazon.sync_lingxing_shops import lx_shop_main, lx_shop_main2
 from Amazon.sync_lingxing_orders import lx_order_main
 from Amazon.sync_lingxing_zifa_order import lx_zf_main
-from Amazon.sync_check_divi_status_v2 import divi_process_orders
+from Amazon.sync_check_divi_status_v3 import divi_process_orders
 from Amazon.sync_lx_temu_orders import temu_orders
 from Amazon.sync_fh import amazon_fh
 from Amazon.sync_lx_temu_orders import temu_orders
@@ -15,27 +15,26 @@ if __name__ == '__main__':
         try:
             t.start()
             lx_shop_main()
+            lx_shop_main2()  # Temu店铺数据
             t.stop()
             print(f"时间：{t}")
-            lx_order_main()
-            lx_shop_main2()
+            lx_order_main() # 亚马逊订单
             t.stop()
             print(f"时间：{t}")
-            asyncio.run(lx_zf_main())
+            asyncio.run(lx_zf_main()) #自发货订单号同步
             t.stop()
             print(f"时间：{t}")
-            divi_process_orders("2025-11-19", True)
+            divi_process_orders("2025-11-19", True) # 导单
             t.stop()
             print(f"时间：{t}")
-            amazon_fh()
+            amazon_fh() # 发货
             t.stop()
             print(f"时间：{t}")
-            temu_orders()
+            temu_orders() # temu订单
             t.stop()
             print(f"时间：{t}")
-            time.sleep(60)
         except Exception as e:
             print(f"错误: {e}")
-            time.sleep(5*60)
+
 
 
