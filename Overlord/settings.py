@@ -22,7 +22,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-h_9nrs(_rj5nx%qez^+r+9j6)6tskga!04$b#zlg1%zlikh0ts'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG = True
+DEBUG = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = False  # Django 不强制跳转
+SESSION_COOKIE_SECURE = False  # 允许 HTTP 和 HTTPS 传输
+CSRF_COOKIE_SECURE = False  # 同样允许 HTTP 和 HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'  # 宽松模式，兼容内外网
+CSRF_TRUSTED_ORIGINS = [
+    'https://ztzf.cpolar.cn',  # 外网
+    'http://192.168.110.54:5555',
+    'http://192.168.110.131:5550',
+    'http://localhost',
+]
 
 ALLOWED_HOSTS = [
     '192.168.110.131',  # 添加你的服务器IP

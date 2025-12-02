@@ -183,3 +183,7 @@ def mark_announcement_as_read(request):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
+
+def test_error(request):
+    """测试500错误页面"""
+    raise Exception("这是一个测试错误，用于验证500页面是否正常显示")

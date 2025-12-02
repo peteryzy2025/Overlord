@@ -22,6 +22,7 @@ from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_v
     views_ranking,amazon_jx_views
 
 urlpatterns = [
+    path('test-error/', views.test_error, name='test_error'),
     path('admin/', admin.site.urls),
     path('', views.user_login, name='login'),
     path('login/', views.user_login, name='login'),  # 登录
