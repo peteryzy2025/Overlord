@@ -11,10 +11,8 @@ import time
 
 if __name__ == '__main__':
     t = Timer()
-    a = 0
     while True:
         try:
-            a =a+1
             t.start()
             lx_shop_main()
             t.stop()
@@ -32,11 +30,9 @@ if __name__ == '__main__':
             amazon_fh()
             t.stop()
             print(f"时间：{t}")
-            if a == 10:
-                a = 0
-                temu_orders()
-                t.stop()
-                print(f"时间：{t}")
+            temu_orders()
+            t.stop()
+            print(f"时间：{t}")
             time.sleep(60)
         except Exception as e:
             print(f"错误: {e}")
