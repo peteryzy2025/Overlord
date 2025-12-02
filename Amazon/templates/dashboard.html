@@ -92,15 +92,12 @@
             padding: 0.5rem 0.75rem;
             transition: all 0.3s ease;
             width: 100%;
-
-            /* 重要：隐藏原生下拉箭头，只保留自定义的 */
             appearance: none;
             -webkit-appearance: none;
             -moz-appearance: none;
             background-image: none;
         }
 
-        /* 兼容旧版 IE / Edge 的原生箭头 */
         .form-select::-ms-expand {
             display: none;
         }
@@ -142,13 +139,11 @@
             width: 100%;
         }
 
-        /* select内边距为图标留空间 */
         #groupFilter, #operatorFilter {
             padding-right: 40px;
             width: 100%;
         }
 
-        /* 两个图标绝对定位（重叠但透明度切换） */
         .select-arrow, .btn-clear-toggle {
             position: absolute;
             right: 12px;
@@ -157,7 +152,6 @@
             transition: all 0.3s ease;
         }
 
-        /* 下拉箭头（默认显示） */
         .select-arrow {
             color: var(--text-secondary);
             pointer-events: none;
@@ -166,7 +160,6 @@
             visibility: visible;
         }
 
-        /* 清除按钮（默认隐藏） */
         .btn-clear-toggle {
             background: none;
             border: none;
@@ -188,7 +181,6 @@
             transform: translateY(-50%) scale(1.1);
         }
 
-        /* 有值时显示清除按钮，隐藏箭头 */
         .select-wrapper.has-value .select-arrow {
             opacity: 0 !important;
             visibility: hidden !important;
@@ -274,9 +266,10 @@
             color: #475569;
         }
 
+        /* ========== 修改为上下布局（关键样式）========== */
         .charts-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 1fr; /* 单列布局 */
             gap: 1.5rem;
             margin-bottom: 2rem;
         }
@@ -287,6 +280,7 @@
             padding: 1.5rem;
             box-shadow: var(--shadow-light);
             border: 1px solid var(--border-color);
+            width: 100%; /* 确保100%宽度 */
         }
 
         .chart-title {
@@ -299,6 +293,29 @@
         .chart-container {
             width: 100%;
             height: 300px;
+        }
+
+        /* ========== 运营人员业绩区域样式 ========== */
+        .operator-performance-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* 两个饼图并排，各占50% */
+            gap: 1rem;
+            width: 100%;
+        }
+
+        .pie-section h4 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        /* 小屏幕时堆叠显示 */
+        @media (max-width: 768px) {
+            .operator-performance-container {
+                grid-template-columns: 1fr; /* 上下堆叠 */
+            }
         }
 
         .data-section {
@@ -317,15 +334,13 @@
             margin-bottom: 1.5rem;
         }
 
-        /* 表格容器 - 支持固定表头 */
         .table-container {
             overflow-x: auto;
-            max-height: 600px; /* 限制高度 */
+            max-height: 600px;
             overflow-y: auto;
             position: relative;
         }
 
-        /* 固定表头 */
         .table thead th {
             position: sticky;
             top: 0;
@@ -391,7 +406,6 @@
             color: #553C9A;
         }
 
-        /* 分页控件样式 */
         .pagination-controls {
             display: flex;
             justify-content: space-between;
@@ -468,7 +482,6 @@
             color: var(--text-primary);
         }
 
-        /* 加载更多样式 */
         .empty-state {
             text-align: center;
             padding: 3rem;
@@ -647,6 +660,10 @@
                         <option value="today">今日</option>
                         <option value="last7days">最近7天</option>
                         <option value="last30days">最近30天</option>
+                        <option value="this_week">本周</option>
+                        <option value="this_month">本月</option>
+                        <option value="last_week">上周</option>
+                        <option value="last_month">上月</option>
                         <option value="custom">自定义范围</option>
                     </select>
                 </div>
@@ -737,6 +754,7 @@
                 <div class="stat-label">FBM占比</div>
                 <div class="stat-change" id="fbmPercentageChange">—</div>
             </div>
+
             <div class="stat-card">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #ff6b6b, #ee5a24);">
                     <i class="fas fa-undo"></i>
@@ -756,19 +774,33 @@
             </div>
         </div>
 
-        <!-- 图表区域 -->
+        <!-- 图表区域（上下布局） -->
         <div class="charts-grid">
+            <!-- 销量趋势 - 占100%宽度 -->
             <div class="chart-card">
                 <h3 class="chart-title">销量趋势</h3>
                 <div id="ordersChart" class="chart-container"></div>
             </div>
+
+            <!-- 运营人员业绩 - 占100%宽度 -->
             <div class="chart-card">
                 <h3 class="chart-title">运营人员业绩</h3>
-                <div id="operatorChart" class="chart-container"></div>
+                <div class="operator-performance-container">
+                    <!-- 订单量饼图 -->
+                    <div class="pie-section">
+                        <h4>订单量分布</h4>
+                        <div id="operatorChart" class="chart-container"></div>
+                    </div>
+                    <!-- 销量饼图 -->
+                    <div class="pie-section">
+                        <h4>销量分布</h4>
+                        <div id="operatorSalesChart" class="chart-container"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- 快速查看区域（可选） -->
+        <!-- 快速查看区域 -->
         <div class="data-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 class="section-title">订单概览</h3>
@@ -792,7 +824,6 @@
 {% block extra_js %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script>
-        // 保留驾驶舱所需的全局变量和函数
         let allOperators = [];
         let allGroups = [];
         let currentFilters = {
@@ -978,28 +1009,121 @@
             });
         }
 
+        /* ========== 新增：销量饼图加载函数 ========== */
+        async function loadOperatorSalesPieChart() {
+            const container = document.getElementById('operatorSalesChart');
+            if (!container) return;
+
+            // 销毁旧图表实例
+            const oldChart = echarts.getInstanceByDom(container);
+            if (oldChart) oldChart.dispose();
+
+            const operatorSalesChart = echarts.init(container);
+            const filters = getCurrentFilters();
+
+            try {
+                // 构建查询参数（与订单量饼图一致）
+                const params = new URLSearchParams();
+                params.set('date_range', filters.date_range);
+                if (filters.start_date) params.set('start_date', filters.start_date);
+                if (filters.end_date) params.set('end_date', filters.end_date);
+                if (filters.operator_id) params.set('operator_id', filters.operator_id);
+                if (filters.group) params.set('group', filters.group);
+
+                // 调用销量饼图API
+                const response = await fetch(`/api/amazon/operator-sales-pie-chart/?${params}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    console.error('销量饼图数据加载失败:', result.message);
+                    return;
+                }
+
+                // 无数据时显示"暂无数据"
+                if (!result.data || result.data.length === 0) {
+                    operatorSalesChart.clear();
+                    operatorSalesChart.setOption({
+                        title: {
+                            text: '暂无数据',
+                            left: 'center',
+                            top: 'middle',
+                            textStyle: {
+                                color: getComputedStyle(document.documentElement)
+                                    .getPropertyValue('--text-secondary').trim(),
+                                fontSize: 14
+                            }
+                        }
+                    });
+                    return;
+                }
+
+                // 渲染饼图（使用与订单量饼图相同的颜色）
+                const rootStyle = getComputedStyle(document.documentElement);
+                const option = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{a} <br/>{b}: {c}件 ({d}%)'
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: 'left',
+                        textStyle: {
+                            color: rootStyle.getPropertyValue('--text-primary').trim()
+                        }
+                    },
+                    series: [{
+                        name: '销量分布',
+                        type: 'pie',
+                        radius: '50%',
+                        data: result.data,
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        },
+                        itemStyle: {
+                            color: function (params) {
+                                const colors = ['#667eea', '#f5576c', '#764ba2', '#f093fb', '#4facfe', '#43e97b', '#fa709a', '#fee140'];
+                                return colors[params.dataIndex % colors.length];
+                            }
+                        },
+                        label: {
+                            formatter: '{b}\n{c}件\n({d}%)'
+                        }
+                    }]
+                };
+
+                operatorSalesChart.setOption(option);
+
+            } catch (error) {
+                console.error('销量饼图加载异常:', error);
+            }
+        }
+
+        /* ========== 修改：主筛选函数 ========== */
         async function applyFilters() {
             showLoading(true);
             currentFilters = getCurrentFilters();
 
             try {
-                // ========== 修复：在发起新请求前，先重置所有图表 ==========
+                // 销毁所有旧图表实例
                 const ordersChartDom = document.getElementById('ordersChart');
                 const operatorChartDom = document.getElementById('operatorChart');
+                const operatorSalesChartDom = document.getElementById('operatorSalesChart');
 
-                // 销毁旧图表实例（防止数据残留）
-                const oldOrdersChart = echarts.getInstanceByDom(ordersChartDom);
-                const oldOperatorChart = echarts.getInstanceByDom(operatorChartDom);
-                if (oldOrdersChart) oldOrdersChart.dispose();
-                if (oldOperatorChart) oldOperatorChart.dispose();
+                [ordersChartDom, operatorChartDom, operatorSalesChartDom].forEach(dom => {
+                    const oldChart = echarts.getInstanceByDom(dom);
+                    if (oldChart) oldChart.dispose();
+                });
 
-                // 清空统计卡片（防止旧数据闪烁）
+                // 清空统计卡片
                 document.querySelectorAll('.stat-value').forEach(el => el.textContent = '—');
                 document.querySelectorAll('.stat-change').forEach(el => {
                     el.textContent = '—';
                     el.className = 'stat-change neutral';
                 });
-                // ========== 重置结束 ==========
 
                 // 加载统计数据
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
@@ -1016,13 +1140,15 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    // ========== 修复：强制更新平台来源 ==========
                     const platformSource = result.data.filter_info?.platform_source || 'unknown';
                     updateStatsWithRealData(result.data);
-                    updateChartsWithRealData(result.data, platformSource); // 传递平台类型
+                    updateChartsWithRealData(result.data, platformSource);
 
-                    // 新增：加载饼图
-                    await loadOperatorPieChart();
+                    // 同时加载两个饼图
+                    await Promise.all([
+                        loadOperatorPieChart(),
+                        loadOperatorSalesPieChart()
+                    ]);
 
                     showNotification && showNotification('数据已更新', 'success');
                 } else {
@@ -1039,6 +1165,7 @@
             const formatter = new Intl.NumberFormat('zh-CN');
             const current = data.current || {};
             const comparison = data.comparison || {};
+
             document.getElementById('orderCount').textContent = formatter.format(current.order_count || 0);
             updateChangeIndicator('orderCountChange', comparison.order_count_change);
 
@@ -1062,7 +1189,6 @@
 
             document.getElementById('returnRate').textContent = current.return_rate || '0.0%';
             updateChangeIndicator('returnRateChange', comparison.return_rate_change);
-
         }
 
         function updateChangeIndicator(elementId, changeValue) {
@@ -1077,13 +1203,11 @@
                 return;
             }
 
-            // ✅ 正确：所有指标都反向显示
-            // 上升(+) → 红色(negative)  下降(-) → 绿色(positive)
             if (changeValue.startsWith('+')) {
-                element.classList.add('negative'); // 上升用红色
+                element.classList.add('negative');
                 element.textContent = `${changeValue} 环比`;
             } else if (changeValue.startsWith('-')) {
-                element.classList.add('positive'); // 下降用绿色
+                element.classList.add('positive');
                 element.textContent = `${changeValue} 环比`;
             } else {
                 element.classList.add('neutral');
@@ -1091,34 +1215,28 @@
             }
         }
 
-        // 在 updateOrdersChart 函数中修改
         function updateOrdersChart(trendData, platformSource) {
-            // ========== 修复：在创建新图表前先销毁旧实例 ==========
             const chartDom = document.getElementById('ordersChart');
             const oldChart = echarts.getInstanceByDom(chartDom);
-            if (oldChart) {
-                oldChart.dispose(); // 完全销毁旧实例，防止数据残留
-            }
+            if (oldChart) oldChart.dispose();
 
             const ordersChart = echarts.init(chartDom);
 
-            // ========== 修复：根据平台类型强制清理数据 ==========
-            // 深拷贝数据，防止污染原始数据
+            // 清理数据
             trendData = JSON.parse(JSON.stringify(trendData));
 
-            // 强制清理不符合平台类型的数据
             if (platformSource === 'amazon_only') {
                 trendData = trendData.map(item => ({
                     date: item.date,
                     amazon_sales: Number(item.amazon_sales || item.sales || 0),
-                    temu_sales: 0, // 强制设为0
+                    temu_sales: 0,
                     total_sales: Number(item.amazon_sales || item.sales || 0),
                     sales: Number(item.amazon_sales || item.sales || 0)
                 }));
             } else if (platformSource === 'temu_only') {
                 trendData = trendData.map(item => ({
                     date: item.date,
-                    amazon_sales: 0, // 强制设为0
+                    amazon_sales: 0,
                     temu_sales: Number(item.temu_sales || item.sales || 0),
                     total_sales: Number(item.temu_sales || item.sales || 0),
                     sales: Number(item.temu_sales || item.sales || 0)
@@ -1132,7 +1250,6 @@
                     sales: Number(item.total_sales || 0)
                 }));
             } else {
-                // 未知平台，默认当作 amazon_only 处理
                 trendData = trendData.map(item => ({
                     date: item.date,
                     amazon_sales: Number(item.sales || 0),
@@ -1141,7 +1258,6 @@
                     sales: Number(item.sales || 0)
                 }));
             }
-            // ========== 数据清理结束 ==========
 
             const dates = trendData.map(item => {
                 const date = new Date(item.date);
@@ -1151,7 +1267,6 @@
             const series = [];
             const legendData = [];
 
-            // 根据平台类型构建数据系列
             if (platformSource === 'amazon_only') {
                 series.push({
                     name: 'Amazon',
@@ -1172,7 +1287,6 @@
                     }
                 });
                 legendData.push('Amazon');
-
             } else if (platformSource === 'temu_only') {
                 series.push({
                     name: 'Temu',
@@ -1193,7 +1307,6 @@
                     }
                 });
                 legendData.push('Temu');
-
             } else if (platformSource === 'mixed') {
                 series.push({
                     name: 'Amazon',
@@ -1203,7 +1316,6 @@
                     lineStyle: {color: '#667eea', width: 3},
                     itemStyle: {color: '#667eea'},
                 });
-
                 series.push({
                     name: 'Temu',
                     type: 'line',
@@ -1212,7 +1324,6 @@
                     lineStyle: {color: '#f5576c', width: 3},
                     itemStyle: {color: '#f5576c'},
                 });
-
                 series.push({
                     name: '总计',
                     type: 'line',
@@ -1221,7 +1332,6 @@
                     lineStyle: {color: '#10b981', width: 3, type: 'dashed'},
                     itemStyle: {color: '#10b981'},
                 });
-
                 legendData.push('Amazon', 'Temu', '总计');
             } else {
                 series.push({
@@ -1253,7 +1363,11 @@
                     type: 'category',
                     data: dates,
                     axisLine: {lineStyle: {color: rootStyle.getPropertyValue('--border-color').trim()}},
-                    axisLabel: {color: rootStyle.getPropertyValue('--text-secondary').trim()}
+                    axisLabel: {
+                        color: rootStyle.getPropertyValue('--text-secondary').trim(),
+                        rotate: 45,  // 新增：标签旋转45度
+                        interval: 0  // 新增：强制显示所有标签
+                    }
                 },
                 yAxis: {
                     type: 'value',
@@ -1265,28 +1379,21 @@
             };
 
             ordersChart.setOption(option);
-
-            // ========== 修复：确保图表立即渲染 ==========
             ordersChart.resize();
         }
 
         function updateChartsWithRealData(data, platformSource) {
-            // ========== 修复：强制根据后端返回的平台类型渲染 ==========
             if (!data.trend_data || data.trend_data.length === 0) {
                 console.warn('没有趋势数据');
-                // 清空图表
                 const ordersChart = echarts.init(document.getElementById('ordersChart'));
                 ordersChart.clear();
                 return;
             }
 
-            // 使用后端返回的 platform_source，而不是从 data 中推断
-            // 这样可以确保前后端平台类型一致
             updateOrdersChart(data.trend_data, platformSource);
         }
 
-        // 删除原有的假数据函数，替换为：
-
+        /* ========== 订单量饼图加载函数（与原有逻辑一致）========== */
         async function loadOperatorPieChart() {
             const container = document.getElementById('operatorChart');
             if (!container) return;
@@ -1295,7 +1402,6 @@
             const filters = getCurrentFilters();
 
             try {
-                // 构建查询参数
                 const params = new URLSearchParams();
                 params.set('date_range', filters.date_range);
                 if (filters.start_date) params.set('start_date', filters.start_date);
@@ -1307,19 +1413,28 @@
                 const result = await response.json();
 
                 if (!result.success) {
-                    console.error('饼图数据加载失败:', result.message);
+                    console.error('订单量饼图数据加载失败:', result.message);
                     return;
                 }
 
-                // 无数据时清空图表
                 if (!result.data || result.data.length === 0) {
                     operatorChart.clear();
+                    operatorChart.setOption({
+                        title: {
+                            text: '暂无数据',
+                            left: 'center',
+                            top: 'middle',
+                            textStyle: {
+                                color: getComputedStyle(document.documentElement)
+                                    .getPropertyValue('--text-secondary').trim(),
+                                fontSize: 14
+                            }
+                        }
+                    });
                     return;
                 }
 
-                // 渲染饼图
                 const rootStyle = getComputedStyle(document.documentElement);
-
                 const option = {
                     tooltip: {
                         trigger: 'item',
@@ -1328,7 +1443,9 @@
                     legend: {
                         orient: 'vertical',
                         left: 'left',
-                        textStyle: {color: rootStyle.getPropertyValue('--text-primary').trim()}
+                        textStyle: {
+                            color: rootStyle.getPropertyValue('--text-primary').trim()
+                        }
                     },
                     series: [{
                         name: '订单分布',
@@ -1357,22 +1474,22 @@
                 operatorChart.setOption(option);
 
             } catch (error) {
-                console.error('饼图加载异常:', error);
+                console.error('订单量饼图加载异常:', error);
             }
         }
 
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
 
-            // ========== 修复：页面加载时销毁所有旧图表 ==========
+            // 销毁所有旧图表实例
             const ordersChartDom = document.getElementById('ordersChart');
             const operatorChartDom = document.getElementById('operatorChart');
+            const operatorSalesChartDom = document.getElementById('operatorSalesChart');
 
-            const oldOrdersChart = echarts.getInstanceByDom(ordersChartDom);
-            const oldOperatorChart = echarts.getInstanceByDom(operatorChartDom);
-            if (oldOrdersChart) oldOrdersChart.dispose();
-            if (oldOperatorChart) oldOperatorChart.dispose();
-            // ========== 清理结束 ==========
+            [ordersChartDom, operatorChartDom, operatorSalesChartDom].forEach(dom => {
+                const oldChart = echarts.getInstanceByDom(dom);
+                if (oldChart) oldChart.dispose();
+            });
 
             try {
                 await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
@@ -1390,8 +1507,11 @@
         window.addEventListener('resize', function () {
             const ordersChart = echarts.getInstanceByDom(document.getElementById('ordersChart'));
             const operatorChart = echarts.getInstanceByDom(document.getElementById('operatorChart'));
+            const operatorSalesChart = echarts.getInstanceByDom(document.getElementById('operatorSalesChart'));
+
             if (ordersChart) ordersChart.resize();
             if (operatorChart) operatorChart.resize();
+            if (operatorSalesChart) operatorSalesChart.resize();
         });
     </script>
 {% endblock %}

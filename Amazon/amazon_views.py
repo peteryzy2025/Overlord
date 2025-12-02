@@ -557,6 +557,37 @@ def get_date_range_from_option(date_range_option):
         # 包含今天，共30天
         start = today - timedelta(days=29)
         return start, today
+    elif date_range_option == 'this_week':
+        # 本周一到本周日
+        start = today - timedelta(days=today.weekday())  # Monday=0
+        end = start + timedelta(days=6)
+        return start, end
+
+    elif date_range_option == 'this_month':
+        # 本月1日到最后一日
+        start = today.replace(day=1)
+        # 下个月1日减去1天
+        if today.month == 12:
+            end = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+        return start, end
+    elif date_range_option == 'last_week':
+        # 上周一到上周日
+        this_week_start = today - timedelta(days=today.weekday())
+        last_week_start = this_week_start - timedelta(days=7)
+        last_week_end = last_week_start + timedelta(days=6)
+        return last_week_start, last_week_end
+
+    elif date_range_option == 'last_month':
+        # 上个月1日到月底
+        if today.month == 1:
+            start = today.replace(year=today.year - 1, month=12, day=1)
+            end = today.replace(year=today.year, month=1, day=1) - timedelta(days=1)
+        else:
+            start = today.replace(month=today.month - 1, day=1)
+            end = today.replace(day=1) - timedelta(days=1)
+        return start, end
     else:
         return None, None
 
@@ -724,11 +755,11 @@ def merge_trend_data(amazon_trend, temu_trend, shop_ids_by_platform):
             'total_sales': amazon_sales + temu_sales
         })
 
-    # 如果没有日期，返回14天空数据
+    # 如果没有日期，返回30天空数据
     if not result:
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=13)
-        for i in range(14):
+        for i in range(30):
             date = start_date + timedelta(days=i)
             result.append({
                 'date': date.strftime('%Y-%m-%d'),
@@ -843,12 +874,12 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
 
 def get_sales_trend_data(lingxing_shop_ids):
     """
-    获取最近14天每日销量数据（排除退货订单）
+    获取最近30天每日销量数据（排除退货订单）
     返回: [{date: '2025-11-18', sales: 156}, ...] 格式
     """
-    # 计算14天日期范围
+    # 计算30天日期范围
     end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=13)
+    start_date = end_date - timedelta(days=29)
 
     print(f"\n{'=' * 60}")
     print("📈 计算销量趋势数据(排除退货)...")
@@ -884,7 +915,7 @@ def get_sales_trend_data(lingxing_shop_ids):
 
     # 组装14天完整数据（补全缺失日期）
     result = []
-    for i in range(14):
+    for i in range(30):
         date = start_date + timedelta(days=i)
         sales = sales_dict.get(date, 0)
         result.append({
@@ -1208,10 +1239,10 @@ def get_temu_order_statistics(temu_shop_ids, start_date, end_date):
 
 def get_temu_sales_trend_data(temu_shop_ids):
     """
-    Temu最近14天销量趋势（排除退货订单）
+    Temu最近30天销量趋势（排除退货订单）
     """
     end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=13)
+    start_date = end_date - timedelta(days=29)
 
     if not temu_shop_ids:
         return []
@@ -1261,7 +1292,7 @@ def get_temu_sales_trend_data(temu_shop_ids):
 
     # 补全14天
     result = []
-    for i in range(14):
+    for i in range(30):
         date = start_date + timedelta(days=i)
         sales = sales_dict.get(date, 0)
         result.append({
@@ -1374,3 +1405,281 @@ def assemble_response_data(filter_type, filter_value, current_start, current_end
 
     return JsonResponse(response_data)
 
+
+@login_required
+def get_operator_sales_pie_chart_api(request):
+    """
+    运营人员销量饼图数据（与订单量饼图逻辑一致，仅指标改为销量）
+    GET参数:
+      - date_range / start_date / end_date: 日期范围
+      - operator_id / group: 筛选条件
+    返回: {name: '张三', value: 156} 格式的销量数据
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
+
+    try:
+        # 解析参数（与订单量饼图完全一致）
+        data = {
+            'date_range': request.GET.get('date_range', 'yesterday'),
+            'start_date': request.GET.get('start_date', ''),
+            'end_date': request.GET.get('end_date', ''),
+            'operator_id': request.GET.get('operator_id', ''),
+            'group': request.GET.get('group', '')
+        }
+
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        # 权限判断 + 平台识别（复用现有逻辑）
+        filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
+            request, data, permissions
+        )
+
+        # 日期范围计算（复用现有逻辑）
+        current_start, current_end = None, None
+        if data['start_date'] and data['end_date']:
+            try:
+                current_start = datetime.strptime(data['start_date'], '%Y-%m-%d').date()
+                current_end = datetime.strptime(data['end_date'], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(data['date_range'])
+
+        if not current_start or not current_end:
+            return JsonResponse({'success': False, 'message': '无效日期'}, status=400)
+
+        # 获取店铺ID（复用现有逻辑）
+        shop_ids_by_platform = {}
+        if filter_type != 'none':
+            shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
+                filter_type, filter_value, platform_info
+            )
+
+        # 核心：按场景统计销量（排除退货后的商品件数）
+        pie_data = []
+
+        # ========== 场景1：全部分组/全部人员 ==========
+        if filter_type == 'all' or (filter_type == 'ops_id' and filter_value == 'all'):
+            # 返回所有一级分组（ops_group）的销量占比
+            groups = OperationalAccount.objects.exclude(
+                ops_group__isnull=True
+            ).exclude(
+                ops_group=''
+            ).values_list('ops_group', flat=True).distinct()
+
+            for group in groups:
+                # 获取组内所有用户ID
+                user_ids = OperationalAccount.objects.filter(
+                    ops_group=group
+                ).values_list('user_id', flat=True)
+
+                # 分别统计Amazon和Temu销量
+                amazon_sales = 0
+                temu_sales = 0
+
+                # Amazon销量（排除退货）
+                if shop_ids_by_platform.get('amazon'):
+                    amazon_shops = AmazonShop.objects.filter(ops_id__in=user_ids)
+                    amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
+                    lingxing_shops = LingXingAmazonShop.objects.filter(
+                        amazon_shop_id__in=amazon_shop_ids
+                    )
+                    lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+                    if lingxing_shop_ids:
+                        amazon_sales = AmazonOrderItem.objects.filter(
+                            order__lingxing_shop_id__in=lingxing_shop_ids,
+                            order__purchase_date_local__date__gte=current_start,
+                            order__purchase_date_local__date__lte=current_end
+                        ).exclude(
+                            order__order_status='Canceled'
+                        ).aggregate(total=Sum('quantity_ordered'))['total'] or 0
+
+                # Temu销量（排除退货）
+                if shop_ids_by_platform.get('temu'):
+                    temu_shops = TemuShop.objects.filter(ops_id__in=user_ids)
+                    temu_shop_ids = list(temu_shops.values_list('id', flat=True))
+
+                    if temu_shop_ids:
+                        # 获取日期范围内所有订单
+                        all_orders = TemuOrder.objects.filter(
+                            lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                            global_purchase_time__date__gte=current_start,
+                            global_purchase_time__date__lte=current_end
+                        ).values('global_order_no', 'platform_info')
+
+                        # 提取退货订单号
+                        cancelled_order_nos = [
+                            o['global_order_no'] for o in all_orders
+                            if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                               and o['platform_info'][0].get('status') == 'CANCELED'
+                        ]
+
+                        temu_sales = TemuOrderItem.objects.filter(
+                            order__lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                            order__global_purchase_time__date__gte=current_start,
+                            order__global_purchase_time__date__lte=current_end
+                        ).exclude(
+                            order__global_order_no__in=cancelled_order_nos
+                        ).aggregate(total=Sum('quantity'))['total'] or 0
+
+                total_sales = amazon_sales + temu_sales
+                if total_sales > 0:
+                    pie_data.append({
+                        'name': group,
+                        'value': total_sales
+                    })
+
+        # ========== 场景2：具体分组 ==========
+        elif filter_type == 'ops_group':
+            # 返回组内每个人员的销量占比
+            user_ids = OperationalAccount.objects.filter(
+                ops_group=filter_value
+            ).values_list('user_id', flat=True)
+
+            users = User.objects.filter(id__in=user_ids)
+
+            for u in users:
+                amazon_sales = 0
+                temu_sales = 0
+
+                if shop_ids_by_platform.get('amazon'):
+                    amazon_shops = AmazonShop.objects.filter(ops_id=u.id)
+                    amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
+                    lingxing_shops = LingXingAmazonShop.objects.filter(
+                        amazon_shop_id__in=amazon_shop_ids
+                    )
+                    lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
+
+                    if lingxing_shop_ids:
+                        amazon_sales = AmazonOrderItem.objects.filter(
+                            order__lingxing_shop_id__in=lingxing_shop_ids,
+                            order__purchase_date_local__date__gte=current_start,
+                            order__purchase_date_local__date__lte=current_end
+                        ).exclude(
+                            order__order_status='Canceled'
+                        ).aggregate(total=Sum('quantity_ordered'))['total'] or 0
+
+                if shop_ids_by_platform.get('temu'):
+                    temu_shops = TemuShop.objects.filter(ops_id=u.id)
+                    temu_shop_ids = list(temu_shops.values_list('id', flat=True))
+
+                    if temu_shop_ids:
+                        all_orders = TemuOrder.objects.filter(
+                            lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                            global_purchase_time__date__gte=current_start,
+                            global_purchase_time__date__lte=current_end
+                        ).values('global_order_no', 'platform_info')
+
+                        cancelled_order_nos = [
+                            o['global_order_no'] for o in all_orders
+                            if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                               and o['platform_info'][0].get('status') == 'CANCELED'
+                        ]
+
+                        temu_sales = TemuOrderItem.objects.filter(
+                            order__lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                            order__global_purchase_time__date__gte=current_start,
+                            order__global_purchase_time__date__lte=current_end
+                        ).exclude(
+                            order__global_order_no__in=cancelled_order_nos
+                        ).aggregate(total=Sum('quantity'))['total'] or 0
+
+                total_sales = amazon_sales + temu_sales
+                if total_sales > 0:
+                    pie_data.append({
+                        'name': u.first_name or u.username,
+                        'value': total_sales
+                    })
+
+        # ========== 场景3：具体人员 ==========
+        elif filter_type == 'ops_id':
+            # Amazon销量（按店铺统计）
+            if shop_ids_by_platform.get('amazon'):
+                amazon_shop_ids = shop_ids_by_platform['amazon']
+                lingxing_shops = LingXingAmazonShop.objects.filter(
+                    amazon_shop_id__in=amazon_shop_ids
+                )
+
+                for shop in lingxing_shops:
+                    sales = AmazonOrderItem.objects.filter(
+                        order__lingxing_shop_id=shop.sid,
+                        order__purchase_date_local__date__gte=current_start,
+                        order__purchase_date_local__date__lte=current_end
+                    ).exclude(
+                        order__order_status='Canceled'
+                    ).aggregate(total=Sum('quantity_ordered'))['total'] or 0
+
+                    if sales > 0:
+                        pie_data.append({
+                            'name': shop.name or f'店铺({shop.sid})',
+                            'value': sales
+                        })
+
+            # Temu销量（按店铺统计）
+            if shop_ids_by_platform.get('temu'):
+                temu_shop_ids = shop_ids_by_platform['temu']
+                lingxing_shops = LingXingTemuShop.objects.filter(
+                    temu_shop_id__in=temu_shop_ids
+                )
+
+                for shop in lingxing_shops:
+                    # 获取该店铺的退货订单
+                    all_orders = TemuOrder.objects.filter(
+                        lingxing_shop__store_id=shop.store_id,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).values('global_order_no', 'platform_info')
+
+                    cancelled_order_nos = [
+                        o['global_order_no'] for o in all_orders
+                        if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                           and o['platform_info'][0].get('status') == 'CANCELED'
+                    ]
+
+                    sales = TemuOrderItem.objects.filter(
+                        order__lingxing_shop__store_id=shop.store_id,
+                        order__global_purchase_time__date__gte=current_start,
+                        order__global_purchase_time__date__lte=current_end
+                    ).exclude(
+                        order__global_order_no__in=cancelled_order_nos
+                    ).aggregate(total=Sum('quantity'))['total'] or 0
+
+                    if sales > 0:
+                        pie_data.append({
+                            'name': shop.store_name or f'店铺({shop.store_id})',
+                            'value': sales
+                        })
+
+        # ========== 无数据处理 ==========
+        if not pie_data:
+            return JsonResponse({
+                'success': True,
+                'data': [],
+                'message': '暂无销量数据'
+            })
+
+        # 按销量降序排序
+        pie_data.sort(key=lambda x: x['value'], reverse=True)
+
+        return JsonResponse({
+            'success': True,
+            'data': pie_data,
+            'filter_info': {
+                'filter_type': filter_type,
+                'filter_value': filter_value,
+                'platform_source': platform_info.get('source')
+            }
+        })
+
+    except Exception as e:
+        print(f"❌ 销量饼图API错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)

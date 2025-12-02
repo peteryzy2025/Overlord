@@ -137,6 +137,7 @@ class AmazonShop(models.Model):
         db_comment='运营id',
         verbose_name='运营人员'
     )
+    shop_status = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺情况')
     customer = models.CharField(max_length=100, blank=True, null=True, db_comment='客户')
     shop_number = models.IntegerField(blank=True, null=True, db_comment='店铺序号')
     shop_name = models.CharField(max_length=100, blank=True, null=True, db_comment='店铺名')
@@ -175,7 +176,7 @@ class AmazonShop(models.Model):
     updated_at = models.DateTimeField(db_comment='更新时间')
     qu_dao = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺渠道')
     img1 = models.CharField(max_length=255, blank=True, null=True, db_comment='图片')
-    shop_status = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺情况')
+
     voucher_163 = models.CharField(max_length=255, blank=True, null=True, db_comment='163邮箱凭证')
     email_163_account = models.CharField(max_length=255, blank=True, null=True, db_comment='163大师账号')
     ling_xing_if = models.SmallIntegerField(db_comment='是否绑定领星')

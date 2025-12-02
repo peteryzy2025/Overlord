@@ -528,7 +528,7 @@ def render_leader_report(
 
         member_progress.append((user.first_name or user.username, progress_str))
 
-    # ========== 4. 闲置店铺统计（带明细） ==========
+    # ========== 4. 闲置店铺统计（带明细） =========
     idle_summary = []
     for user, stats in sorted_members:
         if stats['idle_shops']['amazon'] or stats['idle_shops']['temu']:
@@ -540,8 +540,24 @@ def render_leader_report(
                 details.append(f"Temu：{'、'.join(stats['idle_shops']['temu'])}")
             idle_summary.append(f"- {user_name}：{'；'.join(details)}")
 
-    # ========== 5. 组内排名列表（带环比） ==========
-    # 需要计算前一天/上周的组内排名用于环比
+    # ========== 5. 公司级排名及环比 ==========
+    # 获取全公司当日统计数据
+    all_operators = get_all_operators()
+    all_stats_cache = {u.id: get_single_operator_stats(u.id, target_date) for u in all_operators}
+    # 公司排名
+    company_ranked = sorted(all_operators, key=lambda u: -all_stats_cache[u.id]['order_count'])
+    company_rank_map = {u.id: i + 1 for i, u in enumerate(company_ranked)}
+
+    # 公司前一天/上周排名
+    if period == "day":
+        prev_company_date = target_date - timedelta(days=2)
+    else:
+        prev_company_date = target_date - timedelta(days=14)
+    prev_company_cache = {u.id: get_single_operator_stats(u.id, prev_company_date) for u in all_operators}
+    prev_company_ranked = sorted(all_operators, key=lambda u: -prev_company_cache[u.id]['order_count'])
+    prev_company_rank_map = {u.id: i + 1 for i, u in enumerate(prev_company_ranked)}
+
+    # 组内排名列表（含公司排名与环比）
     prev_group_rank_map = {}
     if period == "day":
         prev_compare_date = target_date - timedelta(days=2)
@@ -566,9 +582,21 @@ def render_leader_report(
         else:
             rank_change_text = "持平"
 
+        # 公司排名及变化
+        current_company_rank = company_rank_map.get(user.id, len(all_operators))
+        prev_company_rank = prev_company_rank_map.get(user.id, len(all_operators))
+        company_rank_change = prev_company_rank - current_company_rank
+        if company_rank_change > 0:
+            company_rank_change_text = f"<font color='red'>↑{company_rank_change}名</font>"
+        elif company_rank_change < 0:
+            company_rank_change_text = f"<font color='green'>↓{abs(company_rank_change)}名</font>"
+        else:
+            company_rank_change_text = "持平"
+
         rank_list.append(
             f"- 第{i}名 {user.first_name or user.username}：订单 <font color='skyblue'>{stats['order_count']}</font> 单，"
             f"销量 <font color='skyblue'>{stats['sales_quantity']}</font> 件（{rank_change_text}）"
+            f"【公司排名{current_company_rank}（{company_rank_change_text}）】"
         )
 
     # ========== 6. 月度进度 ==========

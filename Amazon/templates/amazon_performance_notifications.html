@@ -767,9 +767,22 @@
         `;
                 items.appendChild(item);
 
-                // 监听checkbox变化
                 const checkbox = item.querySelector('input');
                 checkbox.addEventListener('change', function () {
+                    // ===== 关键修复：添加互斥逻辑 =====
+                    const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
+
+                    if (this.value === 'all' && this.checked) {
+                        // 情况1：选中"全部"，取消其他所有
+                        document.querySelectorAll('#operatorItems input[type="checkbox"]').forEach(cb => {
+                            if (cb !== this) cb.checked = false;
+                        });
+                    } else if (this.value !== 'all' && this.checked && allCheckbox) {
+                        // 情况2：选中其他选项，取消"全部"
+                        allCheckbox.checked = false;
+                    }
+                    // =====================================
+
                     updateOperatorSelection();
                 });
             });
@@ -777,36 +790,29 @@
             updateOperatorSelection();
         }
 
-        function updateOperatorSelection() {
-            const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
-            const selectedOperators = [];
-            let selectedText = '选择运营人员';
+      function updateOperatorSelection() {
+    const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
+    const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
+    const selectedOperators = [];
+    let selectedText = '选择运营人员';
 
-            // 处理"全部"选项的特殊逻辑
-            const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
-            if (allCheckbox && allCheckbox.checked) {
-                selectedText = '全部人员';
-                // 取消其他选项
-                checkboxes.forEach(cb => {
-                    if (cb !== allCheckbox) {
-                        cb.checked = false;
-                    }
-                });
-            } else {
-                checkboxes.forEach(cb => {
-                    if (cb.checked && cb.value !== 'all') {
-                        selectedOperators.push(cb.value);
-                    }
-                });
-                if (selectedOperators.length > 0) {
-                    selectedText = `已选择 ${selectedOperators.length} 人`;
-                }
+    if (allCheckbox && allCheckbox.checked) {
+        selectedText = '全部人员';
+        // "全部"选中时，filters 传空数组，表示不筛选
+    } else {
+        checkboxes.forEach(cb => {
+            if (cb.checked && cb.value !== 'all') {
+                selectedOperators.push(cb.value);
             }
-
-            document.getElementById('operatorSelectedText').textContent = selectedText;
-            currentFilters.operator_ids = selectedOperators;
+        });
+        if (selectedOperators.length > 0) {
+            selectedText = `已选择 ${selectedOperators.length} 人`;
         }
+    }
 
+    document.getElementById('operatorSelectedText').textContent = selectedText;
+    currentFilters.operator_ids = selectedOperators; // 自动处理空数组情况
+}
         async function loadOperators() {
             try {
                 const response = await fetch('/api/amazon/performance/operators/');

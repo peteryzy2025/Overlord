@@ -65,9 +65,8 @@ def query_pending_ship_orders(start_date_str=None, max_batch_size=None):
         - fulfillment_channel == 'MFN' (自发货)
         - order_status == 'Unshipped' (亚马逊未发货)
         - purchase_date_local >= start_date_str (指定日期及之后)
-
-    返回：
-        QuerySet: 待发货订单查询集
+        ----------------------------------------------------------
+        - 关联的 AmazonShop.shop_status 不能为【停用】【注销】
     """
     # 计算起始时间
     if start_date_str:
@@ -75,16 +74,23 @@ def query_pending_ship_orders(start_date_str=None, max_batch_size=None):
     else:
         start_datetime = datetime.min
 
+    # 店铺状态——停用/注销关键词
+    STOP_WORDS = ['停用', '注销']
+
     # 构建基础查询
     orders = AmazonOrders.objects.filter(
         divi_order_status=DIVI_STATUS_SHIPPED,
         fulfillment_channel=FULFILLMENT_CHANNEL_MFN,
         order_status=AMAZON_STATUS_UNSHIPPED,
-        purchase_date_local__gte=start_datetime
+        purchase_date_local__gte=start_datetime,
+        # -------- 关键过滤 --------
+        amazon_shop__isnull=False,  # 必须已绑定本地 AmazonShop
+    ).exclude(
+        amazon_shop__shop_status__in=STOP_WORDS  # 排除停用/注销店铺
     ).select_related(
-        'lingxing_shop'  # 预获取关联的领星店铺，用于获取sid
+        'lingxing_shop', 'amazon_shop'  # 预取，减少 SQL 次数
     ).order_by(
-        'purchase_date_local'  # 按购买时间排序，先下单的先发货
+        'purchase_date_local'
     )
 
     # 限制批次大小

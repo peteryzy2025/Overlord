@@ -117,4 +117,9 @@ urlpatterns = [
     path('api/amazon/performance/operators/',
          amazon_jx_views.get_performance_operators_api,
          name='api_performance_operators'),
+
+    # 饼图销量
+path('api/amazon/operator-sales-pie-chart/',
+     amazon_views.get_operator_sales_pie_chart_api,
+     name='amazon_operator_sales_pie_chart'),
 ]
