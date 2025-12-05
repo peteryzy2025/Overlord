@@ -421,6 +421,21 @@ def update_divi_export_status_api(request):
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
 
+        # 订单号筛选
+        order_id_filter = data.get('order_id', '').strip()
+
+        # 店铺名称筛选
+        shop_name_filter = data.get('shop_name', '').strip()
+        shop_status_filter = data.get('shop_status', '').strip()
+
+        # ========== 新增筛选项解析 ==========
+        order_status_filter = data.get('order_status', '').strip()
+        fulfillment_channel_filter = data.get('fulfillment_channel', '').strip()
+        divi_export_filter = data.get('divi_export', '').strip()
+        divi_order_status_filter = data.get('divi_order_status', '').strip()
+        divi_tracking_filter = data.get('divi_tracking', '').strip()
+        masked_single_filter = data.get('masked_single', '').strip()
+
         current_start, current_end = None, None
         if start_date_str and end_date_str:
             try:
@@ -500,12 +515,44 @@ def update_divi_export_status_api(request):
                 }
             })
 
-        # 查询需要更新的订单
+        # 构建订单查询条件
         print(f"🔍 构建订单查询条件...")
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
-        print(f"📋 查询条件: lingxing_shop_id__in={lingxing_shop_ids}, 日期={current_start}至{current_end}")
+
+        # ========== ⭐ 应用所有筛选项（关键修复）⭐ ==========
+        if order_status_filter:
+            order_filter &= Q(order_status=order_status_filter)
+        if fulfillment_channel_filter:
+            order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
+        if divi_export_filter:
+            divi_export_bool = divi_export_filter.lower() == 'true'
+            order_filter &= Q(is_exported_to_divi=divi_export_bool)
+        if divi_order_status_filter:
+            order_filter &= Q(divi_order_status=int(divi_order_status_filter))
+        if divi_tracking_filter:
+            if divi_tracking_filter == 'has':
+                order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
+            elif divi_tracking_filter == 'none':
+                order_filter &= Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number='')
+        if shop_status_filter:
+            order_filter &= Q(amazon_shop__shop_status=shop_status_filter)
+        if masked_single_filter:
+            if masked_single_filter == 'true':
+                order_filter &= Q(masked_single=True)
+            elif masked_single_filter == 'false':
+                order_filter &= Q(masked_single=False)
+
+        # ✅ 关键修复：添加订单号筛选
+        if order_id_filter:
+            order_filter &= Q(amazon_order_id__icontains=order_id_filter)
+
+        # ✅ 关键修复：添加店铺名称筛选
+        if shop_name_filter:
+            order_filter &= Q(lingxing_shop__name__icontains=shop_name_filter)
+
+        print(f"📋 查询条件: {order_filter}")
 
         orders_queryset = AmazonOrders.objects.filter(order_filter).order_by(
             '-purchase_date_local',
