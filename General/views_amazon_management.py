@@ -159,6 +159,14 @@ def get_amazon_shops_api(request):
         - id=xxx（优先，单店铺查询）
         - page, page_size
         - status, operator, ops_group, customer, search
+        - shop_date_start, shop_date_end（新增：下店日期范围）
+        - qu_dao（新增：店铺渠道）
+        - backup_email_or_phone（新增：备用联系方式）
+        - additional_remark（新增：附加备注）
+        - company_name（新增：公司名称）
+        - ling_xing_if（新增：领星授权 0/1）
+        - browser（新增：浏览器）
+        - xunhui_login_account（新增：收款账号）
     """
     try:
         # 优先处理指定 ID 查询
@@ -168,10 +176,11 @@ def get_amazon_shops_api(request):
                 shop = AmazonShop.objects.select_related('ops__operational_account').get(id=int(shop_id))
 
                 ops_group = '-'
-                ops_role = '-'  # 新增：获取角色
+                ops_role = '-'
                 if shop.ops and hasattr(shop.ops, 'operational_account'):
                     ops_group = shop.ops.operational_account.ops_group or '-'
                     ops_role = shop.ops.role or '-'
+
                 shop_dict = {
                     'id': shop.id,
                     'shop_name': shop.shop_name or '-',
@@ -179,7 +188,7 @@ def get_amazon_shops_api(request):
                     'customer': shop.customer or '-',
                     'ops_id': shop.ops.id if shop.ops else None,
                     'ops_first_name': shop.ops.first_name if shop.ops else '-',
-                    'ops_role': ops_role,  # 新增：返回角色字段
+                    'ops_role': ops_role,
                     'ops_group': ops_group,
                     'shop_status': shop.shop_status or '-',
                     'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
@@ -187,14 +196,15 @@ def get_amazon_shops_api(request):
                     'seller_mark': shop.seller_mark or '-',
                     'qu_dao': shop.qu_dao or '-',
                     'ip_address': shop.ip_address or '-',
+                    'browser': shop.browser or '-',
                     'whitelist': shop.whitelist or '-',
                     'email_account': shop.email_account or '-',
                     'email_password': shop.email_password or '-',
                     'shop_password': shop.shop_password or '-',
+                    'registered_phone': shop.registered_phone or '-',
                     'backup_email_or_phone': shop.backup_email_or_phone or '-',
                     'voucher_163': shop.voucher_163 or '-',
                     'email_163_account': shop.email_163_account or '-',
-                    'browser': shop.browser or '-',
                     'ling_xing_if': shop.ling_xing_if or 0,
                     'divi_shop_id': shop.divi_shop_id or '',
                     'credit_card_channel': shop.credit_card_channel or '-',
@@ -213,7 +223,8 @@ def get_amazon_shops_api(request):
                     'legal_person_phone': shop.legal_person_phone or '-',
                     'company_name': shop.company_name or '-',
                     'license_number': shop.license_number or '-',
-                    'business_license_date': shop.business_license_date.strftime('%Y-%m-%d') if shop.business_license_date else '-',
+                    'business_license_date': shop.business_license_date.strftime(
+                        '%Y-%m-%d') if shop.business_license_date else '-',
                     'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
                     'id_expiry_date': shop.id_expiry_date or '-',
                     'remark': shop.remark or '-',
@@ -223,7 +234,7 @@ def get_amazon_shops_api(request):
 
                 return JsonResponse({
                     'success': True,
-                    'data': [shop_dict],  # 仍以列表返回，兼容前端 .data[0]
+                    'data': [shop_dict],
                     'total': 1,
                     'page': 1,
                     'page_size': 1
@@ -242,11 +253,23 @@ def get_amazon_shops_api(request):
         customer_filter = request.GET.get('customer', '').strip()
         search_term = request.GET.get('search', '').strip()
 
+        # 新增筛选参数
+        shop_date_start = request.GET.get('shop_date_start', '').strip()
+        shop_date_end = request.GET.get('shop_date_end', '').strip()
+        qu_dao = request.GET.get('qu_dao', '').strip()
+        backup_email_or_phone = request.GET.get('backup_email_or_phone', '').strip()
+        additional_remark = request.GET.get('additional_remark', '').strip()
+        company_name = request.GET.get('company_name', '').strip()
+        ling_xing_if = request.GET.get('ling_xing_if', '').strip()
+        browser = request.GET.get('browser', '').strip()
+        xunhui_login_account = request.GET.get('xunhui_login_account', '').strip()
+
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
         query = AmazonShop.objects.select_related('ops').prefetch_related('ops__operational_account')
 
+        # 原有筛选逻辑
         if status_filter:
             query = query.filter(shop_status=status_filter)
         if operator_filter:
@@ -262,6 +285,26 @@ def get_amazon_shops_api(request):
                 Q(amazon_shop_name__icontains=search_term)
             )
 
+        # 新增筛选逻辑
+        if shop_date_start:
+            query = query.filter(shop_date__gte=shop_date_start)
+        if shop_date_end:
+            query = query.filter(shop_date__lte=shop_date_end)
+        if qu_dao:
+            query = query.filter(qu_dao__icontains=qu_dao)
+        if backup_email_or_phone:
+            query = query.filter(backup_email_or_phone__icontains=backup_email_or_phone)
+        if additional_remark:
+            query = query.filter(additional_remark__icontains=additional_remark)
+        if company_name:
+            query = query.filter(company_name__icontains=company_name)
+        if ling_xing_if in ['0', '1']:
+            query = query.filter(ling_xing_if=int(ling_xing_if))
+        if browser:
+            query = query.filter(browser=browser)
+        if xunhui_login_account:
+            query = query.filter(xunhui_login_account__icontains=xunhui_login_account)
+
         total_count = query.count()
         offset = (page - 1) * page_size
         shops = query.order_by('id')[offset:offset + page_size]
@@ -269,11 +312,14 @@ def get_amazon_shops_api(request):
         shops_data = []
         for shop in shops:
             ops_group = '-'
+            ops_role = '-'
             if shop.ops:
                 try:
                     ops_group = shop.ops.operational_account.ops_group or '-'
+                    ops_role = shop.ops.role or '-'
                 except OperationalAccount.DoesNotExist:
                     ops_group = '-'
+                    ops_role = '-'
 
             shops_data.append({
                 'id': shop.id,
@@ -282,7 +328,7 @@ def get_amazon_shops_api(request):
                 'customer': shop.customer or '-',
                 'ops_id': shop.ops.id if shop.ops else None,
                 'ops_first_name': shop.ops.first_name if shop.ops else '-',
-                'ops_role': shop.ops.role if shop.ops else '-',
+                'ops_role': ops_role,
                 'ops_group': ops_group,
                 'shop_status': shop.shop_status or '-',
                 'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
@@ -290,14 +336,15 @@ def get_amazon_shops_api(request):
                 'seller_mark': shop.seller_mark or '-',
                 'qu_dao': shop.qu_dao or '-',
                 'ip_address': shop.ip_address or '-',
+                'browser': shop.browser or '-',
                 'whitelist': shop.whitelist or '-',
                 'email_account': shop.email_account or '-',
                 'email_password': shop.email_password or '-',
                 'shop_password': shop.shop_password or '-',
+                'registered_phone': shop.registered_phone or '-',
                 'backup_email_or_phone': shop.backup_email_or_phone or '-',
                 'voucher_163': shop.voucher_163 or '-',
                 'email_163_account': shop.email_163_account or '-',
-                'browser': shop.browser or '-',
                 'ling_xing_if': shop.ling_xing_if or 0,
                 'divi_shop_id': shop.divi_shop_id or '',
                 'credit_card_channel': shop.credit_card_channel or '-',
@@ -316,7 +363,8 @@ def get_amazon_shops_api(request):
                 'legal_person_phone': shop.legal_person_phone or '-',
                 'company_name': shop.company_name or '-',
                 'license_number': shop.license_number or '-',
-                'business_license_date': shop.business_license_date.strftime('%Y-%m-%d') if shop.business_license_date else '-',
+                'business_license_date': shop.business_license_date.strftime(
+                    '%Y-%m-%d') if shop.business_license_date else '-',
                 'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
                 'id_expiry_date': shop.id_expiry_date or '-',
                 'remark': shop.remark or '-',
