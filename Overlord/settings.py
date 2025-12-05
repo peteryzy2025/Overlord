@@ -31,14 +31,14 @@ CSRF_COOKIE_SECURE = False  # 同样允许 HTTP 和 HTTPS
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'  # 宽松模式，兼容内外网
 CSRF_TRUSTED_ORIGINS = [
-    'https://ztzf.cpolar.cn',  # 外网
+    'https://ztzf.cpolar.cn',
     'http://192.168.110.54:5555',
     'http://192.168.110.131:5550',
     'http://localhost',
 ]
 
 ALLOWED_HOSTS = [
-    '192.168.110.131',  # 添加你的服务器IP
+    '192.168.110.131',
     '192.168.110.54',
     'localhost',
     '127.0.0.1',
@@ -62,6 +62,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # 新增：
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',

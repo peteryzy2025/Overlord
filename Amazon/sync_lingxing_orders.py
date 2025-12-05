@@ -25,7 +25,6 @@ from General.models import AmazonShop  # 目前没直接用到，先保留
 from Api.lingxing_p.lingxing_jc1 import get_lingxing_orders
 
 
-
 def _to_decimal(value, default=None):
     """安全地把金额转成 Decimal"""
     if value in (None, ""):
@@ -165,6 +164,9 @@ def sync_amazon_orders(data_list):
                 ),
                 "last_update_date_local": _to_datetime(item.get("last_update_date")),
                 "last_update_date_utc": _to_datetime(item.get("last_update_date_utc")),
+
+                "earliest_ship_date_local": _to_datetime(item.get("earliest_ship_date_local")),
+                "earliest_ship_date_utc": _to_datetime(item.get("earliest_ship_date_utc")),
                 "gmt_modified": _to_datetime(item.get("gmt_modified")),
                 "gmt_modified_utc": _to_datetime(item.get("gmt_modified_utc")),
                 "hide_time": _to_datetime(item.get("hide_time")),

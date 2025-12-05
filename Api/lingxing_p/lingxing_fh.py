@@ -323,7 +323,7 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
         await step2_update_order_binding(order_no, items, execute=execute_step2)
         await step3_add_warehousing(items, execute=execute_step3)
         await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4)
-        # await step5_delivery_goods(order_no, execute=execute_step5)
+        await step5_delivery_goods(order_no, execute=execute_step5)
 
         print(f"\n{'=' * 100}")
         print(f"订单 {order_no} 处理完成！模式: {mode}")

@@ -24,7 +24,7 @@ from Amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_v
 urlpatterns = [
     path('test-error/', views.test_error, name='test_error'),
     path('admin/', admin.site.urls),
-    path('', views.user_login, name='login'),
+    path('', views.main_page),
     path('login/', views.user_login, name='login'),  # 登录
     path('logout/', views.user_logout, name='logout'),  # 登出
     path('main/', views.main_page, name='main'),  # 主页

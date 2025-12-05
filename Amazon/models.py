@@ -197,6 +197,14 @@ class AmazonOrders(models.Model):
     gmt_modified = models.DateTimeField(blank=True, null=True)
     gmt_modified_utc = models.DateTimeField(blank=True, null=True)
     hide_time = models.DateTimeField(blank=True, null=True)
+    earliest_ship_date_local = models.DateTimeField(
+        blank=True, null=True,
+        db_comment='最晚发货时间（本地时间）'
+    )
+    earliest_ship_date_utc = models.DateTimeField(
+        blank=True, null=True,
+        db_comment='最晚发货时间（UTC）'
+    )
     is_exported_to_divi = models.BooleanField(
         default=False,
         verbose_name='是否已导出DIVI',
