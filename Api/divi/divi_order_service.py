@@ -308,6 +308,14 @@ def build_goods_from_lingxing_items(
     goods_list: List[Dict[str, Any]] = []
 
     for item in item_list:
+        quantity_raw = item.get("quantity_ordered")
+        quantity = quantity_raw if quantity_raw is not None else 0
+        # 跳过数量为 0 的商品
+        if quantity == 0:
+            sku = item.get("seller_sku", "未知")
+            print(f"⚠️ 跳过商品 (sku: {sku})，数量为0")
+            continue
+
         goods_list.append({
             "orderItemId": item.get("order_item_id"),
             "quantityOrdered": item.get("quantity_ordered"),
