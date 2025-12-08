@@ -71,11 +71,11 @@
             align-items: flex-end;
             flex-wrap: nowrap;
             position: relative;
-            padding-right: 50px; /* 为展开按钮预留空间 */
+            padding-right: 50px;
         }
 
         .filter-row-secondary {
-            display: none; /* 默认隐藏 */
+            display: none;
             gap: 1rem;
             align-items: flex-end;
             flex-wrap: wrap;
@@ -181,15 +181,6 @@
             width: 100%;
         }
 
-        .table-container th:last-child,
-        .table-container td:last-child {
-            position: sticky;
-            right: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
         .table-container table {
             width: 100%;
             border-collapse: separate;
@@ -219,7 +210,6 @@
             white-space: nowrap;
             position: sticky;
             top: 0;
-            z-index: 11;
         }
 
         .table td {
@@ -232,6 +222,69 @@
         .table tbody tr:hover {
             background-color: var(--bg-secondary);
         }
+
+        /* ==================== 左侧固定列样式 START ==================== */
+        /* 固定 ID 列的 td */
+        .table-container td:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: var(--bg-primary);
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 固定 店铺名称 列的 td */
+        .table-container td:nth-child(2) {
+            position: sticky;
+            left: 80px;
+            z-index: 10;
+            background-color: var(--bg-primary);
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 固定 ID 列的 th（表头） */
+        .table-container th:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 12;
+            background-color: var(--bg-secondary);
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 固定 店铺名称 列的 th（表头） */
+        .table-container th:nth-child(2) {
+            position: sticky;
+            left: 80px;
+            z-index: 13;
+            background-color: var(--bg-secondary);
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 确保右侧操作列层级高于固定列 */
+        .table-container th:last-child,
+        .table-container td:last-child {
+            position: sticky;
+            right: 0;
+            background-color: var(--bg-primary);
+            z-index: 11;
+            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 设置固定列的宽度（可选） */
+        .table-container td:nth-child(1),
+        .table-container th:nth-child(1) {
+            min-width: 80px;
+            max-width: 80px;
+            width: 80px;
+        }
+
+        .table-container td:nth-child(2),
+        .table-container th:nth-child(2) {
+            min-width: 200px;
+            max-width: 200px;
+            width: 200px;
+        }
+        /* ==================== 左侧固定列样式 END ==================== */
 
         .status-badge {
             padding: 0.25rem 0.75rem;
@@ -465,7 +518,6 @@
         }
     </style>
 {% endblock %}
-
 {% block sidebar %}
     <div class="sidebar">
         <ul class="sidebar-menu">
@@ -615,7 +667,7 @@
                 <thead>
                 <tr>
                     <th>ID</th>
-                    <th>店铺名称</th>
+                    <th style="z-index: 13px">店铺名称</th>
                     <th>客户</th>
                     <th>运营人员</th>
                     <th>角色</th>
