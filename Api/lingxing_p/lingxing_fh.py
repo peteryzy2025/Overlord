@@ -85,6 +85,10 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "京东普货标准专线-IE-01": "500518-22811",
         "GOFO PARCEL PICKUP": "500518-21672",
         "美西GOFO EXPRESS SERVICE": "500518-22837",
+        "Es-FedEx Ground（美西）": "500518-23409",
+        "Es-FedEx HD（美西）": "500518-23410",
+        "Es-USPS GA（美西）": "500518-23411",
+        "Es-USPS PM（美西）": "500518-23412",
     }
     if method in exact_map:
         return exact_map[method]
@@ -287,6 +291,8 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
 
         waybill_no = order.divi_tracking_number or ""
         logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
+        if logistics_type_id is None or logistics_type_id == "":
+            raise Exception(f"物流方式 {order.divi_logistics_method} 不支持，请手动处理")
         freight = str(order.divi_shipping_amount or "0")
 
         print(f"领星订单号: {order_no}")
