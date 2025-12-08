@@ -1,7 +1,7 @@
-# sync_rangking_day.py
+# sync_rangking_day.py 完整修复版
 """
-运营日/周排名报告 v4
-功能：从User模型出发，统计运营部门所有人员的亚马逊+Temu业绩
+运营日/周排名报告 v5
+修复周报统计逻辑，支持完整周期统计（7天）
 发送：个人→自己，组长→组长，经理→user.id=1，均抄送自己一份
 """
 
@@ -33,8 +33,7 @@ from django.db.models import Sum, Q, Count
 from encouragement_bank import get_encouragement
 
 # ===== 运行配置 =====
-PERIOD = "day"  # "day" 或 "week"
-# PERIOD = "week"  # "day" 或 "week"
+PERIOD = "week"  # "day" 或 "week"
 # TEST_MODE = True  # True=只发自己；False=发自己+目标用户
 TEST_MODE = False  # True=只发自己；False=发自己+目标用户
 
@@ -115,9 +114,11 @@ def send_markdown_with_backup(markdown_content: str, primary_url: Optional[str] 
 
 
 # ===== 核心统计函数：获取单个运营数据 =====
-def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]:
+def get_single_operator_stats(user_id: int, start_date: date, end_date: date, period: str) -> Dict[str, Any]:
     """
-    获取单个运营人员在指定日期的统计数据（亚马逊+Temu合并）
+    获取单个运营人员在指定日期范围内的统计数据（亚马逊+Temu合并）
+    支持日报和周报两种模式
+
     返回: {
         'order_count': 订单量,
         'sales_quantity': 销售量(件),
@@ -130,8 +131,8 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         'sales_quantity': 0,
         'idle_shops': {'amazon': [], 'temu': []},
         'month_sales': 0,
-        'has_amazon_shop': False,  # 新增：是否有亚马逊店铺
-        'has_temu_shop': False  # 新增：是否有Temu店铺
+        'has_amazon_shop': False,
+        'has_temu_shop': False
     }
 
     # 获取用户和运营账号信息
@@ -142,48 +143,56 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         return result
 
     # ===== 1. 亚马逊统计 =====
-    # 获取所有状态的店铺（用于订单/销量统计）
     all_amazon_shops = AmazonShop.objects.filter(ops=user_id)
     all_amazon_shop_ids = list(all_amazon_shops.values_list('id', flat=True))
 
     if all_amazon_shop_ids:
-        # 获取领星店铺ID
         lingxing_shops = LingXingAmazonShop.objects.filter(
             amazon_shop_id__in=all_amazon_shop_ids
         )
         lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
 
         if lingxing_shop_ids:
-            # 当日订单量（排除退货）
-            amazon_orders_today = AmazonOrders.objects.filter(
+            # 当日/周订单量（排除退货）
+            amazon_orders = AmazonOrders.objects.filter(
                 lingxing_shop_id__in=lingxing_shop_ids,
-                purchase_date_local__date=target_date
+                purchase_date_local__date__gte=start_date,
+                purchase_date_local__date__lte=end_date
             ).exclude(order_status='Canceled')
 
-            result['order_count'] += amazon_orders_today.count()
+            result['order_count'] += amazon_orders.count()
 
-            # 当日销售量（件）
+            # 当日/周销售量（件）
             quantity_agg = AmazonOrderItem.objects.filter(
                 order__lingxing_shop_id__in=lingxing_shop_ids,
-                order__purchase_date_local__date=target_date
+                order__purchase_date_local__date__gte=start_date,
+                order__purchase_date_local__date__lte=end_date
             ).exclude(order__order_status='Canceled').aggregate(
                 total_quantity=Sum('quantity_ordered')
             )
             result['sales_quantity'] += int(quantity_agg['total_quantity'] or 0)
 
-    # 获取正常状态的店铺（仅用于闲置判断）
+    # 闲置店铺判断（日报：近7天；周报：上周）
     normal_amazon_shops = AmazonShop.objects.filter(
         ops=user_id,
         shop_status='正常'
     )
 
-    # 闲置店铺判断：只检查正常状态的店铺
-    seven_days_ago = target_date - timedelta(days=6)
+    # 根据周期确定检查日期范围
+    if period == "day":
+        # 日报：检查目标日期前7天（含目标日期）
+        check_start = start_date - timedelta(days=6)
+        check_end = end_date
+    else:
+        # 周报：检查整个报告周期
+        check_start = start_date
+        check_end = end_date
+
     for shop in normal_amazon_shops:
         has_orders = AmazonOrders.objects.filter(
             lingxing_shop__amazon_shop_id=shop.id,
-            purchase_date_local__date__gte=seven_days_ago,
-            purchase_date_local__date__lte=target_date
+            purchase_date_local__date__gte=check_start,
+            purchase_date_local__date__lte=check_end
         ).exists()
         if not has_orders:
             result['idle_shops']['amazon'].append(shop.shop_name)
@@ -193,57 +202,66 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
     if temu_shop_ids:
-        # 获取当日所有订单
-        all_orders_today = TemuOrder.objects.filter(
+        # 获取当日/周所有订单
+        all_orders = TemuOrder.objects.filter(
             lingxing_shop__temu_shop_id__in=temu_shop_ids,
-            global_purchase_time__date=target_date
+            global_purchase_time__date__gte=start_date,
+            global_purchase_time__date__lte=end_date
         ).values('global_order_no', 'platform_info')
 
         # 识别退货订单
         cancelled_order_nos = []
-        for order in all_orders_today:
+        for order in all_orders:
             platform_info = order.get('platform_info')
             if platform_info and isinstance(platform_info, list) and len(platform_info) > 0:
                 if platform_info[0].get('status') == 'CANCELED':
                     cancelled_order_nos.append(order['global_order_no'])
 
-        # 当日订单量（排除退货）
-        temu_orders_today = TemuOrder.objects.filter(
+        # 当日/周订单量（排除退货）
+        temu_orders = TemuOrder.objects.filter(
             lingxing_shop__temu_shop_id__in=temu_shop_ids,
-            global_purchase_time__date=target_date
+            global_purchase_time__date__gte=start_date,
+            global_purchase_time__date__lte=end_date
         ).exclude(global_order_no__in=cancelled_order_nos)
 
-        result['order_count'] += temu_orders_today.count()
+        result['order_count'] += temu_orders.count()
 
-        # 当日销售量（件）
+        # 当日/周销售量（件）
         temu_quantity_agg = TemuOrderItem.objects.filter(
             order__lingxing_shop__temu_shop_id__in=temu_shop_ids,
-            order__global_purchase_time__date=target_date
+            order__global_purchase_time__date__gte=start_date,
+            order__global_purchase_time__date__lte=end_date
         ).exclude(order__global_order_no__in=cancelled_order_nos).aggregate(
             total_quantity=Sum('quantity')
         )
         result['sales_quantity'] += int(temu_quantity_agg['total_quantity'] or 0)
 
-        # 闲置店铺判断：近7天是否有订单（Temu无店铺状态字段）
-        seven_days_ago = target_date - timedelta(days=6)
+        # Temu闲置店铺判断
+        if period == "day":
+            check_start = start_date - timedelta(days=6)
+            check_end = end_date
+        else:
+            check_start = start_date
+            check_end = end_date
+
         for shop in temu_shops:
             has_orders = TemuOrder.objects.filter(
                 lingxing_shop__temu_shop_id=shop.id,
-                global_purchase_time__date__gte=seven_days_ago,
-                global_purchase_time__date__lte=target_date
+                global_purchase_time__date__gte=check_start,
+                global_purchase_time__date__lte=check_end
             ).exists()
             if not has_orders:
                 result['idle_shops']['temu'].append(shop.shop_name)
 
     # ===== 3. 当月累计销售量 =====
-    month_start = target_date.replace(day=1)
+    month_start = start_date.replace(day=1)
 
     # 亚马逊当月销量（使用所有店铺）
     if all_amazon_shop_ids:
         amz_month_qty = AmazonOrderItem.objects.filter(
             order__lingxing_shop__amazon_shop_id__in=all_amazon_shop_ids,
             order__purchase_date_local__date__gte=month_start,
-            order__purchase_date_local__date__lte=target_date
+            order__purchase_date_local__date__lte=end_date
         ).exclude(order__order_status='Canceled').aggregate(
             total=Sum('quantity_ordered')
         )
@@ -256,7 +274,7 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         all_month_orders = TemuOrder.objects.filter(
             lingxing_shop__temu_shop_id__in=temu_shop_ids,
             global_purchase_time__date__gte=month_start,
-            global_purchase_time__date__lte=target_date
+            global_purchase_time__date__lte=end_date
         ).values('global_order_no', 'platform_info')
 
         # 识别当月退货
@@ -270,12 +288,13 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         temu_month_qty = TemuOrderItem.objects.filter(
             order__lingxing_shop__temu_shop_id__in=temu_shop_ids,
             order__global_purchase_time__date__gte=month_start,
-            order__global_purchase_time__date__lte=target_date
+            order__global_purchase_time__date__lte=end_date
         ).exclude(order__global_order_no__in=month_cancelled_nos).aggregate(
             total=Sum('quantity')
         )
         result['month_sales'] += int(temu_month_qty['total'] or 0)
         result['has_temu_shop'] = True
+
     return result
 
 
@@ -302,7 +321,8 @@ def get_all_leaders() -> List[User]:
 def render_personal_report(
         user: User,
         stats: Dict[str, Any],
-        target_date: date,
+        start_date: date,
+        end_date: date,
         overall_rank: int,
         group_rank: int,
         total_operators: int,
@@ -313,30 +333,38 @@ def render_personal_report(
     name = user.first_name or user.username
     group_name = user.get_ops_group() or '未分组'
 
-    # ========== 1. 计算环比数据（方案A：实时计算） ==========
-    # 确定对比日期
+    # 日期显示
+    date_display = f"（{start_date}）" if period == "day" else f"（{start_date} ~ {end_date}）"
+    period_text = '昨日' if period == 'day' else '上周'
+
+    # ========== 1. 计算环比数据 ==========
+    # 确定对比日期范围
     if period == "day":
         # 昨天 vs 前天
-        compare_date = target_date - timedelta(days=1)
-        prev_compare_date = target_date - timedelta(days=2)
+        compare_start = start_date - timedelta(days=1)
+        compare_end = end_date - timedelta(days=1)
+        prev_compare_start = start_date - timedelta(days=2)
+        prev_compare_end = end_date - timedelta(days=2)
     else:  # week
-        # 上周 vs 上上周（周报通常统计整周数据，这里简化为环比前一周同一天）
-        compare_date = target_date - timedelta(days=7)
-        prev_compare_date = target_date - timedelta(days=14)
+        # 上周 vs 上上周
+        compare_start = start_date - timedelta(days=7)
+        compare_end = end_date - timedelta(days=7)
+        prev_compare_start = start_date - timedelta(days=14)
+        prev_compare_end = end_date - timedelta(days=14)
 
-    # 获取昨天/上周的统计数据
-    prev_stats = get_single_operator_stats(user.id, compare_date)
+    # 获取对比期的统计数据
+    prev_stats = get_single_operator_stats(user.id, compare_start, compare_end, period)
 
-    # 获取前天/上上周的排名（需要重新计算全局和组内排名）
+    # 获取更前一期（用于排名环比）
     prev_operators = get_all_operators()
-    prev_stats_cache = {u.id: get_single_operator_stats(u.id, prev_compare_date) for u in prev_operators}
+    prev_stats_cache = {u.id: get_single_operator_stats(u.id, prev_compare_start, prev_compare_end, period) for u in
+                        prev_operators}
 
-    # 前天/上上周的全局排名
+    # 排名环比
     prev_ranked_users = sorted(prev_operators, key=lambda u: -prev_stats_cache[u.id]['order_count'])
     prev_overall_rank_map = {u.id: i + 1 for i, u in enumerate(prev_ranked_users)}
     prev_overall_rank = prev_overall_rank_map.get(user.id, total_operators)
 
-    # 前天/上上周的组内排名
     prev_group_members = [u for u in prev_operators if (u.get_ops_group() or '未分组') == group_name]
     prev_group_rank_map = {u.id: i + 1 for i, u in enumerate(
         sorted(prev_group_members, key=lambda u: -prev_stats_cache[u.id]['order_count'])
@@ -347,7 +375,6 @@ def render_personal_report(
     def calc_change_emoji(current, previous):
         """计算变化率、箭头、颜色"""
         if previous == 0:
-            # 如果前一天为0，今天>0视为上升100%
             rate = 100.0 if current > 0 else 0.0
         else:
             rate = ((current - previous) / previous) * 100
@@ -366,7 +393,7 @@ def render_personal_report(
     sales_change = calc_change_emoji(stats['sales_quantity'], prev_stats['sales_quantity'])
 
     # 公司排名环比
-    rank_change = prev_overall_rank - overall_rank  # 正数表示排名上升（数字变小）
+    rank_change = prev_overall_rank - overall_rank
     if rank_change > 0:
         rank_change_text = f"<font color='red'>上升{rank_change}名</font>"
     elif rank_change < 0:
@@ -384,7 +411,6 @@ def render_personal_report(
         group_rank_change_text = "持平"
 
     # ========== 3. 负责店铺列表 ==========
-    # 获取所有店铺（不过滤状态）
     amazon_shops = AmazonShop.objects.filter(ops=user.id)
     temu_shops = TemuShop.objects.filter(ops_id=user.id)
 
@@ -392,7 +418,6 @@ def render_personal_report(
     shop_names.extend([s.shop_name for s in amazon_shops if s.shop_name])
     shop_names.extend([s.shop_name for s in temu_shops if s.shop_name])
 
-    # 去重并格式化
     shop_names = list(set(shop_names))
     shop_list_str = "、".join(shop_names)
     shop_list_str += f"（共{len(shop_names)}个）"
@@ -412,7 +437,7 @@ def render_personal_report(
     idle_detail = "；".join(idle_detail_parts) if idle_detail_parts else "无"
 
     # ========== 5. 月度目标进度 ==========
-    month_start = target_date.replace(day=1)
+    month_start = start_date.replace(day=1)
     try:
         target = PersonalPerformanceTarget.objects.get(
             user=user,
@@ -427,20 +452,18 @@ def render_personal_report(
     else:
         progress_text = f"{stats['month_sales']}/—（未设置目标）"
 
-    # ========== 6. 鼓励语（使用新的encouragement_bank） ==========
-    # 判断趋势场景
+    # ========== 6. 鼓励语 ==========
     if group_rank == 1:
-        scenario = "rise"  # 小组第一，视为上升
+        scenario = "rise"
     elif stats['order_count'] == 0:
-        scenario = "fall"  # 订单为0，视为下降
+        scenario = "fall"
     else:
-        scenario = "stable"  # 其他情况视为稳定
+        scenario = "stable"
 
-    # 从 encouragement_bank 获取鼓励语
     encouragement = get_encouragement(scenario)
 
     # ========== 7. 组装Markdown ==========
-    md = f"""## {name} {'昨日' if period == 'day' else '上周'}数据（{target_date}）
+    md = f"""## {name} {period_text}数据{date_display}
 > —— 专属数据小报告 ——
 
 > **所属小组**：{group_name}
@@ -451,7 +474,7 @@ def render_personal_report(
 > **公司排名**：第{overall_rank}/{total_operators}名（{rank_change_text}）
 > **小组排名**：第{group_rank}/{group_operators}名（{group_rank_change_text}）
 
-> **闲置店铺**（近7天无订单）：{idle_detail}
+> **闲置店铺**（{period_text}无订单）：{idle_detail}
 
 > **本月进度**（销量/目标）：{progress_text}
 
@@ -464,7 +487,8 @@ def render_personal_report(
 def render_leader_report(
         leader: User,
         group_name: str,
-        target_date: date,
+        start_date: date,
+        end_date: date,
         members_stats: List[Tuple[User, Dict[str, Any]]],
         group_month_sales: int,
         group_month_target: Optional[int],
@@ -475,19 +499,25 @@ def render_leader_report(
     group_total_orders = sum(s['order_count'] for _, s in members_stats)
     group_total_sales = sum(s['sales_quantity'] for _, s in members_stats)
 
-    # ========== 1. 计算组环比数据 ==========
-    # 对比日期
-    if period == "day":
-        compare_date = target_date - timedelta(days=1)
-    else:
-        compare_date = target_date - timedelta(days=7)
+    # 日期显示
+    date_display = f"（{start_date}）" if period == "day" else f"（{start_date} ~ {end_date}）"
+    period_text = '昨日' if period == 'day' else '上周'
 
-    # 获取对比日期的组数据
+    # ========== 1. 计算组环比数据 ==========
+    # 对比日期范围
+    if period == "day":
+        compare_start = start_date - timedelta(days=1)
+        compare_end = end_date - timedelta(days=1)
+    else:
+        compare_start = start_date - timedelta(days=7)
+        compare_end = end_date - timedelta(days=7)
+
+    # 获取对比期的组数据
     prev_group_orders = 0
     prev_group_sales = 0
 
     for member, _ in members_stats:
-        prev_stats = get_single_operator_stats(member.id, compare_date)
+        prev_stats = get_single_operator_stats(member.id, compare_start, compare_end, period)
         prev_group_orders += prev_stats['order_count']
         prev_group_sales += prev_stats['sales_quantity']
 
@@ -506,28 +536,27 @@ def render_leader_report(
     sales_change = calc_group_change(group_total_sales, prev_group_sales)
 
     # ========== 2. 计算组在公司中的排名及环比 ==========
-    # 获取全公司所有运营人员
     all_operators = get_all_operators()
 
-    # 统计当前日期所有小组的订单量
+    # 当前期所有小组统计
     current_group_stats = {}
     for user in all_operators:
-        stats = get_single_operator_stats(user.id, target_date)
+        stats = get_single_operator_stats(user.id, start_date, end_date, period)
         user_group = user.get_ops_group() or '未分组'
         if user_group not in current_group_stats:
             current_group_stats[user_group] = 0
         current_group_stats[user_group] += stats['order_count']
 
-    # 当前小组排名
+    # 当前排名
     sorted_current_groups = sorted(current_group_stats.items(), key=lambda x: -x[1])
     group_rank_map_current = {name: i + 1 for i, (name, _) in enumerate(sorted_current_groups)}
     current_rank = group_rank_map_current.get(group_name, len(sorted_current_groups))
     total_groups = len(sorted_current_groups)
 
-    # 历史日期小组排名（用于环比）
+    # 上期排名
     prev_group_stats = {}
     for user in all_operators:
-        prev_stats = get_single_operator_stats(user.id, compare_date)
+        prev_stats = get_single_operator_stats(user.id, compare_start, compare_end, period)
         user_group = user.get_ops_group() or '未分组'
         if user_group not in prev_group_stats:
             prev_group_stats[user_group] = 0
@@ -552,7 +581,7 @@ def render_leader_report(
     sorted_members = sorted(members_stats, key=lambda x: (-x[1]['order_count'], x[0].id))
 
     # ========== 4. 成员月度进度 ==========
-    month_start = target_date.replace(day=1)
+    month_start = start_date.replace(day=1)
     member_progress = []
     for user, stats in sorted_members:
         try:
@@ -572,7 +601,7 @@ def render_leader_report(
 
         member_progress.append((user.first_name or user.username, progress_str))
 
-    # ========== 5. 闲置店铺统计（带明细） ==========
+    # ========== 5. 闲置店铺统计 ==========
     idle_summary = []
     for user, stats in sorted_members:
         if stats['idle_shops']['amazon'] or stats['idle_shops']['temu']:
@@ -585,32 +614,34 @@ def render_leader_report(
             idle_summary.append(f"- {user_name}：{'；'.join(details)}")
 
     # ========== 6. 公司级排名及环比 ==========
-    # 获取全公司当日统计数据
-    all_operators = get_all_operators()
-    all_stats_cache = {u.id: get_single_operator_stats(u.id, target_date) for u in all_operators}
+    all_stats_cache = {u.id: get_single_operator_stats(u.id, start_date, end_date, period) for u in all_operators}
 
     # 公司排名
     company_ranked = sorted(all_operators, key=lambda u: -all_stats_cache[u.id]['order_count'])
     company_rank_map = {u.id: i + 1 for i, u in enumerate(company_ranked)}
 
-    # 公司前一天/上周排名
+    # 更前一期（用于排名环比）
     if period == "day":
-        prev_company_date = target_date - timedelta(days=2)
+        prev_company_start = start_date - timedelta(days=2)
+        prev_company_end = end_date - timedelta(days=2)
     else:
-        prev_company_date = target_date - timedelta(days=14)
+        prev_company_start = start_date - timedelta(days=14)
+        prev_company_end = end_date - timedelta(days=14)
 
-    prev_company_cache = {u.id: get_single_operator_stats(u.id, prev_company_date) for u in all_operators}
+    prev_company_cache = {u.id: get_single_operator_stats(u.id, prev_company_start, prev_company_end, period) for u in
+                          all_operators}
     prev_company_ranked = sorted(all_operators, key=lambda u: -prev_company_cache[u.id]['order_count'])
     prev_company_rank_map = {u.id: i + 1 for i, u in enumerate(prev_company_ranked)}
 
-    # 组内排名列表（含公司排名与环比）
-    prev_group_rank_map = {}
+    # 组内成员排名变化
     if period == "day":
-        prev_compare_date = target_date - timedelta(days=2)
+        prev_compare_start = start_date - timedelta(days=2)
+        prev_compare_end = end_date - timedelta(days=2)
     else:
-        prev_compare_date = target_date - timedelta(days=14)
+        prev_compare_start = start_date - timedelta(days=14)
+        prev_compare_end = end_date - timedelta(days=14)
 
-    prev_members_stats = [(member, get_single_operator_stats(member.id, prev_compare_date))
+    prev_members_stats = [(member, get_single_operator_stats(member.id, prev_compare_start, prev_compare_end, period))
                           for member, _ in members_stats]
     prev_sorted = sorted(prev_members_stats, key=lambda x: (-x[1]['order_count'], x[0].id))
     prev_group_rank_map = {u.id: i + 1 for i, (u, _) in enumerate(prev_sorted)}
@@ -649,7 +680,6 @@ def render_leader_report(
     group_progress = f"{group_month_sales}/{group_month_target or '—'}（{group_month_sales / group_month_target * 100:.2f}%）" if group_month_target else f"{group_month_sales}/—（未设置目标）"
 
     # ========== 8. 鼓励语 ==========
-    # 判断组整体趋势
     if group_total_orders > prev_group_orders:
         scenario = "rise"
     elif group_total_orders < prev_group_orders:
@@ -660,7 +690,7 @@ def render_leader_report(
     encouragement = get_encouragement(scenario)
 
     # ========== 9. 组装Markdown ==========
-    md = f"""## {group_name} {'昨日' if period == 'day' else '上周'}汇总（{target_date}）
+    md = f"""## {group_name} {period_text}汇总{date_display}
 > —— 组长专属数据小报告 ——
 
 > **组总订单量**：<font color='skyblue'>{group_total_orders}</font> 单 {orders_change}
@@ -676,7 +706,7 @@ def render_leader_report(
 ### 组内成员排名（按订单量）
 {chr(10).join(rank_list)}
 
-### 闲置店铺统计（近7天无订单）
+### 闲置店铺统计（{period_text}无订单）
 {chr(10).join(idle_summary) or '> 无'}
 
 > {encouragement}"""
@@ -686,12 +716,16 @@ def render_leader_report(
 
 # ===== 消息渲染函数：经理报告 =====
 def render_manager_report(
-        target_date: date,
+        start_date: date,
+        end_date: date,
         all_operators: List[Tuple[User, Dict[str, Any]]],
         groups_data: Dict[str, List[Tuple[User, Dict[str, Any]]]],
         period: str = "day"
 ) -> str:
     """渲染经理报告Markdown（含分平台数据、公司/小组目标进度）"""
+    # 日期显示
+    date_display = f"（{start_date}）" if period == "day" else f"（{start_date} ~ {end_date}）"
+    period_text = '昨日' if period == 'day' else '上周'
 
     # ========== 1. 分平台统计公司数据 ==========
     amazon_total_orders = sum(
@@ -717,9 +751,11 @@ def render_manager_report(
 
     # ========== 2. 计算公司环比 ==========
     if period == "day":
-        compare_date = target_date - timedelta(days=1)
+        compare_start = start_date - timedelta(days=1)
+        compare_end = end_date - timedelta(days=1)
     else:
-        compare_date = target_date - timedelta(days=7)
+        compare_start = start_date - timedelta(days=7)
+        compare_end = end_date - timedelta(days=7)
 
     prev_amazon_orders = 0
     prev_amazon_sales = 0
@@ -727,7 +763,7 @@ def render_manager_report(
     prev_temu_sales = 0
 
     for user, current_stats in all_operators:
-        prev_stats = get_single_operator_stats(user.id, compare_date)
+        prev_stats = get_single_operator_stats(user.id, compare_start, compare_end, period)
         if current_stats['has_amazon_shop']:
             prev_amazon_orders += prev_stats['order_count']
             prev_amazon_sales += prev_stats['sales_quantity']
@@ -756,7 +792,8 @@ def render_manager_report(
     prev_groups_data = {}
     for group_name, members in groups_data.items():
         prev_groups_data[group_name] = {
-            'orders': sum(get_single_operator_stats(m.id, compare_date)['order_count'] for m, _ in members)
+            'orders': sum(
+                get_single_operator_stats(m.id, compare_start, compare_end, period)['order_count'] for m, _ in members)
         }
 
     group_totals = []
@@ -777,7 +814,7 @@ def render_manager_report(
     total_idle_temu = sum(len(s['idle_shops']['temu']) for _, s in all_operators)
 
     # ========== 5. 公司整体进度 + 小组目标进度 ==========
-    month_start = target_date.replace(day=1)
+    month_start = start_date.replace(day=1)
 
     company_month_sales = sum(s['month_sales'] for _, s in all_operators)
 
@@ -824,7 +861,7 @@ def render_manager_report(
     encouragement = get_encouragement("rise")
 
     # ========== 7. 组装Markdown ==========
-    md = f"""## 公司整体{'昨日' if period == 'day' else '上周'}汇总（{target_date}）
+    md = f"""## 公司整体{period_text}汇总{date_display}
 > —— 公司整体经营看板 ——
 
 > **亚马逊**：订单 <font color='skyblue'>{amazon_total_orders}</font> 单 {amazon_orders_change}，销量 <font color='skyblue'>{amazon_total_sales}</font> 件 {amazon_sales_change}
@@ -848,10 +885,10 @@ def render_manager_report(
 
 
 # ===== 三个发送模块 =====
-def send_personal_report(target_date: date, period: str = "day"):
+def send_personal_report(start_date: date, end_date: date, period: str = "day"):
     """发送个人报告给每个运营人员"""
     print(f"\n{'=' * 70}")
-    print(f"开始发送个人报告: {target_date} ({'日报' if period == 'day' else '周报'})")
+    print(f"开始发送个人报告: {start_date} ~ {end_date} ({'日报' if period == 'day' else '周报'})")
     print(f"{'=' * 70}\n")
 
     operators = get_all_operators()
@@ -862,7 +899,7 @@ def send_personal_report(target_date: date, period: str = "day"):
     # 预计算所有统计数据
     stats_cache = {}
     for user in operators:
-        stats_cache[user.id] = get_single_operator_stats(user.id, target_date)
+        stats_cache[user.id] = get_single_operator_stats(user.id, start_date, end_date, period)
 
     # 全局排名
     ranked_users = sorted(operators, key=lambda u: -stats_cache[u.id]['order_count'])
@@ -889,7 +926,7 @@ def send_personal_report(target_date: date, period: str = "day"):
         group_rank = group_rank_maps[group_name][user.id]
 
         md = render_personal_report(
-            user, stats, target_date,
+            user, stats, start_date, end_date,
             overall_rank, group_rank,
             len(operators), len(groups[group_name]),
             period=period
@@ -900,10 +937,10 @@ def send_personal_report(target_date: date, period: str = "day"):
     print(f"\n✅ 个人报告发送完成，共 {len(operators)} 人\n")
 
 
-def send_leader_report(target_date: date, period: str = "day"):
+def send_leader_report(start_date: date, end_date: date, period: str = "day"):
     """发送组长报告给每个组长"""
     print(f"\n{'=' * 70}")
-    print(f"开始发送组长报告: {target_date} ({'日报' if period == 'day' else '周报'})")
+    print(f"开始发送组长报告: {start_date} ~ {end_date} ({'日报' if period == 'day' else '周报'})")
     print(f"{'=' * 70}\n")
 
     leaders = get_all_leaders()
@@ -916,7 +953,7 @@ def send_leader_report(target_date: date, period: str = "day"):
         return
 
     # 预计算统计数据
-    stats_cache = {u.id: get_single_operator_stats(u.id, target_date) for u in operators}
+    stats_cache = {u.id: get_single_operator_stats(u.id, start_date, end_date, period) for u in operators}
 
     # 按组组织成员
     groups_data = {}
@@ -936,7 +973,7 @@ def send_leader_report(target_date: date, period: str = "day"):
         members = groups_data[leader_group]
 
         # 计算组月度目标
-        month_start = target_date.replace(day=1)
+        month_start = start_date.replace(day=1)
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=leader_group,
@@ -949,7 +986,7 @@ def send_leader_report(target_date: date, period: str = "day"):
         group_month_sales = sum(s['month_sales'] for _, s in members)
 
         md = render_leader_report(
-            leader, leader_group, target_date,
+            leader, leader_group, start_date, end_date,
             members, group_month_sales, group_target,
             period=period
         )
@@ -959,10 +996,10 @@ def send_leader_report(target_date: date, period: str = "day"):
     print(f"\n✅ 组长报告发送完成，共 {len(leaders)} 人\n")
 
 
-def send_manager_report(target_date: date, period: str = "day"):
+def send_manager_report(start_date: date, end_date: date, period: str = "day"):
     """发送经理报告给user.id=1"""
     print(f"\n{'=' * 70}")
-    print(f"开始发送经理报告: {target_date} ({'日报' if period == 'day' else '周报'})")
+    print(f"开始发送经理报告: {start_date} ~ {end_date} ({'日报' if period == 'day' else '周报'})")
     print(f"{'=' * 70}\n")
 
     try:
@@ -981,7 +1018,7 @@ def send_manager_report(target_date: date, period: str = "day"):
     groups_data = {}
 
     for user in operators:
-        stats = get_single_operator_stats(user.id, target_date)
+        stats = get_single_operator_stats(user.id, start_date, end_date, period)
         all_operators.append((user, stats))
 
         group = user.get_ops_group() or '未分组'
@@ -989,10 +1026,9 @@ def send_manager_report(target_date: date, period: str = "day"):
             groups_data[group] = []
         groups_data[group].append((user, stats))
 
-    # 注意：render_manager_report 已不需要 company_month_sales 和 company_month_target 参数
     md = render_manager_report(
-        target_date, all_operators, groups_data,
-        period=period  # 只传递 period 作为关键字参数
+        start_date, end_date, all_operators, groups_data,
+        period=period
     )
 
     send_markdown_with_backup(md, manager.wx_url)
@@ -1011,22 +1047,25 @@ def main(period: str = "day"):
     if period not in ["day", "week"]:
         raise ValueError("period 必须是 'day' 或 'week'")
 
-    # 确定目标日期
+    # 确定目标日期范围
     if period == "day":
-        target_date = date.today() - timedelta(days=1)
+        # 日报：昨天
+        end_date = date.today() - timedelta(days=1)
+        start_date = end_date  # 日报开始和结束日期相同
     else:
-        # 周报：上周一
+        # 周报：上周一至上周日
         today = date.today()
-        target_date = today - timedelta(days=today.weekday() + 7)
+        end_date = today - timedelta(days=today.weekday() + 1)  # 上周日
+        start_date = end_date - timedelta(days=6)  # 上周一
 
     print(f"\n{'=' * 70}")
-    print(f"📊 开始执行{'日' if period == 'day' else '周'}报任务: {target_date}")
+    print(f"📊 开始执行{'日' if period == 'day' else '周'}报任务: {start_date} ~ {end_date}")
     print(f"{'=' * 70}\n")
 
     # 发送三个层级的报告
-    send_personal_report(target_date, period=period)
-    send_leader_report(target_date, period=period)
-    send_manager_report(target_date, period=period)
+    send_personal_report(start_date, end_date, period=period)
+    send_leader_report(start_date, end_date, period=period)
+    send_manager_report(start_date, end_date, period=period)
 
     print(f"\n{'=' * 70}")
     print("✅ 所有报告发送完成！")
