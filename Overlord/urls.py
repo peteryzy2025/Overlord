@@ -118,7 +118,15 @@ urlpatterns = [
     path('api/amazon/performance/operators/',
          amazon_jx_views.get_performance_operators_api,
          name='api_performance_operators'),
+# ⭐ 新增：通知运营人员预览API
+path('api/amazon-performance-notifications/notify-operators/preview/',
+     amazon_jx_views.notify_operators_preview_api,
+     name='notify_operators_preview'),
 
+# ⭐ 新增：执行通知运营人员API
+path('api/amazon-performance-notifications/notify-operators/',
+     amazon_jx_views.notify_operators_api,
+     name='notify_operators'),
     # 饼图销量
 path('api/amazon/operator-sales-pie-chart/',
      amazon_views.get_operator_sales_pie_chart_api,

@@ -8,6 +8,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from datetime import datetime, timedelta
 import json
+import requests  # 新增：用于调用企业微信Webhook
 
 from Amazon.models import AmazonPerformanceNotification
 from General.models import AmazonShop, User, OperationalAccount
@@ -110,16 +111,21 @@ def get_amazon_performance_notifications_api(request):
 
         # 运营人员多选筛选
         operator_ids = data.get('operator_ids', [])
-        if operator_ids and 'ops_all' not in permissions:
-            # 验证这些运营是否在当前用户权限范围内
-            valid_shop_ids = set(shop_ids)
-            operator_shops = AmazonShop.objects.filter(
-                ops_id__in=operator_ids
-            ).values_list('id', flat=True)
-            valid_operator_ids = AmazonShop.objects.filter(
-                id__in=valid_shop_ids.intersection(operator_shops)
-            ).values_list('ops_id', flat=True)
-            notification_filter &= Q(shop__ops_id__in=valid_operator_ids)
+        if operator_ids:  # 只要有选择运营人员，就应用筛选（无论权限）
+            if 'ops_all' in permissions:
+                # 管理员：直接应用筛选，无需额外权限验证
+                notification_filter &= Q(shop__ops_id__in=operator_ids)
+            elif 'ops_group' in permissions:
+                # 组长：需要验证运营是否在本组权限范围内
+                valid_shop_ids = set(shop_ids)
+                operator_shops = AmazonShop.objects.filter(ops_id__in=operator_ids).values_list('id', flat=True)
+                valid_operator_ids = AmazonShop.objects.filter(
+                    id__in=valid_shop_ids.intersection(operator_shops)
+                ).values_list('ops_id', flat=True)
+                notification_filter &= Q(shop__ops_id__in=valid_operator_ids)
+            else:
+                # 普通运营：理论上不应该传operator_ids，但如果传了，只显示自己的数据
+                notification_filter &= Q(shop__ops_id=user.id)
 
         # 店铺名称模糊搜索
         shop_name = data.get('shop_name', '').strip()
@@ -166,11 +172,8 @@ def get_amazon_performance_notifications_api(request):
         ).order_by(ordering)
 
         # 统计未处理数量（关键：基于当前查询集和权限）
-        # 如果筛选条件中包含具体运营，则统计该运营的数量
-        # 否则统计当前权限范围内的全部
         stats_base_queryset = notifications_queryset
         if operator_ids and len(operator_ids) == 1:
-            # 如果只选了一个运营，则统计该运营的未处理数量
             stats_base_queryset = stats_base_queryset.filter(shop__ops_id=operator_ids[0])
 
         pending_count = stats_base_queryset.filter(
@@ -190,7 +193,6 @@ def get_amazon_performance_notifications_api(request):
         # 组装数据
         notifications_data = []
         for notification in notifications_page:
-            # 获取运营信息
             operator_name = ''
             role = ''
             ops_group = ''
@@ -233,6 +235,386 @@ def get_amazon_performance_notifications_api(request):
         return JsonResponse({
             'success': False,
             'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def notify_operators_preview_api(request):
+    """
+    预览待通知的运营人员列表
+    POST /api/amazon-performance-notifications/notify-operators/preview/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        # 使用与列表查询相同的权限和筛选逻辑
+        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
+
+        if filter_type == 'none':
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'operators': [],
+                    'total_pending': 0
+                }
+            })
+
+        # 获取可见店铺范围
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+
+        # 构建基础查询（仅待处理）
+        notification_filter = Q(
+            shop_id__in=list(shop_ids),
+            needs_attention=1,
+            is_processed=0
+        )
+
+        # 日期筛选
+        date_range_option = data.get('date_range', 'unlimited')
+        start_date_str = data.get('start_date', '')
+        end_date_str = data.get('end_date', '')
+
+        current_start, current_end = None, None
+        if date_range_option == 'custom' and start_date_str and end_date_str:
+            try:
+                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(date_range_option)
+
+        if current_start and current_end:
+            notification_filter &= Q(date__gte=current_start)
+            notification_filter &= Q(date__lte=current_end)
+
+        # 店铺名称和关键词筛选
+        shop_name = data.get('shop_name', '').strip()
+        if shop_name:
+            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+
+        subject_keyword = data.get('subject_keyword', '').strip()
+        if subject_keyword:
+            notification_filter &= Q(subject__icontains=subject_keyword)
+
+        # 根据权限过滤通知对象
+        operators_query = Q()
+        if 'ops_all' in permissions:
+            # 管理员：可以通知所有筛选结果中的运营
+            pass
+        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
+            # 组长：只能通知本组成员
+            group_name = user.operational_account.ops_group
+            operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
+        else:
+            # 普通运营：无通知权限
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'operators': [],
+                    'total_pending': 0
+                }
+            })
+
+        # 聚合统计每个运营的待处理数量
+        pending_stats = AmazonPerformanceNotification.objects.filter(
+            notification_filter & operators_query
+        ).values(
+            'shop__ops_id',
+            'shop__ops__first_name'
+        ).annotate(
+            pending_count=Count('id')
+        ).order_by('-pending_count')
+
+        operators_list = [
+            {
+                'operator_id': item['shop__ops_id'],
+                'operator_name': item['shop__ops__first_name'] or '未知姓名',
+                'pending_count': item['pending_count']
+            }
+            for item in pending_stats if item['shop__ops_id']
+        ]
+
+        total_pending = sum(item['pending_count'] for item in operators_list)
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'operators': operators_list,
+                'total_pending': total_pending
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def notify_operators_api(request):
+    """
+    执行通知运营人员
+    POST /api/amazon-performance-notifications/notify-operators/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        # 校验权限
+        if 'ops_all' not in permissions and 'ops_group' not in permissions:
+            return JsonResponse({
+                'success': False,
+                'message': '无权操作：需要 ops_all 或 ops_group 权限'
+            }, status=403)
+
+        # 使用与预览相同的逻辑获取待通知列表
+        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
+
+        if filter_type == 'none':
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'success_count': 0,
+                    'fail_count': 0,
+                    'fail_details': []
+                }
+            })
+
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+
+        notification_filter = Q(
+            shop_id__in=list(shop_ids),
+            needs_attention=1,
+            is_processed=0
+        )
+
+        # 应用筛选条件
+        date_range_option = data.get('date_range', 'unlimited')
+        start_date_str = data.get('start_date', '')
+        end_date_str = data.get('end_date', '')
+
+        current_start, current_end = None, None
+        if date_range_option == 'custom' and start_date_str and end_date_str:
+            try:
+                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+            except:
+                pass
+
+        if not current_start or not current_end:
+            current_start, current_end = get_date_range_from_option(date_range_option)
+
+        if current_start and current_end:
+            notification_filter &= Q(date__gte=current_start)
+            notification_filter &= Q(date__lte=current_end)
+
+        shop_name = data.get('shop_name', '').strip()
+        if shop_name:
+            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+
+        subject_keyword = data.get('subject_keyword', '').strip()
+        if subject_keyword:
+            notification_filter &= Q(subject__icontains=subject_keyword)
+
+        # 权限范围控制
+        operators_query = Q()
+        if 'ops_all' in permissions:
+            pass  # 管理员：全部
+        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
+            group_name = user.operational_account.ops_group
+            operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
+        else:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'success_count': 0,
+                    'fail_count': 0,
+                    'fail_details': []
+                }
+            })
+
+        # 获取每个运营的待处理统计
+        pending_stats = AmazonPerformanceNotification.objects.filter(
+            notification_filter & operators_query
+        ).values(
+            'shop__ops_id',
+            'shop__ops__first_name',
+            'shop__ops__wx_url'
+        ).annotate(
+            pending_count=Count('id')
+        ).order_by('-pending_count')
+
+        # 发送通知
+        success_count = 0
+        fail_count = 0
+        fail_details = []
+
+        for item in pending_stats:
+            operator_id = item['shop__ops_id']
+            operator_name = item['shop__ops__first_name'] or '未知姓名'
+            wx_url = item['shop__ops__wx_url']
+            pending_count = item['pending_count']
+
+            # 跳过无webhook地址的运营
+            if not wx_url:
+                fail_count += 1
+                fail_details.append(f'{operator_name}: 未配置企业微信通知地址')
+                continue
+
+            # 获取该运营的店铺明细
+            shop_details = AmazonPerformanceNotification.objects.filter(
+                notification_filter,
+                shop__ops_id=operator_id
+            ).values(
+                'shop__shop_name'
+            ).annotate(
+                shop_pending=Count('id')
+            ).order_by('-shop_pending')
+
+            # 构建Markdown消息
+            shop_list = '\n'.join([
+                f"- {shop['shop__shop_name'] or '未知店铺'}（{shop['shop_pending']}条）"
+                for shop in shop_details
+            ])
+
+            markdown_message = (
+                f"**【绩效通知提醒】**\n\n"
+                f"**运营人员**：{operator_name}\n"
+                f"**待处理店铺数**：{len(shop_details)}个\n"
+                f"**待处理绩效总数**：{pending_count}条\n\n"
+                f"**店铺明细**：\n{shop_list}\n\n"
+                f"**操作**：请及时登录系统查看并处理"
+            )
+
+            # 发送企业微信消息（重试3次）
+            retry_count = 0
+            send_success = False
+            last_error = None
+
+            while retry_count < 3 and not send_success:
+                try:
+                    response = requests.post(
+                        wx_url,
+                        json={
+                            "msgtype": "markdown",
+                            "markdown": {
+                                "content": markdown_message
+                            }
+                        },
+                        timeout=5
+                    )
+
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get('errcode') == 0:
+                            success_count += 1
+                            send_success = True
+                        else:
+                            retry_count += 1
+                            last_error = result.get('errmsg', '未知错误')
+                    else:
+                        retry_count += 1
+                        last_error = f'HTTP {response.status_code}'
+                except Exception as e:
+                    retry_count += 1
+                    last_error = str(e)
+
+            if not send_success:
+                fail_count += 1
+                fail_details.append(f'{operator_name}: {last_error}')
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'success_count': success_count,
+                'fail_count': fail_count,
+                'fail_details': fail_details
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def get_performance_operators_api(request):
+    """
+    获取绩效模块可用的运营人员列表（带权限控制）
+    组长只能看自己组（包含自己），管理员看全部
+    新增：返回用户通知权限标识
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
+
+    try:
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        # 判断权限范围
+        if 'ops_all' in permissions:
+            shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
+        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
+            group_name = user.operational_account.ops_group
+            shops = AmazonShop.objects.filter(
+                ops__operational_account__ops_group=group_name
+            ).select_related('ops')
+        else:
+            shops = AmazonShop.objects.filter(ops=user).select_related('ops')
+
+        # 去重并组装数据
+        operators_dict = {}
+        for shop in shops:
+            if shop.ops:
+                operators_dict[shop.ops.id] = {
+                    'id': shop.ops.id,
+                    'first_name': shop.ops.first_name,
+                    'group': shop.ops.operational_account.ops_group if hasattr(shop.ops, 'operational_account') else '',
+                }
+
+        operators_list = list(operators_dict.values())
+        operators_list.sort(key=lambda x: x['first_name'])
+
+        # 添加"全部"选项
+        if len(operators_list) > 1:
+            operators_list.insert(0, {
+                'id': 'all',
+                'first_name': '全部人员',
+                'group': ''
+            })
+
+        # 新增：返回权限标识
+        can_notify_all = 'ops_all' in permissions
+        can_notify_group = 'ops_group' in permissions
+        group_name = user.operational_account.ops_group if hasattr(user,
+                                                                   'operational_account') and user.operational_account.ops_group else ''
+
+        return JsonResponse({
+            'success': True,
+            'data': operators_list,
+            'can_notify_all': can_notify_all,
+            'can_notify_group': can_notify_group,
+            'group_name': group_name
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取运营人员失败: {str(e)}'
         }, status=500)
 
 
@@ -308,64 +690,4 @@ def mark_notification_processed_api(request, notification_id):
         return JsonResponse({
             'success': False,
             'message': f'服务器错误: {str(e)}'
-        }, status=500)
-
-
-@login_required
-def get_performance_operators_api(request):
-    """
-    获取绩效模块可用的运营人员列表（带权限控制）
-    组长只能看自己组（包含自己），管理员看全部
-    """
-    if request.method != 'GET':
-        return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
-
-    try:
-        user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
-
-        # 判断权限范围
-        if 'ops_all' in permissions:
-            # 管理员：返回所有运营人员
-            shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
-        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
-            # 组长：返回自己组的运营人员（包含自己）
-            group_name = user.operational_account.ops_group
-            shops = AmazonShop.objects.filter(
-                ops__operational_account__ops_group=group_name
-            ).select_related('ops')
-        else:
-            # 普通运营：只能看到自己
-            shops = AmazonShop.objects.filter(ops=user).select_related('ops')
-
-        # 去重并组装数据
-        operators_dict = {}
-        for shop in shops:
-            if shop.ops:
-                operators_dict[shop.ops.id] = {
-                    'id': shop.ops.id,
-                    'first_name': shop.ops.first_name,
-                    'group': shop.ops.operational_account.ops_group if hasattr(shop.ops, 'operational_account') else '',
-                }
-
-        operators_list = list(operators_dict.values())
-        operators_list.sort(key=lambda x: x['first_name'])
-
-        # 添加"全部"选项
-        if len(operators_list) > 1:
-            operators_list.insert(0, {
-                'id': 'all',
-                'first_name': '全部人员',
-                'group': ''
-            })
-
-        return JsonResponse({
-            'success': True,
-            'data': operators_list
-        })
-
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'获取运营人员失败: {str(e)}'
         }, status=500)
