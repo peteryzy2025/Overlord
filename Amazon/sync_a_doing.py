@@ -1,8 +1,8 @@
 from Amazon.sync_lingxing_shops import lx_shop_main, lx_shop_main2
 from Amazon.sync_lingxing_orders import lx_order_main
 from Amazon.sync_lingxing_zifa_order import lx_zf_main
-from Amazon.sync_check_divi_status_v3 import divi_process_orders
-from Amazon.sync_lx_temu_orders import temu_orders
+from Amazon.sync_check_divi_status_v4 import divi_process_orders
+from Amazon.sync_check_divi_k_v1 import amazon_order_divi_guer
 from Amazon.sync_fh import amazon_fh
 from Amazon.sync_lx_temu_orders import temu_orders
 from Api.Y.y_tiem import Timer
@@ -10,10 +10,11 @@ import asyncio
 import time
 
 if __name__ == '__main__':
-    t = Timer()
     while True:
         try:
+            t = Timer()
             t.start()
+            amazon_order_divi_guer()
             lx_shop_main()
             lx_shop_main2()  # Temu店铺数据
             t.stop()
