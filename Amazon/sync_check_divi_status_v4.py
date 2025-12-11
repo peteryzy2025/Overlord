@@ -8,6 +8,7 @@
 2. 从源头过滤：只查询店铺状态为"正常"的订单
 3. 使用 select_related 优化查询性能
 4. 对于没有关联 amazon_shop 的订单自动排除（外键为NULL）
+5.
 """
 
 import os
