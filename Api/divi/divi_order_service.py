@@ -215,7 +215,7 @@ def query_divi_order(
         "importTimeEnd": import_time_end,
     }
     if brand_id:
-        data_dict["brandId"] = [brand_id]
+        data_dict["brandIds"] = [brand_id]
     if amazon_order_id:
         data_dict["amazonOrderId"] = amazon_order_id
     if has_logistics:
