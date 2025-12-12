@@ -9,7 +9,7 @@ import json
 
 from General.models import User, UserOperationLog
 
-
+SYSTEM_ACCOUNTS = [55, 56]  # 特殊系统账号，所有人可见
 def get_operation_log_permissions(user):
     """
     获取用户在操作日志页面的详细权限
@@ -265,11 +265,11 @@ def get_operation_logs_api(request):
                 operational_account__ops_group=permissions['group_name']
             ).values_list('id', flat=True)
             user_query |= (Q(operation_type__gte=3000, operation_type__lt=4000) &
-                           Q(user__in=list(group_members) + [55]))  # 55是机器人账号
+                           Q(user__in=list(group_members) + SYSTEM_ACCOUNTS))
         elif permissions['ops']:
             # 只能看到自己的3xxx操作 + 机器人
             user_query |= (Q(operation_type__gte=3000, operation_type__lt=4000) &
-                           Q(user__in=[permissions['user_id'], 55]))
+                           Q(user__in=[permissions['user_id']] + SYSTEM_ACCOUNTS))
 
         # 如果用户没有选择特定人员，应用权限查询
         if not user_ids:
@@ -299,12 +299,12 @@ def get_operation_logs_api(request):
                 ).values_list('id', flat=True)
                 # 本组人员 + 机器人
                 allowed_user_ids.update(
-                    [uid for uid in user_ids if uid in list(group_members) + [55]]
+                    [uid for uid in user_ids if uid in list(group_members) + SYSTEM_ACCOUNTS]
                 )
             elif permissions['ops']:
                 # 自己 + 机器人
                 allowed_user_ids.update(
-                    [uid for uid in user_ids if uid in [permissions['user_id'], 55]]
+                    [uid for uid in user_ids if uid in [permissions['user_id'], SYSTEM_ACCOUNTS]]
                 )
 
             if allowed_user_ids:

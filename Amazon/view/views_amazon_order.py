@@ -3,7 +3,7 @@
 import io
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime,timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -12,6 +12,8 @@ from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET
+from django.utils import timezone
+
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -57,6 +59,7 @@ def amazon_order_management_page(request):
         'orders': orders,  # 关键：把订单数据传给模板！
     })
 
+@login_required
 @login_required
 def get_amazon_orders_list_api(request):
     """
@@ -243,8 +246,7 @@ def get_amazon_orders_list_api(request):
         ).order_by('-purchase_date_local')
 
         # ===== 发货时限预警计算 =====
-        from django.utils import timezone
-        from datetime import timedelta
+
         now = timezone.now()
 
         # 不计算预警的订单状态
@@ -304,13 +306,23 @@ def get_amazon_orders_list_api(request):
         end_idx = start_idx + page_size
         page_orders = orders_with_deadline[start_idx:end_idx]
 
+        # 批量获取商品数量（关键修复：一次性查出所有订单的商品数量）
+        order_ids = [item['order'].id for item in page_orders]
+        quantity_map = {}
+        if order_ids:
+            quantity_results = AmazonOrderItem.objects.filter(
+                order_id__in=order_ids
+            ).values('order_id').annotate(
+                total_quantity=Sum('quantity_ordered')
+            ).values_list('order_id', 'total_quantity')
+
+            quantity_map = dict(quantity_results)
+            # print(f"📦 商品数量查询结果: {quantity_map}")  # 调试用，确认有数据
+
         # 组装订单数据
         orders_data = []
-        order_ids = []
-
         for item in page_orders:
             order = item['order']
-            order_ids.append(order.id)
 
             # 获取运营人员信息
             operator_name = ''
@@ -327,6 +339,9 @@ def get_amazon_orders_list_api(request):
             shop_name = order.lingxing_shop.name if order.lingxing_shop else '未知店铺'
             shop_status = order.amazon_shop.shop_status if order.amazon_shop else ''
 
+            # ✅ 关键修复：直接从quantity_map获取数量，用order.id匹配
+            qty = quantity_map.get(order.id, 0)
+
             orders_data.append({
                 'amazon_order_id': order.amazon_order_id,
                 'shop_name': shop_name,
@@ -334,7 +349,7 @@ def get_amazon_orders_list_api(request):
                 'operator_name': operator_name,
                 'group': group_name,
                 'order_status': order.order_status or '',
-                'quantity': 0,
+                'quantity': qty,  # ✅ 使用真实查询到的数量
                 'order_total_amount': str(order.order_total_amount or '0.00'),
                 'purchase_date_local': order.purchase_date_local.strftime(
                     '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
@@ -353,24 +368,13 @@ def get_amazon_orders_list_api(request):
                 'hours_remaining': item['hours_remaining']
             })
 
+        # ✅ 删除错误的"事后填充"代码块（不要这段）
         # 批量获取商品数量
-        if order_ids:
-            quantity_map = dict(
-                AmazonOrderItem.objects.filter(
-                    order_id__in=order_ids
-                ).values('order_id').annotate(
-                    total_quantity=Sum('quantity_ordered')
-                ).values_list('order_id', 'total_quantity')
-            )
-        else:
-            quantity_map = {}
-
+        # if order_ids:
+        #     quantity_map = dict(...)
         # 填充商品数量
-        for order_data in orders_data:
-            corresponding_order = next((o for o in page_orders if o['order'].id == order_data['amazon_order_id']), None)
-            if corresponding_order:
-                qty = quantity_map.get(corresponding_order['order'].id, 0)
-                order_data['quantity'] = qty
+        # for order_data in orders_data:
+        #     corresponding_order = ...  # 这里的比较逻辑是错的
 
         return JsonResponse({
             'success': True,
@@ -394,7 +398,6 @@ def get_amazon_orders_list_api(request):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
-
 @require_GET
 @login_required
 def add_divi_amazon_order(request):

@@ -477,6 +477,7 @@ class UserOperationLog(models.Model):
     ORDER_SHIP = 3002
     ORDER_MARK_REAL = 3003
     ORDER_RPA_LOGISTICS = 3004
+    ORDER_AUTO_SHIP = 3005
 
     OPERATION_TYPE_CHOICES = [
         (USER_CREATE, '新增用户'),
@@ -489,6 +490,7 @@ class UserOperationLog(models.Model):
         (ORDER_SHIP, '订单发货'),
         (ORDER_MARK_REAL, '订单标注真发'),
         (ORDER_RPA_LOGISTICS, 'RPA真物流覆盖假物流'),
+        (ORDER_AUTO_SHIP, '自动发货'),
     ]
 
     # ============= 模型字段 =============

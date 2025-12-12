@@ -89,7 +89,8 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "Es-FedEx HD（美西）": "500518-23410",
         "Es-USPS GA（美西）": "500518-23411",
         "Es-USPS PM（美西）": "500518-23412",
-        "SwiftX EXPRESS（美西）": "500518-23413",
+        "SwiftX EXPRESS（美西）": "500518-23413", # 后端提供 但是好像是错的
+        "SwiftX EXPRESS(美西)": "500518-23413",
     }
     if method in exact_map:
         return exact_map[method]

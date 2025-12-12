@@ -6,9 +6,9 @@ from General import (
     views_amazon_management,
     views_temu_management,
     views_performance,
-    demo_view,
-    view_operation_log
+    demo_view
 )
+from General.view import view_operation_log
 
 app_name = 'general'
 
