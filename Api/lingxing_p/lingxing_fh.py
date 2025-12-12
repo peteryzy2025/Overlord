@@ -78,19 +78,19 @@ def get_divi_logistics_code(divi_logistics_method: str,
         print(f"F-USPS 单号未能识别承运商: {tracking_no}")
         return ""
 
-    # 2. 完全匹配的渠道名
+    # 2. 完全匹配的渠道名 新增记得改大写！！！
     exact_map = {
         "威速易美国小货专线": "500518-22812",
         "云途全球专线挂号（标快普货）": "500518-22810",
         "京东普货标准专线-IE-01": "500518-22811",
         "GOFO PARCEL PICKUP": "500518-21672",
         "美西GOFO EXPRESS SERVICE": "500518-22837",
-        "Es-FedEx Ground（美西）": "500518-23409",
-        "Es-FedEx HD（美西）": "500518-23410",
-        "Es-USPS GA（美西）": "500518-23411",
-        "Es-USPS PM（美西）": "500518-23412",
-        "SwiftX EXPRESS（美西）": "500518-23413", # 后端提供 但是好像是错的
-        "SwiftX EXPRESS(美西)": "500518-23413",
+        "ES-FEDEX GROUND（美西）": "500518-23409",
+        "ES-FEDEX HD（美西）": "500518-23410",
+        "ES-USPS GA（美西）": "500518-23411",
+        "ES-USPS PM（美西）": "500518-23412",
+        "SWIFTX EXPRESS(美西)": "500518-23413",
+        #新增记得改大写！！！
     }
     if method in exact_map:
         return exact_map[method]
@@ -107,7 +107,7 @@ def get_divi_logistics_code(divi_logistics_method: str,
         if key in method:
             return code
 
-    print(f"未匹配到物流方式: {divi_logistics_method}")
+    print(f"未匹配到物流方式: 【{divi_logistics_method}】")
     return ""
 
 # ==================== 新增：订单号同步函数 ====================
