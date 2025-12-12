@@ -15,8 +15,8 @@ class LoginRequiredMiddleware:
         self.get_response = get_response
         # 白名单：不需要登录即可访问的 URL
         self.white_list = [
-            reverse('login'),
-            reverse('csrf_token'),
+            reverse('general:login'),
+            reverse('general:csrf_token'),
             '/admin/',  # 保留 admin 的独立认证
         ]
 
@@ -36,10 +36,10 @@ class LoginRequiredMiddleware:
                 return JsonResponse({
                     'success': False,
                     'error': '未登录或会话已过期',
-                    'redirect_url': reverse('login')
+                    'redirect_url': reverse('general:login')
                 }, status=401)
 
             # 普通请求重定向到登录页
-            return redirect(f"{reverse('login')}?next={request.path_info}")
+            return redirect(f"{reverse('general:login')}?next={request.path_info}")
 
         return self.get_response(request)

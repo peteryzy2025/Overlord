@@ -16,9 +16,7 @@ from Temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 @login_required
 def ranking_page(request):
     """运营排名页面渲染"""
-    theme = request.COOKIES.get('theme', 'light')
     return render(request, 'ranking.html', {
-        'theme': theme,
         'active_nav': 'ranking'
     })
 

@@ -31,9 +31,7 @@ def get_date_range_from_option(option):
 @login_required(login_url='/login/')
 def amazon_performance_notifications_page(request):
     """亚马逊绩效通知管理页面渲染"""
-    theme = request.COOKIES.get('theme', 'light')
     return render(request, 'amazon_performance_notifications.html', {
-        'theme': theme,
         'active_nav': 'amazon_performance',
     })
 

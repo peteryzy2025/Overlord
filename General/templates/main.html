@@ -126,7 +126,7 @@
     <p class="welcome-subtitle">专业的驾驶舱搭建与店铺管理平台</p>
 
     <div class="features-grid">
-        <div class="feature-card" onclick="navigateTo('{% url 'management' %}')">
+        <div class="feature-card" onclick="navigateTo('{% url 'general:management' %}')">
             <div class="feature-icon">
                 <i class="fas fa-users"></i>
             </div>
@@ -134,12 +134,12 @@
             <p class="feature-description">
                 统一管理团队成员信息，支持角色分配、权限设置和状态监控，让团队协作更高效。
             </p>
-            <a href="{% url 'management' %}" class="feature-link">
+            <a href="{% url 'general:management' %}" class="feature-link">
                 进入管理 <i class="fas fa-arrow-right"></i>
             </a>
         </div>
 
-        <div class="feature-card" onclick="navigateTo('{% url 'dashboard' %}')">
+        <div class="feature-card" onclick="navigateTo('{% url 'amazon:dashboard' %}')">
             <div class="feature-icon">
                 <i class="fab fa-amazon"></i>
             </div>
@@ -147,7 +147,7 @@
             <p class="feature-description">
                 实时监控店铺数据，订单量、销量趋势一目了然，助力运营决策。
             </p>
-            <a href="{% url 'dashboard' %}" class="feature-link">
+            <a href="{% url 'amazon:dashboard' %}" class="feature-link">
                 查看数据 <i class="fas fa-arrow-right"></i>
             </a>
         </div>

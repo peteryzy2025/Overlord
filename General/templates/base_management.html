@@ -1,0 +1,32 @@
+{% extends 'base_r.html' %}
+
+{% block sidebar %}
+<div class="sidebar">
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'general:user_management' %}" class="sidebar-link {% if active_page == 'user_management' %}active{% endif %}">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span>人员管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'general:performance_targets' %}" class="sidebar-link {% if active_page == 'performance_targets' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>
+                <span>绩效管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'general:amazon_management' %}" class="sidebar-link {% if active_page == 'amazon_management' %}active{% endif %}">
+                <i class="fab fa-amazon sidebar-icon"></i>
+                <span>Amazon店铺管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'general:temu_management' %}" class="sidebar-link {% if active_page == 'temu_management' %}active{% endif %}">
+                <i class="fas fa-store sidebar-icon"></i>
+                <span>Temu店铺管理</span>
+            </a>
+        </li>
+    </ul>
+</div>
+{% endblock %}

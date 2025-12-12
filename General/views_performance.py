@@ -25,6 +25,7 @@ def performance_targets_view(request):
         'can_manage_group': request.user.can_manage_group_targets(),
         'is_group_leader': request.user.is_group_leader(),
         'user_ops_group': request.user.get_ops_group(),
+        'active_page': 'performance_targets',
     }
     return render(request, 'performance_targets.html', context)
 

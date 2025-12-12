@@ -1,0 +1,748 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}操作日志 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/table-fullscreen.css' %}">
+    <style>
+        /* ===== 核心修复：让表格在页面内自适应 ===== */
+        .table-container {
+            overflow-x: hidden !important; /* 移除水平滚动条 */
+            width: 100% !important;
+        }
+
+        /* 表格使用自动布局，让列宽由内容决定 */
+        .table-container table {
+            table-layout: auto !important;
+            width: 100% !important;
+            min-width: 850px; /* 设置一个合理的整体最小宽度，确保基本可读性 */
+        }
+
+        /* ===== 操作记录列：核心处理 ===== */
+        .table tbody td.operation-record-cell {
+            /* 覆盖原有的 min-width: 300px 限制 */
+            min-width: 180px !important; /* 最小宽度降低到 180px */
+            max-width: 45vw !important; /* 最大不超过视口宽度的 45% */
+            width: auto !important; /* 自动占用剩余空间 */
+
+            /* 关键：允许换行显示完整内容 */
+            white-space: normal !important;
+            word-wrap: break-word !important;
+            word-break: break-word !important; /* 长单词/URL也能换行 */
+
+            /* 移除截断效果 */
+            overflow: visible !important;
+            text-overflow: clip !important;
+
+            /* 优化换行后的视觉效果 */
+            line-height: 1.4;
+            vertical-align: top; /* 顶部对齐，更整齐 */
+        }
+
+        /* 表头保持不换行（保持原有样式） */
+        .table thead th {
+            white-space: nowrap !important;
+        }
+
+        /* 控制其他固定列的宽度，避免它们占用过多空间 */
+        .table thead th:nth-child(1), /* 序号列 */
+        .table tbody td:nth-child(1) {
+            width: 70px !important;
+            min-width: 60px !important;
+        }
+
+        .table thead th:nth-child(3), /* 操作人列 */
+        .table tbody td:nth-child(3) {
+            width: 90px !important;
+            min-width: 80px !important;
+        }
+
+        .table thead th:nth-child(5), /* 操作时间列 */
+        .table tbody td:nth-child(5) {
+            width: 150px !important;
+            min-width: 120px !important;
+        }
+    </style>
+{% endblock %}
+
+{% block page_content %}
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="operation-log-main">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">操作日志</h1>
+                <p class="page-subtitle">查看和管理系统操作记录</p>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="control-panel">
+            <!-- 快捷日期按钮 -->
+            <div class="quick-date-buttons" id="quickDateButtons">
+                <button class="quick-date-btn" data-range="today">今日</button>
+                <button class="quick-date-btn" data-range="yesterday">昨日</button>
+                <button class="quick-date-btn" data-range="last3days">近3日</button>
+                <button class="quick-date-btn" data-range="last7days">近7日</button>
+                <button class="quick-date-btn active" data-range="last30days">近30日</button>
+                <button class="quick-date-btn" data-range="thisweek">本周</button>
+                <button class="quick-date-btn" data-range="lastweek">上周</button>
+                <button class="quick-date-btn" data-range="thismonth">本月</button>
+                <button class="quick-date-btn" data-range="lastmonth">上月</button>
+            </div>
+
+            <div class="date-inputs-row">
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">操作人员</label>
+                    <div id="userDropdown" class="dropdown-check-list">
+                        <div class="anchor" id="userAnchor">
+                            <span id="userSelectedText" class="selected-text">选择操作人员</span>
+                        </div>
+                        <div class="items" id="userItems"></div>
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">操作类型</label>
+                    <select class="form-select" id="operationTypeFilter">
+                        <option value="">全部类型</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" style="flex: 2;">
+                    <label class="filter-label">操作记录关键词</label>
+                    <input type="text" class="form-control" id="recordKeywordFilter"
+                           placeholder="输入操作记录关键词（模糊查询）"
+                           onkeyup="if(event.key==='Enter') loadOperationLogs()">
+                </div>
+
+                <div class="filter-group" style="align-self: flex-end;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" onclick="loadOperationLogs()">查询</button>
+                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="data-section">
+            <h3 class="section-title" style="margin-bottom: 1.5rem;">操作日志列表</h3>
+
+            <div class="table-container" id="operationLogTableContainer">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th class="sortable" data-field="operation_type" onclick="handleSort('operation_type')">
+                            操作类型
+                        </th>
+                        <th class="sortable" data-field="user" onclick="handleSort('user')">操作人</th>
+                        <th>操作记录</th>
+                        <th class="sortable" data-field="created_at" onclick="handleSort('created_at')">操作时间</th>
+                    </tr>
+                    </thead>
+                    <tbody id="operationLogTableBody">
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"查询"</p>
+                            <p>操作日志数据将在此处显示</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-controls" id="paginationControls" style="display: none;">
+                <div class="page-size-selector">
+                    <label for="pageSize">每页显示：</label>
+                    <select class="form-select" id="pageSize" onchange="changePageSize()">
+                        <option value="10">10条</option>
+                        <option value="20" selected>20条</option>
+                        <option value="50">50条</option>
+                        <option value="100">100条</option>
+                    </select>
+                </div>
+
+                <div class="pagination-buttons" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+
+                <div class="pagination-info" id="paginationInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // ===== 全局变量 =====
+        let currentFilters = {
+            start_date: '',
+            end_date: '',
+            user_ids: [],
+            operation_type: '',
+            record_keyword: '',
+            sort_field: 'created_at',
+            sort_order: 'desc'
+        };
+
+        let pagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        let currentUserPermissions = {
+            can_see_type_1: false, // 1xxx: 用户管理类
+            can_see_type_2: false, // 2xxx: 店铺管理类
+            ops_all: false,         // 查看所有3xxx订单操作
+            ops_group: false,       // 查看本组3xxx订单操作
+            ops: false,             // 查看自己3xxx订单操作
+            user_id: null,
+            group_name: ''
+        };
+
+        let allUsers = []; // 缓存所有用户数据
+        let allOperationTypes = []; // 缓存所有操作类型
+
+        // ===== 工具函数 =====
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+        }
+
+        // 兼容showNotification函数
+        if (typeof showNotification === 'undefined') {
+            window.showNotification = function (message, type = 'info') {
+                console.log(`[${type}] ${message}`);
+            };
+        }
+
+        // ===== 日期处理 =====
+        function initializeDates() {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - 29); // 默认30天
+
+            document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+
+            // 设置当前快捷范围
+            window.currentQuickRange = 'last30days';
+        }
+
+        function getDateRange(rangeType) {
+            const today = new Date();
+            const startDate = new Date();
+            const endDate = new Date();
+
+            switch (rangeType) {
+                case 'today':
+                    startDate.setDate(today.getDate());
+                    endDate.setDate(today.getDate());
+                    break;
+                case 'yesterday':
+                    startDate.setDate(today.getDate() - 1);
+                    endDate.setDate(today.getDate() - 1);
+                    break;
+                case 'last3days':
+                    startDate.setDate(today.getDate() - 2);
+                    break;
+                case 'last7days':
+                    startDate.setDate(today.getDate() - 6);
+                    break;
+                case 'last30days':
+                    startDate.setDate(today.getDate() - 29);
+                    break;
+                case 'thisweek':
+                    startDate.setDate(today.getDate() - today.getDay() + 1);
+                    break;
+                case 'lastweek':
+                    startDate.setDate(today.getDate() - today.getDay() - 6);
+                    endDate.setDate(today.getDate() - today.getDay());
+                    break;
+                case 'thismonth':
+                    startDate.setDate(1);
+                    break;
+                case 'lastmonth':
+                    startDate.setDate(1);
+                    startDate.setMonth(today.getMonth() - 1);
+                    endDate.setDate(0);
+                    endDate.setMonth(today.getMonth());
+                    break;
+            }
+
+            return {
+                start: startDate.toISOString().split('T')[0],
+                end: endDate.toISOString().split('T')[0]
+            };
+        }
+
+        // ===== 用户多选下拉初始化 =====
+        function initUserDropdown() {
+            const anchor = document.getElementById('userAnchor');
+            const items = document.getElementById('userItems');
+            const dropdown = document.getElementById('userDropdown');
+
+            anchor.addEventListener('click', function (e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('visible');
+                anchor.classList.toggle('active');
+            });
+
+            document.addEventListener('click', function () {
+                dropdown.classList.remove('visible');
+                anchor.classList.remove('active');
+            });
+
+            items.addEventListener('click', function (e) {
+                e.stopPropagation();
+            });
+        }
+
+        function populateUserDropdown(users) {
+            const items = document.getElementById('userItems');
+            items.innerHTML = '';
+
+            // 添加"全部人员"选项
+            const allItem = document.createElement('div');
+            allItem.className = 'item';
+            allItem.innerHTML = `
+        <input type="checkbox" id="user_all" value="all" checked>
+        <label for="user_all">全部人员</label>
+    `;
+            items.appendChild(allItem);
+
+            allItem.querySelector('input').addEventListener('change', function () {
+                if (this.checked) {
+                    document.querySelectorAll('#userItems input[type="checkbox"]').forEach(cb => {
+                        if (cb !== this) cb.checked = false;
+                    });
+                }
+                updateUserSelection();
+            });
+
+            // 添加用户列表
+            users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'item';
+                item.innerHTML = `
+            <input type="checkbox" id="user_${user.id}" value="${user.id}">
+            <label for="user_${user.id}">${user.first_name || user.username} (${user.department || '未知部门'})</label>
+        `;
+                items.appendChild(item);
+
+                const checkbox = item.querySelector('input');
+                checkbox.addEventListener('change', function () {
+                    const allCheckbox = document.querySelector('#userItems input[value="all"]');
+                    if (this.value !== 'all' && this.checked && allCheckbox) {
+                        allCheckbox.checked = false;
+                    }
+                    updateUserSelection();
+                });
+            });
+
+            updateUserSelection();
+        }
+
+        function updateUserSelection() {
+            const checkboxes = document.querySelectorAll('#userItems input[type="checkbox"]');
+            const allCheckbox = document.querySelector('#userItems input[value="all"]');
+            const selectedUsers = [];
+            let selectedText = '选择操作人员';
+
+            if (allCheckbox && allCheckbox.checked) {
+                selectedText = '全部人员';
+                currentFilters.user_ids = [];
+            } else {
+                checkboxes.forEach(cb => {
+                    if (cb.checked && cb.value !== 'all') {
+                        selectedUsers.push(cb.value);
+                    }
+                });
+                if (selectedUsers.length > 0) {
+                    selectedText = `已选择 ${selectedUsers.length} 人`;
+                }
+                currentFilters.user_ids = selectedUsers;
+            }
+
+            document.getElementById('userSelectedText').textContent = selectedText;
+        }
+
+        async function loadAllUsers() {
+            try {
+                const response = await fetch('/api/users/all/');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    allUsers = result.data;
+                    populateUserDropdown(result.data);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+                return false;
+            }
+        }
+
+        // ===== 操作类型下拉 =====
+        async function loadOperationTypes() {
+            try {
+                const response = await fetch('/api/operation-log/types/');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    allOperationTypes = result.data;
+                    populateOperationTypeDropdown(result.data);
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('加载操作类型失败:', error);
+                return false;
+            }
+        }
+
+        function populateOperationTypeDropdown(types) {
+            const select = document.getElementById('operationTypeFilter');
+            select.innerHTML = '<option value="">全部类型</option>';
+
+            types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.id;
+                option.textContent = type.name;
+                select.appendChild(option);
+            });
+        }
+
+        // ===== 权限初始化 =====
+        function getCurrentUserPermissions() {
+            // 从页面或全局变量获取当前用户权限
+            if (window.currentUserPermissionsData) {
+                currentUserPermissions = {
+                    can_see_type_1: window.currentUserPermissionsData.can_see_type_1 || false,
+                    can_see_type_2: window.currentUserPermissionsData.can_see_type_2 || false,
+                    ops_all: window.currentUserPermissionsData.ops_all || false,
+                    ops_group: window.currentUserPermissionsData.ops_group || false,
+                    ops: window.currentUserPermissionsData.ops || false,
+                    user_id: window.currentUserPermissionsData.user_id || null,
+                    group_name: window.currentUserPermissionsData.group_name || ''
+                };
+            }
+        }
+
+        // ===== 筛选逻辑 =====
+        function getCurrentFilters() {
+            return {
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                user_ids: currentFilters.user_ids,
+                operation_type: document.getElementById('operationTypeFilter').value,
+                record_keyword: document.getElementById('recordKeywordFilter').value.trim(),
+                sort_field: currentFilters.sort_field,
+                sort_order: currentFilters.sort_order
+            };
+        }
+
+        function setDefaultFilters() {
+            initializeDates();
+            document.getElementById('recordKeywordFilter').value = '';
+            document.getElementById('pageSize').value = '20';
+
+            // 重置用户选择
+            const checkboxes = document.querySelectorAll('#userItems input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = cb.value === 'all';
+            });
+            updateUserSelection();
+
+            // 重置操作类型
+            document.getElementById('operationTypeFilter').value = '';
+        }
+
+        async function resetFilters(event) {
+            showLoading(true);
+            try {
+                setDefaultFilters();
+                pagination.page = 1;
+                pagination.page_size = 20;
+                await loadOperationLogs();
+                showNotification('筛选条件已重置', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 快捷日期按钮点击处理
+        function handleQuickDateClick(rangeType) {
+            document.querySelectorAll('.quick-date-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            const targetBtn = document.querySelector(`[data-range="${rangeType}"]`);
+            if (targetBtn) {
+                targetBtn.classList.add('active');
+            }
+
+            const dates = getDateRange(rangeType);
+            document.getElementById('startDate').value = dates.start;
+            document.getElementById('endDate').value = dates.end;
+
+            // 自动触发查询
+            loadOperationLogs();
+        }
+
+        // 排序处理
+        function handleSort(field) {
+            if (currentFilters.sort_field === field) {
+                currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentFilters.sort_field = field;
+                currentFilters.sort_order = 'desc';
+            }
+
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.field === field) {
+                    th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            pagination.page = 1;
+            loadOperationLogs();
+        }
+
+        // ===== 加载日志数据 =====
+        async function loadOperationLogs() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const requestData = {
+                    ...currentFilters,
+                    page: pagination.page,
+                    page_size: pagination.page_size,
+                    permissions: {
+                        can_see_type_1: currentUserPermissions.can_see_type_1,
+                        can_see_type_2: currentUserPermissions.can_see_type_2,
+                        ops_all: currentUserPermissions.ops_all,
+                        ops_group: currentUserPermissions.ops_group,
+                        ops: currentUserPermissions.ops,
+                        user_id: currentUserPermissions.user_id,
+                        group_name: currentUserPermissions.group_name
+                    }
+                };
+
+                const response = await fetch('/api/operation-logs/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    pagination.total = data.total;
+                    pagination.total_pages = data.total_pages;
+
+                    renderOperationLogTable(data.logs || []);
+                    renderPagination();
+
+                    const paginationControls = document.getElementById('paginationControls');
+                    paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载错误:', error);
+                const tbody = document.getElementById('operationLogTableBody');
+                tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>数据请求失败: ${error.message}</p>
+                </td>
+            </tr>
+        `;
+                document.getElementById('paginationControls').style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 渲染表格
+        function renderOperationLogTable(logs) {
+            const tbody = document.getElementById('operationLogTableBody');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无操作日志数据</p>
+                </td>
+            </tr>
+        `;
+                return;
+            }
+
+            tbody.innerHTML = logs.map((log, index) => `
+        <tr>
+            <td>${((pagination.page - 1) * pagination.page_size) + index + 1}</td>
+            <td>${log.operation_type_display || '-'}</td>
+            <td>${log.user_name || '系统'}</td>
+            <td class="operation-record-cell" title="${log.operation_record || ''}">
+                ${log.operation_record || '-'}
+            </td>
+            <td>${log.created_at || '-'}</td>
+        </tr>
+    `).join('');
+        }
+
+        // ===== 分页渲染 =====
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const infoContainer = document.getElementById('paginationInfo');
+
+            const {page, page_size, total, total_pages} = pagination;
+
+            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+            let buttonsHTML = '';
+
+            // 上一页
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+        <i class="fas fa-chevron-left"></i> 上一页
+    </button>`;
+
+            // 页码按钮
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+            }
+
+            // 下一页
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+        下一页 <i class="fas fa-chevron-right"></i>
+    </button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > pagination.total_pages) return;
+            pagination.page = newPage;
+            loadOperationLogs();
+            document.getElementById('operationLogTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function changePageSize() {
+            const newSize = parseInt(document.getElementById('pageSize').value);
+            pagination.page_size = newSize;
+            pagination.page = 1;
+            loadOperationLogs();
+        }
+
+        // ===== 初始化 =====
+        function initializeSortHeader() {
+            const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
+            if (th) {
+                th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                initUserDropdown();
+                getCurrentUserPermissions();
+                await Promise.all([
+                    loadAllUsers(),
+                    loadOperationTypes()
+                ]);
+
+                setDefaultFilters();
+                initializeSortHeader();
+
+                // 绑定快捷按钮事件
+                document.querySelectorAll('.quick-date-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        handleQuickDateClick(this.dataset.range);
+                    });
+                });
+
+                // 监听Enter键
+                document.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        const activeElement = document.activeElement;
+                        if (activeElement && activeElement.id === 'recordKeywordFilter') {
+                            loadOperationLogs();
+                        }
+                    }
+                });
+
+                // 初始加载数据
+                await loadOperationLogs();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+    </script>
+{% endblock %}

@@ -243,7 +243,6 @@ def lx_order_main():
     if not resp_data:
         print("接口没有返回任何订单数据，结束。")
         return
-
     # 3. 写入本地数据库
     sync_amazon_orders(resp_data)
     print("完成同步订单")

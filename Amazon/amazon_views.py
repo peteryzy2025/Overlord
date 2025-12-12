@@ -530,9 +530,7 @@ def determine_filter_type_and_value(request, data, permissions):
 @login_required(login_url='/login/')
 def amazon_dashboard_page(request):
     """Amazon驾驶舱页面渲染"""
-    theme = request.COOKIES.get('theme', 'light')
     return render(request, 'dashboard.html', {
-        'theme': theme,
         'active_nav': 'dashboard'
     })
 

@@ -788,9 +788,16 @@
         <div class="data-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 class="section-title">订单详情</h3>
-                <button class="btn" onclick="updateDiviExportStatus()">
-                    <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
-                </button>
+                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                    <!-- 导出按钮（在左） -->
+                    <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
+                        <i class="fas fa-download"></i> 导出Excel
+                    </button>
+                    <!-- 更新按钮（在右） -->
+                    <button class="btn" onclick="updateDiviExportStatus()">
+                        <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
+                    </button>
+                </div>
             </div>
 
             <div class="table-container" id="ordersTableContainer">
@@ -1017,7 +1024,7 @@
             const groupSelect = document.getElementById('groupFilter');
             const operatorSelect = document.getElementById('operatorFilter');
 
-            document.getElementById('dateRange').value = 'yesterday';
+            document.getElementById('dateRange').value = 'last30days';
             handleDateRangeChange();
 
             if (groupSelect.options.length > 0) {
@@ -1243,11 +1250,11 @@
         }
 
         function renderOrdersTable(orders) {
-    const tbody = document.getElementById('ordersTableBody');
-    if (!tbody) return;
+            const tbody = document.getElementById('ordersTableBody');
+            if (!tbody) return;
 
-    if (!orders || orders.length === 0) {
-        tbody.innerHTML = `
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `
             <tr>
                 <td colspan="13" class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -1255,90 +1262,90 @@
                 </td>
             </tr>
         `;
-        return;
-    }
-
-    // DIVI 状态映射
-    const diviStatusMap = {
-        0: '取消订单',
-        1: '未付货款',
-        2: '未审核',
-        3: '排单中',
-        4: '生产中',
-        5: '已发货'
-    };
-
-    // 不计算预警的订单状态
-    const NON_DEADLINE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped'];
-
-    tbody.innerHTML = orders.map(order => {
-        // 1. DIVI 状态文字
-        const rawStatus = order.divi_order_status;
-        const diviStatusText =
-            rawStatus === null || rawStatus === undefined
-                ? '-'
-                : (diviStatusMap[rawStatus] || rawStatus);
-
-        // 2. 物流信息有效性检查
-        const hasValidLogistics =
-            order.divi_logistics_method &&
-            order.divi_tracking_number &&
-            order.divi_logistics_method.trim() !== '' &&
-            order.divi_tracking_number.trim() !== '';
-
-        // 3. 发货按钮可用性判断
-        const canShip =
-            order.order_status === 'Unshipped' &&
-            order.fulfillment_channel === 'MFN' &&
-            hasValidLogistics &&
-            [3, 4, 5].includes(order.divi_order_status) &&
-            order.shop_status === '正常';
-
-        // 4. Tooltip 提示
-        let shipButtonTooltip = '';
-        if (!canShip) {
-            if (order.order_status !== 'Unshipped') {
-                shipButtonTooltip = '订单不是待发货状态';
-            } else if (order.fulfillment_channel !== 'MFN') {
-                shipButtonTooltip = '订单不是FBM订单';
-            } else if (!order.divi_logistics_method || order.divi_logistics_method.trim() === '') {
-                shipButtonTooltip = 'DIVI物流方式不能为空';
-            } else if (!order.divi_tracking_number || order.divi_tracking_number.trim() === '') {
-                shipButtonTooltip = 'DIVI跟踪号不能为空';
-            } else if (![3, 4, 5].includes(order.divi_order_status)) {
-                shipButtonTooltip = 'DIVI订单状态未达标（需排单中或更高）';
-            } else if (order.shop_status !== '正常') {
-                shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
+                return;
             }
-        } else {
-            if (order.divi_order_status === 3) {
-                shipButtonTooltip = 'DIVI状态：排单中（点击发货将二次确认）';
-            } else if (order.divi_order_status === 4) {
-                shipButtonTooltip = 'DIVI状态：生产中（点击发货将二次确认）';
-            } else {
-                shipButtonTooltip = '点击执行发货操作';
-            }
-        }
 
-        // 5. 导单按钮可用性
-        let canExportToDivi = true;
-        let exportTooltip = '导单到 DIVI';
-        if (order.fulfillment_channel === 'AFN') {
-            canExportToDivi = false;
-            exportTooltip = 'FBA订单不可导单';
-        } else if (order.is_exported_to_divi) {
-            canExportToDivi = false;
-            exportTooltip = '已导单';
-        } else if (['Pending', 'PendingAvailability', 'Canceled'].includes(order.order_status)) {
-            canExportToDivi = false;
-            exportTooltip = '该订单类型不支持导单';
-        } else if (order.shop_status !== '正常') {
-            canExportToDivi = false;
-            exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
-        }
+            // DIVI 状态映射
+            const diviStatusMap = {
+                0: '取消订单',
+                1: '未付货款',
+                2: '未审核',
+                3: '排单中',
+                4: '生产中',
+                5: '已发货'
+            };
 
-        // 6. 假面单按钮
-        const markRealBtn = order.masked_single ? `
+            // 不计算预警的订单状态
+            const NON_DEADLINE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped'];
+
+            tbody.innerHTML = orders.map(order => {
+                // 1. DIVI 状态文字
+                const rawStatus = order.divi_order_status;
+                const diviStatusText =
+                    rawStatus === null || rawStatus === undefined
+                        ? '-'
+                        : (diviStatusMap[rawStatus] || rawStatus);
+
+                // 2. 物流信息有效性检查
+                const hasValidLogistics =
+                    order.divi_logistics_method &&
+                    order.divi_tracking_number &&
+                    order.divi_logistics_method.trim() !== '' &&
+                    order.divi_tracking_number.trim() !== '';
+
+                // 3. 发货按钮可用性判断
+                const canShip =
+                    order.order_status === 'Unshipped' &&
+                    order.fulfillment_channel === 'MFN' &&
+                    hasValidLogistics &&
+                    [3, 4, 5].includes(order.divi_order_status) &&
+                    order.shop_status === '正常';
+
+                // 4. Tooltip 提示
+                let shipButtonTooltip = '';
+                if (!canShip) {
+                    if (order.order_status !== 'Unshipped') {
+                        shipButtonTooltip = '订单不是待发货状态';
+                    } else if (order.fulfillment_channel !== 'MFN') {
+                        shipButtonTooltip = '订单不是FBM订单';
+                    } else if (!order.divi_logistics_method || order.divi_logistics_method.trim() === '') {
+                        shipButtonTooltip = 'DIVI物流方式不能为空';
+                    } else if (!order.divi_tracking_number || order.divi_tracking_number.trim() === '') {
+                        shipButtonTooltip = 'DIVI跟踪号不能为空';
+                    } else if (![3, 4, 5].includes(order.divi_order_status)) {
+                        shipButtonTooltip = 'DIVI订单状态未达标（需排单中或更高）';
+                    } else if (order.shop_status !== '正常') {
+                        shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
+                    }
+                } else {
+                    if (order.divi_order_status === 3) {
+                        shipButtonTooltip = 'DIVI状态：排单中（点击发货将二次确认）';
+                    } else if (order.divi_order_status === 4) {
+                        shipButtonTooltip = 'DIVI状态：生产中（点击发货将二次确认）';
+                    } else {
+                        shipButtonTooltip = '点击执行发货操作';
+                    }
+                }
+
+                // 5. 导单按钮可用性
+                let canExportToDivi = true;
+                let exportTooltip = '导单到 DIVI';
+                if (order.fulfillment_channel === 'AFN') {
+                    canExportToDivi = false;
+                    exportTooltip = 'FBA订单不可导单';
+                } else if (order.is_exported_to_divi) {
+                    canExportToDivi = false;
+                    exportTooltip = '已导单';
+                } else if (['Pending', 'PendingAvailability', 'Canceled'].includes(order.order_status)) {
+                    canExportToDivi = false;
+                    exportTooltip = '该订单类型不支持导单';
+                } else if (order.shop_status !== '正常') {
+                    canExportToDivi = false;
+                    exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
+                }
+
+                // 6. 假面单按钮
+                const markRealBtn = order.masked_single ? `
             <button class="btn-action btn-mark-real"
                     onclick="markRealShipment('${order.amazon_order_id}', event)"
                     data-sid="${order.sid || ''}"
@@ -1347,34 +1354,34 @@
             </button>
         ` : '';
 
-        // 7. 运营分组/人员合并显示
-        const opsInfoHtml = `
+                // 7. 运营分组/人员合并显示
+                const opsInfoHtml = `
             <div class="ops-info-cell">
                 <span class="ops-group-text">${order.group || '-'}</span>
                 <span class="ops-operator-text">${order.operator_name || '-'}</span>
             </div>
         `;
 
-        // 8. 发货时限预警显示（排除特定状态）
-        let deadlineHtml = '-';
-        if (order.earliest_ship_date_utc && !NON_DEADLINE_STATUSES.includes(order.order_status)) {
-            const status = order.deadline_status;
-            let warningHtml = '';
+                // 8. 发货时限预警显示（排除特定状态）
+                let deadlineHtml = '-';
+                if (order.earliest_ship_date_utc && !NON_DEADLINE_STATUSES.includes(order.order_status)) {
+                    const status = order.deadline_status;
+                    let warningHtml = '';
 
-            if (status === 'red') {
-                warningHtml = `<span class="deadline-warning-inline deadline-red"><i class="fas fa-exclamation-circle"></i> ${order.deadline_text}</span>`;
-            } else if (status === 'yellow') {
-                warningHtml = `<span class="deadline-warning-inline deadline-yellow"><i class="fas fa-exclamation-circle"></i> ${order.deadline_text}</span>`;
-            }
+                    if (status === 'red') {
+                        warningHtml = `<span class="deadline-warning-inline deadline-red"><i class="fas fa-exclamation-circle"></i> ${order.deadline_text}</span>`;
+                    } else if (status === 'yellow') {
+                        warningHtml = `<span class="deadline-warning-inline deadline-yellow"><i class="fas fa-exclamation-circle"></i> ${order.deadline_text}</span>`;
+                    }
 
-            deadlineHtml = `
+                    deadlineHtml = `
                 <span>${order.earliest_ship_date_utc}</span>
                 ${warningHtml}
             `;
-        }
+                }
 
-        // 返回HTML
-        return `
+                // 返回HTML
+                return `
             <tr>
                 <td>${order.amazon_order_id || '-'}</td>
                 <td>${order.shop_name || '-'}</td>
@@ -1420,8 +1427,9 @@
                 </td>
             </tr>
         `;
-    }).join('');
-}
+            }).join('');
+        }
+
         function renderStatusBadge(status) {
             if (!status) return '<span class="status-badge status-processing">未知</span>';
 
@@ -1789,5 +1797,84 @@
                 showLoading(false);
             }
         });
+
+        async function exportOrdersToExcel(event) {
+    const button = event.currentTarget;
+    const icon = button.querySelector('i');
+
+    if (button.disabled) return;
+
+    button.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+
+    try {
+        showLoading(true);
+
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+        const exportData = {
+            ...currentFilters
+        };
+
+        const response = await fetch('/api/export-amazon-orders-excel/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(exportData)
+        });
+
+        if (response.ok) {
+            // ✅ 修复：更安全地获取文件名
+            let filename = '亚马逊订单.xlsx';
+            const contentDisposition = response.headers.get('Content-Disposition');
+
+            // 检查是否存在并正确解析
+            if (contentDisposition) {
+                // 从 Content-Disposition 中提取文件名（支持多种格式）
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1];
+                }
+            }
+
+            // ✅ 修复：确保文件名不为空或 undefined
+            if (!filename || filename === 'undefined') {
+                const timestamp = new Date().toISOString()
+                    .slice(0, 19)
+                    .replace(/[-:]/g, '')
+                    .replace('T', '_');
+                filename = `亚马逊订单_${timestamp}.xlsx`;
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+
+            // 清理
+            setTimeout(() => {
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }, 100);
+
+            showNotification('导出成功！', 'success');
+        } else {
+            const error = await response.json();
+            showNotification('导出失败: ' + (error.message || '未知错误'), 'error');
+        }
+    } catch (error) {
+        showNotification('请求失败: ' + error.message, 'error');
+    } finally {
+        button.disabled = false;
+        icon.className = 'fas fa-download';
+        showLoading(false);
+    }
+}
     </script>
 {% endblock %}

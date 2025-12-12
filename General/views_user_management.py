@@ -15,21 +15,24 @@ from django.db.models import Q
 @login_required
 def user_management_view(request):
     """渲染人员管理页面"""
-    return render(request, 'user_management.html')
+    context = {
+        'active_page': 'user_management'
+    }
+    return render(request, 'user_management.html', context)
 
 
 # Amazon店铺管理页面视图
-@login_required
-def amazon_management_view(request):
-    """渲染Amazon店铺管理页面"""
-    return render(request, 'amazon_shop_management.html')
+
 
 
 # Temu店铺管理页面视图
 @login_required
 def temu_management_view(request):
     """渲染Temu店铺管理页面"""
-    return render(request, 'temu_shop_management.html')
+    context = {
+        'active_page': 'temu_management'
+    }
+    return render(request, 'temu_shop_management.html', context)
 
 
 # 修改 get_users_api 函数，支持分页参数

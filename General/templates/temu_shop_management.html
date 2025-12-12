@@ -1,4 +1,4 @@
-{% extends 'base_r.html' %}
+{% extends 'base_management.html' %}
 {% load static %}
 
 {% block title %}Temu店铺管理 - Overlord{% endblock %}
@@ -175,7 +175,6 @@
             white-space: nowrap;
             position: sticky;
             top: 0;
-            z-index: 11;
         }
 
         .table td {
@@ -408,37 +407,6 @@
             font-family: monospace;
         }
     </style>
-{% endblock %}
-
-{% block sidebar %}
-    <div class="sidebar">
-        <ul class="sidebar-menu">
-            <li class="sidebar-item">
-                <a href="{% url 'user_management' %}" class="sidebar-link">
-                    <i class="fas fa-users sidebar-icon"></i>
-                    <span>人员管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'performance_targets' %}" class="sidebar-link">
-                    <i class="fas fa-chart-line"></i>
-                    <span>绩效管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'amazon_management' %}" class="sidebar-link">
-                    <i class="fab fa-amazon sidebar-icon"></i>
-                    <span>Amazon店铺管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'temu_management' %}" class="sidebar-link active">
-                    <i class="fas fa-store sidebar-icon"></i>
-                    <span>Temu店铺管理</span>
-                </a>
-            </li>
-        </ul>
-    </div>
 {% endblock %}
 
 {% block content %}

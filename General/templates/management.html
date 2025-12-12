@@ -1,4 +1,4 @@
-{% extends 'base_r.html' %}
+{% extends 'base_management.html' %}
 {% load static %}
 
 {% block title %}管理中心 - Overlord{% endblock %}
@@ -148,37 +148,6 @@
     </style>
 {% endblock %}
 
-{% block sidebar %}
-    <div class="sidebar">
-        <ul class="sidebar-menu">
-            <li class="sidebar-item">
-                <a href="{% url 'user_management' %}" class="sidebar-link">
-                    <i class="fas fa-users sidebar-icon"></i>
-                    <span>人员管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'performance_targets' %}" class="sidebar-link">
-                    <i class="fas fa-chart-line"></i>
-                    <span>绩效管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'amazon_management' %}" class="sidebar-link">
-                    <i class="fab fa-amazon sidebar-icon"></i>
-                    <span>Amazon店铺管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'temu_management' %}" class="sidebar-link">
-                    <i class="fas fa-store sidebar-icon"></i>
-                    <span>Temu店铺管理</span>
-                </a>
-            </li>
-        </ul>
-    </div>
-{% endblock %}
-
 {% block content %}
     <div class="dashboard-content">
         <!-- 欢迎区域 -->
@@ -186,16 +155,16 @@
             <h1 class="welcome-title">欢迎来到管理中心</h1>
             <p class="welcome-subtitle">在这里您可以管理团队、管理店铺，并监控所有运营活动</p>
             <div class="quick-actions">
-                <a href="{% url 'user_management' %}" class="quick-action-btn">
+                <a href="{% url 'general:user_management' %}" class="quick-action-btn">
                     <i class="fas fa-users"></i> 人员管理
                 </a>
-                <a href="{% url 'performance_targets' %}" class="quick-action-btn">
+                <a href="{% url 'general:performance_targets' %}" class="quick-action-btn">
                     <i class="fas fa-chart-line"></i> 绩效管理
                 </a>
-                <a href="{% url 'amazon_management' %}" class="quick-action-btn">
+                <a href="{% url 'general:amazon_management' %}" class="quick-action-btn">
                     <i class="fab fa-amazon"></i> Amazon店铺
                 </a>
-                <a href="{% url 'temu_management' %}" class="quick-action-btn">
+                <a href="{% url 'general:temu_management' %}" class="quick-action-btn">
                     <i class="fas fa-store"></i> Temu店铺
                 </a>
             </div>

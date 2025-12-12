@@ -16,7 +16,10 @@ import traceback
 @login_required
 def amazon_management_view(request):
     """渲染Amazon店铺管理页面"""
-    return render(request, 'amazon_shop_management.html')
+    context = {
+        'active_page': 'amazon_management'
+    }
+    return render(request, 'amazon_shop_management.html', context)
 
 
 # 获取运营人员列表API（含OperationalAccount分组信息，按分组排序）

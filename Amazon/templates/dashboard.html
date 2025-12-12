@@ -804,7 +804,7 @@
         <div class="data-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <h3 class="section-title">订单概览</h3>
-                <a href="{% url 'amazon_order_management' %}" class="btn">
+                <a href="{% url 'amazon:amazon_order_management' %}" class="btn">
                     <i class="fas fa-external-link-alt"></i> 查看完整订单管理
                 </a>
             </div>
@@ -812,7 +812,7 @@
             <div class="alert alert-info"
                  style="background-color: var(--bg-secondary); border-color: var(--border-color);">
                 <i class="fas fa-info-circle"></i> 订单数据已移至
-                <a href="{% url 'amazon_order_management' %}" style="color: var(--accent-color); font-weight: 500;">
+                <a href="{% url 'amazon:amazon_order_management' %}" style="color: var(--accent-color); font-weight: 500;">
                     亚马逊订单管理页面
                 </a>
                 ，可查看详情、导单等更多操作。

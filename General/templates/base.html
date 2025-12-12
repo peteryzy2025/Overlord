@@ -142,6 +142,35 @@
             border-radius: 2px;
         }
 
+        /* V2 箭头样式（相对于按钮定位） */
+        .nav-item-wrapper::after {
+            content: '';
+            position: absolute;
+            top: calc(100% - 5px); /* 紧贴按钮下方 */
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 10px;
+            height: 10px;
+            background-color: var(--bg-primary);
+            border-left: 1px solid var(--border-color);
+            border-top: 1px solid var(--border-color);
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none; /* 防止遮挡点击 */
+        }
+
+        .nav-item-wrapper:hover::after {
+            opacity: 1;
+        }
+
+        /* 移动端隐藏箭头 */
+        @media (max-width: 768px) {
+            .nav-item-wrapper::after {
+                display: none;
+            }
+        }
+
         .nav-dropdown {
             position: absolute;
             top: 100%;
@@ -343,8 +372,7 @@
             }
         }
 
-        /* ========== 公告系统样式（新增） ========== */
-        /* 公告弹窗遮罩层 */
+        /* ========== 公告系统样式（V1 + 优先级标签） ========== */
         .announcement-overlay {
             position: fixed;
             top: 0;
@@ -367,7 +395,6 @@
             visibility: visible;
         }
 
-        /* 公告弹窗主体 */
         .announcement-modal {
             background-color: var(--bg-primary);
             border-radius: 12px;
@@ -377,15 +404,22 @@
             max-height: 80vh;
             overflow: hidden;
             transform: scale(0.9);
-            transition: transform 0.3s ease;
+            transition: all 0.3s ease;
             border: 2px solid var(--border-color);
+            position: relative; /* 为多层弹窗定位 */
         }
 
         .announcement-overlay.active .announcement-modal {
             transform: scale(1);
         }
 
-        /* 优先级颜色边框 */
+        /* 关闭时的弹性动画（偷师 V2） */
+        .announcement-overlay.active .announcement-modal.closing {
+            transform: scale(0.95) !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 1, 1);
+        }
+
+        /* 优先级边框（V1 标志性设计） */
         .announcement-modal.priority-high {
             border-color: var(--danger-color);
         }
@@ -396,6 +430,33 @@
 
         .announcement-modal.priority-low {
             border-color: var(--info-color);
+        }
+
+        /* 优先级标签（新增） */
+        .priority-badge {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-left: 0.75rem;
+            vertical-align: middle;
+            border: 1px solid currentColor;
+            background-color: transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .priority-badge.priority-high {
+            color: var(--danger-color);
+        }
+
+        .priority-badge.priority-medium {
+            color: var(--warning-color);
+        }
+
+        .priority-badge.priority-low {
+            color: var(--info-color);
         }
 
         /* 弹窗头部 */
@@ -411,6 +472,8 @@
             color: var(--text-primary);
             margin: 0;
             padding-right: 2rem;
+            display: flex;
+            align-items: center;
         }
 
         .announcement-progress {
@@ -419,7 +482,6 @@
             margin-top: 0.25rem;
         }
 
-        /* 关闭按钮 */
         .announcement-close-btn {
             position: absolute;
             top: 1rem;
@@ -521,7 +583,7 @@
             color: var(--text-primary);
         }
 
-        /* 多个公告时的层级效果 */
+        /* 多个公告时的层级效果（V1 原有） */
         .announcement-modal {
             position: absolute;
         }
@@ -543,7 +605,7 @@
             opacity: 0.8;
         }
 
-        /* 移动端适配 */
+        /* 移动端适配（V1 原有） */
         @media (max-width: 768px) {
             .navbar-nav {
                 display: none;
@@ -580,6 +642,11 @@
                 width: 100%;
             }
 
+            /* 移动端隐藏优先级标签，避免换行 */
+            .priority-badge {
+                display: none;
+            }
+
             /* 移动端最多显示2个弹窗 */
             .announcement-modal:nth-child(n+3) {
                 display: none;
@@ -598,43 +665,48 @@
 <!-- 顶部导航栏 -->
 <nav class="navbar">
     <div class="container-fluid">
-        <a class="navbar-brand" href="{% url 'main' %}">
+        <a class="navbar-brand" href="{% url 'general:main' %}">
             <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
             Overlord
         </a>
 
         <div class="navbar-nav">
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}" href="{% url 'management' %}">
+                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}"
+                   href="{% url 'general:management' %}">
                     管理
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'user_management' %}" class="nav-dropdown-item">
+                    <a href="{% url 'general:user_management' %}" class="nav-dropdown-item">
                         <i class="fas fa-users"></i> 人员管理
                     </a>
-                    <a href="{% url 'performance_targets' %}" class="nav-dropdown-item">
+                    <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-item">
                         <i class="fas fa-chart-line"></i> 绩效管理
                     </a>
-                    <a href="{% url 'amazon_management' %}" class="nav-dropdown-item">
+                    <a href="{% url 'general:operation_log_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-history"></i> 操作日志
+                    </a>
+                    <a href="{% url 'general:amazon_management' %}" class="nav-dropdown-item">
                         <i class="fab fa-amazon"></i> Amazon店铺
                     </a>
-                    <a href="{% url 'temu_management' %}" class="nav-dropdown-item">
+                    <a href="{% url 'general:temu_management' %}" class="nav-dropdown-item">
                         <i class="fas fa-store"></i> Temu店铺
                     </a>
                 </div>
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'dashboard' or active_nav == 'ranking' %}active{% endif %}" href="{% url 'dashboard' %}">
+                <a class="nav-link {% if active_nav == 'dashboard' or active_nav == 'ranking' %}active{% endif %}"
+                   href="{% url 'amazon:dashboard' %}">
                     驾驶舱
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'dashboard' %}" class="nav-dropdown-item">
+                    <a href="{% url 'amazon:dashboard' %}" class="nav-dropdown-item">
                         <i class="fas fa-chart-line"></i> 驾驶舱
                     </a>
-                    <a href="{% url 'ranking_page' %}" class="nav-dropdown-item">
+                    <a href="{% url 'amazon:ranking_page' %}" class="nav-dropdown-item">
                         <i class="fas fa-trophy"></i> 华山之巅
                     </a>
                 </div>
@@ -642,15 +714,15 @@
 
             <div class="nav-item-wrapper">
                 <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
-                   href="{% url 'amazon_order_management' %}">
+                   href="{% url 'amazon:amazon_order_management' %}">
                     Amazon
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'amazon_order_management' %}" class="nav-dropdown-item">
+                    <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-item">
                         <i class="fas fa-shopping-cart"></i> 订单管理
                     </a>
-                    <a href="{% url 'amazon_performance_notifications' %}" class="nav-dropdown-item">
+                    <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-item">
                         <i class="fas fa-bell"></i> 绩效通知
                     </a>
                     <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
@@ -659,6 +731,8 @@
                 </div>
             </div>
             <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
+            <a class="nav-link" href="#" onclick="showComingSoon()">物流管理</a>
+
         </div>
 
         <div class="user-area">
@@ -671,7 +745,6 @@
                 <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
                     <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
                     <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
-                    <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary);"></i>
                 </div>
 
                 <div class="user-menu-dropdown" id="userMenuDropdown">
@@ -679,7 +752,7 @@
                         <i class="fas fa-cog"></i> 设置
                     </a>
                     <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
-                    <a href="{% url 'logout' %}" class="user-menu-item" onclick="return confirmLogout()">
+                    <a href="{% url 'general:logout' %}" class="user-menu-item" onclick="return confirmLogout()">
                         <i class="fas fa-sign-out-alt"></i> 退出登录
                     </a>
                 </div>
@@ -698,43 +771,95 @@
 <!-- 通知容器 -->
 <div id="notificationContainer"></div>
 
-<!-- ========== 公告系统弹窗容器（新增） ========== -->
+<!-- 公告系统弹窗容器 -->
 <div id="announcementOverlay" class="announcement-overlay">
     <!-- 弹窗将通过JS动态插入这里 -->
 </div>
 
+
 <script>
-    // ========== 主题切换功能（原有） ==========
-    document.getElementById('themeToggle').addEventListener('click', function () {
-        const html = document.documentElement;
+    // ========== 主题切换功能（修复版） ==========
+    document.addEventListener('DOMContentLoaded', function () {
+        const themeToggle = document.getElementById('themeToggle');
         const themeIcon = document.getElementById('themeIcon');
-        const currentTheme = html.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        const html = document.documentElement;
 
-        html.setAttribute('data-theme', newTheme);
-        localStorage.setItem('theme', newTheme);
+        // 初始化主题（优先使用后端传入的theme变量）
+        const initialTheme = "{{ theme|default:'light' }}";
+        html.setAttribute('data-theme', initialTheme);
+        localStorage.setItem('theme', initialTheme);
 
-        fetch('/api/update-theme/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
-            },
-            body: JSON.stringify({theme: newTheme})
-        });
+        // 确保图标状态正确
+        themeIcon.className = initialTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
 
-        if (window.anime) {
-            anime({
-                targets: themeIcon,
-                rotate: '360deg',
-                duration: 500,
-                easing: 'easeInOutQuart',
-                complete: function () {
-                    themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                    anime({targets: themeIcon, rotate: '0deg', duration: 0});
+        // 绑定切换事件
+        themeToggle.addEventListener('click', async function () {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            // 立即更新UI，提升用户体验
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+
+            // 动画效果
+            if (window.anime) {
+                anime({
+                    targets: themeIcon,
+                    rotate: '360deg',
+                    duration: 500,
+                    easing: 'easeInOutQuart',
+                    complete: function () {
+                        themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+                        anime({targets: themeIcon, rotate: '0deg', duration: 0});
+                    }
+                });
+            } else {
+                // 如果没有anime.js，直接切换图标
+                themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+
+            // 发送到后端保存（添加错误处理和验证）
+            try {
+                const csrfToken = getCookie('csrftoken');
+                if (!csrfToken) {
+                    console.warn('CSRF Token未找到，可能未登录或Cookie设置问题');
+                    showNotification('主题切换：未登录，更改仅本地生效', 'warning', 3000);
+                    return;
                 }
-            });
-        }
+
+                const response = await fetch('/api/update-theme/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest' // 标识AJAX请求
+                    },
+                    body: JSON.stringify({theme: newTheme})
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // 验证后端是否成功处理
+                if (data.success) {
+                    console.log(`主题已成功切换到: ${newTheme}`);
+                } else {
+                    throw new Error(data.message || '后端处理失败');
+                }
+
+            } catch (error) {
+                console.error('主题切换失败:', error);
+                showNotification(`主题切换失败: ${error.message}`, 'error', 5000);
+
+                // 失败时回滚到之前的主题
+                html.setAttribute('data-theme', currentTheme);
+                localStorage.setItem('theme', currentTheme);
+                themeIcon.className = currentTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+        });
     });
 
     // ========== 获取CSRF Token（原有） ==========
@@ -753,11 +878,31 @@
         return cookieValue;
     }
 
-    // ========== 显示通知（原有，用于轻提醒） ==========
+    // ========== 显示通知（优化版） ==========
     function showNotification(message, type = 'info', duration = 3000) {
         const container = document.getElementById('notificationContainer');
+
+        // 避免重复通知
+        const existing = Array.from(container.children).find(el => el.textContent.includes(message.substring(0, 20)));
+        if (existing) return;
+
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
+
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
+
+        const colors = {
+            success: '#48bb78',
+            error: '#e53e3e',
+            warning: '#dd6b20',
+            info: '#3182ce'
+        };
+
         notification.style.cssText = `
             position: fixed;
             top: 20px;
@@ -767,23 +912,16 @@
             padding: 1rem 1.5rem;
             border-radius: 8px;
             box-shadow: var(--shadow-heavy);
-            border-left: 4px solid var(--accent-color);
+            border-left: 4px solid ${colors[type]};
             z-index: 10000;
             transform: translateX(100%);
             transition: transform 0.3s ease;
             max-width: 400px;
         `;
 
-        const icons = {
-            success: 'fa-check-circle',
-            error: 'fa-exclamation-circle',
-            warning: 'fa-exclamation-triangle',
-            info: 'fa-info-circle'
-        };
-
         notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <i class="fas ${icons[type]}" style="color: var(--accent-color);"></i>
+                <i class="fas ${icons[type]}" style="color: ${colors[type]};"></i>
                 <span>${message}</span>
                 <button onclick="this.parentElement.parentElement.remove()" style="
                     background: none;
@@ -791,6 +929,8 @@
                     color: var(--text-secondary);
                     cursor: pointer;
                     margin-left: auto;
+                    padding: 0.25rem;
+                    border-radius: 4px;
                 ">
                     <i class="fas fa-times"></i>
                 </button>
@@ -824,7 +964,7 @@
 
     document.addEventListener('click', function (e) {
         const userMenu = document.querySelector('.user-menu');
-        if (!userMenu.contains(e.target)) {
+        if (userMenu && !userMenu.contains(e.target)) {
             document.getElementById('userMenuDropdown').classList.remove('show');
         }
     });
@@ -834,7 +974,7 @@
         return confirm('确定要退出登录吗？');
     }
 
-    // ========== 公告系统核心逻辑（新增） ==========
+    // ========== 公告系统核心逻辑（V1 + 优先级标签） ==========
     class AnnouncementManager {
         constructor() {
             this.announcements = [];
@@ -844,11 +984,10 @@
         }
 
         init() {
-            // ✅ 先获取JSON字符串，再解析
             const unreadJson = '{{ unread_announcements|default:"[]"|escapejs }}';
             const unreadData = JSON.parse(unreadJson);
 
-            console.log('[公告系统] 检测到未读公告:', unreadData); // 调试用
+            console.log('[公告系统] 检测到未读公告:', unreadData);
 
             if (unreadData && unreadData.length > 0) {
                 this.announcements = unreadData;
@@ -861,7 +1000,7 @@
             // ESC键关闭当前公告
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && this.overlay.classList.contains('active')) {
-                    this.closeCurrentAnnouncement(false); // false = 临时关闭
+                    this.closeCurrentAnnouncement(false);
                 }
             });
         }
@@ -890,11 +1029,23 @@
             const priorityClass = `priority-${announcement.priority}`;
             const progressText = `${this.currentIndex + 1} / ${this.announcements.length}`;
 
-            // 渲染弹窗HTML
+            // 优先级文字映射
+            const priorityTextMap = {
+                'high': '高',
+                'medium': '中',
+                'low': '低'
+            };
+            const priorityText = priorityTextMap[announcement.priority] || '中';
+
             this.overlay.innerHTML = `
                 <div class="announcement-modal ${priorityClass}">
                     <div class="announcement-header">
-                        <h3 class="announcement-title">${announcement.title}</h3>
+                        <h3 class="announcement-title">
+                            ${announcement.title}
+                            <span class="priority-badge priority-${announcement.priority}">
+                                ${priorityText}
+                            </span>
+                        </h3>
                         <div class="announcement-progress">${progressText}</div>
                         <button class="announcement-close-btn" onclick="announcementManager.closeCurrentAnnouncement(false)">
                             <i class="fas fa-times"></i>
@@ -919,33 +1070,38 @@
         }
 
         closeCurrentAnnouncement(markAsRead = false) {
+            // 先添加关闭动画类
+            const modal = this.overlay.querySelector('.announcement-modal');
+            if (modal) {
+                modal.classList.add('closing');
+            }
+
             if (markAsRead) {
                 const announcementId = this.announcements[this.currentIndex].id;
                 this.markAnnouncementRead(announcementId);
             }
 
-            // 移除当前公告
-            this.announcements.splice(this.currentIndex, 1);
+            // 等待动画结束后移除公告
+            setTimeout(() => {
+                this.announcements.splice(this.currentIndex, 1);
 
-            // 如果还有剩余公告，显示下一个
-            if (this.announcements.length > 0) {
-                // 确保索引不越界
-                if (this.currentIndex >= this.announcements.length) {
-                    this.currentIndex = this.announcements.length - 1;
+                if (this.announcements.length > 0) {
+                    if (this.currentIndex >= this.announcements.length) {
+                        this.currentIndex = this.announcements.length - 1;
+                    }
+                    this.showCurrentAnnouncement();
+                } else {
+                    this.hideOverlay();
                 }
-                this.showCurrentAnnouncement();
-            } else {
-                this.hideOverlay();
-            }
+            }, 200); // 与 CSS 动画时间一致
         }
 
         markAsRead(announcementId) {
             this.markAnnouncementRead(announcementId);
-            this.closeCurrentAnnouncement(false); // 标记后自动关闭并显示下一个
+            this.closeCurrentAnnouncement(false);
         }
 
         markAnnouncementRead(announcementId) {
-            // AJAX调用后端API标记已读
             fetch('/api/announcement/mark-as-read/', {
                 method: 'POST',
                 headers: {
@@ -979,7 +1135,6 @@
 
     {% block layout_js %}{% endblock %}
 </script>
-
 {% block extra_js %}{% endblock %}
 </body>
 </html>

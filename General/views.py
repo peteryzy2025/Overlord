@@ -96,18 +96,17 @@ def user_logout(request):
 @login_required(login_url='/login/')
 def main_page(request):
     """主页"""
-    theme = request.COOKIES.get('theme', 'light')
+
     return render(request, 'main.html', {
-        'theme': theme,
-        'active_nav': 'main'
+
     })
 
 @login_required(login_url='/login/')
 def management_page(request):
     """管理中心"""
-    theme = request.COOKIES.get('theme', 'light')
+
     return render(request, 'management.html', {
-        'theme': theme,
+
         'active_nav': 'management'
     })
 
@@ -117,20 +116,58 @@ def csrf_token_view(request):
     token = get_token(request)
     return JsonResponse({'csrfToken': token})
 
+
+# 在 views.py 中
+@require_POST
 @csrf_exempt
-@login_required
 def update_theme(request):
-    """更新主题设置"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            theme = data.get('theme', 'light')
-            response = JsonResponse({'success': True, 'theme': theme})
-            response.set_cookie('theme', theme, max_age=365*24*60*60)  # 1年
-            return response
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)}, status=400)
-    return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
+    """
+    更新用户主题偏好设置
+    已登录用户：保存到数据库
+    未登录用户：保存到Session
+    """
+    try:
+        # 解析请求数据
+        data = json.loads(request.body)
+        theme = data.get('theme', 'light')
+
+        # 验证主题值
+        if theme not in ['light', 'dark']:
+            return JsonResponse({
+                'success': False,
+                'error': '无效的主题值，必须是light或dark'
+            }, status=400)
+
+        # 已登录用户：保存到数据库（永久存储）
+        if request.user.is_authenticated:
+            if hasattr(request.user, 'theme'):
+                request.user.theme = theme
+                request.user.save()
+                print(f"[主题API] 用户 {request.user.username} 主题已保存到数据库: {theme}")
+            else:
+                print(f"[主题API] 警告：User模型没有theme字段")
+
+        # 所有用户：保存到Session（即时生效）
+        request.session['theme'] = theme
+        request.session.modified = True
+
+        return JsonResponse({
+            'success': True,
+            'theme': theme,
+            'saved_to_db': request.user.is_authenticated
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '无效的JSON数据'
+        }, status=400)
+    except Exception as e:
+        print(f"[主题API] 错误: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
 
 
 @require_POST

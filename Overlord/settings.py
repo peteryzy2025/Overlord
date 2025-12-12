@@ -22,8 +22,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-h_9nrs(_rj5nx%qez^+r+9j6)6tskga!04$b#zlg1%zlikh0ts'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
-DEBUG = False
+DEBUG = True
+# DEBUG = False
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_SSL_REDIRECT = False  # Django 不强制跳转
 SESSION_COOKIE_SECURE = False  # 允许 HTTP 和 HTTPS 传输
@@ -72,6 +72,7 @@ MIDDLEWARE = [
     'General.middleware.login_required.LoginRequiredMiddleware',
     'General.middleware.permission.PermissionMiddleware',
     'General.middleware.announcement.AnnouncementMiddleware',
+    'General.middleware.middleware.ThemeMiddleware'
 
 ]
 

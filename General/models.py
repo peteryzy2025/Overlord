@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 
+
 class User(AbstractUser):
     """
     自定义用户模型，继承Django AbstractUser
@@ -57,6 +58,13 @@ class User(AbstractUser):
     # 配置认证字段
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
+
+    theme = models.CharField(
+        '主题偏好',
+        max_length=10,
+        choices=[('light', '浅色'), ('dark', '深色')],
+        default='light'
+    )
 
     class Meta:
         db_table = 'users'
@@ -447,3 +455,92 @@ class UserAnnouncementRead(models.Model):
         return f"{self.user.first_name} - {self.announcement.title}"
 
 
+class UserOperationLog(models.Model):
+    """
+    用户操作日志表
+    记录所有用户的关键操作，便于审计和追踪
+    """
+
+    # ============= 操作类型常量定义 =============
+    # 1xxx: 用户管理类操作
+    USER_CREATE = 1001
+    USER_UPDATE = 1002
+    USER_DELETE = 1003
+
+    # 2xxx: 店铺管理类操作
+    SHOP_CREATE = 2001
+    SHOP_UPDATE = 2002
+    SHOP_DELETE = 2003
+
+    # 3xxx: 订单管理类操作
+    ORDER_IMPORT = 3001
+    ORDER_SHIP = 3002
+    ORDER_MARK_REAL = 3003
+    ORDER_RPA_LOGISTICS = 3004
+
+    OPERATION_TYPE_CHOICES = [
+        (USER_CREATE, '新增用户'),
+        (USER_UPDATE, '修改用户信息'),
+        (USER_DELETE, '删除用户'),
+        (SHOP_CREATE, '新增店铺'),
+        (SHOP_UPDATE, '修改店铺'),
+        (SHOP_DELETE, '删除店铺'),
+        (ORDER_IMPORT, '订单导单'),
+        (ORDER_SHIP, '订单发货'),
+        (ORDER_MARK_REAL, '订单标注真发'),
+        (ORDER_RPA_LOGISTICS, 'RPA真物流覆盖假物流'),
+    ]
+
+    # ============= 模型字段 =============
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='操作人',
+        related_name='operation_logs',
+        db_comment='执行操作的用户'
+    )
+
+    # 4位数字类型，带索引便于快速筛选（如查找所有3开头的订单操作）
+    operation_type = models.IntegerField(
+        '操作类型',
+        choices=OPERATION_TYPE_CHOICES,
+        db_index=True,  # 为类型筛选加速
+        db_comment='4位数字类型：1xxx用户操作，2xxx店铺操作，3xxx订单操作'
+    )
+
+    # 操作详情文本，限制255字符，带索引支持模糊搜索
+    operation_record = models.CharField(
+        '操作记录',
+        max_length=255,
+        db_index=True,  # 为文本搜索加速（支持前匹配查询）
+        db_comment='自由记录的文本内容'
+    )
+
+    created_at = models.DateTimeField(
+        '操作时间',
+        auto_now_add=True,
+        db_index=True,  # 为时间范围查询加速
+        db_comment='自动写入的操作时间'
+    )
+
+    class Meta:
+        db_table = 'user_operation_logs'
+        verbose_name = '用户操作日志'
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']  # 默认按时间倒序排列
+
+        # 复合索引：常用查询场景
+        indexes = [
+            # 按用户+时间查询某人的操作历史
+            models.Index(fields=['user', '-created_at'], name='idx_user_time'),
+
+            # 按类型+时间查询某类操作记录（如所有订单操作）
+            models.Index(fields=['operation_type', '-created_at'], name='idx_type_time'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} - {self.get_operation_type_display()} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
