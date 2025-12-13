@@ -12,7 +12,7 @@ from django.http import HttpResponse
 import csv
 from datetime import datetime
 
-from .models import User, OperationalAccount,Announcement,UserAnnouncementRead
+from .models import User, OperationalAccount,Announcement,UserAnnouncementRead,Company
 
 
 # ========== 内联管理运营账号（在User编辑页面显示） ==========
@@ -269,3 +269,73 @@ class UserAnnouncementReadAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """禁止手动添加已读记录（应该由用户操作自动生成）"""
         return False
+
+# ========== 公司管理（多租户核心）==========
+@admin.register(Company)
+class CompanyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'status_colored', 'created_at', 'user_count')
+    list_filter = ('status', 'created_at')
+    search_fields = ('name', 'code')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
+
+    # 统计该公司下有多少用户（实时显示在列表中（超级实用！）
+    def user_count(self, obj):
+        count = obj.users.count()
+        if count > 0:
+            return format_html(
+                '<b style="color:#28a745;">{}</b> 人',
+                count
+            )
+        return "0 人"
+    user_count.short_description = '用户数量'
+
+    # 状态颜色美化
+    def status_colored(self, obj):
+        color = '#28a745' if obj.status == 1 else '#dc3545'
+        text = '正常' if obj.status == 1 else '停用'
+        return format_html(
+            '<span style="background:{}; color:white; padding:2px 8px; border-radius:3px; font-size:11px;">{}</span>',
+            color, text
+        )
+    status_colored.short_description = '状态'
+
+    fieldsets = (
+        ('基本信息', {
+            'fields': ('name', 'code', 'status')
+        }),
+        ('统计信息', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    # 创建公司时自动记录创建时间（虽然auto_now_add已经有了，但保险）
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+
+    # 自定义动作：快速停用/启用公司
+    actions = ['make_active', 'make_disabled']
+
+    @admin.action(description='将选中公司设为【正常】')
+    def make_active(self, request, queryset):
+        updated = queryset.update(status=1)
+        self.message_user(request, f'成功启用 {updated} 家公司。')
+
+    @admin.action(description='将选中公司设为【停用】')
+    def make_disabled(self, request, queryset):
+        updated = queryset.update(status=2)
+        self.message_user(request, f'成功停用 {updated} 家公司。')
+
+    # 安全考虑：不允许删除已有用户的公司
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.users.exists():
+            return False
+        return super().has_delete_permission(request, obj)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # 超级管理员看全部，普通管理员只能看自己公司（后续可扩展）
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(users=request.user)

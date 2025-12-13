@@ -6,6 +6,24 @@ from pydantic import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 
+class Company(models.Model):
+    """
+    公司模型，用于多租户区分
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    name = models.CharField('公司名称', max_length=200, unique=True)  # 唯一公司名
+    code = models.CharField('公司代码', max_length=50, unique=True, blank=True, null=True)  # 可选唯一代码，用于URL或标识
+    status = models.IntegerField('状态', choices=[(1, '正常'), (2, '停用')], default=1)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'companies'
+        verbose_name = '公司'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.name
 
 class User(AbstractUser):
     """
@@ -15,7 +33,15 @@ class User(AbstractUser):
 
     # 覆盖默认ID字段，保留原数据中的bigint类型
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
-
+    company = models.ForeignKey(
+        'Company',
+        on_delete=models.PROTECT,  # 防止误删公司导致用户数据丢失
+        null=True,
+        blank=True,
+        related_name='users',  # 关键！让 Company 能通过 .users 反向查用户
+        verbose_name='所属公司',
+        help_text='用户所属的公司，多租户隔离用'
+    )
     # 基础业务字段
     phone = models.CharField('联系电话', max_length=20, blank=True, null=True)
 
