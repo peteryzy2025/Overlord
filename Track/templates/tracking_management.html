@@ -1,0 +1,1445 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}物流追踪管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/tracking_management.css' %}">
+{% endblock %}
+
+{% block page_content %}
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="tracking-main">
+        <!-- 页面头部 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">物流追踪管理</h1>
+                <p class="page-subtitle">查看和管理所有运单轨迹，支持异常监控与批量刷新</p>
+            </div>
+            <div>
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计看板 -->
+        <div class="stats-dashboard" id="statsDashboard">
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-check-circle"></i>
+                    今日签收
+                </div>
+                <div class="stat-value" id="statDeliveredToday">0</div>
+                <div class="stat-change">&nbsp;</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-truck"></i>
+                    在途中
+                </div>
+                <div class="stat-value" id="statInTransit">0</div>
+                <div class="stat-change">&nbsp;</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-label">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    超过3天无更新
+                </div>
+                <div class="stat-value" id="statStale3Days">0</div>
+                <div class="stat-change">需重点关注</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-clock"></i>
+                    平均运输时效
+                </div>
+                <div class="stat-value" id="statAvgTransitDays">0</div>
+                <div class="stat-change">天</div>
+            </div>
+        </div>
+
+        <!-- 控制面板 - 筛选区 -->
+        <div class="control-panel">
+            <div class="filter-row">
+                <!-- 日期范围 -->
+                <div class="filter-group">
+                    <label class="filter-label">日期范围</label>
+                    <select class="form-select" id="dateRange">
+                        <option value="yesterday">昨日</option>
+                        <option value="today">今日</option>
+                        <option value="last7days">最近7天</option>
+                        <option value="last30days" selected>最近30天</option>
+                        <option value="custom">自定义范围</option>
+                    </select>
+                </div>
+
+                <div class="filter-group" id="customDateGroup" style="display: none;">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group" id="customDateGroup2" style="display: none;">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+
+                <!-- 运营分组（保留但禁用） -->
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div class="select-wrapper" id="groupWrapper">
+                        <select class="form-select" id="groupFilter" disabled>
+                            <option value="">无可用选项</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
+                </div>
+
+                <!-- 运营人员（保留但禁用） -->
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <div class="select-wrapper" id="operatorWrapper">
+                        <select class="form-select" id="operatorFilter" disabled>
+                            <option value="">无可用选项</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                    </div>
+                </div>
+
+                <!-- 运单号 -->
+                <div class="filter-group">
+                    <label class="filter-label">运单号</label>
+                    <input type="text" class="form-control" id="trackingNumberFilter"
+                           placeholder="输入运单号（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <!-- 物流商 -->
+                <div class="filter-group">
+                    <label class="filter-label">物流商</label>
+                    <div class="select-wrapper" id="logisticsMethodWrapper">
+                        <select class="form-select" id="logisticsMethodFilter">
+                            <option value="">全部物流商</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('logisticsMethod')"
+                                title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 当前状态 -->
+                <div class="filter-group">
+                    <label class="filter-label">当前状态</label>
+                    <div class="select-wrapper" id="statusWrapper">
+                        <select class="form-select" id="statusFilter">
+                            <option value="">全部状态</option>
+                            <option value="INIT">待追踪</option>
+                            <option value="NO_RECORD">无信息</option>
+                            <option value="INFO_RECEIVED">等待揽收</option>
+                            <option value="IN_TRANSIT">在途中</option>
+                            <option value="WAITING_DELIVERY">派送中</option>
+                            <option value="DELIVERY_FAILED">派送失败</option>
+                            <option value="ABNORMAL">异常</option>
+                            <option value="DELIVERED">已签收</option>
+                            <option value="EXPIRED">已过期</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('status')"
+                                title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 轨迹更新情况 -->
+                <div class="filter-group">
+                    <label class="filter-label">轨迹更新情况</label>
+                    <div class="select-wrapper" id="trackingUpdateWrapper">
+                        <select class="form-select" id="trackingUpdateFilter">
+                            <option value="">全部</option>
+                            <option value="today">今日有更新</option>
+                            <option value="stale_3d">超过3天无更新</option>
+                            <option value="stale_7d">超过7天无更新</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('trackingUpdate')"
+                                title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="filter-group" style="align-self: flex-end;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" onclick="applyFilters()">应用筛选</button>
+                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格区 -->
+        <div class="data-section">
+            <!-- 批量操作栏 -->
+            <div class="bulk-actions-bar" id="bulkActionsBar">
+                <span>已选择 <strong id="selectedCount">0</strong> 条</span>
+                <button class="btn" onclick="batchRefreshTracking()">
+                    <i class="fas fa-sync-alt"></i> 批量刷新轨迹
+                </button>
+                <button class="btn btn-secondary" onclick="clearSelection()">
+                    <i class="fas fa-times"></i> 清除选择
+                </button>
+            </div>
+
+            <!-- 表格头部 -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title">运单列表</h3>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn" onclick="openImportModal()">
+                        <i class="fas fa-plus"></i> 新增物流单号
+                    </button>
+                    <button class="btn btn-secondary" onclick="exportTrackingToExcel(event)">
+                        <i class="fas fa-download"></i> 导出Excel
+                    </button>
+                    <button class="btn" onclick="updateStats()">
+                        <i class="fas fa-chart-line"></i> 更新统计
+                    </button>
+                </div>
+            </div>
+
+            <!-- 表格 -->
+            <div class="table-container" id="trackingTableContainer">
+                <table class="table" id="trackingTable">
+                    <thead>
+                    <tr>
+                        <th class="checkbox-col">
+                            <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                        </th>
+                        <th>运单号</th>
+                        <th>物流商</th>
+                        <th>当前状态</th>
+                        <th>目的地</th>
+                        <th>最新轨迹时间</th>
+                        <th>停滞天数</th>
+                        <th>下单时间</th>
+                        <th style="width: 150px;">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="trackingTableBody">
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"应用筛选"</p>
+                            <p>运单数据将在此处显示</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-controls" id="paginationControls" style="display: none;">
+                <div class="page-size-selector">
+                    <label for="pageSize">每页显示：</label>
+                    <select class="form-select" id="pageSize" onchange="changePageSize()">
+                        <option value="10">10条</option>
+                        <option value="20" selected>20条</option>
+                        <option value="50">50条</option>
+                        <option value="100">100条</option>
+                    </select>
+                </div>
+
+                <div class="pagination-buttons" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+
+                <div class="pagination-info" id="paginationInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block modals %}
+    <!-- 导入模态框 -->
+    <div class="modal-overlay" id="importModalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importModalLabel">新增物流单号</h5>
+                <button type="button" class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <p class="text-muted">请上传包含物流单号的Excel文件，系统将自动识别C列的单号数据。</p>
+                    <a href="#" class="btn btn-sm btn-secondary" onclick="downloadTemplate()">
+                        <i class="fas fa-download"></i> 下载模板
+                    </a>
+                </div>
+
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <div class="upload-text">
+                        点击或拖拽上传Excel文件
+                    </div>
+                    <div class="upload-hint">
+                        支持 .xlsx, .xls 格式，文件大小不超过 5MB
+                    </div>
+                </div>
+
+                <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+
+                <div id="previewSection" style="display: none;">
+                    <h6>预览 (<span id="previewCount">0</span> 个有效单号)</h6>
+                    <div class="preview-list" id="previewList">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel-modal" onclick="closeImportModal()">取消
+                </button>
+                <button type="button" class="btn btn-primary-modal" id="confirmImportBtn" onclick="confirmImport()"
+                        disabled>
+                    <i class="fas fa-check"></i> 确认导入
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- 导入结果模态框 -->
+    <div class="modal-overlay" id="importResultModalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importResultModalLabel">导入结果</h5>
+                <button type="button" class="modal-close" onclick="closeImportResultModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="resultSummary" class="mb-3">
+                    <!-- 动态生成统计 -->
+                </div>
+                <div class="import-results" id="importResults">
+                    <!-- 动态生成详细结果 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel-modal" onclick="closeImportResultModal()">
+                    关闭
+                </button>
+                <button type="button" class="btn btn-primary-modal" onclick="downloadFailedList()"
+                        id="downloadFailedBtn" style="display: none;">
+                    <i class="fas fa-download"></i> 下载失败列表
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SheetJS 库 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <script>
+        // ==================== 全局变量 ====================
+        let allCouriers = [];
+        let currentFilters = {
+            date_range: 'last30days',
+            start_date: '',
+            end_date: '',
+            operator_id: '',
+            group: '',
+            tracking_number: '',
+            order_id: '',
+            logistics_method: '',
+            status: '',
+            tracking_update: ''
+        };
+        let pagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+        let selectedTrackings = new Set();
+        let importData = {
+            validTrackings: [],
+            invalidCount: 0,
+            duplicateCount: 0,
+            file: null
+        };
+
+        // ==================== 工具函数 ====================
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+        }
+
+        // ==================== 数据加载函数 ====================
+        async function loadCouriersFromAPI() {
+            try {
+                const response = await fetch('/api/couriers/');
+                const result = await response.json();
+                if (result.success) {
+                    allCouriers = result.data;
+                    populateCourierDropdown();
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('物流商API请求错误:', error);
+                const courierSelect = document.getElementById('logisticsMethodFilter');
+                courierSelect.innerHTML = '<option value="">无可用选项</option>';
+                return false;
+            }
+        }
+
+        function populateCourierDropdown() {
+            const courierSelect = document.getElementById('logisticsMethodFilter');
+            const firstOption = courierSelect.options[0];
+            courierSelect.innerHTML = '';
+            courierSelect.appendChild(firstOption);
+
+            allCouriers.forEach(courier => {
+                const option = document.createElement('option');
+                option.value = courier.code;
+                option.textContent = courier.name_cn || courier.name_en || courier.code;
+                courierSelect.appendChild(option);
+            });
+        }
+
+        // ==================== 筛选逻辑 ====================
+        function handleDateRangeChange() {
+            const dateRange = document.getElementById('dateRange').value;
+            const customDateGroup = document.getElementById('customDateGroup');
+            const customDateGroup2 = document.getElementById('customDateGroup2');
+            if (dateRange === 'custom') {
+                customDateGroup.style.display = 'flex';
+                customDateGroup2.style.display = 'flex';
+            } else {
+                customDateGroup.style.display = 'none';
+                customDateGroup2.style.display = 'none';
+            }
+        }
+
+        function getCurrentFilters() {
+            return {
+                date_range: document.getElementById('dateRange').value,
+                start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
+                end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
+                operator_id: '',
+                group: '',
+                tracking_number: document.getElementById('trackingNumberFilter').value.trim(),
+                order_id: '',
+                logistics_method: document.getElementById('logisticsMethodFilter').value,
+                status: document.getElementById('statusFilter').value,
+                tracking_update: document.getElementById('trackingUpdateFilter').value
+            };
+        }
+
+        function setDefaultFilters() {
+            document.getElementById('dateRange').value = 'last30days';
+            handleDateRangeChange();
+            document.getElementById('trackingNumberFilter').value = '';
+            document.getElementById('logisticsMethodFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('trackingUpdateFilter').value = '';
+        }
+
+        async function resetFilters(event) {
+            const icon = event?.target?.querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+
+            showLoading(true);
+
+            try {
+                await loadCouriersFromAPI();
+                setDefaultFilters();
+
+                ['logisticsMethod', 'status', 'trackingUpdate'].forEach(type => {
+                    const element = document.getElementById(type + 'Filter');
+                    if (element) element.dispatchEvent(new Event('change'));
+                });
+
+                pagination.page = 1;
+                pagination.page_size = 20;
+                document.getElementById('pageSize').value = 20;
+
+                await applyFilters();
+                showNotification('筛选条件已重置为默认值', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            }
+        }
+
+        function refreshData(event) {
+            const icon = event.target.closest('button').querySelector('i');
+            icon.style.animation = 'spin 1s linear infinite';
+            applyFilters().then(() => {
+                icon.style.animation = '';
+            });
+        }
+
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+
+            try {
+                pagination.page = 1;
+                await loadTrackingTable();
+                await updateStats();
+                showNotification('运单数据已更新', 'success');
+            } catch (error) {
+                showNotification('数据请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ==================== 表格渲染 ====================
+        async function loadTrackingTable() {
+            const tbody = document.getElementById('trackingTableBody');
+            const paginationControls = document.getElementById('paginationControls');
+
+            showLoading(true);
+
+            try {
+                const requestData = {
+                    ...currentFilters,
+                    page: pagination.page,
+                    page_size: pagination.page_size
+                };
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/tracking-list/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    pagination.total = data.total;
+                    pagination.total_pages = data.total_pages;
+
+                    renderTrackingTable(data.orders);
+                    renderPagination();
+
+                    paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>加载失败: ${result.message || '未知错误'}</p>
+                            </td>
+                        </tr>
+                    `;
+                    paginationControls.style.display = 'none';
+                }
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败</p>
+                            <p>${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationControls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function renderTrackingTable(trackings) {
+            const tbody = document.getElementById('trackingTableBody');
+            if (!trackings || trackings.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无运单数据</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = trackings.map((tracking, index) => {
+                const staleDays = tracking.stale_days || 0;
+                let staleHtml = staleDays + '天';
+                if (staleDays >= 7) {
+                    staleHtml = `<span class="stale-warning red"><i class="fas fa-exclamation-circle"></i> ${staleDays}天</span>`;
+                } else if (staleDays >= 3) {
+                    staleHtml = `<span class="stale-warning yellow"><i class="fas fa-exclamation-triangle"></i> ${staleDays}天</span>`;
+                }
+
+                const statusBadge = renderStatusBadge(tracking.transit_status);
+
+                const isSelected = selectedTrackings.has(tracking.track_no);
+
+                return `
+                    <tr data-tracking-no="${tracking.track_no}" data-expanded="false">
+                        <td class="checkbox-col">
+                            <input type="checkbox" ${isSelected ? 'checked' : ''}
+                                   onclick="toggleRowSelection('${tracking.track_no}', this.checked)">
+                        </td>
+                        <td>
+                            <a href="#" onclick="toggleTrackingDetails('${tracking.track_no}', event)"
+                               style="font-weight: 600; color: var(--accent-color);">
+                                ${tracking.track_no}
+                            </a>
+                        </td>
+                        <td>${tracking.courier || '-'}</td>
+                        <td>${statusBadge}</td>
+                        <td>${tracking.ship_to || '-'}</td>
+                        <td>${formatDateTime(tracking.last_event_time)}</td>
+                        <td>${staleHtml}</td>
+                        <td>${formatDateTime(tracking.order_time)}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-action" onclick="refreshSingleTracking('${tracking.track_no}', event)"
+                                        title="刷新轨迹">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button class="btn-action" onclick="openCourierWebsite('${tracking.courier}', '${tracking.track_no}', event)"
+                                        title="官网追踪">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </button>
+                                <button class="btn-action" onclick="copyTrackingNumber('${tracking.track_no}', event)"
+                                        title="复制运单号">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="tracking-details-row" id="details-${tracking.track_no}">
+                        <td colspan="9">
+                            <div class="tracking-details-content">
+                                <div class="tracking-timeline" id="timeline-${tracking.track_no}">
+                                    <div class="text-center">
+                                        <i class="fas fa-spinner fa-spin"></i> 加载轨迹详情...
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            updateBulkActionsBar();
+        }
+
+        function renderStatusBadge(status) {
+            if (!status) return '<span class="status-badge">未知</span>';
+
+            const statusMap = {
+                'INIT': {text: '待追踪', class: 'status-pending'},
+                'NO_RECORD': {text: '无信息', class: 'status-pending'},
+                'INFO_RECEIVED': {text: '等待揽收', class: 'status-pending'},
+                'IN_TRANSIT': {text: '在途中', class: 'status-transit'},
+                'WAITING_DELIVERY': {text: '派送中', class: 'status-transit'},
+                'DELIVERY_FAILED': {text: '派送失败', class: 'status-exception'},
+                'ABNORMAL': {text: '异常', class: 'status-exception'},
+                'DELIVERED': {text: '已签收', class: 'status-delivered'},
+                'EXPIRED': {text: '已过期', class: 'status-exception'}
+            };
+
+            const mapped = statusMap[status] || {text: status, class: 'status-exception'};
+            return `<span class="status-badge ${mapped.class}">${mapped.text}</span>`;
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('zh-CN', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ==================== 展开详情 ====================
+        async function toggleTrackingDetails(trackingNo, event) {
+            event.preventDefault();
+            const row = document.querySelector(`tr[data-tracking-no="${trackingNo}"]`);
+            const detailsRow = document.getElementById(`details-${trackingNo}`);
+            const isExpanded = row.dataset.expanded === 'true';
+
+            // 关闭其他已展开的行
+            document.querySelectorAll('.tracking-details-row.expanded').forEach(row => {
+                row.classList.remove('expanded');
+            });
+            document.querySelectorAll('tr[data-expanded="true"]').forEach(row => {
+                row.dataset.expanded = 'false';
+            });
+
+            if (!isExpanded) {
+                row.dataset.expanded = 'true';
+                detailsRow.classList.add('expanded');
+
+                // 加载轨迹详情
+                const timeline = document.getElementById(`timeline-${trackingNo}`);
+                timeline.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> 加载轨迹详情...</div>';
+
+                try {
+                    const response = await fetch(`/api/tracking-details/?track_no=${trackingNo}`);
+                    const result = await response.json();
+
+                    if (result.success && result.data.length > 0) {
+                        timeline.innerHTML = result.data.map(detail => `
+                            <div class="timeline-item">
+                                <div class="timeline-time">${formatDateTime(detail.event_time)}</div>
+                                <div class="timeline-content">${detail.event_detail}</div>
+                                ${detail.address ? `<div class="timeline-address"><i class="fas fa-map-marker-alt"></i> ${detail.address}</div>` : ''}
+                            </div>
+                        `).join('');
+                    } else {
+                        timeline.innerHTML = '<div class="text-center text-muted">暂无轨迹详情</div>';
+                    }
+                } catch (error) {
+                    timeline.innerHTML = `<div class="text-center text-danger">加载失败: ${error.message}</div>`;
+                }
+            } else {
+                row.dataset.expanded = 'false';
+                detailsRow.classList.remove('expanded');
+            }
+        }
+
+        // ==================== 批量选择 ====================
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('#trackingTableBody input[type="checkbox"]:not(#selectAll)');
+
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAll.checked;
+                const trackingNo = checkbox.closest('tr').dataset.trackingNo;
+                if (selectAll.checked) {
+                    selectedTrackings.add(trackingNo);
+                } else {
+                    selectedTrackings.delete(trackingNo);
+                }
+            });
+
+            updateBulkActionsBar();
+        }
+
+        function toggleRowSelection(trackingNo, isSelected) {
+            if (isSelected) {
+                selectedTrackings.add(trackingNo);
+            } else {
+                selectedTrackings.delete(trackingNo);
+            }
+
+            // 更新全选状态
+            const allCheckboxes = document.querySelectorAll('#trackingTableBody input[type="checkbox"]:not(#selectAll)');
+            const checkedCheckboxes = document.querySelectorAll('#trackingTableBody input[type="checkbox"]:not(#selectAll):checked');
+            document.getElementById('selectAll').checked = allCheckboxes.length === checkedCheckboxes.length;
+
+            updateBulkActionsBar();
+        }
+
+        function updateBulkActionsBar() {
+            const bar = document.getElementById('bulkActionsBar');
+            const count = document.getElementById('selectedCount');
+
+            count.textContent = selectedTrackings.size;
+
+            if (selectedTrackings.size > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            selectedTrackings.clear();
+            document.querySelectorAll('#trackingTableBody input[type="checkbox"]').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.getElementById('selectAll').checked = false;
+            updateBulkActionsBar();
+        }
+
+        // ==================== 操作功能 ====================
+        async function refreshSingleTracking(trackingNo, event) {
+            event.stopPropagation();
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (button.disabled) return;
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                showLoading(true);
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/refresh-tracking/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({track_nos: [trackingNo]}) // 单个单号
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    await loadTrackingTable(); // 刷新当前页
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('刷新失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                icon.className = 'fas fa-sync-alt';
+                showLoading(false);
+            }
+        }
+
+        // 替换后（真实API版本）：
+        async function batchRefreshTracking() {
+            if (selectedTrackings.size === 0) {
+                showNotification('请先选择要刷新的运单', 'warning');
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/refresh-tracking/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({track_nos: Array.from(selectedTrackings)})
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    clearSelection();
+                    await loadTrackingTable(); // 刷新表格数据
+                    await updateStats(); // 刷新统计看板
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function openCourierWebsite(courier, trackingNo, event) {
+            event.stopPropagation();
+            const courierUrls = {
+                'USPS': `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${trackingNo}`,
+                'DHL': `https://www.dhl.com/us-en/home/tracking.html?tracking-id=${trackingNo}`,
+                'FedEx': `https://www.fedex.com/apps/fedextrack/?action=track&trackingnumber=${trackingNo}`,
+                'UPS': `https://www.ups.com/track?loc=en_US&tracknum=${trackingNo}`,
+                '燕文物流': `http://www.yanwen.com/track/${trackingNo}`
+            };
+
+            const url = courierUrls[courier];
+            if (url) {
+                window.open(url, '_blank');
+            } else {
+                showNotification('暂不支持该物流商官网追踪', 'warning');
+            }
+        }
+
+        async function copyTrackingNumber(trackingNo, event) {
+            event.stopPropagation();
+            try {
+                await navigator.clipboard.writeText(trackingNo);
+                showNotification('运单号已复制到剪贴板', 'success');
+            } catch (error) {
+                const temp = document.createElement('input');
+                temp.value = trackingNo;
+                document.body.appendChild(temp);
+                temp.select();
+                document.execCommand('copy');
+                document.body.removeChild(temp);
+                showNotification('运单号已复制到剪贴板', 'success');
+            }
+        }
+
+        // ==================== 分页 ====================
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const infoContainer = document.getElementById('paginationInfo');
+
+            const {page, page_size, total, total_pages} = pagination;
+
+            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+            let buttonsHTML = '';
+
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>`;
+
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+            }
+
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > pagination.total_pages) return;
+
+            pagination.page = newPage;
+            loadTrackingTable();
+            document.getElementById('trackingTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function changePageSize() {
+            const newSize = parseInt(document.getElementById('pageSize').value);
+            pagination.page_size = newSize;
+            pagination.page = 1;
+            loadTrackingTable();
+        }
+
+        // ==================== 统计看板 ====================
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/tracking-stats/');
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    document.getElementById('statDeliveredToday').textContent = data.delivered_today;
+                    document.getElementById('statInTransit').textContent = data.in_transit;
+                    document.getElementById('statStale3Days').textContent = data.stale_3_days;
+                    document.getElementById('statAvgTransitDays').textContent = data.avg_transit_days;
+                }
+            } catch (error) {
+                console.error('统计更新失败:', error);
+            }
+        }
+
+        // ==================== 导出 ====================
+        async function exportTrackingToExcel(event) {
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (button.disabled) return;
+
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                showLoading(true);
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/export-tracking-excel/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(currentFilters)
+                });
+
+                if (response.ok) {
+                    let filename = '物流追踪.xlsx';
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    setTimeout(() => {
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    }, 100);
+
+                    showNotification('导出成功！', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification('导出失败: ' + (error.message || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                icon.className = 'fas fa-download';
+                showLoading(false);
+            }
+        }
+
+        // ==================== 新增物流单号导入功能 ====================
+        function openImportModal() {
+            importData = {
+                validTrackings: [],
+                invalidCount: 0,
+                duplicateCount: 0,
+                file: null
+            };
+
+            document.getElementById('fileInput').value = '';
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('confirmImportBtn').disabled = true;
+
+            document.getElementById('importModalOverlay').style.display = 'block';
+            document.body.classList.add('modal-open');
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModalOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        function closeImportResultModal() {
+            document.getElementById('importResultModalOverlay').style.display = 'none';
+            document.body.classList.remove('modal-open');
+        }
+
+        function downloadTemplate() {
+            const ws_data = [
+                ['单号', '订单号', '备注'],
+                ['', '', '示例：请在C列填写物流单号']
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+            const wbout = XLSX.write(wb, {bookType: 'xlsx', type: 'array'});
+            const blob = new Blob([wbout], {type: 'application/octet-stream'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '物流单号导入模板.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showNotification('模板已下载', 'success');
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    handleFileUpload(file);
+                }
+            });
+
+            uploadArea.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', function (e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', function (e) {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                    file.type === 'application/vnd.ms-excel')) {
+                    handleFileUpload(file);
+                } else {
+                    showNotification('请上传Excel文件', 'warning');
+                }
+            });
+        });
+
+        async function handleFileUpload(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                showNotification('文件大小不能超过5MB', 'error');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const sheetData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+
+                    if (!sheetData[0] || sheetData[0][2] !== '单号') {
+                        showNotification('Excel格式错误：C1单元格必须是"单号"', 'error');
+                        showLoading(false);
+                        return;
+                    }
+
+                    const trackings = [];
+                    let invalidCount = 0;
+
+                    for (let i = 1; i < sheetData.length; i++) {
+                        const cellValue = sheetData[i][2];
+                        if (cellValue) {
+                            const trackNo = String(cellValue).trim();
+                            if (trackNo.length > 5) {
+                                trackings.push({
+                                    track_no: trackNo,
+                                    row: i + 1
+                                });
+                            } else if (trackNo.length > 0) {
+                                invalidCount++;
+                            }
+                        }
+                    }
+
+                    const uniqueTrackings = [];
+                    const seen = new Set();
+                    let duplicateCount = 0;
+
+                    trackings.forEach(item => {
+                        if (seen.has(item.track_no)) {
+                            duplicateCount++;
+                        } else {
+                            seen.add(item.track_no);
+                            uniqueTrackings.push(item);
+                        }
+                    });
+
+                    importData = {
+                        validTrackings: uniqueTrackings,
+                        invalidCount: invalidCount,
+                        duplicateCount: duplicateCount,
+                        file: file
+                    };
+
+                    showPreview(uniqueTrackings, invalidCount, duplicateCount);
+                    showLoading(false);
+                };
+
+                reader.readAsArrayBuffer(file);
+            } catch (error) {
+                showLoading(false);
+                showNotification('文件解析失败: ' + error.message, 'error');
+            }
+        }
+
+        function showPreview(trackings, invalidCount, duplicateCount) {
+            const previewSection = document.getElementById('previewSection');
+            const previewCount = document.getElementById('previewCount');
+            const previewList = document.getElementById('previewList');
+
+            previewCount.textContent = trackings.length;
+            previewSection.style.display = 'block';
+
+            const displayTrackings = trackings.slice(0, 50);
+            previewList.innerHTML = displayTrackings.map(item => `
+                <div class="preview-item">
+                    <span>${item.track_no}</span>
+                    <span class="preview-status valid">有效</span>
+                </div>
+            `).join('');
+
+            if (trackings.length > 50) {
+                previewList.innerHTML += `
+                    <div class="text-center text-muted mt-2">
+                        还有 ${trackings.length - 50} 个单号未显示...
+                    </div>
+                `;
+            }
+
+            let summaryHtml = `<div class="mt-2 text-muted">总计: ${trackings.length} 个有效单号`;
+            if (invalidCount > 0) {
+                summaryHtml += `, ${invalidCount} 个无效单号(长度≤5)`;
+            }
+            if (duplicateCount > 0) {
+                summaryHtml += `, ${duplicateCount} 个重复单号已去重`;
+            }
+            summaryHtml += '</div>';
+            previewList.innerHTML += summaryHtml;
+
+            document.getElementById('confirmImportBtn').disabled = trackings.length === 0;
+            if (trackings.length === 0) {
+                showNotification('未找到有效的物流单号', 'warning');
+            }
+        }
+
+        async function confirmImport() {
+            if (importData.validTrackings.length === 0) {
+                showNotification('没有有效的物流单号可以导入', 'warning');
+                return;
+            }
+
+            closeImportModal();
+            showLoading(true);
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.querySelector('meta[name="csrf-token"]')?.content ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                console.log('准备发送文件:', importData.file.name);
+
+                const formData = new FormData();
+                formData.append('file', importData.file);
+
+                const response = await fetch('/api/import-tracking-excel/', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+
+                console.log('API响应状态:', response.status);
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showImportResults(result.data);
+                    const totalImported = result.data.imported + result.data.duplicates_api;
+                    showNotification(`成功处理 ${totalImported} 个物流单号`, 'success');
+                    await loadTrackingTable();
+                } else {
+                    showNotification('导入失败: ' + (result.message || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('导入请求失败:', error);
+                showNotification('导入请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showImportResults(data) {
+            const summary = document.getElementById('resultSummary');
+            const results = document.getElementById('importResults');
+            const downloadBtn = document.getElementById('downloadFailedBtn');
+
+            const totalProcessed = data.imported + data.duplicates_local + data.duplicates_api + data.errors;
+
+            summary.innerHTML = `
+                <div class="row">
+                    <div class="col-md-2 col-6 text-center mb-3">
+                        <div class="fs-3 fw-bold text-primary">${totalProcessed}</div>
+                        <div class="text-muted small">总计处理</div>
+                    </div>
+                    <div class="col-md-2 col-6 text-center mb-3">
+                        <div class="fs-3 fw-bold text-success">${data.imported}</div>
+                        <div class="text-muted small">新导入</div>
+                    </div>
+                    <div class="col-md-2 col-6 text-center mb-3">
+                        <div class="fs-3 fw-bold text-warning">${data.duplicates_local}</div>
+                        <div class="text-muted small">本地重复</div>
+                    </div>
+                    <div class="col-md-2 col-6 text-center mb-3">
+                        <div class="fs-3 fw-bold text-info">${data.duplicates_api}</div>
+                        <div class="text-muted small">API重复</div>
+                    </div>
+                    <div class="col-md-2 col-6 text-center mb-3">
+                        <div class="fs-3 fw-bold text-danger">${data.errors}</div>
+                        <div class="text-muted small">失败</div>
+                    </div>
+                </div>
+                <hr class="mt-2 mb-2">
+                <div class="text-center text-muted small">
+                    文件共 ${data.total_to_process} 条记录
+                </div>
+            `;
+
+            if (data.details && data.details.length > 0) {
+                const statusOrder = {'success': 0, 'duplicate_local': 1, 'duplicate_api': 2, 'error': 3};
+                const sortedDetails = data.details.sort((a, b) => {
+                    return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+                });
+
+                results.innerHTML = sortedDetails.map(detail => {
+                    let statusClass = '';
+                    let statusIcon = '';
+                    let statusText = '';
+
+                    switch (detail.status) {
+                        case 'success':
+                            statusClass = 'result-success';
+                            statusIcon = 'fa-check-circle';
+                            statusText = detail.message || '导入成功';
+                            break;
+                        case 'duplicate_local':
+                            statusClass = 'result-warning';
+                            statusIcon = 'fa-exclamation-triangle';
+                            statusText = detail.message || '本地数据库已存在';
+                            break;
+                        case 'duplicate_api':
+                            statusClass = 'result-info';
+                            statusIcon = 'fa-info-circle';
+                            statusText = detail.message || 'Track123已存在，已创建本地记录';
+                            break;
+                        case 'error':
+                            statusClass = 'result-error';
+                            statusIcon = 'fa-times-circle';
+                            statusText = detail.message || '导入失败';
+                            break;
+                        default:
+                            statusClass = 'result-warning';
+                            statusIcon = 'fa-question-circle';
+                            statusText = '未知状态';
+                    }
+
+                    return `
+                        <div class="result-item">
+                            <span class="track-no-text">${detail.track_no}</span>
+                            <span class="${statusClass}">
+                                <i class="fas ${statusIcon}"></i>
+                                ${statusText}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                results.innerHTML = '<div class="text-center text-muted">暂无详细结果</div>';
+            }
+
+            const failedItems = data.details?.filter(d => d.status === 'error') || [];
+            if (failedItems.length > 0) {
+                downloadBtn.style.display = 'inline-block';
+                window.failedList = failedItems;
+            } else {
+                downloadBtn.style.display = 'none';
+                window.failedList = [];
+            }
+
+            document.getElementById('importResultModalOverlay').style.display = 'block';
+        }
+
+        function downloadFailedList() {
+            if (!window.failedList || window.failedList.length === 0) {
+                showNotification('没有失败列表可下载', 'warning');
+                return;
+            }
+
+            const ws_data = [
+                ['运单号', '错误信息'],
+                ...window.failedList.map(item => [item.track_no, item.message])
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '失败列表');
+
+            const wbout = XLSX.write(wb, {bookType: 'xlsx', type: 'array'});
+            const blob = new Blob([wbout], {type: 'application/octet-stream'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '导入失败列表.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showNotification('失败列表已下载', 'success');
+        }
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                await loadCouriersFromAPI();
+
+                setDefaultFilters();
+                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+
+                ['logisticsMethod', 'status', 'trackingUpdate'].forEach(type => {
+                    const element = document.getElementById(type + 'Filter');
+                    if (element) {
+                        element.addEventListener('change', () => {
+                            pagination.page = 1;
+                        });
+                    }
+                });
+
+                await applyFilters();
+            } catch (error) {
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+    </script>
+{% endblock %}
