@@ -4,6 +4,7 @@ from Amazon.sync_lingxing_zifa_order import lx_zf_main
 from Amazon.sync_check_divi_status_v4 import divi_process_orders
 from Amazon.sync_check_divi_k_v1 import amazon_order_divi_guer
 from Amazon.sync_fh import amazon_fh
+from Amazon.sync.sync_amazon_shipment import amazon_shipment
 from Amazon.sync_lx_temu_orders import temu_orders
 from Api.Y.y_tiem import Timer
 import asyncio
@@ -28,7 +29,7 @@ if __name__ == '__main__':
             divi_process_orders("2025-11-19", True) # 导单
             t.stop()
             print(f"时间：{t}")
-            amazon_fh() # 发货
+            amazon_shipment() # 发货
             t.stop()
             print(f"时间：{t}")
             temu_orders() # temu订单
