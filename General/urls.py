@@ -8,11 +8,14 @@ from General import (
     views_performance,
     demo_view
 )
-from General.view import view_operation_log
-
+from General.view import view_operation_log, views_general
 app_name = 'general'
 
 urlpatterns = [
+
+    # ========== 重构 ==============
+    path('api/ops/list', views_general.get_ops_list, name='get_ops_list_api'),
+    path('api/ops-groups/list', views_general.get_ops_groups_api, name='get_ops_groups_list_api'),
     # ========== 基础系统 ==========
     path('test-error/', views.test_error, name='test_error'),
     path('', views.main_page),

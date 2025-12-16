@@ -1,0 +1,716 @@
+# Track/view/view_tracking_management.py
+import time
+import os
+import tempfile
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.http import require_http_methods
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.core.paginator import Paginator
+from django.db.models import Q, Count, Avg
+from django.utils import timezone
+from datetime import datetime, timedelta
+import openpyxl
+from openpyxl.utils.exceptions import InvalidFileException
+import json
+from Track.models import Tracking, Courier, TrackingDetail, Factory
+from Api.track.track_api import register_tracking, get_tracking_updates
+
+
+# 主页视图
+@login_required
+def tracking_management(request):
+    """物流追踪管理主页"""
+    # 权限检查：只有permission包含555或gyl的用户可以访问
+    user_permission = request.user.permission or ''
+    permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
+
+    if not any(p in permission_list for p in ['555', 'gyl']):
+        from django.shortcuts import redirect
+        return redirect('general:main')
+
+    return render(request, 'tracking_management.html', {})
+
+
+@login_required
+def get_factories(request):
+    """获取工厂列表"""
+    try:
+        factories = Factory.objects.all().values('id', 'name').order_by('id')
+        return JsonResponse({
+            'success': True,
+            'data': list(factories)
+        })
+    except Exception as e:
+        print(f"获取工厂列表失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'获取失败: {str(e)}'
+        }, status=500)
+
+
+# 获取物流商列表
+@login_required
+def get_couriers(request):
+    """获取物流商列表（用于筛选）"""
+    try:
+        couriers = Courier.objects.all().values('code', 'name_cn', 'name_en')
+        return JsonResponse({'success': True, 'data': list(couriers)})
+    except Exception as e:
+        print(f"获取物流商列表失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'获取失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def tracking_list(request):
+    """运单列表（筛选 + 分页）- 新增 stale_hours 字段"""
+    try:
+        data = json.loads(request.body) if request.body else {}
+
+        # 优化的查询
+        queryset = Tracking.objects.select_related('courier').only(
+            'track_no', 'courier__code', 'courier__name_cn',
+            'transit_status', 'last_update_time', 'stay_days',
+            'order_time', 'platform', 'order_id', 'ops_group', 'ops_name',
+            'ship_to', 'last_update_time', 'factory_id', 'factory__name'
+        )
+
+        # 构建查询条件（8个筛选条件 + 冲突处理）
+        filters = Q()
+
+        # 日期范围筛选
+        date_range = data.get('date_range', 'last30days')
+        if date_range == 'custom':
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            if start_date:
+                filters &= Q(order_time__gte=start_date)
+            if end_date:
+                filters &= Q(order_time__lte=end_date)
+        else:
+            days = {
+                'today': 0,
+                'yesterday': 1,
+                'last7days': 7,
+                'last30days': 30
+            }.get(date_range, 30)
+            start_date = timezone.now() - timedelta(days=days)
+            filters &= Q(order_time__gte=start_date)
+
+        # 运单号模糊查询
+        tracking_number = data.get('tracking_number')
+        if tracking_number:
+            filters &= Q(track_no__icontains=tracking_number)
+
+        # 订单号模糊查询
+        order_id = data.get('order_id')
+        if order_id:
+            filters &= Q(order_id__icontains=order_id)
+
+        # 物流商筛选
+        logistics_method = data.get('logistics_method')
+        if logistics_method:
+            filters &= Q(courier__code=logistics_method)
+        # 🔴 新增：工厂筛选
+        factory_id = data.get('factory')
+        if factory_id:
+            filters &= Q(factory_id=factory_id)
+        # 状态筛选
+        status = data.get('status')
+        if status:
+            filters &= Q(transit_status=status)
+
+        # 运营分组和人员筛选（冲突处理：分组优先，精确匹配）
+        ops_group = data.get('ops_group', '').strip()
+        ops_name = data.get('ops_name', '').strip()
+
+        if ops_group:
+            filters &= Q(ops_group=ops_group)
+        elif ops_name:
+            filters &= Q(ops_name=ops_name)
+
+        # 轨迹更新情况筛选
+        tracking_update = data.get('tracking_update')
+        if tracking_update:
+            if tracking_update == 'today':
+                filters &= Q(last_update_time__date=timezone.now().date())
+            elif tracking_update == 'stale_3d':
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(days=3))
+                filters &= ~Q(transit_status='DELIVERED')
+            elif tracking_update == 'stale_5d':
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(days=5))
+                filters &= ~Q(transit_status='DELIVERED')
+
+        # 应用筛选条件
+        queryset = queryset.filter(filters)
+
+        # 分页
+        page = int(data.get('page', 1))
+        page_size = int(data.get('page_size', 20))
+
+        paginator = Paginator(queryset, page_size)
+
+        try:
+            page_obj = paginator.page(page)
+        except:
+            page_obj = paginator.page(1)
+
+        # 序列化数据（包含 stale_hours 字段）
+        orders = []
+        now = datetime.now()  # 北京时间
+
+        for tracking in page_obj.object_list:
+            # 计算停滞小时数（排除已签收和已过期的订单）
+            stale_hours = 0
+            if tracking.last_update_time and tracking.transit_status not in ['DELIVERED', 'EXPIRED']:
+                try:
+                    # 去掉时区信息计算小时差
+                    last_time = tracking.last_update_time.replace(tzinfo=None)
+                    hours_diff = (now - last_time).total_seconds() / 3600
+                    stale_hours = int(hours_diff)  # 取整数小时
+                except Exception as e:
+                    print(f"计算停滞小时数失败: {e}, 时间: {tracking.last_update_time}")
+                    stale_hours = 0
+
+            orders.append({
+                'track_no': tracking.track_no,
+                'courier': tracking.courier.name_cn if tracking.courier else '-',
+                'transit_status': tracking.transit_status or 'UNKNOWN',
+                'order_time': tracking.order_time.isoformat() if tracking.order_time else None,
+                'last_event_time': tracking.last_update_time.isoformat() if tracking.last_update_time else None,
+                'stale_hours': stale_hours,  # 🔴 新增：停滞小时数（整数）
+                'ship_to': tracking.ship_to or '-',
+                'platform': tracking.platform or 'other',
+                'order_id': tracking.order_id or '-',
+                'ops_group': tracking.ops_group or '-',
+                'ops_name': tracking.ops_name or '-',
+                'factory_id': tracking.factory_id,  # 🔴 新增：工厂ID
+                'factory_name': tracking.factory.name if tracking.factory else '',  # 🔴 新增：工厂名称
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'orders': orders,
+                'total': paginator.count,
+                'total_pages': paginator.num_pages
+            }
+        })
+
+    except Exception as e:
+        print(f"获取运单列表失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'获取失败: {str(e)}'
+        }, status=500)
+
+
+# 轨迹详情API（保持不变）
+@login_required
+@require_http_methods(["GET"])
+def tracking_details(request):
+    """获取单票轨迹详情"""
+    try:
+        track_no = request.GET.get('track_no')
+        if not track_no:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少运单号参数'
+            }, status=400)
+
+        tracking = Tracking.objects.filter(track_no=track_no).first()
+        if not tracking:
+            return JsonResponse({
+                'success': False,
+                'message': '运单不存在'
+            }, status=404)
+
+        # 获取轨迹详情（按时间倒序）
+        details = TrackingDetail.objects.filter(
+            tracking=tracking
+        ).order_by('-event_time')
+
+        data = []
+        for detail in details:
+            data.append({
+                'event_time': detail.event_time.isoformat() if detail.event_time else None,
+                'address': detail.address or '',
+                'event_detail': detail.event_detail or '',
+                'transit_sub_status': detail.transit_sub_status or ''
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+
+    except Exception as e:
+        print(f"获取轨迹详情失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'获取失败: {str(e)}'
+        }, status=500)
+
+
+# 统计看板API（保持不变）
+@login_required
+def tracking_stats(request):
+    """获取统计看板数据"""
+    try:
+        today = timezone.now().date()
+        now = timezone.now()  # 用于计算小时差
+
+        # 今日签收
+        delivered_today = Tracking.objects.filter(
+            delivered_time__date=today
+        ).count()
+
+        # 在途中
+        in_transit = Tracking.objects.filter(
+            transit_status__in=['IN_TRANSIT', 'WAITING_DELIVERY']
+        ).count()
+
+        # 🔴 修改：超过3天无更新（72小时），只排除已签收
+        stale_3_days = Tracking.objects.filter(
+            last_update_time__lte=now - timedelta(hours=72)  # 3天 = 72小时
+        ).exclude(
+            transit_status='DELIVERED'  # 只排除已签收
+        ).count()
+
+        # 平均运输时效（仅计算已签收的）
+        avg_transit = Tracking.objects.filter(
+            delivered_time__isnull=False
+        ).aggregate(
+            avg_days=Avg('transit_days')
+        )['avg_days'] or 0
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'delivered_today': delivered_today,
+                'in_transit': in_transit,
+                'stale_3_days': stale_3_days,
+                'avg_transit_days': round(avg_transit, 1)
+            }
+        })
+
+    except Exception as e:
+        print(f"获取统计数据失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'获取失败: {str(e)}'
+        }, status=500)
+
+
+# 导出ExcelAPI（恢复完整字段导出）
+@login_required
+@require_http_methods(["POST"])
+def export_tracking_excel(request):
+    """导出运单数据到Excel（包含所有字段）"""
+    try:
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+
+        data = json.loads(request.body) if request.body else {}
+
+        # 使用完整的8个筛选条件
+        filters = Q()
+
+        # 日期范围
+        date_range = data.get('date_range', 'last30days')
+        if date_range == 'custom':
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            if start_date:
+                filters &= Q(order_time__gte=start_date)
+            if end_date:
+                filters &= Q(order_time__lte=end_date)
+        else:
+            days = {
+                'today': 0,
+                'yesterday': 1,
+                'last7days': 7,
+                'last30days': 30
+            }.get(date_range, 30)
+            start_date = timezone.now() - timedelta(days=days)
+            filters &= Q(order_time__gte=start_date)
+
+        # 筛选条件（完整的8个）
+        if data.get('tracking_number'):
+            filters &= Q(track_no__icontains=data['tracking_number'])
+        if data.get('order_id'):
+            filters &= Q(order_id__icontains=data['order_id'])
+        if data.get('logistics_method'):
+            filters &= Q(courier__code=data['logistics_method'])
+        if data.get('status'):
+            filters &= Q(transit_status=data['status'])
+        if data.get('ops_group'):
+            filters &= Q(ops_group=data['ops_group'])
+        if data.get('ops_name'):
+            filters &= Q(ops_name__icontains=data['ops_name'])
+        if data.get('factory'):
+            filters &= Q(factory_id=data['factory'])
+
+        # 轨迹更新筛选
+        tracking_update = data.get('tracking_update')
+        if tracking_update:
+            if tracking_update == 'today':
+                # 今天有更新：stay_days=0 或从未更新
+                filters &= Q(stay_days=0) | Q(stay_days__isnull=True)
+                filters &= ~Q(transit_status='DELIVERED')
+            elif tracking_update == 'stale_3d':
+                # 超过3天无更新
+                filters &= Q(stay_days__gte=3)
+                filters &= ~Q(transit_status='DELIVERED')
+            elif tracking_update == 'stale_5d':
+                # 超过7天无更新
+                filters &= Q(stay_days__gte=5)
+                filters &= ~Q(transit_status='DELIVERED')
+
+        # 查询所有字段
+        queryset = Tracking.objects.filter(filters).select_related('courier').only(
+            'track_no', 'courier__name_cn', 'transit_status',
+            'last_update_time', 'stay_days', 'order_time',
+            'platform', 'order_id', 'ops_group', 'ops_name', 'ship_to'
+        )
+
+        # 创建Excel
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "物流追踪"
+
+        # 表头（包含所有字段，即使前端不显示）
+        headers = [
+            '运单号', '物流商', '当前状态', '目的地', '最新轨迹时间', '停滞天数',
+            '下单时间', '平台', '订单号', '运营分组', '运营姓名'
+        ]
+
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col)
+            cell.value = header
+            cell.font = Font(bold=True)
+            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+            cell.alignment = Alignment(horizontal="center")
+
+        # 数据行
+        for row, tracking in enumerate(queryset, 2):
+            ws.cell(row=row, column=1, value=tracking.track_no)
+            ws.cell(row=row, column=2, value=tracking.courier.name_cn if tracking.courier else '-')
+            ws.cell(row=row, column=3, value=tracking.transit_status or '-')
+            ws.cell(row=row, column=4, value=tracking.ship_to or '-')
+            ws.cell(row=row, column=5,
+                    value=tracking.last_update_time.strftime('%Y-%m-%d %H:%M') if tracking.last_update_time else '-')
+            ws.cell(row=row, column=6, value=getattr(tracking, 'stay_days', 0))
+            ws.cell(row=row, column=7, value=tracking.order_time.strftime('%Y-%m-%d') if tracking.order_time else '-')
+            ws.cell(row=row, column=8, value=tracking.platform or 'other')
+            ws.cell(row=row, column=9, value=tracking.order_id or '-')
+            ws.cell(row=row, column=10, value=tracking.ops_group or '-')
+            ws.cell(row=row, column=11, value=tracking.ops_name or '-')
+
+        # 调整列宽
+        column_widths = [20, 15, 12, 12, 18, 12, 12, 10, 20, 12, 12]
+        for col, width in enumerate(column_widths, 1):
+            ws.column_dimensions[get_column_letter(col)].width = width
+
+        # 生成响应
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = 'attachment; filename="物流追踪_{}.xlsx"'.format(
+            timezone.now().strftime('%Y%m%d_%H%M%S')
+        )
+        wb.save(response)
+        return response
+
+    except Exception as e:
+        print(f"导出Excel失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'导出失败: {str(e)}'
+        }, status=500)
+
+
+# 导入物流单号（保持不变，使用完整逻辑）
+import time  # 在文件顶部添加
+
+
+@login_required
+@require_http_methods(["POST"])
+def import_tracking_excel(request):
+    """从Excel导入物流单号（支持工厂关联）"""
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'message': '未上传文件'}, status=400)
+
+    factory_id = request.POST.get('factory_id')
+    if not factory_id:
+        return JsonResponse({'success': False, 'message': '未选择工厂'}, status=400)
+
+    try:
+        factory = Factory.objects.get(id=factory_id)
+    except Factory.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '工厂不存在'}, status=400)
+
+    file = request.FILES['file']
+
+    # 验证文件扩展名
+    allowed_extensions = ['.xlsx', '.xls']
+    file_ext = os.path.splitext(file.name)[1].lower()
+    if file_ext not in allowed_extensions:
+        return JsonResponse({
+            'success': False,
+            'message': '不支持的文件格式，请上传.xlsx或.xls文件'
+        }, status=400)
+
+    # 临时保存文件
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp_file:
+        for chunk in file.chunks():
+            tmp_file.write(chunk)
+        tmp_file_path = tmp_file.name
+
+    try:
+        # 读取Excel
+        import openpyxl
+        workbook = openpyxl.load_workbook(tmp_file_path, data_only=True)
+        worksheet = workbook.active
+
+        # 自动查找"物流单号"列
+        target_col = None
+        for idx, cell in enumerate(worksheet[1], 1):
+            if cell.value and "物流单号" in str(cell.value).strip():
+                target_col = idx
+                break
+
+        if not target_col:
+            workbook.close()
+            return JsonResponse({
+                'success': False,
+                'message': 'Excel格式错误：未找到"物流单号"列'
+            }, status=400)
+
+        # 读取该列所有有效单号
+        trackings = []
+        seen = set()
+
+        for row_idx in range(2, worksheet.max_row + 1):
+            cell_value = worksheet.cell(row=row_idx, column=target_col).value
+            if cell_value:
+                track_no = str(cell_value).strip()
+                if len(track_no) > 5 and track_no not in seen:
+                    trackings.append({'track_no': track_no})
+                    seen.add(track_no)
+
+        workbook.close()
+
+        if not trackings:
+            return JsonResponse({
+                'success': False,
+                'message': '未找到有效的物流单号'
+            }, status=400)
+
+        # 批量处理结果初始化
+        results = {
+            'total_to_process': len(trackings),
+            'imported': 0,
+            'duplicates_local': 0,
+            'duplicates_api': 0,
+            'errors': 0,
+            'details': []
+        }
+
+        # 区分本地重复和需要调用API的单号
+        track_no_list = [item['track_no'] for item in trackings]
+        existing_trackings_set = set(
+            Tracking.objects.filter(
+                track_no__in=track_no_list
+            ).values_list('track_no', flat=True)
+        )
+
+        track_no_for_api = []
+        for item in trackings:
+            track_no = item['track_no']
+            if track_no in existing_trackings_set:
+                # 更新现有记录的工厂ID
+                Tracking.objects.filter(track_no=track_no).update(factory=factory)
+                results['duplicates_local'] += 1
+                results['details'].append({
+                    'track_no': track_no,
+                    'status': 'duplicate_local',
+                    'message': f'运单号已存在于本地数据库，已更新工厂为: {factory.name}'
+                })
+            else:
+                track_no_for_api.append(track_no)
+
+        # 分批处理Track123 API调用
+        if track_no_for_api:
+            batch_size = 100
+            total_batches = (len(track_no_for_api) + batch_size - 1) // batch_size
+            new_tracking_objects = []
+            courier_cache = {}
+
+            for batch_idx in range(total_batches):
+                start_idx = batch_idx * batch_size
+                end_idx = min(start_idx + batch_size, len(track_no_for_api))
+                current_batch = track_no_for_api[start_idx:end_idx]
+
+                print(f"处理批次 {batch_idx + 1}/{total_batches}，单号数量: {len(current_batch)}")
+
+                api_response = register_tracking(current_batch)
+
+                if api_response.get('code') == '00000':
+                    data = api_response.get('data', {})
+                    accepted = data.get('accepted', [])
+                    rejected = data.get('rejected', [])
+
+                    # 预处理当前批次的物流商
+                    courier_codes_to_check = set()
+                    for item in accepted + rejected:
+                        if item.get('courierCode'):
+                            courier_codes_to_check.add(item['courierCode'])
+
+                    # 批量获取/创建物流商
+                    for code in courier_codes_to_check:
+                        if code not in courier_cache:
+                            courier, _ = Courier.objects.get_or_create(
+                                code=code,
+                                defaults={'name_cn': code.upper(), 'name_en': code.upper()}
+                            )
+                            courier_cache[code] = courier
+
+                    # 处理 Accepted
+                    for accepted_item in accepted:
+                        track_no = accepted_item['trackNo']
+                        courier_code = accepted_item.get('courierCode')
+                        courier = courier_cache.get(courier_code)
+
+                        new_tracking_objects.append(
+                            Tracking(
+                                track_no=track_no,
+                                courier=courier,
+                                factory=factory,
+                                transit_status='INIT',
+                                order_time=timezone.now(),
+                            )
+                        )
+
+                        results['imported'] += 1
+                        results['details'].append({
+                            'track_no': track_no,
+                            'status': 'success',
+                            'message': f'导入成功，物流商: {courier_code}'
+                        })
+
+                    # 处理 Rejected
+                    for rejected_item in rejected:
+                        track_no = rejected_item['trackNo']
+                        error_code = rejected_item.get('error', {}).get('code')
+                        error_msg = rejected_item.get('error', {}).get('msg', '未知API错误')
+
+                        if error_code == 'A0400':
+                            courier_code = rejected_item.get('courierCode')
+                            courier = courier_cache.get(courier_code)
+
+                            new_tracking_objects.append(
+                                Tracking(
+                                    track_no=track_no,
+                                    courier=courier,
+                                    factory=factory,
+                                    transit_status='PRE_TRANSIT',
+                                    order_time=timezone.now(),
+                                )
+                            )
+
+                            results['imported'] += 1
+                            results['duplicates_api'] += 1
+                            results['details'].append({
+                                'track_no': track_no,
+                                'status': 'duplicate_api',
+                                'message': f'运单号已存在于Track123，已创建本地记录，物流商: {courier_code}'
+                            })
+                        else:
+                            results['errors'] += 1
+                            results['details'].append({
+                                'track_no': track_no,
+                                'status': 'error',
+                                'message': f'注册失败: {error_msg}'
+                            })
+
+                else:
+                    # API调用失败
+                    error_msg = api_response.get('msg', 'Track123 API系统错误')
+                    results['errors'] += len(current_batch)
+                    for track_no in current_batch:
+                        results['details'].append({
+                            'track_no': track_no,
+                            'status': 'error',
+                            'message': f'批量注册失败: {error_msg}'
+                        })
+
+                # 批次间延迟
+                if batch_idx < total_batches - 1:
+                    time.sleep(0.5)
+
+            # 所有批次完成后，批量创建记录
+            if new_tracking_objects:
+                Tracking.objects.bulk_create(new_tracking_objects)
+                print(f"批量创建了 {len(new_tracking_objects)} 条Tracking记录")
+
+        return JsonResponse({'success': True, 'data': results})
+
+    except Exception as e:
+        print(f"导入物流单号时发生错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+    finally:
+        # 删除临时文件
+        try:
+            os.unlink(tmp_file_path)
+        except:
+            pass
+
+@login_required
+@require_http_methods(["POST"])
+def refresh_tracking(request):
+    """批量刷新运单轨迹（真实API调用）"""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        track_nos = data.get('track_nos', [])
+
+        if not track_nos:
+            return JsonResponse({
+                'success': False,
+                'message': '未选择运单号'
+            }, status=400)
+
+        # 调用完整的更新函数
+        from Api.track.track_api import get_tracking_updates
+        result = get_tracking_updates(track_nos)
+
+        if result['success']:
+            return JsonResponse({
+                'success': True,
+                'message': f"成功刷新 {result['data']['success_count']} 条轨迹",
+                'data': result['data']
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': result.get('message', '刷新失败')
+            }, status=500)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)

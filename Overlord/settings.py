@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'General.apps.GeneralConfig',
     'Amazon.apps.AmazonConfig',
-    'Temu.apps.TemuConfig'
+    'Temu.apps.TemuConfig',
+    'Track.apps.TrackConfig'
 ]
 
 MIDDLEWARE = [

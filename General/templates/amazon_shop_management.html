@@ -284,6 +284,7 @@
             max-width: 200px;
             width: 200px;
         }
+
         /* ==================== 左侧固定列样式 END ==================== */
 
         .status-badge {
@@ -1528,7 +1529,9 @@
                         shop.ops_first_name || '-',
                         shop.ops_role || '-',
                         shop.ops_group || '-',
-                        shop.shop_status || '-'
+                        shop.shop_status || '-',
+                        shop.qu_dao || '-',           // 新增：渠道
+                        shop.company_name || '-'      // 新增：公司名称
                     ]);
                 });
 
