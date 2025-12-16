@@ -306,7 +306,10 @@ def get_amazon_shops_api(request):
         if browser:
             query = query.filter(browser=browser)
         if xunhui_login_account:
-            query = query.filter(xunhui_login_account__icontains=xunhui_login_account)
+            query = query.filter(
+                Q(xunhui_login_account__icontains=xunhui_login_account) |
+                Q(collection_card_number__icontains=xunhui_login_account)
+            )
 
         total_count = query.count()
         offset = (page - 1) * page_size
