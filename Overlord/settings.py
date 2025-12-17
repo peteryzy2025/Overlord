@@ -58,7 +58,8 @@ INSTALLED_APPS = [
     'General.apps.GeneralConfig',
     'Amazon.apps.AmazonConfig',
     'Temu.apps.TemuConfig',
-    'Track.apps.TrackConfig'
+    'Track.apps.TrackConfig',
+    'Yuser.apps.YuserConfig'
 ]
 
 MIDDLEWARE = [
