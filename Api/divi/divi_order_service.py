@@ -285,17 +285,30 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
 
     raw_phone = pick("Phone", "phone")
     clean_phone = raw_phone.split('ext.')[0].strip() if raw_phone else ''
-    return {
-        "name": pick("Name", "buyer_name"),
-        "phone": clean_phone,
-        "line1": pick("AddressLine1", "address_line1"),
-        "city": pick("City", "city"),
-        "region": pick("StateOrRegion", "state_or_region"),
-        "postal_code": pick("PostalCode", "postal_code"),
-        "email": order.get("buyer_email", ""),
-        "country_code": pick("CountryCode", "country_code", default="US"),
-    }
 
+    # 关键修复：标准化字符串，移除不可见字符
+    def normalize_string(s: str) -> str:
+        if not s:
+            return ""
+        # 1. 替换各种空白为普通空格
+        s = " ".join(s.split())
+        # 2. 移除零宽字符（\u200b, \u200c, \u200d）
+        s = s.replace('\u200b', '').replace('\u200c', '').replace('\u200d', '')
+        # 3. 移除其他常见不可见字符
+        s = s.replace('\xa0', ' ')  # 不换行空格 -> 普通空格
+        s = s.replace('\t', ' ')  # 制表符 -> 普通空格
+        return s.strip()
+
+    return {
+        "name": normalize_string(pick("Name", "buyer_name")),
+        "phone": clean_phone,
+        "line1": normalize_string(pick("AddressLine1", "address_line1")),  # 关键字段清理
+        "city": normalize_string(pick("City", "city")),
+        "region": normalize_string(pick("StateOrRegion", "state_or_region")),
+        "postal_code": normalize_string(pick("PostalCode", "postal_code")),
+        "email": pick("email", "buyer_email", default=""),
+        "country_code": normalize_string(pick("CountryCode", "country_code", default="US")),
+    }
 
 # ================== 4. 商品列表构建 ==================
 
@@ -388,6 +401,7 @@ def import_order_from_lingxing_to_divi(
     """
     导入订单（去领星获取数据并在 Divi 创建订单）
     同步版本：内部用 asyncio.run 调用领星的 get_api_resp
+    增强版：自动处理签名错误，重试时简化商品标题
     """
     # 1) 从领星获取订单详情（这里是 async 调用，外面同步，所以用 asyncio.run）
     req_body = {"order_id": order_id}
@@ -503,24 +517,52 @@ def import_order_from_lingxing_to_divi(
     amazon_order_id = order.get("amazon_order_id", order_id)
     currency = order.get("currency", "USD")
 
-    # 6) Divi 下单（纯同步）
-    result = divi_add_order(
-        brand_id=brand_id,
-        address=address,
-        order_goods_list=order_goods_list,
-        amazon_order_id=amazon_order_id,
-        currency=currency,
-        timeout=10,
-        print_if=print_if,
-    )
-    # 不用这个了
-    # try:
-    #     if result and getattr(result, 'code', 200) == 200:
-    #         # 只有导单成功才发送通知
-    #         check_and_send_wechat_notification(order_goods_list, amazon_order_id)
-    #     else:
-    #         print(f"⚠️ 订单 {amazon_order_id} 导单未成功，跳过通知发送")
-    # except Exception as e:
-    #     # 即使消息发送失败，也不影响主流程
-    #     print(f"⚠️ 消息发送异常（不影响导单结果）：{str(e)}")
+    # 6) Divi 下单（纯同步）- 添加重试机制
+    try:
+        result = divi_add_order(
+            brand_id=brand_id,
+            address=address,
+            order_goods_list=order_goods_list,
+            amazon_order_id=amazon_order_id,
+            currency=currency,
+            timeout=10,
+            print_if=print_if,
+        )
+    except Exception as e:
+        # 检查是否为签名错误
+        error_str = str(e)
+        if "签名不正确" in error_str:
+            print(f"⚠️ 检测到签名错误，准备简化商品标题后重试...")
+            print(f"   原商品标题可能导致签名计算问题，将标题替换为3个空格")
+
+            # 创建简化标题后的商品列表
+            simplified_order_goods_list = []
+            for goods in order_goods_list:
+                simplified_goods = goods.copy()
+                # 将标题替换为3个空格
+                simplified_goods["title"] = "   "
+                simplified_order_goods_list.append(simplified_goods)
+
+            try:
+                # 使用简化标题重试
+                result = divi_add_order(
+                    brand_id=brand_id,
+                    address=address,
+                    order_goods_list=simplified_order_goods_list,
+                    amazon_order_id=amazon_order_id,
+                    currency=currency,
+                    timeout=10,
+                    print_if=print_if,
+                )
+                print(f"✅ 重试成功！简化标题后导单完成")
+            except Exception as retry_error:
+                print(f"❌ 重试失败: {str(retry_error)}")
+                # 重试失败，抛出原始错误
+                raise e
+        else:
+            # 非签名错误，直接抛出
+            raise e
+
     return result
+
+
