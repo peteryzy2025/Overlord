@@ -308,21 +308,37 @@ def tracking_stats(request):
         }, status=500)
 
 
-# 导出ExcelAPI（恢复完整字段导出）
+# 在 view_tracking_management.py 文件中，找到 export_tracking_excel 函数
+
 @login_required
 @require_http_methods(["POST"])
 def export_tracking_excel(request):
-    """导出运单数据到Excel（包含所有字段）"""
+    """导出运单数据到Excel（修复筛选逻辑不一致问题）"""
     try:
         from openpyxl.styles import Font, PatternFill, Alignment
         from openpyxl.utils import get_column_letter
 
         data = json.loads(request.body) if request.body else {}
 
-        # 使用完整的8个筛选条件
+        # 状态码翻译映射
+        STATUS_TRANSLATION = {
+            'INIT': '待追踪',
+            'NO_RECORD': '无信息',
+            'INFO_RECEIVED': '等待揽收',
+            'IN_TRANSIT': '在途中',
+            'WAITING_DELIVERY': '派送中',
+            'DELIVERY_FAILED': '派送失败',
+            'ABNORMAL': '异常',
+            'DELIVERED': '已签收',
+            'EXPIRED': '已过期',
+            'PRE_TRANSIT': '待追踪',
+            'UNKNOWN': '未知'
+        }
+
+        # 使用与 tracking_list API 完全相同的筛选逻辑
         filters = Q()
 
-        # 日期范围
+        # 1. 日期范围筛选
         date_range = data.get('date_range', 'last30days')
         if date_range == 'custom':
             start_date = data.get('start_date')
@@ -341,53 +357,54 @@ def export_tracking_excel(request):
             start_date = timezone.now() - timedelta(days=days)
             filters &= Q(order_time__gte=start_date)
 
-        # 筛选条件（完整的8个）
+        # 2. 模糊查询筛选
         if data.get('tracking_number'):
             filters &= Q(track_no__icontains=data['tracking_number'])
         if data.get('order_id'):
             filters &= Q(order_id__icontains=data['order_id'])
+
+        # 3. 下拉框筛选
         if data.get('logistics_method'):
             filters &= Q(courier__code=data['logistics_method'])
-        if data.get('status'):
-            filters &= Q(transit_status=data['status'])
-        if data.get('ops_group'):
-            filters &= Q(ops_group=data['ops_group'])
-        if data.get('ops_name'):
-            filters &= Q(ops_name__icontains=data['ops_name'])
         if data.get('factory'):
             filters &= Q(factory_id=data['factory'])
+        if data.get('status'):
+            filters &= Q(transit_status=data['status'])
 
-        # 轨迹更新筛选
+        # 4. 运营分组/人员筛选（冲突处理：分组优先）
+        ops_group = data.get('ops_group', '').strip()
+        ops_name = data.get('ops_name', '').strip()
+        if ops_group:
+            filters &= Q(ops_group=ops_group)
+        elif ops_name:
+            filters &= Q(ops_name=ops_name)
+
+        # 5. 轨迹更新筛选（使用 last_update_time 而非 stay_days）
         tracking_update = data.get('tracking_update')
         if tracking_update:
             if tracking_update == 'today':
-                # 今天有更新：stay_days=0 或从未更新
-                filters &= Q(stay_days=0) | Q(stay_days__isnull=True)
-                filters &= ~Q(transit_status='DELIVERED')
+                # 今日有更新
+                filters &= Q(last_update_time__date=timezone.now().date())
             elif tracking_update == 'stale_3d':
-                # 超过3天无更新
-                filters &= Q(stay_days__gte=3)
-                filters &= ~Q(transit_status='DELIVERED')
+                # 超过3天无更新 = 72小时
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=72))
+                filters &= ~Q(transit_status='DELIVERED')  # 排除已签收
             elif tracking_update == 'stale_5d':
-                # 超过7天无更新
-                filters &= Q(stay_days__gte=5)
-                filters &= ~Q(transit_status='DELIVERED')
+                # 超过5天无更新 = 120小时
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=120))
+                filters &= ~Q(transit_status='DELIVERED')  # 排除已签收
 
-        # 查询所有字段
-        queryset = Tracking.objects.filter(filters).select_related('courier').only(
-            'track_no', 'courier__name_cn', 'transit_status',
-            'last_update_time', 'stay_days', 'order_time',
-            'platform', 'order_id', 'ops_group', 'ops_name', 'ship_to'
-        )
+        # 查询所有字段（添加 factory__name）
+        queryset = Tracking.objects.filter(filters).select_related('courier', 'factory')
 
         # 创建Excel
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "物流追踪"
 
-        # 表头（包含所有字段，即使前端不显示）
+        # 表头：工厂列放在第二列
         headers = [
-            '运单号', '物流商', '当前状态', '目的地', '最新轨迹时间', '停滞天数',
+            '运单号', '工厂', '物流商', '当前状态', '目的地', '最新轨迹时间', '停滞天数',
             '下单时间', '平台', '订单号', '运营分组', '运营姓名'
         ]
 
@@ -398,23 +415,27 @@ def export_tracking_excel(request):
             cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
             cell.alignment = Alignment(horizontal="center")
 
-        # 数据行
+        # 数据行：工厂列在第二列，状态翻译为中文
         for row, tracking in enumerate(queryset, 2):
-            ws.cell(row=row, column=1, value=tracking.track_no)
-            ws.cell(row=row, column=2, value=tracking.courier.name_cn if tracking.courier else '-')
-            ws.cell(row=row, column=3, value=tracking.transit_status or '-')
-            ws.cell(row=row, column=4, value=tracking.ship_to or '-')
-            ws.cell(row=row, column=5,
-                    value=tracking.last_update_time.strftime('%Y-%m-%d %H:%M') if tracking.last_update_time else '-')
-            ws.cell(row=row, column=6, value=getattr(tracking, 'stay_days', 0))
-            ws.cell(row=row, column=7, value=tracking.order_time.strftime('%Y-%m-%d') if tracking.order_time else '-')
-            ws.cell(row=row, column=8, value=tracking.platform or 'other')
-            ws.cell(row=row, column=9, value=tracking.order_id or '-')
-            ws.cell(row=row, column=10, value=tracking.ops_group or '-')
-            ws.cell(row=row, column=11, value=tracking.ops_name or '-')
+            # 翻译状态码为中文
+            status_display = STATUS_TRANSLATION.get(tracking.transit_status, tracking.transit_status or '未知')
 
-        # 调整列宽
-        column_widths = [20, 15, 12, 12, 18, 12, 12, 10, 20, 12, 12]
+            ws.cell(row=row, column=1, value=tracking.track_no)
+            ws.cell(row=row, column=2, value=tracking.factory.name if tracking.factory else '-')
+            ws.cell(row=row, column=3, value=tracking.courier.name_cn if tracking.courier else '-')
+            ws.cell(row=row, column=4, value=status_display)  # 使用翻译后的中文状态
+            ws.cell(row=row, column=5, value=tracking.ship_to or '-')
+            ws.cell(row=row, column=6,
+                    value=tracking.last_update_time.strftime('%Y-%m-%d %H:%M') if tracking.last_update_time else '-')
+            ws.cell(row=row, column=7, value=tracking.stay_days or 0)
+            ws.cell(row=row, column=8, value=tracking.order_time.strftime('%Y-%m-%d') if tracking.order_time else '-')
+            ws.cell(row=row, column=9, value=tracking.platform or 'other')
+            ws.cell(row=row, column=10, value=tracking.order_id or '-')
+            ws.cell(row=row, column=11, value=tracking.ops_group or '-')
+            ws.cell(row=row, column=12, value=tracking.ops_name or '-')
+
+        # 列宽调整
+        column_widths = [20, 15, 15, 12, 12, 18, 12, 12, 10, 20, 12, 12]
         for col, width in enumerate(column_widths, 1):
             ws.column_dimensions[get_column_letter(col)].width = width
 
