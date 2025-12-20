@@ -1,4 +1,5 @@
 # Track/view/view_tracking_management.py
+import threading
 import time
 import os
 import tempfile
@@ -457,14 +458,10 @@ def export_tracking_excel(request):
         }, status=500)
 
 
-# 导入物流单号（保持不变，使用完整逻辑）
-import time  # 在文件顶部添加
-
-
 @login_required
 @require_http_methods(["POST"])
 def import_tracking_excel(request):
-    """从Excel导入物流单号（支持工厂关联）"""
+    """从Excel导入物流单号（支持工厂关联 + 后台异步更新轨迹）"""
     if 'file' not in request.FILES:
         return JsonResponse({'success': False, 'message': '未上传文件'}, status=400)
 
@@ -496,7 +493,6 @@ def import_tracking_excel(request):
 
     try:
         # 读取Excel
-        import openpyxl
         workbook = openpyxl.load_workbook(tmp_file_path, data_only=True)
         worksheet = workbook.active
 
@@ -544,6 +540,9 @@ def import_tracking_excel(request):
             'details': []
         }
 
+        # 记录需要后续更新的新单号
+        track_nos_to_update = []
+
         # 区分本地重复和需要调用API的单号
         track_no_list = [item['track_no'] for item in trackings]
         existing_trackings_set = set(
@@ -568,11 +567,12 @@ def import_tracking_excel(request):
                 track_no_for_api.append(track_no)
 
         # 分批处理Track123 API调用
+        new_tracking_objects = []
+        courier_cache = {}
+
         if track_no_for_api:
             batch_size = 100
             total_batches = (len(track_no_for_api) + batch_size - 1) // batch_size
-            new_tracking_objects = []
-            courier_cache = {}
 
             for batch_idx in range(total_batches):
                 start_idx = batch_idx * batch_size
@@ -618,6 +618,7 @@ def import_tracking_excel(request):
                                 order_time=timezone.now(),
                             )
                         )
+                        track_nos_to_update.append(track_no)
 
                         results['imported'] += 1
                         results['details'].append({
@@ -645,6 +646,7 @@ def import_tracking_excel(request):
                                     order_time=timezone.now(),
                                 )
                             )
+                            track_nos_to_update.append(track_no)
 
                             results['imported'] += 1
                             results['duplicates_api'] += 1
@@ -658,9 +660,8 @@ def import_tracking_excel(request):
                             results['details'].append({
                                 'track_no': track_no,
                                 'status': 'error',
-                                'message': f'注册失败: {error_msg}'
+                                'message': f'注册失败: {error_msg}'  # ✅ 修复：正确闭合的 f-string
                             })
-
                 else:
                     # API调用失败
                     error_msg = api_response.get('msg', 'Track123 API系统错误')
@@ -681,7 +682,25 @@ def import_tracking_excel(request):
                 Tracking.objects.bulk_create(new_tracking_objects)
                 print(f"批量创建了 {len(new_tracking_objects)} 条Tracking记录")
 
-        return JsonResponse({'success': True, 'data': results})
+        # 启动后台线程更新轨迹
+        if track_nos_to_update:
+            print(f"启动后台任务更新 {len(track_nos_to_update)} 个新单号的轨迹")
+            thread = threading.Thread(
+                target=async_update_tracking_batch,
+                args=(track_nos_to_update,),
+                daemon=True
+            )
+            thread.start()
+
+        return JsonResponse({
+            'success': True,
+            'data': results,
+            'async_update': {
+                'enabled': True,
+                'total_to_update': len(track_nos_to_update),
+                'message': f'后台正在更新轨迹，预计5-10分钟后查看结果'
+            }
+        })
 
     except Exception as e:
         print(f"导入物流单号时发生错误: {str(e)}")
@@ -698,6 +717,42 @@ def import_tracking_excel(request):
         except:
             pass
 
+
+def async_update_tracking_batch(track_nos):
+    """后台批量更新轨迹（与 sync_tracking_update_v2.py 类似）"""
+    print(f"[后台任务] 开始更新 {len(track_nos)} 个新单号的轨迹...")
+
+    batch_size = 100
+    total_batches = (len(track_nos) + batch_size - 1) // batch_size
+
+    for batch_idx in range(total_batches):
+        start_idx = batch_idx * batch_size
+        end_idx = min(start_idx + batch_size, len(track_nos))
+        current_batch = track_nos[start_idx:end_idx]
+
+        try:
+            print(f"[后台任务] 处理批次 {batch_idx + 1}/{total_batches}，单号数量: {len(current_batch)}")
+
+            # 调用API批量更新
+            result = get_tracking_updates(current_batch)
+
+            if result.get('success'):
+                success_count = result['data']['success_count']
+                fail_count = result['data']['fail_count']
+                print(f"[后台任务] 批次 {batch_idx + 1} 完成：成功 {success_count}，失败 {fail_count}")
+            else:
+                print(f"[后台任务] 批次 {batch_idx + 1} 失败: {result.get('message', '未知错误')}")
+
+            # 批次间延迟，避免API限制
+            if batch_idx < total_batches - 1:
+                time.sleep(1)
+
+        except Exception as e:
+            print(f"[后台任务] 批次 {batch_idx + 1} 异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    print(f"[后台任务] 所有批次处理完成！")
 @login_required
 @require_http_methods(["POST"])
 def refresh_tracking(request):

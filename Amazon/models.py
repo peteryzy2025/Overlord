@@ -488,3 +488,26 @@ class AmazonPerformanceNotification(models.Model):
 
     def __str__(self):
         return f"{self.shop.shop_name} - {self.subject[:50]} ({self.date})"
+
+
+class AmazonShopEmail(models.Model):
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    shop = models.ForeignKey(
+        'General.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='shop_emails',
+        db_comment='关联的亚马逊店铺'
+    )
+    subject = models.CharField('邮件标题', max_length=500)
+    sender = models.CharField('发件人', max_length=255)
+    receive_time = models.DateTimeField('接收时间')
+    is_attention_needed = models.BooleanField('是否需要注意', default=False)
+    is_processed = models.BooleanField('是否已处理', default=False)
+    remark = models.TextField('处理备注', blank=True, null=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'amazon_shop_emails'
+        verbose_name = '店铺邮件'
+        verbose_name_plural = verbose_name

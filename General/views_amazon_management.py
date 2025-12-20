@@ -266,7 +266,7 @@ def get_amazon_shops_api(request):
         ling_xing_if = request.GET.get('ling_xing_if', '').strip()
         browser = request.GET.get('browser', '').strip()
         xunhui_login_account = request.GET.get('xunhui_login_account', '').strip()
-
+        email_account = request.GET.get('email_account', '').strip()
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
@@ -310,7 +310,8 @@ def get_amazon_shops_api(request):
                 Q(xunhui_login_account__icontains=xunhui_login_account) |
                 Q(collection_card_number__icontains=xunhui_login_account)
             )
-
+        if email_account:
+            query = query.filter(email_account__icontains=email_account)
         total_count = query.count()
         offset = (page - 1) * page_size
         shops = query.order_by('id')[offset:offset + page_size]

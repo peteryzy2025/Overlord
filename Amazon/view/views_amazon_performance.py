@@ -1,4 +1,4 @@
-# Amazon/amazon_jx_views.py
+# Amazon/views_amazon_performance.py
 
 from django.http import JsonResponse
 from django.db.models import Q, Count

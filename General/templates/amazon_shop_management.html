@@ -638,7 +638,12 @@
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">收款账号</label>
-                    <input type="text" class="form-control" id="collectionAccountFilter" placeholder="搜索寻汇账号/卡号">
+                    <input type="text" class="form-control" id="collectionAccountFilter"
+                           placeholder="搜索寻汇账号/卡号">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">邮箱账号</label>
+                    <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">下店日期范围</label>
@@ -935,7 +940,8 @@
                     company_name: document.getElementById('companyNameFilter').value,
                     ling_xing_if: document.getElementById('lingXingIfFilter').value,
                     browser: document.getElementById('browserFilter').value,
-                    xunhui_login_account: document.getElementById('collectionAccountFilter').value
+                    xunhui_login_account: document.getElementById('collectionAccountFilter').value,
+                    email_account: document.getElementById('emailAccountFilter').value
                 });
 
                 const response = await fetch(`/api/amazon-shops/?${params}`);
@@ -1279,7 +1285,7 @@
             document.getElementById('lingXingIfFilter').value = '';
             document.getElementById('browserFilter').value = '';
             document.getElementById('collectionAccountFilter').value = '';
-
+            document.getElementById('emailAccountFilter').value = '';
             currentPage = 1;
             loadShopsTable();
         }
@@ -1638,7 +1644,8 @@
                     company_name: document.getElementById('companyNameFilter').value,
                     ling_xing_if: document.getElementById('lingXingIfFilter').value,
                     browser: document.getElementById('browserFilter').value,
-                    xunhui_login_account: document.getElementById('collectionAccountFilter').value
+                    xunhui_login_account: document.getElementById('collectionAccountFilter').value,
+                    email_account: document.getElementById('emailAccountFilter').value
                 });
 
                 const response = await fetch(`/api/amazon-shops/?${params}`);
