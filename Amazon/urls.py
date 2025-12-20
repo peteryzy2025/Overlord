@@ -8,7 +8,7 @@ from Amazon import (
     amazon_order_api_views,
     views_ranking,
 )
-from Amazon.view import views_amazon_order, views_amazon_performance
+from Amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails
 
 app_name = 'amazon'
 
@@ -49,4 +49,18 @@ urlpatterns = [
          views_amazon_performance.notify_operators_preview_api, name='notify_operators_preview'),
     path('api/amazon-performance-notifications/notify-operators/', views_amazon_performance.notify_operators_api,
          name='notify_operators'),
+
+    # ========== 店铺邮件管理 ==========
+    path('amazon/shop-emails/', views_amazon_shop_emails.amazon_shop_emails_page,
+         name='amazon_shop_emails'),
+    path('api/amazon-shop-emails/', views_amazon_shop_emails.get_amazon_shop_emails_api,
+         name='api_amazon_shop_emails'),
+    path('api/amazon-shop-emails/<int:email_id>/mark-processed/',
+         views_amazon_shop_emails.mark_email_processed_api, name='mark_email_processed'),
+    path('api/amazon/shop-emails/operators/', views_amazon_shop_emails.get_shop_emails_operators_api,
+         name='api_shop_emails_operators'),
+    path('api/amazon-shop-emails/notify/preview/',
+         views_amazon_shop_emails.notify_operators_preview_api, name='shop_emails_notify_preview'),
+    path('api/amazon-shop-emails/notify/', views_amazon_shop_emails.notify_operators_api,
+         name='shop_emails_notify'),
 ]

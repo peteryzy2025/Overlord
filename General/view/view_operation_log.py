@@ -16,9 +16,9 @@ def get_operation_log_permissions(user):
     返回: {
         can_see_type_1: bool,  # 1xxx: 用户管理类
         can_see_type_2: bool,  # 2xxx: 店铺管理类
-        ops_all: bool,         # 3xxx全部
-        ops_group: bool,       # 3xxx本组
-        ops: bool,             # 3xxx自己
+        ops_all: bool,         # 3xxx和4xxx（订单+邮件）全部
+        ops_group: bool,       # 3xxx和4xxx本组
+        ops: bool,             # 3xxx和4xxx自己
         user_id: int,
         group_name: str
     }
@@ -50,7 +50,7 @@ def get_operation_log_permissions(user):
         permissions['can_see_type_1'] = True
         permissions['can_see_type_2'] = True
 
-    # 判断3xxx类操作权限（订单操作）
+    # 判断3xxx和4xxx类操作权限（订单+邮件）
     if 'ops_all' in perm_list:
         permissions['ops_all'] = True
     elif 'ops_group' in perm_list:
@@ -62,7 +62,6 @@ def get_operation_log_permissions(user):
         permissions['ops'] = True
 
     return permissions
-
 
 @login_required(login_url='/login/')
 def operation_log_view(request):
@@ -117,6 +116,7 @@ def get_all_users_api(request):
 
 
 @login_required
+@login_required
 def get_operation_types_api(request):
     """
     API接口：根据用户权限获取可见的操作类型列表
@@ -132,12 +132,14 @@ def get_operation_types_api(request):
         visible_types = []
 
         for type_id, type_name in all_types:
+            type_str = str(type_id)
             # 判断用户是否有权限查看此类型
-            if str(type_id).startswith('1') and not permissions['can_see_type_1']:
+            if type_str.startswith('1') and not permissions['can_see_type_1']:
                 continue
-            if str(type_id).startswith('2') and not permissions['can_see_type_2']:
+            if type_str.startswith('2') and not permissions['can_see_type_2']:
                 continue
-            if str(type_id).startswith('3') and not (
+            # 修改：3xxx和4xxx共享同一套权限
+            if (type_str.startswith('3') or type_str.startswith('4')) and not (
                     permissions['ops_all'] or permissions['ops_group'] or permissions['ops']):
                 continue
 
@@ -158,7 +160,6 @@ def get_operation_types_api(request):
             'success': False,
             'message': f'获取操作类型失败: {str(e)}'
         }, status=500)
-
 
 @login_required
 def get_operation_logs_api(request):
@@ -255,20 +256,20 @@ def get_operation_logs_api(request):
         if permissions['can_see_type_2']:
             user_query |= Q(operation_type__gte=2000, operation_type__lt=3000)
 
-        # 3. 3xxx订单操作权限（核心逻辑）
+        # 3. 3xxx和4xxx订单/邮件操作权限（核心修改）
         if permissions['ops_all']:
-            # 可以看到所有3xxx操作
-            user_query |= Q(operation_type__gte=3000, operation_type__lt=4000)
+            # 可以看到所有3xxx和4xxx操作
+            user_query |= Q(operation_type__gte=3000, operation_type__lt=5000)
         elif permissions['ops_group']:
-            # 只能看到本组成员的3xxx操作 + 机器人
+            # 只能看到本组成员的3xxx和4xxx操作 + 机器人
             group_members = User.objects.filter(
                 operational_account__ops_group=permissions['group_name']
             ).values_list('id', flat=True)
-            user_query |= (Q(operation_type__gte=3000, operation_type__lt=4000) &
+            user_query |= (Q(operation_type__gte=3000, operation_type__lt=5000) &
                            Q(user__in=list(group_members) + SYSTEM_ACCOUNTS))
         elif permissions['ops']:
-            # 只能看到自己的3xxx操作 + 机器人
-            user_query |= (Q(operation_type__gte=3000, operation_type__lt=4000) &
+            # 只能看到自己的3xxx和4xxx操作 + 机器人
+            user_query |= (Q(operation_type__gte=3000, operation_type__lt=5000) &
                            Q(user__in=[permissions['user_id']] + SYSTEM_ACCOUNTS))
 
         # 如果用户没有选择特定人员，应用权限查询
@@ -288,7 +289,7 @@ def get_operation_logs_api(request):
                     User.objects.filter(id__in=user_ids).values_list('id', flat=True)
                 )
 
-            # 3xxx类型：根据权限范围筛选
+            # 3xxx和4xxx类型：根据权限范围筛选
             if permissions['ops_all']:
                 allowed_user_ids.update(
                     User.objects.filter(id__in=user_ids).values_list('id', flat=True)
@@ -304,7 +305,7 @@ def get_operation_logs_api(request):
             elif permissions['ops']:
                 # 自己 + 机器人
                 allowed_user_ids.update(
-                    [uid for uid in user_ids if uid in [permissions['user_id'], SYSTEM_ACCOUNTS]]
+                    [uid for uid in user_ids if uid in [permissions['user_id']] + SYSTEM_ACCOUNTS]
                 )
 
             if allowed_user_ids:

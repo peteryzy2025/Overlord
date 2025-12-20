@@ -1,4 +1,4 @@
-# Amazon/view/views_amazon_performance.py
+# Amazon/view/views_amazon_shop_emails.py
 
 from django.http import JsonResponse
 from django.db.models import Q, Count
@@ -8,10 +8,10 @@ from django.shortcuts import render
 from django.utils import timezone
 from datetime import datetime, timedelta
 import json
-import requests  # 新增：用于调用企业微信Webhook
+import requests
 
-from Amazon.models import AmazonPerformanceNotification
-from General.models import AmazonShop, User, OperationalAccount
+from Amazon.models import AmazonShopEmail
+from General.models import AmazonShop, User, OperationalAccount, UserOperationLog
 from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value
 from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from Amazon.amazon_order_views import get_shop_ids_by_filter
@@ -29,17 +29,17 @@ def get_date_range_from_option(option):
 
 
 @login_required(login_url='/login/')
-def amazon_performance_notifications_page(request):
-    """亚马逊绩效通知管理页面渲染"""
-    return render(request, 'amazon_performance_notifications.html', {
-        'active_nav': 'amazon_performance',
+def amazon_shop_emails_page(request):
+    """店铺邮件管理页面渲染"""
+    return render(request, 'amazon_shop_emails.html', {
+        'active_nav': 'amazon_shop_emails',
     })
 
 
 @login_required
-def get_amazon_performance_notifications_api(request):
+def get_amazon_shop_emails_api(request):
     """
-    获取绩效通知列表（带分页、排序、筛选）
+    获取店铺邮件列表（带分页、排序、筛选）
     权限控制：组长看全组+自己，运营看个人，管理员看全部
     """
     if request.method != 'POST':
@@ -59,14 +59,14 @@ def get_amazon_performance_notifications_api(request):
         page_size = min(page_size, 100)
 
         # 排序参数
-        sort_field = data.get('sort_field', 'date')
+        sort_field = data.get('sort_field', 'receive_time')
         sort_order = data.get('sort_order', 'desc')
-        valid_sort_fields = ['date', 'shop_name', 'operator_name', 'ops_group', 'role']
+        valid_sort_fields = ['receive_time', 'shop_name', 'operator_name', 'ops_group', 'role']
         if sort_field not in valid_sort_fields:
-            sort_field = 'date'
+            sort_field = 'receive_time'
 
         # 日期参数
-        date_range_option = data.get('date_range', 'unlimited')  # 默认不限
+        date_range_option = data.get('date_range', 'unlimited')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
 
@@ -87,7 +87,7 @@ def get_amazon_performance_notifications_api(request):
             return JsonResponse({
                 'success': True,
                 'data': {
-                    'notifications': [],
+                    'emails': [],
                     'total': 0,
                     'page': page,
                     'page_size': page_size,
@@ -100,55 +100,58 @@ def get_amazon_performance_notifications_api(request):
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
         # 构建查询条件
-        notification_filter = Q(shop_id__in=list(shop_ids))
+        email_filter = Q(shop_id__in=list(shop_ids))
 
         # 日期筛选（如果不限则不添加条件）
         if current_start and current_end:
-            notification_filter &= Q(date__gte=current_start)
-            notification_filter &= Q(date__lte=current_end)
+            # 因为receive_time是DateTimeField，需要转换为日期范围查询
+            email_filter &= Q(receive_time__date__gte=current_start)
+            email_filter &= Q(receive_time__date__lte=current_end)
 
         # 运营人员多选筛选
         operator_ids = data.get('operator_ids', [])
-        if operator_ids:  # 只要有选择运营人员，就应用筛选（无论权限）
+        if operator_ids:
             if 'ops_all' in permissions:
-                # 管理员：直接应用筛选，无需额外权限验证
-                notification_filter &= Q(shop__ops_id__in=operator_ids)
+                email_filter &= Q(shop__ops_id__in=operator_ids)
             elif 'ops_group' in permissions:
-                # 组长：需要验证运营是否在本组权限范围内
                 valid_shop_ids = set(shop_ids)
                 operator_shops = AmazonShop.objects.filter(ops_id__in=operator_ids).values_list('id', flat=True)
                 valid_operator_ids = AmazonShop.objects.filter(
                     id__in=valid_shop_ids.intersection(operator_shops)
                 ).values_list('ops_id', flat=True)
-                notification_filter &= Q(shop__ops_id__in=valid_operator_ids)
+                email_filter &= Q(shop__ops_id__in=valid_operator_ids)
             else:
-                # 普通运营：理论上不应该传operator_ids，但如果传了，只显示自己的数据
-                notification_filter &= Q(shop__ops_id=user.id)
+                email_filter &= Q(shop__ops_id=user.id)
 
         # 店铺名称模糊搜索
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+            email_filter &= Q(shop__shop_name__icontains=shop_name)
 
-        # 主题关键词搜索
+        # 发件人搜索
+        sender_keyword = data.get('sender_keyword', '').strip()
+        if sender_keyword:
+            email_filter &= Q(sender__icontains=sender_keyword)
+
+        # 邮件标题搜索
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            notification_filter &= Q(subject__icontains=subject_keyword)
+            email_filter &= Q(subject__icontains=subject_keyword)
 
         # 状态筛选
         status_filter = data.get('status_filter', '')
         if status_filter:
             if status_filter == 'needs_attention':
-                notification_filter &= Q(needs_attention=1)
+                email_filter &= Q(is_attention_needed=True)
             elif status_filter == 'needs_attention_pending':
-                notification_filter &= Q(needs_attention=1, is_processed=0)
+                email_filter &= Q(is_attention_needed=True, is_processed=False)
             elif status_filter == 'processed':
-                notification_filter &= Q(is_processed=1)
+                email_filter &= Q(is_processed=True)
 
         # 构建排序
         order_by_prefix = '-' if sort_order == 'desc' else ''
-        if sort_field == 'date':
-            ordering = f'{order_by_prefix}date'
+        if sort_field == 'receive_time':
+            ordering = f'{order_by_prefix}receive_time'
         elif sort_field == 'shop_name':
             ordering = f'{order_by_prefix}shop__shop_name'
         elif sort_field == 'operator_name':
@@ -158,69 +161,71 @@ def get_amazon_performance_notifications_api(request):
         elif sort_field == 'role':
             ordering = f'{order_by_prefix}shop__ops__role'
 
-        # 查询数据（优化：只查询需要的字段并select_related减少查询）
-        notifications_queryset = AmazonPerformanceNotification.objects.filter(
-            notification_filter
+        # 查询数据
+        emails_queryset = AmazonShopEmail.objects.filter(
+            email_filter
         ).select_related(
             'shop', 'shop__ops', 'shop__ops__operational_account'
         ).only(
-            'id', 'shop_id', 'subject', 'date', 'needs_attention', 'is_processed',
+            'id', 'shop_id', 'subject', 'sender', 'receive_time',
+            'is_attention_needed', 'is_processed',
             'shop__shop_name', 'shop__ops__first_name', 'shop__ops__role',
             'shop__ops__operational_account__ops_group',
         ).order_by(ordering)
 
-        # 统计未处理数量（关键：基于当前查询集和权限）
-        stats_base_queryset = notifications_queryset
+        # 统计未处理数量
+        stats_base_queryset = emails_queryset
         if operator_ids and len(operator_ids) == 1:
             stats_base_queryset = stats_base_queryset.filter(shop__ops_id=operator_ids[0])
 
         pending_count = stats_base_queryset.filter(
-            needs_attention=1, is_processed=0
+            is_attention_needed=True, is_processed=False
         ).count() if stats_base_queryset.exists() else 0
 
         # 分页
-        total = notifications_queryset.count()
-        paginator = Paginator(notifications_queryset, page_size)
+        total = emails_queryset.count()
+        paginator = Paginator(emails_queryset, page_size)
         try:
-            notifications_page = paginator.page(page)
+            emails_page = paginator.page(page)
         except PageNotAnInteger:
-            notifications_page = paginator.page(1)
+            emails_page = paginator.page(1)
         except EmptyPage:
-            notifications_page = paginator.page(paginator.num_pages)
+            emails_page = paginator.page(paginator.num_pages)
 
         # 组装数据
-        notifications_data = []
-        for notification in notifications_page:
+        emails_data = []
+        for email in emails_page:
             operator_name = ''
             role = ''
             ops_group = ''
 
-            if notification.shop and notification.shop.ops:
-                operator_name = notification.shop.ops.first_name
-                role = notification.shop.ops.role or ''
+            if email.shop and email.shop.ops:
+                operator_name = email.shop.ops.first_name
+                role = email.shop.ops.role or ''
                 try:
-                    ops_group = notification.shop.ops.operational_account.ops_group or ''
+                    ops_group = email.shop.ops.operational_account.ops_group or ''
                 except:
                     ops_group = ''
 
-            notifications_data.append({
-                'id': notification.id,
-                'shop_name': notification.shop.shop_name if notification.shop else '未知店铺',
+            emails_data.append({
+                'id': email.id,
+                'shop_name': email.shop.shop_name if email.shop else '未知店铺',
                 'operator_name': operator_name,
                 'role': role,
                 'ops_group': ops_group,
-                'subject': notification.subject,
-                'date': notification.date.strftime('%Y-%m-%d') if notification.date else '',
-                'needs_attention': notification.needs_attention,
-                'is_processed': notification.is_processed,
+                'sender': email.sender,
+                'subject': email.subject,
+                'receive_time': email.receive_time.strftime('%Y-%m-%d %H:%M:%S') if email.receive_time else '',
+                'is_attention_needed': email.is_attention_needed,
+                'is_processed': email.is_processed,
             })
 
         return JsonResponse({
             'success': True,
             'data': {
-                'notifications': notifications_data,
+                'emails': emails_data,
                 'total': total,
-                'page': notifications_page.number,
+                'page': emails_page.number,
                 'page_size': page_size,
                 'total_pages': paginator.num_pages,
                 'stats': {'pending_count': pending_count}
@@ -240,7 +245,7 @@ def get_amazon_performance_notifications_api(request):
 def notify_operators_preview_api(request):
     """
     预览待通知的运营人员列表
-    POST /api/amazon-performance-notifications/notify-operators/preview/
+    POST /api/amazon-shop-emails/notify/preview/
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -250,7 +255,6 @@ def notify_operators_preview_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 使用与列表查询相同的权限和筛选逻辑
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
 
         if filter_type == 'none':
@@ -262,14 +266,12 @@ def notify_operators_preview_api(request):
                 }
             })
 
-        # 获取可见店铺范围
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
-        # 构建基础查询（仅待处理）
-        notification_filter = Q(
+        email_filter = Q(
             shop_id__in=list(shop_ids),
-            needs_attention=1,
-            is_processed=0
+            is_attention_needed=True,
+            is_processed=False
         )
 
         # 日期筛选
@@ -289,29 +291,30 @@ def notify_operators_preview_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
 
         if current_start and current_end:
-            notification_filter &= Q(date__gte=current_start)
-            notification_filter &= Q(date__lte=current_end)
+            email_filter &= Q(receive_time__date__gte=current_start)
+            email_filter &= Q(receive_time__date__lte=current_end)
 
         # 店铺名称和关键词筛选
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+            email_filter &= Q(shop__shop_name__icontains=shop_name)
+
+        sender_keyword = data.get('sender_keyword', '').strip()
+        if sender_keyword:
+            email_filter &= Q(sender__icontains=sender_keyword)
 
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            notification_filter &= Q(subject__icontains=subject_keyword)
+            email_filter &= Q(subject__icontains=subject_keyword)
 
-        # 根据权限过滤通知对象
+        # 权限范围控制
         operators_query = Q()
         if 'ops_all' in permissions:
-            # 管理员：可以通知所有筛选结果中的运营
             pass
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
-            # 组长：只能通知本组成员
             group_name = user.operational_account.ops_group
             operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
         else:
-            # 普通运营：无通知权限
             return JsonResponse({
                 'success': True,
                 'data': {
@@ -321,8 +324,8 @@ def notify_operators_preview_api(request):
             })
 
         # 聚合统计每个运营的待处理数量
-        pending_stats = AmazonPerformanceNotification.objects.filter(
-            notification_filter & operators_query
+        pending_stats = AmazonShopEmail.objects.filter(
+            email_filter & operators_query
         ).values(
             'shop__ops_id',
             'shop__ops__first_name'
@@ -360,7 +363,7 @@ def notify_operators_preview_api(request):
 def notify_operators_api(request):
     """
     执行通知运营人员
-    POST /api/amazon-performance-notifications/notify-operators/
+    POST /api/amazon-shop-emails/notify/
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -370,14 +373,12 @@ def notify_operators_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 校验权限
         if 'ops_all' not in permissions and 'ops_group' not in permissions:
             return JsonResponse({
                 'success': False,
                 'message': '无权操作：需要 ops_all 或 ops_group 权限'
             }, status=403)
 
-        # 使用与预览相同的逻辑获取待通知列表
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
 
         if filter_type == 'none':
@@ -392,10 +393,10 @@ def notify_operators_api(request):
 
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
-        notification_filter = Q(
+        email_filter = Q(
             shop_id__in=list(shop_ids),
-            needs_attention=1,
-            is_processed=0
+            is_attention_needed=True,
+            is_processed=False
         )
 
         # 应用筛选条件
@@ -415,21 +416,25 @@ def notify_operators_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
 
         if current_start and current_end:
-            notification_filter &= Q(date__gte=current_start)
-            notification_filter &= Q(date__lte=current_end)
+            email_filter &= Q(receive_time__date__gte=current_start)
+            email_filter &= Q(receive_time__date__lte=current_end)
 
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+            email_filter &= Q(shop__shop_name__icontains=shop_name)
+
+        sender_keyword = data.get('sender_keyword', '').strip()
+        if sender_keyword:
+            email_filter &= Q(sender__icontains=sender_keyword)
 
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            notification_filter &= Q(subject__icontains=subject_keyword)
+            email_filter &= Q(subject__icontains=subject_keyword)
 
         # 权限范围控制
         operators_query = Q()
         if 'ops_all' in permissions:
-            pass  # 管理员：全部
+            pass
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
             operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
@@ -444,8 +449,8 @@ def notify_operators_api(request):
             })
 
         # 获取每个运营的待处理统计
-        pending_stats = AmazonPerformanceNotification.objects.filter(
-            notification_filter & operators_query
+        pending_stats = AmazonShopEmail.objects.filter(
+            email_filter & operators_query
         ).values(
             'shop__ops_id',
             'shop__ops__first_name',
@@ -465,15 +470,14 @@ def notify_operators_api(request):
             wx_url = item['shop__ops__wx_url']
             pending_count = item['pending_count']
 
-            # 跳过无webhook地址的运营
             if not wx_url:
                 fail_count += 1
                 fail_details.append(f'{operator_name}: 未配置企业微信通知地址')
                 continue
 
             # 获取该运营的店铺明细
-            shop_details = AmazonPerformanceNotification.objects.filter(
-                notification_filter,
+            shop_details = AmazonShopEmail.objects.filter(
+                email_filter,
                 shop__ops_id=operator_id
             ).values(
                 'shop__shop_name'
@@ -483,15 +487,15 @@ def notify_operators_api(request):
 
             # 构建Markdown消息
             shop_list = '\n'.join([
-                f"- {shop['shop__shop_name'] or '未知店铺'}（{shop['shop_pending']}条）"
+                f"- {shop['shop__shop_name'] or '未知店铺'}（{shop['shop_pending']}封）"
                 for shop in shop_details
             ])
 
             markdown_message = (
-                f"**【绩效通知提醒】**\n\n"
+                f"**【店铺邮件提醒】**\n\n"
                 f"**运营人员**：{operator_name}\n"
                 f"**待处理店铺数**：{len(shop_details)}个\n"
-                f"**待处理绩效总数**：{pending_count}条\n\n"
+                f"**待处理邮件总数**：{pending_count}封\n\n"
                 f"**店铺明细**：\n{shop_list}\n\n"
                 f"**操作**：请及时登录系统查看并处理"
             )
@@ -532,7 +536,15 @@ def notify_operators_api(request):
             if not send_success:
                 fail_count += 1
                 fail_details.append(f'{operator_name}: {last_error}')
+        details = f"通知{success_count}人成功，{fail_count}人失败"
+        if fail_details:
+            details += f" | 失败详情: {', '.join(fail_details[:3])}"  # 只记录前3条失败详情
 
+        UserOperationLog.objects.create(
+            user=user,
+            operation_type=UserOperationLog.EMAIL_NOTIFY_OPERATORS,
+            operation_record=f"批量通知运营处理邮件: {details}"
+        )
         return JsonResponse({
             'success': True,
             'data': {
@@ -550,11 +562,11 @@ def notify_operators_api(request):
 
 
 @login_required
-def get_performance_operators_api(request):
+def get_shop_emails_operators_api(request):
     """
-    获取绩效模块可用的运营人员列表（带权限控制）
+    获取邮件模块可用的运营人员列表（带权限控制）
     组长只能看自己组（包含自己），管理员看全部
-    新增：返回用户通知权限标识
+    返回用户通知权限标识
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
@@ -595,7 +607,7 @@ def get_performance_operators_api(request):
                 'group': ''
             })
 
-        # 新增：返回权限标识
+        # 返回权限标识
         can_notify_all = 'ops_all' in permissions
         can_notify_group = 'ops_group' in permissions
         group_name = user.operational_account.ops_group if hasattr(user,
@@ -617,10 +629,10 @@ def get_performance_operators_api(request):
 
 
 @login_required
-def mark_notification_processed_api(request, notification_id):
+def mark_email_processed_api(request, email_id):
     """
-    标记绩效通知为已处理
-    PUT /api/amazon-performance-notifications/<id>/mark-processed/
+    标记邮件为已处理
+    PUT /api/amazon-shop-emails/<id>/mark-processed/
     """
     if request.method != 'PUT':
         return JsonResponse({'success': False, 'message': '只支持PUT请求'}, status=405)
@@ -629,58 +641,76 @@ def mark_notification_processed_api(request, notification_id):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 获取通知并验证权限
         try:
-            notification = AmazonPerformanceNotification.objects.select_related(
+            email = AmazonShopEmail.objects.select_related(
                 'shop', 'shop__ops'
-            ).get(id=notification_id)
-        except AmazonPerformanceNotification.DoesNotExist:
+            ).get(id=email_id)
+        except AmazonShopEmail.DoesNotExist:
             return JsonResponse({
                 'success': False,
-                'message': '通知不存在'
+                'message': '邮件不存在'
             }, status=404)
 
-        # 权限验证：确保用户有权限操作此通知
+        # 权限验证：确保用户有权限操作此邮件
         if 'ops_all' not in permissions:
-            # 获取用户有权限的店铺ID列表
             user_shop_ids = get_shop_ids_by_filter('ops', user.id)
             user_shop_ids_list = list(user_shop_ids)
-            if notification.shop_id not in user_shop_ids_list:
-                # 备选方案：检查店铺是否直接关联当前用户
-                if hasattr(notification.shop, 'ops') and notification.shop.ops_id == user.id:
+            if email.shop_id not in user_shop_ids_list:
+                if hasattr(email.shop, 'ops') and email.shop.ops_id == user.id:
                     pass
                 else:
                     return JsonResponse({
                         'success': False,
-                        'message': '无权操作此通知'
+                        'message': '无权操作此邮件'
                     }, status=403)
 
         # 更新状态
-        notification.is_processed = 1
-        notification.save(update_fields=['is_processed', 'updated_at'])
+        email.is_processed = True
+        email.save(update_fields=['is_processed', 'updated_at'])
+        print(f"用户 {user.username} 标记邮件 {email.id} 为已处理")
+        try:
+            # 先打印准备信息
+            print(
+                f"【准备创建日志】用户={user.username}, 类型={UserOperationLog.EMAIL_MARK_PROCESSED}, 记录={email.subject[:50]}")
 
+            # 执行创建并捕获返回值
+            log = UserOperationLog.objects.create(
+                user=user,
+                operation_type=UserOperationLog.EMAIL_MARK_PROCESSED,
+                operation_record=f"标记邮件已处理: {email.subject[:50]}"
+            )
+
+            # 打印成功信息（如果执行到这里，说明一定成功了）
+            print(f"✅ 日志创建成功！ID={log.id}, 时间={log.created_at}")
+
+        except Exception as e:
+            # 如果失败，会跳到这里
+            print(f"❌ 日志创建失败: {e}")
+            # 如果你想继续执行，可以 pass
+            # 如果你想中断，可以 raise e
         # 返回更新后的数据
-        operator_name = notification.shop.ops.first_name if notification.shop and notification.shop.ops else ''
-        role = notification.shop.ops.role if notification.shop and notification.shop.ops else ''
+        operator_name = email.shop.ops.first_name if email.shop and email.shop.ops else ''
+        role = email.shop.ops.role if email.shop and email.shop.ops else ''
         ops_group = ''
-        if notification.shop and notification.shop.ops:
+        if email.shop and email.shop.ops:
             try:
-                ops_group = notification.shop.ops.operational_account.ops_group or ''
+                ops_group = email.shop.ops.operational_account.ops_group or ''
             except:
                 pass
 
         return JsonResponse({
             'success': True,
             'data': {
-                'id': notification.id,
-                'shop_name': notification.shop.shop_name if notification.shop else '未知店铺',
+                'id': email.id,
+                'shop_name': email.shop.shop_name if email.shop else '未知店铺',
                 'operator_name': operator_name,
                 'role': role,
                 'ops_group': ops_group,
-                'subject': notification.subject,
-                'date': notification.date.strftime('%Y-%m-%d') if notification.date else '',
-                'needs_attention': notification.needs_attention,
-                'is_processed': notification.is_processed,
+                'sender': email.sender,
+                'subject': email.subject,
+                'receive_time': email.receive_time.strftime('%Y-%m-%d %H:%M:%S') if email.receive_time else '',
+                'is_attention_needed': email.is_attention_needed,
+                'is_processed': email.is_processed,
             }
         })
 

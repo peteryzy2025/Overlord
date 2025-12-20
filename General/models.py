@@ -505,6 +505,10 @@ class UserOperationLog(models.Model):
     ORDER_RPA_LOGISTICS = 3004
     ORDER_AUTO_SHIP = 3005
 
+    # 4xxx: 邮件管理类操作
+    EMAIL_MARK_PROCESSED = 4001
+    EMAIL_NOTIFY_OPERATORS = 4002
+
     OPERATION_TYPE_CHOICES = [
         (USER_CREATE, '新增用户'),
         (USER_UPDATE, '修改用户信息'),
@@ -517,6 +521,9 @@ class UserOperationLog(models.Model):
         (ORDER_MARK_REAL, '订单标注真发'),
         (ORDER_RPA_LOGISTICS, 'RPA真物流覆盖假物流'),
         (ORDER_AUTO_SHIP, '自动发货'),
+        (EMAIL_MARK_PROCESSED, '标记邮件已处理'),  # ✅ 添加
+        (EMAIL_NOTIFY_OPERATORS, '批量通知运营邮件'),  # ✅ 添加
+
     ]
 
     # ============= 模型字段 =============
