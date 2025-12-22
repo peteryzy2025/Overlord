@@ -11,30 +11,20 @@ import asyncio
 import time
 
 if __name__ == '__main__':
+    num = 0
     while True:
         try:
-            t = Timer()
-            t.start()
+            num+=1
+            if num >10:
+                num = 0
+                amazon_shipment()  # 发货
             amazon_order_divi_guer()
             lx_shop_main()
             lx_shop_main2()  # Temu店铺数据
-            t.stop()
-            print(f"时间：{t}")
             lx_order_main() # 亚马逊订单
-            t.stop()
-            print(f"时间：{t}")
             asyncio.run(lx_zf_main()) #自发货订单号同步
-            t.stop()
-            print(f"时间：{t}")
             divi_process_orders("2025-11-19", True) # 导单
-            t.stop()
-            print(f"时间：{t}")
-            amazon_shipment() # 发货
-            t.stop()
-            print(f"时间：{t}")
             temu_orders() # temu订单
-            t.stop()
-            print(f"时间：{t}")
         except Exception as e:
             print(f"错误: {e}")
 
