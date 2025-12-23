@@ -299,10 +299,13 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
         s = s.replace('\t', ' ')  # 制表符 -> 普通空格
         return s.strip()
 
+    line1_part = normalize_string(pick("AddressLine1", "address_line1"))
+    line2_part = normalize_string(pick("AddressLine2", "address_line2", default=""))
+    full_address = f"{line1_part} {line2_part}".strip()
     return {
         "name": normalize_string(pick("Name", "buyer_name")),
         "phone": clean_phone,
-        "line1": normalize_string(pick("AddressLine1", "address_line1")),  # 关键字段清理
+        "line1": full_address,
         "city": normalize_string(pick("City", "city")),
         "region": normalize_string(pick("StateOrRegion", "state_or_region")),
         "postal_code": normalize_string(pick("PostalCode", "postal_code")),
