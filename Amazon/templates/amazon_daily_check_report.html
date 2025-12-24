@@ -1,18 +1,97 @@
 {% extends 'base_z.html' %}
 {% load static %}
 
-{% block title %}亚马逊绩效通知 - Overlord{% endblock %}
+{% block title %}巡店报告 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
 <style>
     :root {
-        /* 定义主题色变量 */
-        {#--accent-color: #3B82F6;  /* 邮件页面用蓝色 */#}
-        --accent-color: #667eea;  /* 绩效页面用紫色 */
-        --accent-hover: #2563EB;
+        --accent-color: #10B981;  /* 绿色主题 */
+        --accent-hover: #059669;
+    }
+    
+    /* ===== 平铺式统计卡片样式 ===== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
     }
 
+    .stat-card {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-medium);
+        border-color: var(--accent-color);
+    }
+
+    .stat-icon {
+        font-size: 2.5rem;
+        color: var(--accent-color);
+        background: rgba(16, 185, 129, 0.1);
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-content h4 {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin: 0 0 0.25rem;
+        font-weight: 500;
+    }
+
+    .stat-content p {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .stat-content small {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        display: block;
+        margin-top: 0.25rem;
+    }
+
+    /* ===== 响应式调整 ===== */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            width: 50px;
+            height: 50px;
+        }
+
+        .stat-content p {
+            font-size: 1.5rem;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -27,12 +106,13 @@
 <div class="performance-main">
     <div class="page-header">
         <div>
-            <h1 class="page-title">亚马逊绩效通知</h1>
-            <p class="page-subtitle">查看和管理店铺绩效通知，支持批量筛选和状态更新</p>
+            <h1 class="page-title">巡店报告</h1>
+            <p class="page-subtitle">查看和管理店铺每日巡检记录，支持多维度筛选和统计</p>
         </div>
         <div>
-            <button class="btn btn-notify" id="notifyBtn" onclick="handleNotifyOperators()" style="display: none;">
-                <i class="fas fa-bell"></i> 通知运营
+            <button class="btn btn-notify" id="resetTodayBtn" onclick="handleResetToday()"
+                    style="display: none;" title="重置今日所有巡店记录">
+                <i class="fas fa-redo"></i> 重置今日
             </button>
             <button class="btn" onclick="refreshData(event)">
                 <i class="fas fa-sync-alt"></i> 刷新数据
@@ -40,20 +120,47 @@
         </div>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="stats-card">
-        <i class="fas fa-bell stats-icon"></i>
-        <div class="stats-content">
-            <h4>待处理绩效数量</h4>
-            <p id="pendingCount">-</p>
+    <!-- 平铺式统计卡片 -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div class="stat-content">
+                <h4>总巡检店铺数</h4>
+                <p id="totalShopsCount">-</p>
+                <small>当前筛选条件下的总数</small>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="stat-content">
+                <h4>已完成巡店</h4>
+                <p id="completedCount">-</p>
+                <small>三项检查全部完成</small>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="stat-content">
+                <h4>今日待巡检</h4>
+                <p id="pendingTodayCount">-</p>
+                <small>今日尚未巡检的店铺</small>
+            </div>
         </div>
     </div>
 
-    <!-- 筛选面板 -->
+    <!-- 筛选面板保持不变 -->
     <div class="control-panel">
         <div class="filter-row">
             <div class="filter-group">
-                <label class="filter-label">通知日期</label>
+                <label class="filter-label">巡检日期</label>
                 <select class="form-select" id="dateRange">
                     <option value="unlimited" selected>不限</option>
                     <option value="today">今日</option>
@@ -91,66 +198,89 @@
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">主题关键词</label>
-                <input type="text" class="form-control" id="subjectFilter"
-                       placeholder="输入主题关键词"
-                       onkeyup="if(event.key==='Enter') applyFilters()">
+                <label class="filter-label">是否进入店铺</label>
+                <select class="form-select" id="visitedFilter">
+                    <option value="">全部</option>
+                    <option value="1">是</option>
+                    <option value="0">否</option>
+                </select>
             </div>
 
             <div class="filter-group">
-                <label class="filter-label">状态筛选</label>
-                <select class="form-select" id="statusFilter">
+                <label class="filter-label">是否绩效检查</label>
+                <select class="form-select" id="performanceCheckedFilter">
                     <option value="">全部</option>
-                    <option value="needs_attention">需要注意</option>
-                    <option value="needs_attention_pending">需要注意-未处理</option>
-                    <option value="processed">已处理</option>
+                    <option value="1">已检查</option>
+                    <option value="0">未检查</option>
                 </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">是否提现</label>
+                <select class="form-select" id="withdrawalFilter">
+                    <option value="">全部</option>
+                    <option value="1">已提现</option>
+                    <option value="0">未提现</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">最后上货日期</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="date" class="form-control" id="restockStartDate" placeholder="开始">
+                    <input type="date" class="form-control" id="restockEndDate" placeholder="结束">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">店铺状况</label>
+                <input type="text" class="form-control" id="shopStatusFilter"
+                       placeholder="输入关键词"
+                       onkeyup="if(event.key==='Enter') applyFilters()">
             </div>
 
             <div class="filter-group" style="align-self: flex-end;">
                 <div style="display: flex; gap: 0.5rem;">
                     <button class="btn" onclick="applyFilters()">应用筛选</button>
                     <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
-                    <button class="btn btn-notify" id="notifyOperatorsBtn" onclick="handleNotifyOperators()"
-                            style="display: none;" title="通知筛选结果中有待处理绩效的运营">
-                        <i class="fas fa-bell"></i> 通知
-                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 数据表格 -->
+    <!-- 数据表格保持不变 -->
     <div class="data-section">
-        <h3 class="section-title" style="margin-bottom: 1.5rem;">通知列表</h3>
+        <h3 class="section-title" style="margin-bottom: 1.5rem;">巡店记录列表</h3>
 
-        <div class="table-container" id="notificationsTableContainer">
+        <div class="table-container" id="dailyCheckTableContainer">
             <table class="table">
                 <thead>
                 <tr>
-                    <th class="sortable" data-field="date" onclick="handleSort('date')">通知日期</th>
+                    <th class="sortable" data-field="check_date" onclick="handleSort('check_date')">巡检日期</th>
                     <th class="sortable" data-field="shop_name" onclick="handleSort('shop_name')">店铺名称</th>
                     <th class="sortable" data-field="operator_name" onclick="handleSort('operator_name')">运营人员</th>
                     <th class="sortable" data-field="ops_group" onclick="handleSort('ops_group')">运营分组</th>
                     <th class="sortable" data-field="role" onclick="handleSort('role')">角色</th>
-                    <th>通知主题</th>
-                    <th>状态</th>
-                    <th>操作</th>
+                    <th>进入店铺</th>
+                    <th>绩效检查</th>
+                    <th>提现操作</th>
+                    <th>最后上货日期</th>
+                    <th>店铺状况</th>
                 </tr>
                 </thead>
-                <tbody id="notificationsTableBody">
+                <tbody id="dailyCheckTableBody">
                 <tr>
-                    <td colspan="8" class="empty-state">
+                    <td colspan="10" class="empty-state">
                         <i class="fas fa-info-circle"></i>
                         <p>请选择筛选条件并点击"应用筛选"</p>
-                        <p>绩效通知数据将在此处显示</p>
+                        <p>巡店报告数据将在此处显示</p>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- 分页控件 -->
+        <!-- 分页控件保持不变 -->
         <div class="pagination-controls" id="paginationControls" style="display: none;">
             <div class="page-size-selector">
                 <label for="pageSize">每页显示：</label>
@@ -172,25 +302,24 @@
         </div>
     </div>
 </div>
-{% endblock %}
-{% block modals %}
-<!-- 通知确认对话框 -->
-<div class="notify-confirm-modal" id="notifyConfirmModal">
+
+<!-- 确认对话框保持不变 -->
+<div class="notify-confirm-modal" id="confirmModal">
     <div class="notify-confirm-content">
         <div class="notify-confirm-header">
-            <i class="fas fa-bell"></i> 确认发送通知
+            <i class="fas fa-exclamation-triangle"></i> 确认重置操作
         </div>
         <div class="notify-confirm-body">
-            <p>确定要通知以下运营人员吗？</p>
-            <div class="notify-confirm-list" id="notifyConfirmList">
-                <!-- 动态生成运营列表 -->
-            </div>
-            <p id="notifyConfirmTotal" style="margin-top: 1rem; font-weight: 500;"></p>
+            <p>确定要重置今日所有巡店记录吗？</p>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">
+                此操作将把所有"进入店铺"、"绩效检查"、"提现"状态重置为"否"。
+            </p>
+            <p id="confirmAffectedCount" style="margin-top: 1rem; font-weight: 500;"></p>
         </div>
         <div class="notify-confirm-footer">
-            <button class="btn btn-secondary btn-confirm-secondary" onclick="closeNotifyModal()">取消</button>
-            <button class="btn btn-confirm-primary" id="confirmNotifyBtn" onclick="executeNotify()">
-                <i class="fas fa-paper-plane"></i> 立即通知
+            <button class="btn btn-secondary btn-confirm-secondary" onclick="closeConfirmModal()">取消</button>
+            <button class="btn btn-confirm-primary" id="confirmResetBtn" onclick="executeReset()">
+                <i class="fas fa-redo"></i> 确认重置
             </button>
         </div>
     </div>
@@ -199,34 +328,35 @@
 
 {% block extra_js %}
 <script>
-// ===== 全局变量定义 =====
+// ===== 全局变量定义（保持不变）=====
 let currentFilters = {
     date_range: 'unlimited',
     start_date: '',
     end_date: '',
     operator_ids: [],
     shop_name: '',
-    subject_keyword: '',
-    status_filter: '',
-    sort_field: 'date',
+    visited: '',
+    performance_checked: '',
+    withdrawal_processed: '',
+    restock_start_date: '',
+    restock_end_date: '',
+    shop_status: '',
+    sort_field: 'check_date',
     sort_order: 'desc'
 };
 
-let notificationsPagination = {
+let dailyCheckPagination = {
     page: 1,
     page_size: 20,
     total: 0,
     total_pages: 0
 };
 
-// 新增：当前用户权限标识
 let currentUserPermissions = {
-    can_notify_all: false,
-    can_notify_group: false,
-    group_name: ''
+    can_reset_daily_check: false
 };
 
-// ===== 工具函数 =====
+// ===== 工具函数（保持不变）=====
 function showLoading(show = true) {
     const overlay = document.getElementById('loadingOverlay');
     overlay.style.display = show ? 'flex' : 'none';
@@ -234,14 +364,13 @@ function showLoading(show = true) {
     overlay.style.opacity = show ? '1' : '0';
 }
 
-// 兼容showNotification函数
 if (typeof showNotification === 'undefined') {
     window.showNotification = function (message, type = 'info') {
         console.log(`[${type}] ${message}`);
     };
 }
 
-// ===== 日期范围处理 =====
+// ===== 日期范围处理（保持不变）=====
 function handleDateRangeChange() {
     const dateRange = document.getElementById('dateRange').value;
     const customDateGroup = document.getElementById('customDateGroup');
@@ -255,7 +384,7 @@ function handleDateRangeChange() {
     }
 }
 
-// ===== 运营人员多选下拉 =====
+// ===== 运营人员多选下拉（保持不变）=====
 function initOperatorDropdown() {
     const anchor = document.getElementById('operatorAnchor');
     const items = document.getElementById('operatorItems');
@@ -316,7 +445,6 @@ function updateOperatorSelection() {
 
     if (allCheckbox && allCheckbox.checked) {
         selectedText = '全部人员';
-        // 重要：当选择"全部"时，清空operator_ids数组，让后端返回所有数据
         currentFilters.operator_ids = [];
     } else {
         checkboxes.forEach(cb => {
@@ -331,23 +459,17 @@ function updateOperatorSelection() {
     }
 
     document.getElementById('operatorSelectedText').textContent = selectedText;
-    // 移除原有的 currentFilters.operator_ids = selectedOperators; 重复赋值
 }
 
 async function loadOperators() {
     try {
-        const response = await fetch('/api/amazon/performance/operators/');
+        const response = await fetch('/api/amazon-daily-check/operators/');
         const result = await response.json();
         if (result.success && result.data) {
             populateOperatorDropdown(result.data);
-
-            // 初始化用户权限
             currentUserPermissions = {
-                can_notify_all: result.can_notify_all || false,
-                can_notify_group: result.can_notify_group || false,
-                group_name: result.group_name || ''
+                can_reset_daily_check: result.can_reset_daily_check || false
             };
-
             return true;
         }
         return false;
@@ -357,7 +479,7 @@ async function loadOperators() {
     }
 }
 
-// ===== 筛选逻辑 =====
+// ===== 筛选逻辑（保持不变）=====
 function getCurrentFilters() {
     return {
         date_range: document.getElementById('dateRange').value,
@@ -365,8 +487,12 @@ function getCurrentFilters() {
         end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
         operator_ids: currentFilters.operator_ids,
         shop_name: document.getElementById('shopNameFilter').value.trim(),
-        subject_keyword: document.getElementById('subjectFilter').value.trim(),
-        status_filter: document.getElementById('statusFilter').value,
+        visited: document.getElementById('visitedFilter').value,
+        performance_checked: document.getElementById('performanceCheckedFilter').value,
+        withdrawal_processed: document.getElementById('withdrawalFilter').value,
+        restock_start_date: document.getElementById('restockStartDate').value,
+        restock_end_date: document.getElementById('restockEndDate').value,
+        shop_status: document.getElementById('shopStatusFilter').value.trim(),
         sort_field: currentFilters.sort_field,
         sort_order: currentFilters.sort_order
     };
@@ -377,8 +503,12 @@ function setDefaultFilters() {
     document.getElementById('startDate').value = '';
     document.getElementById('endDate').value = '';
     document.getElementById('shopNameFilter').value = '';
-    document.getElementById('subjectFilter').value = '';
-    document.getElementById('statusFilter').value = '';
+    document.getElementById('visitedFilter').value = '';
+    document.getElementById('performanceCheckedFilter').value = '';
+    document.getElementById('withdrawalFilter').value = '';
+    document.getElementById('restockStartDate').value = '';
+    document.getElementById('restockEndDate').value = '';
+    document.getElementById('shopStatusFilter').value = '';
     document.getElementById('pageSize').value = '20';
     currentFilters.operator_ids = [];
 }
@@ -392,8 +522,8 @@ async function resetFilters(event) {
             cb.checked = cb.value === 'all';
         });
         updateOperatorSelection();
-        notificationsPagination.page = 1;
-        notificationsPagination.page_size = 20;
+        dailyCheckPagination.page = 1;
+        dailyCheckPagination.page_size = 20;
         await applyFilters();
         showNotification('筛选条件已重置', 'success');
     } catch (error) {
@@ -419,9 +549,9 @@ async function applyFilters() {
     showLoading(true);
     currentFilters = getCurrentFilters();
     try {
-        await loadNotificationsTable();
-        showNotification('绩效通知数据已更新', 'success');
-        checkNotifyButtonVisibility();
+        await loadDailyCheckTable();
+        showNotification('巡店报告数据已更新', 'success');
+        checkResetButtonVisibility();
     } catch (error) {
         showNotification('数据请求失败: ' + error.message, 'error');
     } finally {
@@ -444,93 +574,67 @@ function handleSort(field) {
         }
     });
 
-    notificationsPagination.page = 1;
-    loadNotificationsTable();
+    dailyCheckPagination.page = 1;
+    loadDailyCheckTable();
 }
 
-// ===== 通知功能新增 =====
-function checkNotifyButtonVisibility() {
-    const notifyBtn = document.getElementById('notifyOperatorsBtn');
-    const hasNotifyPermission = currentUserPermissions.can_notify_all || currentUserPermissions.can_notify_group;
-
-    if (hasNotifyPermission) {
-        // 有权限：显示按钮
-        notifyBtn.style.display = 'inline-flex';
-
-        // 获取待处理数量（从统计卡片读取）
-        const pendingCount = parseInt(document.getElementById('pendingCount').textContent) || 0;
-
-        // 数量为0时禁用按钮，大于0时启用
-        notifyBtn.disabled = pendingCount === 0;
-
-        // 更新提示文字
-        if (pendingCount === 0) {
-            notifyBtn.title = '当前筛选条件下没有待处理的绩效通知';
-        } else {
-            notifyBtn.title = `通知筛选结果中有待处理绩效的运营（共${pendingCount}条）`;
-        }
-    } else {
-        // 无权限：隐藏按钮
-        notifyBtn.style.display = 'none';
-    }
+// ===== 重置功能（保持不变）=====
+function checkResetButtonVisibility() {
+    const resetBtn = document.getElementById('resetTodayBtn');
+    resetBtn.style.display = currentUserPermissions.can_reset_daily_check ? 'inline-flex' : 'none';
 }
 
-function closeNotifyModal() {
-    document.getElementById('notifyConfirmModal').style.display = 'none';
-    document.getElementById('notifyConfirmList').innerHTML = '';
-    document.getElementById('confirmNotifyBtn').disabled = false;
-    document.getElementById('confirmNotifyBtn').innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
+function closeConfirmModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+    document.getElementById('confirmResetBtn').disabled = false;
+    document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-redo"></i> 确认重置';
 }
 
-async function handleNotifyOperators() {
-    showLoading(true);
+async function handleResetToday() {
+    document.getElementById('confirmModal').style.display = 'flex';
+
+    const filters = getCurrentFilters();
+    const today = new Date().toISOString().split('T')[0];
+    let affectedCount = 0;
+
     try {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-        const response = await fetch('/api/amazon-performance-notifications/notify-operators/preview/', {
+        const response = await fetch('/api/amazon-daily-check/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
             },
-            body: JSON.stringify(currentFilters)
+            body: JSON.stringify({
+                ...filters,
+                date_range: 'custom',
+                start_date: today,
+                end_date: today
+            })
         });
 
         const result = await response.json();
-
-        if (result.success && result.data && result.data.operators.length > 0) {
-            const listHtml = result.data.operators.map(op => `
-                <div class="notify-confirm-item">
-                    <span>${op.operator_name}</span>
-                    <span style="color: var(--accent-color); font-weight: 500;">${op.pending_count}条</span>
-                </div>
-            `).join('');
-
-            document.getElementById('notifyConfirmList').innerHTML = listHtml;
-            document.getElementById('notifyConfirmTotal').textContent =
-                `共 ${result.data.operators.length} 人，${result.data.total_pending} 条绩效通知`;
-            document.getElementById('notifyConfirmModal').style.display = 'flex';
-        } else {
-            showNotification('当前筛选条件下没有需要通知的绩效', 'info');
+        if (result.success) {
+            affectedCount = result.data.total;
         }
     } catch (error) {
-        showNotification('获取通知列表失败: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
+        console.error('获取影响数量失败:', error);
     }
+
+    document.getElementById('confirmAffectedCount').textContent =
+        `将影响 ${affectedCount} 条今日巡店记录`;
 }
 
-async function executeNotify() {
-    const confirmBtn = document.getElementById('confirmNotifyBtn');
+async function executeReset() {
+    const confirmBtn = document.getElementById('confirmResetBtn');
     confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
 
     try {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
             document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-        const response = await fetch('/api/amazon-performance-notifications/notify-operators/', {
+        const response = await fetch('/api/amazon-daily-check/reset-today/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -542,23 +646,22 @@ async function executeNotify() {
         const result = await response.json();
 
         if (result.success) {
-            showNotification(`通知完成：成功 ${result.data.success_count} 人，失败 ${result.data.fail_count} 人`,
-                           result.data.fail_count > 0 ? 'warning' : 'success');
-            closeNotifyModal();
-            await loadNotificationsTable();
+            showNotification(`重置成功：${result.data.message}`, 'success');
+            closeConfirmModal();
+            await applyFilters();
         } else {
-            throw new Error(result.message || '通知发送失败');
+            throw new Error(result.message || '重置失败');
         }
     } catch (error) {
-        showNotification('通知失败: ' + error.message, 'error');
+        showNotification('操作失败: ' + error.message, 'error');
         confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
+        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> 确认重置';
     }
 }
 
-// ===== 表格渲染 =====
-async function loadNotificationsTable() {
-    const tbody = document.getElementById('notificationsTableBody');
+// ===== 表格渲染（保持不变）=====
+async function loadDailyCheckTable() {
+    const tbody = document.getElementById('dailyCheckTableBody');
     const paginationControls = document.getElementById('paginationControls');
 
     showLoading(true);
@@ -569,11 +672,11 @@ async function loadNotificationsTable() {
 
         const requestData = {
             ...currentFilters,
-            page: notificationsPagination.page,
-            page_size: notificationsPagination.page_size
+            page: dailyCheckPagination.page,
+            page_size: dailyCheckPagination.page_size
         };
 
-        const response = await fetch('/api/amazon-performance-notifications/', {
+        const response = await fetch('/api/amazon-daily-check/', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -586,14 +689,17 @@ async function loadNotificationsTable() {
 
         if (result.success) {
             const data = result.data;
-            notificationsPagination.total = data.total;
-            notificationsPagination.total_pages = data.total_pages;
+            dailyCheckPagination.total = data.total;
+            dailyCheckPagination.total_pages = data.total_pages;
 
-            if (data.stats && data.stats.pending_count !== undefined) {
-                document.getElementById('pendingCount').textContent = data.stats.pending_count;
+            // 更新统计卡片
+            if (data.stats) {
+                document.getElementById('totalShopsCount').textContent = data.stats.total_shops || 0;
+                document.getElementById('completedCount').textContent = data.stats.completed_checks || 0;
+                document.getElementById('pendingTodayCount').textContent = data.stats.pending_today || 0;
             }
 
-            renderNotificationsTable(data.notifications || []);
+            renderDailyCheckTable(data.daily_checks || []);
             renderPagination();
 
             paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
@@ -604,7 +710,7 @@ async function loadNotificationsTable() {
         console.error('加载错误:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="empty-state">
+                <td colspan="10" class="empty-state">
                     <i class="fas fa-exclamation-circle"></i>
                     <p>数据请求失败: ${error.message}</p>
                 </td>
@@ -616,122 +722,54 @@ async function loadNotificationsTable() {
     }
 }
 
-function renderStatusBadge(needs_attention, is_processed) {
-    if (needs_attention) {
-        if (is_processed) {
-            return '<span class="status-badge processed">已处理</span>';
-        } else {
-            return '<span class="status-badge needs-attention">需要注意-未处理</span>';
-        }
+function renderStatusBadge(value, type = 'visited') {
+    if (type === 'visited') {
+        return value ?
+            '<span class="status-badge processed">是</span>' :
+            '<span class="status-badge needs-attention">否</span>';
+    } else {
+        return value ?
+            '<span class="status-badge processed">已检查</span>' :
+            '<span class="status-badge no-action">未检查</span>';
     }
-    return '<span class="status-badge no-action">无需处理</span>';
 }
 
-function renderNotificationsTable(notifications) {
-    const tbody = document.getElementById('notificationsTableBody');
-    if (!notifications || notifications.length === 0) {
+function renderDailyCheckTable(dailyChecks) {
+    const tbody = document.getElementById('dailyCheckTableBody');
+    if (!dailyChecks || dailyChecks.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" class="empty-state">
+                <td colspan="10" class="empty-state">
                     <i class="fas fa-inbox"></i>
-                    <p>暂无绩效通知数据</p>
+                    <p>暂无巡店报告数据</p>
                 </td>
             </tr>
         `;
         return;
     }
 
-    tbody.innerHTML = notifications.map(notification => {
-        const showButton = notification.needs_attention && !notification.is_processed;
-        const buttonDisabled = notification.is_processed || !notification.needs_attention;
-        const buttonText = notification.is_processed ? '已处理' : '标记处理';
-
-        return `
-            <tr data-id="${notification.id}">
-                <td>${notification.date || '-'}</td>
-                <td>${notification.shop_name || '未知店铺'}</td>
-                <td>${notification.operator_name || '-'}</td>
-                <td>${notification.ops_group || '-'}</td>
-                <td>${notification.role || '-'}</td>
-                <td title="${notification.subject || ''}">${notification.subject || '-'}</td>
-                <td>${renderStatusBadge(notification.needs_attention, notification.is_processed)}</td>
-                <td>
-                    <button class="btn-process"
-                            onclick="markProcessed(${notification.id}, event)"
-                            ${buttonDisabled ? 'disabled' : ''}
-                            title="${showButton ? '标记为已处理' : '已处理或无需处理'}">
-                        <i class="fas fa-check"></i>
-                        <span>${buttonText}</span>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    tbody.innerHTML = dailyChecks.map(check => `
+        <tr data-id="${check.id}">
+            <td>${check.check_date || '-'}</td>
+            <td>${check.shop_name || '未知店铺'}</td>
+            <td>${check.operator_name || '-'}</td>
+            <td>${check.ops_group || '-'}</td>
+            <td>${check.role || '-'}</td>
+            <td>${renderStatusBadge(check.visited, 'visited')}</td>
+            <td>${renderStatusBadge(check.performance_checked, 'checked')}</td>
+            <td>${renderStatusBadge(check.withdrawal_processed, 'checked')}</td>
+            <td>${check.last_restock_date || '-'}</td>
+            <td title="${check.shop_status || ''}">${check.shop_status || '-'}</td>
+        </tr>
+    `).join('');
 }
 
-// ===== 操作处理 =====
-async function markProcessed(notificationId, event) {
-    const button = event.currentTarget;
-    const icon = button.querySelector('i');
-    const span = button.querySelector('span');
-
-    if (button.disabled) return;
-
-    button.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
-    span.textContent = '处理中...';
-
-    try {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-        const response = await fetch(`/api/amazon-performance-notifications/${notificationId}/mark-processed/`, {
-            method: 'PUT',
-            headers: {
-                'X-CSRFToken': csrfToken
-            }
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            showNotification('标记为已处理成功', 'success');
-            const row = document.querySelector(`tr[data-id="${notificationId}"]`);
-            if (row && result.data) {
-                const data = result.data;
-                row.cells[5].textContent = data.subject || '-';
-                row.cells[5].title = data.subject || '';
-                row.cells[6].innerHTML = renderStatusBadge(data.needs_attention, data.is_processed);
-                const button = row.querySelector('.btn-process');
-                button.disabled = true;
-                button.title = '已处理';
-                icon.className = 'fas fa-check';
-                span.textContent = '已处理';
-            }
-            const pendingCountEl = document.getElementById('pendingCount');
-            const currentCount = parseInt(pendingCountEl.textContent) || 0;
-            pendingCountEl.textContent = Math.max(0, currentCount - 1);
-        } else {
-            let errorMsg = result.message || '标记失败';
-            if (response.status === 403) {
-                errorMsg = '权限不足：您无权操作此通知。请确认该店铺是否属于您。';
-            }
-            throw new Error(errorMsg);
-        }
-    } catch (error) {
-        showNotification('操作失败: ' + error.message, 'error');
-        button.disabled = false;
-        icon.className = 'fas fa-check';
-        span.textContent = '标记处理';
-    }
-}
-
-// ===== 分页渲染 =====
+// ===== 分页渲染（保持不变）=====
 function renderPagination() {
     const buttonsContainer = document.getElementById('paginationButtons');
     const infoContainer = document.getElementById('paginationInfo');
 
-    const {page, page_size, total, total_pages} = notificationsPagination;
+    const {page, page_size, total, total_pages} = dailyCheckPagination;
 
     infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
 
@@ -775,20 +813,20 @@ function renderPagination() {
 }
 
 function changePage(newPage) {
-    if (newPage < 1 || newPage > notificationsPagination.total_pages) return;
-    notificationsPagination.page = newPage;
-    loadNotificationsTable();
-    document.getElementById('notificationsTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+    if (newPage < 1 || newPage > dailyCheckPagination.total_pages) return;
+    dailyCheckPagination.page = newPage;
+    loadDailyCheckTable();
+    document.getElementById('dailyCheckTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 
 function changePageSize() {
     const newSize = parseInt(document.getElementById('pageSize').value);
-    notificationsPagination.page_size = newSize;
-    notificationsPagination.page = 1;
-    loadNotificationsTable();
+    dailyCheckPagination.page_size = newSize;
+    dailyCheckPagination.page = 1;
+    loadDailyCheckTable();
 }
 
-// ===== 初始化 =====
+// ===== 初始化（保持不变）=====
 function initializeSortHeader() {
     const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
     if (th) {

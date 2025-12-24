@@ -719,3 +719,77 @@ def mark_email_processed_api(request, email_id):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
+# 在文件末尾添加以下代码
+
+@login_required
+@login_required
+def get_email_detail_api(request, email_id):
+    """
+    获取邮件详情
+    GET /api/amazon-shop-emails/<id>/
+    """
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
+
+    try:
+        user = request.user
+        permissions = parse_permissions(getattr(user, 'permission', []))
+
+        try:
+            email = AmazonShopEmail.objects.select_related(
+                'shop', 'shop__ops'
+            ).get(id=email_id)
+        except AmazonShopEmail.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': '邮件不存在'
+            }, status=404)
+
+        # 权限验证：确保用户有权限查看此邮件
+        if 'ops_all' not in permissions:
+            user_shop_ids = get_shop_ids_by_filter('ops', user.id)
+            user_shop_ids_list = list(user_shop_ids)
+            if email.shop_id not in user_shop_ids_list:
+                if hasattr(email.shop, 'ops') and email.shop.ops_id == user.id:
+                    pass
+                else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': '无权查看此邮件'
+                    }, status=403)
+
+        # 组装返回数据
+        operator_name = email.shop.ops.first_name if email.shop and email.shop.ops else ''
+        role = email.shop.ops.role if email.shop and email.shop.ops else ''
+        ops_group = ''
+        if email.shop and email.shop.ops:
+            try:
+                ops_group = email.shop.ops.operational_account.ops_group or ''
+            except:
+                ops_group = ''
+
+        shop_email = email.shop.email_account if email.shop else ''
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'id': email.id,
+                'shop_name': email.shop.shop_name if email.shop else '未知店铺',
+                'shop_email': shop_email,  # 新增：收件邮箱
+                'operator_name': operator_name,
+                'role': role,
+                'ops_group': ops_group,
+                'sender': email.sender,
+                'subject': email.subject,
+                'receive_time': email.receive_time.strftime('%Y-%m-%d %H:%M:%S') if email.receive_time else '',
+                'email_body': email.email_body or '暂无邮件内容',
+                'is_attention_needed': email.is_attention_needed,
+                'is_processed': email.is_processed,
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)

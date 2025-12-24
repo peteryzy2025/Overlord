@@ -509,6 +509,8 @@ class UserOperationLog(models.Model):
     EMAIL_MARK_PROCESSED = 4001
     EMAIL_NOTIFY_OPERATORS = 4002
 
+    DAILY_CHECK_RESET = 4011  # ✅ 新增
+
     OPERATION_TYPE_CHOICES = [
         (USER_CREATE, '新增用户'),
         (USER_UPDATE, '修改用户信息'),
@@ -523,6 +525,7 @@ class UserOperationLog(models.Model):
         (ORDER_AUTO_SHIP, '自动发货'),
         (EMAIL_MARK_PROCESSED, '标记邮件已处理'),  # ✅ 添加
         (EMAIL_NOTIFY_OPERATORS, '批量通知运营邮件'),  # ✅ 添加
+        (DAILY_CHECK_RESET, '重置巡店'),  # ✅ 新增
 
     ]
 

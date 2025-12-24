@@ -377,7 +377,19 @@ class AmazonShopDailyCheck(models.Model):
         default=False,
         db_comment='是否进行提现操作'
     )
+    last_restock_date = models.DateField(
+        null=True,  # 允许为空，因为可能还没有上货记录
+        blank=True,
+        db_comment='最后上货日期'
+    )
 
+    shop_status = models.CharField(
+        max_length=100,  # 字符串长度限制为100个字符，可根据需要调整
+        blank=True,  # 允许为空
+        default='',  # 默认为空字符串
+        null=True,
+        db_comment='店铺状况'
+    )
     # 记录时间
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -500,6 +512,7 @@ class AmazonShopEmail(models.Model):
     )
     subject = models.CharField('邮件标题', max_length=500)
     sender = models.CharField('发件人', max_length=255)
+    email_body = models.TextField('邮件内容', blank=True, null=True)
     receive_time = models.DateTimeField('接收时间')
     is_attention_needed = models.BooleanField('是否需要注意', default=False)
     is_processed = models.BooleanField('是否已处理', default=False)

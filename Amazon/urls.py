@@ -2,14 +2,10 @@
 from django.urls import path
 from Amazon import (
     amazon_views,
-    amazon_divi_views,
-    amazon_order_views,
     amazon_views_jc,
-    amazon_order_api_views,
     views_ranking,
 )
-from Amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails
-
+from Amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 app_name = 'amazon'
 
 urlpatterns = [
@@ -63,4 +59,11 @@ urlpatterns = [
          views_amazon_shop_emails.notify_operators_preview_api, name='shop_emails_notify_preview'),
     path('api/amazon-shop-emails/notify/', views_amazon_shop_emails.notify_operators_api,
          name='shop_emails_notify'),
+    path('api/amazon-shop-emails/<int:email_id>/', views_amazon_shop_emails.get_email_detail_api, name='get_email_detail'),  # 新增这一行
+
+    # 巡店报告
+    path('amazon/daily-check-report/', views_amazon_daily_check.amazon_daily_check_report_page, name='amazon_daily_check_report_page'),
+    path('api/amazon-daily-check/', views_amazon_daily_check.get_amazon_daily_check_list_api, name='amazon_daily_check_list_api'),
+    path('api/amazon-daily-check/operators/', views_amazon_daily_check.get_daily_check_operators_api, name='daily_check_operators_api'),
+    path('api/amazon-daily-check/reset-today/', views_amazon_daily_check.reset_today_daily_check_api, name='reset_today_daily_check_api'),
 ]
