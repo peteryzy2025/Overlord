@@ -303,7 +303,7 @@ def build_address_from_lingxing_order(order: Dict[str, Any]) -> Dict[str, Any]:
     line2_part = normalize_string(pick("AddressLine2", "address_line2", default=""))
     full_address = f"{line1_part} {line2_part}".strip()
     return {
-        "name": normalize_string(pick("Name", "buyer_name")),
+        "name": normalize_string(pick("Name", "buyer_name"))[:24],
         "phone": clean_phone,
         "line1": full_address,
         "city": normalize_string(pick("City", "city")),
