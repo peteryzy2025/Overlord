@@ -9,4 +9,5 @@ urlpatterns = [
     # path('', include('Temu.urls')),
     path('', include('Track.urls')),
     path('', include('Yuser.urls')),  # 添加这一行
+    path('', include('Zother.urls')),  # 添加这一行
 ]
