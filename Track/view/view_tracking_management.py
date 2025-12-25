@@ -555,13 +555,13 @@ def import_tracking_excel(request):
         for item in trackings:
             track_no = item['track_no']
             if track_no in existing_trackings_set:
-                # 更新现有记录的工厂ID
+                # ✅ 立即更新（性能影响很小，因为只有重复时才执行）
                 Tracking.objects.filter(track_no=track_no).update(factory=factory)
                 results['duplicates_local'] += 1
                 results['details'].append({
                     'track_no': track_no,
                     'status': 'duplicate_local',
-                    'message': f'运单号已存在于本地数据库，已更新工厂为: {factory.name}'
+                    'message': f'运单号已存在，工厂已更新为: {factory.name}'
                 })
             else:
                 track_no_for_api.append(track_no)
@@ -680,7 +680,13 @@ def import_tracking_excel(request):
 
             # 所有批次完成后，批量创建记录
             if new_tracking_objects:
-                Tracking.objects.bulk_create(new_tracking_objects)
+                # 使用 ignore_conflicts 静默跳过已存在记录，避免 IntegrityError
+                Tracking.objects.bulk_create(new_tracking_objects, ignore_conflicts=True)
+
+                # 批量更新所有相关记录的工厂字段（覆盖新建和已存在的记录）
+                track_nos_in_batch = [obj.track_no for obj in new_tracking_objects]
+                Tracking.objects.filter(track_no__in=track_nos_in_batch).update(factory=factory)
+
                 print(f"批量创建了 {len(new_tracking_objects)} 条Tracking记录")
 
         # 启动后台线程更新轨迹

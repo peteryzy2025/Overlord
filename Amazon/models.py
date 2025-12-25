@@ -513,6 +513,7 @@ class AmazonShopEmail(models.Model):
     subject = models.CharField('邮件标题', max_length=500)
     sender = models.CharField('发件人', max_length=255)
     email_body = models.TextField('邮件内容', blank=True, null=True)
+    html_body = models.TextField('HTML邮件内容', blank=True, null=True)
     receive_time = models.DateTimeField('接收时间')
     is_attention_needed = models.BooleanField('是否需要注意', default=False)
     is_processed = models.BooleanField('是否已处理', default=False)
