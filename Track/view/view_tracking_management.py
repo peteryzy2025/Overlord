@@ -582,6 +582,7 @@ def import_tracking_excel(request):
                 print(f"处理批次 {batch_idx + 1}/{total_batches}，单号数量: {len(current_batch)}")
 
                 api_response = register_tracking(current_batch)
+                time.sleep(1)
 
                 if api_response.get('code') == '00000':
                     data = api_response.get('data', {})

@@ -19,7 +19,8 @@ def register_tracking(track_no_list, api_key="34546e68d4c74ab2849318a1b50be83d")
         "Track123-Api-Secret": api_key,
         "Content-Type": "application/json"
     }
-    payload = [{"trackNo": track_no} for track_no in track_no_list]
+    # payload = [{"trackNo": track_no} for track_no in track_no_list]
+    payload = [{"trackNo": track_no.replace(" ", "")} for track_no in track_no_list]
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=60)
