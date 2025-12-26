@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-
+import os
+from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(os.path.join(BASE_DIR, '.env'))  # 必须加这行
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
@@ -110,9 +111,14 @@ DATABASES = {
         "HOST": "192.168.110.54",
         "PORT": "5432",
         # "PORT": "12763",
-        "NAME": "overlord_db",
-        "USER": "postgres",
-        "PASSWORD": "YUEER0811",
+
+        # "NAME": "overlord_db",
+        # "USER": "postgres",
+        # "PASSWORD": "YUEER0811",
+
+        "NAME": os.getenv('DB_NAME', 'overlord_db'),  # ✅ 数据库名
+        "USER": os.getenv('DB_USER', 'track'),  # ✅ 用户名
+        "PASSWORD": os.getenv('DB_PASSWORD'),  # ✅ 密码从环境变量读
         "CONN_MAX_AGE": 60,  # 连接池：长连接，单位秒（生产可调大一些）
         "ATOMIC_REQUESTS": True,  # 每个请求包裹在事务中（出错自动回滚）
     },
