@@ -197,14 +197,21 @@ class AmazonOrders(models.Model):
     gmt_modified = models.DateTimeField(blank=True, null=True)
     gmt_modified_utc = models.DateTimeField(blank=True, null=True)
     hide_time = models.DateTimeField(blank=True, null=True)
+
+    latest_ship_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='最晚发货时间',
+        db_comment='承诺配送订单的最晚发货时间'
+    )
     earliest_ship_date_local = models.DateTimeField(
         blank=True, null=True,
-        db_comment='最晚发货时间（本地时间）'
+        db_comment='最晚发货时间（本地时间）列表的 - 放弃'
     )
     earliest_ship_date_utc = models.DateTimeField(
         blank=True, null=True,
-        db_comment='最晚发货时间（UTC）'
+        db_comment='最晚发货时间（UTC）列表的 - 放弃'
     )
+
     is_exported_to_divi = models.BooleanField(
         default=False,
         verbose_name='是否已导出DIVI',
@@ -525,3 +532,775 @@ class AmazonShopEmail(models.Model):
         db_table = 'amazon_shop_emails'
         verbose_name = '店铺邮件'
         verbose_name_plural = verbose_name
+
+
+# amazon/models.py
+
+class AmazonOrderFullDetail(models.Model):
+    """
+    亚马逊订单完整详情表（从 get_amazon_order_detail 接口获取）
+    包含订单级所有字段，一次性写入后不再变更
+    """
+
+    order = models.OneToOneField(
+        'AmazonOrders',
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='full_detail',
+        verbose_name='关联订单',
+        db_comment='关联的亚马逊订单（一对一）'
+    )
+
+    # ===== 店铺信息 =====
+    sid = models.BigIntegerField(
+        verbose_name='店铺ID',
+        db_comment='领星店铺ID'
+    )
+
+    # ===== 订单基础信息 =====
+    amazon_order_id = models.CharField(
+        max_length=50,
+        verbose_name='亚马逊订单号',
+        db_comment='亚马逊订单号'
+    )
+
+    fulfillment_channel = models.CharField(
+        max_length=20,
+        blank=True, null=True,
+        verbose_name='发货渠道',
+        db_comment='发货渠道（AFN/MFN）'
+    )
+
+    order_status_detail = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='订单状态',
+        db_comment='订单状态（Pending/Unshipped/Shipped/Canceled等）'
+    )
+
+    order_total_amount_detail = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        blank=True, null=True,
+        verbose_name='订单总金额',
+        db_comment='订单总金额'
+    )
+
+    currency = models.CharField(
+        max_length=10,
+        blank=True, null=True,
+        verbose_name='订单币种',
+        db_comment='订单金额币种'
+    )
+
+    icon = models.CharField(
+        max_length=10,
+        blank=True, null=True,
+        verbose_name='币种符号',
+        db_comment='订单金额币种符号'
+    )
+
+    # ===== 订单类型标志位 =====
+    is_assessed = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否为推广订单',
+        db_comment='是否为推广订单：0否，1是'
+    )
+
+    is_mcf_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否多渠道订单',
+        db_comment='是否多渠道订单：0普通订单，1多渠道订单'
+    )
+
+    is_return_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否为退货订单',
+        db_comment='是否为退货订单：0否，1是'
+    )
+
+    is_replaced_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否已换货',
+        db_comment='是否已换货：0否，1是'
+    )
+
+    is_replacement_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否为换货订单',
+        db_comment='是否为换货订单：0否，1是'
+    )
+
+    is_business_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否为B2B订单',
+        db_comment='是否为B2B订单：0否，1是'
+    )
+
+    is_prime = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否Prime订单',
+        db_comment='是否Prime订单：0否，1是'
+    )
+
+    is_premium_order = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否优先配送订单',
+        db_comment='是否优先配送订单：0否，1是'
+    )
+
+    is_promotion = models.SmallIntegerField(
+        default=0,
+        verbose_name='是否促销订单',
+        db_comment='是否促销订单：0否，1是'
+    )
+
+    # ===== 时间字段（站点时间）=====
+    purchase_date_local_detail = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='订购时间（站点时间）',
+        db_comment='订购时间（站点时间）'
+    )
+
+    last_update_date_detail = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='订单更新时间（站点时间）',
+        db_comment='订单更新时间（站点时间）'
+    )
+
+    posted_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='结算时间（站点时间）',
+        db_comment='结算时间（站点时间）'
+    )
+
+    shipment_date_detail = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='发货时间（站点时间）',
+        db_comment='发货时间（站点时间）'
+    )
+
+    earliest_ship_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='发货时限（站点时间）',
+        db_comment='发货时限（站点时间）'
+    )
+
+    # ===== 时间字段（UTC时间）=====
+    purchase_date_utc_detail = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='订购时间（UTC）',
+        db_comment='订购时间（UTC时间）'
+    )
+
+    last_update_date_utc_detail = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='订单更新时间（UTC）',
+        db_comment='订单更新时间（UTC时间）'
+    )
+
+    earliest_ship_date_utc = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='发货时限（UTC）',
+        db_comment='发货时限（UTC时间）'
+    )
+
+    # ===== 承诺配送时间（UTC）=====
+    latest_ship_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='最晚发货时间',
+        db_comment='承诺配送订单的最晚发货时间（UTC）'
+    )
+
+    earliest_delivery_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='最早送达时间',
+        db_comment='承诺送达订单的最早送达时间（UTC）'
+    )
+
+    latest_delivery_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='最晚送达时间',
+        db_comment='承诺送达订单的最晚送达时间（UTC）'
+    )
+
+    # ===== 物流信息 =====
+    ship_service_level = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='配送服务',
+        db_comment='配送服务'
+    )
+
+    shipment_service_level_category = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='装运服务级别',
+        db_comment='装运服务级别'
+    )
+
+    number_of_items_shipped = models.IntegerField(
+        default=0,
+        verbose_name='已发货商品数',
+        db_comment='已发货的商品数'
+    )
+
+    number_of_items_unshipped = models.IntegerField(
+        default=0,
+        verbose_name='未发货商品数',
+        db_comment='未发货的商品数'
+    )
+
+    # ===== 销售渠道 =====
+    sales_channel = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='销售渠道',
+        db_comment='销售渠道（如Amazon.com）'
+    )
+
+    # ===== 税费相关 =====
+    taxes_included = models.SmallIntegerField(
+        default=0,
+        verbose_name='费用是否含税',
+        db_comment='费用是否含税：1含税，2不含税（仅欧洲市场）'
+    )
+
+    # ===== 支付信息 =====
+    payment_method = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='付款方式',
+        db_comment='付款方式：COD/CVS/Other'
+    )
+
+    cba_displayable_shipping_label = models.CharField(
+        max_length=200,
+        blank=True, null=True,
+        verbose_name='CBA自定义发货标签',
+        db_comment='亚马逊结账（CBA）的自定义发货标签'
+    )
+
+    # ===== 其他信息 =====
+    purchase_order_number = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='采购订单编号',
+        db_comment='买家结账时输入的采购订单编号'
+    )
+
+    order_type = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='订单类型',
+        db_comment='订单类型'
+    )
+
+    # ===== 地址信息（结构化）=====
+    buyer_name_detail = models.CharField(
+        max_length=200,
+        blank=True, null=True,
+        verbose_name='买家姓名',
+        db_comment='买家姓名（详情）'
+    )
+
+    buyer_phone_raw = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='原始电话',
+        db_comment='原始电话（含ext）'
+    )
+
+    buyer_phone_clean = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='清洗后电话',
+        db_comment='清洗后电话（去除ext）'
+    )
+
+    buyer_email_detail = models.CharField(
+        max_length=200,
+        blank=True, null=True,
+        verbose_name='买家邮箱',
+        db_comment='买家邮箱（详情）'
+    )
+
+    shipping_address_line1 = models.CharField(
+        max_length=500,
+        blank=True, null=True,
+        verbose_name='地址行1',
+        db_comment='地址第一行'
+    )
+
+    shipping_address_line2 = models.CharField(
+        max_length=500,
+        blank=True, null=True,
+        verbose_name='地址行2',
+        db_comment='地址第二行'
+    )
+
+    shipping_city = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='城市',
+        db_comment='城市'
+    )
+
+    shipping_state = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='州/省',
+        db_comment='州或省'
+    )
+
+    shipping_postal_code = models.CharField(
+        max_length=20,
+        blank=True, null=True,
+        verbose_name='邮政编码',
+        db_comment='邮政编码'
+    )
+
+    shipping_country_code = models.CharField(
+        max_length=10,
+        blank=True, null=True,
+        verbose_name='国家代码',
+        db_comment='国家代码（如US）'
+    )
+
+    shipping_address_full = models.TextField(
+        blank=True, null=True,
+        verbose_name='完整地址JSON',
+        db_comment='完整收货地址JSON字符串'
+    )
+
+    # ===== 写入时间 =====
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='详情写入时间',
+        db_comment='详情写入时间'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='最后更新时间',
+        db_comment='最后更新时间'
+    )
+
+    class Meta:
+        db_table = 'amazon_order_full_detail'
+        db_table_comment = '亚马逊订单完整详情表（从详情接口获取，一次性写入）'
+        verbose_name = '亚马逊订单详情'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.amazon_order_id} - 详情"
+
+
+class AmazonOrderItemFullDetail(models.Model):
+    """
+    亚马逊订单商品完整明细表（从 item_list 获取）
+    包含商品级所有费用和状态信息
+    """
+
+    # 使用 order_item_id 作为主键（亚马逊返回的唯一标识）
+    order_item_id = models.CharField(
+        max_length=100,
+        primary_key=True,
+        verbose_name='订单商品编码',
+        db_comment='订单商品编码（订单下唯一，亚马逊返回值可能变更）'
+    )
+
+    order = models.ForeignKey(
+        'AmazonOrders',
+        on_delete=models.CASCADE,
+        related_name='item_full_details',
+        verbose_name='关联订单',
+        db_comment='关联的亚马逊订单'
+    )
+
+    # ===== 商品基础信息 =====
+    seller_sku = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='MSKU',
+        db_comment='卖家SKU（MSKU）'
+    )
+
+    asin = models.CharField(
+        max_length=30,
+        blank=True, null=True,
+        verbose_name='ASIN',
+        db_comment='商品ASIN编码'
+    )
+
+    title = models.CharField(
+        max_length=500,
+        blank=True, null=True,
+        verbose_name='商品标题',
+        db_comment='商品标题'
+    )
+
+    asin_url = models.URLField(
+        max_length=500,
+        blank=True, null=True,
+        verbose_name='ASIN链接',
+        db_comment='ASIN详情页链接'
+    )
+
+    pic_url = models.URLField(
+        max_length=500,
+        blank=True, null=True,
+        verbose_name='商品图片',
+        db_comment='商品主图URL'
+    )
+
+    # ===== 本地SKU关联 =====
+    sku = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='本地SKU',
+        db_comment='本地系统SKU'
+    )
+
+    product_id = models.BigIntegerField(
+        blank=True, null=True,
+        verbose_name='本地产品ID',
+        db_comment='本地系统产品ID'
+    )
+
+    product_name = models.CharField(
+        max_length=200,
+        blank=True, null=True,
+        verbose_name='品名',
+        db_comment='商品品名'
+    )
+
+    # ===== 数量信息 =====
+    quantity_ordered = models.IntegerField(
+        default=1,
+        verbose_name='下单量',
+        db_comment='下单数量'
+    )
+
+    quantity_shipped = models.IntegerField(
+        default=0,
+        verbose_name='已配送数量',
+        db_comment='已配送数量'
+    )
+
+    # ===== 价格与费用（站点币种）=====
+    item_price_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='商品支付金额',
+        db_comment='商品支付金额'
+    )
+
+    item_tax_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='商品税',
+        db_comment='商品税费'
+    )
+
+    shipping_price_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='买家运费',
+        db_comment='买家支付的运费'
+    )
+
+    shipping_tax_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='运费税',
+        db_comment='商品运费税'
+    )
+
+    gift_wrap_price_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='礼品包装费',
+        db_comment='礼品包装费用'
+    )
+
+    gift_wrap_tax_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='礼品包装税',
+        db_comment='礼品包装税'
+    )
+
+    shipping_discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='配送折扣',
+        db_comment='配送折扣金额'
+    )
+
+    promotion_discount_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='商品促销折扣',
+        db_comment='商品促销折扣金额'
+    )
+
+    # ===== FBA相关费用 =====
+    fba_shipment_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='FBA发货费',
+        db_comment='FBA发货费用（负数）'
+    )
+
+    commission_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='平台费',
+        db_comment='亚马逊平台佣金（负数）'
+    )
+
+    # ===== 其他费用 =====
+    cod_fee_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='COD服务费',
+        db_comment='货到付款服务费'
+    )
+
+    other_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='其他费用',
+        db_comment='其他亚马逊费用（如Amazon Exlusives Program）'
+    )
+
+    # ===== 成本与利润（本地币种）=====
+    cg_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='采购成本',
+        db_comment='商品采购成本（本地币种）'
+    )
+
+    cg_transport_costs = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='头程费用',
+        db_comment='头程运输费用（本地币种）'
+    )
+
+    profit = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='毛利润',
+        db_comment='订单商品毛利润（本地币种）'
+    )
+
+    # ===== 费用币种信息 =====
+    fee_currency = models.CharField(
+        max_length=10,
+        blank=True, null=True,
+        verbose_name='其他费币种',
+        db_comment='其他费用币种（如推广费币种）'
+    )
+
+    fee_icon = models.CharField(
+        max_length=10,
+        blank=True, null=True,
+        verbose_name='其他费币种符号',
+        db_comment='其他费用币种符号'
+    )
+
+    fee_cost_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='自定义费用本金',
+        db_comment='自定义费用本金（店铺对应币种）'
+    )
+
+    fee_cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='自定义费用本金',
+        db_comment='自定义费用本金（fee_currency对应币种）'
+    )
+
+    # ===== 价格汇总 =====
+    sales_price_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='销售收益',
+        db_comment='商品销售收益'
+    )
+
+    unit_price_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='单价',
+        db_comment='商品单价'
+    )
+
+    tax_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='税费',
+        db_comment='商品税费汇总'
+    )
+
+    promotion_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='促销费',
+        db_comment='促销费用'
+    )
+
+    item_discount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='商品折扣',
+        db_comment='商品折扣金额'
+    )
+
+    # ===== 商品状态信息 =====
+    condition_id = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='商品状况',
+        db_comment='商品状况（卖家提供）'
+    )
+
+    condition_subtype_id = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='商品子状况',
+        db_comment='商品子状况（卖家提供）'
+    )
+
+    condition_note = models.TextField(
+        blank=True, null=True,
+        verbose_name='商品状况说明',
+        db_comment='商品状况说明（卖家提供）'
+    )
+
+    # ===== 礼品信息 =====
+    gift_message_text = models.TextField(
+        blank=True, null=True,
+        verbose_name='礼品信息',
+        db_comment='礼品信息（买家提供）'
+    )
+
+    gift_wrap_level = models.CharField(
+        max_length=100,
+        blank=True, null=True,
+        verbose_name='礼品包装级别',
+        db_comment='礼品包装级别（买家提供）'
+    )
+
+    # ===== 取消信息 =====
+    is_buyer_requested_cancel = models.BooleanField(
+        default=False,
+        verbose_name='买家请求取消',
+        db_comment='买家是否请求取消订单'
+    )
+
+    buyer_cancel_reason = models.TextField(
+        blank=True, null=True,
+        verbose_name='取消原因',
+        db_comment='买家取消原因'
+    )
+
+    # ===== 促销信息 =====
+    promotion_ids = models.JSONField(
+        default=list,
+        blank=True, null=True,
+        verbose_name='商品促销ID',
+        db_comment='商品促销ID列表'
+    )
+
+    # ===== 其他信息 =====
+    points_monetary_value_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name='积分成本',
+        db_comment='积分成本（日本站会有此数据）'
+    )
+
+    scheduled_delivery_start_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='计划交货开始日期',
+        db_comment='计划交货开始日期'
+    )
+
+    scheduled_delivery_end_date = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name='计划交货结束日期',
+        db_comment='计划交货结束日期'
+    )
+
+    price_designation = models.CharField(
+        max_length=50,
+        blank=True, null=True,
+        verbose_name='B2B价格',
+        db_comment='B2B价格标识'
+    )
+
+    customized_json = models.JSONField(
+        default=dict,
+        blank=True, null=True,
+        verbose_name='订单定制化信息',
+        db_comment='订单定制化信息JSON'
+    )
+
+    attachments = models.JSONField(
+        default=list,
+        blank=True, null=True,
+        verbose_name='附件信息',
+        db_comment='附件信息列表'
+    )
+
+    # ===== 写入时间 =====
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='创建时间',
+        db_comment='明细写入时间'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='更新时间',
+        db_comment='最后更新时间'
+    )
+
+    class Meta:
+        db_table = 'amazon_order_item_full_detail'
+        db_table_comment = '亚马逊订单商品明细详情表（从详情接口获取，一次性写入）'
+        verbose_name = '亚马逊订单商品详情'
+        verbose_name_plural = verbose_name
+        unique_together = [['order', 'order_item_id']]
+
+    def __str__(self):
+        return f"{self.order.amazon_order_id} - {self.seller_sku}"

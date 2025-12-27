@@ -83,3 +83,65 @@ async def get_lingxing_zifa_order(sid:str, days: int = 3):
     # print(resp.data)
     return resp.data
 
+
+async def get_amazon_order_detail(amazon_order_ids: List[str]) -> List[Dict]:
+    """
+    批量获取亚马逊订单详情（支持超过200个订单号，内部自动分批）
+
+    :param amazon_order_ids: 订单号列表，如 ["111-4997053-2861834", "113-7088145-9667414"]
+    :return: 合并后的订单详情列表
+    :raises: 任一分批请求失败会抛出异常
+    """
+    if not amazon_order_ids:
+        print("[get_amazon_order_detail] 订单号列表为空，直接返回 []")
+        return []
+
+    # API限制：每次最多200个，留10个余量，按190个一批
+    BATCH_SIZE = 190
+    total_orders = len(amazon_order_ids)
+
+    if total_orders <= BATCH_SIZE:
+        # 数量在限制内，直接查询
+        order_ids_str = ",".join(amazon_order_ids)
+        req_body = {"order_id": order_ids_str}
+
+        try:
+            resp = await get_api_resp(
+                req_body=req_body,
+                api_path="/erp/sc/data/mws/orderDetail"
+            )
+            result_count = len(resp.data) if resp.data else 0
+            print(f"[get_amazon_order_detail] 查询 {total_orders} 个订单，获取到 {result_count} 条详情")
+            return resp.data or []
+        except Exception as e:
+            print(f"[get_amazon_order_detail] 查询失败: {str(e)}")
+            raise  # 抛出异常
+
+    # 超过限制，需要分批
+    print(
+        f"[get_amazon_order_detail] 订单总数 {total_orders}，超过 {BATCH_SIZE} 限制，将分成 {(total_orders + BATCH_SIZE - 1) // BATCH_SIZE} 批查询")
+
+    all_details = []
+    batches = [amazon_order_ids[i:i + BATCH_SIZE] for i in range(0, total_orders, BATCH_SIZE)]
+
+    for idx, batch in enumerate(batches, 1):
+        print(f"[get_amazon_order_detail] 开始查询第 {idx}/{len(batches)} 批，共 {len(batch)} 个订单")
+
+        order_ids_str = ",".join(batch)
+        req_body = {"order_id": order_ids_str}
+
+        try:
+            resp = await get_api_resp(
+                req_body=req_body,
+                api_path="/erp/sc/data/mws/orderDetail"
+            )
+            batch_result = resp.data or []
+            print(f"[get_amazon_order_detail] 第 {idx} 批查询成功，获取到 {len(batch_result)} 条详情")
+            all_details.extend(batch_result)
+        except Exception as e:
+            print(f"[get_amazon_order_detail] 第 {idx} 批查询失败: {str(e)}，中止后续批次")
+            raise  # 任一批失败，整体失败
+
+    print(f"[get_amazon_order_detail] 所有批次完成，总计获取 {len(all_details)} 条详情")
+    return all_details
+

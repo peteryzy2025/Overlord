@@ -1364,7 +1364,7 @@
 
                 // 8. 发货时限预警显示（排除特定状态）
                 let deadlineHtml = '-';
-                if (order.earliest_ship_date_utc && !NON_DEADLINE_STATUSES.includes(order.order_status)) {
+                if (order.latest_ship_date && !NON_DEADLINE_STATUSES.includes(order.order_status)) {
                     const status = order.deadline_status;
                     let warningHtml = '';
 
@@ -1375,7 +1375,7 @@
                     }
 
                     deadlineHtml = `
-                <span>${order.earliest_ship_date_utc}</span>
+                <span>${order.latest_ship_date}</span>
                 ${warningHtml}
             `;
                 }

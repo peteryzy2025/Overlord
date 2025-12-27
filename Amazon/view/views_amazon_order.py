@@ -159,23 +159,23 @@ def get_amazon_orders_list_api(request):
 
         if shipping_deadline_filter:
             base_q = (
-                    Q(earliest_ship_date_utc__isnull=False) &
+                    Q(latest_ship_date__isnull=False) &
                     ~Q(order_status__in=EXCLUDE_STATUS)
             )
 
             if shipping_deadline_filter == 'red':
                 red_threshold = now_utc + timedelta(hours=8)
-                order_filter &= base_q & Q(earliest_ship_date_utc__lte=red_threshold)
+                order_filter &= base_q & Q(latest_ship_date__lte=red_threshold)
 
             elif shipping_deadline_filter == 'yellow':
                 yellow_min = now_utc + timedelta(hours=8, seconds=1)
                 yellow_max = now_utc + timedelta(hours=32)
-                order_filter &= base_q & Q(earliest_ship_date_utc__gt=yellow_min) & Q(
-                    earliest_ship_date_utc__lte=yellow_max)
+                order_filter &= base_q & Q(latest_ship_date__gt=yellow_min) & Q(
+                    latest_ship_date__lte=yellow_max)
 
             elif shipping_deadline_filter == 'all_deadline':
                 yellow_max = now_utc + timedelta(hours=32)
-                order_filter &= base_q & Q(earliest_ship_date_utc__lte=yellow_max)
+                order_filter &= base_q & Q(latest_ship_date__lte=yellow_max)
 
         # ========== 构建最终 queryset（带预加载，无.only()）==========
         orders_queryset = AmazonOrders.objects.filter(order_filter) \
@@ -213,9 +213,14 @@ def get_amazon_orders_list_api(request):
             deadline_status = 'normal'
             deadline_text = ''
             hours_remaining = None
+            print(f"\n{'=' * 60}")
+            print(f"调试订单: {order.amazon_order_id}")
+            print(f"原始 latest_ship_date: {order.latest_ship_date} (类型: {type(order.latest_ship_date)})")
+            print(f"订单状态: {order.order_status}")
+            print(f"是否在排除列表: {order.order_status in EXCLUDE_STATUS}")
 
-            if (order.earliest_ship_date_utc and order.order_status not in EXCLUDE_STATUS):
-                beijing_deadline = order.earliest_ship_date_utc + timedelta(hours=16)
+            if (order.latest_ship_date and order.order_status not in EXCLUDE_STATUS):
+                beijing_deadline = order.latest_ship_date + timedelta(hours=16)
                 hours_remaining = (beijing_deadline - now_utc).total_seconds() / 3600
 
                 if hours_remaining <= 24:
@@ -257,8 +262,8 @@ def get_amazon_orders_list_api(request):
                 'divi_logistics_method': order.divi_logistics_method or '',
                 'divi_tracking_number': order.divi_tracking_number or '',
                 'masked_single': order.masked_single,
-                'earliest_ship_date_utc': (order.earliest_ship_date_utc.strftime('%Y-%m-%d %H:%M:%S')
-                                           if order.earliest_ship_date_utc else ''),
+                'latest_ship_date': (order.latest_ship_date.strftime('%Y-%m-%d %H:%M:%S')
+                                           if order.latest_ship_date else ''),
                 'deadline_status': deadline_status,
                 'deadline_text': deadline_text,
                 'hours_remaining': hours_remaining
@@ -1236,7 +1241,7 @@ def export_amazon_orders_excel(request):
             'order_status', 'order_total_amount', 'purchase_date_local',
             'is_exported_to_divi', 'fulfillment_channel', 'divi_order_status',
             'divi_logistics_method', 'divi_tracking_number', 'masked_single',
-            'earliest_ship_date_utc', 'divi_import_time', 'divi_payment_time',
+            'latest_ship_date', 'divi_import_time', 'divi_payment_time',
             'divi_audit_time', 'divi_dispatch_time', 'divi_shipment_time',
             'divi_shipping_amount', 'divi_goods_payment_total'
         ).order_by('-purchase_date_local')
@@ -1256,9 +1261,9 @@ def export_amazon_orders_excel(request):
             deadline_text = ''
             hours_remaining = None
 
-            if (order.earliest_ship_date_utc and
+            if (order.latest_ship_date and
                     order.order_status not in NON_DEADLINE_STATUSES):
-                beijing_deadline = order.earliest_ship_date_utc + timedelta(hours=16)
+                beijing_deadline = order.latest_ship_date + timedelta(hours=16)
                 time_diff = beijing_deadline - now
                 hours_remaining = time_diff.total_seconds() / 3600
 
@@ -1347,8 +1352,8 @@ def export_amazon_orders_excel(request):
 
             # 构建发货时限显示
             deadline_display = ''
-            if order.earliest_ship_date_utc:
-                deadline_display = order.earliest_ship_date_utc.strftime('%Y-%m-%d %H:%M:%S')
+            if order.latest_ship_date:
+                deadline_display = order.latest_ship_date.strftime('%Y-%m-%d %H:%M:%S')
                 if item['deadline_text']:
                     deadline_display += f" {item['deadline_text']}"
 
