@@ -1359,6 +1359,13 @@
         });
 
         async function handleFileUpload(file) {
+            // ==================== 🔴 调试信息开始 ====================
+            console.log('========== Excel文件解析开始 ==========');
+            console.log('文件名:', file.name);
+            console.log('文件大小:', (file.size / 1024).toFixed(2), 'KB');
+            console.log('文件类型:', file.type);
+            // ==================== 调试信息结束 ====================
+
             if (file.size > 5 * 1024 * 1024) {
                 showNotification('文件大小不能超过5MB', 'error');
                 return;
@@ -1369,64 +1376,147 @@
             try {
                 const reader = new FileReader();
                 reader.onload = function (e) {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const sheetData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, {type: 'array'});
 
-                    if (!sheetData[0] || sheetData[0][12] !== '物流单号') {
-                        showNotification('Excel格式错误：M1单元格必须是"物流单号"', 'error');
-                        showLoading(false);
-                        return;
-                    }
+                        // ==================== 🔴 调试信息开始 ====================
+                        console.log('所有Sheet名称:', workbook.SheetNames);
+                        console.log('正在读取第一个Sheet:', workbook.SheetNames[0]);
+                        // ==================== 调试信息结束 ====================
 
-                    const trackings = [];
-                    let invalidCount = 0;
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
-                    for (let i = 1; i < sheetData.length; i++) {
-                        const cellValue = sheetData[i][12];
-                        if (cellValue) {
-                            const trackNo = String(cellValue).trim();
-                            if (trackNo.length > 5) {
-                                trackings.push({
-                                    track_no: trackNo,
-                                    row: i + 1
-                                });
-                            } else if (trackNo.length > 0) {
-                                invalidCount++;
+                        // 转换为JSON格式，header: 1表示第一行作为数组索引
+                        const sheetData = XLSX.utils.sheet_to_json(firstSheet, {header: 1});
+
+                        // ==================== 🔴 调试信息开始 ====================
+                        console.log('========== Sheet数据概览 ==========');
+                        console.log('总行数:', sheetData.length);
+                        console.log('第一行数据:', sheetData[0]);
+                        console.log('第二行数据（示例）:', sheetData[1] || '无数据');
+
+                        if (sheetData[0]) {
+                            console.log('列数:', sheetData[0].length);
+                            console.log('每列的值:');
+                            sheetData[0].forEach((cell, index) => {
+                                const colLetter = String.fromCharCode(65 + index); // A, B, C...
+                                console.log(`  第${colLetter}列 (索引${index}): "${cell}" (${typeof cell})`);
+                            });
+                        }
+                        // ==================== 调试信息结束 ====================
+
+                        // 自动查找"物流单号"列
+                        let trackingColIndex = -1;
+                        const headerRow = sheetData[0] || [];
+
+                        // ==================== 🔴 调试信息开始 ====================
+                        console.log('========== 查找物流单号列 ==========');
+                        // ==================== 调试信息结束 ====================
+
+                        // 方法1：精确匹配"物流单号"
+                        trackingColIndex = headerRow.findIndex(cell =>
+                            typeof cell === 'string' && cell.trim() === '物流单号'
+                        );
+
+                        if (trackingColIndex !== -1) {
+                            console.log(`✅ 找到精确匹配："物流单号"在第 ${trackingColIndex + 1} 列 (索引 ${trackingColIndex})`);
+                        } else {
+                            // 方法2：模糊匹配（包含"单号"或"tracking"）
+                            console.log('未找到精确匹配"物流单号"，尝试模糊匹配...');
+
+                            trackingColIndex = headerRow.findIndex(cell => {
+                                if (typeof cell !== 'string') return false;
+                                const lowerCell = cell.toLowerCase().trim();
+                                return lowerCell.includes('单号') || lowerCell.includes('tracking');
+                            });
+
+                            if (trackingColIndex !== -1) {
+                                console.log(`✅ 找到模糊匹配："${headerRow[trackingColIndex]}" 在第 ${trackingColIndex + 1} 列`);
                             }
                         }
-                    }
 
-                    const uniqueTrackings = [];
-                    const seen = new Set();
-                    let duplicateCount = 0;
+                        // 如果没找到，报错并提供详细信息
+                        if (trackingColIndex === -1) {
+                            console.error('========== ❌ 错误：未找到物流单号列 ==========');
+                            console.error('请确保表头行中包含"物流单号"这两个字');
+                            console.error('当前表头行内容:', headerRow);
 
-                    trackings.forEach(item => {
-                        if (seen.has(item.track_no)) {
-                            duplicateCount++;
-                        } else {
-                            seen.add(item.track_no);
-                            uniqueTrackings.push(item);
+                            showNotification('未找到"物流单号"列！请检查表头。详细错误信息请查看浏览器控制台(F12)', 'error');
+                            showLoading(false);
+                            return;
                         }
-                    });
 
-                    importData = {
-                        validTrackings: uniqueTrackings,
-                        invalidCount: invalidCount,
-                        duplicateCount: duplicateCount,
-                        file: file,
-                        factory_id: importData.factory_id
-                    };
+                        // 提取物流单号数据
+                        const trackings = [];
+                        let invalidCount = 0;
 
-                    showPreview(uniqueTrackings, invalidCount, duplicateCount);
-                    showLoading(false);
+                        for (let i = 1; i < sheetData.length; i++) {
+                            const cellValue = sheetData[i][trackingColIndex];
+                            if (cellValue !== undefined && cellValue !== null && cellValue !== '') {
+                                const trackNo = String(cellValue).trim();
+                                if (trackNo.length > 5) {
+                                    trackings.push({
+                                        track_no: trackNo,
+                                        row: i + 1,
+                                        sourceValue: cellValue // 保留原始值用于调试
+                                    });
+                                } else if (trackNo.length > 0) {
+                                    invalidCount++;
+                                    console.warn(`第${i + 1}行单号"${trackNo}"过短（${trackNo.length}字符），已跳过`);
+                                }
+                            }
+                        }
+
+                        // ==================== 🔴 调试信息开始 ====================
+                        console.log('========== 物流单号提取结果 ==========');
+                        console.log('有效单号数量:', trackings.length);
+                        console.log('无效单号数量:', invalidCount);
+                        console.log('前5个单号示例:', trackings.slice(0, 5));
+                        // ==================== 调试信息结束 ====================
+
+                        // 去重处理
+                        const uniqueTrackings = [];
+                        const seen = new Set();
+                        let duplicateCount = 0;
+
+                        trackings.forEach(item => {
+                            if (seen.has(item.track_no)) {
+                                duplicateCount++;
+                                console.warn(`重复单号已去重: ${item.track_no} (第${item.row}行)`);
+                            } else {
+                                seen.add(item.track_no);
+                                uniqueTrackings.push(item);
+                            }
+                        });
+
+                        importData = {
+                            validTrackings: uniqueTrackings,
+                            invalidCount: invalidCount,
+                            duplicateCount: duplicateCount,
+                            file: file,
+                            factory_id: importData.factory_id,
+                            trackingColIndex: trackingColIndex // 保存列索引
+                        };
+
+                        showPreview(uniqueTrackings, invalidCount, duplicateCount, trackingColIndex);
+                        showLoading(false);
+
+                    } catch (error) {
+                        showLoading(false);
+                        console.error('========== ❌ 文件解析失败 ==========');
+                        console.error('错误信息:', error.message);
+                        console.error('错误堆栈:', error.stack);
+                        showNotification('文件解析失败: ' + error.message + ' 请查看控制台获取详细信息', 'error');
+                    }
                 };
 
                 reader.readAsArrayBuffer(file);
             } catch (error) {
                 showLoading(false);
-                showNotification('文件解析失败: ' + error.message, 'error');
+                console.error('========== ❌ 文件读取失败 ==========');
+                console.error('错误信息:', error.message);
+                showNotification('文件读取失败: ' + error.message, 'error');
             }
         }
 
@@ -1450,7 +1540,7 @@
             confirmBtn.disabled = !isValid;
         }
 
-        function showPreview(trackings, invalidCount, duplicateCount) {
+        function showPreview(trackings, invalidCount, duplicateCount, colIndex) {
             const previewSection = document.getElementById('previewSection');
             const previewCount = document.getElementById('previewCount');
             const previewList = document.getElementById('previewList');
@@ -1458,23 +1548,27 @@
             previewCount.textContent = trackings.length;
             previewSection.style.display = 'block';
 
+            const colLetter = String.fromCharCode(65 + colIndex); // 转换为A,B,C...
+            console.log(`正在显示第${colLetter}列的单号预览`);
+
             const displayTrackings = trackings.slice(0, 50);
             previewList.innerHTML = displayTrackings.map(item => `
-                <div class="preview-item">
-                    <span>${item.track_no}</span>
-                    <span class="preview-status valid">有效</span>
-                </div>
-            `).join('');
+        <div class="preview-item">
+            <span>${item.track_no}</span>
+            <span class="preview-status valid">有效</span>
+        </div>
+    `).join('');
 
             if (trackings.length > 50) {
                 previewList.innerHTML += `
-                    <div class="text-center text-muted mt-2">
-                        还有 ${trackings.length - 50} 个单号未显示...
-                    </div>
-                `;
+            <div class="text-center text-muted mt-2">
+                还有 ${trackings.length - 50} 个单号未显示...
+            </div>
+        `;
             }
 
-            let summaryHtml = `<div class="mt-2 text-muted">总计: ${trackings.length} 个有效单号`;
+            let summaryHtml = `<div class="mt-2 text-muted">
+        从第${colLetter}列共读取到 ${trackings.length} 个有效单号`;
             if (invalidCount > 0) {
                 summaryHtml += `, ${invalidCount} 个无效单号(长度≤5)`;
             }
@@ -1486,7 +1580,7 @@
 
             document.getElementById('confirmImportBtn').disabled = trackings.length === 0;
             if (trackings.length === 0) {
-                showNotification('未找到有效的物流单号', 'warning');
+                showNotification('未找到任何有效的物流单号', 'warning');
             }
         }
 
@@ -1676,59 +1770,59 @@
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async function () {
-    showLoading(true);
-    try {
-        await loadCouriersFromAPI();
-        await loadFactories();
-        populateFactoryFilterDropdown();
-        await loadOpsGroups();
-        await loadOpsNames();
+            showLoading(true);
+            try {
+                await loadCouriersFromAPI();
+                await loadFactories();
+                populateFactoryFilterDropdown();
+                await loadOpsGroups();
+                await loadOpsNames();
 
-        setDefaultFilters();
-        document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+                setDefaultFilters();
+                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
 
-        // 🔴 这块是你原来的代码
-        const fileInput = document.getElementById('fileInput');
-        const uploadArea = document.getElementById('uploadArea');
+                // 🔴 这块是你原来的代码
+                const fileInput = document.getElementById('fileInput');
+                const uploadArea = document.getElementById('uploadArea');
 
-        fileInput.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (file) {
-                importData.file = file;
-                handleFileUpload(file);
-                validateImportForm();
+                fileInput.addEventListener('change', function (e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        importData.file = file;
+                        handleFileUpload(file);
+                        validateImportForm();
+                    }
+                });
+
+                uploadArea.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+
+                uploadArea.addEventListener('dragleave', function (e) {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                });
+
+                uploadArea.addEventListener('drop', function (e) {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    const file = e.dataTransfer.files[0];
+                    if (file && (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                        file.type === 'application/vnd.ms-excel')) {
+                        handleFileUpload(file);
+                    } else {
+                        showNotification('请上传Excel文件', 'warning');
+                    }
+                });
+
+                await applyFilters();
+            } catch (error) {
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
             }
         });
-
-        uploadArea.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-
-        uploadArea.addEventListener('dragleave', function (e) {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-        });
-
-        uploadArea.addEventListener('drop', function (e) {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file && (file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-                file.type === 'application/vnd.ms-excel')) {
-                handleFileUpload(file);
-            } else {
-                showNotification('请上传Excel文件', 'warning');
-            }
-        });
-
-        await applyFilters();
-    } catch (error) {
-        showNotification('初始化失败: ' + error.message, 'error');
-    } finally {
-        showLoading(false);
-    }
-});
 
         function populateFactoryFilterDropdown() {
             const factorySelect = document.getElementById('factoryFilter');

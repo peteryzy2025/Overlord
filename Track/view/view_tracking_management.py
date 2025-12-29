@@ -462,6 +462,19 @@ def export_tracking_excel(request):
 @require_http_methods(["POST"])
 def import_tracking_excel(request):
     """从Excel导入物流单号（支持工厂关联 + 后台异步更新轨迹）"""
+
+    # ==================== 🔴 新增：权限检查开始 ====================
+    user_permission = request.user.permission or ''
+    print(user_permission)
+    permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
+
+    if 'gyl_admin2' not in permission_list:
+        return JsonResponse({
+            'success': False,
+            'message': '权限不足：需要 供应链管理员 权限才能导入物流单号'
+        }, status=403)
+    # ==================== 权限检查结束 ====================
+
     if 'file' not in request.FILES:
         return JsonResponse({'success': False, 'message': '未上传文件'}, status=400)
 
@@ -492,23 +505,47 @@ def import_tracking_excel(request):
         tmp_file_path = tmp_file.name
 
     try:
-        # 读取Excel
+        # ==================== 🔴 修改：自动识别物流单号列开始 ====================
         workbook = openpyxl.load_workbook(tmp_file_path, data_only=True)
         worksheet = workbook.active
 
+        print(f"正在解析Excel文件: {file.name}")
+        print(f"工作表名称: {worksheet.title}")
+        print(f"最大行数: {worksheet.max_row}, 最大列数: {worksheet.max_column}")
+
         # 自动查找"物流单号"列
         target_col = None
+        header_row = list(worksheet[1])
+
+        print(f"表头行内容: {[cell.value for cell in header_row]}")
+
+        # 方法1：精确匹配"物流单号"
         for idx, cell in enumerate(worksheet[1], 1):
-            if cell.value and "物流单号" in str(cell.value).strip():
+            cell_value = str(cell.value).strip() if cell.value else ''
+            if cell_value == '物流单号':
                 target_col = idx
+                print(f"✅ 精确匹配成功：找到'物流单号'在第 {target_col} 列")
                 break
+
+        # 方法2：模糊匹配（如果没找到精确匹配）
+        if not target_col:
+            print("未找到精确匹配，尝试模糊匹配...")
+            for idx, cell in enumerate(worksheet[1], 1):
+                cell_value = str(cell.value).lower().strip() if cell.value else ''
+                if '单号' in cell_value or 'tracking' in cell_value:
+                    target_col = idx
+                    actual_value = str(cell.value).strip()
+                    print(f"✅ 模糊匹配成功：找到'{actual_value}'在第 {target_col} 列")
+                    break
 
         if not target_col:
             workbook.close()
+            print("❌ 未找到物流单号列！")
             return JsonResponse({
                 'success': False,
-                'message': 'Excel格式错误：未找到"物流单号"列'
+                'message': 'Excel格式错误：未找到"物流单号"列，请确保表头包含这四个字'
             }, status=400)
+        # ==================== 自动识别列结束 ====================
 
         # 读取该列所有有效单号
         trackings = []
@@ -521,13 +558,15 @@ def import_tracking_excel(request):
                 if len(track_no) > 5 and track_no not in seen:
                     trackings.append({'track_no': track_no})
                     seen.add(track_no)
+                elif len(track_no) > 0 and len(track_no) <= 5:
+                    print(f"⚠️ 跳过第 {row_idx} 行：单号'{track_no}'长度不足6位")
 
         workbook.close()
 
         if not trackings:
             return JsonResponse({
                 'success': False,
-                'message': '未找到有效的物流单号'
+                'message': '未找到有效的物流单号（要求长度大于5）'
             }, status=400)
 
         # 批量处理结果初始化
@@ -661,7 +700,7 @@ def import_tracking_excel(request):
                             results['details'].append({
                                 'track_no': track_no,
                                 'status': 'error',
-                                'message': f'注册失败: {error_msg}'  # ✅ 修复：正确闭合的 f-string
+                                'message': f'注册失败: {error_msg}'
                             })
                 else:
                     # API调用失败

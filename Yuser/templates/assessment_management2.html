@@ -1,0 +1,713 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}Temu运营绩效考核 - 侯益山{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .content {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        /* 基础统计卡片样式 - 更弯曲弧度 */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border-radius: 16px; /* 更弯曲的弧度 */
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        /* 标签样式 */
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .stat-label i {
+            font-size: 1rem;
+        }
+
+        /* 数值样式 */
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        /* 底部提示文字 */
+        .stat-change {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        /* 卡片状态颜色 */
+        .stat-card.blue {
+            border-left: 6px solid var(--accent-color);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .stat-card.blue .stat-value {
+            color: var(--accent-color);
+        }
+
+        .stat-card.success {
+            border-left: 6px solid #22c55e;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%);
+        }
+
+        .stat-card.success .stat-value {
+            color: #22c55e;
+        }
+
+        .stat-card.warning {
+            border-left: 6px solid #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+        }
+
+        .stat-card.warning .stat-value {
+            color: #f59e0b;
+        }
+
+        .stat-card.danger {
+            border-left: 6px solid #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+        }
+
+        .stat-card.danger .stat-value {
+            color: #ef4444;
+        }
+
+        .stat-card.premium {
+            border-left: 6px solid #f97316;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%);
+        }
+
+        .stat-card.premium .stat-value {
+            color: #f97316;
+        }
+
+        .filter-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 180px;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-control, .form-select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #4f46e5;
+        }
+
+        .table-container {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            margin-bottom: 2rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-primary);
+        }
+
+        .table th {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .score-input {
+            width: 70px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.25rem;
+            text-align: center;
+        }
+
+        .score-input.editable {
+            border-color: var(--accent-color);
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .score-display {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        .total-row {
+            font-weight: 700;
+            background-color: var(--bg-secondary);
+        }
+
+        .grade-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .grade-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        /* 评分等级说明 - 上下结构 */
+        .grade-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+
+        .grade-item {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem;
+            border-bottom: 1px dashed var(--border-color);
+            gap: 0.25rem;
+        }
+
+        .grade-item:last-child {
+            border-bottom: none;
+        }
+
+        .grade-level {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .grade-reward {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .grade-item.warning {
+            border-top: 2px solid var(--danger-color);
+            margin-top: 0.5rem;
+            padding-top: 1rem;
+            color: var(--danger-color);
+        }
+
+        .grade-item.warning .grade-level,
+        .grade-item.warning .grade-reward {
+            color: var(--danger-color);
+        }
+
+        .highlight-value {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+    </style>
+{% endblock %}
+
+{% block page_content %}
+    <div class="content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Temu运营绩效考核 - 侯益山</h1>
+                <p class="page-subtitle">考核时段：<span
+                        id="currentPeriodText">{{ current_period|default:"2025-12" }}</span></p>
+            </div>
+        </div>
+
+        <!-- 统计卡片 - 包含新增的总分卡片 -->
+        <div class="stats-cards">
+            <div class="stat-card blue" id="targetCard">
+                <div class="stat-label">
+                    <i class="fas fa-bullseye"></i>
+                    目标订单量
+                </div>
+                <div class="stat-value">{{ target_orders }}</div>
+                <div class="stat-change">单</div>
+            </div>
+            <div class="stat-card blue" id="actualCard">
+                <div class="stat-label">
+                    <i class="fas fa-chart-line"></i>
+                    实际订单量
+                </div>
+                <div class="stat-value">{{ actual_orders }}</div>
+                <div class="stat-change">单</div>
+            </div>
+            <div class="stat-card" id="achievementCard">
+                <div class="stat-label">
+                    <i class="fas fa-percentage"></i>
+                    达成率
+                </div>
+                <div class="stat-value">{{ achievement_rate }}</div>
+                <div class="stat-change">%</div>
+            </div>
+            <div class="stat-card" id="totalScoreCard">
+                <div class="stat-label">
+                    <i class="fas fa-trophy"></i>
+                    总分
+                </div>
+                <div class="stat-value" id="totalScoreValue">0</div>
+                <div class="stat-change" id="totalScoreDesc">实时计算</div>
+            </div>
+        </div>
+
+        <!-- 筛选区域 -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">考核时段</label>
+                    <select class="form-select" id="periodFilter">
+                        <option value="2025-12" {% if current_period == '2025-12' %}selected{% endif %}>2025年12月
+                        </option>
+                        <option value="2025-11" {% if current_period == '2025-11' %}selected{% endif %}>2025年11月
+                        </option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label"></label>
+                    <button class="btn" onclick="filterData()">筛选</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>主体/项目</th>
+                    <th>说明</th>
+                    <th>评分标准</th>
+                    <th>分数</th>
+                    <th>实际值/评分</th>
+                </tr>
+                </thead>
+                <tbody id="scoreTableBody">
+                <tr>
+                    <td rowspan="2">业绩指标 (70%)</td>
+                    <td>业绩目标达成</td>
+                    <td>全部店铺达到{{ target_orders }}单/月<br>达成100%：满分，每低于目标1%扣2分，低于80%不得分</td>
+                    <td class="highlight-value">90</td>
+                    <td class="score-display" id="performanceScoreDisplay">{{ performance_score }}</td>
+                </tr>
+                <tr>
+                    <td>损失事故次数</td>
+                    <td>准确率=100%、损失事故次数≤0<br>准确率100%（无损失事故）：满分</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="accidentScore" value="10" min="0"
+                               max="10">
+                    </td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="3">KPI分数小计（70%权重）</td>
+                    <td class="highlight-value">100</td>
+                    <td class="highlight-value" id="kpiSubtotalDisplay">0</td>
+                </tr>
+                <tr>
+                    <td rowspan="14">行为考核 (30%)</td>
+                    <td>业务考核-精铺店铺激活率百分百</td>
+                    <td>-</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="activationScore" value="10" min="0"
+                               max="10">
+                    </td>
+                </tr>
+                <tr>
+                    <td>业务考核-店铺链接优化</td>
+                    <td>新增sku、添加视频、打广告、优化主题等</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="optimizationScore" value="8" min="0"
+                               max="10">
+                    </td>
+                </tr>
+                <tr>
+                    <td>业务考核-数据分析能力</td>
+                    <td>提取订单量/转化率等数据，协助生成分析报告</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="analysisScore" value="7" min="0" max="10">
+                    </td>
+                </tr>
+                <tr>
+                    <td>业务考核-上架商品、导单与发货</td>
+                    <td>上架、导单和发货异常处理</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="fulfillmentScore" value="9" min="0"
+                               max="10">
+                    </td>
+                </tr>
+                <tr>
+                    <td>广告投入产出异常</td>
+                    <td>广告ROI使用错误，导致预算浪费</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="adRoiScore" value="6" min="0" max="10">
+                    </td>
+                </tr>
+                <tr>
+                    <td>个人原因导致店铺违规</td>
+                    <td>分数全无</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <select class="form-select" id="violationScore" style="width: 80px; padding: 0.25rem;">
+                            <option value="10">0次</option>
+                            <option value="0">有违规</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>未经申请同意低价销售</td>
+                    <td>分数全无</td>
+                    <td class="highlight-value">10</td>
+                    <td>
+                        <select class="form-select" id="lowPriceScore" style="width: 80px; padding: 0.25rem;">
+                            <option value="10">无</option>
+                            <option value="0">有</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>工作态度-工作主动性/闭环衔接</td>
+                    <td>主动反馈工作进展+问题</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="initiativeScore" value="4" min="0"
+                               max="5">
+                    </td>
+                </tr>
+                <tr>
+                    <td>工作态度-工作遵从度、完成度</td>
+                    <td>对上级管理及安排任务接收、完成、态度等</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="complianceScore" value="5" min="0"
+                               max="5">
+                    </td>
+                </tr>
+                <tr>
+                    <td>工作态度-工作纪律态度</td>
+                    <td>迟到半小时以上、上班早退、摸鱼等分数全无</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <select class="form-select" id="disciplineScore" style="width: 80px; padding: 0.25rem;">
+                            <option value="5">无违纪</option>
+                            <option value="0">有违纪</option>
+                        </select>
+                    </td>
+                </tr>
+                <!-- 修正：工作态度-卫生情况（删除重复的分数全无列） -->
+                <tr>
+                    <td>工作态度-卫生情况</td>
+                    <td>值日卫生未完成/个人卫生未管理/公共卫生未遵守，分数全无</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <select class="form-select" id="hygieneScore" style="width: 80px; padding: 0.25rem;">
+                            <option value="5">无问题</option>
+                            <option value="0">有问题</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>自主能力-学习与创新能力</td>
+                    <td>主动学习平台新规则、提出创新方案</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="learningScore" value="5" min="0" max="5">
+                    </td>
+                </tr>
+                <tr>
+                    <td>抗压能力-遇事冷静避免情绪失控</td>
+                    <td>情绪稳定积极，积极调整负面情绪</td>
+                    <td class="highlight-value">5</td>
+                    <td>
+                        <input type="number" class="score-input editable" id="pressureScore" value="5" min="0" max="5">
+                    </td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="2">行为考核小计（30%权重）</td>
+                    <td class="highlight-value">85</td>
+                    <td class="highlight-value" id="behaviorSubtotalDisplay">0</td>
+                </tr>
+                <tr>
+                    <td rowspan="2">加分项</td>
+                    <td>超额完成业绩</td>
+                    <td>超出业绩指标1%算0.5分，小数点后部分不计</td>
+                    <td>-</td>
+                    <td>
+                        <input type="number" class="score-input" id="extraBonus" value="0" readonly>
+                        <span style="color: var(--teconst shopActivation = parseFloat(document.getElementById('shopActivation').value) || shopActivationCount;xt-secondary); font-size: 0.875rem;" id="extraBonusDesc"></span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>店铺激活情况</td>
+                    <td>精铺每月每店出单≥200，每店完成得1分</td>
+                    <td>-</td>
+                    <td class="score-display" id="shopActivationDisplay">{{ shop_activation_count }}</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="4">最终得分</td>
+                    <td class="highlight-value" id="finalScore" style="font-size: 1.5rem;">0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 评分等级说明 - 上下结构 -->
+        <div class="grade-section">
+            <h3 class="grade-title">评分等级说明</h3>
+            <div class="grade-grid">
+                <div class="grade-item">
+                    <div class="grade-level">S级评分≥150</div>
+                    <div class="grade-reward">提成+300元奖励</div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-level">A级评分90-100</div>
+                    <div class="grade-reward">提成按得分百分比发放</div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-level">B级评分80-89</div>
+                    <div class="grade-reward">提成按80%发放</div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-level">C级评分70-79</div>
+                    <div class="grade-reward">提成按70%发放</div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-level">D级评分60-69</div>
+                    <div class="grade-reward">提成按50%发放</div>
+                </div>
+                <div class="grade-item">
+                    <div class="grade-level">E级评分<60</div>
+                    <div class="grade-reward">提成不予发放</div>
+                </div>
+                <div class="grade-item warning">
+                    <div class="grade-level">连续3个月得分D/E</div>
+                    <div class="grade-reward">自动离职</div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // 从模板变量获取数据
+        const targetOrders = {{ target_orders }};
+        const actualOrders = {{ actual_orders }};
+        let achievementRate = {{ achievement_rate }};
+        let performanceScore = {{ performance_score }};
+        const shopActivationCount = {{ shop_activation_count }};
+
+        // 根据总分获取卡片颜色类
+        function getColorClassForTotal(score) {
+            if (score >= 100) return 'premium';
+            if (score >= 90) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
+
+        // 根据达成率获取卡片颜色类
+        function getColorClassForAchievement(rate) {
+            if (rate >= 100) return 'success';
+            if (rate >= 80) return 'warning';
+            return 'danger';
+        }
+
+        // 自动计算逻辑
+        function calculateAll() {
+            // 1. 更新页面标题的考核时段
+            const periodSelect = document.getElementById('periodFilter');
+            const selectedPeriod = periodSelect.options[periodSelect.selectedIndex].text;
+            document.getElementById('currentPeriodText').textContent = selectedPeriod;
+
+            // 2. KPI部分计算（70%权重）
+            const accidentScore = parseFloat(document.getElementById('accidentScore').value) || 0;
+            const kpiWeighted = (performanceScore + accidentScore) * 0.7;
+            document.getElementById('kpiSubtotalDisplay').textContent = kpiWeighted.toFixed(2);
+
+            // 3. 行为考核计算（30%权重）
+            const activationScore = parseFloat(document.getElementById('activationScore').value) || 0;
+            const optimizationScore = parseFloat(document.getElementById('optimizationScore').value) || 0;
+            const analysisScore = parseFloat(document.getElementById('analysisScore').value) || 0;
+            const fulfillmentScore = parseFloat(document.getElementById('fulfillmentScore').value) || 0;
+            const adRoiScore = parseFloat(document.getElementById('adRoiScore').value) || 0;
+            const violationScore = parseFloat(document.getElementById('violationScore').value) || 0;
+            const lowPriceScore = parseFloat(document.getElementById('lowPriceScore').value) || 0;
+            const initiativeScore = parseFloat(document.getElementById('initiativeScore').value) || 0;
+            const complianceScore = parseFloat(document.getElementById('complianceScore').value) || 0;
+            const disciplineScore = parseFloat(document.getElementById('disciplineScore').value) || 0;
+            const hygieneScore = parseFloat(document.getElementById('hygieneScore').value) || 0;
+            const learningScore = parseFloat(document.getElementById('learningScore').value) || 0;
+            const pressureScore = parseFloat(document.getElementById('pressureScore').value) || 0;
+
+            // 行为考核总和（85分满分）
+            const behaviorRaw = activationScore + optimizationScore + analysisScore +
+                fulfillmentScore + adRoiScore + violationScore + lowPriceScore +
+                initiativeScore + complianceScore + disciplineScore + hygieneScore + learningScore + pressureScore;
+            const behaviorWeighted = behaviorRaw * 0.3;
+            document.getElementById('behaviorSubtotalDisplay').textContent = behaviorWeighted.toFixed(2);
+
+            // 4. 加分项
+            let extraBonus = 0;
+            let extraDesc = '';
+            if (achievementRate > 100) {
+                extraBonus = Math.floor((achievementRate - 100)) * 0.5;
+                extraDesc = `(超出${(achievementRate - 100).toFixed(2)}%)`;
+            }
+            document.getElementById('extraBonus').value = extraBonus.toFixed(1);
+            document.getElementById('extraBonusDesc').textContent = extraDesc;
+
+            // 5. 店铺激活情况
+            const shopActivation = parseFloat(document.getElementById('shopActivationDisplay').textContent) || shopActivationCount;
+
+            // 6. 最终得分
+            const finalScore = kpiWeighted + behaviorWeighted + extraBonus + shopActivation;
+            document.getElementById('finalScore').textContent = finalScore.toFixed(2);
+            document.getElementById('totalScoreValue').textContent = finalScore.toFixed(2);
+
+            // 7. 更新卡片颜色
+            // 总分卡片颜色
+            const totalCard = document.getElementById('totalScoreCard');
+            totalCard.className = 'stat-card ' + getColorClassForTotal(finalScore);
+
+            // 达成率卡片颜色
+            const achievementCard = document.getElementById('achievementCard');
+            achievementCard.className = 'stat-card ' + getColorClassForAchievement(achievementRate);
+
+            // 设置描述文字
+            if (finalScore >= 100) {
+                document.getElementById('totalScoreDesc').textContent = '超额达标！';
+            } else if (finalScore >= 90) {
+                document.getElementById('totalScoreDesc').textContent = '表现优秀';
+            } else if (finalScore >= 60) {
+                document.getElementById('totalScoreDesc').textContent = '需要努力';
+            } else {
+                document.getElementById('totalScoreDesc').textContent = '严重警告';
+            }
+        }
+
+        // 监听所有输入变化
+        document.addEventListener('DOMContentLoaded', function () {
+            // 监听可编辑输入框
+            document.querySelectorAll('.editable, .form-control, select').forEach(input => {
+                input.addEventListener('input', calculateAll);
+                input.addEventListener('change', calculateAll);
+            });
+
+            // 初始化计算
+            calculateAll();
+        });
+
+        // 筛选功能
+        function filterData() {
+            const period = document.getElementById('periodFilter').value;
+            showNotification(`已筛选考核时段：${period}（实际项目中会重新加载数据）`, 'info', 2000);
+        }
+
+        // 通知提示函数
+        function showNotification(message, type = 'info', duration = 3000) {
+            console.log(`${type}: ${message}`);
+        }
+    </script>
+{% endblock %}
