@@ -468,7 +468,7 @@ def import_tracking_excel(request):
     print(user_permission)
     permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
 
-    if 'gyl_admin2' not in permission_list:
+    if 'gyl_admin' not in permission_list:
         return JsonResponse({
             'success': False,
             'message': '权限不足：需要 供应链管理员 权限才能导入物流单号'
