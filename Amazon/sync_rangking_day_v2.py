@@ -441,7 +441,7 @@ def render_personal_report(
     try:
         target = PersonalPerformanceTarget.objects.get(
             user=user,
-            month=month_start.strftime('%Y-%m')
+            month=month_start
         ).target_performance
     except:
         target = None
@@ -824,7 +824,7 @@ def render_manager_report(
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=group_name,
-                month=month_start.strftime('%Y-%m')
+                month=month_start
             ).target_performance
             company_month_target += group_target or 0
         except:

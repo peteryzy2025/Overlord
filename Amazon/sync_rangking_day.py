@@ -35,8 +35,8 @@ from encouragement_bank import get_encouragement
 # ===== 运行配置 =====
 PERIOD = "day"  # "day" 或 "week"
 # PERIOD = "week"  # "day" 或 "week"
-# TEST_MODE = True  # True=只发自己；False=发自己+目标用户
 TEST_MODE = False  # True=只发自己；False=发自己+目标用户
+# TEST_MODE = False  # True=只发自己；False=发自己+目标用户
 
 # 企业微信Webhook配置
 WX_MAIN = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=8ca94212-ea84-4b4e-a294-55e713dcef67"
@@ -416,7 +416,7 @@ def render_personal_report(
     try:
         target = PersonalPerformanceTarget.objects.get(
             user=user,
-            month=month_start.strftime('%Y-%m')
+            month=month_start 
         ).target_performance
     except:
         target = None
@@ -558,7 +558,7 @@ def render_leader_report(
         try:
             target = PersonalPerformanceTarget.objects.get(
                 user=user,
-                month=month_start.strftime('%Y-%m')
+                month=month_start 
             ).target_performance
         except:
             target = None
@@ -787,7 +787,7 @@ def render_manager_report(
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=group_name,
-                month=month_start.strftime('%Y-%m')
+                month=month_start
             ).target_performance
             company_month_target += group_target or 0
         except:
@@ -808,7 +808,7 @@ def render_manager_report(
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=group_name,
-                month=month_start.strftime('%Y-%m')
+                month=month_start 
             ).target_performance
         except:
             group_target = None
@@ -940,7 +940,7 @@ def send_leader_report(target_date: date, period: str = "day"):
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=leader_group,
-                month=month_start.strftime('%Y-%m')
+                month=month_start 
             ).target_performance
         except:
             group_target = None
