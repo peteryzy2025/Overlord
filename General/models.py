@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 
+
 class Company(models.Model):
     """
     公司模型，用于多租户区分
@@ -24,6 +25,7 @@ class Company(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class User(AbstractUser):
     """
@@ -261,7 +263,7 @@ class GroupPerformanceTarget(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
 
     # 目标月份 (格式: YYYY-MM)
-    month = models.CharField('目标月份', max_length=7)
+    month = models.DateField('目标月份', default=timezone.now)
 
     # 运营分组（从OperationalAccount.ops_group去重获取）
     ops_group = models.CharField('运营分组', max_length=255)
@@ -306,6 +308,21 @@ class GroupPerformanceTarget(models.Model):
         """模型验证"""
         if self.stretch_target <= self.target_performance:
             raise ValidationError('组冲单目标必须大于组目标业绩')
+            # 确保日期总是该月的第一天
+        if self.month and self.month.day != 1:
+            self.month = self.month.replace(day=1)
+
+    @property
+    def month_display(self):
+        """返回 YYYY-MM 格式的月份显示"""
+        return self.month.strftime('%Y-%m')
+
+    @classmethod
+    def get_by_month(cls, ops_group, year_month):
+        """根据 YYYY-MM 格式查询"""
+        from datetime import datetime
+        date_obj = datetime.strptime(year_month, '%Y-%m').date()
+        return cls.objects.get(ops_group=ops_group, month=date_obj)
 
     def get_current_member_total(self):
         """获取当前该组所有成员的个人目标总和"""
@@ -346,7 +363,7 @@ class PersonalPerformanceTarget(models.Model):
     ops_group = models.CharField('运营分组', max_length=255, blank=True, null=True)
 
     # 目标月份 (格式: YYYY-MM)
-    month = models.CharField('目标月份', max_length=7)
+    month = models.DateField('目标月份', default=timezone.now)
 
     # 目标业绩（单量）
     target_performance = models.IntegerField('个人目标业绩/单', default=0)
@@ -395,6 +412,14 @@ class PersonalPerformanceTarget(models.Model):
         """模型验证"""
         if self.stretch_target <= self.target_performance:
             raise ValidationError('个人冲单目标必须大于个人目标业绩')
+        # 确保日期总是该月的第一天
+        if self.month and self.month.day != 1:
+            self.month = self.month.replace(day=1)
+
+    @property
+    def month_display(self):
+        """返回 YYYY-MM 格式的月份显示"""
+        return self.month.strftime('%Y-%m')
 
 
 class Announcement(models.Model):
@@ -511,6 +536,13 @@ class UserOperationLog(models.Model):
 
     DAILY_CHECK_RESET = 4011  # ✅ 新增
 
+
+    ASSESSMENT_BATCH_REFRESH = 6001  # 批量刷新考核订单数据
+    ASSESSMENT_SUBMIT = 6002  # 组长评分提交
+    ASSESSMENT_MEMBER_CONFIRM = 6003  # 组员评分确认
+    ASSESSMENT_LEADER_CONFIRM = 6004  # 组长评分确认
+    ASSESSMENT_CREATE = 6005  # 新增考核
+    ASSESSMENT_MEMBER_REJECT = 6006  # 组员评分拒绝
     OPERATION_TYPE_CHOICES = [
         (USER_CREATE, '新增用户'),
         (USER_UPDATE, '修改用户信息'),
@@ -527,6 +559,14 @@ class UserOperationLog(models.Model):
         (EMAIL_NOTIFY_OPERATORS, '批量通知运营邮件'),  # ✅ 添加
         (DAILY_CHECK_RESET, '重置巡店'),  # ✅ 新增
 
+
+        # 6xxx: 考核流程操作
+        (ASSESSMENT_BATCH_REFRESH, '绩效考核-批量刷新订单'),
+        (ASSESSMENT_SUBMIT, '绩效考核-组长评分提交'),
+        (ASSESSMENT_MEMBER_CONFIRM, '绩效考核-组员评分确认'),
+        (ASSESSMENT_LEADER_CONFIRM, '绩效考核-组长评分确认'),
+        (ASSESSMENT_CREATE, '考核创建'),
+        (ASSESSMENT_MEMBER_REJECT, '绩效考核-组员评分驳回'),
     ]
 
     # ============= 模型字段 =============

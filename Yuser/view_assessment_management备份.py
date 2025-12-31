@@ -74,35 +74,6 @@ class AssessmentManagementView(LoginRequiredMixin, View):
         return (user == assessment.employee and
                 assessment.status == 'pending_member')
 
-    def get_grade_rules(self, assess_type):
-        """获取评分等级规则"""
-        if assess_type == 'temu_operation':
-            return [
-                {'level': 'S级评分≥150', 'reward': '提成+300元奖励'},
-                {'level': 'A级评分90-100', 'reward': '提成按得分百分比发放'},
-                {'level': 'B级评分80-89', 'reward': '提成按80%发放'},
-                {'level': 'C级评分70-79', 'reward': '提成按70%发放'},
-                {'level': 'D级评分60-69', 'reward': '提成按50%发放'},
-                {'level': 'E级评分<60', 'reward': '提成不予发放'},
-                {'level': '连续3个月得分D/E', 'reward': '自动离职', 'is_warning': True},
-            ]
-        elif assess_type == 'amazon_operation':
-            return [
-                {'level': 'S级评分 ≥ 150', 'reward': '提成+300元奖励'},
-                {'level': 'A级评分 90-100', 'reward': '提成按得分百分比发放'},
-                {'level': 'B级评分 80-89', 'reward': '提成按80%发放'},
-                {'level': 'C级评分 70-79', 'reward': '提成按70%发放'},
-                {'level': 'D级评分 60-69', 'reward': '提成按50%发放'},
-                {'level': 'E级评分 < 60', 'reward': '提成不予发放'},
-                {'level': '连续3个月得分D/E', 'reward': '自动离职', 'is_warning': True},
-            ]
-        else:
-            return [
-                {'level': '评分 ≥ 70分', 'reward': '且业绩指标完成，可转为运营岗位'},
-                {'level': '评分 ＜ 70分', 'reward': '业绩无达标，连续两个月则自动离职'},
-                {'level': '评分 ＜ 60分', 'reward': '自动离职', 'is_warning': True},
-            ]
-
     # ===== 计算逻辑方法 =====
     def calculate_performance_score(self, assessment):
         """计算业绩达成得分"""
@@ -121,7 +92,7 @@ class AssessmentManagementView(LoginRequiredMixin, View):
     def calculate_actual_orders_and_update(self, assessment):
         """
         计算并更新实际订单量（有效销量，排除退货）
-        同时更新 achievement_rate 和 shop_activation
+        同时更新 achievement_rate
         支持亚马逊 + Temu 双平台自动识别
         """
         user = assessment.employee
@@ -143,10 +114,8 @@ class AssessmentManagementView(LoginRequiredMixin, View):
 
         # 3. 初始化有效销量
         valid_sales_quantity = 0
-        # 新增：初始化Temu店铺激活数量
-        shop_activation_score = 0
 
-        # 4. 统计亚马逊平台（保持不变）
+        # 4. 统计亚马逊平台
         if amazon_shops:
             lingxing_shops = LingXingAmazonShop.objects.filter(
                 amazon_shop_id__in=list(amazon_shops)
@@ -169,86 +138,59 @@ class AssessmentManagementView(LoginRequiredMixin, View):
 
                 valid_sales_quantity += (total_quantity - return_quantity)
 
-        # 5. 统计Temu平台（核心修改）
+        # 5. 统计Temu平台
         if temu_shops:
             lingxing_temu_shops = LingXingTemuShop.objects.filter(
                 temu_shop_id__in=list(temu_shops)
             )
             if lingxing_temu_shops:
-                # 获取所有店铺ID
-                temu_shop_records = list(lingxing_temu_shops.values('store_id', 'temu_shop_id'))
+                temu_shop_ids = list(lingxing_temu_shops.values_list('store_id', flat=True))
 
-                # 遍历每个店铺，单独统计订单量
-                for shop_record in temu_shop_records:
-                    store_id = shop_record['store_id']
-                    temu_shop_id = shop_record['temu_shop_id']
+                all_orders = TemuOrder.objects.filter(
+                    lingxing_shop__store_id__in=temu_shop_ids,
+                    global_purchase_time__date__gte=start_date,
+                    global_purchase_time__date__lte=end_date
+                ).values('global_order_no', 'platform_info')
 
-                    # 统计该店铺当月的所有订单
-                    shop_orders = TemuOrder.objects.filter(
-                        lingxing_shop__store_id=store_id,
-                        global_purchase_time__date__gte=start_date,
-                        global_purchase_time__date__lte=end_date
-                    ).values('global_order_no', 'platform_info')
+                all_orders_list = list(all_orders)
+                cancelled_order_nos = [
+                    o['global_order_no'] for o in all_orders_list
+                    if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                       and o['platform_info'][0].get('status') == 'CANCELED'
+                ]
 
-                    shop_orders_list = list(shop_orders)
+                all_items = TemuOrderItem.objects.filter(
+                    order__global_order_no__in=[o['global_order_no'] for o in all_orders_list]
+                )
+                return_items = TemuOrderItem.objects.filter(
+                    order__global_order_no__in=cancelled_order_nos
+                )
 
-                    # 排除取消订单
-                    cancelled_order_nos = [
-                        o['global_order_no'] for o in shop_orders_list
-                        if o.get('platform_info') and len(o.get('platform_info', [])) > 0
-                           and o['platform_info'][0].get('status') == 'CANCELED'
-                    ]
+                total_quantity = all_items.aggregate(total=Sum('quantity'))['total'] or 0
+                return_quantity = return_items.aggregate(total=Sum('quantity'))['total'] or 0
 
-                    # 统计该店铺的有效订单量
-                    shop_all_items = TemuOrderItem.objects.filter(
-                        order__global_order_no__in=[o['global_order_no'] for o in shop_orders_list]
-                    )
-                    shop_return_items = TemuOrderItem.objects.filter(
-                        order__global_order_no__in=cancelled_order_nos
-                    )
-
-                    shop_total = shop_all_items.aggregate(total=Sum('quantity'))['total'] or 0
-                    shop_return = shop_return_items.aggregate(total=Sum('quantity'))['total'] or 0
-                    shop_valid_quantity = shop_total - shop_return
-
-                    # 累加到总订单量
-                    valid_sales_quantity += shop_valid_quantity
-
-                    # 判断该店铺是否达标（订单量≥200）
-                    if shop_valid_quantity >= 200:
-                        shop_activation_score += 10
-
-                    # print(
-                    #     f"🏪 店铺统计: ShopID={temu_shop_id} | 销量={shop_valid_quantity} | 达标={shop_valid_quantity >= 200}")
+                valid_sales_quantity += (total_quantity - return_quantity)
 
         # 6. 更新考核数据
         assessment.actual_orders = valid_sales_quantity
 
-        # 7. 计算达成率
+        # 7. 计算达成率（必须在这里更新）
         if assessment.target_orders > 0:
             achievement_rate = (valid_sales_quantity / assessment.target_orders) * 100
         else:
             achievement_rate = 0
         assessment.achievement_rate = round(achievement_rate, 2)
 
-        # 8. 保存到数据库
+        # 保存到数据库
         assessment.save()
 
-        # 9. 关键：保存Temu店铺激活加分（仅Temu考核）
-        if assessment.assess_type == 'temu_operation':
-            PerformanceScoreDetail.objects.update_or_create(
-                assessment=assessment,
-                item_key='shop_activation',
-                defaults={'score_value': shop_activation_score}
-            )
-
         print(
-            f"✅ 更新考核数据: {user.first_name} | {assessment.month} | 销量: {valid_sales_quantity}件 | 达成率: {assessment.achievement_rate}% | 店铺激活加分: {shop_activation_score}")
+            f"✅ 更新考核数据: {user.first_name} | {assessment.month} | 销量: {valid_sales_quantity}件 | 达成率: {assessment.achievement_rate}%")
 
     def calculate_final_score(self, assessment):
         """计算最终总分（业绩达成得分 × 权重 + 行为考核得分 × 权重 + 加分项）"""
 
-        # 1. 设置权重（Decimal 类型）
+        # 1. 设置权重
         if assessment.assess_type == 'temu_operation':
             kpi_weight = Decimal('0.7')
             behavior_weight = Decimal('0.3')
@@ -259,29 +201,27 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             kpi_weight = Decimal('0.3')
             behavior_weight = Decimal('0.7')
 
-        # 2. 计算业绩得分（转换为 Decimal）
-        performance_score = Decimal(str(self.calculate_performance_score(assessment)))
+        # 2. 计算业绩得分
+        performance_score = self.calculate_performance_score(assessment)
 
-        # 3. 获取评分项（转换为 Decimal）
+        # 3. 获取评分项
         details = assessment.score_details.all()
         details_dict = {d.item_key: Decimal(str(d.score_value)) for d in details}
 
-        # 4. 自动计算超额完成业绩（关键修改：向下取整）
+        # 4. 自动计算超额完成业绩（修复类型错误）
         achievement_rate = assessment.achievement_rate
         extra_bonus = Decimal('0')
         if achievement_rate > 100:
-            # 向下取整，去掉小数点后的部分
-            extra_bonus = Decimal(str(int(achievement_rate - 100)))
-
-        # 更新到字典中供后续使用
+            # 将 achievement_rate 转换为 Decimal 后再运算
+            extra_bonus = Decimal(str(achievement_rate)) - Decimal('100')
         details_dict['extra_bonus'] = extra_bonus
 
-        # 5. 计算KPI总分（保持不变）
+        # 5. 计算KPI总分
         accident_score = details_dict.get('accident_score', Decimal('0'))
         kpi_raw = performance_score + accident_score
         kpi_total = kpi_raw * kpi_weight
 
-        # 6. 计算行为考核总分（保持不变）
+        # 6. 计算行为考核总分
         exclude_keys = {'performance_score', 'accident_score', 'extra_bonus', 'shop_activation'}
         behavior_raw = sum(
             score for key, score in details_dict.items()
@@ -289,12 +229,12 @@ class AssessmentManagementView(LoginRequiredMixin, View):
         )
         behavior_total = behavior_raw * behavior_weight
 
-        # 7. 处理特殊加分项（保持不变）
+        # 7. 特殊加分项
         if assessment.assess_type == 'temu_operation':
             shop_activation = details_dict.get('shop_activation', Decimal('0'))
             extra_bonus += shop_activation
 
-        # 8. 计算最终得分（保持不变）
+        # 8. 最终得分
         final_score = kpi_total + behavior_total + extra_bonus
 
         return round(final_score, 2), extra_bonus
@@ -357,6 +297,35 @@ class AssessmentListView(AssessmentManagementView, ListView):
         context['status_choices'] = PerformanceAssessment.STATUS_CHOICES
 
         return context
+
+    def get_grade_rules(self, assess_type):
+        """获取评分等级规则"""
+        if assess_type == 'temu_operation':
+            return [
+                {'level': 'S级评分≥150', 'reward': '提成+300元奖励'},
+                {'level': 'A级评分90-100', 'reward': '提成按得分百分比发放'},
+                {'level': 'B级评分80-89', 'reward': '提成按80%发放'},
+                {'level': 'C级评分70-79', 'reward': '提成按70%发放'},
+                {'level': 'D级评分60-69', 'reward': '提成按50%发放'},
+                {'level': 'E级评分<60', 'reward': '提成不予发放'},
+                {'level': '连续3个月得分D/E', 'reward': '自动离职', 'is_warning': True},
+            ]
+        elif assess_type == 'amazon_operation':
+            return [
+                {'level': 'S级评分 ≥ 150', 'reward': '提成+300元奖励'},
+                {'level': 'A级评分 90-100', 'reward': '提成按得分百分比发放'},
+                {'level': 'B级评分 80-89', 'reward': '提成按80%发放'},
+                {'level': 'C级评分 70-79', 'reward': '提成按70%发放'},
+                {'level': 'D级评分 60-69', 'reward': '提成按50%发放'},
+                {'level': 'E级评分 < 60', 'reward': '提成不予发放'},
+                {'level': '连续3个月得分D/E', 'reward': '自动离职', 'is_warning': True},
+            ]
+        else:
+            return [
+                {'level': '评分 ≥ 70分', 'reward': '且业绩指标完成，可转为运营岗位'},
+                {'level': '评分 ＜ 70分', 'reward': '业绩无达标，连续两个月则自动离职'},
+                {'level': '评分 ＜ 60分', 'reward': '自动离职', 'is_warning': True},
+            ]
 
 
 class CreateBatchAssessmentView(AssessmentManagementView):
@@ -461,11 +430,13 @@ class CreateBatchAssessmentView(AssessmentManagementView):
                 for config in configs
             ]
             PerformanceScoreDetail.objects.bulk_create(score_details)
-            # 自动计算订单数据
+            # ===== 新增：自动计算订单数据 =====
+            # 只为亚马逊相关类型自动计算（Temu可能数据源不同）
             if assess_type in ['amazon_operation', 'amazon_assistant']:
                 try:
                     self.calculate_actual_orders_and_update(assessment)
                 except Exception as e:
+                    # 计算失败也不影响考核创建，只记录日志
                     print(f"自动计算订单数据失败: {assessment.id} - {e}")
             created_count += 1
 
@@ -535,7 +506,6 @@ class AssessmentEditView(AssessmentManagementView, DetailView):
             'kpi_weight': kpi_weight,
             'behavior_weight': behavior_weight,
             'special_rules': special_rules,
-            'grade_rules': self.get_grade_rules(assessment.assess_type),
             'can_edit': self.can_edit(assessment),
             'can_submit': self.can_submit(assessment),
             'can_confirm': self.can_confirm(assessment),
@@ -563,17 +533,21 @@ class SubmitToMemberView(AssessmentManagementView):
         if assessment.status != 'draft':
             return JsonResponse({'success': False, 'message': '考核状态不正确'}, status=400)
 
-        # 保存评分项
+        # ===== 修复1：先保存当前表单所有评分项（覆盖旧值）=====
         for key, value in request.POST.items():
             if key.startswith('item_') or key in ['extra_bonus', 'shop_activation']:
+                # 统一移除"item_"前缀
                 clean_key = key.replace('item_', '', 1) if key.startswith('item_') else key
+
+                # 使用update_or_create覆盖旧值，而不是get_or_create
                 PerformanceScoreDetail.objects.update_or_create(
                     assessment=assessment,
                     item_key=clean_key,
                     defaults={'score_value': float(value)}
                 )
 
-        # 确保事故分也被保存
+        # ===== 修复2：确保事故分也被保存 =====
+        # 原代码只创建缺失记录，不更新用户输入
         accident_input = request.POST.get('item_accident_score', '0')
         PerformanceScoreDetail.objects.update_or_create(
             assessment=assessment,
@@ -581,30 +555,18 @@ class SubmitToMemberView(AssessmentManagementView):
             defaults={'score_value': float(accident_input)}
         )
 
-        # 关键新增：自动计算并保存extra_bonus
-        # 重新计算达成率对应的加分
-        achievement_rate = assessment.achievement_rate
-        extra_bonus = Decimal('0')
-        if achievement_rate > 100:
-            extra_bonus = Decimal(str(int(achievement_rate - 100)))
-
-        # 保存到数据库
-        PerformanceScoreDetail.objects.update_or_create(
-            assessment=assessment,
-            item_key='extra_bonus',
-            defaults={'score_value': extra_bonus}
-        )
-
         # 更新考核总分
         assessment.performance_score = self.calculate_performance_score(assessment)
-        final_score, _ = self.calculate_final_score(assessment)  # 重新计算最终得分
+        final_score, extra_bonus = self.calculate_final_score(assessment)
         assessment.final_score = final_score
+        # 更新状态
         assessment.status = 'pending_member'
         assessment.save()
 
+        # 记录日志
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_SUBMIT,
+            operation_type=UserOperationLog.ASSESSMENT_SUBMIT_TO_MEMBER,
             operation_record=f'提交考核(ID:{assessment.id})给组员{assessment.employee.first_name}确认'
         )
 
@@ -675,39 +637,38 @@ class LeaderFinalConfirmView(AssessmentManagementView):
     def post(self, request, pk):
         assessment = get_object_or_404(PerformanceAssessment, pk=pk)
 
+        # 权限校验
         if request.user != assessment.leader:
             return JsonResponse({'success': False, 'message': '无权操作'}, status=403)
 
+        # 状态校验
         if assessment.status != 'pending_leader':
             return JsonResponse({'success': False, 'message': '考核状态不正确'}, status=400)
 
         try:
-            # 计算最终得分并保存extra_bonus
+            # 计算最终得分
             final_score, extra_bonus = self.calculate_final_score(assessment)
 
-            # 保存extra_bonus到数据库
-            PerformanceScoreDetail.objects.update_or_create(
-                assessment=assessment,
-                item_key='extra_bonus',
-                defaults={'score_value': extra_bonus}
-            )
-
+            # 生成快照数据
             snapshot_data = self.generate_snapshot(assessment, final_score)
 
+            # 创建历史记录（手动创建的表现在应该可用了）
             AssessmentHistory.objects.create(
                 assessment=assessment,
                 snapshot_data=snapshot_data
             )
 
+            # 更新考核状态（合并为一次save）
             assessment.status = 'confirmed'
             assessment.is_locked = True
             assessment.final_score = final_score
             assessment.leader_confirmed_at = timezone.now()
             assessment.save()
 
+            # 记录操作日志
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ASSESSMENT_LEADER_CONFIRM,
+                operation_type=UserOperationLog.ASSESSMENT_LEADER_FINAL_CONFIRM,
                 operation_record=f'最终确认并锁定{assessment.employee.first_name}的考核，得分：{final_score}'
             )
 
@@ -718,6 +679,7 @@ class LeaderFinalConfirmView(AssessmentManagementView):
             })
 
         except Exception as e:
+            # 捕获任何异常并回滚事务
             import traceback
             print(f"最终确认失败: {str(e)}")
             traceback.print_exc()
@@ -777,21 +739,25 @@ class AssessmentSubmitView(AssessmentManagementView):
     def post(self, request, pk):
         assessment = get_object_or_404(PerformanceAssessment, pk=pk)
 
+        # 权限检查：只有组长在草稿状态可以保存
         if not self.can_edit(assessment):
             return JsonResponse({'success': False, 'message': '无权操作或考核已提交'}, status=403)
 
+        # 获取并保存所有评分项
         for key, value in request.POST.items():
             if key.startswith('item_') or key in ['extra_bonus', 'shop_activation']:
+                # 统一移除"item_"前缀，与AssessmentItemConfig配置保持一致
                 clean_key = key.replace('item_', '', 1) if key.startswith('item_') else key
+
                 PerformanceScoreDetail.objects.update_or_create(
                     assessment=assessment,
-                    item_key=clean_key,
+                    item_key=clean_key,  # 使用清理后的key
                     defaults={'score_value': float(value)}
                 )
 
+        # 重新计算总分
         assessment.performance_score = self.calculate_performance_score(assessment)
-        final_score, extra_bonus = self.calculate_final_score(assessment)
-        assessment.final_score = final_score
+        assessment.final_score = self.calculate_final_score(assessment)
         assessment.save()
 
         return JsonResponse({'success': True})
@@ -803,50 +769,34 @@ class RefreshOrderDataView(AssessmentManagementView):
     def post(self, request, pk):
         assessment = get_object_or_404(PerformanceAssessment, pk=pk)
 
+        # 权限检查：管理员 or 组长（草稿/待确认状态）
         is_admin = self.is_admin(request.user)
         can_refresh = is_admin or self.can_edit(assessment) or self.can_submit(assessment)
 
         if not can_refresh:
             return JsonResponse({'success': False, 'message': '无权操作'}, status=403)
 
+        # 只允许亚马逊相关类型刷新
         if assessment.assess_type not in ['amazon_operation', 'amazon_assistant', 'temu_operation']:
             return JsonResponse({'success': False, 'message': '不支持的考核类型'}, status=400)
 
         try:
-            # 1. 刷新订单数据（更新actual_orders、achievement_rate和shop_activation）
+            # 1. 刷新实际订单量（销量）
             self.calculate_actual_orders_and_update(assessment)
 
-            # 2. 重新计算业绩得分和最终得分（包含extra_bonus）
-            performance_score = self.calculate_performance_score(assessment)
-            final_score, extra_bonus = self.calculate_final_score(assessment)
+            # 2. 重新计算业绩得分和最终得分（新增：先计算 performance_score）
+            performance_score = self.calculate_performance_score(assessment)  # 新增这行
+            final_score = self.calculate_final_score(assessment)
 
-            # 3. 关键：立即保存extra_bonus到数据库（Temu和亚马逊都有）
-            PerformanceScoreDetail.objects.update_or_create(
-                assessment=assessment,
-                item_key='extra_bonus',
-                defaults={'score_value': extra_bonus}
-            )
-
-            # 4. 获取shop_activation的值（仅Temu有）
-            shop_activation = 0
-            if assessment.assess_type == 'temu_operation':
-                shop_activation_detail = assessment.score_details.filter(
-                    item_key='shop_activation'
-                ).first()
-                if shop_activation_detail:
-                    shop_activation = float(shop_activation_detail.score_value)
-
-            # 5. 返回更新后的数据给前端
             return JsonResponse({
                 'success': True,
                 'message': f'订单数据已刷新，有效销量：{assessment.actual_orders}件，最终得分：{final_score}',
                 'data': {
                     'actual_orders': assessment.actual_orders,
                     'achievement_rate': float(assessment.achievement_rate),
-                    'performance_score': float(performance_score),
-                    'final_score': float(final_score),
-                    'extra_bonus': float(extra_bonus),
-                    'shop_activation': shop_activation  # 新增返回字段（仅Temu）
+                    'performance_score': float(performance_score),  # 新增这行
+                    'final_score': float(final_score)
+                    # 注意：不返回 extra_bonus，因为它与订单数据无关
                 }
             })
         except Exception as e:
@@ -864,11 +814,13 @@ class BatchRefreshOrdersView(AssessmentManagementView):
         if not self.is_admin(request.user):
             return JsonResponse({'success': False, 'message': '只有管理员可以批量刷新'}, status=403)
 
+        # 获取筛选条件（与列表页一致）
         month = request.POST.get('month')
         employee_id = request.POST.get('employee')
         assess_type = request.POST.get('assess_type')
         status = request.POST.get('status')
 
+        # 构建查询条件
         queryset = PerformanceAssessment.objects.select_related('employee')
 
         if month:
@@ -880,6 +832,7 @@ class BatchRefreshOrdersView(AssessmentManagementView):
         if status:
             queryset = queryset.filter(status=status)
 
+        # 只处理亚马逊相关类型（因为只有亚马逊支持自动刷新）
         queryset = queryset.filter(
             assess_type__in=['amazon_operation', 'amazon_assistant', 'temu_operation']
         )
@@ -887,29 +840,17 @@ class BatchRefreshOrdersView(AssessmentManagementView):
         if total_count == 0:
             return JsonResponse({
                 'success': False,
-                'message': '没有找到符合条件的考核记录'
+                'message': '没有找到符合条件的考核记录（仅支持亚马逊类型）'
             }, status=400)
 
         success_count = 0
         failed_count = 0
         errors = []
 
+        # 遍历刷新
         for assessment in queryset:
             try:
-                # 1. 刷新订单数据（会更新actual_orders、achievement_rate，Temu还会保存shop_activation）
                 self.calculate_actual_orders_and_update(assessment)
-
-                # 2. 关键新增：计算extra_bonus并保存
-                # 重新计算业绩得分和最终得分
-                final_score, extra_bonus = self.calculate_final_score(assessment)
-
-                # 保存extra_bonus到数据库
-                PerformanceScoreDetail.objects.update_or_create(
-                    assessment=assessment,
-                    item_key='extra_bonus',
-                    defaults={'score_value': extra_bonus}
-                )
-
                 success_count += 1
             except Exception as e:
                 failed_count += 1
@@ -918,6 +859,7 @@ class BatchRefreshOrdersView(AssessmentManagementView):
                 import traceback
                 traceback.print_exc()
 
+        # 记录操作日志
         UserOperationLog.objects.create(
             user=request.user,
             operation_type=UserOperationLog.ASSESSMENT_BATCH_REFRESH,

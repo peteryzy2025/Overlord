@@ -1,0 +1,1060 @@
+{% extends 'base_z.html' %}
+{% load yuser_extras %}
+{% load static %}
+
+{% block title %}{{ assessment.get_assess_type_display }}考核详情{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* ===== 核心视觉样式（来自amazon_operation_assessment.html） ===== */
+        .content {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 0.25rem;
+        }
+
+        /* 统计卡片 */
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            border-left: 6px solid var(--accent-color);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            opacity: 0.9;
+        }
+
+        .stat-label i {
+            font-size: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        /* 卡片状态颜色 */
+        .stat-card.blue {
+            border-left-color: var(--accent-color);
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .stat-card.blue .stat-value {
+            color: var(--accent-color);
+        }
+
+        .stat-card.success {
+            border-left-color: #22c55e;
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%);
+        }
+
+        .stat-card.success .stat-value {
+            color: #22c55e;
+        }
+
+        .stat-card.warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%);
+        }
+
+        .stat-card.warning .stat-value {
+            color: #f59e0b;
+        }
+
+        .stat-card.danger {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.1) 100%);
+        }
+
+        .stat-card.danger .stat-value {
+            color: #ef4444;
+        }
+
+        .stat-card.premium {
+            border-left-color: #f97316;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%);
+        }
+
+        .stat-card.premium .stat-value {
+            color: #f97316;
+        }
+
+        /* 表格样式 */
+        .table-container {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            margin-bottom: 2rem;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            color: var(--text-primary);
+        }
+
+        .table th {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        /* 分类标题行 - 居中显示 */
+        .category-header td {
+            background-color: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center; /* 新增：居中 */
+            padding: 1rem; /* 新增：增大内边距 */
+        }
+
+        .total-row td {
+            background-color: var(--bg-secondary);
+            font-weight: 700;
+        }
+
+        /* 评分输入控件 */
+        .score-input {
+            width: 80px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.25rem;
+            text-align: center;
+            color: var(--text-primary);
+            transition: all 0.2s ease;
+        }
+
+        .score-input:hover {
+            border-color: var(--accent-color);
+        }
+
+        .score-input.editable:focus {
+            border-color: var(--accent-color);
+            background: rgba(102, 126, 234, 0.1);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .score-input:disabled {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .form-select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.4rem 0.75rem;
+            width: 100%;
+            max-width: 120px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .form-select:focus {
+            border-color: var(--accent-color);
+            background: rgba(102, 126, 234, 0.1);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+        }
+
+        .score-display {
+            font-weight: 600;
+            color: var(--accent-color);
+            font-size: 1.1rem;
+        }
+
+        .highlight-value {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .warning-text {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        /* 评分等级说明 - 垂直列表布局 */
+        .grade-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        .grade-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .grade-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem; /* 每行之间的间距 */
+        }
+
+        .grade-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+
+        .grade-item:hover {
+            background-color: rgba(102, 126, 234, 0.05);
+            border-left-color: var(--accent-color);
+            transform: translateX(4px);
+        }
+
+        .grade-item.warning {
+            background-color: rgba(239, 68, 68, 0.08);
+            border-left-color: var(--danger-color);
+        }
+
+        .grade-item.warning:hover {
+            background-color: rgba(239, 68, 68, 0.12);
+        }
+
+        .grade-level {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .grade-item.warning .grade-level {
+            color: var(--danger-color);
+        }
+
+        .grade-reward {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-align: right;
+            flex-shrink: 0;
+            margin-left: 1rem;
+        }
+
+        .grade-item.warning .grade-reward {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        @media (max-width: 576px) {
+            .grade-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .grade-reward {
+                text-align: left;
+                margin-left: 0;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* 操作按钮区域 */
+        .action-buttons {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            backdrop-filter: blur(4px);
+        }
+
+        .btn {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            border: 1px solid transparent;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #4f46e5 100%);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, var(--accent-color) 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border-color: #22c55e;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border-color: #f59e0b;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* 描述文字 */
+        .item-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            line-height: 1.5;
+        }
+
+        .max-score-badge {
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--accent-color);
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 0.5rem;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+    </style>
+{% endblock %}
+{% block page_content %}
+    <div class="content">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">{{ assessment.get_assess_type_display }}绩效考核</h1>
+                <p class="page-subtitle">
+                    员工：{{ assessment.employee.first_name }} |
+                    部门：运营部-{{ assessment.employee.platform }} |
+                    考核时段：{{ assessment.month|slice:":4" }}年{{ assessment.month|slice:"5:" }}月
+                </p>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-cards">
+            <div class="stat-card blue" id="targetCard">
+                <div class="stat-label">
+                    <i class="fas fa-bullseye"></i>
+                    目标订单量
+                </div>
+                <div class="stat-value">{{ assessment.target_orders }}</div>
+                <div class="stat-change">单/月</div>
+            </div>
+            <div class="stat-card blue" id="actualCard"
+                 onclick="refreshOrderData()"
+                 style="cursor: pointer; position: relative; transition: all 0.3s ease;">
+                <div style="position: absolute; top: 1rem; right: 1rem;">
+                    <i class="fas fa-sync-alt" id="refreshIcon" style="color: var(--accent-color);"></i>
+                </div>
+                <div class="stat-label">
+                    <i class="fas fa-chart-line"></i>
+                    实际订单量
+                    <!-- 修复：添加 is_admin 判断 -->
+                    {% if is_admin or can_edit or can_submit %}
+                        <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: 0.5rem;">
+                (点击刷新)
+            </span>
+                    {% endif %}
+                </div>
+                <div class="stat-value" id="actualOrdersValue">{{ assessment.actual_orders }}</div>
+                <div class="stat-change">单/月</div>
+            </div>
+
+            <div class="stat-card" id="achievementCard">
+                <div class="stat-label">
+                    <i class="fas fa-percentage"></i>
+                    达成率
+                </div>
+                <div class="stat-value">{{ assessment.achievement_rate|floatformat:2 }}</div>
+                <div class="stat-change">%</div>
+            </div>
+            <div class="stat-card" id="totalScoreCard">
+                <div class="stat-label">
+                    <i class="fas fa-trophy"></i>
+                    总分
+                </div>
+                <div class="stat-value" id="totalScoreValue">{{ final_score|floatformat:2 }}</div>
+                <div class="stat-change" id="totalScoreDesc">实时计算</div>
+            </div>
+        </div>
+
+        <!-- 评分表格 -->
+        <div class="table-container">
+            <form id="assessmentForm" method="post" action="{% url 'Yuser:assessment_submit' assessment.pk %}">
+                {% csrf_token %}
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th style="width: 15%;">主体/项目</th>
+                        <th style="width: 25%;">评分项</th>
+                        <th style="width: 35%;">评分标准</th>
+                        <th style="width: 10%;">满分</th>
+                        <th style="width: 15%;">得分</th>
+                    </tr>
+                    </thead>
+                    <tbody id="scoreTableBody">
+                    {% regroup configs by category as category_list %}
+                    {% for category in category_list %}
+
+                        <!-- 该分类下的所有考核项 -->
+                        {% for config in category.list %}
+                            <tr>
+                                {% if forloop.first %}
+                                    <td rowspan="{{ category.list|length }}"
+                                        style="text-align: center; vertical-align: middle;">
+                                        <strong>
+                                            {% if category.grouper == 'performance' %}
+                                                业绩指标 ({{ kpi_weight }}%)
+                                            {% elif category.grouper == 'behavior' %}
+                                                行为考核 ({{ behavior_weight }}%)
+                                            {% elif category.grouper == 'bonus' %}
+                                                加分项
+                                            {% endif %}
+                                        </strong>
+                                    </td>
+                                {% endif %}
+
+                                <td>
+                                    {{ config.item_name }}
+                                    {% if config.input_type == 'readonly' %}
+                                        <span class="max-score-badge">自动计算</span>
+                                    {% else %}
+                                        <span class="max-score-badge">满分: {{ config.max_score }}</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {{ config.scoring_criteria|linebreaks|default:"根据实际表现评分" }}
+                                    {% if config.options.example %}
+                                        <div class="item-description">示例: {{ config.options.example }}</div>
+                                    {% endif %}
+                                </td>
+
+                                <td class="highlight-value">{{ config.max_score }}</td>
+
+                                <td>
+                                    {% with score_value=scores|default_if_none:0|get_item:config.item_key|default:0 %}
+                                        {% if config.item_key == 'performance_score' %}
+                                            <!-- 业绩得分（后端已计算） -->
+                                            <span class="score-display" id="performanceScoreDisplay">
+                                                {{ performance_score|floatformat:2 }}
+                                            </span>
+                                            <input type="hidden" name="item_{{ config.item_key }}"
+                                                   value="{{ performance_score|floatformat:2 }}"
+                                                   data-category="{{ config.category }}">
+
+                                        {% elif config.input_type == 'readonly' %}
+                                            <!-- 只读显示 -->
+                                            <span class="score-display">{{ score_value|floatformat:2 }}</span>
+                                            <input type="hidden" name="item_{{ config.item_key }}"
+                                                   value="{{ score_value|floatformat:2 }}"
+                                                   data-category="{{ config.category }}">
+
+                                        {% elif config.input_type == 'select' and config.options %}
+                                            <!-- 下拉选择 -->
+                                            <select class="form-select editable"
+                                                    name="item_{{ config.item_key }}"
+                                                    data-category="{{ config.category }}"
+                                                    {% if not can_edit %}disabled{% endif %}>
+                                                {% for choice in config.options %}
+                                                    <option value="{{ choice.value }}"
+                                                            {% if score_value|floatformat:2 == choice.value|floatformat:2 %}selected{% endif %}>
+                                                        {{ choice.label }}
+                                                    </option>
+                                                {% endfor %}
+                                            </select>
+
+                                        {% else %}
+                                            <!-- 数字输入 -->
+                                            <input type="number"
+                                                   class="score-input editable"
+                                                   name="item_{{ config.item_key }}"
+                                                   value="{{ score_value|floatformat:2 }}"
+                                                   min="0"
+                                                   max="{{ config.max_score }}"
+                                                   step="0.01"
+                                                   data-category="{{ config.category }}"
+                                                   {% if not can_edit %}disabled{% endif %}>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                        <!-- 分类小计 -->
+                        {% if category.grouper == 'performance' %}
+                            <tr class="total-row">
+                                <td colspan="4"><strong>业绩指标小计</strong></td>
+                                <td class="highlight-value" id="kpiSubtotalDisplay">0.00</td>
+                            </tr>
+                        {% elif category.grouper == 'behavior' %}
+                            <tr class="total-row">
+                                <td colspan="4"><strong>行为考核小计</strong></td>
+                                <td class="highlight-value" id="behaviorSubtotalDisplay">0.00</td>
+                            </tr>
+                        {% endif %}
+
+                        <!-- Temu特有的店铺激活加分 -->
+                        {% if category.grouper == 'bonus' and assessment.assess_type == 'temu_operation' %}
+                            <tr>
+                                <td><strong>加分项</strong></td>
+                                <td>店铺激活</td>
+                                <td>每激活1个店铺+10分</td>
+                                <td>-</td>
+                                <td>
+                                    {% with shop_activation=scores|get_item:'shop_activation'|default:0 %}
+                                        <input type="number"
+                                               class="score-input"
+                                               name="shop_activation"
+                                               value="{{ shop_activation|floatformat:2 }}"
+                                               min="0"
+                                               data-category="bonus"
+                                               {% if not can_edit %}disabled{% endif %}>
+                                    {% endwith %}
+                                </td>
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- 最终得分 -->
+                    <tr class="total-row">
+                        <td colspan="4"><strong>最终得分</strong></td>
+                        <td class="highlight-value" id="finalScore"
+                            style="font-size: 1.5rem;">{{ final_score|floatformat:2 }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </form>
+        </div>
+
+        <!-- 评分等级说明 -->
+        <div class="grade-section">
+            <h3 class="grade-title">评分等级说明</h3>
+            <div class="grade-grid">
+                {% for rule in grade_rules %}
+                    <div class="grade-item{% if rule.is_warning %} warning{% endif %}">
+                        <div class="grade-level">{{ rule.level }}</div>
+                        <div class="grade-reward">{{ rule.reward }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="action-buttons">
+            {% if can_edit %}
+                <button type="button" class="btn btn-primary" onclick="saveAssessment()">
+                    <i class="fas fa-save"></i> 保存修改
+                </button>
+                <button type="button" class="btn btn-success" onclick="submitToMember()">
+                    <i class="fas fa-paper-plane"></i> 提交给组员
+                </button>
+            {% endif %}
+
+            {% if can_submit %}
+                <button type="button" class="btn btn-success" onclick="submitToMember()">
+                    <i class="fas fa-paper-plane"></i> 提交给组员确认
+                </button>
+            {% endif %}
+
+            {% if can_confirm and request.user == assessment.employee %}
+                <button type="button" class="btn btn-success" onclick="memberConfirm()">
+                    <i class="fas fa-check"></i> 确认考核
+                </button>
+                <button type="button" class="btn btn-warning" onclick="memberReject()">
+                    <i class="fas fa-times"></i> 驳回考核
+                </button>
+            {% endif %}
+
+            {% if can_confirm and request.user == assessment.leader %}
+                <button type="button" class="btn btn-success" onclick="leaderConfirm()">
+                    <i class="fas fa-lock"></i> 最终确认并锁定
+                </button>
+            {% endif %}
+
+            <a href="{% url 'Yuser:assessment_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // ===== 全局变量 =====
+        const assessmentId = {{ assessment.pk }};
+        const kpiWeight = {{ kpi_weight }};  // 直接传递整数，如60
+        const behaviorWeight = {{ behavior_weight }};  // 如40
+        const assessType = '{{ assessment.assess_type }}';
+        const performanceScore = parseFloat('{{ performance_score|floatformat:2 }}') || 0;
+
+        // ===== 工具函数 =====
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function getColorClassForTotal(score) {
+            if (score >= 150) return 'premium';
+            if (score >= 90) return 'success';
+            if (score >= 60) return 'warning';
+            return 'danger';
+        }
+
+        function getColorClassForAchievement(rate) {
+            if (rate >= 100) return 'success';
+            if (rate >= 80) return 'warning';
+            return 'danger';
+        }
+
+        // ===== 核心计算逻辑（与后端完全一致） =====
+        function calculateAll() {
+            // 1. 显示后端计算的业绩得分
+            document.getElementById('performanceScoreDisplay').textContent = performanceScore.toFixed(2);
+
+            // 2. KPI小计（业绩得分 + 事故分）* 权重
+            const accidentScore = parseFloat(document.querySelector('[data-category="performance"][name="item_accident_score"]')?.value || 0);
+            const kpiRaw = performanceScore + accidentScore;
+            const kpiTotal = kpiRaw * (kpiWeight / 100);
+            document.getElementById('kpiSubtotalDisplay').textContent = kpiTotal.toFixed(2);
+
+            // 3. 行为考核小计（所有行为项求和）* 权重
+            let behaviorRaw = 0;
+            document.querySelectorAll('[data-category="behavior"]').forEach(input => {
+                behaviorRaw += parseFloat(input.value || 0);
+            });
+            const behaviorTotal = behaviorRaw * (behaviorWeight / 100);
+            document.getElementById('behaviorSubtotalDisplay').textContent = behaviorTotal.toFixed(2);
+
+            // 4. 加分项（包含extra_bonus和shop_activation）
+            let extraBonus = 0;
+            document.querySelectorAll('[data-category="bonus"]').forEach(input => {
+                extraBonus += parseFloat(input.value || 0);
+            });
+
+            // 5. 最终得分
+            const finalScore = kpiTotal + behaviorTotal + extraBonus;
+            document.getElementById('finalScore').textContent = finalScore.toFixed(2);
+            document.getElementById('totalScoreValue').textContent = finalScore.toFixed(2);
+
+            // 6. 更新卡片颜色和描述
+            const totalCard = document.getElementById('totalScoreCard');
+            totalCard.className = 'stat-card ' + getColorClassForTotal(finalScore);
+
+            const achievementRate = parseFloat('{{ assessment.achievement_rate|floatformat:2 }}') || 0;
+            const achievementCard = document.getElementById('achievementCard');
+            achievementCard.className = 'stat-card ' + getColorClassForAchievement(achievementRate);
+
+            // 描述文字
+            let desc = '';
+            if (finalScore >= 150) desc = '卓越表现！';
+            else if (finalScore >= 90) desc = '表现优秀';
+            else if (finalScore >= 60) desc = '需要努力';
+            else desc = '严重警告';
+            document.getElementById('totalScoreDesc').textContent = desc;
+        }
+
+        // ===== 事件监听（修复：绑定所有输入） =====
+        document.addEventListener('DOMContentLoaded', function () {
+            // 绑定所有可编辑输入框和下拉框
+            document.querySelectorAll('input[type="number"], select.form-select').forEach(input => {
+                input.addEventListener('input', calculateAll);
+                input.addEventListener('change', calculateAll);
+            });
+
+            // 初始化计算
+            calculateAll();
+        });
+
+        // ===== 按钮功能 =====
+        async function saveAssessment() {
+            const form = document.getElementById('assessmentForm');
+            const formData = new FormData(form);
+            formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            try {
+                const response = await fetch('{% url "Yuser:assessment_submit" assessment.pk %}', {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await Swal.fire('保存成功', '评分已保存', 'success');
+                    location.reload();
+                } else {
+                    Swal.fire('保存失败', data.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存失败:', error);
+                Swal.fire('错误', error.message || '网络请求失败', 'error');
+            }
+        }
+
+        async function submitToMember() {
+            // 提示确认
+            const confirmResult = await Swal.fire({
+                title: '确认提交考核？',
+                text: '提交后组员将收到确认通知，状态将变为"待组员确认"',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '确认提交',
+                cancelButtonText: '取消'
+            });
+
+            if (!confirmResult.isConfirmed) return;
+
+            // 获取表单数据（包含所有评分项）
+            const form = document.getElementById('assessmentForm');
+            const formData = new FormData(form);
+            formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+            try {
+                const response = await fetch(`/assessment/${assessmentId}/submit-to-member/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                        // 注意：使用 FormData 时不要设置 Content-Type，让浏览器自动处理
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    await Swal.fire({
+                        title: '提交成功',
+                        text: '已提交给组员确认，状态已更新',
+                        icon: 'success'
+                    });
+                    location.reload();
+                } else {
+                    Swal.fire({
+                        title: '提交失败',
+                        text: data.message || '操作失败，请检查是否有权限',
+                        icon: 'error'
+                    });
+                }
+            } catch (error) {
+                console.error('提交失败:', error);
+                Swal.fire({
+                    title: '网络错误',
+                    text: error.message || '请求失败，请检查网络',
+                    icon: 'error'
+                });
+            }
+        }
+
+        async function memberConfirm() {
+            const result = await Swal.fire({
+                title: '确认通过考核？',
+                text: '确认后将进入组长最终确认环节',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: '确认无误',
+                cancelButtonText: '取消'
+            });
+
+            if (result.isConfirmed) {
+                await handleStatusChange(`/assessment/${assessmentId}/member-confirm/`, '确认成功');
+            }
+        }
+
+        async function memberReject() {
+            const result = await Swal.fire({
+                title: '驳回考核？',
+                text: '请填写驳回原因',
+                input: 'textarea',
+                inputPlaceholder: '请输入驳回原因...',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '提交驳回',
+                cancelButtonText: '取消',
+                inputValidator: (value) => {
+                    if (!value) return '请填写驳回原因';
+                }
+            });
+
+            if (result.isConfirmed) {
+                const formData = new FormData();
+                formData.append('comment', result.value);
+                formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+
+                await handleStatusChange(`/assessment/${assessmentId}/member-reject/`, '已驳回，组长可重新编辑', formData);
+            }
+        }
+
+        async function leaderConfirm() {
+            const result = await Swal.fire({
+                title: '最终确认并锁定？',
+                text: '确认后将无法修改，请仔细核对！',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确认并锁定',
+                cancelButtonText: '取消'
+            });
+
+            if (result.isConfirmed) {
+                await handleStatusChange(`/assessment/${assessmentId}/leader-confirm/`, '考核已锁定');
+            }
+        }
+
+        async function handleStatusChange(url, successMessage, formData = null) {
+            try {
+                if (!formData) {
+                    formData = new FormData();
+                    formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const message = data.final_score ? `${successMessage}，最终得分：${data.final_score}` : successMessage;
+                    await Swal.fire('成功', message, 'success');
+                    location.reload();
+                } else {
+                    Swal.fire('失败', data.message || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('操作失败:', error);
+                Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
+            }
+        }
+
+        // ===== 刷新订单数据（点击实际订单量卡片触发）=====
+        async function refreshOrderData() {
+            // 修正权限检查：管理员 or 组长（草稿状态）
+            const isAdmin = {{ is_admin|yesno:"true,false" }};
+            const canEdit = {{ can_edit|yesno:"true,false" }};
+            const canSubmit = {{ can_submit|yesno:"true,false" }};
+
+            if (!isAdmin && !canEdit && !canSubmit) {
+                return; // 无权限，直接返回
+            }
+
+            const card = document.getElementById('actualCard');
+            const icon = document.getElementById('refreshIcon');
+            const valueEl = document.getElementById('actualOrdersValue');
+
+            // 防止重复点击
+            if (card.disabled) return;
+
+            // 视觉反馈
+            card.style.opacity = '0.7';
+            card.style.pointerEvents = 'none';
+            icon.classList.add('fa-spin');
+
+            try {
+                const response = await fetch(`{% url "Yuser:assessment_refresh_orders" assessment.pk %}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // 更新实际订单量
+                    valueEl.textContent = data.data.actual_orders;
+
+                    // 更新达成率
+                    const achievementCard = document.getElementById('achievementCard');
+                    achievementCard.querySelector('.stat-value').textContent = data.data.achievement_rate.toFixed(2);
+
+                    // 更新业绩得分
+                    document.getElementById('performanceScoreDisplay').textContent = data.data.performance_score.toFixed(2);
+
+                    // 更新最终得分
+                    document.getElementById('finalScore').textContent = data.data.final_score.toFixed(2);
+                    document.getElementById('totalScoreValue').textContent = data.data.final_score.toFixed(2);
+
+                    // 更新总分卡片颜色
+                    const totalCard = document.getElementById('totalScoreCard');
+                    totalCard.className = 'stat-card ' + getColorClassForTotal(data.data.final_score);
+
+                    // 更新达成率卡片颜色
+                    const achievementRate = data.data.achievement_rate;
+                    const achievementCardEl = document.getElementById('achievementCard');
+                    achievementCardEl.className = 'stat-card ' + getColorClassForAchievement(achievementRate);
+
+                    // ===== 新增：更新加分项显示 =====
+                    // 1. 更新超额完成业绩
+                    const extraBonusInput = document.querySelector('input[name="item_extra_bonus"]');
+                    if (extraBonusInput) {
+                        extraBonusInput.value = data.data.extra_bonus.toFixed(2);
+                        const extraBonusDisplay = extraBonusInput.previousElementSibling;
+                        if (extraBonusDisplay && extraBonusDisplay.classList.contains('score-display')) {
+                            extraBonusDisplay.textContent = data.data.extra_bonus.toFixed(2);
+                        }
+                    }
+
+                    // 2. 更新店铺激活情况（仅Temu）
+                    if ('{{ assessment.assess_type }}' === 'temu_operation') {
+                        const shopActivationInput = document.querySelector('input[name="item_shop_activation"]');
+                        if (shopActivationInput) {
+                            shopActivationInput.value = data.data.shop_activation.toFixed(2);
+                            const shopActivationDisplay = shopActivationInput.previousElementSibling;
+                            if (shopActivationDisplay && shopActivationDisplay.classList.contains('score-display')) {
+                                shopActivationDisplay.textContent = data.data.shop_activation.toFixed(2);
+                            }
+                        }
+                    }
+
+                    // 更新描述文字
+                    let desc = '';
+                    if (data.data.final_score >= 150) desc = '卓越表现！';
+                    else if (data.data.final_score >= 90) desc = '表现优秀';
+                    else if (data.data.final_score >= 60) desc = '需要努力';
+                    else desc = '严重警告';
+                    document.getElementById('totalScoreDesc').textContent = desc;
+
+                    // 成功提示
+                    await Swal.fire({
+                        title: '刷新成功',
+                        text: `已更新本月订单数据：${data.data.actual_orders}单`,
+                        icon: 'success',
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                } else {
+                    Swal.fire('刷新失败', data.message, 'error');
+                }
+            } catch (error) {
+                console.error('刷新失败:', error);
+                Swal.fire('错误', error.message || '网络请求失败', 'error');
+            } finally {
+                // 恢复状态
+                card.style.opacity = '';
+                card.style.pointerEvents = '';
+                icon.classList.remove('fa-spin');
+            }
+        }
+    </script>
+{% endblock %}

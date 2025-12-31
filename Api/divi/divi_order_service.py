@@ -569,3 +569,98 @@ def import_order_from_lingxing_to_divi(
     return result
 
 
+
+
+def build_order_payload_from_amazon_order_id(
+        amazon_order_id: str,
+        print_if: bool = False,
+) -> Optional[Dict[str, Any]]:
+    """
+    通过 amazon_order_id 构建 Divi 下单所需的 order_payload
+    不实际创建订单，只返回 payload
+    """
+    try:
+        # 1. 查找本地订单
+        from Amazon.models import AmazonOrders
+
+        order = AmazonOrders.objects.filter(amazon_order_id=amazon_order_id).first()
+        if not order:
+            raise ValueError(f"未找到亚马逊订单号: {amazon_order_id}")
+
+        if not order.lingxing_shop:
+            raise ValueError(f"订单 {amazon_order_id} 未配置领星店铺")
+
+        # 2. 获取必要参数
+        brand_id = order.lingxing_shop.amazon_shop.divi_shop_id
+        if not brand_id:
+            raise ValueError(f"订单 {amazon_order_id} 未配置 divi_shop_id")
+
+        # 3. 调用领星API获取订单详情（直接使用 amazon_order_id）
+        if print_if:
+            print(f"ℹ️ 使用亚马逊订单ID调用领星API: {amazon_order_id}")
+
+        y_resp = asyncio.run(
+            get_api_resp(
+                req_body={"order_id": amazon_order_id},  # 关键修改：直接使用亚马逊订单ID
+                api_path="/erp/sc/data/mws/orderDetail",
+            )
+        )
+
+        if not y_resp.data:
+            raise ValueError(
+                f"未找到领星订单 {amazon_order_id} 的详情\n"
+                f"可能原因：\n"
+                f"1. 该订单在领星中不存在或已被删除\n"
+                f"2. API权限不足\n"
+                f"3. 订单号格式错误"
+            )
+
+        lx_order_data = y_resp.data[0]
+
+        # 4. 构建地址和商品列表
+        address = build_address_from_lingxing_order(lx_order_data)
+        item_list = lx_order_data.get("item_list") or []
+
+        if not item_list:
+            raise ValueError(f"订单 {amazon_order_id} 的 item_list 为空")
+
+        # 验证商品标题
+        for item in item_list:
+            title = item.get("title", "").strip()
+            if not title:
+                sku = item.get('seller_sku')
+                raise ValueError(f"订单 {amazon_order_id} 中商品 (sku: {sku}) 的 title 为空")
+
+        order_goods_list = build_goods_from_lingxing_items(item_list)
+
+        # 5. 构造 order_payload
+        if address.get("phone") == "":
+            address["phone"] = "1234567890"
+
+        order_payload = {
+            "shippingAddressCity": address.get("city"),
+            "shippingAddressStateOrRegion": address.get("region"),
+            "orderGoodsList": order_goods_list,
+            "amazonOrderId": amazon_order_id,  # 使用传入的亚马逊订单号
+            "buyerEmail": address.get("email"),
+            "shippingAddressName": address.get("name"),
+            "buyerPhoneNumber": address.get("phone"),
+            "buyerName": address.get("name"),
+            "shippingAddressPhone": address.get("phone"),
+            "shippingAddressLine1": address.get("line1"),
+            "shippingAddressCountryCode": address.get("country_code", "US"),
+            "currency": lx_order_data.get("currency", "USD"),
+            "shippingAddressPostalCode": address.get("postal_code"),
+        }
+
+        if print_if:
+            print(f"\n✅ 订单 {amazon_order_id} 的 payload 构造完成")
+            print(json.dumps(order_payload, ensure_ascii=False, indent=2))
+
+        return order_payload
+
+    except Exception as e:
+        print(f"❌ 构建 payload 失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
