@@ -8,7 +8,6 @@ from django.shortcuts import render
 from django.utils import timezone
 from datetime import datetime, timedelta
 import json
-import requests
 
 from Amazon.models import AmazonShopEmail
 from General.models import AmazonShop, User, OperationalAccount, UserOperationLog
@@ -16,6 +15,8 @@ from Amazon.amazon_views import parse_permissions, determine_filter_type_and_val
 from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from Amazon.amazon_order_views import get_shop_ids_by_filter
 from Api.WX.wx import send_wechat_work_message
+from Amazon.services.amazon_shop_email_service import send_email_notifications
+
 
 # 扩展日期范围函数，支持'unlimited'
 def get_date_range_from_option(option):
@@ -399,7 +400,7 @@ def notify_operators_api(request):
             is_processed=False
         )
 
-        # 应用筛选条件
+        # 应用筛选条件（完整保留原有逻辑）
         date_range_option = data.get('date_range', 'unlimited')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
@@ -459,74 +460,66 @@ def notify_operators_api(request):
             pending_count=Count('id')
         ).order_by('-pending_count')
 
-        # 发送通知
-        success_count = 0
-        fail_count = 0
-        fail_details = []
-
+        # 构建 operator_stats 格式
+        operator_stats = {}
         for item in pending_stats:
-            operator_id = item['shop__ops_id']
-            operator_name = item['shop__ops__first_name'] or '未知姓名'
-            wx_url = item['shop__ops__wx_url']
-            pending_count = item['pending_count']
-
-            if not wx_url:
-                fail_count += 1
-                fail_details.append(f'{operator_name}: 未配置企业微信通知地址')
+            ops_name = item['shop__ops__first_name']
+            if not ops_name:
                 continue
+
+            if ops_name not in operator_stats:
+                operator_stats[ops_name] = {
+                    'wx_url': item['shop__ops__wx_url'],
+                    'shops': [],
+                    'total_count': item['pending_count'],
+                    'backlog_stats': {3: 0, 7: 0, 15: 0}
+                }
 
             # 获取该运营的店铺明细
             shop_details = AmazonShopEmail.objects.filter(
                 email_filter,
-                shop__ops_id=operator_id
+                shop__ops_id=item['shop__ops_id']
             ).values(
                 'shop__shop_name'
             ).annotate(
                 shop_pending=Count('id')
             ).order_by('-shop_pending')
 
-            # 构建Markdown消息
-            shop_list = '\n'.join([
-                f"- {shop['shop__shop_name'] or '未知店铺'}（{shop['shop_pending']}封）"
+            operator_stats[ops_name]['shops'] = [
+                {
+                    'shop_name': shop['shop__shop_name'] or '未知店铺',
+                    'count': shop['shop_pending']
+                }
                 for shop in shop_details
-            ])
+            ]
 
-            markdown_message = (
-                f"**【店铺邮件提醒】**\n\n"
-                f"**运营人员**：{operator_name}\n"
-                f"**待处理店铺数**：{len(shop_details)}个\n"
-                f"**待处理邮件总数**：{pending_count}封\n\n"
-                f"**店铺明细**：\n{shop_list}\n\n"
-                f"**操作**：请及时登录系统查看并处理"
-            )
+            # 计算积压统计
+            now = timezone.now()
+            for days in [3, 7, 15]:
+                backlog_count = AmazonShopEmail.objects.filter(
+                    email_filter,
+                    shop__ops_id=item['shop__ops_id'],
+                    receive_time__lte=now - timedelta(days=days)
+                ).count()
+                operator_stats[ops_name]['backlog_stats'][days] = backlog_count
 
-            # 调用通用发送方法
-            result = send_wechat_work_message(
-                webhook_url=wx_url,
-                markdown_content=markdown_message
-            )
+        # ========== 调用服务层发送（核心改造）==========
+        result = send_email_notifications(operator_stats)
 
-            if result['success']:
-                success_count += 1
-            else:
-                fail_count += 1
-                fail_details.append(f'{operator_name}: {result["error_message"]}')
-        details = f"通知{success_count}人成功，{fail_count}人失败"
-        if fail_details:
-            details += f" | 失败详情: {', '.join(fail_details[:3])}"  # 只记录前3条失败详情
+        # 记录操作日志（保持原有逻辑）
+        details = f"通知{result['success_count']}人成功，{result['fail_count']}人失败"
+        if result['fail_details']:
+            details += f" | 失败详情: {', '.join(result['fail_details'][:3])}"
 
         UserOperationLog.objects.create(
             user=user,
             operation_type=UserOperationLog.EMAIL_NOTIFY_OPERATORS,
             operation_record=f"批量通知运营处理邮件: {details}"
         )
+
         return JsonResponse({
             'success': True,
-            'data': {
-                'success_count': success_count,
-                'fail_count': fail_count,
-                'fail_details': fail_details
-            }
+            'data': result
         })
 
     except Exception as e:
@@ -694,6 +687,8 @@ def mark_email_processed_api(request, email_id):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
+
+
 # 在文件末尾添加以下代码
 
 @login_required

@@ -13,6 +13,11 @@ from Amazon.amazon_views import parse_permissions, determine_filter_type_and_val
 from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from Amazon.amazon_order_views import get_shop_ids_by_filter
 from Api.WX.wx import send_wechat_work_message
+from Amazon.services.amazon_performance_service import (
+    send_performance_notifications,
+    get_pending_performance_stats
+)
+
 
 # 扩展日期范围函数，支持'unlimited'
 def get_date_range_from_option(option):
@@ -387,15 +392,17 @@ def notify_operators_api(request):
                 }
             })
 
+        # 获取权限范围内的店铺
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
-        notification_filter = Q(
-            shop_id__in=list(shop_ids),
+        # 基础查询：待处理绩效 + 权限范围内的店铺
+        base_query = AmazonPerformanceNotification.objects.filter(
             needs_attention=1,
-            is_processed=0
+            is_processed=0,
+            shop_id__in=list(shop_ids)
         )
 
-        # 应用筛选条件
+        # 日期筛选
         date_range_option = data.get('date_range', 'unlimited')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
@@ -412,21 +419,22 @@ def notify_operators_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
 
         if current_start and current_end:
-            notification_filter &= Q(date__gte=current_start)
-            notification_filter &= Q(date__lte=current_end)
+            base_query = base_query.filter(date__gte=current_start, date__lte=current_end)
 
+        # 店铺名称搜索
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            notification_filter &= Q(shop__shop_name__icontains=shop_name)
+            base_query = base_query.filter(shop__shop_name__icontains=shop_name)
 
+        # 主题关键词搜索
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            notification_filter &= Q(subject__icontains=subject_keyword)
+            base_query = base_query.filter(subject__icontains=subject_keyword)
 
         # 权限范围控制
         operators_query = Q()
         if 'ops_all' in permissions:
-            pass  # 管理员：全部
+            pass
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
             operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
@@ -442,7 +450,7 @@ def notify_operators_api(request):
 
         # 获取每个运营的待处理统计
         pending_stats = AmazonPerformanceNotification.objects.filter(
-            notification_filter & operators_query
+            base_query & operators_query
         ).values(
             'shop__ops_id',
             'shop__ops__first_name',
@@ -451,67 +459,44 @@ def notify_operators_api(request):
             pending_count=Count('id')
         ).order_by('-pending_count')
 
-        # 发送通知
-        success_count = 0
-        fail_count = 0
-        fail_details = []
-
+        # 构建operator_stats格式
+        operator_stats = {}
         for item in pending_stats:
-            operator_id = item['shop__ops_id']
-            operator_name = item['shop__ops__first_name'] or '未知姓名'
-            wx_url = item['shop__ops__wx_url']
-            pending_count = item['pending_count']
-
-            # 跳过无webhook地址的运营
-            if not wx_url:
-                fail_count += 1
-                fail_details.append(f'{operator_name}: 未配置企业微信通知地址')
+            ops_name = item['shop__ops__first_name']
+            if not ops_name:
                 continue
+
+            if ops_name not in operator_stats:
+                operator_stats[ops_name] = {
+                    'wx_url': item['shop__ops__wx_url'],
+                    'shops': [],
+                    'total_count': item['pending_count']
+                }
 
             # 获取该运营的店铺明细
             shop_details = AmazonPerformanceNotification.objects.filter(
-                notification_filter,
-                shop__ops_id=operator_id
+                base_query & operators_query,
+                shop__ops_id=item['shop__ops_id']
             ).values(
                 'shop__shop_name'
             ).annotate(
                 shop_pending=Count('id')
             ).order_by('-shop_pending')
 
-            # 构建Markdown消息
-            shop_list = '\n'.join([
-                f"- {shop['shop__shop_name'] or '未知店铺'}（{shop['shop_pending']}条）"
+            operator_stats[ops_name]['shops'] = [
+                {
+                    'shop_name': shop['shop__shop_name'] or '未知店铺',
+                    'count': shop['shop_pending']
+                }
                 for shop in shop_details
-            ])
+            ]
 
-            markdown_message = (
-                f"**【绩效通知提醒】**\n\n"
-                f"**运营人员**：{operator_name}\n"
-                f"**待处理店铺数**：{len(shop_details)}个\n"
-                f"**待处理绩效总数**：{pending_count}条\n\n"
-                f"**店铺明细**：\n{shop_list}\n\n"
-                f"**操作**：请及时登录系统查看并处理"
-            )
-
-            # 调用通用发送方法
-            result = send_wechat_work_message(
-                webhook_url=wx_url,
-                markdown_content=markdown_message
-            )
-
-            if result['success']:
-                success_count += 1
-            else:
-                fail_count += 1
-                fail_details.append(f'{operator_name}: {result["error_message"]}')
+        # 调用服务层发送
+        result = send_performance_notifications(operator_stats)
 
         return JsonResponse({
             'success': True,
-            'data': {
-                'success_count': success_count,
-                'fail_count': fail_count,
-                'fail_details': fail_details
-            }
+            'data': result
         })
 
     except Exception as e:
