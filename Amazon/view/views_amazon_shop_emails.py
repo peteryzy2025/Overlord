@@ -15,7 +15,7 @@ from General.models import AmazonShop, User, OperationalAccount, UserOperationLo
 from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value
 from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from Amazon.amazon_order_views import get_shop_ids_by_filter
-
+from Api.WX.wx import send_wechat_work_message
 
 # 扩展日期范围函数，支持'unlimited'
 def get_date_range_from_option(option):
@@ -500,42 +500,17 @@ def notify_operators_api(request):
                 f"**操作**：请及时登录系统查看并处理"
             )
 
-            # 发送企业微信消息（重试3次）
-            retry_count = 0
-            send_success = False
-            last_error = None
+            # 调用通用发送方法
+            result = send_wechat_work_message(
+                webhook_url=wx_url,
+                markdown_content=markdown_message
+            )
 
-            while retry_count < 3 and not send_success:
-                try:
-                    response = requests.post(
-                        wx_url,
-                        json={
-                            "msgtype": "markdown",
-                            "markdown": {
-                                "content": markdown_message
-                            }
-                        },
-                        timeout=5
-                    )
-
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get('errcode') == 0:
-                            success_count += 1
-                            send_success = True
-                        else:
-                            retry_count += 1
-                            last_error = result.get('errmsg', '未知错误')
-                    else:
-                        retry_count += 1
-                        last_error = f'HTTP {response.status_code}'
-                except Exception as e:
-                    retry_count += 1
-                    last_error = str(e)
-
-            if not send_success:
+            if result['success']:
+                success_count += 1
+            else:
                 fail_count += 1
-                fail_details.append(f'{operator_name}: {last_error}')
+                fail_details.append(f'{operator_name}: {result["error_message"]}')
         details = f"通知{success_count}人成功，{fail_count}人失败"
         if fail_details:
             details += f" | 失败详情: {', '.join(fail_details[:3])}"  # 只记录前3条失败详情

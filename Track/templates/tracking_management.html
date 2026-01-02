@@ -94,7 +94,7 @@
                 <div class="filter-group">
                     <label class="filter-label">运单号</label>
                     <input type="text" class="form-control" id="trackingNumberFilter"
-                           placeholder="输入运单号（模糊查询）"
+                           placeholder="输入运单号（多个用空格或逗号分隔）"
                            onkeyup="if(event.key==='Enter') applyFilters()">
                 </div>
 
@@ -154,7 +154,7 @@
                 <div class="filter-group">
                     <label class="filter-label">订单号</label>
                     <input type="text" class="form-control" id="orderIdFilter"
-                           placeholder="输入订单号（模糊查询）"
+                           placeholder="输入订单号（多个用空格或逗号分隔）"
                            onkeyup="if(event.key==='Enter') applyFilters()">
                 </div>
 
@@ -205,7 +205,44 @@
                         </button>
                     </div>
                 </div>
+                <!-- 🔴 新增：未揽收天数筛选 -->
+                <div class="filter-group">
+                    <label class="filter-label">未揽收天数</label>
+                    <div class="select-wrapper" id="uncollectedDaysWrapper">
+                        <select class="form-select" id="uncollectedDaysFilter">
+                            <option value="">不限</option>
+                            <option value="3">超过3天未揽收</option>
+                            <option value="5">超过5天未揽收</option>
+                            <option value="7">超过7天未揽收</option>
+                            <option value="10">超过10天未揽收</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('uncollectedDays')"
+                                title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
 
+                <!-- 🔴 新增：排除未揽收天数筛选 -->
+                <div class="filter-group">
+                    <label class="filter-label">物缘停滞(排除未揽收)</label>
+                    <div class="select-wrapper" id="excludeUncollectedDaysWrapper">
+                        <select class="form-select" id="excludeUncollectedDaysFilter">
+                            <option value="">不限</option>
+                            <option value="3">排除后超过3天</option>
+                            <option value="5">排除后超过5天</option>
+                            <option value="10">排除后超过10天</option>
+                            <option value="15">排除后超过15天</option>
+                            <option value="20">排除后超过20天</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle"
+                                onclick="clearAndToggle('excludeUncollectedDays')" title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
                 <!-- 操作按钮 -->
                 <div class="filter-group" style="align-self: flex-end;">
                     <div style="display: flex; gap: 0.5rem;">
@@ -392,6 +429,16 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
+        // 检查XLSX是否加载成功，否则加载本地版本
+        if (typeof XLSX === 'undefined') {
+            console.warn('CDN加载失败，正在加载本地XLSX库...');
+            var script = document.createElement('script');
+            script.src = '{% static "js/xlsx.full.min.js" %}';
+            document.head.appendChild(script);
+        }
+    </script>
+    <script>
+
         // ==================== 全局变量 ====================
         let allCouriers = [];
         let allFactories = [];  // 🔴 新增：工厂列表
@@ -406,7 +453,9 @@
             status: '',
             ops_group: '',
             ops_name: '',
-            tracking_update: ''
+            tracking_update: '',
+            uncollected_days: '',           // 新增：只显示未揽收超过X天的
+            exclude_uncollected_days: ''    // 新增：排除未揽收后超过X天的
         };
         let pagination = {
             page: 1,
@@ -424,6 +473,19 @@
         };
 
         // ==================== 工具函数 ====================
+        // 拆分多值输入，支持空格和逗号分隔
+        function splitInputValues(inputString) {
+            if (!inputString || !inputString.trim()) return [];
+
+            // 先按逗号分割，再对每个部分按空格分割，最后过滤空值
+            return inputString
+                .split(',')
+                .map(part => part.trim())
+                .filter(part => part.length > 0)
+                .flatMap(part => part.split(/\s+/))
+                .filter(value => value.length > 0);
+        }
+
         function showLoading(show = true) {
             const overlay = document.getElementById('loadingOverlay');
             overlay.style.display = show ? 'flex' : 'none';
@@ -585,25 +647,31 @@
             }
         }
 
-        // 🔴 修改：添加获取工厂筛选值
+
         function getCurrentFilters() {
             const opsGroupValue = document.getElementById('opsGroupFilter').value.trim();
             const opsNameValue = document.getElementById('opsNameFilter').value.trim();
 
+            // 如果选择了分组，则忽略人员选择
             const finalOpsName = opsGroupValue ? '' : opsNameValue;
 
             return {
                 date_range: document.getElementById('dateRange').value,
                 start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
                 end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
-                tracking_number: document.getElementById('trackingNumberFilter').value.trim(),
-                order_id: document.getElementById('orderIdFilter').value.trim(),
+
+                tracking_number: splitInputValues(document.getElementById('trackingNumberFilter').value),
+                order_id: splitInputValues(document.getElementById('orderIdFilter').value),
+
                 logistics_method: document.getElementById('logisticsMethodFilter').value,
-                factory: document.getElementById('factoryFilter').value,  // 🔴 新增：工厂筛选
+                factory: document.getElementById('factoryFilter').value,
                 status: document.getElementById('statusFilter').value,
                 ops_group: opsGroupValue,
                 ops_name: finalOpsName,
-                tracking_update: document.getElementById('trackingUpdateFilter').value
+                tracking_update: document.getElementById('trackingUpdateFilter').value,
+                // 新增两个参数（互斥）
+                uncollected_days: document.getElementById('uncollectedDaysFilter').value,
+                exclude_uncollected_days: document.getElementById('excludeUncollectedDaysFilter').value
             };
         }
 
@@ -614,11 +682,14 @@
             document.getElementById('trackingNumberFilter').value = '';
             document.getElementById('orderIdFilter').value = '';
             document.getElementById('logisticsMethodFilter').value = '';
-            document.getElementById('factoryFilter').value = '';  // 🔴 新增：重置工厂
+            document.getElementById('factoryFilter').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('opsGroupFilter').value = '';
             document.getElementById('opsNameFilter').value = '';
             document.getElementById('trackingUpdateFilter').value = '';
+            // 新增：重置两个筛选
+            document.getElementById('uncollectedDaysFilter').value = '';
+            document.getElementById('excludeUncollectedDaysFilter').value = '';
         }
 
         async function resetFilters(event) {
@@ -631,12 +702,15 @@
 
             try {
                 await loadCouriersFromAPI();
+                await loadFactories();
+                populateFactoryFilterDropdown();
                 await loadOpsGroups();
-                populateFactoryFilterDropdown();  // 🔴 新增：填充工厂筛选下拉框
                 await loadOpsNames();
+
                 setDefaultFilters();
 
-                ['logisticsMethod', 'status', 'trackingUpdate', 'opsGroup', 'opsName'].forEach(type => {
+                // 触发所有下拉框的change事件以更新UI状态
+                ['logisticsMethod', 'status', 'trackingUpdate', 'opsGroup', 'opsName', 'uncollectedDays', 'excludeUncollectedDays'].forEach(type => {
                     const element = document.getElementById(type + 'Filter');
                     if (element) element.dispatchEvent(new Event('change'));
                 });
@@ -1026,6 +1100,24 @@
                     hideFactoryTooltip();
                 }
             }, true);
+            const uncollectedSelect = document.getElementById('uncollectedDaysFilter');
+            const excludeUncollectedSelect = document.getElementById('excludeUncollectedDaysFilter');
+
+            if (uncollectedSelect) {
+                uncollectedSelect.addEventListener('change', function () {
+                    if (this.value) {
+                        excludeUncollectedSelect.value = '';
+                    }
+                });
+            }
+
+            if (excludeUncollectedSelect) {
+                excludeUncollectedSelect.addEventListener('change', function () {
+                    if (this.value) {
+                        uncollectedSelect.value = '';
+                    }
+                });
+            }
         });
 
         async function refreshSingleTracking(trackingNo, event) {
