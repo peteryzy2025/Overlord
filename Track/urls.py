@@ -19,5 +19,5 @@ urlpatterns = [
 
     path('api/factories/', view_tracking_management.get_factories, name='get_factories'),
     path('api/toggle-cancel-status/', view_tracking_management.toggle_cancel_status, name='toggle-cancel-status'),
-
+    path('api/update-tracking-remark/', view_tracking_management.update_tracking_remark, name='update_tracking_remark'),
 ]

@@ -257,6 +257,7 @@ def tracking_list(request):
                 'ops_name': tracking.ops_name or '-',
                 'factory_id': tracking.factory_id,
                 'factory_name': tracking.factory.name if tracking.factory else '',
+                'remark': tracking.remark or '',
             })
 
         return JsonResponse({
@@ -498,7 +499,7 @@ def export_tracking_excel(request):
         # 表头：工厂列放在第二列
         headers = [
             '运单号', '工厂', '物流商', '当前状态', '目的地', '最新轨迹时间', '停滞天数',
-            '下单时间', '平台', '订单号', '运营分组', '运营姓名'
+            '下单时间', '平台', '订单号', '运营分组', '运营姓名', '备注'
         ]
 
         for col, header in enumerate(headers, 1):
@@ -526,6 +527,7 @@ def export_tracking_excel(request):
             ws.cell(row=row, column=10, value=tracking.order_id or '-')
             ws.cell(row=row, column=11, value=tracking.ops_group or '-')
             ws.cell(row=row, column=12, value=tracking.ops_name or '-')
+            ws.cell(row=row, column=13, value=tracking.remark or '-')
 
         # 列宽调整
         column_widths = [20, 15, 15, 12, 12, 18, 12, 12, 10, 20, 12, 12]
@@ -1012,6 +1014,66 @@ def toggle_cancel_status(request):
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def update_tracking_remark(request):
+    """更新运单备注"""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        track_no = data.get('track_no')
+        remark = data.get('remark', '').strip()[:200]  # 截断到200字符
+
+        if not track_no:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少运单号'
+            }, status=400)
+
+        # 检查权限
+        user_permission = request.user.permission or ''
+        permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
+        if not any(p in permission_list for p in ['555', 'gyl', 'gyl_admin']):
+            return JsonResponse({
+                'success': False,
+                'message': '权限不足：需要物流管理权限'
+            }, status=403)
+
+        # 更新数据库
+        updated = Tracking.objects.filter(track_no=track_no).update(remark=remark)
+
+        if updated:
+            # 记录操作日志
+            try:
+                from General.models import UserOperationLog
+                tracking = Tracking.objects.get(track_no=track_no)
+                UserOperationLog.objects.create(
+                    user=request.user,
+                    operation_type=UserOperationLog.TRACKING_REMARK_UPDATE,
+                    operation_record=f'运单: {track_no}, 备注: {remark}'
+                )
+            except:
+                pass
+
+            return JsonResponse({
+                'success': True,
+                'message': '备注更新成功'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '运单不存在'
+            }, status=404)
+
+    except Exception as e:
+        print(f"更新备注失败: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({

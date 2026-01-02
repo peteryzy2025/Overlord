@@ -50,6 +50,12 @@ class Tracking(models.Model):
                                       db_comment="当前运输状态，如 'DELIVERED'、'IN_TRANSIT'")
     transit_sub_status = models.CharField(max_length=50, blank=True, db_comment="运输子状态")
     cancel_bool= models.BooleanField(default=False, db_comment="运单是否取消")
+    remark = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        db_comment="物流单号备注信息"
+    )
 
     order_time = models.DateTimeField(null=True, blank=True, db_comment="订单下单时间")
     delivered_time = models.DateTimeField(null=True, blank=True, db_index=True, db_comment="签收时间")

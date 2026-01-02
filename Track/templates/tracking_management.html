@@ -319,6 +319,7 @@
                         <th>停滞天数</th>
                         <th>订单号</th>
                         <th>分组/运营</th>
+                        <th style="min-width: 150px; max-width: 300px;">备注</th>
                         <th style="width: 150px;">操作</th>
                     </tr>
                     </thead>
@@ -450,6 +451,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                document.querySelector('meta[name="csrf-token"]')?.content ||
+                document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
         // 检查XLSX是否加载成功，否则加载本地版本
         if (typeof XLSX === 'undefined') {
             console.warn('CDN加载失败，正在加载本地XLSX库...');
@@ -792,8 +799,7 @@
                     page_size: pagination.page_size
                 };
 
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+                const csrfToken = getCsrfToken();
 
                 const response = await fetch('/api/tracking-list/', {
                     method: 'POST',
@@ -812,30 +818,35 @@
                     pagination.total_pages = data.total_pages;
 
                     renderTrackingTable(data.orders);
-                    renderPagination();
 
+                    // 🔴 新增：初始化备注单元格（必须加在这里）
+                    setTimeout(() => {
+                        initializeRemarkCells();
+                    }, 100);
+
+                    renderPagination();
                     paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
                 } else {
                     tbody.innerHTML = `
-                        <tr>
-                            <td colspan="10" class="empty-state">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                <p>加载失败: ${result.message || '未知错误'}</p>
-                            </td>
-                        </tr>
-                    `;
+                <tr>
+                    <td colspan="11" class="empty-state">  <!-- 🔴 改为11 -->
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>加载失败: ${result.message || '未知错误'}</p>
+                    </td>
+                </tr>
+            `;
                     paginationControls.style.display = 'none';
                 }
             } catch (error) {
                 tbody.innerHTML = `
-                    <tr>
-                        <td colspan="10" class="empty-state">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <p>数据请求失败</p>
-                            <p>${error.message}</p>
-                        </td>
-                    </tr>
-                `;
+            <tr>
+                <td colspan="11" class="empty-state">  <!-- 🔴 改为11 -->
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>数据请求失败</p>
+                    <p>${error.message}</p>
+                </td>
+            </tr>
+        `;
                 paginationControls.style.display = 'none';
             } finally {
                 showLoading(false);
@@ -843,12 +854,14 @@
         }
 
         // 完整的 renderTrackingTable 函数（已包含所有修改）
+
+        // 完整的 renderTrackingTable 函数（已修复列数不匹配问题）
         function renderTrackingTable(trackings) {
             const tbody = document.getElementById('trackingTableBody');
             if (!trackings || trackings.length === 0) {
                 tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state">
+                <td colspan="11" class="empty-state">  <!-- 🔴 修复：colspan从10改为11 -->
                     <i class="fas fa-inbox"></i>
                     <p>暂无运单数据</p>
                 </td>
@@ -858,16 +871,15 @@
             }
 
             tbody.innerHTML = trackings.map((tracking, index) => {
-                // 🔴 新增：计算停滞小时数和天数，显示为"58h（2天）"格式
+                // 计算停滞小时数和天数
                 let staleHtml = '-';
                 if (tracking.stale_hours > 0) {
-                    const days = Math.floor(tracking.stale_hours / 24); // 计算天数
-                    const displayText = `${tracking.stale_hours}h${days > 0 ? `（${days}天）` : ''}`; // 格式：58h（2天）
+                    const days = Math.floor(tracking.stale_hours / 24);
+                    const displayText = `${tracking.stale_hours}h${days > 0 ? `（${days}天）` : ''}`;
 
-                    // 判断警告级别（基于小时数）
-                    if (tracking.stale_hours >= 120) { // 5天红色警告
+                    if (tracking.stale_hours >= 120) {
                         staleHtml = `<span class="stale-warning red"><i class="fas fa-exclamation-circle"></i> ${displayText}</span>`;
-                    } else if (tracking.stale_hours >= 72) { // 3天黄色警告
+                    } else if (tracking.stale_hours >= 72) {
                         staleHtml = `<span class="stale-warning yellow"><i class="fas fa-exclamation-triangle"></i> ${displayText}</span>`;
                     } else {
                         staleHtml = displayText;
@@ -875,12 +887,9 @@
                 }
 
                 const statusBadge = renderStatusBadge(tracking.transit_status);
-
-                // 🔴 新增：判断运单是否已取消
                 const isCancelled = tracking.cancel_bool;
                 const cancelBadge = isCancelled ? '<span class="status-badge status-exception" style="margin-left: 0.5rem;">已取消</span>' : '';
 
-                // 🔴 新增：动态生成取消/恢复按钮
                 const toggleButtonHtml = isCancelled ?
                     `<button class="btn-action" onclick="toggleCancelStatus('${tracking.track_no}', 'undo', event)" title="恢复运单">
                 <i class="fas fa-undo"></i>
@@ -910,15 +919,29 @@
                     </a>
                 </td>
                 <td>${tracking.courier || '-'}</td>
-                <td>${statusBadge}${cancelBadge}</td> <!-- 🔴 修改：显示取消徽章 -->
+                <td>${statusBadge}${cancelBadge}</td>
                 <td>${formatDateTime(tracking.order_time)}</td>
                 <td>${formatDateTime(tracking.last_event_time)}</td>
                 <td>${staleHtml}</td>
                 <td>${tracking.order_id || '-'}</td>
                 <td>${opsDisplay}</td>
+
+                <!-- 🔴 修复：新增备注列（第10列） -->
+                <td>
+                    <div class="remark-cell"
+                         contenteditable="true"
+                         data-track-no="${tracking.track_no}"
+                         data-original-remark="${escapeHtml(tracking.remark || '')}"
+                         onblur="saveRemark('${tracking.track_no}', this.innerText.trim())"
+                         onfocus="this.classList.add('editing')"
+                         oninput="limitRemarkLength(this, 200)"
+                         onkeydown="handleRemarkKeydown(event, this)"
+                         title="${escapeHtml(tracking.remark || '')}">${escapeHtml(tracking.remark || '')}</div>
+                </td>
+
                 <td>
                     <div class="action-buttons">
-                        ${toggleButtonHtml} <!-- 🔴 修改：动态操作按钮 -->
+                        ${toggleButtonHtml}
                         <button class="btn-action" onclick="refreshSingleTracking('${tracking.track_no}', event)"
                                 title="刷新轨迹">
                             <i class="fas fa-sync-alt"></i>
@@ -927,7 +950,7 @@
                                 title="Track123查询">
                             <i class="fas fa-search"></i>
                         </button>
-                        <button class="btn-action" onclick="copyTrackingNumber('${tracking.track_no}', event)"
+                        <button class="btn-action" onclick="copyTracklingNumber('${tracking.track_no}', event)"
                                 title="复制运单号">
                             <i class="fas fa-copy"></i>
                         </button>
@@ -935,7 +958,7 @@
                 </td>
             </tr>
             <tr class="tracking-details-row" id="details-${tracking.track_no}">
-                <td colspan="10">
+                <td colspan="11">  <!-- 🔴 修复：colspan从10改为11 -->
                     <div class="tracking-details-content">
                         <div class="tracking-timeline" id="timeline-${tracking.track_no}">
                             <div class="text-center">
@@ -949,6 +972,7 @@
             }).join('');
 
             updateBulkActionsBar();
+            setTimeout(initializeRemarkCells, 100);  // 🔴 初始化备注单元格
         }
 
         let factoryTooltip = null;
@@ -2054,6 +2078,146 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        // 初始化备注单元格（在 loadTrackingTable 成功后调用）
+        function initializeRemarkCells() {
+            document.querySelectorAll('.remark-cell').forEach(cell => {
+                // 记录原始值
+                cell.dataset.originalRemark = cell.innerText.trim();
+
+                // 添加键盘导航支持
+                cell.addEventListener('keydown', function (e) {
+                    // Enter键：保存并退出编辑模式
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.blur(); // 触发保存
+                    }
+                    // ESC键：取消编辑
+                    else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.innerText = this.dataset.originalRemark || '';
+                        this.blur();
+                    }
+                });
+            });
+        }
+
+        // 限制输入长度
+        function limitRemarkLength(element, maxLength) {
+            if (element.innerText.length > maxLength) {
+                // 截断文本
+                element.innerText = element.innerText.substring(0, maxLength);
+                // 恢复光标位置
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(element);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+
+                // 显示警告
+                showNotification('备注最多200个字符', 'warning', 2000);
+            }
+        }
+
+        // 处理键盘事件
+        function handleRemarkKeydown(event, element) {
+            // Enter键（非Shift+Enter）保存
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                element.blur();
+            }
+            // ESC键取消
+            else if (event.key === 'Escape') {
+                event.preventDefault();
+                element.innerText = element.dataset.originalRemark || '';
+                element.blur();
+            }
+        }
+
+        // 保存备注（防抖）
+        let remarkSaveTimeouts = {};
+
+        async function saveRemark(trackNo, newRemark) {
+            const element = document.querySelector(`.remark-cell[data-track-no="${trackNo}"]`);
+            if (!element) return;
+
+            // 清除之前的定时器
+            if (remarkSaveTimeouts[trackNo]) {
+                clearTimeout(remarkSaveTimeouts[trackNo]);
+            }
+
+            // 延迟保存（防抖）
+            remarkSaveTimeouts[trackNo] = setTimeout(async () => {
+                const originalRemark = element.dataset.originalRemark || '';
+
+                // 无变化不保存
+                if (newRemark === originalRemark) {
+                    element.classList.remove('save-success', 'save-error');
+                    return;
+                }
+
+                // 显示保存中
+                element.classList.add('saving');
+
+                try {
+                    const csrfToken = getCsrfToken();
+
+                    const response = await fetch('/api/update-tracking-remark/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            track_no: trackNo,
+                            remark: newRemark
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    element.classList.remove('saving');
+
+                    if (result.success) {
+                        showNotification('保存成功~: ' + trackNo + ':' + newRemark, "success");
+                        const element = document.querySelector(`.remark-cell[data-track-no="${trackNo}"]`);
+                        element.style.maxWidth = '300px';
+                        element.style.width = '300px';
+                        element.style.overflow = 'hidden';
+                        element.style.wordWrap = 'break-word';
+                        // 更新原始值
+                        element.dataset.originalRemark = newRemark;
+                        element.classList.add('save-success');
+                        setTimeout(() => element.classList.remove('save-success'), 600);
+
+                        // 如果为空，显示占位提示
+                        if (!newRemark) {
+                            element.title = '点击添加备注';
+                        } else {
+                            element.title = newRemark;
+                        }
+
+                        // 可选：显示成功提示（不打扰用户）
+                        // showNotification('备注已保存', 'success', 1500);
+                    } else {
+                        // 恢复原始值
+                        element.innerText = originalRemark;
+                        element.classList.add('save-error');
+                        setTimeout(() => element.classList.remove('save-error'), 600);
+
+                        showNotification('保存失败: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    element.classList.remove('saving');
+                    element.innerText = originalRemark;
+                    element.classList.add('save-error');
+                    setTimeout(() => element.classList.remove('save-error'), 600);
+
+                    showNotification('网络错误: ' + error.message, 'error');
+                }
+            }, 300); // 300ms防抖
         }
     </script>
 {% endblock %}
