@@ -20,7 +20,10 @@ if __name__ == '__main__':
                 amazon_shipment()  # 发货
             amazon_order_divi_guer()
             lx_shop_main()
-            lx_shop_main2()  # Temu店铺数据
+            try:
+                lx_shop_main2()  # Temu店铺数据
+            except Exception as e:
+                print(f"错误: {e}")
             lx_order_main() # 亚马逊订单
             asyncio.run(lx_zf_main()) #自发货订单号同步
             asyncio.run(lx_order_info_main())# 更新发货时限

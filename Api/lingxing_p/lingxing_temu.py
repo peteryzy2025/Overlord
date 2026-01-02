@@ -14,6 +14,7 @@ async def get_lx_temu_shops():
     }
 
     resp = await get_api_resp(req_body, api_path="/pb/mp/shop/v2/getSellerList")
+    print(resp)
     return resp.data.get("list")
 
 

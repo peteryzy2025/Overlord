@@ -129,10 +129,10 @@ def lx_shop_main2():
 
 
 if __name__ == "__main__":
-    t = Timer()
-    t.start()
-    lx_shop_main()  # 同步Amazon店铺
-    print("\n" + "=" * 50 + "\n")
+    # t = Timer()
+    # t.start()
+    # lx_shop_main()  # 同步Amazon店铺
+    # print("\n" + "=" * 50 + "\n")
     lx_shop_main2()  # 同步Temu店铺
-    t.stop()
-    print("总运行时长：", t)
+    # t.stop()
+    # print("总运行时长：", t)
