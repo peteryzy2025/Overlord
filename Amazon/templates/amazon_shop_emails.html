@@ -1037,67 +1037,77 @@
         // ===== 邮件详情弹窗功能 =====
 
         async function viewEmailDetail(emailId, event) {
-    event.stopPropagation();
-    const button = event.currentTarget;
-    const icon = button.querySelector('i');
-    const span = button.querySelector('span');
+            event.stopPropagation();
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+            const span = button.querySelector('span');
 
-    // 防止重复点击
-    if (button.disabled) return;
+            // 防止重复点击
+            if (button.disabled) return;
 
-    button.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
-    span.textContent = '加载中...';
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+            span.textContent = '加载中...';
 
-    try {
-        const response = await fetch(`/api/amazon-shop-emails/${emailId}/`);
-        const result = await response.json();
+            try {
+                const response = await fetch(`/api/amazon-shop-emails/${emailId}/`);
+                const result = await response.json();
 
-        if (result.success && result.data) {
-            const data = result.data;
+                if (result.success && result.data) {
+                    const data = result.data;
 
-            // 填充弹窗内容
-            document.getElementById('emailDetailSubject').textContent = data.subject || '无标题';
-            document.getElementById('emailDetailSender').textContent = data.sender || '未知发件人';
-            document.getElementById('emailDetailShopEmail').textContent = data.shop_email || '-'; // 新增
-            document.getElementById('emailDetailReceiveTime').textContent = data.receive_time || '-';
-            document.getElementById('emailDetailShop').textContent = data.shop_name || '未知店铺';
-            document.getElementById('emailDetailOperator').textContent =
-                `${data.operator_name || '-'}${data.ops_group ? ' (' + data.ops_group + ')' : ''}`;
+                    // 填充弹窗内容
+                    document.getElementById('emailDetailSubject').textContent = data.subject || '无标题';
+                    document.getElementById('emailDetailSender').textContent = data.sender || '未知发件人';
+                    document.getElementById('emailDetailShopEmail').textContent = data.shop_email || '-'; // 新增
+                    document.getElementById('emailDetailReceiveTime').textContent = data.receive_time || '-';
+                    document.getElementById('emailDetailShop').textContent = data.shop_name || '未知店铺';
+                    document.getElementById('emailDetailOperator').textContent =
+                        `${data.operator_name || '-'}${data.ops_group ? ' (' + data.ops_group + ')' : ''}`;
 
-            // 设置状态标签
-            const statusEl = document.getElementById('emailDetailStatus');
-            statusEl.innerHTML = renderStatusBadge(data.is_attention_needed, data.is_processed);
+                    // 设置状态标签
+                    const statusEl = document.getElementById('emailDetailStatus');
+                    statusEl.innerHTML = renderStatusBadge(data.is_attention_needed, data.is_processed);
 
-            // 设置邮件正文（保留HTML格式）
-            const bodyEl = document.getElementById('emailDetailBody');
-            if (data.email_body && data.email_body !== '暂无邮件内容') {
-                if (/<\/?[a-z][\s\S]*>/i.test(data.email_body)) {
-                    bodyEl.innerHTML = data.email_body;
+                    // 设置邮件正文（优先使用HTML内容）
+                    const bodyEl = document.getElementById('emailDetailBody');
+
+// 优先级：html_body > email_body > 暂无内容
+                    const htmlContent = data.html_body;
+                    const textContent = data.email_body;
+
+                    if (htmlContent && htmlContent.trim() !== '') {
+                        // 如果有HTML内容，直接显示
+                        bodyEl.innerHTML = htmlContent;
+                    } else if (textContent && textContent.trim() !== '') {
+                        // 否则如果有纯文本内容
+                        if (/<\/?[a-z][\s\S]*>/i.test(textContent)) {
+                            bodyEl.innerHTML = textContent;
+                        } else {
+                            bodyEl.innerHTML = textContent.replace(/\n/g, '<br>');
+                        }
+                    } else {
+                        // 否则显示无内容提示
+                        bodyEl.innerHTML = '<p style="color: #999; font-style: italic;">暂无邮件内容</p>';
+                    }
+
+                    // 显示弹窗
+                    document.getElementById('emailDetailModal').style.display = 'flex';
+
+                    // 恢复按钮状态
+                    button.disabled = false;
+                    icon.className = 'fas fa-eye';
+                    span.textContent = '查看';
                 } else {
-                    bodyEl.innerHTML = data.email_body.replace(/\n/g, '<br>');
+                    throw new Error(result.message || '加载邮件详情失败');
                 }
-            } else {
-                bodyEl.innerHTML = '<p style="color: #999; font-style: italic;">暂无邮件内容</p>';
+            } catch (error) {
+                showNotification('加载邮件详情失败: ' + error.message, 'error');
+                button.disabled = false;
+                icon.className = 'fas fa-eye';
+                span.textContent = '查看';
             }
-
-            // 显示弹窗
-            document.getElementById('emailDetailModal').style.display = 'flex';
-
-            // 恢复按钮状态
-            button.disabled = false;
-            icon.className = 'fas fa-eye';
-            span.textContent = '查看';
-        } else {
-            throw new Error(result.message || '加载邮件详情失败');
         }
-    } catch (error) {
-        showNotification('加载邮件详情失败: ' + error.message, 'error');
-        button.disabled = false;
-        icon.className = 'fas fa-eye';
-        span.textContent = '查看';
-    }
-}
 
         function closeEmailDetailModal() {
             document.getElementById('emailDetailModal').style.display = 'none';

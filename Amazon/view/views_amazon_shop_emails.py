@@ -535,6 +535,7 @@ def notify_operators_api(request):
             'message': f'服务器错误: {str(e)}'
         }, status=500)
 
+
 @login_required
 def get_shop_emails_operators_api(request):
     """
@@ -758,7 +759,8 @@ def get_email_detail_api(request, email_id):
                 'sender': email.sender,
                 'subject': email.subject,
                 'receive_time': email.receive_time.strftime('%Y-%m-%d %H:%M:%S') if email.receive_time else '',
-                'email_body': email.email_body or '暂无邮件内容',
+                'email_body': email.email_body or '',
+                'html_body': email.html_body or '',
                 'is_attention_needed': email.is_attention_needed,
                 'is_processed': email.is_processed,
             }
