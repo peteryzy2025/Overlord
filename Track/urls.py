@@ -18,5 +18,6 @@ urlpatterns = [
     path('api/export-tracking-excel/', view_tracking_management.export_tracking_excel, name='export-excel'),
 
     path('api/factories/', view_tracking_management.get_factories, name='get_factories'),
+    path('api/toggle-cancel-status/', view_tracking_management.toggle_cancel_status, name='toggle-cancel-status'),
 
 ]

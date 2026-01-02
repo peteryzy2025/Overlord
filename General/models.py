@@ -536,13 +536,15 @@ class UserOperationLog(models.Model):
 
     DAILY_CHECK_RESET = 4011  # ✅ 新增
 
-
     ASSESSMENT_BATCH_REFRESH = 6001  # 批量刷新考核订单数据
     ASSESSMENT_SUBMIT = 6002  # 组长评分提交
     ASSESSMENT_MEMBER_CONFIRM = 6003  # 组员评分确认
     ASSESSMENT_LEADER_CONFIRM = 6004  # 组长评分确认
     ASSESSMENT_CREATE = 6005  # 新增考核
     ASSESSMENT_MEMBER_REJECT = 6006  # 组员评分拒绝
+    # 7xxx: 物流追踪管理类操作
+    TRACKING_MARK_CANCELLED = 7101  # 标记运单为已取消
+    TRACKING_UNDO_CANCEL = 7102  # 取消运单的取消标记（恢复为正常）
     OPERATION_TYPE_CHOICES = [
         (USER_CREATE, '新增用户'),
         (USER_UPDATE, '修改用户信息'),
@@ -559,7 +561,6 @@ class UserOperationLog(models.Model):
         (EMAIL_NOTIFY_OPERATORS, '批量通知运营邮件'),  # ✅ 添加
         (DAILY_CHECK_RESET, '重置巡店'),  # ✅ 新增
 
-
         # 6xxx: 考核流程操作
         (ASSESSMENT_BATCH_REFRESH, '绩效考核-批量刷新订单'),
         (ASSESSMENT_SUBMIT, '绩效考核-组长评分提交'),
@@ -567,6 +568,8 @@ class UserOperationLog(models.Model):
         (ASSESSMENT_LEADER_CONFIRM, '绩效考核-组长评分确认'),
         (ASSESSMENT_CREATE, '考核创建'),
         (ASSESSMENT_MEMBER_REJECT, '绩效考核-组员评分驳回'),
+        (TRACKING_MARK_CANCELLED, '物流追踪-标记运单取消'),
+        (TRACKING_UNDO_CANCEL, '物流追踪-恢复运单状态'),
     ]
 
     # ============= 模型字段 =============

@@ -226,7 +226,7 @@
 
                 <!-- 🔴 新增：排除未揽收天数筛选 -->
                 <div class="filter-group">
-                    <label class="filter-label">物缘停滞(排除未揽收)</label>
+                    <label class="filter-label">物流停滞(排除未揽收)</label>
                     <div class="select-wrapper" id="excludeUncollectedDaysWrapper">
                         <select class="form-select" id="excludeUncollectedDaysFilter">
                             <option value="">不限</option>
@@ -239,6 +239,21 @@
                         <i class="fas fa-chevron-down select-arrow"></i>
                         <button type="button" class="btn-clear-toggle"
                                 onclick="clearAndToggle('excludeUncollectedDays')" title="清除选择">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">运单状态</label>
+                    <div class="select-wrapper" id="cancelStatusWrapper">
+                        <select class="form-select" id="cancelStatusFilter">
+                            <option value="all">全部</option>
+                            <option value="active">正常</option>
+                            <option value="cancelled">已取消</option>
+                        </select>
+                        <i class="fas fa-chevron-down select-arrow"></i>
+                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('cancelStatus')"
+                                title="清除选择">
                             <i class="fas fa-times-circle"></i>
                         </button>
                     </div>
@@ -260,6 +275,12 @@
                 <span>已选择 <strong id="selectedCount">0</strong> 条</span>
                 <button class="btn" onclick="batchRefreshTracking()">
                     <i class="fas fa-sync-alt"></i> 批量刷新轨迹
+                </button>
+                <button class="btn" onclick="batchToggleCancel('cancel')">
+                    <i class="fas fa-ban"></i> 批量取消
+                </button>
+                <button class="btn" onclick="batchToggleCancel('undo')">
+                    <i class="fas fa-undo"></i> 批量恢复
                 </button>
                 <button class="btn btn-secondary" onclick="clearSelection()">
                     <i class="fas fa-times"></i> 清除选择
@@ -671,7 +692,8 @@
                 tracking_update: document.getElementById('trackingUpdateFilter').value,
                 // 新增两个参数（互斥）
                 uncollected_days: document.getElementById('uncollectedDaysFilter').value,
-                exclude_uncollected_days: document.getElementById('excludeUncollectedDaysFilter').value
+                exclude_uncollected_days: document.getElementById('excludeUncollectedDaysFilter').value,
+                cancel_status: document.getElementById('cancelStatusFilter').value,
             };
         }
 
@@ -690,6 +712,7 @@
             // 新增：重置两个筛选
             document.getElementById('uncollectedDaysFilter').value = '';
             document.getElementById('excludeUncollectedDaysFilter').value = '';
+            document.getElementById('cancelStatusFilter').value = 'all';
         }
 
         async function resetFilters(event) {
@@ -819,6 +842,7 @@
             }
         }
 
+        // 完整的 renderTrackingTable 函数（已包含所有修改）
         function renderTrackingTable(trackings) {
             const tbody = document.getElementById('trackingTableBody');
             if (!trackings || trackings.length === 0) {
@@ -851,6 +875,20 @@
                 }
 
                 const statusBadge = renderStatusBadge(tracking.transit_status);
+
+                // 🔴 新增：判断运单是否已取消
+                const isCancelled = tracking.cancel_bool;
+                const cancelBadge = isCancelled ? '<span class="status-badge status-exception" style="margin-left: 0.5rem;">已取消</span>' : '';
+
+                // 🔴 新增：动态生成取消/恢复按钮
+                const toggleButtonHtml = isCancelled ?
+                    `<button class="btn-action" onclick="toggleCancelStatus('${tracking.track_no}', 'undo', event)" title="恢复运单">
+                <i class="fas fa-undo"></i>
+            </button>` :
+                    `<button class="btn-action" onclick="toggleCancelStatus('${tracking.track_no}', 'cancel', event)" title="标记取消">
+                <i class="fas fa-ban"></i>
+            </button>`;
+
                 const isSelected = selectedTrackings.has(tracking.track_no);
                 const opsDisplay = `${tracking.ops_group || '-'}/${tracking.ops_name || '-'}`;
 
@@ -861,18 +899,18 @@
                            onclick="toggleRowSelection('${tracking.track_no}', this.checked)">
                 </td>
 
-<td>
-    <a href="#"
-       class="track-no-link"
-       data-factory-id="${tracking.factory_id || ''}"
-       data-factory-name="${escapeHtml(tracking.factory_name || '')}"
-       onclick="toggleTrackingDetails('${tracking.track_no}', event)"
-       style="font-weight: 600; color: var(--accent-color);">
-        ${tracking.track_no}
-    </a>
-</td>
+                <td>
+                    <a href="#"
+                       class="track-no-link"
+                       data-factory-id="${tracking.factory_id || ''}"
+                       data-factory-name="${escapeHtml(tracking.factory_name || '')}"
+                       onclick="toggleTrackingDetails('${tracking.track_no}', event)"
+                       style="font-weight: 600; color: var(--accent-color);">
+                        ${tracking.track_no}
+                    </a>
+                </td>
                 <td>${tracking.courier || '-'}</td>
-                <td>${statusBadge}</td>
+                <td>${statusBadge}${cancelBadge}</td> <!-- 🔴 修改：显示取消徽章 -->
                 <td>${formatDateTime(tracking.order_time)}</td>
                 <td>${formatDateTime(tracking.last_event_time)}</td>
                 <td>${staleHtml}</td>
@@ -880,6 +918,7 @@
                 <td>${opsDisplay}</td>
                 <td>
                     <div class="action-buttons">
+                        ${toggleButtonHtml} <!-- 🔴 修改：动态操作按钮 -->
                         <button class="btn-action" onclick="refreshSingleTracking('${tracking.track_no}', event)"
                                 title="刷新轨迹">
                             <i class="fas fa-sync-alt"></i>
@@ -1928,6 +1967,93 @@
                 option.textContent = factory.name;
                 factorySelect.appendChild(option);
             });
+        }
+
+        async function toggleCancelStatus(trackNo, action, event) {
+            event.stopPropagation();
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (button.disabled) return;
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                showLoading(true);
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/toggle-cancel-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        track_nos: [trackNo],
+                        action: action
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    await loadTrackingTable(); // 刷新表格
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('操作失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                showLoading(false);
+            }
+        }
+
+        // 批量取消/恢复
+        async function batchToggleCancel(action) {
+            if (selectedTrackings.size === 0) {
+                showNotification('请先选择要操作的运单', 'warning');
+                return;
+            }
+
+            const actionText = action === 'cancel' ? '取消' : '恢复';
+            if (!confirm(`确定要将选中的 ${selectedTrackings.size} 条运单标记为${actionText}吗？`)) {
+                return;
+            }
+
+            showLoading(true);
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/toggle-cancel-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        track_nos: Array.from(selectedTrackings),
+                        action: action
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    clearSelection(); // 清除选择
+                    await loadTrackingTable(); // 刷新表格
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('批量操作失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
         }
     </script>
 {% endblock %}

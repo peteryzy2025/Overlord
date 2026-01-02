@@ -210,7 +210,11 @@ def tracking_list(request):
             elif tracking_update == 'stale_5d':
                 filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=120))
                 filters &= ~Q(transit_status='DELIVERED')
-
+        cancel_status = data.get('cancel_status', 'all')
+        if cancel_status == 'active':
+            filters &= Q(cancel_bool=False)
+        elif cancel_status == 'cancelled':
+            filters &= Q(cancel_bool=True)
         # 应用筛选条件
         queryset = queryset.filter(filters)
 
@@ -918,6 +922,94 @@ def refresh_tracking(request):
                 'success': False,
                 'message': result.get('message', '刷新失败')
             }, status=500)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_cancel_status(request):
+    """批量切换运单取消状态（支持单个和批量）"""
+    try:
+        data = json.loads(request.body) if request.body else {}
+        track_nos = data.get('track_nos', [])
+        action = data.get('action')  # 'cancel' or 'undo'
+
+        if not track_nos or not isinstance(track_nos, list):
+            return JsonResponse({
+                'success': False,
+                'message': '未提供运单号列表'
+            }, status=400)
+
+        if action not in ['cancel', 'undo']:
+            return JsonResponse({
+                'success': False,
+                'message': '无效的操作类型'
+            }, status=400)
+
+        # 验证用户权限
+        user_permission = request.user.permission or ''
+        permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
+        if not any(p in permission_list for p in ['555', 'gyl', 'gyl_admin']):
+            return JsonResponse({
+                'success': False,
+                'message': '权限不足：需要物流管理权限'
+            }, status=403)
+
+        # 执行更新
+        from General.models import UserOperationLog
+
+        if action == 'cancel':
+            updated_count = Tracking.objects.filter(
+                track_no__in=track_nos,
+                cancel_bool=False
+            ).update(cancel_bool=True)
+
+            # 记录日志
+            for track_no in track_nos:
+                try:
+                    tracking = Tracking.objects.get(track_no=track_no)
+                    UserOperationLog.objects.create(
+                        user=request.user,
+                        operation_type=UserOperationLog.TRACKING_MARK_CANCELLED,
+                        operation_record=f'运单号: {track_no}, 物流商: {tracking.courier.name_cn if tracking.courier else "-"}'
+                    )
+                except:
+                    pass
+
+        else:  # undo
+            updated_count = Tracking.objects.filter(
+                track_no__in=track_nos,
+                cancel_bool=True
+            ).update(cancel_bool=False)
+
+            # 记录日志
+            for track_no in track_nos:
+                try:
+                    tracking = Tracking.objects.get(track_no=track_no)
+                    UserOperationLog.objects.create(
+                        user=request.user,
+                        operation_type=UserOperationLog.TRACKING_UNDO_CANCEL,
+                        operation_record=f'运单号: {track_no}, 物流商: {tracking.courier.name_cn if tracking.courier else "-"}'
+                    )
+                except:
+                    pass
+
+        return JsonResponse({
+            'success': True,
+            'message': f'成功更新 {updated_count} 条运单状态',
+            'data': {
+                'action': action,
+                'updated_count': updated_count,
+                'total_requested': len(track_nos)
+            }
+        })
 
     except Exception as e:
         import traceback
