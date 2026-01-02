@@ -33,7 +33,7 @@ from Track.models import Tracking
 from General.models import User
 # 导入 Django 的 timezone
 from django.utils import timezone
-
+from Api.WX.wx import send_wechat_work_message
 
 def calculate_stale_hours(last_update_time):
     """计算停滞小时数"""
@@ -105,35 +105,6 @@ def build_notification_message(operator_name, uncollected_stats, exclude_stats):
     lines.append("\n**操作**：请及时登录系统查看并处理")
     return "\n".join(lines)
 
-
-def send_wechat_notification(wx_url, message):
-    """
-    发送企业微信通知（同步）
-    返回: bool - 是否发送成功
-    """
-    if not wx_url:
-        logger.warning("未配置企业微信通知地址")
-        return False
-
-    try:
-        response = requests.post(
-            wx_url,
-            json={
-                "msgtype": "markdown",
-                "markdown": {"content": message}
-            },
-            timeout=5
-        )
-
-        if response.status_code == 200 and response.json().get('errcode') == 0:
-            logger.info(f"通知发送成功")
-            return True
-        else:
-            logger.error(f"通知发送失败: {response.text}")
-            return False
-    except Exception as e:
-        logger.error(f"通知发送异常: {e}")
-        return False
 
 
 def get_operator_stats():
@@ -298,7 +269,7 @@ def execute_tracking_notification():
         print(message)
         # 发送通知
         logger.info(f"正在向 {ops_name} 发送通知...")
-        success = send_wechat_notification(wx_url, message)
+        success = send_wechat_work_message(wx_url, message)
 
         if success:
             success_count += 1
