@@ -372,14 +372,12 @@ def notify_operators_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 校验权限
         if 'ops_all' not in permissions and 'ops_group' not in permissions:
             return JsonResponse({
                 'success': False,
                 'message': '无权操作：需要 ops_all 或 ops_group 权限'
             }, status=403)
 
-        # 使用与预览相同的逻辑获取待通知列表
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
 
         if filter_type == 'none':
@@ -392,11 +390,10 @@ def notify_operators_api(request):
                 }
             })
 
-        # 获取权限范围内的店铺
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
-        # 基础查询：待处理绩效 + 权限范围内的店铺
-        base_query = AmazonPerformanceNotification.objects.filter(
+        # 使用Q对象构建基础筛选条件
+        base_filter = Q(
             needs_attention=1,
             is_processed=0,
             shop_id__in=list(shop_ids)
@@ -419,25 +416,24 @@ def notify_operators_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
 
         if current_start and current_end:
-            base_query = base_query.filter(date__gte=current_start, date__lte=current_end)
+            base_filter &= Q(date__gte=current_start, date__lte=current_end)
 
         # 店铺名称搜索
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            base_query = base_query.filter(shop__shop_name__icontains=shop_name)
+            base_filter &= Q(shop__shop_name__icontains=shop_name)
 
         # 主题关键词搜索
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            base_query = base_query.filter(subject__icontains=subject_keyword)
+            base_filter &= Q(subject__icontains=subject_keyword)
 
         # 权限范围控制
-        operators_query = Q()
         if 'ops_all' in permissions:
-            pass
+            operators_query = Q()  # 管理员：无额外限制
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
-            operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
+            operators_query = Q(shop__ops__operational_account__ops_group=group_name)
         else:
             return JsonResponse({
                 'success': True,
@@ -450,7 +446,7 @@ def notify_operators_api(request):
 
         # 获取每个运营的待处理统计
         pending_stats = AmazonPerformanceNotification.objects.filter(
-            base_query & operators_query
+            base_filter & operators_query
         ).values(
             'shop__ops_id',
             'shop__ops__first_name',
@@ -459,7 +455,7 @@ def notify_operators_api(request):
             pending_count=Count('id')
         ).order_by('-pending_count')
 
-        # 构建operator_stats格式
+        # 构建 operator_stats 格式
         operator_stats = {}
         for item in pending_stats:
             ops_name = item['shop__ops__first_name']
@@ -473,9 +469,9 @@ def notify_operators_api(request):
                     'total_count': item['pending_count']
                 }
 
-            # 获取该运营的店铺明细
-            shop_details = AmazonPerformanceNotification.objects.filter(
-                base_query & operators_query,
+            # 获取该运营的店铺明细及所有通知主题
+            shop_details_query = AmazonPerformanceNotification.objects.filter(
+                base_filter & operators_query,
                 shop__ops_id=item['shop__ops_id']
             ).values(
                 'shop__shop_name'
@@ -483,16 +479,33 @@ def notify_operators_api(request):
                 shop_pending=Count('id')
             ).order_by('-shop_pending')
 
-            operator_stats[ops_name]['shops'] = [
-                {
+            for shop in shop_details_query:
+                # 获取该店铺的所有通知主题
+                subjects = AmazonPerformanceNotification.objects.filter(
+                    base_filter & operators_query,
+                    shop__ops_id=item['shop__ops_id'],
+                    shop__shop_name=shop['shop__shop_name']
+                ).values_list('subject', flat=True)
+
+                operator_stats[ops_name]['shops'].append({
                     'shop_name': shop['shop__shop_name'] or '未知店铺',
-                    'count': shop['shop_pending']
-                }
-                for shop in shop_details
-            ]
+                    'count': shop['shop_pending'],
+                    'subjects': list(subjects)
+                })
 
         # 调用服务层发送
         result = send_performance_notifications(operator_stats)
+
+        # 记录操作日志
+        details = f"通知{result['success_count']}人成功，{result['fail_count']}人失败"
+        if result['fail_details']:
+            details += f" | 失败详情: {', '.join(result['fail_details'][:3])}"
+
+        UserOperationLog.objects.create(
+            user=user,
+            operation_type=UserOperationLog.PERFORMANCE_NOTIFY_OPERATORS,
+            operation_record=f"批量通知运营处理绩效: {details}"
+        )
 
         return JsonResponse({
             'success': True,
@@ -504,7 +517,6 @@ def notify_operators_api(request):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
-
 
 @login_required
 def get_performance_operators_api(request):

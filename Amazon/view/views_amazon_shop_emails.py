@@ -394,13 +394,14 @@ def notify_operators_api(request):
 
         shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
 
-        email_filter = Q(
+        # 使用Q对象构建基础筛选条件
+        base_filter = Q(
             shop_id__in=list(shop_ids),
             is_attention_needed=True,
             is_processed=False
         )
 
-        # 应用筛选条件（完整保留原有逻辑）
+        # 日期筛选
         date_range_option = data.get('date_range', 'unlimited')
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
@@ -417,28 +418,28 @@ def notify_operators_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
 
         if current_start and current_end:
-            email_filter &= Q(receive_time__date__gte=current_start)
-            email_filter &= Q(receive_time__date__lte=current_end)
+            base_filter &= Q(receive_time__date__gte=current_start)
+            base_filter &= Q(receive_time__date__lte=current_end)
 
+        # 其他筛选条件
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
-            email_filter &= Q(shop__shop_name__icontains=shop_name)
+            base_filter &= Q(shop__shop_name__icontains=shop_name)
 
         sender_keyword = data.get('sender_keyword', '').strip()
         if sender_keyword:
-            email_filter &= Q(sender__icontains=sender_keyword)
+            base_filter &= Q(sender__icontains=sender_keyword)
 
         subject_keyword = data.get('subject_keyword', '').strip()
         if subject_keyword:
-            email_filter &= Q(subject__icontains=subject_keyword)
+            base_filter &= Q(subject__icontains=subject_keyword)
 
         # 权限范围控制
-        operators_query = Q()
         if 'ops_all' in permissions:
-            pass
+            operators_query = Q()
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
-            operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
+            operators_query = Q(shop__ops__operational_account__ops_group=group_name)
         else:
             return JsonResponse({
                 'success': True,
@@ -451,7 +452,7 @@ def notify_operators_api(request):
 
         # 获取每个运营的待处理统计
         pending_stats = AmazonShopEmail.objects.filter(
-            email_filter & operators_query
+            base_filter & operators_query
         ).values(
             'shop__ops_id',
             'shop__ops__first_name',
@@ -475,9 +476,9 @@ def notify_operators_api(request):
                     'backlog_stats': {3: 0, 7: 0, 15: 0}
                 }
 
-            # 获取该运营的店铺明细
-            shop_details = AmazonShopEmail.objects.filter(
-                email_filter,
+            # 获取店铺明细及所有邮件标题
+            shop_details_query = AmazonShopEmail.objects.filter(
+                base_filter & operators_query,
                 shop__ops_id=item['shop__ops_id']
             ).values(
                 'shop__shop_name'
@@ -485,28 +486,34 @@ def notify_operators_api(request):
                 shop_pending=Count('id')
             ).order_by('-shop_pending')
 
-            operator_stats[ops_name]['shops'] = [
-                {
+            for shop in shop_details_query:
+                # 获取该店铺的所有邮件标题
+                subjects = AmazonShopEmail.objects.filter(
+                    base_filter & operators_query,
+                    shop__ops_id=item['shop__ops_id'],
+                    shop__shop_name=shop['shop__shop_name']
+                ).values_list('subject', flat=True)
+
+                operator_stats[ops_name]['shops'].append({
                     'shop_name': shop['shop__shop_name'] or '未知店铺',
-                    'count': shop['shop_pending']
-                }
-                for shop in shop_details
-            ]
+                    'count': shop['shop_pending'],
+                    'subjects': list(subjects)
+                })
 
             # 计算积压统计
             now = timezone.now()
             for days in [3, 7, 15]:
                 backlog_count = AmazonShopEmail.objects.filter(
-                    email_filter,
+                    base_filter & operators_query,
                     shop__ops_id=item['shop__ops_id'],
                     receive_time__lte=now - timedelta(days=days)
                 ).count()
                 operator_stats[ops_name]['backlog_stats'][days] = backlog_count
 
-        # ========== 调用服务层发送（核心改造）==========
+        # 调用服务层发送
         result = send_email_notifications(operator_stats)
 
-        # 记录操作日志（保持原有逻辑）
+        # 记录操作日志
         details = f"通知{result['success_count']}人成功，{result['fail_count']}人失败"
         if result['fail_details']:
             details += f" | 失败详情: {', '.join(result['fail_details'][:3])}"
@@ -527,7 +534,6 @@ def notify_operators_api(request):
             'success': False,
             'message': f'服务器错误: {str(e)}'
         }, status=500)
-
 
 @login_required
 def get_shop_emails_operators_api(request):
