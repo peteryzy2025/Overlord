@@ -384,6 +384,15 @@ class AmazonShopDailyCheck(models.Model):
         default=False,
         db_comment='是否进行提现操作'
     )
+    withdrawal_amount = models.DecimalField(
+        max_digits=10,  # 总位数（可根据业务调整）
+        decimal_places=2,  # 保留2位小数
+        null=True,
+        blank=True,
+        default=None,
+        db_comment='提现金额'
+    )
+
     last_restock_date = models.DateField(
         null=True,  # 允许为空，因为可能还没有上货记录
         blank=True,

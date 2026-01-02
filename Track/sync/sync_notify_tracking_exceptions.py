@@ -86,7 +86,7 @@ def build_notification_message(operator_name, uncollected_stats, exclude_stats):
             if tracks:
                 # 按停滞天数降序排列
                 tracks_sorted = sorted(tracks, key=lambda x: x['stale_hours'], reverse=True)
-                track_list = "，".join([t['track_no'] for t in tracks_sorted])
+                track_list = " ".join([t['track_no'] for t in tracks_sorted])
                 lines.append(f"\n**超过{days}天待揽收的有{len(tracks)}个：**")
                 lines.append(f"{track_list}")
 
@@ -98,7 +98,7 @@ def build_notification_message(operator_name, uncollected_stats, exclude_stats):
             if tracks:
                 # 按停滞天数降序排列
                 tracks_sorted = sorted(tracks, key=lambda x: x['stale_hours'], reverse=True)
-                track_list = "，".join([t['track_no'] for t in tracks_sorted])
+                track_list = " ".join([t['track_no'] for t in tracks_sorted])
                 lines.append(f"\n**停滞超过{days}天的有{len(tracks)}个：**")
                 lines.append(f"{track_list}")
 
