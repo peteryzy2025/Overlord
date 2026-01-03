@@ -61,7 +61,8 @@ INSTALLED_APPS = [
     'Temu.apps.TemuConfig',
     'Track.apps.TrackConfig',
     'Yuser.apps.YuserConfig',
-    'Zother.apps.ZotherConfig'
+    'Zother.apps.ZotherConfig',
+    'Theme.apps.ThemeConfig'
 ]
 
 MIDDLEWARE = [
