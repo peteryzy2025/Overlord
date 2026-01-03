@@ -815,7 +815,7 @@
 
     /* 核心修改 1：使用 Flexbox 布局 */
     /* 注意：JS 中使用的是 display: block，这里我们通过 CSS 覆盖它 */
-    align-items: center;     /* 垂直居中 */
+    align-items: center; /* 垂直居中 */
     justify-content: center; /* 水平居中 */
 
     /* 修复移动端滚动穿透 */
@@ -903,6 +903,7 @@
 .modal-body::-webkit-scrollbar {
     width: 6px;
 }
+
 .modal-body::-webkit-scrollbar-thumb {
     background-color: var(--border-color);
     border-radius: 3px;
@@ -977,6 +978,7 @@ body.modal-open {
     overflow: hidden;
     padding-right: 15px; /* 防止滚动条消失导致的页面跳动，可选 */
 }
+
 /* 🔴 新增：运单号悬停提示样式 */
 .factory-tooltip {
     position: fixed; /* 使用fixed避免表格滚动影响 */
@@ -1009,4 +1011,163 @@ body.modal-open {
 
 .factory-tooltip.visible {
     opacity: 1;
+}
+
+/* ==================== 可编辑备注单元格样式（完整版） ==================== */
+
+/* 强制锁定备注列宽度 - 第10列 */
+#trackingTable th:nth-child(10) {
+    width: 300px !important;
+    max-width: 300px !important;
+    min-width: 300px !important;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#trackingTable td:nth-child(10) {
+    max-width: 300px !important;
+    width: 300px !important;
+    min-width: 300px !important;
+    padding: 0 !important; /* 移除td内边距，由div控制 */
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* 备注单元格核心样式 */
+.remark-cell {
+    max-width: 300px !important;
+    width: 100% !important;
+    min-height: 40px;
+    padding: 8px 12px;
+    margin: 0;
+
+    /* 始终可见的边框 - 解决"不知道能点"的问题 */
+    border: 1px solid #d1d5db; /* 使用固定浅灰色，而非透明 */
+    border-radius: 10px;
+    cursor: text;
+    transition: all 0.2s ease;
+
+    /* 文本溢出控制 */
+    white-space: pre-wrap; /* 允许换行 */
+    word-wrap: break-word; /* 长单词截断 */
+    overflow-wrap: break-word;
+    overflow: hidden; /* 强制隐藏溢出 */
+
+    /* 背景色区分 */
+    background-color: #f9fafb; /* 默认浅灰背景 */
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* 空值状态提示 - 比title属性更直观 */
+.remark-cell:empty::before {
+    content: '点击添加备注';
+    color: #9ca3af;
+    font-style: normal;        /* 🔴 改成正体 */
+    font-size: 13px;            /* 🔴 设置小字体 */
+    font-weight: 400;           /* 可选：正常字重 */
+    line-height: 1.4;           /* 可选：行高适配 */
+    pointer-events: none;
+}
+
+/* 悬停状态 - 边框加深 */
+.remark-cell:hover {
+    background-color: #f3f4f6;
+    border-color: var(--accent-color); /* 使用主题色 */
+}
+
+/* 焦点状态 - 高亮 */
+.remark-cell:focus {
+    outline: none; /* 移除默认outline */
+    border: 2px solid var(--accent-color); /* 更粗的边框 */
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); /* 发光效果 */
+}
+
+/* 保存中状态 */
+.remark-cell.saving {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.remark-cell.saving::after {
+    content: '保存中...';
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #6b7280;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+/* 保存成功动画 */
+@keyframes saveSuccess {
+    0% {
+        background-color: #ffffff;
+    }
+    50% {
+        background-color: #d1fae5;
+    }
+    /* 淡绿色 */
+    100% {
+        background-color: #f9fafb;
+    }
+}
+
+@keyframes saveError {
+    0% {
+        background-color: #ffffff;
+    }
+    50% {
+        background-color: #fee2e2;
+    }
+    /* 淡红色 */
+    100% {
+        background-color: #f9fafb;
+    }
+}
+
+.remark-cell.save-success {
+    animation: saveSuccess 0.6s ease;
+}
+
+.remark-cell.save-error {
+    animation: saveError 0.6s ease;
+}
+
+/* 暗黑模式适配 */
+[data-theme="dark"] .remark-cell {
+    background-color: rgba(30, 41, 59, 0.3);
+    border-color: #4b5563;
+}
+
+[data-theme="dark"] .remark-cell:hover {
+    background-color: rgba(30, 41, 59, 0.5);
+}
+
+[data-theme="dark"] .remark-cell:focus {
+    background-color: var(--bg-primary);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    #trackingTable th:nth-child(10),
+    #trackingTable td:nth-child(10) {
+        max-width: 200px !important;
+        min-width: 200px !important;
+        width: 200px !important;
+    }
+
+    .remark-cell {
+        max-width: 200px !important;
+        min-width: 200px !important;
+    }
+}
+
+.remark-cell[style] {
+    max-width: 300px !important;
+    width: 300px !important;
 }
