@@ -18,8 +18,6 @@ class AmazonProduct(models.Model):
     product_type = models.CharField(
         max_length=20,
         choices=PRODUCT_TYPE_CHOICES,
-        blank=True,
-        null=True,
         verbose_name='产品类型'
     )
     class Meta:
