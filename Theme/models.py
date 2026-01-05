@@ -11,7 +11,17 @@ class AmazonProduct(models.Model):
     image_url = models.URLField(max_length=500, verbose_name='图片链接')
     launch_date = models.DateField(null=True, blank=True, verbose_name='上架时间')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次抓取时间')
-
+    PRODUCT_TYPE_CHOICES = [
+        ('new_peculiar', '新奇特'),
+        ('new_arrival', '新品榜'),
+    ]
+    product_type = models.CharField(
+        max_length=20,
+        choices=PRODUCT_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='产品类型'
+    )
     class Meta:
         db_table = 'amazon_product'
         verbose_name = '亚马逊产品'
