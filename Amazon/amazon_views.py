@@ -679,7 +679,14 @@ def get_order_statistics(lingxing_shop_ids, start_date, end_date):
 
     # 退货率
     return_rate = f"{return_order_count / total_order_count * 100:.1f}%" if total_order_count > 0 else "0.0%"
-
+    print(f"\n=== Debug Stats ===")
+    print(f"lingxing_shop_ids: {lingxing_shop_ids}")
+    print(f"order_ids count: {len(order_ids)}")
+    print(f"cancelled_order_ids count: {cancelled_orders.count()}")
+    print(f"total_sales_quantity_raw: {total_sales_quantity_raw}")
+    print(f"return_sales_quantity: {return_sales_quantity}")
+    print(f"final total_sales_quantity: {total_sales_quantity}")
+    print(f"==================\n")
     return {
         'order_count': order_count,
         'total_sales_quantity': total_sales_quantity,
