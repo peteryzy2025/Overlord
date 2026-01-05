@@ -118,6 +118,98 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             return max_score - ((100 - rate) * 2)
         return 0
 
+    # ========== 新增：等级计算 ==========
+    def calculate_grade_level(self, score, assess_type):
+        """根据得分和考核类型计算等级"""
+        if assess_type in ['temu_operation', 'amazon_operation']:
+            if score >= 150:
+                return 'S级'
+            elif score >= 90:
+                return 'A级'
+            elif score >= 80:
+                return 'B级'
+            elif score >= 70:
+                return 'C级'
+            elif score >= 60:
+                return 'D级'
+            else:
+                return 'E级'
+        else:  # amazon_assistant
+            return '达标' if score >= 70 else '不达标'
+
+    # ========== 新增：消息构建 ==========
+    def _build_notification_message(self, assessment, operator, operation_type, final_score=None, extra_context=None):
+        """
+        构建考核通知消息内容
+
+        参数:
+            assessment: 考核对象
+            operator: 操作人(用户对象)
+            operation_type: 操作类型字符串
+            final_score: 最终得分(可选)
+            extra_context: 额外上下文(如驳回原因等)
+        """
+        # 获取评分明细
+        score_details = {
+            d.item_key: float(d.score_value)
+            for d in assessment.score_details.all()
+        }
+
+        accident_score = score_details.get('accident_score', 0)
+        extra_bonus = score_details.get('extra_bonus', 0)
+        shop_activation = score_details.get('shop_activation', 0)
+
+        # 计算业绩得分
+        performance_score = self.calculate_performance_score(assessment)
+
+        # 计算行为考核小计(排除特殊项)
+        behavior_raw = sum(
+            score for key, score in score_details.items()
+            if key not in ['performance_score', 'accident_score', 'extra_bonus', 'shop_activation']
+        )
+
+        # 计算KPI小计
+        kpi_raw = performance_score + accident_score
+
+        # 构建消息
+        lines = [
+            f"【绩效考核通知】",
+            f"📋 **考核信息**：{assessment.get_assess_type_display()} | {assessment.month[:4]}年{assessment.month[5:]}月",
+            f"👥 **操作人员**：{operator.first_name}",
+            f"📝 **操作类型**：{operation_type}",
+            "",
+            f"📊 **评分汇总**：",
+            f"• 业绩得分：{performance_score:.2f} / {performance_score:.2f}",
+            f"• 行为考核：{behavior_raw:.2f} / {behavior_raw:.2f}",
+            f"• 事故扣分：-{accident_score:.2f}",
+        ]
+
+        # 加分项
+        if extra_bonus > 0:
+            lines.append(f"• 超额完成：+{extra_bonus:.2f}")
+
+        if shop_activation > 0:
+            lines.append(f"• 店铺激活：+{shop_activation:.2f}")
+
+        # 最终得分
+        if final_score is not None:
+            grade_level = self.calculate_grade_level(final_score, assessment.assess_type)
+            lines.append(f"")
+            lines.append(f"🏆 **最终得分**：**{final_score:.2f}** ({grade_level})")
+
+        # 额外上下文(驳回原因等)
+        if extra_context and extra_context.get('reject_reason'):
+            lines.append(f"")
+            lines.append(f"❌ **驳回原因**：{extra_context['reject_reason']}")
+
+        lines.extend([
+            "",
+            f"✅ **当前状态**：{assessment.get_status_display()}",
+            f"⏰ **操作时间**：{timezone.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        ])
+
+        return "\n".join(lines)
+
     def calculate_actual_orders_and_update(self, assessment):
         """
         计算并更新实际订单量（有效销量，排除退货）
@@ -216,7 +308,7 @@ class AssessmentManagementView(LoginRequiredMixin, View):
 
                     # 判断该店铺是否达标（订单量≥200）
                     if shop_valid_quantity >= 200:
-                        shop_activation_score += 10
+                        shop_activation_score += 1
 
                     # print(
                     #     f"🏪 店铺统计: ShopID={temu_shop_id} | 销量={shop_valid_quantity} | 达标={shop_valid_quantity >= 200}")
@@ -601,7 +693,26 @@ class SubmitToMemberView(AssessmentManagementView):
         assessment.final_score = final_score
         assessment.status = 'pending_member'
         assessment.save()
+        # 【★ 新增】同步发送企业微信通知
+        try:
+            # 构建消息
+            message = self._build_notification_message(
+                assessment=assessment,
+                operator=request.user,
+                operation_type='组长提交考核',
+                final_score=final_score
+            )
 
+            # 发送给组员
+            if assessment.employee.wx_url:
+                from Api.WX.wx import send_wechat_work_message
+                send_wechat_work_message(
+                    webhook_url=assessment.employee.wx_url,
+                    markdown_content=message
+                )
+        except Exception as e:
+            # 静默失败，只记录日志
+            print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
             operation_type=UserOperationLog.ASSESSMENT_SUBMIT,
@@ -627,7 +738,22 @@ class MemberConfirmView(AssessmentManagementView):
         assessment.status = 'pending_leader'
         assessment.member_confirmed_at = timezone.now()
         assessment.save()
+        # 【★ 新增】同步发送企业微信通知
+        try:
+            message = self._build_notification_message(
+                assessment=assessment,
+                operator=request.user,
+                operation_type='组员确认考核'
+            )
 
+            if assessment.leader and assessment.leader.wx_url:
+                from Api.WX.wx import send_wechat_work_message
+                send_wechat_work_message(
+                    webhook_url=assessment.leader.wx_url,
+                    markdown_content=message
+                )
+        except Exception as e:
+            print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
             operation_type=UserOperationLog.ASSESSMENT_MEMBER_CONFIRM,
@@ -657,7 +783,23 @@ class MemberRejectView(AssessmentManagementView):
 
         assessment.status = 'draft'
         assessment.save()
+        # 【★ 新增】同步发送企业微信通知
+        try:
+            message = self._build_notification_message(
+                assessment=assessment,
+                operator=request.user,
+                operation_type='组员驳回考核',
+                extra_context={'reject_reason': comment}
+            )
 
+            if assessment.leader and assessment.leader.wx_url:
+                from Api.WX.wx import send_wechat_work_message
+                send_wechat_work_message(
+                    webhook_url=assessment.leader.wx_url,
+                    markdown_content=message
+                )
+        except Exception as e:
+            print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
             operation_type=UserOperationLog.ASSESSMENT_MEMBER_REJECT,
@@ -704,7 +846,23 @@ class LeaderFinalConfirmView(AssessmentManagementView):
             assessment.final_score = final_score
             assessment.leader_confirmed_at = timezone.now()
             assessment.save()
+            # 【★ 新增】同步发送企业微信通知
+            try:
+                message = self._build_notification_message(
+                    assessment=assessment,
+                    operator=request.user,
+                    operation_type='组长最终确认并锁定',
+                    final_score=final_score
+                )
 
+                if assessment.employee.wx_url:
+                    from Api.WX.wx import send_wechat_work_message
+                    send_wechat_work_message(
+                        webhook_url=assessment.employee.wx_url,
+                        markdown_content=message
+                    )
+            except Exception as e:
+                print(f"通知发送失败(静默): {str(e)}")
             UserOperationLog.objects.create(
                 user=request.user,
                 operation_type=UserOperationLog.ASSESSMENT_LEADER_CONFIRM,

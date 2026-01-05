@@ -598,26 +598,7 @@
                             </tr>
                         {% endif %}
 
-                        <!-- Temu特有的店铺激活加分 -->
-                        {% if category.grouper == 'bonus' and assessment.assess_type == 'temu_operation' %}
-                            <tr>
-                                <td><strong>加分项</strong></td>
-                                <td>店铺激活</td>
-                                <td>每激活1个店铺+10分</td>
-                                <td>-</td>
-                                <td>
-                                    {% with shop_activation=scores|get_item:'shop_activation'|default:0 %}
-                                        <input type="number"
-                                               class="score-input"
-                                               name="shop_activation"
-                                               value="{{ shop_activation|floatformat:2 }}"
-                                               min="0"
-                                               data-category="bonus"
-                                               {% if not can_edit %}disabled{% endif %}>
-                                    {% endwith %}
-                                </td>
-                            </tr>
-                        {% endif %}
+
                     {% endfor %}
 
                     <!-- 最终得分 -->
