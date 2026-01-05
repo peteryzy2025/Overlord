@@ -43,7 +43,9 @@ def get_divi_logistics_code(divi_logistics_method: str,
         if not tracking:
             print("F-USPS 未提供单号，无法识别承运商")
             return ""
-
+        if tracking.startswith("SF"):
+            # UniUni
+            return "500518-21734"
         # 单号前缀判断：UniUni
         if tracking.startswith("UU"):
             # UniUni
@@ -292,6 +294,8 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
             '0.00')
 
         waybill_no = order.divi_tracking_number or ""
+        if waybill_no == "" or waybill_no is None:
+            raise Exception("没有跟踪号，请手动处理")
         logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
         if logistics_type_id is None or logistics_type_id == "":
             raise Exception(f"物流方式 {order.divi_logistics_method} 不支持，请手动处理")
