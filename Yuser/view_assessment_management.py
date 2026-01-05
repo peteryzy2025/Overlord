@@ -141,13 +141,6 @@ class AssessmentManagementView(LoginRequiredMixin, View):
     def _build_notification_message(self, assessment, operator, operation_type, final_score=None, extra_context=None):
         """
         构建考核通知消息内容
-
-        参数:
-            assessment: 考核对象
-            operator: 操作人(用户对象)
-            operation_type: 操作类型字符串
-            final_score: 最终得分(可选)
-            extra_context: 额外上下文(如驳回原因等)
         """
         # 获取评分明细
         score_details = {
@@ -155,9 +148,8 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             for d in assessment.score_details.all()
         }
 
+        # 关键修复：事故分只显示实际扣分（>0才显示）
         accident_score = score_details.get('accident_score', 0)
-        extra_bonus = score_details.get('extra_bonus', 0)
-        shop_activation = score_details.get('shop_activation', 0)
 
         # 计算业绩得分
         performance_score = self.calculate_performance_score(assessment)
@@ -167,9 +159,6 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             score for key, score in score_details.items()
             if key not in ['performance_score', 'accident_score', 'extra_bonus', 'shop_activation']
         )
-
-        # 计算KPI小计
-        kpi_raw = performance_score + accident_score
 
         # 构建消息
         lines = [
@@ -181,13 +170,18 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             f"📊 **评分汇总**：",
             f"• 业绩得分：{performance_score:.2f} / {performance_score:.2f}",
             f"• 行为考核：{behavior_raw:.2f} / {behavior_raw:.2f}",
-            f"• 事故扣分：-{accident_score:.2f}",
         ]
 
-        # 加分项
+        # 🔥 关键修复：只有实际扣分（>0）才显示
+        if accident_score > 0:
+            lines.append(f"• 事故扣分：-{accident_score:.2f}")
+
+        # 🔥 关键修复：只有实际加分（>0）才显示
+        extra_bonus = score_details.get('extra_bonus', 0)
         if extra_bonus > 0:
             lines.append(f"• 超额完成：+{extra_bonus:.2f}")
 
+        shop_activation = score_details.get('shop_activation', 0)
         if shop_activation > 0:
             lines.append(f"• 店铺激活：+{shop_activation:.2f}")
 
