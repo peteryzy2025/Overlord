@@ -75,6 +75,12 @@ def sync_temu_orders(data_dict):
                 skipped_orders += len(orders)
                 continue
 
+            # ========== 店铺级统计初始化 ==========
+            shop_created_orders = 0
+            shop_updated_orders = 0
+            shop_total_items = 0
+            shop_name = getattr(lingxing_shop, 'name', store_id)  # 安全获取店铺名称
+
             for raw_order in orders:
                 try:
                     global_order_no = raw_order.get("global_order_no")
@@ -134,8 +140,10 @@ def sync_temu_orders(data_dict):
 
                     if created:
                         created_orders += 1
+                        shop_created_orders += 1  # 店铺级统计
                     else:
                         updated_orders += 1
+                        shop_updated_orders += 1  # 店铺级统计
                     total_orders += 1
 
                     # ========== 处理订单明细 ==========
@@ -146,10 +154,10 @@ def sync_temu_orders(data_dict):
                         seen_global_item_nos = set()
 
                         for row in item_list:
-                            global_item_no = row.get('globalItemNo')
+                            global_item_no = row.get('global_item_no') or row.get('globalItemNo')
 
                             if not global_item_no or global_item_no in seen_global_item_nos:
-                                print(f"警告: 订单 {global_order_no} 存在重复或无效的 globalItemNo: {global_item_no}")
+                                print(f"警告: 订单 {global_order_no} 存在重复或无效的 global_item_no: {global_item_no}")
                                 continue
 
                             seen_global_item_nos.add(global_item_no)
@@ -179,6 +187,7 @@ def sync_temu_orders(data_dict):
                         if items_to_create:
                             TemuOrderItem.objects.bulk_create(items_to_create)
                             total_items += len(items_to_create)
+                            shop_total_items += len(items_to_create)  # 店铺级统计
 
                 except Exception as e:
                     print(
@@ -186,10 +195,12 @@ def sync_temu_orders(data_dict):
                     skipped_orders += 1
                     continue
 
+            # ========== 打印店铺级统计 ==========
+            print(f"\n【店铺: {shop_name}】订单处理完成 - 新增: {shop_created_orders}条 | 更新: {shop_updated_orders}条 | 商品明细: {shop_total_items}条")
+
     # ========== 同步统计 ==========
     print(
         f"\n同步完成 - 订单总计: {total_orders}, 新增: {created_orders}, 更新: {updated_orders}, 跳过: {skipped_orders}, 商品明细总数: {total_items}")
-
 
 def temu_orders():
     """主入口函数"""
@@ -207,7 +218,7 @@ def temu_orders():
 
     # 2. 拉取订单数据（默认3天）
     try:
-        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=7))
+        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=14))
     except Exception as e:
         print(f"调用领星 API 失败: {e}")
         return

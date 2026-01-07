@@ -334,7 +334,7 @@ class AssessmentManagementView(LoginRequiredMixin, View):
     def calculate_final_score(self, assessment):
         """计算最终总分（业绩达成得分 × 权重 + 行为考核得分 × 权重 + 加分项）"""
 
-        # 1. 设置权重（Decimal 类型）
+        # 1. 设置权重
         if assessment.assess_type == 'temu_operation':
             kpi_weight = Decimal('0.7')
             behavior_weight = Decimal('0.3')
@@ -345,29 +345,27 @@ class AssessmentManagementView(LoginRequiredMixin, View):
             kpi_weight = Decimal('0.3')
             behavior_weight = Decimal('0.7')
 
-        # 2. 计算业绩得分（转换为 Decimal）
+        # 2. 计算业绩得分
         performance_score = Decimal(str(self.calculate_performance_score(assessment)))
 
-        # 3. 获取评分项（转换为 Decimal）
+        # 3. 获取评分项
         details = assessment.score_details.all()
         details_dict = {d.item_key: Decimal(str(d.score_value)) for d in details}
 
-        # 4. 自动计算超额完成业绩（关键修改：向下取整）
+        # 4. 计算超额完成业绩（仅超额部分，不合并shop_activation）
         achievement_rate = assessment.achievement_rate
         extra_bonus = Decimal('0')
         if achievement_rate > 100:
-            # 向下取整，去掉小数点后的部分
             extra_bonus = Decimal(str(int(achievement_rate - 100)))
 
-        # 更新到字典中供后续使用
-        details_dict['extra_bonus'] = extra_bonus
+        # 关键修复：不更新details_dict，保持extra_bonus独立
 
-        # 5. 计算KPI总分（保持不变）
+        # 5. 计算KPI总分（业绩得分 + 事故分）* 权重
         accident_score = details_dict.get('accident_score', Decimal('0'))
         kpi_raw = performance_score + accident_score
         kpi_total = kpi_raw * kpi_weight
 
-        # 6. 计算行为考核总分（保持不变）
+        # 6. 计算行为考核总分 * 权重
         exclude_keys = {'performance_score', 'accident_score', 'extra_bonus', 'shop_activation'}
         behavior_raw = sum(
             score for key, score in details_dict.items()
@@ -375,14 +373,16 @@ class AssessmentManagementView(LoginRequiredMixin, View):
         )
         behavior_total = behavior_raw * behavior_weight
 
-        # 7. 处理特殊加分项（保持不变）
+        # 7. 获取店铺激活加分（仅Temu，不合并到extra_bonus）
+        shop_activation = Decimal('0')
         if assessment.assess_type == 'temu_operation':
             shop_activation = details_dict.get('shop_activation', Decimal('0'))
-            extra_bonus += shop_activation
 
-        # 8. 计算最终得分（保持不变）
-        final_score = kpi_total + behavior_total + extra_bonus
+        # 8. 计算最终得分（关键修复：分别加上两个加分项）
 
+        final_score = kpi_total + behavior_total + extra_bonus + shop_activation
+        print(f"计算最终得分: KPI={kpi_total} | 行为={behavior_total} | 超额完成={extra_bonus} | 店铺激活={shop_activation} => 最终得分={final_score}")
+        # 9. 返回时明确extra_bonus仅超额部分
         return round(final_score, 2), extra_bonus
 
 
@@ -929,9 +929,24 @@ class AssessmentSubmitView(AssessmentManagementView):
     def post(self, request, pk):
         assessment = get_object_or_404(PerformanceAssessment, pk=pk)
 
+        # ===== 调试打印1：查看POST提交的数据 =====
+        print(f"\n{'=' * 60}")
+        print(f"🔍 调试：考核ID {pk} 提交的数据")
+        print(f"{'=' * 60}")
+        for key, value in request.POST.items():
+            if key.startswith('item_') or key in ['extra_bonus', 'shop_activation']:
+                print(f"POST字段: {key} = {value}")
+
         if not self.can_edit(assessment):
             return JsonResponse({'success': False, 'message': '无权操作或考核已提交'}, status=403)
 
+        # ===== 调试打印2：保存前的数据库值 =====
+        old_details = {d.item_key: float(d.score_value) for d in assessment.score_details.all()}
+        print(f"\n保存前数据库中的score_details:")
+        for k, v in old_details.items():
+            print(f"  {k}: {v}")
+
+        # 保存所有表单提交的评分项
         for key, value in request.POST.items():
             if key.startswith('item_') or key in ['extra_bonus', 'shop_activation']:
                 clean_key = key.replace('item_', '', 1) if key.startswith('item_') else key
@@ -940,9 +955,41 @@ class AssessmentSubmitView(AssessmentManagementView):
                     item_key=clean_key,
                     defaults={'score_value': float(value)}
                 )
+                print(f"✅ 已保存: {clean_key} = {value}")
+
+        # ===== 调试打印3：计算过程中的值 =====
+        print(f"\n计算过程:")
+        print(f"  assess_type: {assessment.assess_type}")
+        print(f"  achievement_rate: {assessment.achievement_rate}")
 
         assessment.performance_score = self.calculate_performance_score(assessment)
+        print(f"  performance_score: {assessment.performance_score}")
+
+        # 重新获取所有评分项（确保是最新值）
+        details = assessment.score_details.all()
+        details_dict = {d.item_key: float(d.score_value) for d in details}
+        print(f"\n保存后重新读取的score_details:")
+        for k, v in details_dict.items():
+            print(f"  {k}: {v}")
+
         final_score, extra_bonus = self.calculate_final_score(assessment)
+
+        # ===== 调试打印4：最终结果 =====
+        print(f"\n计算结果:")
+        print(f"  shop_activation: {details_dict.get('shop_activation', 0)}")
+        print(
+            f"  extra_bonus (超额部分): {int(assessment.achievement_rate - 100) if assessment.achievement_rate > 100 else 0}")
+        print(f"  extra_bonus (合并后): {extra_bonus}")
+        print(f"  final_score: {final_score}")
+        print(f"{'=' * 60}\n")
+
+        # 强制保存计算后的完整extra_bonus到数据库
+        PerformanceScoreDetail.objects.update_or_create(
+            assessment=assessment,
+            item_key='extra_bonus',
+            defaults={'score_value': extra_bonus}
+        )
+
         assessment.final_score = final_score
         assessment.save()
 

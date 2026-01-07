@@ -1,0 +1,71 @@
+/* static/css/task_create.css - 可选 */
+
+/* 拖拽排序时的样式 */
+.sortable-ghost {
+    opacity: 0.4;
+    background: var(--bg-secondary);
+    border: 2px dashed var(--accent-color);
+}
+
+.sortable-chosen {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-heavy);
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    cursor: grabbing !important;
+}
+
+/* 子任务编辑动画 */
+.subtask-edit-form {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Modal动画 */
+.modal-overlay .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* 产品ID标签悬停效果 */
+.product-id-tag:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+/* 模板卡片悬停效果 */
+.subtask-type-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+/* 表单验证错误样式 */
+.form-control.error {
+    border-color: var(--danger-color);
+}
+
+.form-control.error:focus {
+    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1);
+}
