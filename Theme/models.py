@@ -39,7 +39,7 @@ class ProductRankHistory(models.Model):
     )  # FK 会自动关联到 ASIN 主键
     crawl_date = models.DateField(verbose_name='爬取日期')
     rank = models.IntegerField(null=True, blank=True, verbose_name='当前排名')
-    rank_category = models.CharField(max_length=100, blank=True, verbose_name='排名大类')
+    rank_category = models.CharField(max_length=100, null=True,blank=True, verbose_name='排名大类')
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
 
     class Meta:

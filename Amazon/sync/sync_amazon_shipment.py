@@ -208,7 +208,7 @@ def process_auto_ship():
                 lingxing_ship_order(sid, amazon_order_id, mode="full_shipment")
 
                 # 如果是LS开头的假物流单号，标记
-                if tracking_number.startswith('LS'):
+                if tracking_number.startswith('LS') or tracking_number.startswith('999999LS'):
                     order.masked_single = True
                     order.save(update_fields=['masked_single'])
                     logger.info("  ✓ 发货成功（已标记为假物流）")
