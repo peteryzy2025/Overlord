@@ -62,7 +62,8 @@ INSTALLED_APPS = [
     'Track.apps.TrackConfig',
     'Yuser.apps.YuserConfig',
     'Zother.apps.ZotherConfig',
-    'Theme.apps.ThemeConfig'
+    'Theme.apps.ThemeConfig',
+    'Task.apps.TaskConfig'
 ]
 
 MIDDLEWARE = [

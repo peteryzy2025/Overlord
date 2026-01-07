@@ -1,0 +1,1730 @@
+{% extends 'base_r.html' %}
+{% load static %}
+
+{% block title %}创建任务 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+    <style>
+        /* ===== 页面容器 - 全屏自适应 ===== */
+        .task-create-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* ===== 卡片通用样式（复用邮件页面风格）===== */
+        .task-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ===== 任务主信息 ===== */
+        .task-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .form-control, .form-select {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        /* 任务单号预览 */
+        .task-no-preview {
+            font-family: 'Courier New', monospace;
+            background: var(--bg-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            border: 1px solid var(--border-color);
+        }
+
+        /* ===== 子任务管理区 ===== */
+        .subtasks-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .subtasks-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subtasks-count {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+        }
+
+        .subtasks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: 100px;
+        }
+
+        /* ===== 子任务项（默认编辑状态）===== */
+        .subtask-item {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .subtask-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            background: var(--bg-secondary);
+            border-radius: 8px 8px 0 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .subtask-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            color: var(--text-tertiary);
+            font-size: 1.25rem;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .subtask-number {
+            font-weight: 600;
+            color: var(--accent-color);
+            font-size: 0.9rem;
+        }
+
+        .subtask-type {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-color);
+        }
+
+        /* ===== 子任务编辑表单（默认展开）===== */
+        .subtask-edit-form {
+            padding: 1.25rem;
+            display: block !important; /* 强制默认显示 */
+        }
+
+        .dynamic-fields {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        /* ===== 产品ID输入与预览 ===== */
+        .product-ids-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .product-ids-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            max-height: 80px;
+            overflow-y: auto;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .product-id-tag {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .remove-product-id {
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .remove-product-id:hover {
+            color: white;
+        }
+
+        /* ===== 图库路径自动补全 ===== */
+        .form-group.has-autocomplete {
+            position: relative;
+        }
+
+        .path-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            box-shadow: var(--shadow-medium);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* ===== 模板操作区 ===== */
+        .template-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* ===== 底部操作区 ===== */
+        .form-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            position: sticky;
+            bottom: 2rem;
+            z-index: 10;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        /* ===== 模态框 ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        /* 子任务类型选择卡片 */
+        .subtask-type-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .subtask-type-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .subtask-type-card:hover {
+            border-color: var(--accent-color);
+            box-shadow: var(--shadow-light);
+        }
+
+        .subtask-type-card.selected {
+            border-color: var(--accent-color);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .type-icon {
+            font-size: 2rem;
+            color: var(--accent-color);
+            margin-bottom: 0.75rem;
+        }
+
+        /* ===== 自动保存提示 ===== */
+        .autosave-indicator {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: var(--bg-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            box-shadow: var(--shadow-medium);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .autosave-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 拖拽排序样式 */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: var(--bg-secondary);
+            border: 2px dashed var(--accent-color);
+        }
+
+        .sortable-chosen {
+            transform: scale(1.02);
+            box-shadow: var(--shadow-heavy);
+        }
+
+        /* 响应式（仅防止异常，不限制宽度） */
+        @media (max-width: 768px) {
+            .task-create-container {
+                padding: 1rem;
+            }
+
+            .task-info-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .dynamic-fields {
+                grid-template-columns: 1fr;
+            }
+
+            .subtask-type-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block sidebar %}
+    {{ block.super }}
+{% endblock %}
+
+{% block content %}
+    <div class="task-create-container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-tasks"></i> 创建任务
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="cancelCreation()">
+                    <i class="fas fa-times"></i> 取消
+                </button>
+            </div>
+        </div>
+
+        <!-- 任务主信息 -->
+        <div class="task-card">
+            <h2 class="card-title">
+                <i class="fas fa-info-circle"></i> 任务信息
+            </h2>
+            <div class="task-info-grid">
+                <div class="form-group">
+                    <label class="form-label">任务标题 <span style="color: var(--danger-color);">*</span></label>
+                    <input type="text" class="form-control" id="taskTitle"
+                           placeholder="请输入任务标题" maxlength="200">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">任务所有者 <span style="color: var(--danger-color);">*</span></label>
+                    <select class="form-select" id="taskOwner">
+                        <option value="">加载中...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">任务单号（自动生成）</label>
+                    <div class="task-no-preview" id="taskNoPreview">
+                        <i class="fas fa-spinner fa-spin"></i> 生成中...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务模板操作 -->
+        <div class="task-card">
+            <h2 class="card-title">
+                <i class="fas fa-file-alt"></i> 任务模板
+            </h2>
+            <div class="template-actions">
+                <button class="btn btn-secondary" onclick="showSaveTemplateModal()">
+                    <i class="fas fa-save"></i> 保存为模板
+                </button>
+                <button class="btn btn-secondary" onclick="showLoadTemplateModal()">
+                    <i class="fas fa-folder-open"></i> 加载模板
+                </button>
+            </div>
+        </div>
+
+        <!-- 子任务管理 -->
+        <div class="task-card">
+            <div class="subtasks-section">
+                <div class="subtasks-toolbar">
+                    <h2 class="card-title">
+                        <i class="fas fa-list-check"></i> 子任务管理
+                    </h2>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span class="subtasks-count" id="subtasksCount">已添加 0 个子任务</span>
+                        <button class="btn btn-primary" onclick="showAddSubtaskModal()">
+                            <i class="fas fa-plus"></i> 添加子任务
+                        </button>
+                    </div>
+                </div>
+
+                <div class="subtasks-container" id="subtasksContainer">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>暂无子任务</p>
+                        <p>点击"添加子任务"开始创建</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部操作区 -->
+        <div class="form-actions">
+            <button class="btn btn-secondary" onclick="cancelCreation()">
+                <i class="fas fa-times"></i> 取消
+            </button>
+            <button class="btn" onclick="saveDraft()">
+                <i class="fas fa-save"></i> 保存草稿
+            </button>
+            <button class="btn btn-primary" onclick="createTask()">
+                <i class="fas fa-paper-plane"></i> 创建任务
+            </button>
+        </div>
+    </div>
+
+    <!-- 自动保存提示 -->
+    <div class="autosave-indicator" id="autosaveIndicator">
+        <i class="fas fa-check-circle" style="color: #48bb78;"></i> 草稿已自动保存
+    </div>
+
+    <!-- 添加子任务模态框 -->
+    <div class="modal-overlay" id="addSubtaskModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">选择子任务类型</h3>
+                <button class="btn-icon" onclick="closeAddSubtaskModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="subtask-type-options">
+                    <div class="subtask-type-card" data-type="custom_upload" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <h4>定制上架</h4>
+                        <p>上传定制产品到店铺</p>
+                    </div>
+                    <div class="subtask-type-card" data-type="temu_export" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-download"></i>
+                        </div>
+                        <h4>Temu导单</h4>
+                        <p>导出Temu订单数据</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="confirmAddSubtaskBtn" onclick="confirmAddSubtask()"
+                        style="width: 100%; margin-top: 1.5rem;" disabled>
+                    <i class="fas fa-check"></i> 确认添加
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 保存模板模态框 -->
+    <div class="modal-overlay" id="saveTemplateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">保存任务模板</h3>
+                <button class="btn-icon" onclick="closeSaveTemplateModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">模板名称 <span style="color: var(--danger-color);">*</span></label>
+                    <input type="text" class="form-control" id="templateName"
+                           placeholder="例如：标准定制上架流程" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模板描述</label>
+                    <textarea class="form-control" id="templateDescription"
+                              placeholder="描述此模板的用途和使用场景" rows="3"></textarea>
+                </div>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="closeSaveTemplateModal()" style="flex: 1;">
+                        取消
+                    </button>
+                    <button class="btn btn-primary" onclick="saveTemplate()" style="flex: 1;">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载模板模态框 -->
+    <div class="modal-overlay" id="loadTemplateModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">加载任务模板</h3>
+                <button class="btn-icon" onclick="closeLoadTemplateModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="templateList">
+                    <!-- 动态加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">确认删除</h3>
+                <button class="btn-icon" onclick="closeDeleteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除该子任务吗？</p>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex: 1;">
+                        取消
+                    </button>
+                    <button class="btn btn-danger" id="confirmDeleteBtn" style="flex: 1;">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // ===== 全局状态 =====
+        let taskData = {
+            title: '',
+            ownerId: null,
+            taskId: null, // 草稿ID
+            subtasks: [] // {id, type, params, order}
+        };
+
+        let availableShops = {
+            amazon: [],
+            temu: []
+        };
+
+        let availableOwners = [];
+        let selectedSubtaskType = null;
+        let subtaskIdCounter = 1;
+        let isAutoSaving = false;
+        let autoSaveTimer = null;
+        let lastSavedData = null;
+        let galleryPathCache = [];
+
+        // ===== 工具函数 =====
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+                overlay.style.visibility = show ? 'visible' : 'hidden';
+                overlay.style.opacity = show ? '1' : '0';
+            }
+        }
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (window.showNotification) {
+                window.showNotification(message, type, duration);
+            } else {
+                console.log(`[${type}] ${message}`);
+            }
+        }
+
+        function formatDateTime(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                await Promise.all([
+                    loadAvailableOwners(),
+                    loadAvailableShops(),
+                    generateTaskNoPreview()
+                ]);
+
+                initDragAndDrop();
+                setupAutoSave();
+                checkDraft();
+
+            } catch (error) {
+                console.error('初始化失败:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // ===== 加载所有者列表（权限控制）=====
+        async function loadAvailableOwners() {
+            try {
+                const response = await fetch('/api/tasks/available-owners/');
+                const result = await response.json();
+
+                if (result.success) {
+                    availableOwners = result.data;
+                    const ownerSelect = document.getElementById('taskOwner');
+                    ownerSelect.innerHTML = availableOwners.map(owner =>
+                        `<option value="${owner.id}" ${owner.id == "{{ request.user.id }}" ? 'selected' : ''}>
+                            ${owner.name}
+                        </option>`
+                    ).join('');
+
+                    taskData.ownerId = "{{ request.user.id }}";
+
+                    ownerSelect.addEventListener('change', function () {
+                        taskData.ownerId = this.value;
+                        triggerAutoSave();
+                    });
+                }
+            } catch (error) {
+                console.error('加载所有者列表失败:', error);
+            }
+        }
+
+        // ===== 加载店铺列表（权限控制）=====
+        async function loadAvailableShops() {
+            try {
+                // 加载Amazon店铺
+                const amazonResponse = await fetch('/api/tasks/shops/?type=amazon');
+                const amazonResult = await amazonResponse.json();
+                if (amazonResult.success) {
+                    availableShops.amazon = amazonResult.data;
+                }
+
+                // 加载Temu店铺
+                const temuResponse = await fetch('/api/tasks/shops/?type=temu');
+                const temuResult = await temuResponse.json();
+                if (temuResult.success) {
+                    availableShops.temu = temuResult.data;
+                }
+
+                // 加载图库路径缓存
+                await loadGalleryPathCache();
+
+            } catch (error) {
+                console.error('加载店铺列表失败:', error);
+                showNotification('加载店铺列表失败', 'error');
+            }
+        }
+
+        // ===== 生成任务单号 =====
+        async function generateTaskNoPreview() {
+            try {
+                const response = await fetch('/api/tasks/generate-no/');
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('taskNoPreview').textContent = result.data.task_no;
+                } else {
+                    document.getElementById('taskNoPreview').textContent = '生成失败';
+                }
+            } catch (error) {
+                console.error('生成任务单号失败:', error);
+                document.getElementById('taskNoPreview').textContent = '生成失败';
+            }
+        }
+
+        // ===== 拖拽排序初始化 =====
+        function initDragAndDrop() {
+            const container = document.getElementById('subtasksContainer');
+
+            new Sortable(container, {
+                handle: '.drag-handle',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: function (evt) {
+                    updateSubtasksOrder();
+                    renderSubtasksCount();
+                    triggerAutoSave();
+                    showNotification('子任务顺序已调整', 'success', 2000);
+                }
+            });
+        }
+
+        function updateSubtasksOrder() {
+            const items = document.querySelectorAll('.subtask-item');
+            items.forEach((item, index) => {
+                // 获取当前DOM元素中存储的subtaskId
+                const subtaskId = parseInt(item.dataset.subtaskId);
+
+                // 在taskData中找到对应的子任务
+                const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+
+                if (subtask) {
+                    // 更新子任务的order值
+                    subtask.order = index;
+
+                    // ===== 关键修复：确保DOM中的编号显示同步更新 =====
+                    const numberEl = item.querySelector('.subtask-number');
+                    if (numberEl) {
+                        numberEl.textContent = `#${index + 1}`;
+                    }
+                }
+            });
+
+            // ===== 关键修复：拖拽完成后立即触发自动保存 =====
+            triggerAutoSave();
+        }
+
+        // ===== 自动保存机制 =====
+        function setupAutoSave() {
+            const debouncedSave = debounce(triggerAutoSave, 30000);
+
+            document.addEventListener('input', debouncedSave);
+            document.addEventListener('change', debouncedSave);
+
+            setTimeout(checkAndTriggerAutoSave, 10000);
+        }
+
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimer);
+            autoSaveTimer = setTimeout(checkAndTriggerAutoSave, 30000);
+        }
+
+        async function checkAndTriggerAutoSave() {
+            const currentData = collectFormData();
+
+            if (currentData.subtasks.length === 0) return;
+
+            if (lastSavedData && JSON.stringify(lastSavedData) === JSON.stringify(currentData)) {
+                return;
+            }
+
+            await autoSaveDraft();
+        }
+
+        async function autoSaveDraft() {
+            if (isAutoSaving) return;
+
+            isAutoSaving = true;
+
+            try {
+                const currentData = collectFormData();
+
+                if (!currentData.title) {
+                    currentData.title = '未命名任务_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                }
+
+                const response = await fetch('/api/tasks/save-draft/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(currentData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    if (!taskData.taskId) {
+                        taskData.taskId = result.data.task_id;
+                    }
+                    lastSavedData = currentData;
+                    showAutosaveIndicator();
+                }
+
+            } catch (error) {
+                console.error('自动保存失败:', error);
+            } finally {
+                isAutoSaving = false;
+            }
+        }
+
+        function showAutosaveIndicator() {
+            const indicator = document.getElementById('autosaveIndicator');
+            indicator.classList.add('show');
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 3000);
+        }
+
+        // ===== 子任务相关操作 =====
+        function showAddSubtaskModal() {
+            document.getElementById('addSubtaskModal').classList.add('active');
+            selectedSubtaskType = null;
+
+            document.querySelectorAll('.subtask-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            document.getElementById('confirmAddSubtaskBtn').disabled = true;
+        }
+
+        function closeAddSubtaskModal() {
+            document.getElementById('addSubtaskModal').classList.remove('active');
+            selectedSubtaskType = null;
+        }
+
+        function selectSubtaskType(element) {
+            document.querySelectorAll('.subtask-type-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedSubtaskType = element.dataset.type;
+            document.getElementById('confirmAddSubtaskBtn').disabled = false;
+        }
+
+        function confirmAddSubtask() {
+            if (!selectedSubtaskType) return;
+
+            addSubtask(selectedSubtaskType);
+            closeAddSubtaskModal();
+            triggerAutoSave();
+        }
+
+        function addSubtask(type, params = {}) {
+            const subtaskId = subtaskIdCounter++;
+
+            const subtask = {
+                id: subtaskId,
+                type: type,
+                params: params,
+                order: taskData.subtasks.length
+            };
+
+            taskData.subtasks.push(subtask);
+
+            renderSubtask(subtask);
+            renderSubtasksCount();
+
+            const container = document.getElementById('subtasksContainer');
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            document.querySelector(`[data-subtask-id="${subtaskId}"]`)?.scrollIntoView({behavior: 'smooth'});
+        }
+
+        function renderSubtask(subtask) {
+            const container = document.getElementById('subtasksContainer');
+
+            const subtaskHtml = `
+                <div class="subtask-item" data-subtask-id="${subtask.id}">
+                    <div class="subtask-header">
+                        <div class="subtask-info">
+                            <span class="drag-handle">
+                                <i class="fas fa-bars"></i>
+                            </span>
+                            <span class="subtask-number">#${subtask.order + 1}</span>
+                            <span class="subtask-type">${getSubtaskTypeDisplay(subtask.type)}</span>
+                        </div>
+                        <button class="btn-icon" onclick="deleteSubtask(${subtask.id})" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="subtask-edit-form">
+                        ${renderSubtaskEditForm(subtask)}
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', subtaskHtml);
+
+            // 初始化产品ID预览
+            if (subtask.params.product_ids) {
+                const input = document.querySelector(`#product-ids-input-${subtask.id}`);
+                if (input) {
+                    input.value = subtask.params.product_ids.join(' ');
+                    handleProductIdsInput(input, subtask.id);
+                }
+            }
+        }
+
+        function renderSubtaskEditForm(subtask) {
+            if (subtask.type === 'custom_upload') {
+                return `
+                    <div class="dynamic-fields">
+                        <div class="form-group">
+                            <label class="form-label">产品ID <span style="color: var(--danger-color);">*</span></label>
+                            <div class="product-ids-wrapper">
+                                <input type="text" class="form-control"
+                                       id="product-ids-input-${subtask.id}"
+                                       placeholder="输入多个产品ID，用空格分隔"
+                                       value="${subtask.params.product_ids ? subtask.params.product_ids.join(' ') : ''}"
+                                       oninput="handleProductIdsInput(this, ${subtask.id})">
+                                <div class="product-ids-preview" id="product-preview-${subtask.id}">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select mode-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'mode', this.value)">
+                                <option value="adapt" ${subtask.params.mode === 'adapt' ? 'selected' : ''}>适应</option>
+                                <option value="fill" ${subtask.params.mode === 'fill' ? 'selected' : ''}>填充</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">图库账号 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select gallery-account-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'gallery_account', this.value)">
+                                <option value="曾雪莹" ${subtask.params.gallery_account === '曾雪莹' ? 'selected' : ''}>曾雪莹</option>
+                                <option value="杨涵" ${subtask.params.gallery_account === '杨涵' ? 'selected' : ''}>杨涵</option>
+                                <option value="魏李杰" ${subtask.params.gallery_account === '魏李杰' ? 'selected' : ''}>魏李杰</option>
+                                <option value="吴杰柱" ${subtask.params.gallery_account === '吴杰柱' ? 'selected' : ''}>吴杰柱</option>
+                                <option value="侯益山" ${subtask.params.gallery_account === '侯益山' ? 'selected' : ''} selected>侯益山</option>
+                                <option value="郭子伊" ${subtask.params.gallery_account === '郭子伊' ? 'selected' : ''}>郭子伊</option>
+                                <option value="吴晓纯" ${subtask.params.gallery_account === '吴晓纯' ? 'selected' : ''}>吴晓纯</option>
+                                <option value="林焕源" ${subtask.params.gallery_account === '林焕源' ? 'selected' : ''}>林焕源</option>
+                                <option value="罗仕明" ${subtask.params.gallery_account === '罗仕明' ? 'selected' : ''}>罗仕明</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group has-autocomplete">
+                            <label class="form-label">图库目录 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="text" class="form-control gallery-path-input"
+                                   value="${subtask.params.gallery_path || ''}"
+                                   placeholder="例如：/path/to/gallery"
+                                   data-subtask-id="${subtask.id}"
+                                   oninput="updateSubtaskParam(${subtask.id}, 'gallery_path', this.value)"
+                                   onfocus="showPathSuggestions(this)">
+                            <div class="path-suggestions" id="path-suggestions-${subtask.id}">
+                                <!-- 自动补全建议 -->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select craft-type-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'craft_type', this.value)">
+                                <option value="print" ${subtask.params.craft_type === 'print' ? 'selected' : ''}>印花</option>
+                                <option value="emboss" ${subtask.params.craft_type === 'emboss' ? 'selected' : ''}>刺绣</option>
+                                <option value="laser" ${subtask.params.craft_type === 'laser' ? 'selected' : ''}>镭射</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">汇出数量 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="number" class="form-control" min="1" max="10000"
+                                   value="${subtask.params.export_quantity || ''}"
+                                   oninput="updateSubtaskParam(${subtask.id}, 'export_quantity', parseInt(this.value) || 0)">
+                        </div>
+
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">汇出店铺 <span style="color: var(--danger-color);">*</span></label>
+                            ${renderShopSelect('amazon', subtask.params.export_shop_ids || [], subtask.id, 'export_shop_ids')}
+                        </div>
+                    </div>
+                `;
+            } else if (subtask.type === 'temu_export') {
+                return `
+                    <div class="dynamic-fields">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">导单店铺 <span style="color: var(--danger-color);">*</span></label>
+                            ${renderShopSelect('temu', subtask.params.export_shop_ids || [], subtask.id, 'export_shop_ids')}
+                        </div>
+                    </div>
+                `;
+            }
+            return '';
+        }
+
+        function renderShopSelect(shopType, selectedIds, subtaskId, paramName) {
+            const shops = availableShops[shopType] || [];
+
+            if (shops.length === 0) {
+                return `<select class="form-select" multiple disabled><option>暂无可用店铺</option></select>`;
+            }
+
+            const selectId = `shop-select-${shopType}-${subtaskId}`;
+
+            return `
+                <div class="dropdown-check-list" id="dropdown-${selectId}">
+                    <div class="anchor" onclick="toggleShopDropdown('${selectId}')">
+                        <span class="selected-text" id="selected-text-${selectId}">
+                            ${selectedIds.length > 0 ? `已选择 ${selectedIds.length} 个店铺` : '选择店铺'}
+                        </span>
+                    </div>
+                    <div class="items">
+                        ${shops.map(shop => `
+                            <div class="item">
+                                <input type="checkbox" id="${selectId}-${shop.id}" value="${shop.id}"
+                                       ${selectedIds.includes(shop.id) ? 'checked' : ''}
+                                       onchange="updateShopSelection('${selectId}', ${subtaskId}, '${paramName}')">
+                                <label for="${selectId}-${shop.id}">${shop.name}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleShopDropdown(selectId) {
+            const dropdown = document.getElementById(`dropdown-${selectId}`);
+            dropdown.classList.toggle('visible');
+        }
+
+        function updateShopSelection(selectId, subtaskId, paramName) {
+            const checkboxes = document.querySelectorAll(`#dropdown-${selectId} input[type="checkbox"]:checked`);
+            const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params[paramName] = selectedIds;
+
+                // 更新显示文本
+                const selectedText = document.getElementById(`selected-text-${selectId}`);
+                if (selectedText) {
+                    selectedText.textContent = selectedIds.length > 0 ?
+                        `已选择 ${selectedIds.length} 个店铺` : '选择店铺';
+                }
+
+                triggerAutoSave();
+            }
+        }
+
+        function updateSubtaskParam(subtaskId, paramName, value) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params[paramName] = value;
+                triggerAutoSave();
+            }
+        }
+
+        function getSubtaskTypeDisplay(type) {
+            const typeMap = {
+                'custom_upload': '定制上架',
+                'temu_export': 'Temu导单'
+            };
+            return typeMap[type] || type;
+        }
+
+        // ===== 产品ID输入处理 =====
+        function handleProductIdsInput(element, subtaskId) {
+            const value = element.value.trim();
+            const ids = value.split(/\s+/).filter(id => id && /^\d+$/.test(id));
+
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params.product_ids = ids;
+            }
+
+            const previewContainer = document.getElementById(`product-preview-${subtaskId}`);
+
+            if (ids.length > 0) {
+                previewContainer.innerHTML = ids.map(id => `
+                    <span class="product-id-tag">
+                        ${id}
+                        <span class="remove-product-id" onclick="removeProductId('${id}', ${subtaskId})">×</span>
+                    </span>
+                `).join('');
+                previewContainer.style.display = 'flex';
+            } else {
+                previewContainer.style.display = 'none';
+            }
+
+            triggerAutoSave();
+        }
+
+        function removeProductId(id, subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params.product_ids = subtask.params.product_ids.filter(pid => pid != id);
+
+                const input = document.getElementById(`product-ids-input-${subtaskId}`);
+                if (input) {
+                    input.value = subtask.params.product_ids.join(' ');
+                    handleProductIdsInput(input, subtaskId);
+                }
+
+                triggerAutoSave();
+            }
+        }
+
+        // ===== 图库路径自动补全 =====
+        async function loadGalleryPathCache() {
+            try {
+                const response = await fetch('/api/tasks/gallery-paths/suggest/');
+                const result = await response.json();
+
+                if (result.success) {
+                    galleryPathCache = result.data;
+                }
+            } catch (error) {
+                console.error('加载图库路径缓存失败:', error);
+            }
+        }
+
+        function showPathSuggestions(inputElement) {
+            const value = inputElement.value.toLowerCase();
+            const subtaskId = inputElement.dataset.subtaskId;
+
+            const suggestions = galleryPathCache.filter(path =>
+                path.toLowerCase().includes(value)
+            ).slice(0, 8);
+
+            const suggestionContainer = document.getElementById(`path-suggestions-${subtaskId}`);
+
+            if (suggestions.length > 0) {
+                suggestionContainer.innerHTML = suggestions.map(path => `
+                    <div class="suggestion-item" onclick="selectPath('${path.replace(/'/g, "\\'")}', ${subtaskId})">
+                        ${path}
+                    </div>
+                `).join('');
+                suggestionContainer.style.display = 'block';
+            } else {
+                suggestionContainer.style.display = 'none';
+            }
+        }
+
+        function selectPath(path, subtaskId) {
+            const input = document.querySelector(`#path-suggestions-${subtaskId}`).previousElementSibling;
+            input.value = path;
+
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params.gallery_path = path;
+            }
+
+            document.getElementById(`path-suggestions-${subtaskId}`).style.display = 'none';
+            triggerAutoSave();
+        }
+
+        // 点击其他地方关闭下拉
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.has-autocomplete')) {
+                document.querySelectorAll('.path-suggestions').forEach(s => s.style.display = 'none');
+            }
+
+            if (!e.target.closest('.dropdown-check-list')) {
+                document.querySelectorAll('.dropdown-check-list').forEach(d => d.classList.remove('visible'));
+            }
+        });
+
+        // ===== 删除子任务 =====
+        function deleteSubtask(subtaskId) {
+            document.getElementById('deleteModal').classList.add('active');
+
+            document.getElementById('confirmDeleteBtn').onclick = function () {
+                // 从数据中移除
+                taskData.subtasks = taskData.subtasks.filter(s => s.id != subtaskId);
+
+                // 从DOM中移除
+                const item = document.querySelector(`[data-subtask-id="${subtaskId}"]`);
+                if (item) item.remove();
+
+                // 重新排序
+                updateSubtasksOrder();
+
+                // 更新计数
+                renderSubtasksCount();
+
+                // 检查是否为空
+                if (taskData.subtasks.length === 0) {
+                    document.getElementById('subtasksContainer').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无子任务</p>
+                            <p>点击"添加子任务"开始创建</p>
+                        </div>
+                    `;
+                }
+
+                triggerAutoSave();
+                document.getElementById('deleteModal').classList.remove('active');
+                showNotification('子任务已删除', 'success');
+            };
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+        }
+
+        // ===== 渲染子任务数量 =====
+        function renderSubtasksCount() {
+            document.getElementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个子任务`;
+        }
+
+        // ===== 模板相关操作 =====
+        function showSaveTemplateModal() {
+            document.getElementById('saveTemplateModal').classList.add('active');
+            document.getElementById('templateName').value = '';
+            document.getElementById('templateDescription').value = '';
+        }
+
+        function closeSaveTemplateModal() {
+            document.getElementById('saveTemplateModal').classList.remove('active');
+        }
+
+        async function saveTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            const description = document.getElementById('templateDescription').value.trim();
+
+            if (!name) {
+                showNotification('请输入模板名称', 'warning');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const templateContent = taskData.subtasks.map(subtask => ({
+                    type: subtask.type,
+                    params: {
+                        mode: subtask.params.mode,
+                        gallery_account: subtask.params.gallery_account,
+                        craft_type: subtask.params.craft_type,
+                        recognize_theme: subtask.params.recognize_theme || false
+                    }
+                }));
+
+                const response = await fetch('/api/tasks/templates/save/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        description: description,
+                        content: templateContent
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('模板保存成功', 'success');
+                    closeSaveTemplateModal();
+                } else {
+                    throw new Error(result.message || '保存失败');
+                }
+
+            } catch (error) {
+                showNotification('保存失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoadTemplateModal() {
+            document.getElementById('loadTemplateModal').classList.add('active');
+            loadTemplateList();
+        }
+
+        function closeLoadTemplateModal() {
+            document.getElementById('loadTemplateModal').classList.remove('active');
+        }
+
+        async function loadTemplateList() {
+            const container = document.getElementById('templateList');
+            container.innerHTML = '<p style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> 加载中...</p>';
+
+            try {
+                const response = await fetch('/api/tasks/templates/');
+                const result = await response.json();
+
+                if (result.success) {
+                    if (result.data.length === 0) {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>暂无模板</p>
+                                <p>您可以先保存一个模板</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    container.innerHTML = `
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            ${result.data.map(template => `
+                                <div class="subtask-item" style="cursor: pointer; margin: 0;"
+                                     onclick="confirmLoadTemplate(${template.id}, '${template.name.replace(/'/g, "\\'")}')">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <h4 style="margin: 0; font-size: 1rem;">${template.name}</h4>
+                                            <p style="margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--text-secondary);">
+                                                ${template.description || '无描述'}
+                                            </p>
+                                            <p style="margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--text-tertiary);">
+                                                <i class="fas fa-calendar"></i> ${formatDateTime(template.created_at)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>加载失败: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function confirmLoadTemplate(templateId, templateName) {
+            if (!confirm(`加载模板"${templateName}"将清空当前所有子任务，确定继续吗？`)) return;
+
+            loadTemplate(templateId);
+            closeLoadTemplateModal();
+        }
+
+        async function loadTemplate(templateId) {
+            showLoading(true);
+
+            try {
+                const response = await fetch(`/api/tasks/templates/${templateId}/load/`);
+                const result = await response.json();
+
+                if (result.success) {
+                    // 清空当前子任务
+                    taskData.subtasks = [];
+                    document.getElementById('subtasksContainer').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无子任务</p>
+                            <p>点击"添加子任务"开始创建</p>
+                        </div>
+                    `;
+
+                    // 从模板添加子任务
+                    result.data.content.forEach(templateSubtask => {
+                        addSubtask(templateSubtask.type, templateSubtask.params);
+                    });
+
+                    showNotification('模板加载成功', 'success');
+
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+
+            } catch (error) {
+                showNotification('加载失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ===== 表单数据收集 =====
+        function collectFormData() {
+            return {
+                task_id: taskData.taskId,
+                title: document.getElementById('taskTitle').value.trim() || taskData.title,
+                owner_id: document.getElementById('taskOwner').value,
+                subtasks: taskData.subtasks.map(subtask => ({
+                    id: subtask.id,
+                    type: subtask.type,
+                    params: subtask.params
+                }))
+            };
+        }
+
+        // ===== 任务创建与草稿保存 =====
+        async function saveDraft() {
+            const data = collectFormData();
+
+            if (data.subtasks.length === 0) {
+                showNotification('请至少添加一个子任务', 'warning');
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/tasks/save-draft/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    taskData.taskId = result.data.task_id;
+                    lastSavedData = data;
+                    showNotification('草稿已保存', 'success');
+                } else {
+                    throw new Error(result.message || '保存失败');
+                }
+
+            } catch (error) {
+                showNotification('保存失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function createTask() {
+            const data = collectFormData();
+
+            if (!validateForm(data)) {
+                return;
+            }
+
+            if (!confirm(`确认创建任务"${data.title}"吗？`)) {
+                return;
+            }
+
+            showLoading(true);
+
+            try {
+                const response = await fetch('/api/tasks/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        ...data,
+                        is_draft: false
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    clearTimeout(autoSaveTimer);
+                    showNotification('任务创建成功，正在跳转...', 'success');
+                    setTimeout(() => {
+                        window.location.href = result.data.redirect_url || '/task/list/';
+                    }, 1500);
+                } else {
+                    throw new Error(result.message || '创建失败');
+                }
+
+            } catch (error) {
+                showNotification('创建失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function validateForm(data) {
+            if (!data.title) {
+                showNotification('请输入任务标题', 'warning');
+                document.getElementById('taskTitle').focus();
+                return false;
+            }
+
+            if (data.subtasks.length === 0) {
+                showNotification('请至少添加一个子任务', 'warning');
+                return false;
+            }
+
+            for (let subtask of data.subtasks) {
+                if (subtask.type === 'custom_upload') {
+                    if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
+                        showNotification(`子任务 #${subtask.order + 1} 的产品ID不能为空`, 'warning');
+                        return false;
+                    }
+                    if (!subtask.params.export_shop_ids || subtask.params.export_shop_ids.length === 0) {
+                        showNotification(`子任务 #${subtask.order + 1} 的汇出店铺不能为空`, 'warning');
+                        return false;
+                    }
+                    if (!subtask.params.export_quantity || subtask.params.export_quantity < 1) {
+                        showNotification(`子任务 #${subtask.order + 1} 的汇出数量必须大于0`, 'warning');
+                        return false;
+                    }
+                } else if (subtask.type === 'temu_export') {
+                    if (!subtask.params.export_shop_ids || subtask.params.export_shop_ids.length === 0) {
+                        showNotification(`子任务 #${subtask.order + 1} 的导单店铺不能为空`, 'warning');
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        function cancelCreation() {
+            if (taskData.taskId) {
+                if (confirm('取消后将删除当前草稿，确定继续吗？')) {
+                    fetch(`/api/tasks/drafts/${taskData.taskId}/delete/`, {
+                        method: 'DELETE',
+                        headers: {'X-CSRFToken': getCsrfToken()}
+                    }).then(() => {
+                        window.location.href = '/task/list/';
+                    });
+                }
+            } else {
+                window.location.href = '/task/list/';
+            }
+        }
+
+        // ===== 检查草稿 =====
+        async function checkDraft() {
+            try {
+                const response = await fetch('/api/tasks/drafts/latest/');
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    if (confirm('检测到未完成的草稿，是否加载？')) {
+                        await loadDraft(result.data);
+                    } else {
+                        await fetch(`/api/tasks/drafts/${result.data.id}/delete/`, {
+                            method: 'DELETE',
+                            headers: {'X-CSRFToken': getCsrfToken()}
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('检查草稿失败:', error);
+            }
+        }
+
+        async function loadDraft(draftData) {
+            taskData.taskId = draftData.id;
+            document.getElementById('taskTitle').value = draftData.title || '';
+            document.getElementById('taskOwner').value = draftData.owner_id;
+
+            draftData.subtasks.forEach(subtask => {
+                addSubtask(subtask.type, subtask.params);
+            });
+
+            showNotification('草稿已加载', 'success');
+        }
+
+        // ===== 防抖函数 =====
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ===== 标题输入监听 =====
+        document.getElementById('taskTitle').addEventListener('input', function () {
+            taskData.title = this.value;
+        });
+    </script>
+{% endblock %}

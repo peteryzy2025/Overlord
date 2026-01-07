@@ -117,7 +117,7 @@ def csrf_token_view(request):
     return JsonResponse({'csrfToken': token})
 
 
-# 在 views.py 中
+# 在 view.py 中
 @require_POST
 @csrf_exempt
 def update_theme(request):
