@@ -35,6 +35,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://ztzf.cpolar.cn',
     'http://192.168.110.54:5555',
     'http://192.168.110.131:5550',
+    'http://192.168.110.140:8000',
+
     'http://localhost',
 ]
 
@@ -43,6 +45,7 @@ ALLOWED_HOSTS = [
     '192.168.110.54',
     'localhost',
     '127.0.0.1',
+    '192.168.110.140',
     'ztzf.cpolar.cn'
 
 ]
