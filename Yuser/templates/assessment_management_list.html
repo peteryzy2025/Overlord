@@ -4,470 +4,476 @@
 {% block title %}绩效考核管理{% endblock %}
 
 {% block extra_css %}
-    <style>
-        /* ========== 你的原始样式（完全保留） ========== */
-        .page-header {
-            margin-bottom: 0.2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+<style>
+    /* ========== 你的原始样式（完全保留） ========== */
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
 
-        .btn-create {
-            background-color: var(--accent-color) !important;
-            color: white !important;
-            border: 1px solid var(--accent-color) !important;
-        }
+    .btn-create {
+        background-color: var(--accent-color) !important;
+        color: white !important;
+        border: 1px solid var(--accent-color) !important;
+    }
 
-        .btn-create:hover {
-            background-color: var(--accent-hover) !important;
-            border-color: var(--accent-hover) !important;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-light);
-        }
+    .btn-create:hover {
+        background-color: var(--accent-hover) !important;
+        border-color: var(--accent-hover) !important;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-light);
+    }
 
-        .filter-section {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 0.2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
 
-        .filter-row {
-            display: flex;
-            gap: 1rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 180px;
-            max-width: 220px; /* 防止无限拉伸 */
-            flex: 1;
-        }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 180px;
+        max-width: 220px;
+        /* 防止无限拉伸 */
+        flex: 1;
+    }
 
-        /* 按钮组不伸缩，根据内容自适应 */
-        .filter-group.d-flex {
-            flex: none !important; /* 关键：禁止flex伸缩 */
-            max-width: none !important; /* 移除最大宽度限制 */
-            min-width: auto !important; /* 移除最小宽度限制 */
-        }
+    /* 按钮组不伸缩，根据内容自适应 */
+    .filter-group.d-flex {
+        flex: none !important;
+        /* 关键：禁止flex伸缩 */
+        max-width: none !important;
+        /* 移除最大宽度限制 */
+        min-width: auto !important;
+        /* 移除最小宽度限制 */
+    }
 
-        .filter-label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
 
-        .form-control, .form-select {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            width: 100%;
-            transition: all 0.3s ease;
-        }
+    .form-control,
+    .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
 
-        .form-control:focus, .form-select:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+    .form-control:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
-        input[type="month"] {
-            appearance: none;
-            -webkit-appearance: none;
-        }
+    input[type="month"] {
+        appearance: none;
+        -webkit-appearance: none;
+    }
 
-        input[type="month"]::-webkit-calendar-picker-indicator {
-            filter: invert(var(--text-secondary));
-            cursor: pointer;
-            padding: 5px;
-        }
+    input[type="month"]::-webkit-calendar-picker-indicator {
+        filter: invert(var(--text-secondary));
+        cursor: pointer;
+        padding: 5px;
+    }
 
-        .btn {
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-            border: 1px solid transparent;
-        }
+    .btn {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
 
-        .btn-primary {
-            background-color: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
+    .btn-primary {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
 
-        .btn-primary:hover {
-            background-color: var(--accent-hover);
-            border-color: var(--accent-hover);
-        }
+    .btn-primary:hover {
+        background-color: var(--accent-hover);
+        border-color: var(--accent-hover);
+    }
 
-        .btn-secondary {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-            border-color: var(--border-color);
-        }
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
 
-        .btn-secondary:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
+    .btn-secondary:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
 
-        .btn-success {
-            background-color: #22c55e;
-            color: white;
-            border-color: #22c55e;
-        }
+    .btn-success {
+        background-color: #22c55e;
+        color: white;
+        border-color: #22c55e;
+    }
 
-        .btn-warning {
-            background-color: #dd6b20;
-            color: white;
-            border-color: #dd6b20;
-        }
+    .btn-warning {
+        background-color: #dd6b20;
+        color: white;
+        border-color: #dd6b20;
+    }
 
-        .btn-outline-primary {
-            background: transparent;
-            color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
+    .btn-outline-primary {
+        background: transparent;
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
 
-        .btn-outline-primary:hover {
-            background-color: var(--accent-color);
-            color: white;
-        }
+    .btn-outline-primary:hover {
+        background-color: var(--accent-color);
+        color: white;
+    }
 
-        .btn-sm {
-            padding: 0.25rem 0.75rem;
-            font-size: 0.875rem;
-        }
+    .btn-sm {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+    }
 
-        .table-container {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-            overflow-x: auto;
-            max-height: 700px;
-            overflow-y: auto;
-        }
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+    }
 
-        .table-container table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            min-width: 1200px;
-        }
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 1200px;
+    }
 
-        .table th {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: 600;
-            padding: 1rem;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 5;
-        }
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        padding: 1rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+    }
 
-        .table td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-            white-space: nowrap;
-        }
+    .table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
 
-        .table tbody tr:hover {
-            background-color: var(--bg-secondary);
-        }
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
 
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            display: inline-block;
-        }
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-block;
+    }
 
-        .status-draft {
-            background-color: #f59e0b;
-            color: white;
-        }
+    .status-draft {
+        background-color: #f59e0b;
+        color: white;
+    }
 
-        .status-pending_member {
-            background-color: #3b82f6;
-            color: white;
-        }
+    .status-pending_member {
+        background-color: #3b82f6;
+        color: white;
+    }
 
-        .status-pending_leader {
-            background-color: #8b5cf6;
-            color: white;
-        }
+    .status-pending_leader {
+        background-color: #8b5cf6;
+        color: white;
+    }
 
-        .status-confirmed {
-            background-color: #22c55e;
-            color: white;
-        }
+    .status-confirmed {
+        background-color: #22c55e;
+        color: white;
+    }
 
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 0.5rem;
-            padding: 1rem;
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
 
-        .pagination-info {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
 
-        .pagination {
-            display: flex;
-            gap: 0.25rem;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
+    .pagination {
+        display: flex;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
 
-        .page-item {
-            margin: 0;
-        }
+    .page-item {
+        margin: 0;
+    }
 
-        .page-link {
-            display: block;
-            padding: 0.5rem 0.75rem;
-            color: var(--text-primary);
-            text-decoration: none;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-secondary);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
+    .page-link {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
 
-        .page-link:hover {
-            background-color: var(--bg-tertiary);
-            color: var(--accent-color);
-        }
+    .page-link:hover {
+        background-color: var(--bg-tertiary);
+        color: var(--accent-color);
+    }
 
-        .page-item.active .page-link {
-            background-color: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
+    .page-item.active .page-link {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
 
-        .page-item.disabled .page-link {
-            color: var(--text-tertiary);
-            cursor: not-allowed;
-            pointer-events: none;
-        }
+    .page-item.disabled .page-link {
+        color: var(--text-tertiary);
+        cursor: not-allowed;
+        pointer-events: none;
+    }
 
-        /* ========== 统一样式：模态框基类 ========== */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+    /* ========== 统一样式：模态框基类 ========== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
 
-        .modal-overlay.show {
-            display: flex;
-            opacity: 1;
-        }
+    .modal-overlay.show {
+        display: flex;
+        opacity: 1;
+    }
 
-        .modal-dialog {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-heavy);
-            border: 2px solid var(--border-color);
-            max-width: 500px;
-            width: 90%;
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
-        }
+    .modal-dialog {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-heavy);
+        border: 2px solid var(--border-color);
+        max-width: 500px;
+        width: 90%;
+        transform: scale(0.95);
+        transition: transform 0.3s ease;
+    }
 
-        .modal-overlay.show .modal-dialog {
-            transform: scale(1);
-        }
+    .modal-overlay.show .modal-dialog {
+        transform: scale(1);
+    }
 
-        .modal-header {
-            padding: 1.5rem 1.5rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .modal-header {
+        padding: 1.5rem 1.5rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
+    .modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
 
-        .modal-close {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
 
-        .modal-close:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
 
-        .modal-body {
-            padding: 1.5rem;
-        }
+    .modal-body {
+        padding: 1.5rem;
+    }
 
-        .modal-footer {
-            padding: 1rem 1.5rem 1.5rem;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-        }
+    .modal-footer {
+        padding: 1rem 1.5rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
 
-        .form-group {
-            margin-bottom: 1rem;
-        }
+    .form-group {
+        margin-bottom: 1rem;
+    }
 
-        .alert-info {
-            background-color: rgba(49, 130, 206, 0.1);
-            border: 1px solid rgba(49, 130, 206, 0.2);
-            border-radius: 8px;
-            padding: 0.75rem 1rem;
-            color: var(--text-primary);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+    .alert-info {
+        background-color: rgba(49, 130, 206, 0.1);
+        border: 1px solid rgba(49, 130, 206, 0.2);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 
-        /* ========== z-index 层级管理 ========== */
-        #createModalOverlay {
-            z-index: 5000;
-        }
+    /* ========== z-index 层级管理 ========== */
+    #createModalOverlay {
+        z-index: 5000;
+    }
 
-        #confirmModalOverlay {
-            z-index: 5500; /* 高于创建弹窗 */
-        }
-    </style>
+    #confirmModalOverlay {
+        z-index: 5500;
+        /* 高于创建弹窗 */
+    }
+</style>
 {% endblock %}
 {% block content %}
-    <div class="container-fluid">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">绩效考核管理</h1>
-                <p class="page-subtitle">管理运营人员的月度绩效考核</p>
-            </div>
-            {% if is_admin %}
-                <div>
-                    <button class="btn btn-create" onclick="openCreateModal()">
-                        <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建考核
-                    </button>
-                </div>
-            {% endif %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">绩效考核管理</h1>
+            <p class="page-subtitle">管理运营人员的月度绩效考核</p>
         </div>
+        {% if is_admin %}
+        <div>
+            <button class="btn btn-create" onclick="openCreateModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建考核
+            </button>
+        </div>
+        {% endif %}
+    </div>
 
-        <!-- 筛选区域 -->
-        <div class="filter-section">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">考核月份</label>
-                    <input type="month" class="form-control" id="monthFilter"
-                           value="{{ request.GET.month }}">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">员工姓名</label>
-                    <select class="form-select" id="employeeFilter">
-                        <option value="">全部员工</option>
-                        {% for emp in employees %}
-                            <option value="{{ emp.id }}"
-                                    {% if request.GET.employee == emp.id|stringformat:"s" %}selected{% endif %}>
-                                {{ emp.first_name }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">考核类型</label>
-                    <select class="form-select" id="typeFilter">
-                        <option value="">全部类型</option>
-                        {% for key, label in type_choices %}
-                            <option value="{{ key }}" {% if request.GET.assess_type == key %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">考核状态</label>
-                    <select class="form-select" id="statusFilter">
-                        <option value="">全部状态</option>
-                        {% for key, label in status_choices %}
-                            <option value="{{ key }}" {% if request.GET.status == key %}selected{% endif %}>
-                                {{ label }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
-                    <button class="btn btn-primary" onclick="filterAssessments()">
-                        <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>筛选
-                    </button>
-                    <button class="btn btn-secondary ms-2" onclick="resetFilters()">
-                        <i class="fas fa-undo" style="margin-right: 0.5rem;"></i>重置
-                    </button>
-                    <!-- 新增：批量刷新订单按钮（仅管理员可见） -->
-                    {% if is_admin %}
-                        <button class="btn btn-warning ms-2" onclick="batchRefreshOrders()">
-                            <i class="fas fa-sync-alt" style="margin-right: 0.5rem;"></i>刷新订单
-                        </button>
-                    {% endif %}
-                </div>
+    <!-- 筛选区域 -->
+    <div class="filter-section">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">考核月份</label>
+                <input type="month" class="form-control" id="monthFilter" value="{{ request.GET.month }}">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">员工姓名</label>
+                <select class="form-select" id="employeeFilter">
+                    <option value="">全部员工</option>
+                    {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if request.GET.employee==emp.id|stringformat:"s" %}selected{% endif
+                        %}>
+                        {{ emp.first_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">考核类型</label>
+                <select class="form-select" id="typeFilter">
+                    <option value="">全部类型</option>
+                    {% for key, label in type_choices %}
+                    <option value="{{ key }}" {% if request.GET.assess_type==key %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">考核状态</label>
+                <select class="form-select" id="statusFilter">
+                    <option value="">全部状态</option>
+                    {% for key, label in status_choices %}
+                    <option value="{{ key }}" {% if request.GET.status==key %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
+                <button class="btn btn-primary" onclick="filterAssessments()">
+                    <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>筛选
+                </button>
+                <button class="btn btn-secondary ms-2" onclick="resetFilters()">
+                    <i class="fas fa-undo" style="margin-right: 0.5rem;"></i>重置
+                </button>
+                <!-- 新增：批量刷新订单按钮（仅管理员可见） -->
+                {% if is_admin %}
+                <button class="btn btn-warning ms-2" onclick="batchRefreshOrders()">
+                    <i class="fas fa-sync-alt" style="margin-right: 0.5rem;"></i>刷新订单
+                </button>
+                {% endif %}
             </div>
         </div>
+    </div>
 
-        <!-- 考核列表 -->
-        <div class="table-container">
-            <table class="table">
-                <thead>
+    <!-- 考核列表 -->
+    <div class="table-container">
+        <table class="table">
+            <thead>
                 <tr>
                     <th>ID</th>
                     <th>员工姓名</th>
@@ -480,128 +486,126 @@
                     <th>最终得分</th>
                     <th>操作</th>
                 </tr>
-                </thead>
-                <tbody id="assessmentTableBody">
+            </thead>
+            <tbody id="assessmentTableBody">
                 {% for assessment in assessments %}
-                    <tr data-id="{{ assessment.id }}">
-                        <td>{{ assessment.id }}</td>
-                        <td>{{ assessment.employee.first_name }}</td>
-                        <td>{{ assessment.get_assess_type_display }}</td>
-                        <td>{{ assessment.month }}</td>
-                        <td>{{ assessment.target_orders }}</td>
-                        <td>{{ assessment.actual_orders }}</td>
-                        <td>{{ assessment.achievement_rate }}%</td>
-                        <td>
+                <tr data-id="{{ assessment.id }}">
+                    <td>{{ assessment.id }}</td>
+                    <td>{{ assessment.employee.first_name }}</td>
+                    <td>{{ assessment.get_assess_type_display }}</td>
+                    <td>{{ assessment.month }}</td>
+                    <td>{{ assessment.target_orders }}</td>
+                    <td>{{ assessment.actual_orders }}</td>
+                    <td>{{ assessment.achievement_rate }}%</td>
+                    <td>
                         <span class="status-badge status-{{ assessment.status }}">
                             {{ assessment.get_status_display }}
                         </span>
-                        </td>
-                        <td>
-                            {% if assessment.final_score %}
-                                <strong class="text-warning">{{ assessment.final_score }}</strong>
-                            {% else %}
-                                <span class="text-muted">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <!-- ========== 【修复3】添加flex-wrap防止按钮挤在一起 ========== -->
-                            <div class="d-flex gap-1 flex-wrap">
-                                <a href="{% url 'Yuser:assessment_detail' assessment.pk %}"
-                                   class="btn btn-sm btn-outline-primary">
-                                    <i class="far fa-eye"></i> 详情
-                                </a>
-
-                                {% if assessment.status == 'draft' and assessment.leader == request.user %}
-                                    <button class="btn btn-sm btn-success"
-                                            onclick="submitToMember({{ assessment.pk }})">
-                                        <i class="fas fa-paper-plane"></i> 提交
-                                    </button>
-                                {% endif %}
-
-                                {% if assessment.status == 'pending_member' and assessment.employee == request.user %}
-                                    <button class="btn btn-sm btn-success"
-                                            onclick="memberConfirm({{ assessment.pk }})">
-                                        <i class="fas fa-check"></i> 确认
-                                    </button>
-                                    <button class="btn btn-sm btn-warning"
-                                            onclick="memberReject({{ assessment.pk }})">
-                                        <i class="fas fa-times"></i> 驳回
-                                    </button>
-                                {% endif %}
-
-                                {% if assessment.status == 'pending_leader' and assessment.leader == request.user %}
-                                    <button class="btn btn-sm btn-success"
-                                            onclick="leaderConfirm({{ assessment.pk }})">
-                                        <i class="fas fa-lock"></i> 最终确认
-                                    </button>
-                                {% endif %}
-
-                                {% if is_admin and assessment.status == 'pending_leader' %}
-                                    <button class="btn btn-sm btn-danger"
-                                            onclick="deleteAssessment({{ assessment.pk }})">
-                                        <i class="fas fa-trash"></i> 删除
-                                    </button>
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                {% empty %}
-                    <tr>
-                        <td colspan="10" style="text-align:center;padding:2rem;">
-                            <i class="far fa-folder-open fa-3x text-muted mb-3"></i>
-                            <p class="text-muted">暂无考核记录</p>
-                        </td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- 分页 -->
-        {% if is_paginated %}
-            <div class="pagination-container">
-                <div class="pagination-info">
-                    显示第 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }}
-                    条记录
-                </div>
-                <nav>
-                    <ul class="pagination" id="pagination">
-                        {% if page_obj.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">上一页</a>
-                            </li>
+                    </td>
+                    <td>
+                        {% if assessment.final_score %}
+                        <strong class="text-warning">{{ assessment.final_score }}</strong>
                         {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link">上一页</span>
-                            </li>
+                        <span class="text-muted">-</span>
                         {% endif %}
+                    </td>
+                    <td>
+                        <!-- ========== 【修复3】添加flex-wrap防止按钮挤在一起 ========== -->
+                        <div class="d-flex gap-1 flex-wrap">
+                            <a href="{% url 'Yuser:assessment_detail' assessment.pk %}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="far fa-eye"></i> 详情
+                            </a>
 
-                        {% for num in page_obj.paginator.page_range %}
-                            {% if page_obj.number == num %}
-                                <li class="page-item active">
-                                    <span class="page-link">{{ num }}</span>
-                                </li>
-                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=
-
-
-
-
-
-
-
-
-
-
-                                            {{ num }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
-                                </li>
+                            {% if assessment.status == 'draft' and assessment.leader == request.user %}
+                            <button class="btn btn-sm btn-success" onclick="submitToMember({{ assessment.pk }})">
+                                <i class="fas fa-paper-plane"></i> 提交
+                            </button>
                             {% endif %}
-                        {% endfor %}
 
-                        {% if page_obj.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page=
+                            {% if assessment.status == 'pending_member' and assessment.employee == request.user %}
+                            <button class="btn btn-sm btn-success" onclick="memberConfirm({{ assessment.pk }})">
+                                <i class="fas fa-check"></i> 确认
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="memberReject({{ assessment.pk }})">
+                                <i class="fas fa-times"></i> 驳回
+                            </button>
+                            {% endif %}
+
+                            {% if assessment.status == 'pending_leader' and assessment.leader == request.user %}
+                            <button class="btn btn-sm btn-success" onclick="leaderConfirm({{ assessment.pk }})">
+                                <i class="fas fa-lock"></i> 最终确认
+                            </button>
+                            {% endif %}
+
+                            {% if is_admin and assessment.status == 'draft' %}
+                            <button class="btn btn-sm btn-danger" onclick="deleteAssessment({{ assessment.pk }})">
+                                <i class="fas fa-trash"></i> 删除
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="10" style="text-align:center;padding:2rem;">
+                        <i class="far fa-folder-open fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">暂无考核记录</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 分页 -->
+    {% if is_paginated %}
+    <div class="pagination-container">
+        <div class="pagination-info">
+            显示第 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }}
+            条记录
+        </div>
+        <nav>
+            <ul class="pagination" id="pagination">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link"
+                        href="?page={{ page_obj.previous_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">上一页</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">上一页</span>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li class="page-item">
+                    <a class="page-link"
+                        href="?page=
+
+
+
+
+
+
+
+
+
+
+                                            {{ num }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{
+                        num }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page=
 
 
 
@@ -613,440 +617,439 @@
 
 
                                         {{ page_obj.next_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">下一页</a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled">
-                                <span class="page-link">下一页</span>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-        {% endif %}
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">下一页</span>
+                    </li>
+                    {% endif %}
+            </ul>
+        </nav>
     </div>
+    {% endif %}
+</div>
 
-    <!-- ========== 【新增】第一层：新建考核弹窗 ========== -->
-    <div class="modal-overlay" id="createModalOverlay">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">新建考核</h2>
-                    <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+<!-- ========== 【新增】第一层：新建考核弹窗 ========== -->
+<div class="modal-overlay" id="createModalOverlay">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">新建考核</h2>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="filter-label">选择考核月份 <span style="color: var(--danger-color);">*</span></label>
+                    <input type="month" class="form-control" id="createMonth" required>
                 </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label class="filter-label">选择考核月份 <span
-                                style="color: var(--danger-color);">*</span></label>
-                        <input type="month" class="form-control" id="createMonth" required>
-                    </div>
-                    <div class="alert-info">
-                        <i class="fas fa-info-circle"></i> 将为所有符合条件的员工自动创建对应类型的考核
-                    </div>
+                <div class="alert-info">
+                    <i class="fas fa-info-circle"></i> 将为所有符合条件的员工自动创建对应类型的考核
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
-                    <button class="btn btn-primary" onclick="openConfirmModal()">确认创建</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+                <button class="btn btn-primary" onclick="openConfirmModal()">确认创建</button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- ========== 【新增】第二层：确认创建弹窗 ========== -->
-    <div class="modal-overlay" id="confirmModalOverlay">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2 class="modal-title">确认创建考核</h2>
-                    <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+<!-- ========== 【新增】第二层：确认创建弹窗 ========== -->
+<div class="modal-overlay" id="confirmModalOverlay">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">确认创建考核</h2>
+                <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 1rem; color: var(--text-primary); margin-bottom: 1rem;">
+                    <i class="fas fa-exclamation-triangle"
+                        style="color: var(--warning-color); margin-right: 0.5rem;"></i>
+                    此操作将为所有符合条件的员工创建考核，耗时可能较长，请确认是否继续？
+                </p>
+                <div id="confirmMonthDisplay"
+                    style="font-weight: 600; text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+                    <!-- 月份将动态填充 -->
                 </div>
-                <div class="modal-body">
-                    <p style="font-size: 1rem; color: var(--text-primary); margin-bottom: 1rem;">
-                        <i class="fas fa-exclamation-triangle"
-                           style="color: var(--warning-color); margin-right: 0.5rem;"></i>
-                        此操作将为所有符合条件的员工创建考核，耗时可能较长，请确认是否继续？
-                    </p>
-                    <div id="confirmMonthDisplay"
-                         style="font-weight: 600; text-align: center; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
-                        <!-- 月份将动态填充 -->
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeConfirmModal()">返回修改</button>
-                    <button class="btn btn-primary" onclick="executeBatchCreate()">确认创建</button>
-                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeConfirmModal()">返回修改</button>
+                <button class="btn btn-primary" onclick="executeBatchCreate()">确认创建</button>
             </div>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script>
-        // ========== 全局变量：缓存月份（解决时序问题）==========
-        let cachedMonth = '';
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    // ========== 全局变量：缓存月份（解决时序问题）==========
+    let cachedMonth = '';
 
-        // ========== 工具函数：获取 CSRF Token ==========
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    // ========== 工具函数：获取 CSRF Token ==========
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
+        }
+        return cookieValue;
+    }
+
+    // ========== 第一层弹窗：新建考核 ==========
+    function openCreateModal() {
+        const overlay = document.getElementById('createModalOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('show'), 10);
+
+        const now = new Date();
+        const monthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        document.getElementById('createMonth').value = monthStr;
+    }
+
+    function closeCreateModal() {
+        const overlay = document.getElementById('createModalOverlay');
+        overlay.classList.remove('show');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            // 不清空月份值，避免影响缓存逻辑
+            // document.getElementById('createMonth').value = '';
+        }, 300);
+    }
+
+    // ========== 第二层弹窗：确认创建 ==========
+    function openConfirmModal() {
+        const month = document.getElementById('createMonth').value;
+        if (!month) {
+            Swal.fire('提示', '请选择考核月份', 'warning');
+            return;
         }
 
-        // ========== 第一层弹窗：新建考核 ==========
-        function openCreateModal() {
-            const overlay = document.getElementById('createModalOverlay');
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.add('show'), 10);
+        // ✅ 先缓存月份，再关闭第一层弹窗
+        cachedMonth = month;
+        closeCreateModal();
 
-            const now = new Date();
-            const monthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-            document.getElementById('createMonth').value = monthStr;
+        const overlay = document.getElementById('confirmModalOverlay');
+        document.getElementById('confirmMonthDisplay').textContent = `考核月份：${cachedMonth}`;
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('show'), 10);
+    }
+
+    function closeConfirmModal() {
+        const overlay = document.getElementById('confirmModalOverlay');
+        overlay.classList.remove('show');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            // 不清空缓存，由executeBatchCreate在finally里处理
+        }, 300);
+    }
+
+    // ========== 真正执行批量创建（修复版）==========
+    async function executeBatchCreate() {
+        // ✅ 先关闭确认弹窗，再显示加载状态
+        closeConfirmModal(); // 立即关闭，不要等setTimeout
+
+        const month = cachedMonth;
+        if (!month) {
+            Swal.fire('错误', '月份数据丢失，请返回重新选择', 'error');
+            return;
         }
 
-        function closeCreateModal() {
-            const overlay = document.getElementById('createModalOverlay');
-            overlay.classList.remove('show');
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                // 不清空月份值，避免影响缓存逻辑
-                // document.getElementById('createMonth').value = '';
-            }, 300);
-        }
+        const btn = document.querySelector('#confirmModalOverlay .btn-primary');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
+        btn.disabled = true;
 
-        // ========== 第二层弹窗：确认创建 ==========
-        function openConfirmModal() {
-            const month = document.getElementById('createMonth').value;
-            if (!month) {
-                Swal.fire('提示', '请选择考核月份', 'warning');
-                return;
-            }
+        try {
+            const csrfToken = getCookie('csrftoken');
+            if (!csrfToken) throw new Error('CSRF Token 未找到');
 
-            // ✅ 先缓存月份，再关闭第一层弹窗
-            cachedMonth = month;
-            closeCreateModal();
+            const formData = new FormData();
+            formData.append('month', month); // 使用缓存的月份
+            formData.append('csrfmiddlewaretoken', csrfToken);
 
-            const overlay = document.getElementById('confirmModalOverlay');
-            document.getElementById('confirmMonthDisplay').textContent = `考核月份：${cachedMonth}`;
-            overlay.style.display = 'flex';
-            setTimeout(() => overlay.classList.add('show'), 10);
-        }
-
-        function closeConfirmModal() {
-            const overlay = document.getElementById('confirmModalOverlay');
-            overlay.classList.remove('show');
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                // 不清空缓存，由executeBatchCreate在finally里处理
-            }, 300);
-        }
-
-        // ========== 真正执行批量创建（修复版）==========
-        async function executeBatchCreate() {
-            // ✅ 先关闭确认弹窗，再显示加载状态
-            closeConfirmModal(); // 立即关闭，不要等setTimeout
-
-            const month = cachedMonth;
-            if (!month) {
-                Swal.fire('错误', '月份数据丢失，请返回重新选择', 'error');
-                return;
-            }
-
-            const btn = document.querySelector('#confirmModalOverlay .btn-primary');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 创建中...';
-            btn.disabled = true;
-
-            try {
-                const csrfToken = getCookie('csrftoken');
-                if (!csrfToken) throw new Error('CSRF Token 未找到');
-
-                const formData = new FormData();
-                formData.append('month', month); // 使用缓存的月份
-                formData.append('csrfmiddlewaretoken', csrfToken);
-
-                const response = await fetch('{% url "Yuser:assessment_create_batch" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    await Swal.fire('成功', `创建完成！成功 ${data.created_count} 条，跳过 ${data.skipped_count} 条`, 'success');
-                    location.reload(); // 刷新页面，所有状态重置
-                } else {
-                    Swal.fire('失败', data.message || '创建失败', 'error');
-                    closeConfirmModal(); // ✅ 失败后关闭弹窗
-                }
-            } catch (error) {
-                console.error('创建失败:', error);
-                Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
-                closeConfirmModal(); // ✅ 异常后关闭弹窗
-            } finally {
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
-                cachedMonth = ''; // ✅ 执行结束清空缓存
-            }
-        }
-
-        // ========== 原有函数（保持不变） ==========
-        function filterAssessments() {
-            const month = document.getElementById('monthFilter').value;
-            const employee = document.getElementById('employeeFilter').value;
-            const assess_type = document.getElementById('typeFilter').value;
-            const status = document.getElementById('statusFilter').value;
-
-            let url = '{% url "Yuser:assessment_list" %}';
-            const params = [];
-            if (month) params.push('month=' + month);
-            if (employee) params.push('employee=' + employee);
-            if (assess_type) params.push('assess_type=' + assess_type);
-            if (status) params.push('status=' + status);
-
-            if (params.length > 0) {
-                url += '?' + params.join('&');
-            }
-            window.location.href = url;
-        }
-
-        function resetFilters() {
-            document.getElementById('monthFilter').value = '';
-            document.getElementById('employeeFilter').value = '';
-            document.getElementById('typeFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            window.location.href = '{% url "Yuser:assessment_list" %}';
-        }
-
-        async function submitToMember(assessmentId) {
-            const result = await Swal.fire({
-                title: '确认提交考核？',
-                text: '提交后组员将收到确认通知',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: '确认提交',
-                cancelButtonText: '取消'
+            const response = await fetch('{% url "Yuser:assessment_create_batch" %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
             });
 
-            if (result.isConfirmed) {
-                // ========== 【修复】修改URL ==========
-                await handleAssessmentAction(`/assessment/${assessmentId}/submit-to-member/`, '已提交给组员确认');
+            const data = await response.json();
+
+            if (data.success) {
+                await Swal.fire('成功', `创建完成！成功 ${data.created_count} 条，跳过 ${data.skipped_count} 条`, 'success');
+                location.reload(); // 刷新页面，所有状态重置
+            } else {
+                Swal.fire('失败', data.message || '创建失败', 'error');
+                closeConfirmModal(); // ✅ 失败后关闭弹窗
             }
+        } catch (error) {
+            console.error('创建失败:', error);
+            Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
+            closeConfirmModal(); // ✅ 异常后关闭弹窗
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            cachedMonth = ''; // ✅ 执行结束清空缓存
         }
+    }
 
-        async function memberConfirm(assessmentId) {
-            const result = await Swal.fire({
-                title: '确认通过考核？',
-                text: '确认后将进入组长最终确认环节',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: '确认无误',
-                cancelButtonText: '取消'
-            });
+    // ========== 原有函数（保持不变） ==========
+    function filterAssessments() {
+        const month = document.getElementById('monthFilter').value;
+        const employee = document.getElementById('employeeFilter').value;
+        const assess_type = document.getElementById('typeFilter').value;
+        const status = document.getElementById('statusFilter').value;
 
-            if (result.isConfirmed) {
-                await handleAssessmentAction(`/assessment/${assessmentId}/member-confirm/`, '确认成功');
-            }
+        let url = '{% url "Yuser:assessment_list" %}';
+        const params = [];
+        if (month) params.push('month=' + month);
+        if (employee) params.push('employee=' + employee);
+        if (assess_type) params.push('assess_type=' + assess_type);
+        if (status) params.push('status=' + status);
+
+        if (params.length > 0) {
+            url += '?' + params.join('&');
         }
+        window.location.href = url;
+    }
 
-        async function memberReject(assessmentId) {
-            const result = await Swal.fire({
-                title: '驳回考核？',
-                text: '请填写驳回原因',
-                input: 'textarea',
-                inputPlaceholder: '请输入驳回原因...',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: '提交驳回',
-                cancelButtonText: '取消',
-                inputValidator: (value) => {
-                    if (!value) {
-                        return '请填写驳回原因';
-                    }
-                }
-            });
+    function resetFilters() {
+        document.getElementById('monthFilter').value = '';
+        document.getElementById('employeeFilter').value = '';
+        document.getElementById('typeFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        window.location.href = '{% url "Yuser:assessment_list" %}';
+    }
 
-            if (result.isConfirmed) {
-                await handleAssessmentAction(`/assessment/${assessmentId}/member-reject/`, '已驳回，组长可重新编辑', {comment: result.value});
-            }
+    async function submitToMember(assessmentId) {
+        const result = await Swal.fire({
+            title: '确认提交考核？',
+            text: '提交后组员将收到确认通知',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '确认提交',
+            cancelButtonText: '取消'
+        });
+
+        if (result.isConfirmed) {
+            // ========== 【修复】修改URL ==========
+            await handleAssessmentAction(`/assessment/${assessmentId}/submit-to-member/`, '已提交给组员确认');
         }
+    }
 
-        async function leaderConfirm(assessmentId) {
-            const result = await Swal.fire({
-                title: '最终确认并锁定？',
-                text: '确认后将无法修改，请仔细核对！',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: '确认并锁定',
-                cancelButtonText: '取消'
-            });
+    async function memberConfirm(assessmentId) {
+        const result = await Swal.fire({
+            title: '确认通过考核？',
+            text: '确认后将进入组长最终确认环节',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: '确认无误',
+            cancelButtonText: '取消'
+        });
 
-            if (result.isConfirmed) {
-                await handleAssessmentAction(`/assessment/${assessmentId}/leader-confirm/`, '考核已锁定');
-            }
+        if (result.isConfirmed) {
+            await handleAssessmentAction(`/assessment/${assessmentId}/member-confirm/`, '确认成功');
         }
+    }
 
-        async function deleteAssessment(assessmentId) {
-            const result = await Swal.fire({
-                title: '确认删除考核？',
-                text: '删除后不可恢复',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: '确认删除',
-                cancelButtonText: '取消',
-                confirmButtonColor: '#dc2626'
-            });
-
-            if (result.isConfirmed) {
-                await handleAssessmentAction(`/assessment/${assessmentId}/delete/`, '已删除');
-            }
-        }
-
-        async function handleAssessmentAction(url, successMessage, extraData = {}) {
-            try {
-                const csrfToken = getCookie('csrftoken');
-                if (!csrfToken) throw new Error('CSRF Token 未找到');
-
-                const formData = new FormData();
-                formData.append('csrfmiddlewaretoken', csrfToken);
-                Object.entries(extraData).forEach(([key, value]) => {
-                    formData.append(key, value);
-                });
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    const message = data.final_score ? `${successMessage}，最终得分：${data.final_score}` : successMessage;
-                    await Swal.fire('成功', message, 'success');
-                    location.reload();
-                } else {
-                    Swal.fire('失败', data.message || '操作失败', 'error');
-                }
-            } catch (error) {
-                console.error('操作失败:', error);
-                Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
-            }
-        }
-
-        // 键盘事件
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                const confirmOverlay = document.getElementById('confirmModalOverlay');
-                if (confirmOverlay.classList.contains('show')) {
-                    closeConfirmModal();
-                } else {
-                    closeCreateModal();
+    async function memberReject(assessmentId) {
+        const result = await Swal.fire({
+            title: '驳回考核？',
+            text: '请填写驳回原因',
+            input: 'textarea',
+            inputPlaceholder: '请输入驳回原因...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '提交驳回',
+            cancelButtonText: '取消',
+            inputValidator: (value) => {
+                if (!value) {
+                    return '请填写驳回原因';
                 }
             }
         });
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const filterSection = document.querySelector('.filter-section');
-            if (filterSection) {
-                filterSection.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-                        e.preventDefault();
-                        filterAssessments();
-                    }
-                });
-            }
+        if (result.isConfirmed) {
+            await handleAssessmentAction(`/assessment/${assessmentId}/member-reject/`, '已驳回，组长可重新编辑', { comment: result.value });
+        }
+    }
+
+    async function leaderConfirm(assessmentId) {
+        const result = await Swal.fire({
+            title: '最终确认并锁定？',
+            text: '确认后将无法修改，请仔细核对！',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '确认并锁定',
+            cancelButtonText: '取消'
         });
 
-        // ===== 批量刷新订单数据（管理员专用）=====
-        async function batchRefreshOrders() {
-            // 获取当前筛选条件
-            const month = document.getElementById('monthFilter').value;
-            const employee = document.getElementById('employeeFilter').value;
-            const assess_type = document.getElementById('typeFilter').value;
-            const status = document.getElementById('statusFilter').value;
+        if (result.isConfirmed) {
+            await handleAssessmentAction(`/assessment/${assessmentId}/leader-confirm/`, '考核已锁定');
+        }
+    }
 
-            // 确认提示
-            const result = await Swal.fire({
-                title: '批量刷新订单数据？',
-                text: '此操作将重新计算当前筛选条件下所有考核的实际订单量，耗时可能较长（仅支持亚马逊类型）',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: '确认刷新',
-                cancelButtonText: '取消',
-                confirmButtonColor: '#f59e0b'
+    async function deleteAssessment(assessmentId) {
+        const result = await Swal.fire({
+            title: '确认删除考核？',
+            text: '删除后不可恢复',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '确认删除',
+            cancelButtonText: '取消',
+            confirmButtonColor: '#dc2626'
+        });
+
+        if (result.isConfirmed) {
+            await handleAssessmentAction(`/assessment/${assessmentId}/delete/`, '已删除');
+        }
+    }
+
+    async function handleAssessmentAction(url, successMessage, extraData = {}) {
+        try {
+            const csrfToken = getCookie('csrftoken');
+            if (!csrfToken) throw new Error('CSRF Token 未找到');
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            Object.entries(extraData).forEach(([key, value]) => {
+                formData.append(key, value);
             });
 
-            if (!result.isConfirmed) return;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
 
-            // 显示加载状态
-            const btn = document.querySelector('[onclick="batchRefreshOrders()"]');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
-            btn.disabled = true;
+            const data = await response.json();
 
-            try {
-                const csrfToken = getCookie('csrftoken');
-                if (!csrfToken) throw new Error('CSRF Token 未找到');
+            if (data.success) {
+                const message = data.final_score ? `${successMessage}，最终得分：${data.final_score}` : successMessage;
+                await Swal.fire('成功', message, 'success');
+                location.reload();
+            } else {
+                Swal.fire('失败', data.message || '操作失败', 'error');
+            }
+        } catch (error) {
+            console.error('操作失败:', error);
+            Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
+        }
+    }
 
-                const formData = new FormData();
-                formData.append('csrfmiddlewaretoken', csrfToken);
-                if (month) formData.append('month', month);
-                if (employee) formData.append('employee', employee);
-                if (assess_type) formData.append('assess_type', assess_type);
-                if (status) formData.append('status', status);
-
-                const response = await fetch('{% url "Yuser:assessment_batch_refresh_orders" %}', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    let message = `成功刷新 ${data.data.success} 条考核`;
-                    if (data.data.failed > 0) {
-                        message += `<br>失败 ${data.data.failed} 条`;
-                        message += `<br><details style="margin-top: 1rem;"><summary>查看失败详情</summary>`;
-                        message += `<pre style="text-align: left; max-height: 200px; overflow-y: auto;">${data.data.errors.join('\n')}</pre></details>`;
-                    }
-
-                    await Swal.fire({
-                        title: '刷新完成',
-                        html: message,
-                        icon: 'success',
-                        confirmButtonText: '确定'
-                    });
-
-                    // 刷新页面查看更新后的数据
-                    location.reload();
-                } else {
-                    Swal.fire('刷新失败', data.message || '操作失败', 'error');
-                }
-            } catch (error) {
-                console.error('批量刷新失败:', error);
-                Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
-            } finally {
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
+    // 键盘事件
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') {
+            const confirmOverlay = document.getElementById('confirmModalOverlay');
+            if (confirmOverlay.classList.contains('show')) {
+                closeConfirmModal();
+            } else {
+                closeCreateModal();
             }
         }
+    });
 
-    </script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const filterSection = document.querySelector('.filter-section');
+        if (filterSection) {
+            filterSection.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                    e.preventDefault();
+                    filterAssessments();
+                }
+            });
+        }
+    });
+
+    // ===== 批量刷新订单数据（管理员专用）=====
+    async function batchRefreshOrders() {
+        // 获取当前筛选条件
+        const month = document.getElementById('monthFilter').value;
+        const employee = document.getElementById('employeeFilter').value;
+        const assess_type = document.getElementById('typeFilter').value;
+        const status = document.getElementById('statusFilter').value;
+
+        // 确认提示
+        const result = await Swal.fire({
+            title: '批量刷新订单数据？',
+            text: '此操作将重新计算当前筛选条件下所有考核的实际订单量，耗时可能较长（仅支持亚马逊类型）',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '确认刷新',
+            cancelButtonText: '取消',
+            confirmButtonColor: '#f59e0b'
+        });
+
+        if (!result.isConfirmed) return;
+
+        // 显示加载状态
+        const btn = document.querySelector('[onclick="batchRefreshOrders()"]');
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+        btn.disabled = true;
+
+        try {
+            const csrfToken = getCookie('csrftoken');
+            if (!csrfToken) throw new Error('CSRF Token 未找到');
+
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            if (month) formData.append('month', month);
+            if (employee) formData.append('employee', employee);
+            if (assess_type) formData.append('assess_type', assess_type);
+            if (status) formData.append('status', status);
+
+            const response = await fetch('{% url "Yuser:assessment_batch_refresh_orders" %}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                let message = `成功刷新 ${data.data.success} 条考核`;
+                if (data.data.failed > 0) {
+                    message += `<br>失败 ${data.data.failed} 条`;
+                    message += `<br><details style="margin-top: 1rem;"><summary>查看失败详情</summary>`;
+                    message += `<pre style="text-align: left; max-height: 200px; overflow-y: auto;">${data.data.errors.join('\n')}</pre></details>`;
+                }
+
+                await Swal.fire({
+                    title: '刷新完成',
+                    html: message,
+                    icon: 'success',
+                    confirmButtonText: '确定'
+                });
+
+                // 刷新页面查看更新后的数据
+                location.reload();
+            } else {
+                Swal.fire('刷新失败', data.message || '操作失败', 'error');
+            }
+        } catch (error) {
+            console.error('批量刷新失败:', error);
+            Swal.fire('错误', error.message || '网络请求失败，请重试', 'error');
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        }
+    }
+
+</script>
 {% endblock %}

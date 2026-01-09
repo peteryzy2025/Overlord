@@ -448,6 +448,26 @@ class AssessmentListView(AssessmentManagementView, ListView):
         context['status_choices'] = PerformanceAssessment.STATUS_CHOICES
         context['active_page'] = 'assessment_list'
 
+        try:
+            current_user = self.request.user
+            perms_raw = getattr(current_user, 'permission', '') or ''
+            perms_list = [p.strip() for p in str(perms_raw).split(',') if p.strip()]
+            assessments_page = context.get('assessments') or context.get('object_list') or []
+            status_counts = {}
+            for a in assessments_page:
+                status_counts[a.status] = status_counts.get(a.status, 0) + 1
+            print(
+                f"[assessment_list] user_id={getattr(current_user, 'id', None)} "
+                f"username={getattr(current_user, 'username', '')} "
+                f"is_superuser={getattr(current_user, 'is_superuser', False)} "
+                f"permission_raw={perms_raw!r} "
+                f"permission_list={perms_list} "
+                f"is_admin={context['is_admin']} "
+                f"page_status_counts={status_counts}"
+            )
+        except Exception as e:
+            print(f"[assessment_list] debug_print_failed: {e}")
+
         return context
 
 
@@ -1149,7 +1169,7 @@ class AssessmentDeleteView(AssessmentManagementView):
 
         assessment = get_object_or_404(PerformanceAssessment, pk=pk)
 
-        if assessment.status != 'pending_leader':
+        if assessment.status != 'draft':
             return JsonResponse({'success': False, 'message': '仅支持删除组长评分中的考核'}, status=400)
 
         assessment.delete()
