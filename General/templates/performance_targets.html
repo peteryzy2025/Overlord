@@ -491,9 +491,7 @@
                         <th>目标月份</th>
                         <th>运营分组</th>
                         <th>组目标业绩</th>
-                        <th>组冲单目标</th>
                         <th>成员目标总和</th>
-                        <th>成员冲单总和</th>
                         <th>平衡状态</th>
                         <th>备注</th>
                         <th>创建人</th>
@@ -586,7 +584,6 @@
                         <th>运营人员</th>
                         <th>目标月份</th>
                         <th>个人目标业绩</th>
-                        <th>个人冲单目标</th>
                         <th>备注</th>
                         <th>创建人</th>
                         <th>创建时间</th>
@@ -725,9 +722,7 @@ function renderGroupRows(targets) {
                 <td class="field-month">${target.month}</td>
                 <td class="field-ops_group">${target.ops_group}</td>
                 <td class="field-target">${target.target_performance}</td>
-                <td class="field-stretch">${target.stretch_target}</td>
                 <td class="field-member-target">${target.member_target_total}</td>
-                <td class="field-member-stretch">${target.member_stretch_total}</td>
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td class="field-note">${target.note}</td>
                 <td class="field-creator">${target.creator_name}</td>
@@ -832,7 +827,6 @@ function renderPersonalRows(targets) {
             <td class="field-user_name">${target.user_name}</td>
             <td class="field-month">${target.month}</td>
             <td class="field-target">${target.target_performance}</td>
-            <td class="field-stretch">${target.stretch_target}</td>
             <td class="field-note">${target.note}</td>
             <td class="field-creator">${target.creator_name}</td>
             <td class="field-created">${target.created_at}</td>
@@ -931,10 +925,6 @@ function generateGroupForm(targetData = null) {
                 <label>组目标业绩（单） <span style="color:red;">*</span></label>
                 <input type="number" id="group-target_performance" value="${data.target_performance || ''}" min="0" required>
             </div>
-            <div class="form-group">
-                <label>组冲单目标（单） <span style="color:red;">*</span></label>
-                <input type="number" id="group-stretch_target" value="${data.stretch_target || ''}" min="0" required>
-            </div>
             <div class="form-group" style="grid-column: 1 / -1;">
                 <label>备注</label>
                 <textarea id="group-note" rows="3">${data.note || ''}</textarea>
@@ -947,16 +937,10 @@ async function saveGroupModal() {
     const month = document.getElementById('group-month').value;
     const ops_group = document.getElementById('group-ops_group').value;
     const target_performance = parseInt(document.getElementById('group-target_performance').value);
-    const stretch_target = parseInt(document.getElementById('group-stretch_target').value);
     const note = document.getElementById('group-note').value;
 
-    if (!month || !ops_group || !target_performance || !stretch_target) {
+    if (!month || !ops_group || !target_performance) {
         alert('请填写所有必填项！');
-        return;
-    }
-
-    if (stretch_target <= target_performance) {
-        alert('冲单目标必须大于目标业绩！');
         return;
     }
 
@@ -968,7 +952,7 @@ async function saveGroupModal() {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken(),
             },
-            body: JSON.stringify({ month, ops_group, target_performance, stretch_target, note })
+            body: JSON.stringify({ month, ops_group, target_performance, note })
         });
 
         const result = await response.json();
@@ -1013,7 +997,6 @@ async function openBatchPersonalModal() {
 
     // 存储组目标值到全局变量
     batchGroupTarget = groupTarget.target_performance;
-    batchGroupStretch = groupTarget.stretch_target;
 
     // 获取组员
     const membersResponse = await fetch(`/api/performance/operators_by_group/?ops_group=${ops_group}`);
@@ -1029,7 +1012,7 @@ async function openBatchPersonalModal() {
     document.getElementById('batchPersonalModalOverlay').style.display = 'block';
 
     // 监听输入变化，实时计算总和
-    document.querySelectorAll('.batch-target-input, .batch-stretch-input').forEach(input => {
+    document.querySelectorAll('.batch-target-input').forEach(input => {
         input.addEventListener('input', updateBalanceInfo);
     });
 
@@ -1051,7 +1034,7 @@ function generateBatchPersonalForm(groupTarget, members) {
             <input type="hidden" id="batch-ops_group" value="${ops_group}">
 
             <div class="form-group" style="grid-column: 1 / -1;">
-                <label>组目标基准：<span style="color:var(--accent-color);font-weight:700;">${batchGroupTarget}单</span> / 冲单基准：<span style="color:var(--accent-color);font-weight:700;">${batchGroupStretch}单</span></label>
+                <label>组目标基准：<span style="color:var(--accent-color);font-weight:700;">${batchGroupTarget}单</span></label>
                 <div id="balance-info" class="balance-info"></div>
             </div>
 
@@ -1061,7 +1044,6 @@ function generateBatchPersonalForm(groupTarget, members) {
                         <tr>
                             <th>成员</th>
                             <th>个人目标业绩</th>
-                            <th>个人冲单目标</th>
                             <th>备注</th>
                         </tr>
                     </thead>
@@ -1070,7 +1052,6 @@ function generateBatchPersonalForm(groupTarget, members) {
                             <tr data-user-id="${member.id}">
                                 <td style="font-weight:500;">${member.first_name}</td>
                                 <td><input type="number" class="form-control batch-target-input" data-user-id="${member.id}" min="0" value="0" required></td>
-                                <td><input type="number" class="form-control batch-stretch-input" data-user-id="${member.id}" min="0" value="0" required></td>
                                 <td><input type="text" class="form-control batch-note-input" data-user-id="${member.id}" placeholder="备注"></td>
                             </tr>
                         `).join('')}
@@ -1084,28 +1065,22 @@ function generateBatchPersonalForm(groupTarget, members) {
 function updateBalanceInfo() {
     // 使用全局变量获取组目标值
     const groupTarget = batchGroupTarget;
-    const groupStretch = batchGroupStretch;
 
-    let totalTarget = 0, totalStretch = 0;
+    let totalTarget = 0;
 
     document.querySelectorAll('.batch-target-input').forEach(input => {
         totalTarget += parseInt(input.value) || 0;
     });
 
-    document.querySelectorAll('.batch-stretch-input').forEach(input => {
-        totalStretch += parseInt(input.value) || 0;
-    });
-
     const info = document.getElementById('balance-info');
     const targetMatch = totalTarget === groupTarget;
-    const stretchMatch = totalStretch === groupStretch;
 
-    if (targetMatch && stretchMatch) {
+    if (targetMatch) {
         info.className = 'balance-info success';
-        info.textContent = `✓ 目标已平衡（成员总和 = 组目标：${totalTarget}/${totalStretch}）`;
+        info.textContent = `✓ 目标已平衡（成员总和 = 组目标：${totalTarget}）`;
     } else {
         info.className = 'balance-info error';
-        info.textContent = `✗ 目标不平衡：成员目标总和 ${totalTarget}/${totalStretch}，组目标 ${groupTarget}/${groupStretch}`;
+        info.textContent = `✗ 目标不平衡：成员目标总和 ${totalTarget}，组目标 ${groupTarget}`;
     }
 }
 
@@ -1118,23 +1093,20 @@ async function saveBatchPersonalModal() {
     document.querySelectorAll('.batch-target-input').forEach(input => {
         const user_id = parseInt(input.dataset.userId);
         const target_performance = parseInt(input.value) || 0;
-        const stretch_input = document.querySelector(`.batch-stretch-input[data-user-id="${user_id}"]`);
         const note_input = document.querySelector(`.batch-note-input[data-user-id="${user_id}"]`);
 
         targets.push({
             user_id,
             target_performance,
-            stretch_target: parseInt(stretch_input.value) || 0,
             note: note_input.value
         });
     });
 
     // 最终验证
     const totalTarget = targets.reduce((sum, t) => sum + t.target_performance, 0);
-    const totalStretch = targets.reduce((sum, t) => sum + t.stretch_target, 0);
 
-    if (totalTarget !== batchGroupTarget || totalStretch !== batchGroupStretch) {
-        alert(`目标不平衡，无法保存！成员总和(${totalTarget}/${totalStretch})必须等于组目标(${batchGroupTarget}/${batchGroupStretch})`);
+    if (totalTarget !== batchGroupTarget) {
+        alert(`目标不平衡，无法保存！成员总和(${totalTarget})必须等于组目标(${batchGroupTarget})`);
         return;
     }
 
