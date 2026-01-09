@@ -271,9 +271,6 @@ class GroupPerformanceTarget(models.Model):
     # 组目标业绩（单量）
     target_performance = models.IntegerField('组目标业绩/单', default=0)
 
-    # 冲单业绩目标
-    stretch_target = models.IntegerField('组冲单目标/单', default=0)
-
     # 备注
     note = models.TextField('备注', blank=True, null=True)
 
@@ -306,9 +303,7 @@ class GroupPerformanceTarget(models.Model):
 
     def clean(self):
         """模型验证"""
-        if self.stretch_target <= self.target_performance:
-            raise ValidationError('组冲单目标必须大于组目标业绩')
-            # 确保日期总是该月的第一天
+        # 确保日期总是该月的第一天
         if self.month and self.month.day != 1:
             self.month = self.month.replace(day=1)
 
@@ -332,15 +327,9 @@ class GroupPerformanceTarget(models.Model):
             month=self.month
         ).aggregate(Sum('target_performance'))['target_performance__sum'] or 0
 
-        stretch_total = PersonalPerformanceTarget.objects.filter(
-            ops_group=self.ops_group,
-            month=self.month
-        ).aggregate(Sum('stretch_target'))['stretch_target__sum'] or 0
-
         return {
             'target_total': total,
-            'stretch_total': stretch_total,
-            'matches_group_target': total == self.target_performance and stretch_total == self.stretch_target
+            'matches_group_target': total == self.target_performance
         }
 
 
@@ -367,9 +356,6 @@ class PersonalPerformanceTarget(models.Model):
 
     # 目标业绩（单量）
     target_performance = models.IntegerField('个人目标业绩/单', default=0)
-
-    # 冲单业绩目标
-    stretch_target = models.IntegerField('个人冲单目标/单', default=0)
 
     # 备注
     note = models.TextField('备注', blank=True, null=True)
@@ -410,8 +396,6 @@ class PersonalPerformanceTarget(models.Model):
 
     def clean(self):
         """模型验证"""
-        if self.stretch_target <= self.target_performance:
-            raise ValidationError('个人冲单目标必须大于个人目标业绩')
         # 确保日期总是该月的第一天
         if self.month and self.month.day != 1:
             self.month = self.month.replace(day=1)

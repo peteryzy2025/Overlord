@@ -53,7 +53,13 @@ def get_group_targets_api(request):
         # 筛选条件
         month_filter = request.GET.get('month', '').strip()
         if month_filter:
-            query = query.filter(month=month_filter)
+            # 补全日期为1号
+            try:
+                if len(month_filter) == 7:  # YYYY-MM
+                    month_filter = f"{month_filter}-01"
+                query = query.filter(month=month_filter)
+            except Exception:
+                pass  # 格式不对就不筛选日期
 
         ops_group_filter = request.GET.get('ops_group', '').strip()
         if ops_group_filter:
@@ -80,9 +86,7 @@ def get_group_targets_api(request):
                 'month': target.month,
                 'ops_group': target.ops_group,
                 'target_performance': target.target_performance,
-                'stretch_target': target.stretch_target,
                 'member_target_total': member_totals['target_total'],
-                'member_stretch_total': member_totals['stretch_total'],
                 'is_balanced': member_totals['matches_group_target'],
                 'note': target.note or '-',
                 'creator_name': target.created_by.first_name if target.created_by else '系统',
@@ -119,7 +123,6 @@ def create_group_target_api(request):
         month = data.get('month', '').strip()
         ops_group = data.get('ops_group', '').strip()
         target_performance = int(data.get('target_performance', 0))
-        stretch_target = int(data.get('stretch_target', 0))
         note = data.get('note', '')
 
         # 验证
@@ -127,12 +130,11 @@ def create_group_target_api(request):
             return JsonResponse({'success': False, 'error': '月份和运营分组是必填项'}, status=400)
 
         try:
-            datetime.strptime(month, '%Y-%m')
+            # 格式校验并转换为 YYYY-MM-01
+            date_obj = datetime.strptime(month, '%Y-%m')
+            month = date_obj.strftime('%Y-%m-01')
         except ValueError:
-            return JsonResponse({'success': False, 'error': '月份格式错误'}, status=400)
-
-        if stretch_target <= target_performance:
-            return JsonResponse({'success': False, 'error': '冲单目标必须大于目标业绩'}, status=400)
+            return JsonResponse({'success': False, 'error': '月份格式错误，应为YYYY-MM'}, status=400)
 
         # 检查重复
         if GroupPerformanceTarget.objects.filter(month=month, ops_group=ops_group).exists():
@@ -143,7 +145,6 @@ def create_group_target_api(request):
                 month=month,
                 ops_group=ops_group,
                 target_performance=target_performance,
-                stretch_target=stretch_target,
                 note=note,
                 created_by=request.user
             )
@@ -177,23 +178,18 @@ def update_group_target_api(request, target_id):
         data = json.loads(request.body or '{}')
 
         target_performance = int(data.get('target_performance', target.target_performance))
-        stretch_target = int(data.get('stretch_target', target.stretch_target))
         note = data.get('note', target.note or '')
-
-        if stretch_target <= target_performance:
-            return JsonResponse({'success': False, 'error': '冲单目标必须大于目标业绩'}, status=400)
 
         # 检查成员目标总和是否匹配
         member_totals = target.get_current_member_total()
-        if member_totals['target_total'] != target_performance or member_totals['stretch_total'] != stretch_target:
+        if member_totals['target_total'] != target_performance:
             return JsonResponse({
                 'success': False,
-                'error': f'成员目标总和({member_totals["target_total"]}/{member_totals["stretch_total"]})与组目标不符，请先调整成员目标'
+                'error': f'成员目标总和({member_totals["target_total"]})与组目标不符，请先调整成员目标'
             }, status=400)
 
         with transaction.atomic():
             target.target_performance = target_performance
-            target.stretch_target = stretch_target
             target.note = note
             target.save()
 
@@ -236,7 +232,13 @@ def get_personal_targets_api(request):
         # 筛选条件
         month_filter = request.GET.get('month', '').strip()
         if month_filter:
-            query = query.filter(month=month_filter)
+            # 补全日期为1号
+            try:
+                if len(month_filter) == 7:  # YYYY-MM
+                    month_filter = f"{month_filter}-01"
+                query = query.filter(month=month_filter)
+            except Exception:
+                pass
 
         user_filter = request.GET.get('user', '').strip()
         if user_filter:
@@ -267,7 +269,6 @@ def get_personal_targets_api(request):
                 'ops_group': target.ops_group or '-',
                 'month': target.month,
                 'target_performance': target.target_performance,
-                'stretch_target': target.stretch_target,
                 'note': target.note or '-',
                 'creator_name': target.created_by.first_name if target.created_by else '系统',
                 'created_at': target.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -314,6 +315,14 @@ def batch_create_personal_targets_api(request):
         ops_group = data.get('ops_group', '').strip()
         targets_data = data.get('targets', [])
 
+        # 格式化日期
+        try:
+            if len(month) == 7:
+                month = f"{month}-01"
+            datetime.strptime(month, '%Y-%m-%d')
+        except ValueError:
+             return JsonResponse({'success': False, 'error': '月份格式错误'}, status=400)
+
         # 验证组长只能设置自己组的目标
         user_ops_group = request.user.get_ops_group()
         if not user_ops_group or user_ops_group != ops_group:
@@ -330,18 +339,11 @@ def batch_create_personal_targets_api(request):
 
         # 验证成员目标总和等于组目标
         total_target = sum([t.get('target_performance', 0) for t in targets_data])
-        total_stretch = sum([t.get('stretch_target', 0) for t in targets_data])
 
         if total_target != group_target.target_performance:
             return JsonResponse({
                 'success': False,
                 'error': f'组员目标总和({total_target})必须等于组目标({group_target.target_performance})'
-            }, status=400)
-
-        if total_stretch != group_target.stretch_target:
-            return JsonResponse({
-                'success': False,
-                'error': f'组员冲单总和({total_stretch})必须等于组冲单目标({group_target.stretch_target})'
             }, status=400)
 
         # 验证所有成员都属于该组
@@ -362,7 +364,6 @@ def batch_create_personal_targets_api(request):
             for target_info in targets_data:
                 user_id = target_info['user_id']
                 target_performance = target_info.get('target_performance', 0)
-                stretch_target = target_info.get('stretch_target', 0)
                 note = target_info.get('note', '')
 
                 # 检查是否已存在
@@ -372,7 +373,6 @@ def batch_create_personal_targets_api(request):
 
                 if existing:
                     existing.target_performance = target_performance
-                    existing.stretch_target = stretch_target
                     existing.note = note
                     existing.created_by = request.user
                     existing.save()
@@ -382,7 +382,6 @@ def batch_create_personal_targets_api(request):
                         user_id=user_id,
                         month=month,
                         target_performance=target_performance,
-                        stretch_target=stretch_target,
                         note=note,
                         ops_group=ops_group,
                         created_by=request.user
