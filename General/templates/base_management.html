@@ -11,12 +11,12 @@
                 </a>
             </li>
             <li class="sidebar-item dropdown">
-                <a href="#" class="sidebar-link dropdown-toggle">
+                <a href="#" class="sidebar-link dropdown-toggle {% if active_page == 'performance_targets' or active_page == 'assessment_list' %}active{% endif %}">
                     <i class="fas fa-chart-line"></i>
                     <span>绩效管理</span>
                     <i class="fas fa-chevron-right dropdown-arrow"></i>
                 </a>
-                <ul class="submenu">
+                <ul class="submenu" {% if active_page == 'performance_targets' or active_page == 'assessment_list' %}style="display:block"{% endif %}>
                     <li class="sidebar-item">
                         <a href="{% url 'general:performance_targets' %}"
                            class="sidebar-link {% if active_page == 'performance_targets' %}active{% endif %}">

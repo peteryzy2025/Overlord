@@ -15,8 +15,8 @@ class PermissionMiddleware:
         '/management/',  # 管理中心页面及子页面
         '/api/users/',  # 用户管理API
         '/api/roles/',  # 角色管理API
-        '/api/amazon-shops/',  # Amazon店铺管理API
-        '/amazon-management/',  # Amazon店铺管理页面
+        #'/api/amazon-shops/',  # Amazon店铺管理API
+        #'/amazon-management/',  # Amazon店铺管理页面
     ]
 
     def __init__(self, get_response):

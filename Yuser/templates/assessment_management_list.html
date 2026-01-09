@@ -535,6 +535,13 @@
                                         <i class="fas fa-lock"></i> 最终确认
                                     </button>
                                 {% endif %}
+
+                                {% if is_admin and assessment.status == 'pending_leader' %}
+                                    <button class="btn btn-sm btn-danger"
+                                            onclick="deleteAssessment({{ assessment.pk }})">
+                                        <i class="fas fa-trash"></i> 删除
+                                    </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -887,6 +894,22 @@
 
             if (result.isConfirmed) {
                 await handleAssessmentAction(`/assessment/${assessmentId}/leader-confirm/`, '考核已锁定');
+            }
+        }
+
+        async function deleteAssessment(assessmentId) {
+            const result = await Swal.fire({
+                title: '确认删除考核？',
+                text: '删除后不可恢复',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: '确认删除',
+                cancelButtonText: '取消',
+                confirmButtonColor: '#dc2626'
+            });
+
+            if (result.isConfirmed) {
+                await handleAssessmentAction(`/assessment/${assessmentId}/delete/`, '已删除');
             }
         }
 

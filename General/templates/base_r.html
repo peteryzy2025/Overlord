@@ -93,6 +93,10 @@
     .sidebar-link.dropdown-toggle {
     cursor: pointer;
     }
+    /* 移除可能的::after伪元素，避免双箭头 */
+    .sidebar-link.dropdown-toggle::after {
+    content: none !important;
+    }
 
     /* 响应式设计 */
     @media (max-width: 992px) {
