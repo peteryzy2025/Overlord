@@ -1171,10 +1171,17 @@ async function loadFilterOptions() {
 
     // 加载运营人员（仅运营部门）
     try {
-        const userResponse = await fetch('/api/users/?page=1&page_size=9999');
+        const userResponse = await fetch('/api/users/all/');
         const userResult = await userResponse.json();
         if (userResult.success) {
-            allOperators = userResult.data.filter(u => u.department === '运营部门');
+            const isOperatorDepartment = (dept) => {
+                if (!dept) return false;
+                return String(dept).includes('运营');
+            };
+
+            allOperators = userResult.data
+                .filter(u => isOperatorDepartment(u.department))
+                .sort((a, b) => String(a.first_name || a.username || '').localeCompare(String(b.first_name || b.username || ''), 'zh-Hans-CN'));
 
             // 更新个人目标筛选器
             const userSelect = document.getElementById('personalUserFilter');

@@ -4,667 +4,667 @@
 {% block title %}Amazon店铺管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <style>
-        .content {
-            max-width: 100vw;
-            overflow-x: hidden;
-        }
-
-        .tab-content {
-            display: block;
-            max-width: 100%;
-            width: 100%;
-            padding: 2rem;
-            box-sizing: border-box;
-            overflow-x: hidden;
-        }
-
-        .page-header {
-            margin-bottom: 0.2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .page-subtitle {
-            color: var(--text-secondary);
-        }
-
-        .btn-create {
-            background-color: #22c55e;
-            color: white;
-        }
-
-        .btn-create:hover {
-            background-color: #16a34a;
-        }
-
-        .btn-export {
-            background-color: #3b82f6;
-            color: white;
-            margin-left: 1rem;
-        }
-
-        .btn-export:hover {
-            background-color: #2563eb;
-        }
-
-        .filter-section {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 0.2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
-
-        .filter-row-main {
-            display: flex;
-            gap: 1rem;
-            align-items: flex-end;
-            flex-wrap: nowrap;
-            position: relative;
-            padding-right: 50px;
-        }
-
-        .filter-row-secondary {
-            display: none;
-            gap: 1rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px dashed var(--border-color);
-        }
-
-        .filter-row-secondary.expanded {
-            display: flex;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 180px;
-            flex: 1;
-        }
-
-        .filter-actions-main {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .filter-actions-secondary {
-            display: flex;
-            gap: 0.5rem;
-            align-self: flex-end;
-            margin-left: auto;
-        }
-
-        .expand-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-        }
-
-        .expand-toggle:hover {
-            background: var(--bg-tertiary);
-            border-color: var(--accent-color);
-        }
-
-        .filter-label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-            white-space: nowrap;
-        }
-
-        .form-control, .form-select {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .btn-secondary {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .table-container {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-            overflow-x: auto;
-            max-height: 700px;
-            overflow-y: auto;
-            width: 100%;
-        }
-
-        .table-container table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            min-width: 4200px;
-        }
-
-        .table-container thead {
-            position: sticky;
-            top: 0;
-            z-index: 12;
-            background-color: var(--bg-secondary);
-        }
-
-        .table {
-            width: 100%;
-            margin: 0;
-            color: var(--text-primary);
-        }
-
-        .table th {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-        }
-
-        .table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-            white-space: nowrap;
-        }
-
-        .table tbody tr:hover {
-            background-color: var(--bg-secondary);
-        }
-
-        /* ==================== 左侧固定列样式 START ==================== */
-        /* 固定 ID 列的 td */
-        .table-container td:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 固定 店铺名称 列的 td */
-        .table-container td:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 固定 ID 列的 th（表头） */
-        .table-container th:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 12;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 固定 店铺名称 列的 th（表头） */
-        .table-container th:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 13;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 确保右侧操作列层级高于固定列 */
-        .table-container th:last-child,
-        .table-container td:last-child {
-            position: sticky;
-            right: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* 设置固定列的宽度（可选） */
-        .table-container td:nth-child(1),
-        .table-container th:nth-child(1) {
-            min-width: 80px;
-            max-width: 80px;
-            width: 80px;
-        }
-
-        .table-container td:nth-child(2),
-        .table-container th:nth-child(2) {
-            min-width: 200px;
-            max-width: 200px;
-            width: 200px;
-        }
-
-        /* ==================== 左侧固定列样式 END ==================== */
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .status-active {
-            background-color: #C6F6D5;
-            color: #22543D;
-        }
-
-        .status-pending {
-            background-color: #FEF3C7;
-            color: #92400E;
-        }
-
-        .status-inactive {
-            background-color: #FED7D7;
-            color: #742A2A;
-        }
-
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 0.5rem;
-            padding: 1rem;
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
-
-        .pagination-info {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .pagination {
-            display: flex;
-            gap: 0.25rem;
-            margin: 0;
-            padding: 0;
-            list-style: none;
-        }
-
-        .page-item {
-            margin: 0;
-        }
-
-        .page-link {
-            display: block;
-            padding: 0.5rem 0.75rem;
-            color: var(--text-primary);
-            text-decoration: none;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-secondary);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .page-link:hover {
-            background-color: var(--bg-tertiary);
-            color: var(--accent-color);
-        }
-
-        .page-item.active .page-link {
-            background-color: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
-
-        .page-item.disabled .page-link {
-            color: var(--text-tertiary);
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: var(--bg-primary);
-            border-radius: 16px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 1200px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-heavy);
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-        }
-
-        .modal-close:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 1rem;
-        }
-
-        .modal-footer {
-            position: sticky;
-            bottom: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-            margin-top: auto;
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-
-        .btn-cancel-modal {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .btn-save-modal {
-            background-color: #22c55e;
-        }
-
-        .btn-save-modal:hover {
-            background-color: #16a34a;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .form-group label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.75rem;
-            transition: all 0.3s ease;
-        }
-
-        .section-title {
-            grid-column: 1 / -1;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--accent-color);
-            margin: 1rem 0 0.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .field-disabled {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-secondary) !important;
-            cursor: not-allowed;
-        }
-
-        /* 日期范围选择器样式 */
-        .date-range-group {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-
-        .date-range-group input {
-            flex: 1;
-        }
-
-        .date-range-group span {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        /* 列选择器样式 */
-        .column-group {
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--bg-secondary);
-        }
-
-        .column-group h3 {
-            background-color: var(--bg-tertiary);
-            padding: 0.5rem 1rem !important;
-            border-radius: 8px 8px 0 0;
-        }
-
-        .column-group label {
-            padding: 0.25rem;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .column-group label:hover {
-            background-color: var(--bg-tertiary);
-        }
-    </style>
+<style>
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .tab-content {
+        display: block;
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .btn-create {
+        background-color: #22c55e;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #16a34a;
+    }
+
+    .btn-export {
+        background-color: #3b82f6;
+        color: white;
+        margin-left: 1rem;
+    }
+
+    .btn-export:hover {
+        background-color: #2563eb;
+    }
+
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row-main {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: nowrap;
+        position: relative;
+        padding-right: 50px;
+    }
+
+    .filter-row-secondary {
+        display: none;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--border-color);
+    }
+
+    .filter-row-secondary.expanded {
+        display: flex;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 180px;
+        flex: 1;
+    }
+
+    .filter-actions-main {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .filter-actions-secondary {
+        display: flex;
+        gap: 0.5rem;
+        align-self: flex-end;
+        margin-left: auto;
+    }
+
+    .expand-toggle {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+    }
+
+    .expand-toggle:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent-color);
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        white-space: nowrap;
+    }
+
+    .form-control,
+    .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+        width: 100%;
+    }
+
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+    }
+
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+        width: 100%;
+    }
+
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 4200px;
+    }
+
+    .table-container thead {
+        position: sticky;
+        top: 0;
+        z-index: 12;
+        background-color: var(--bg-secondary);
+    }
+
+    .table {
+        width: 100%;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+    }
+
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    /* ==================== 左侧固定列样式 START ==================== */
+    /* 固定 ID 列的 td */
+    .table-container td:nth-child(1) {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        background-color: var(--bg-primary);
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 固定 店铺名称 列的 td */
+    .table-container td:nth-child(2) {
+        position: sticky;
+        left: 80px;
+        z-index: 10;
+        background-color: var(--bg-primary);
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 固定 ID 列的 th（表头） */
+    .table-container th:nth-child(1) {
+        position: sticky;
+        left: 0;
+        z-index: 12;
+        background-color: var(--bg-secondary);
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 固定 店铺名称 列的 th（表头） */
+    .table-container th:nth-child(2) {
+        position: sticky;
+        left: 80px;
+        z-index: 13;
+        background-color: var(--bg-secondary);
+        box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 确保右侧操作列层级高于固定列 */
+    .table-container th:last-child,
+    .table-container td:last-child {
+        position: sticky;
+        right: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+
+    /* 设置固定列的宽度（可选） */
+    .table-container td:nth-child(1),
+    .table-container th:nth-child(1) {
+        min-width: 80px;
+        max-width: 80px;
+        width: 80px;
+    }
+
+    .table-container td:nth-child(2),
+    .table-container th:nth-child(2) {
+        min-width: 200px;
+        max-width: 200px;
+        width: 200px;
+    }
+
+    /* ==================== 左侧固定列样式 END ==================== */
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .status-active {
+        background-color: #C6F6D5;
+        color: #22543D;
+    }
+
+    .status-pending {
+        background-color: #FEF3C7;
+        color: #92400E;
+    }
+
+    .status-inactive {
+        background-color: #FED7D7;
+        color: #742A2A;
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .page-item {
+        margin: 0;
+    }
+
+    .page-link {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .page-link:hover {
+        background-color: var(--bg-tertiary);
+        color: var(--accent-color);
+    }
+
+    .page-item.active .page-link {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .page-item.disabled .page-link {
+        color: var(--text-tertiary);
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 1200px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
+
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-cancel-modal {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-save-modal {
+        background-color: #22c55e;
+    }
+
+    .btn-save-modal:hover {
+        background-color: #16a34a;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .field-disabled {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-secondary) !important;
+        cursor: not-allowed;
+    }
+
+    /* 日期范围选择器样式 */
+    .date-range-group {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+    }
+
+    .date-range-group input {
+        flex: 1;
+    }
+
+    .date-range-group span {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    /* 列选择器样式 */
+    .column-group {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background-color: var(--bg-secondary);
+    }
+
+    .column-group h3 {
+        background-color: var(--bg-tertiary);
+        padding: 0.5rem 1rem !important;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .column-group label {
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .column-group label:hover {
+        background-color: var(--bg-tertiary);
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div id="amazon-shops-tab" class="tab-content">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">Amazon店铺管理</h1>
-                <p class="page-subtitle">管理Amazon店铺信息和配置</p>
+<div id="amazon-shops-tab" class="tab-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Amazon店铺管理</h1>
+            <p class="page-subtitle">管理Amazon店铺信息和配置</p>
+        </div>
+        <div>
+            <button class="btn btn-create" onclick="openCreateModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
+            </button>
+            <button class="btn btn-export" onclick="openExportModal()">
+                <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
+            </button>
+        </div>
+    </div>
+
+    <div class="filter-section">
+        <!-- 第一行筛选器 -->
+        <div class="filter-row-main">
+            <div class="filter-group">
+                <label class="filter-label">店铺状态</label>
+                <select class="form-select" id="amazonShopStatusFilter">
+                    <option value="">全部状态</option>
+                    <option value="正常">正常</option>
+                    <option value="停用">停用</option>
+                    <option value="注销">注销</option>
+                </select>
             </div>
-            <div>
-                <button class="btn btn-create" onclick="openCreateModal()">
-                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
-                </button>
-                <button class="btn btn-export" onclick="openExportModal()">
-                    <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
-                </button>
+            <div class="filter-group">
+                <label class="filter-label">客户</label>
+                <select class="form-select" id="amazonCustomerFilter">
+                    <option value="">全部客户</option>
+                </select>
             </div>
+            <div class="filter-group">
+                <label class="filter-label">运营人员</label>
+                <select class="form-select" id="amazonOperatorFilter">
+                    <option value="">全部人员</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">运营分组</label>
+                <select class="form-select" id="amazonGroupFilter">
+                    <option value="">全部分组</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">搜索店铺</label>
+                <input type="text" class="form-control" id="amazonShopSearch" placeholder="搜索店铺名称/亚马逊名称">
+            </div>
+
+            <!-- 展开/收起按钮 -->
+            <button class="expand-toggle" id="expandToggle" onclick="toggleExpand()" title="展开更多筛选">
+                <i class="fas fa-chevron-down" id="expandIcon"></i>
+            </button>
         </div>
 
-        <div class="filter-section">
-            <!-- 第一行筛选器 -->
-            <div class="filter-row-main">
-                <div class="filter-group">
-                    <label class="filter-label">店铺状态</label>
-                    <select class="form-select" id="amazonShopStatusFilter">
-                        <option value="">全部状态</option>
-                        <option value="正常">正常</option>
-                        <option value="停用">停用</option>
-                        <option value="注销">注销</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">客户</label>
-                    <select class="form-select" id="amazonCustomerFilter">
-                        <option value="">全部客户</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">运营人员</label>
-                    <select class="form-select" id="amazonOperatorFilter">
-                        <option value="">全部人员</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">运营分组</label>
-                    <select class="form-select" id="amazonGroupFilter">
-                        <option value="">全部分组</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">搜索店铺</label>
-                    <input type="text" class="form-control" id="amazonShopSearch" placeholder="搜索店铺名称/亚马逊名称">
-                </div>
+        <!-- 第二行筛选器（默认隐藏） -->
+        <div class="filter-row-secondary" id="secondaryFilters">
 
-                <!-- 展开/收起按钮 -->
-                <button class="expand-toggle" id="expandToggle" onclick="toggleExpand()" title="展开更多筛选">
-                    <i class="fas fa-chevron-down" id="expandIcon"></i>
-                </button>
+            <div class="filter-group">
+                <label class="filter-label">店铺渠道</label>
+                <input type="text" class="form-control" id="quDaoFilter" placeholder="搜索渠道">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">备用手机/邮箱</label>
+                <input type="text" class="form-control" id="backupContactFilter" placeholder="搜索备用联系方式">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">附加备注</label>
+                <input type="text" class="form-control" id="additionalRemarkFilter" placeholder="搜索附加备注">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">公司名称</label>
+                <input type="text" class="form-control" id="companyNameFilter" placeholder="搜索公司名称">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">领星授权</label>
+                <select class="form-select" id="lingXingIfFilter">
+                    <option value="">全部</option>
+                    <option value="1">是</option>
+                    <option value="0">否</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">浏览器</label>
+                <select class="form-select" id="browserFilter">
+                    <option value="">全部</option>
+                    <option value="闪店">闪店</option>
+                    <option value="紫鸟">紫鸟</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">收款账号</label>
+                <input type="text" class="form-control" id="collectionAccountFilter" placeholder="搜索寻汇账号/卡号">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">邮箱账号</label>
+                <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">下店日期范围</label>
+                <div class="date-range-group">
+                    <input type="date" class="form-control" id="shopDateStartFilter">
+                    <span>至</span>
+                    <input type="date" class="form-control" id="shopDateEndFilter">
+                </div>
             </div>
 
-            <!-- 第二行筛选器（默认隐藏） -->
-            <div class="filter-row-secondary" id="secondaryFilters">
-
-                <div class="filter-group">
-                    <label class="filter-label">店铺渠道</label>
-                    <input type="text" class="form-control" id="quDaoFilter" placeholder="搜索渠道">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">备用手机/邮箱</label>
-                    <input type="text" class="form-control" id="backupContactFilter" placeholder="搜索备用联系方式">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">附加备注</label>
-                    <input type="text" class="form-control" id="additionalRemarkFilter" placeholder="搜索附加备注">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">公司名称</label>
-                    <input type="text" class="form-control" id="companyNameFilter" placeholder="搜索公司名称">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">领星授权</label>
-                    <select class="form-select" id="lingXingIfFilter">
-                        <option value="">全部</option>
-                        <option value="1">是</option>
-                        <option value="0">否</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">浏览器</label>
-                    <select class="form-select" id="browserFilter">
-                        <option value="">全部</option>
-                        <option value="闪店">闪店</option>
-                        <option value="紫鸟">紫鸟</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">收款账号</label>
-                    <input type="text" class="form-control" id="collectionAccountFilter"
-                           placeholder="搜索寻汇账号/卡号">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">邮箱账号</label>
-                    <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">下店日期范围</label>
-                    <div class="date-range-group">
-                        <input type="date" class="form-control" id="shopDateStartFilter">
-                        <span>至</span>
-                        <input type="date" class="form-control" id="shopDateEndFilter">
-                    </div>
-                </div>
-
-                <!-- 第二行的筛选和重置按钮 -->
-                <div class="filter-actions-secondary">
-                    <button class="btn" onclick="filterAmazonShops()">筛选</button>
-                    <button class="btn btn-secondary" onclick="resetAmazonShopFilters()">重置</button>
-                </div>
+            <!-- 第二行的筛选和重置按钮 -->
+            <div class="filter-actions-secondary">
+                <button class="btn" onclick="filterAmazonShops()">筛选</button>
+                <button class="btn btn-secondary" onclick="resetAmazonShopFilters()">重置</button>
             </div>
         </div>
+    </div>
 
-        <div class="table-container">
-            <table class="table" id="amazonShopsTable">
-                <thead>
+    <div class="table-container">
+        <table class="table" id="amazonShopsTable">
+            <thead id="amazonShopsTableHead">
                 <tr>
                     <th>ID</th>
                     <th>店铺名称</th>
@@ -713,473 +713,484 @@
                     <th>附加备注</th>
                     <th>操作</th>
                 </tr>
-                </thead>
-                <tbody id="amazonShopsTableBody">
+            </thead>
+            <tbody id="amazonShopsTableBody">
                 <!-- 动态生成内容 -->
-                </tbody>
-            </table>
-        </div>
-
-        <div class="pagination-container">
-            <div class="pagination-info" data-total="0">
-                显示第 1 到 10 条，共 0 条记录
-                <select id="pageSizeSelect"
-                        style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
-                        onchange="changePageSize(this.value)">
-                    <option value="10">10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                    <option value="100">100条/页</option>
-                </select>
-            </div>
-            <nav>
-                <ul class="pagination" id="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">上一页</a>
-                    </li>
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">下一页</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
+            </tbody>
+        </table>
     </div>
 
-    <!-- 模态框（取消点击外部关闭功能） -->
-    <div class="modal-overlay" id="shopModalOverlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- 动态生成表单内容 -->
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
-                <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
-            </div>
+    <div class="pagination-container">
+        <div class="pagination-info" data-total="0">
+            显示第 1 到 10 条，共 0 条记录
+            <select id="pageSizeSelect"
+                style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                onchange="changePageSize(this.value)">
+                <option value="10">10条/页</option>
+                <option value="20">20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+            </select>
+        </div>
+        <nav>
+            <ul class="pagination" id="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">上一页</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 模态框（取消点击外部关闭功能） -->
+<div class="modal-overlay" id="shopModalOverlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- 动态生成表单内容 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
         </div>
     </div>
+</div>
 
-    <!-- 导出配置模态框 -->
-    <div class="modal-overlay" id="exportModalOverlay">
-        <div class="modal-content" style="width: 800px; max-height: 90vh;">
-            <div class="modal-header">
-                <h2 class="modal-title">选择要导出的列</h2>
-                <button class="modal-close" onclick="closeExportModal()">&times;</button>
+<!-- 导出配置模态框 -->
+<div class="modal-overlay" id="exportModalOverlay">
+    <div class="modal-content" style="width: 800px; max-height: 90vh;">
+        <div class="modal-header">
+            <h2 class="modal-title">选择要导出的列</h2>
+            <button class="modal-close" onclick="closeExportModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow-y: auto; max-height: 60vh; padding: 1rem 0;">
+            <!-- 全选按钮 -->
+            <div style="margin-bottom: 1rem; padding: 0 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                    <input type="checkbox" id="selectAllColumns" onchange="toggleSelectAllColumns(this)">
+                    <span id="selectAllText">全选</span>
+                </label>
             </div>
-            <div class="modal-body" style="overflow-y: auto; max-height: 60vh; padding: 1rem 0;">
-                <!-- 全选按钮 -->
-                <div style="margin-bottom: 1rem; padding: 0 1rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 500;">
-                        <input type="checkbox" id="selectAllColumns" onchange="toggleSelectAllColumns(this)">
-                        <span id="selectAllText">全选</span>
-                    </label>
-                </div>
 
-                <!-- 按分组显示的列选择器 -->
-                <div id="columnsContainer"></div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
-                <button class="btn btn-save-modal" id="confirmExportBtn">确认导出</button>
-            </div>
+            <!-- 按分组显示的列选择器 -->
+            <div id="columnsContainer"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
+            <button class="btn btn-save-modal" id="confirmExportBtn">确认导出</button>
         </div>
     </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-    <!-- 引入SheetJS库 -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script>
-        // 全局变量
-        let allOperators = [];
-        let allGroups = [];
-        let allCustomers = [];
-        let modalMode = null;
-        let currentShopId = null;
-        let currentPage = 1;
-        let currentPageSize = 10;
+<!-- 引入SheetJS库 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+    // 全局变量
+    let allOperators = [];
+    let allGroups = [];
+    let allCustomers = [];
+    let modalMode = null;
+    let currentShopId = null;
+    let currentPage = 1;
+    let currentPageSize = 10;
+    const USER_PERMISSIONS = JSON.parse('{{ user_permissions_json|escapejs }}');
+    const USER_ID = {{ request.user.id }};
+    const USER_GROUP = '{{ user_ops_group|default_if_none:"" }}';
+    const IS_ADMIN = USER_PERMISSIONS.includes('ops_all') || USER_PERMISSIONS.includes('555');
+    const NON_ADMIN_VISIBLE_KEYS = [
+        'id', 'shop_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
+        'shop_status', 'amazon_shop_name', 'shop_date', 'shop_number', 'seller_mark',
+        'qu_dao', 'ip_address', 'browser', 'email_account', 'email_password'
+    ];
 
-        // ==========================================
-        // 展开/收起功能
-        // ==========================================
-        // 所有可导出的列定义
-        const EXPORT_COLUMNS = [
-            // 基本信息组
-            {key: 'id', label: 'ID', group: '基本信息', tableVisible: true},
-            {key: 'shop_name', label: '店铺名称', group: '基本信息', tableVisible: true},
-            {key: 'customer', label: '客户', group: '基本信息', tableVisible: true},
-            {key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true},
-            {key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true},
-            {key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true, isRelated: true},
-            {key: 'shop_status', label: '状态', group: '基本信息', tableVisible: true},
-            {key: 'amazon_shop_name', label: '亚马逊名称', group: '基本信息', tableVisible: true},
-            {key: 'shop_date', label: '下店日期', group: '基本信息', tableVisible: true},
-            {key: 'shop_number', label: '店铺序号', group: '基本信息', tableVisible: true},
-            {key: 'seller_mark', label: '卖家记号', group: '基本信息', tableVisible: true},
-            {key: 'qu_dao', label: '店铺渠道', group: '基本信息', tableVisible: true},
+    // ==========================================
+    // 展开/收起功能
+    // ==========================================
+    // 所有可导出的列定义
+    const EXPORT_COLUMNS = [
+        // 基本信息组
+        { key: 'id', label: 'ID', group: '基本信息', tableVisible: true },
+        { key: 'shop_name', label: '店铺名称', group: '基本信息', tableVisible: true },
+        { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
+        { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true },
+        { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true },
+        { key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true, isRelated: true },
+        { key: 'shop_status', label: '状态', group: '基本信息', tableVisible: true },
+        { key: 'amazon_shop_name', label: '亚马逊名称', group: '基本信息', tableVisible: true },
+        { key: 'shop_date', label: '下店日期', group: '基本信息', tableVisible: true },
+        { key: 'shop_number', label: '店铺序号', group: '基本信息', tableVisible: true },
+        { key: 'seller_mark', label: '卖家记号', group: '基本信息', tableVisible: true },
+        { key: 'qu_dao', label: '店铺渠道', group: '基本信息', tableVisible: true },
 
-            // 网络信息组
-            {key: 'ip_address', label: 'IP地址', group: '网络信息'},
-            {key: 'browser', label: '浏览器', group: '网络信息', tableVisible: true},
-            {key: 'whitelist', label: '白名单', group: '网络信息'},
+        // 网络信息组
+        { key: 'ip_address', label: 'IP地址', group: '网络信息' },
+        { key: 'browser', label: '浏览器', group: '网络信息', tableVisible: true },
+        { key: 'whitelist', label: '白名单', group: '网络信息' },
 
-            // 账号信息组
-            {key: 'email_account', label: '邮箱账号', group: '账号信息', tableVisible: true},
-            {key: 'email_password', label: '邮箱密码', group: '账号信息'},
-            {key: 'shop_password', label: '店铺密码', group: '账号信息'},
-            {key: 'registered_phone', label: '注册手机号', group: '账号信息'},
-            {key: 'backup_email_or_phone', label: '备用邮箱/手机', group: '账号信息', tableVisible: true},
-            {key: 'voucher_163', label: '163凭证', group: '账号信息'},
-            {key: 'email_163_account', label: '163大师号', group: '账号信息'},
-            {key: 'ling_xing_if', label: '领星绑定', group: '账号信息', tableVisible: true},
-            {key: 'divi_shop_id', label: '迪唯ID', group: '账号信息'},
+        // 账号信息组
+        { key: 'email_account', label: '邮箱账号', group: '账号信息', tableVisible: true },
+        { key: 'email_password', label: '邮箱密码', group: '账号信息' },
+        { key: 'shop_password', label: '店铺密码', group: '账号信息' },
+        { key: 'registered_phone', label: '注册手机号', group: '账号信息' },
+        { key: 'backup_email_or_phone', label: '备用邮箱/手机', group: '账号信息', tableVisible: true },
+        { key: 'voucher_163', label: '163凭证', group: '账号信息' },
+        { key: 'email_163_account', label: '163大师号', group: '账号信息' },
+        { key: 'ling_xing_if', label: '领星绑定', group: '账号信息', tableVisible: true },
+        { key: 'divi_shop_id', label: '迪唯ID', group: '账号信息' },
 
-            // 信用卡组
-            {key: 'credit_card_channel', label: '信用卡渠道', group: '信用卡'},
-            {key: 'credit_card_number', label: '信用卡号', group: '信用卡'},
-            {key: 'credit_card_expiry', label: '有效期', group: '信用卡'},
-            {key: 'credit_card_cvv', label: 'CVV', group: '信用卡'},
+        // 信用卡组
+        { key: 'credit_card_channel', label: '信用卡渠道', group: '信用卡' },
+        { key: 'credit_card_number', label: '信用卡号', group: '信用卡' },
+        { key: 'credit_card_expiry', label: '有效期', group: '信用卡' },
+        { key: 'credit_card_cvv', label: 'CVV', group: '信用卡' },
 
-            // 收款信息组
-            {key: 'is_consolidated', label: '是否归集', group: '收款信息'},
-            {key: 'bind_collection', label: '绑定收款', group: '收款信息'},
-            {key: 'collection_channel', label: '收款渠道', group: '收款信息'},
-            {key: 'xunhui_login_account', label: '寻汇账号', group: '收款信息', tableVisible: true},
-            {key: 'login_password', label: '登录密码', group: '收款信息'},
-            {key: 'bind_phone', label: '绑定手机', group: '收款信息'},
-            {key: 'collection_card_number', label: '收款卡号', group: '收款信息'},
-            {key: 'payment_password', label: '支付密码', group: '收款信息'},
+        // 收款信息组
+        { key: 'is_consolidated', label: '是否归集', group: '收款信息' },
+        { key: 'bind_collection', label: '绑定收款', group: '收款信息' },
+        { key: 'collection_channel', label: '收款渠道', group: '收款信息' },
+        { key: 'xunhui_login_account', label: '寻汇账号', group: '收款信息', tableVisible: true },
+        { key: 'login_password', label: '登录密码', group: '收款信息' },
+        { key: 'bind_phone', label: '绑定手机', group: '收款信息' },
+        { key: 'collection_card_number', label: '收款卡号', group: '收款信息' },
+        { key: 'payment_password', label: '支付密码', group: '收款信息' },
 
-            // 法人信息组
-            {key: 'id_number', label: '身份证号', group: '法人信息'},
-            {key: 'legal_person_phone', label: '法人手机', group: '法人信息'},
-            {key: 'company_name', label: '公司名称', group: '法人信息', tableVisible: true},
-            {key: 'license_number', label: '执照号', group: '法人信息'},
-            {key: 'business_license_date', label: '执照日期', group: '法人信息'},
-            {key: 'birth_date', label: '出生日期', group: '法人信息'},
-            {key: 'id_expiry_date', label: '身份证到期', group: '法人信息'},
+        // 法人信息组
+        { key: 'id_number', label: '身份证号', group: '法人信息' },
+        { key: 'legal_person_phone', label: '法人手机', group: '法人信息' },
+        { key: 'company_name', label: '公司名称', group: '法人信息', tableVisible: true },
+        { key: 'license_number', label: '执照号', group: '法人信息' },
+        { key: 'business_license_date', label: '执照日期', group: '法人信息' },
+        { key: 'birth_date', label: '出生日期', group: '法人信息' },
+        { key: 'id_expiry_date', label: '身份证到期', group: '法人信息' },
 
-            // 其他
-            {key: 'remark', label: '备注', group: '其他', tableVisible: true},
-            {key: 'additional_remark', label: '附加备注', group: '其他', tableVisible: true},
-            {key: 'img1', label: '图片', group: '其他'}
-        ];
+        // 其他
+        { key: 'remark', label: '备注', group: '其他', tableVisible: true },
+        { key: 'additional_remark', label: '附加备注', group: '其他', tableVisible: true },
+        { key: 'img1', label: '图片', group: '其他' }
+    ];
 
-        // localStorage key
-        const EXPORT_COLUMNS_STORAGE_KEY = 'amazon_export_columns_selected';
+    // localStorage key
+    const EXPORT_COLUMNS_STORAGE_KEY = 'amazon_export_columns_selected';
 
-        function getSavedSelectedColumns() {
-            const saved = localStorage.getItem(EXPORT_COLUMNS_STORAGE_KEY);
-            if (saved) {
-                try {
-                    return JSON.parse(saved);
-                } catch (e) {
-                    console.warn('解析保存的导出列失败:', e);
-                }
-            }
-            // 默认全选
-            return EXPORT_COLUMNS.map(col => col.key);
-        }
-
-        // 保存选中列
-        function saveSelectedColumns(selectedKeys) {
-            localStorage.setItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(selectedKeys));
-        }
-
-        function toggleExpand() {
-            const secondaryRow = document.getElementById('secondaryFilters');
-            const icon = document.getElementById('expandIcon');
-            const isExpanded = secondaryRow.classList.contains('expanded');
-
-            if (isExpanded) {
-                secondaryRow.classList.remove('expanded');
-                icon.className = 'fas fa-chevron-down';
-                localStorage.setItem('amazon_filter_expanded', 'false');
-            } else {
-                secondaryRow.classList.add('expanded');
-                icon.className = 'fas fa-chevron-up';
-                localStorage.setItem('amazon_filter_expanded', 'true');
-            }
-        }
-
-        // 页面加载时恢复展开状态
-        function restoreExpandState() {
-            const expanded = localStorage.getItem('amazon_filter_expanded') === 'true';
-            if (expanded) {
-                document.getElementById('secondaryFilters').classList.add('expanded');
-                document.getElementById('expandIcon').className = 'fas fa-chevron-up';
-            }
-        }
-
-        // ==========================================
-        // API 数据获取 - 支持新筛选条件
-        // ==========================================
-
-        async function loadShopsFromAPI(page = 1, pageSize = 10) {
+    function getSavedSelectedColumns() {
+        const saved = localStorage.getItem(EXPORT_COLUMNS_STORAGE_KEY);
+        if (saved) {
             try {
-                const params = new URLSearchParams({
-                    page: page,
-                    page_size: pageSize,
-                    status: document.getElementById('amazonShopStatusFilter').value,
-                    operator: document.getElementById('amazonOperatorFilter').value,
-                    ops_group: document.getElementById('amazonGroupFilter').value,
-                    customer: document.getElementById('amazonCustomerFilter').value,
-                    search: document.getElementById('amazonShopSearch').value,
-                    // 新增筛选参数
-                    shop_date_start: document.getElementById('shopDateStartFilter').value,
-                    shop_date_end: document.getElementById('shopDateEndFilter').value,
-                    qu_dao: document.getElementById('quDaoFilter').value,
-                    backup_email_or_phone: document.getElementById('backupContactFilter').value,
-                    additional_remark: document.getElementById('additionalRemarkFilter').value,
-                    company_name: document.getElementById('companyNameFilter').value,
-                    ling_xing_if: document.getElementById('lingXingIfFilter').value,
-                    browser: document.getElementById('browserFilter').value,
-                    xunhui_login_account: document.getElementById('collectionAccountFilter').value,
-                    email_account: document.getElementById('emailAccountFilter').value
-                });
-
-                const response = await fetch(`/api/amazon-shops/?${params}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (result.success) {
-                    return {
-                        data: result.data,
-                        total: result.total,
-                        page: result.page,
-                        page_size: result.page_size
-                    };
-                }
-
-                console.error('获取店铺数据失败:', result.error);
-                alert('加载店铺数据失败: ' + result.error);
-                return {data: [], total: 0};
-            } catch (error) {
-                console.error('API请求错误:', error);
-                alert('无法连接到服务器，请检查网络连接');
-                return {data: [], total: 0};
+                return JSON.parse(saved);
+            } catch (e) {
+                console.warn('解析保存的导出列失败:', e);
             }
         }
+        // 默认全选
+        return EXPORT_COLUMNS.map(col => col.key);
+    }
 
-        async function loadOperatorsFromAPI(platform = '') {
-            try {
-                const url = new URL('/api/operators/', window.location.origin);
-                if (platform) {
-                    url.searchParams.set('platform', platform);
-                }
+    // 保存选中列
+    function saveSelectedColumns(selectedKeys) {
+        localStorage.setItem(EXPORT_COLUMNS_STORAGE_KEY, JSON.stringify(selectedKeys));
+    }
 
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    function toggleExpand() {
+        const secondaryRow = document.getElementById('secondaryFilters');
+        const icon = document.getElementById('expandIcon');
+        const isExpanded = secondaryRow.classList.contains('expanded');
 
-                const result = await response.json();
-                if (result.success) {
-                    allOperators = result.data;
-                    return true;
-                }
+        if (isExpanded) {
+            secondaryRow.classList.remove('expanded');
+            icon.className = 'fas fa-chevron-down';
+            localStorage.setItem('amazon_filter_expanded', 'false');
+        } else {
+            secondaryRow.classList.add('expanded');
+            icon.className = 'fas fa-chevron-up';
+            localStorage.setItem('amazon_filter_expanded', 'true');
+        }
+    }
 
-                console.error('获取运营人员列表失败:', result.error);
-                allOperators = [];
-                return false;
-            } catch (error) {
-                console.error('运营人员API请求错误:', error);
-                allOperators = [];
-                return false;
+    // 页面加载时恢复展开状态
+    function restoreExpandState() {
+        const expanded = localStorage.getItem('amazon_filter_expanded') === 'true';
+        if (expanded) {
+            document.getElementById('secondaryFilters').classList.add('expanded');
+            document.getElementById('expandIcon').className = 'fas fa-chevron-up';
+        }
+    }
+
+    // ==========================================
+    // API 数据获取 - 支持新筛选条件
+    // ==========================================
+
+    async function loadShopsFromAPI(page = 1, pageSize = 10) {
+        try {
+            const params = new URLSearchParams({
+                page: page,
+                page_size: pageSize,
+                status: document.getElementById('amazonShopStatusFilter').value,
+                operator: document.getElementById('amazonOperatorFilter').value,
+                ops_group: document.getElementById('amazonGroupFilter').value,
+                customer: document.getElementById('amazonCustomerFilter').value,
+                search: document.getElementById('amazonShopSearch').value,
+                // 新增筛选参数
+                shop_date_start: document.getElementById('shopDateStartFilter').value,
+                shop_date_end: document.getElementById('shopDateEndFilter').value,
+                qu_dao: document.getElementById('quDaoFilter').value,
+                backup_email_or_phone: document.getElementById('backupContactFilter').value,
+                additional_remark: document.getElementById('additionalRemarkFilter').value,
+                company_name: document.getElementById('companyNameFilter').value,
+                ling_xing_if: document.getElementById('lingXingIfFilter').value,
+                browser: document.getElementById('browserFilter').value,
+                xunhui_login_account: document.getElementById('collectionAccountFilter').value,
+                email_account: document.getElementById('emailAccountFilter').value
+            });
+
+            const response = await fetch(`/api/amazon-shops/?${params}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                return {
+                    data: result.data,
+                    total: result.total,
+                    page: result.page,
+                    page_size: result.page_size
+                };
             }
+
+            console.error('获取店铺数据失败:', result.error);
+            alert('加载店铺数据失败: ' + result.error);
+            return { data: [], total: 0 };
+        } catch (error) {
+            console.error('API请求错误:', error);
+            alert('无法连接到服务器，请检查网络连接');
+            return { data: [], total: 0 };
+        }
+    }
+
+    async function loadOperatorsFromAPI(platform = '') {
+        try {
+            const url = new URL('/api/operators/', window.location.origin);
+            if (platform) {
+                url.searchParams.set('platform', platform);
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                allOperators = result.data;
+                return true;
+            }
+
+            console.error('获取运营人员列表失败:', result.error);
+            allOperators = [];
+            return false;
+        } catch (error) {
+            console.error('运营人员API请求错误:', error);
+            allOperators = [];
+            return false;
+        }
+    }
+
+    async function loadGroupsFromAPI(platform = '') {
+        try {
+            const url = new URL('/api/ops-groups/', window.location.origin);
+            if (platform) {
+                url.searchParams.set('platform', platform);
+            }
+
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                allGroups = result.data;
+                return true;
+            }
+
+            console.error('获取分组列表失败:', result.error);
+            allGroups = [];
+            return false;
+        } catch (error) {
+            console.error('分组API请求错误:', error);
+            allGroups = [];
+            return false;
+        }
+    }
+
+    async function loadCustomersFromAPI() {
+        try {
+            const response = await fetch('/api/customers/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                allCustomers = result.data;
+                return true;
+            }
+
+            console.error('获取客户列表失败:', result.error);
+            allCustomers = [];
+            return false;
+        } catch (error) {
+            console.error('客户API请求错误:', error);
+            allCustomers = [];
+            return false;
+        }
+    }
+
+    // ==========================================
+    // 分页控件渲染
+    // ==========================================
+
+    function renderPagination(totalItems, currentPage, pageSize) {
+        const totalPages = Math.ceil(totalItems / pageSize);
+        const paginationHtml = [];
+
+        if (totalPages <= 1) {
+            document.getElementById('pagination').innerHTML = '';
+            return;
         }
 
-        async function loadGroupsFromAPI(platform = '') {
-            try {
-                const url = new URL('/api/ops-groups/', window.location.origin);
-                if (platform) {
-                    url.searchParams.set('platform', platform);
-                }
-
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (result.success) {
-                    allGroups = result.data;
-                    return true;
-                }
-
-                console.error('获取分组列表失败:', result.error);
-                allGroups = [];
-                return false;
-            } catch (error) {
-                console.error('分组API请求错误:', error);
-                allGroups = [];
-                return false;
-            }
-        }
-
-        async function loadCustomersFromAPI() {
-            try {
-                const response = await fetch('/api/customers/');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (result.success) {
-                    allCustomers = result.data;
-                    return true;
-                }
-
-                console.error('获取客户列表失败:', result.error);
-                allCustomers = [];
-                return false;
-            } catch (error) {
-                console.error('客户API请求错误:', error);
-                allCustomers = [];
-                return false;
-            }
-        }
-
-        // ==========================================
-        // 分页控件渲染
-        // ==========================================
-
-        function renderPagination(totalItems, currentPage, pageSize) {
-            const totalPages = Math.ceil(totalItems / pageSize);
-            const paginationHtml = [];
-
-            if (totalPages <= 1) {
-                document.getElementById('pagination').innerHTML = '';
-                return;
-            }
-
-            const prevDisabled = currentPage === 1 ? 'disabled' : '';
-            paginationHtml.push(`
+        const prevDisabled = currentPage === 1 ? 'disabled' : '';
+        paginationHtml.push(`
         <li class="page-item ${prevDisabled}">
             <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
         </li>
     `);
 
-            let startPage = Math.max(1, currentPage - 2);
-            let endPage = Math.min(totalPages, startPage + 4);
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
 
-            if (endPage - startPage < 4) {
-                startPage = Math.max(1, endPage - 4);
-            }
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
 
-            if (startPage > 1) {
-                paginationHtml.push(`
+        if (startPage > 1) {
+            paginationHtml.push(`
             <li class="page-item">
                 <a class="page-link" href="#" onclick="changePage(1)">1</a>
             </li>
         `);
-                if (startPage > 2) {
-                    paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                }
+            if (startPage > 2) {
+                paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
             }
+        }
 
-            for (let i = startPage; i <= endPage; i++) {
-                const active = i === currentPage ? 'active' : '';
-                paginationHtml.push(`
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === currentPage ? 'active' : '';
+            paginationHtml.push(`
             <li class="page-item ${active}">
                 <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
             </li>
         `);
-            }
+        }
 
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                }
-                paginationHtml.push(`
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
+            }
+            paginationHtml.push(`
             <li class="page-item">
                 <a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>
             </li>
         `);
-            }
+        }
 
-            const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-            paginationHtml.push(`
+        const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+        paginationHtml.push(`
         <li class="page-item ${nextDisabled}">
             <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
         </li>
     `);
 
-            document.getElementById('pagination').innerHTML = paginationHtml.join('');
+        document.getElementById('pagination').innerHTML = paginationHtml.join('');
+    }
+
+    async function changePage(page) {
+        const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
+        const totalPages = Math.ceil(totalItems / currentPageSize);
+
+        if (page < 1 || page > totalPages) return;
+
+        currentPage = page;
+        await loadShopsTable();
+    }
+
+    async function changePageSize(pageSize) {
+        currentPageSize = parseInt(pageSize);
+        currentPage = 1;
+        await loadShopsTable();
+    }
+
+    // ==========================================
+    // 筛选器与表格渲染
+    // ==========================================
+
+    function updateFilterOptions(shops) {
+        const customerSelect = document.getElementById('amazonCustomerFilter');
+        const currentCustomer = customerSelect.value;
+        customerSelect.innerHTML = '<option value="">全部客户</option>';
+        allCustomers.forEach(customer => {
+            const option = document.createElement('option');
+            option.value = customer;
+            option.textContent = customer;
+            if (customer === currentCustomer) option.selected = true;
+            customerSelect.appendChild(option);
+        });
+
+        const operatorSelect = document.getElementById('amazonOperatorFilter');
+        const currentOperator = operatorSelect.value;
+        operatorSelect.innerHTML = '<option value="">全部人员</option>';
+        allOperators.forEach(op => {
+            const option = document.createElement('option');
+            option.value = op.id;
+            option.textContent = `${op.first_name} (${op.group})`;
+            if (op.id == currentOperator) option.selected = true;
+            operatorSelect.appendChild(option);
+        });
+
+        const groupSelect = document.getElementById('amazonGroupFilter');
+        const currentGroup = groupSelect.value;
+        groupSelect.innerHTML = '<option value="">全部分组</option>';
+        allGroups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            option.textContent = group;
+            if (group === currentGroup) option.selected = true;
+            groupSelect.appendChild(option);
+        });
+    }
+
+    async function loadShopsTable() {
+        const tbody = document.getElementById('amazonShopsTableBody');
+        const allowedKeys = IS_ADMIN ? EXPORT_COLUMNS.map(c => c.key) : NON_ADMIN_VISIBLE_KEYS;
+        const colCount = allowedKeys.length + 1;
+        tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:2rem;">加载中...</td></tr>`;
+
+        const { data, total, page, pageSize } = await loadShopsFromAPI(currentPage, currentPageSize);
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:2rem;">暂无数据</td></tr>`;
+            document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
+            document.getElementById('pagination').innerHTML = '';
+            return;
         }
 
-        async function changePage(page) {
-            const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
-            const totalPages = Math.ceil(totalItems / currentPageSize);
-
-            if (page < 1 || page > totalPages) return;
-
-            currentPage = page;
-            await loadShopsTable();
-        }
-
-        async function changePageSize(pageSize) {
-            currentPageSize = parseInt(pageSize);
-            currentPage = 1;
-            await loadShopsTable();
-        }
-
-        // ==========================================
-        // 筛选器与表格渲染
-        // ==========================================
-
-        function updateFilterOptions(shops) {
-            const customerSelect = document.getElementById('amazonCustomerFilter');
-            const currentCustomer = customerSelect.value;
-            customerSelect.innerHTML = '<option value="">全部客户</option>';
-            allCustomers.forEach(customer => {
-                const option = document.createElement('option');
-                option.value = customer;
-                option.textContent = customer;
-                if (customer === currentCustomer) option.selected = true;
-                customerSelect.appendChild(option);
-            });
-
-            const operatorSelect = document.getElementById('amazonOperatorFilter');
-            const currentOperator = operatorSelect.value;
-            operatorSelect.innerHTML = '<option value="">全部人员</option>';
-            allOperators.forEach(op => {
-                const option = document.createElement('option');
-                option.value = op.id;
-                option.textContent = `${op.first_name} (${op.group})`;
-                if (op.id == currentOperator) option.selected = true;
-                operatorSelect.appendChild(option);
-            });
-
-            const groupSelect = document.getElementById('amazonGroupFilter');
-            const currentGroup = groupSelect.value;
-            groupSelect.innerHTML = '<option value="">全部分组</option>';
-            allGroups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group;
-                option.textContent = group;
-                if (group === currentGroup) option.selected = true;
-                groupSelect.appendChild(option);
-            });
-        }
-
-        async function loadShopsTable() {
-            const tbody = document.getElementById('amazonShopsTableBody');
-            tbody.innerHTML = '<tr><td colspan="44" style="text-align:center;padding:2rem;">加载中...</td></tr>';
-
-            const {data, total, page, pageSize} = await loadShopsFromAPI(currentPage, currentPageSize);
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="44" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
-                document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
-                document.getElementById('pagination').innerHTML = '';
-                return;
-            }
-
-            const start = (currentPage - 1) * currentPageSize + 1;
-            const end = start + data.length - 1;
-            const pageInfoHtml = `
+        const start = (currentPage - 1) * currentPageSize + 1;
+        const end = start + data.length - 1;
+        const pageInfoHtml = `
         显示第 ${start} 到 ${end} 条，共 ${total} 条记录
         <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
             <option value="10" ${currentPageSize === 10 ? 'selected' : ''}>10条/页</option>
@@ -1188,156 +1199,128 @@
             <option value="100" ${currentPageSize === 100 ? 'selected' : ''}>100条/页</option>
         </select>
     `;
-            document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
-            document.querySelector('.pagination-info').dataset.total = total;
+        document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
+        document.querySelector('.pagination-info').dataset.total = total;
 
-            updateFilterOptions(data);
-            renderShopRows(data);
-            renderPagination(total, currentPage, currentPageSize);
-        }
+        updateFilterOptions(data);
+        renderTableHeader();
+        renderShopRows(data);
+        renderPagination(total, currentPage, currentPageSize);
+    }
 
-        function renderShopRows(shops) {
-            const tbody = document.getElementById('amazonShopsTableBody');
-            tbody.innerHTML = shops.map(shop => {
-                const statusClasses = {
-                    '正常': 'status-active',
-                    '停用': 'status-inactive',
-                    '注销': 'status-inactive',
-                    '审核中': 'status-pending'
-                };
-
-                return `
-            <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
-                <td class="field-id">${shop.id}</td>
-                <td class="field-shop_name">${shop.shop_name}</td>
-                <td class="field-customer">${shop.customer}</td>
-                <td class="field-ops_name">${shop.ops_first_name}</td>
-                <td class="field-ops_role">${shop.ops_role || '-'}</td>
-                <td class="field-ops_group">${shop.ops_group}</td>
-                <td class="field-shop_status">
-                    <span class="status-badge ${statusClasses[shop.shop_status] || 'status-inactive'}">${shop.shop_status}</span>
-                </td>
-                <td class="field-amazon_shop_name">${shop.amazon_shop_name}</td>
-                <td class="field-shop_date">${shop.shop_date}</td>
-                <td class="field-shop_number">${shop.shop_number || '-'}</td>
-                <td class="field-seller_mark">${shop.seller_mark}</td>
-                <td class="field-qu_dao">${shop.qu_dao}</td>
-                <td class="field-ip_address">${shop.ip_address}</td>
-                <td class="field-browser">${shop.browser || '-'}</td>
-                <td class="field-whitelist">${shop.whitelist || '-'}</td>
-                <td class="field-email_account">${shop.email_account || '-'}</td>
-                <td class="field-shop_password">${shop.shop_password || '-'}</td>
-                <td class="field-email_password">${shop.email_password || '-'}</td>
-                <td class="field-registered_phone">${shop.registered_phone || '-'}</td>
-                <td class="field-backup_email_or_phone">${shop.backup_email_or_phone || '-'}</td>
-                <td class="field-voucher_163">${shop.voucher_163 || '-'}</td>
-                <td class="field-email_163_account">${shop.email_163_account || '-'}</td>
-                <td class="field-ling_xing_if">${shop.ling_xing_if == 1 ? '是' : '否'}</td>
-                <td class="field-divi_shop_id">${shop.divi_shop_id || '-'}</td>
-                <td class="field-credit_card_channel">${shop.credit_card_channel || '-'}</td>
-                <td class="field-credit_card_number">${shop.credit_card_number || '-'}</td>
-                <td class="field-credit_card_expiry">${shop.credit_card_expiry || '-'}</td>
-                <td class="field-credit_card_cvv">${shop.credit_card_cvv || '-'}</td>
-                <td class="field-is_consolidated">${shop.is_consolidated || '-'}</td>
-                <td class="field-bind_collection">${shop.bind_collection || '-'}</td>
-                <td class="field-collection_channel">${shop.collection_channel || '-'}</td>
-                <td class="field-xunhui_login_account">${shop.xunhui_login_account || '-'}</td>
-                <td class="field-login_password">${shop.login_password || '-'}</td>
-                <td class="field-bind_phone">${shop.bind_phone || '-'}</td>
-                <td class="field-collection_card_number">${shop.collection_card_number || '-'}</td>
-                <td class="field-payment_password">${shop.payment_password || '-'}</td>
-                <td class="field-id_number">${shop.id_number || '-'}</td>
-                <td class="field-legal_person_phone">${shop.legal_person_phone || '-'}</td>
-                <td class="field-company_name">${shop.company_name || '-'}</td>
-                <td class="field-license_number">${shop.license_number || '-'}</td>
-                <td class="field-business_license_date">${shop.business_license_date || '-'}</td>
-                <td class="field-birth_date">${shop.birth_date || '-'}</td>
-                <td class="field-id_expiry_date">${shop.id_expiry_date || '-'}</td>
-                <td class="field-remark">${shop.remark}</td>
-                <td class="field-additional_remark">${shop.additional_remark || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>
-                </td>
-            </tr>
-        `;
+    function renderShopRows(shops) {
+        const statusClasses = {
+            '正常': 'status-active',
+            '停用': 'status-inactive',
+            '注销': 'status-inactive',
+            '审核中': 'status-pending'
+        };
+        const allowedKeys = IS_ADMIN ? EXPORT_COLUMNS.map(c => c.key) : NON_ADMIN_VISIBLE_KEYS;
+        const allowedColumns = EXPORT_COLUMNS.filter(c => allowedKeys.includes(c.key));
+        const tbody = document.getElementById('amazonShopsTableBody');
+        tbody.innerHTML = shops.map(shop => {
+            const cells = allowedColumns.map(col => {
+                let value = shop[col.key];
+                if (col.key === 'shop_status') {
+                    const cls = statusClasses[shop.shop_status] || 'status-inactive';
+                    return `<td class="field-${col.key}"><span class="status-badge ${cls}">${shop.shop_status}</span></td>`;
+                }
+                if (col.key === 'ling_xing_if') {
+                    value = value == 1 ? '是' : '否';
+                }
+                return `<td class="field-${col.key}">${value || '-'}</td>`;
             }).join('');
-        }
+            const actionCell = IS_ADMIN
+                ? `<button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>`
+                : `<button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;">不可编辑</button>`;
+            return `<tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">${cells}<td>${actionCell}</td></tr>`;
+        }).join('');
+    }
 
-        async function filterAmazonShops() {
-            currentPage = 1;
-            await loadShopsTable();
-        }
+    function renderTableHeader() {
+        const allowedKeys = IS_ADMIN ? EXPORT_COLUMNS.map(c => c.key) : NON_ADMIN_VISIBLE_KEYS;
+        const allowedColumns = EXPORT_COLUMNS.filter(c => allowedKeys.includes(c.key));
+        const thead = document.getElementById('amazonShopsTableHead');
+        if (!thead) return;
+        const headers = allowedColumns.map(col => `<th>${col.label}</th>`).join('');
+        thead.innerHTML = `<tr>${headers}<th>操作</th></tr>`;
+    }
 
-        function resetAmazonShopFilters() {
-            // 重置所有筛选器
-            document.getElementById('amazonShopStatusFilter').value = '';
-            document.getElementById('amazonCustomerFilter').value = '';
-            document.getElementById('amazonOperatorFilter').value = '';
-            document.getElementById('amazonGroupFilter').value = '';
-            document.getElementById('amazonShopSearch').value = '';
-            // 新增筛选器重置
-            document.getElementById('shopDateStartFilter').value = '';
-            document.getElementById('shopDateEndFilter').value = '';
-            document.getElementById('quDaoFilter').value = '';
-            document.getElementById('backupContactFilter').value = '';
-            document.getElementById('additionalRemarkFilter').value = '';
-            document.getElementById('companyNameFilter').value = '';
-            document.getElementById('lingXingIfFilter').value = '';
-            document.getElementById('browserFilter').value = '';
-            document.getElementById('collectionAccountFilter').value = '';
-            document.getElementById('emailAccountFilter').value = '';
-            currentPage = 1;
-            loadShopsTable();
-        }
+    async function filterAmazonShops() {
+        currentPage = 1;
+        await loadShopsTable();
+    }
 
-        // ==========================================
-        // 模态框操作
-        // ==========================================
+    function resetAmazonShopFilters() {
+        // 重置所有筛选器
+        document.getElementById('amazonShopStatusFilter').value = '';
+        document.getElementById('amazonCustomerFilter').value = '';
+        document.getElementById('amazonOperatorFilter').value = '';
+        document.getElementById('amazonGroupFilter').value = '';
+        document.getElementById('amazonShopSearch').value = '';
+        // 新增筛选器重置
+        document.getElementById('shopDateStartFilter').value = '';
+        document.getElementById('shopDateEndFilter').value = '';
+        document.getElementById('quDaoFilter').value = '';
+        document.getElementById('backupContactFilter').value = '';
+        document.getElementById('additionalRemarkFilter').value = '';
+        document.getElementById('companyNameFilter').value = '';
+        document.getElementById('lingXingIfFilter').value = '';
+        document.getElementById('browserFilter').value = '';
+        document.getElementById('collectionAccountFilter').value = '';
+        document.getElementById('emailAccountFilter').value = '';
+        currentPage = 1;
+        loadShopsTable();
+    }
 
-        function openCreateModal() {
-            modalMode = 'create';
-            currentShopId = null;
-            document.getElementById('modalTitle').textContent = '新建店铺';
-            document.getElementById('modalBody').innerHTML = generateModalForm();
-            document.getElementById('shopModalOverlay').style.display = 'block';
-        }
+    // ==========================================
+    // 模态框操作
+    // ==========================================
 
-        function openEditModal(shopId) {
-            modalMode = 'edit';
-            currentShopId = shopId;
+    function openCreateModal() {
+        modalMode = 'create';
+        currentShopId = null;
+        document.getElementById('modalTitle').textContent = '新建店铺';
+        document.getElementById('modalBody').innerHTML = generateModalForm();
+        document.getElementById('shopModalOverlay').style.display = 'block';
+    }
 
-            const row = document.querySelector(`tr[data-shop-id="${shopId}"]`);
-            if (!row) return;
+    function openEditModal(shopId) {
+        modalMode = 'edit';
+        currentShopId = shopId;
 
-            document.getElementById('modalTitle').textContent = '编辑店铺';
+        const row = document.querySelector(`tr[data-shop-id="${shopId}"]`);
+        if (!row) return;
 
-            fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success && result.data.length > 0) {
-                        const fullData = result.data[0];
-                        document.getElementById('modalBody').innerHTML = generateModalForm(fullData);
-                        document.getElementById('shopModalOverlay').style.display = 'block';
-                    }
-                });
-        }
+        document.getElementById('modalTitle').textContent = '编辑店铺';
 
-        function closeModal() {
-            document.getElementById('shopModalOverlay').style.display = 'none';
-            modalMode = null;
-            currentShopId = null;
-        }
+        fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data.length > 0) {
+                    const fullData = result.data[0];
+                    document.getElementById('modalBody').innerHTML = generateModalForm(fullData);
+                    document.getElementById('shopModalOverlay').style.display = 'block';
+                }
+            });
+    }
 
-        function generateModalForm(shopData = null) {
-            const isCreate = !shopData;
-            const data = shopData || {};
+    function closeModal() {
+        document.getElementById('shopModalOverlay').style.display = 'none';
+        modalMode = null;
+        currentShopId = null;
+    }
 
-            const operatorOptionsHtml = allOperators.map(op => {
-                const selected = data.ops_id == op.id ? 'selected' : '';
-                return `<option value="${op.id}" ${selected}>${op.first_name} (${op.group})</option>`;
-            }).join('');
+    function generateModalForm(shopData = null) {
+        const isCreate = !shopData;
+        const data = shopData || {};
 
-            return `
+        const operatorOptionsHtml = allOperators.map(op => {
+            const selected = data.ops_id == op.id ? 'selected' : '';
+            return `<option value="${op.id}" ${selected}>${op.first_name} (${op.group})</option>`;
+        }).join('');
+
+        return `
         <div class="section-title">🔍 基本信息</div>
         <div class="form-group">
             <label>店铺ID</label>
@@ -1530,243 +1513,249 @@
             <textarea id="modal-additional_remark" rows="3" style="width: 100%;">${data.additional_remark || ''}</textarea>
         </div>
     `;
+    }
+
+    async function saveShopModal() {
+        const v = (id) => (document.getElementById(id)?.value || '').trim();
+
+        const formData = {
+            shop_name: v('modal-shop_name'),
+            amazon_shop_name: v('modal-amazon_shop_name'),
+            customer: v('modal-customer'),
+            ops: v('modal-ops'),
+            shop_status: v('modal-shop_status'),
+            shop_number: v('modal-shop_number'),
+            shop_date: v('modal-shop_date'),
+            seller_mark: v('modal-seller_mark'),
+            qu_dao: v('modal-qu_dao'),
+            ip_address: v('modal-ip_address'),
+            whitelist: v('modal-whitelist'),
+            remark: v('modal-remark'),
+            email_account: v('modal-email_account'),
+            email_password: v('modal-email_password'),
+            shop_password: v('modal-shop_password'),
+            registered_phone: v('modal-registered_phone'),
+            backup_email_or_phone: v('modal-backup_email_or_phone'),
+            voucher_163: v('modal-voucher_163'),
+            email_163_account: v('modal-email_163_account'),
+            browser: v('modal-browser'),
+            ling_xing_if: v('modal-ling_xing_if'),
+            divi_shop_id: v('modal-divi_shop_id'),
+            credit_card_channel: v('modal-credit_card_channel'),
+            credit_card_number: v('modal-credit_card_number'),
+            credit_card_expiry: v('modal-credit_card_expiry'),
+            credit_card_cvv: v('modal-credit_card_cvv'),
+            is_consolidated: v('modal-is_consolidated'),
+            bind_collection: v('modal-bind_collection'),
+            collection_channel: v('modal-collection_channel'),
+            xunhui_login_account: v('modal-xunhui_login_account'),
+            login_password: v('modal-login_password'),
+            bind_phone: v('modal-bind_phone'),
+            collection_card_number: v('modal-collection_card_number'),
+            payment_password: v('modal-payment_password'),
+            id_number: v('modal-id_number'),
+            legal_person_phone: v('modal-legal_person_phone'),
+            company_name: v('modal-company_name'),
+            license_number: v('modal-license_number'),
+            business_license_date: v('modal-business_license_date'),
+            birth_date: v('modal-birth_date'),
+            id_expiry_date: v('modal-id_expiry_date'),
+            additional_remark: v('modal-additional_remark'),
+            img1: v('modal-img1'),
+        };
+
+        if (!formData.shop_name) {
+            alert('店铺名称是必填项！');
+            return;
         }
 
-        async function saveShopModal() {
-            const v = (id) => (document.getElementById(id)?.value || '').trim();
+        try {
+            const url = modalMode === 'create' ? '/api/amazon-shops/create/' : `/api/amazon-shops/${currentShopId}/update/`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(formData),
+            });
 
-            const formData = {
-                shop_name: v('modal-shop_name'),
-                amazon_shop_name: v('modal-amazon_shop_name'),
-                customer: v('modal-customer'),
-                ops: v('modal-ops'),
-                shop_status: v('modal-shop_status'),
-                shop_number: v('modal-shop_number'),
-                shop_date: v('modal-shop_date'),
-                seller_mark: v('modal-seller_mark'),
-                qu_dao: v('modal-qu_dao'),
-                ip_address: v('modal-ip_address'),
-                whitelist: v('modal-whitelist'),
-                remark: v('modal-remark'),
-                email_account: v('modal-email_account'),
-                email_password: v('modal-email_password'),
-                shop_password: v('modal-shop_password'),
-                registered_phone: v('modal-registered_phone'),
-                backup_email_or_phone: v('modal-backup_email_or_phone'),
-                voucher_163: v('modal-voucher_163'),
-                email_163_account: v('modal-email_163_account'),
-                browser: v('modal-browser'),
-                ling_xing_if: v('modal-ling_xing_if'),
-                divi_shop_id: v('modal-divi_shop_id'),
-                credit_card_channel: v('modal-credit_card_channel'),
-                credit_card_number: v('modal-credit_card_number'),
-                credit_card_expiry: v('modal-credit_card_expiry'),
-                credit_card_cvv: v('modal-credit_card_cvv'),
-                is_consolidated: v('modal-is_consolidated'),
-                bind_collection: v('modal-bind_collection'),
-                collection_channel: v('modal-collection_channel'),
-                xunhui_login_account: v('modal-xunhui_login_account'),
-                login_password: v('modal-login_password'),
-                bind_phone: v('modal-bind_phone'),
-                collection_card_number: v('modal-collection_card_number'),
-                payment_password: v('modal-payment_password'),
-                id_number: v('modal-id_number'),
-                legal_person_phone: v('modal-legal_person_phone'),
-                company_name: v('modal-company_name'),
-                license_number: v('modal-license_number'),
-                business_license_date: v('modal-business_license_date'),
-                birth_date: v('modal-birth_date'),
-                id_expiry_date: v('modal-id_expiry_date'),
-                additional_remark: v('modal-additional_remark'),
-                img1: v('modal-img1'),
-            };
+            const result = await response.json();
+            if (result.success) {
+                alert(modalMode === 'create' ? '店铺创建成功！' : '店铺更新成功！');
+                closeModal();
+                loadShopsTable();
+            } else {
+                alert('操作失败：' + (result.error || '未知错误'));
+            }
+        } catch (error) {
+            console.error('保存失败:', error);
+            alert('保存失败，请检查网络连接并重试');
+        }
+    }
 
-            if (!formData.shop_name) {
-                alert('店铺名称是必填项！');
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+
+    // ==========================================
+    // 导出Excel功能
+    // ==========================================
+    // 改造后的导出函数（接收选中列参数）
+    async function exportToExcel(selectedColumnKeys) {
+        try {
+            // 显示加载状态已在confirmExport中处理
+
+            // 获取数据（与之前相同）
+            const params = new URLSearchParams({
+                page: 1,
+                page_size: 5000,
+                status: document.getElementById('amazonShopStatusFilter').value,
+                operator: document.getElementById('amazonOperatorFilter').value,
+                ops_group: document.getElementById('amazonGroupFilter').value,
+                customer: document.getElementById('amazonCustomerFilter').value,
+                search: document.getElementById('amazonShopSearch').value,
+                shop_date_start: document.getElementById('shopDateStartFilter').value,
+                shop_date_end: document.getElementById('shopDateEndFilter').value,
+                qu_dao: document.getElementById('quDaoFilter').value,
+                backup_email_or_phone: document.getElementById('backupContactFilter').value,
+                additional_remark: document.getElementById('additionalRemarkFilter').value,
+                company_name: document.getElementById('companyNameFilter').value,
+                ling_xing_if: document.getElementById('lingXingIfFilter').value,
+                browser: document.getElementById('browserFilter').value,
+                xunhui_login_account: document.getElementById('collectionAccountFilter').value,
+                email_account: document.getElementById('emailAccountFilter').value
+            });
+
+            const response = await fetch(`/api/amazon-shops/?${params}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (!result.success) {
+                alert('导出失败：' + result.error);
                 return;
             }
 
-            try {
-                const url = modalMode === 'create' ? '/api/amazon-shops/create/' : `/api/amazon-shops/${currentShopId}/update/`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                    },
-                    body: JSON.stringify(formData),
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    alert(modalMode === 'create' ? '店铺创建成功！' : '店铺更新成功！');
-                    closeModal();
-                    loadShopsTable();
-                } else {
-                    alert('操作失败：' + (result.error || '未知错误'));
-                }
-            } catch (error) {
-                console.error('保存失败:', error);
-                alert('保存失败，请检查网络连接并重试');
+            const shops = result.data || [];
+            if (shops.length === 0) {
+                alert('当前没有可导出的数据');
+                return;
             }
-        }
 
-        function getCSRFToken() {
-            const cookieValue = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrftoken='))
-                ?.split('=')[1];
-            return cookieValue || '';
-        }
+            // 根据选中列生成表头和数据
+            const columns = EXPORT_COLUMNS.filter(col => selectedColumnKeys.includes(col.key));
 
-        // ==========================================
-        // 导出Excel功能
-        // ==========================================
-        // 改造后的导出函数（接收选中列参数）
-        async function exportToExcel(selectedColumnKeys) {
-            try {
-                // 显示加载状态已在confirmExport中处理
+            // 表头
+            const headers = columns.map(col => col.label);
+            const data = [headers];
 
-                // 获取数据（与之前相同）
-                const params = new URLSearchParams({
-                    page: 1,
-                    page_size: 5000,
-                    status: document.getElementById('amazonShopStatusFilter').value,
-                    operator: document.getElementById('amazonOperatorFilter').value,
-                    ops_group: document.getElementById('amazonGroupFilter').value,
-                    customer: document.getElementById('amazonCustomerFilter').value,
-                    search: document.getElementById('amazonShopSearch').value,
-                    shop_date_start: document.getElementById('shopDateStartFilter').value,
-                    shop_date_end: document.getElementById('shopDateEndFilter').value,
-                    qu_dao: document.getElementById('quDaoFilter').value,
-                    backup_email_or_phone: document.getElementById('backupContactFilter').value,
-                    additional_remark: document.getElementById('additionalRemarkFilter').value,
-                    company_name: document.getElementById('companyNameFilter').value,
-                    ling_xing_if: document.getElementById('lingXingIfFilter').value,
-                    browser: document.getElementById('browserFilter').value,
-                    xunhui_login_account: document.getElementById('collectionAccountFilter').value,
-                    email_account: document.getElementById('emailAccountFilter').value
-                });
-
-                const response = await fetch(`/api/amazon-shops/?${params}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (!result.success) {
-                    alert('导出失败：' + result.error);
-                    return;
-                }
-
-                const shops = result.data || [];
-                if (shops.length === 0) {
-                    alert('当前没有可导出的数据');
-                    return;
-                }
-
-                // 根据选中列生成表头和数据
-                const columns = EXPORT_COLUMNS.filter(col => selectedColumnKeys.includes(col.key));
-
-                // 表头
-                const headers = columns.map(col => col.label);
-                const data = [headers];
-
-                // 数据行
-                shops.forEach(shop => {
-                    const row = columns.map(col => {
-                        const value = shop[col.key];
-                        // 处理特殊字段
-                        if (col.key === 'ling_xing_if') {
-                            return value == 1 ? '是' : '否';
-                        }
-                        return value || '-';
-                    });
-                    data.push(row);
-                });
-
-                // 导出Excel（与之前相同）
-                const ws = XLSX.utils.aoa_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Amazon店铺列表');
-
-                // 设置列宽
-                ws['!cols'] = columns.map(col => ({
-                    wch: col.label.length < 10 ? 10 : col.label.length * 1.5
-                }));
-
-                const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
-                const fileName = `Amazon店铺列表_${dateStr}.xlsx`;
-
-                XLSX.writeFile(wb, fileName);
-
-                console.log(`成功导出 ${shops.length} 条记录，共 ${selectedColumnKeys.length} 列`);
-
-                // 显示成功提示
-                alert(`导出成功！共 ${shops.length} 条记录，${selectedColumnKeys.length} 列`);
-
-            } catch (error) {
-                console.error('导出失败:', error);
-                alert('导出失败，请重试：' + error.message);
-            }
-        }
-
-        // ==========================================
-        // 事件监听
-        // ==========================================
-
-        document.addEventListener('DOMContentLoaded', async function () {
-            await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI("亚马逊"), loadCustomersFromAPI()]);
-            restoreExpandState(); // 恢复展开状态
-            loadShopsTable();
-
-            const filterSection = document.querySelector('.filter-section');
-            if (filterSection) {
-                filterSection.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-                        e.preventDefault();
-                        filterAmazonShops();
+            // 数据行
+            shops.forEach(shop => {
+                const row = columns.map(col => {
+                    const value = shop[col.key];
+                    // 处理特殊字段
+                    if (col.key === 'ling_xing_if') {
+                        return value == 1 ? '是' : '否';
                     }
+                    return value || '-';
                 });
-            }
-
-            if (window.anime) {
-                anime({
-                    targets: '.sidebar',
-                    translateX: [-280, 0],
-                    opacity: [0, 1],
-                    duration: 600,
-                    easing: 'easeOutQuart'
-                });
-
-                anime({
-                    targets: '.content',
-                    translateY: [30, 0],
-                    opacity: [0, 1],
-                    duration: 800,
-                    delay: 200,
-                    easing: 'easeOutQuart'
-                });
-            }
-        });
-
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeModal();
-        });
-
-        // 渲染列选择器
-        function renderColumnSelector() {
-            const container = document.getElementById('columnsContainer');
-            const selectedKeys = getSavedSelectedColumns();
-
-            // 按分组组织列
-            const groups = {};
-            EXPORT_COLUMNS.forEach(col => {
-                if (!groups[col.group]) groups[col.group] = [];
-                groups[col.group].push(col);
+                data.push(row);
             });
 
-            // 生成分组HTML
-            container.innerHTML = Object.entries(groups).map(([groupName, columns]) => `
+            // 导出Excel（与之前相同）
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Amazon店铺列表');
+
+            // 设置列宽
+            ws['!cols'] = columns.map(col => ({
+                wch: col.label.length < 10 ? 10 : col.label.length * 1.5
+            }));
+
+            const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
+            const fileName = `Amazon店铺列表_${dateStr}.xlsx`;
+
+            XLSX.writeFile(wb, fileName);
+
+            console.log(`成功导出 ${shops.length} 条记录，共 ${selectedColumnKeys.length} 列`);
+
+            // 显示成功提示
+            alert(`导出成功！共 ${shops.length} 条记录，${selectedColumnKeys.length} 列`);
+
+        } catch (error) {
+            console.error('导出失败:', error);
+            alert('导出失败，请重试：' + error.message);
+        }
+    }
+
+    // ==========================================
+    // 事件监听
+    // ==========================================
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        await Promise.all([loadOperatorsFromAPI("亚马逊"), loadGroupsFromAPI("亚马逊"), loadCustomersFromAPI()]);
+        restoreExpandState(); // 恢复展开状态
+        if (!IS_ADMIN) {
+            const createBtn = document.querySelector('.btn-create');
+            const exportBtn = document.querySelector('.btn-export');
+            if (createBtn) createBtn.style.display = 'none';
+            if (exportBtn) exportBtn.style.display = 'none';
+        }
+        loadShopsTable();
+
+        const filterSection = document.querySelector('.filter-section');
+        if (filterSection) {
+            filterSection.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                    e.preventDefault();
+                    filterAmazonShops();
+                }
+            });
+        }
+
+        if (window.anime) {
+            anime({
+                targets: '.sidebar',
+                translateX: [-280, 0],
+                opacity: [0, 1],
+                duration: 600,
+                easing: 'easeOutQuart'
+            });
+
+            anime({
+                targets: '.content',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: 200,
+                easing: 'easeOutQuart'
+            });
+        }
+    });
+
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
+
+    // 渲染列选择器
+    function renderColumnSelector() {
+        const container = document.getElementById('columnsContainer');
+        const selectedKeys = getSavedSelectedColumns();
+
+        // 按分组组织列
+        const groups = {};
+        EXPORT_COLUMNS.forEach(col => {
+            if (!groups[col.group]) groups[col.group] = [];
+            groups[col.group].push(col);
+        });
+
+        // 生成分组HTML
+        container.innerHTML = Object.entries(groups).map(([groupName, columns]) => `
     <div class="column-group" style="margin-bottom: 1.5rem;">
       <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);
                  margin-bottom: 0.75rem; padding: 0 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
@@ -1786,79 +1775,79 @@
     </div>
   `).join('');
 
-            updateSelectAllState();
+        updateSelectAllState();
+    }
+
+    // 更新全选状态
+    function updateSelectAllState() {
+        const checkboxes = document.querySelectorAll('.column-checkbox');
+        const checkedBoxes = document.querySelectorAll('.column-checkbox:checked');
+        const selectAllCheckbox = document.getElementById('selectAllColumns');
+        const selectAllText = document.getElementById('selectAllText');
+
+        const allChecked = checkboxes.length === checkedBoxes.length;
+        const noneChecked = checkedBoxes.length === 0;
+
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
+        selectAllText.textContent = allChecked ? '全不选' : '全选';
+    }
+
+    // 全选/全不选
+    function toggleSelectAllColumns(checkbox) {
+        const checkboxes = document.querySelectorAll('.column-checkbox');
+        checkboxes.forEach(cb => cb.checked = checkbox.checked);
+        updateSelectAllState();
+    }
+
+    // 获取当前选中的列
+    function getSelectedColumns() {
+        const checkboxes = document.querySelectorAll('.column-checkbox:checked');
+        return Array.from(checkboxes).map(cb => cb.dataset.key);
+    }
+
+    // 打开导出配置模态框
+    function openExportModal() {
+        renderColumnSelector();
+        document.getElementById('exportModalOverlay').style.display = 'block';
+    }
+
+    // 关闭导出模态框
+    function closeExportModal() {
+        document.getElementById('exportModalOverlay').style.display = 'none';
+    }
+
+    // 确认导出
+    async function confirmExport() {
+        const selectedKeys = getSelectedColumns();
+        if (selectedKeys.length === 0) {
+            alert('请至少选择一列导出！');
+            return;
         }
 
-        // 更新全选状态
-        function updateSelectAllState() {
-            const checkboxes = document.querySelectorAll('.column-checkbox');
-            const checkedBoxes = document.querySelectorAll('.column-checkbox:checked');
-            const selectAllCheckbox = document.getElementById('selectAllColumns');
-            const selectAllText = document.getElementById('selectAllText');
+        // 保存选择
+        saveSelectedColumns(selectedKeys);
 
-            const allChecked = checkboxes.length === checkedBoxes.length;
-            const noneChecked = checkedBoxes.length === 0;
+        // 关闭模态框
+        closeExportModal();
 
-            selectAllCheckbox.checked = allChecked;
-            selectAllCheckbox.indeterminate = !allChecked && !noneChecked;
-            selectAllText.textContent = allChecked ? '全不选' : '全选';
+        // 显示加载状态
+        const exportBtn = document.querySelector('.btn-export');
+        const originalText = exportBtn.innerHTML;
+        exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+        exportBtn.disabled = true;
+
+        try {
+            // 执行导出
+            await exportToExcel(selectedKeys);
+        } finally {
+            // 恢复按钮状态
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
         }
+    }
 
-        // 全选/全不选
-        function toggleSelectAllColumns(checkbox) {
-            const checkboxes = document.querySelectorAll('.column-checkbox');
-            checkboxes.forEach(cb => cb.checked = checkbox.checked);
-            updateSelectAllState();
-        }
-
-        // 获取当前选中的列
-        function getSelectedColumns() {
-            const checkboxes = document.querySelectorAll('.column-checkbox:checked');
-            return Array.from(checkboxes).map(cb => cb.dataset.key);
-        }
-
-        // 打开导出配置模态框
-        function openExportModal() {
-            renderColumnSelector();
-            document.getElementById('exportModalOverlay').style.display = 'block';
-        }
-
-        // 关闭导出模态框
-        function closeExportModal() {
-            document.getElementById('exportModalOverlay').style.display = 'none';
-        }
-
-        // 确认导出
-        async function confirmExport() {
-            const selectedKeys = getSelectedColumns();
-            if (selectedKeys.length === 0) {
-                alert('请至少选择一列导出！');
-                return;
-            }
-
-            // 保存选择
-            saveSelectedColumns(selectedKeys);
-
-            // 关闭模态框
-            closeExportModal();
-
-            // 显示加载状态
-            const exportBtn = document.querySelector('.btn-export');
-            const originalText = exportBtn.innerHTML;
-            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
-            exportBtn.disabled = true;
-
-            try {
-                // 执行导出
-                await exportToExcel(selectedKeys);
-            } finally {
-                // 恢复按钮状态
-                exportBtn.innerHTML = originalText;
-                exportBtn.disabled = false;
-            }
-        }
-
-        // 绑定确认导出按钮
-        document.getElementById('confirmExportBtn').addEventListener('click', confirmExport);
-    </script>
+    // 绑定确认导出按钮
+    document.getElementById('confirmExportBtn').addEventListener('click', confirmExport);
+</script>
 {% endblock %}

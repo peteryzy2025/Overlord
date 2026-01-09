@@ -30,7 +30,12 @@ class AssessmentManagementView(LoginRequiredMixin, View):
     """基础权限视图"""
 
     def is_admin(self, user):
-        return user.permission and '555' in user.permission.split(',')
+        if getattr(user, 'is_superuser', False):
+            return True
+
+        user_permissions = getattr(user, 'permission', '') or ''
+        permission_list = [p.strip() for p in user_permissions.split(',') if p.strip()]
+        return '555' in permission_list
 
     def is_group_leader(self, user):
         return user.role == '运营组长'
@@ -441,6 +446,7 @@ class AssessmentListView(AssessmentManagementView, ListView):
         ).distinct().order_by('first_name')
         context['type_choices'] = PerformanceAssessment.ASSESSMENT_TYPES
         context['status_choices'] = PerformanceAssessment.STATUS_CHOICES
+        context['active_page'] = 'assessment_list'
 
         return context
 
@@ -1133,3 +1139,18 @@ class BatchRefreshOrdersView(AssessmentManagementView):
                 'errors': errors if failed_count > 0 else None
             }
         })
+
+
+class AssessmentDeleteView(AssessmentManagementView):
+    @transaction.atomic
+    def post(self, request, pk):
+        if not self.is_admin(request.user):
+            return JsonResponse({'success': False, 'message': '只有管理员可以删除考核'}, status=403)
+
+        assessment = get_object_or_404(PerformanceAssessment, pk=pk)
+
+        if assessment.status != 'pending_leader':
+            return JsonResponse({'success': False, 'message': '仅支持删除组长评分中的考核'}, status=400)
+
+        assessment.delete()
+        return JsonResponse({'success': True})

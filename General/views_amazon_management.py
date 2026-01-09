@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 import json
 import traceback
+from Amazon.amazon_views import parse_permissions
 
 
 # Amazon店铺管理页面视图
@@ -17,7 +18,9 @@ import traceback
 def amazon_management_view(request):
     """渲染Amazon店铺管理页面"""
     context = {
-        'active_page': 'amazon_management'
+        'active_page': 'amazon_management',
+        'user_ops_group': getattr(request.user, 'get_ops_group', lambda: None)(),
+        'user_permissions_json': json.dumps(parse_permissions(getattr(request.user, 'permission', '')))
     }
     return render(request, 'amazon_shop_management.html', context)
 
@@ -172,6 +175,7 @@ def get_amazon_shops_api(request):
         - xunhui_login_account（新增：收款账号）
     """
     try:
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
         # 优先处理指定 ID 查询
         shop_id = request.GET.get('id')
         if shop_id:
@@ -271,6 +275,15 @@ def get_amazon_shops_api(request):
         if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
         query = AmazonShop.objects.select_related('ops').prefetch_related('ops__operational_account')
+
+        # 权限范围过滤：ops_all 查看全部；ops_group 查看本组；ops 查看本人
+        if 'ops_all' not in permissions:
+            if 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
+                group_name = request.user.operational_account.ops_group
+                user_ids = OperationalAccount.objects.filter(ops_group=group_name).values_list('user_id', flat=True)
+                query = query.filter(ops_id__in=user_ids)
+            else:
+                query = query.filter(ops_id=request.user.id)
 
         # 原有筛选逻辑
         if status_filter:
@@ -405,6 +418,7 @@ def create_amazon_shop_api(request):
     """
     try:
         data = json.loads(request.body)
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
 
         # 验证必填项
         shop_name = data.get('shop_name', '').strip()
@@ -413,6 +427,22 @@ def create_amazon_shop_api(request):
                 'success': False,
                 'error': '店铺名称不能为空'
             }, status=400)
+
+        # 权限校验：ops_all/555 可创建；ops_group 只能为本组创建；ops 只能为本人创建
+        ops_target_id = data.get('ops')
+        if 'ops_all' in permissions or '555' in permissions:
+            pass
+        elif 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
+            if not ops_target_id:
+                return JsonResponse({'success': False, 'error': '请指定运营人员'}, status=403)
+            group_name = request.user.operational_account.ops_group
+            if not OperationalAccount.objects.filter(user_id=ops_target_id, ops_group=group_name).exists():
+                return JsonResponse({'success': False, 'error': '无权限为该运营人员创建店铺'}, status=403)
+        elif 'ops' in permissions:
+            if not ops_target_id or int(ops_target_id) != request.user.id:
+                return JsonResponse({'success': False, 'error': '仅允许为本人创建店铺'}, status=403)
+        else:
+            return JsonResponse({'success': False, 'error': '无创建权限'}, status=403)
 
         # 检查店铺名称是否已存在
         if AmazonShop.objects.filter(shop_name=shop_name).exists():
@@ -504,6 +534,7 @@ def update_amazon_shop_api(request, shop_id):
 
     try:
         data = json.loads(request.body or '{}')
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
 
         # 简单校验
         shop_name = (data.get('shop_name') or '').strip()
@@ -513,6 +544,25 @@ def update_amazon_shop_api(request, shop_id):
         # 可选：检查重名（排除自己）
         if AmazonShop.objects.filter(shop_name=shop_name).exclude(id=shop_id).exists():
             return JsonResponse({'success': False, 'error': '店铺名称已存在'}, status=400)
+
+        # 权限校验：ops_all/555 可更新任何；ops_group 仅能更新本组；ops 仅能更新本人店铺
+        if 'ops_all' in permissions or '555' in permissions:
+            pass
+        elif 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
+            group_name = request.user.operational_account.ops_group
+            if not OperationalAccount.objects.filter(user_id=shop.ops_id, ops_group=group_name).exists():
+                return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)
+            new_ops_id = data.get('ops')
+            if new_ops_id and not OperationalAccount.objects.filter(user_id=new_ops_id, ops_group=group_name).exists():
+                return JsonResponse({'success': False, 'error': '不可将店铺分配到其他分组'}, status=403)
+        elif 'ops' in permissions:
+            if shop.ops_id != request.user.id:
+                return JsonResponse({'success': False, 'error': '仅允许更新本人店铺'}, status=403)
+            new_ops_id = data.get('ops')
+            if new_ops_id and int(new_ops_id) != request.user.id:
+                return JsonResponse({'success': False, 'error': '不可将店铺分配给其他人'}, status=403)
+        else:
+            return JsonResponse({'success': False, 'error': '无更新权限'}, status=403)
 
         with transaction.atomic():
             # 基本信息

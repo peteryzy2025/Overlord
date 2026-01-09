@@ -25,6 +25,8 @@ urlpatterns = [
          name='assessment_submit_to_member'),
     path('assessment/<int:pk>/refresh-orders/', view_assessment_management.RefreshOrderDataView.as_view(),
          name='assessment_refresh_orders'),
+    path('assessment/<int:pk>/delete/', view_assessment_management.AssessmentDeleteView.as_view(),
+         name='assessment_delete'),
 path('assessment/batch-refresh-orders/', view_assessment_management.BatchRefreshOrdersView.as_view(),
      name='assessment_batch_refresh_orders'),
 
