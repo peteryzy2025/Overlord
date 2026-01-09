@@ -11,6 +11,7 @@ from General.models import User, OperationalAccount, GroupPerformanceTarget, Per
 import json
 import traceback
 from datetime import datetime
+from Api.WX.wx import send_wechat_work_message
 
 
 # ==========================================
@@ -149,10 +150,34 @@ def create_group_target_api(request):
                 created_by=request.user
             )
 
+        try:
+            recipients = User.objects.filter(
+                operational_account__ops_group=ops_group,
+                status=User.STATUS_NORMAL
+            ).exclude(wx_url__isnull=True).exclude(wx_url='')
+            month_display = month[:7] if len(month) >= 7 else month
+            content = "\n".join([
+                "**绩效目标通知**",
+                "",
+                f"组：{ops_group}",
+                f"月份：{month_display}",
+                f"组目标：{target_performance}",
+                "",
+                "请前往系统页面查看：/performance/"
+            ])
+            sent_count = 0
+            for u in recipients:
+                result = send_wechat_work_message(u.wx_url, content)
+                if result.get('success'):
+                    sent_count += 1
+        except Exception:
+            pass
+
         return JsonResponse({
             'success': True,
             'message': '组目标创建成功',
-            'target_id': target.id
+            'target_id': target.id,
+            'notify_sent': sent_count if 'sent_count' in locals() else 0
         })
 
     except Exception as e:
@@ -359,6 +384,7 @@ def batch_create_personal_targets_api(request):
         # 批量创建或更新
         created_count = 0
         updated_count = 0
+        notify_list = []
 
         with transaction.atomic():
             for target_info in targets_data:
@@ -377,6 +403,7 @@ def batch_create_personal_targets_api(request):
                     existing.created_by = request.user
                     existing.save()
                     updated_count += 1
+                    notify_list.append({'user_id': user_id, 'target_performance': target_performance, 'status': 'updated'})
                 else:
                     PersonalPerformanceTarget.objects.create(
                         user_id=user_id,
@@ -387,6 +414,30 @@ def batch_create_personal_targets_api(request):
                         created_by=request.user
                     )
                     created_count += 1
+                    notify_list.append({'user_id': user_id, 'target_performance': target_performance, 'status': 'created'})
+
+        try:
+            month_display = month[:7] if len(month) >= 7 else month
+            for item in notify_list:
+                u = User.objects.filter(id=item['user_id'], status=User.STATUS_NORMAL).exclude(wx_url__isnull=True).exclude(wx_url='').first()
+                if not u:
+                    continue
+                action = "已设置" if item['status'] == 'created' else "已更新"
+                content = "\n".join([
+                    "**个人绩效目标通知**",
+                    "",
+                    f"组：{ops_group}",
+                    f"月份：{month_display}",
+                    f"目标：{item['target_performance']}",
+                    f"状态：{action}",
+                    "",
+                    f"分配人：{request.user.first_name or request.user.username}",
+                    "",
+                    "请前往系统页面查看：/performance/"
+                ])
+                send_wechat_work_message(u.wx_url, content)
+        except Exception:
+            pass
 
         return JsonResponse({
             'success': True,
