@@ -424,8 +424,7 @@
                 <select class="form-select" id="employeeFilter">
                     <option value="">全部员工</option>
                     {% for emp in employees %}
-                    <option value="{{ emp.id }}" {% if request.GET.employee==emp.id|stringformat:"s" %}selected{% endif
-                        %}>
+                    <option value="{{ emp.id }}" {% if request.GET.employee == emp.id|stringformat:"s" %}selected{% endif %}>
                         {{ emp.first_name }}
                     </option>
                     {% endfor %}
@@ -436,7 +435,7 @@
                 <select class="form-select" id="typeFilter">
                     <option value="">全部类型</option>
                     {% for key, label in type_choices %}
-                    <option value="{{ key }}" {% if request.GET.assess_type==key %}selected{% endif %}>
+                    <option value="{{ key }}" {% if request.GET.assess_type == key %}selected{% endif %}>
                         {{ label }}
                     </option>
                     {% endfor %}
@@ -447,7 +446,7 @@
                 <select class="form-select" id="statusFilter">
                     <option value="">全部状态</option>
                     {% for key, label in status_choices %}
-                    <option value="{{ key }}" {% if request.GET.status==key %}selected{% endif %}>
+                    <option value="{{ key }}" {% if request.GET.status == key %}selected{% endif %}>
                         {{ label }}
                     </option>
                     {% endfor %}
