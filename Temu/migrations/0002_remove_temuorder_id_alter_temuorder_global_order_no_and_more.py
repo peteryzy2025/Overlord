@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Temu', '0001_initial'),
+        ('temu', '0001_initial'),
     ]
 
     operations = [
@@ -23,6 +23,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='temuorderitem',
             name='order',
-            field=models.ForeignKey(db_column='global_order_no', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Temu.temuorder'),
+            field=models.ForeignKey(db_column='global_order_no', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='temu.temuorder'),
         ),
     ]

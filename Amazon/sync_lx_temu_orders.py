@@ -17,8 +17,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 # ====== 导入模型和 API 函数 ======
-from Temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
-from Api.lingxing_p.lingxing_temu import get_lx_temu_orders
+from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
+from api.lingxing_p.lingxing_temu import get_lx_temu_orders
 
 
 def _to_decimal(value, default=Decimal('0.00')):

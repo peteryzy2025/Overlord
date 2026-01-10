@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('General', '0007_user_permission'),
+        ('general', '0007_user_permission'),
     ]
 
     operations = [
@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                 ('hide_time', models.DateTimeField(blank=True, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间')),
-                ('amazon_shop', models.ForeignKey(blank=True, db_comment='关联的本地亚马逊店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='amazon_orders', to='General.amazonshop')),
+                ('amazon_shop', models.ForeignKey(blank=True, db_comment='关联的本地亚马逊店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='amazon_orders', to='general.amazonshop')),
             ],
             options={
                 'db_table': 'amazon_orders',
@@ -64,7 +64,7 @@ class Migration(migrations.Migration):
                 ('local_name', models.CharField(blank=True, max_length=200, null=True)),
                 ('order_status', models.CharField(blank=True, max_length=50, null=True)),
                 ('quantity_ordered', models.IntegerField(default=1)),
-                ('order', models.ForeignKey(db_comment='关联的订单', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Amazon.amazonorders')),
+                ('order', models.ForeignKey(db_comment='关联的订单', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='amazon.amazonorders')),
             ],
             options={
                 'db_table': 'amazon_order_item',
@@ -87,7 +87,7 @@ class Migration(migrations.Migration):
                 ('has_ads_setting', models.SmallIntegerField(blank=True, db_comment='是否有广告配置（0/1）', null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间（插入本地记录时间）')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间（最后同步时间）')),
-                ('amazon_shop', models.ForeignKey(blank=True, db_comment='绑定的本地亚马逊店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='lingxing_amazon_shops', to='General.amazonshop')),
+                ('amazon_shop', models.ForeignKey(blank=True, db_comment='绑定的本地亚马逊店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='lingxing_amazon_shops', to='general.amazonshop')),
             ],
             options={
                 'verbose_name': '领星亚马逊店铺',
@@ -99,7 +99,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='amazonorders',
             name='lingxing_shop',
-            field=models.ForeignKey(blank=True, db_comment='关联的领星店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='amazon_orders', to='Amazon.lingxingamazonshop'),
+            field=models.ForeignKey(blank=True, db_comment='关联的领星店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='amazon_orders', to='amazon.lingxingamazonshop'),
         ),
         migrations.AddConstraint(
             model_name='lingxingamazonshop',

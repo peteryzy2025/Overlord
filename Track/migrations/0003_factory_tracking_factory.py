@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Track', '0002_alter_tracking_options_tracking_content_type_and_more'),
+        ('track', '0002_alter_tracking_options_tracking_content_type_and_more'),
     ]
 
     operations = [
@@ -25,6 +25,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='tracking',
             name='factory',
-            field=models.ForeignKey(blank=True, db_comment='关联工厂', null=True, on_delete=django.db.models.deletion.SET_NULL, to='Track.factory'),
+            field=models.ForeignKey(blank=True, db_comment='关联工厂', null=True, on_delete=django.db.models.deletion.SET_NULL, to='track.factory'),
         ),
     ]

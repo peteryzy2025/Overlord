@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 ('grade', models.CharField(blank=True, max_length=10, verbose_name='评级')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='创建时间')),
                 ('status', models.CharField(choices=[('draft', '草稿'), ('submitted', '已提交'), ('confirmed', '已确认')], default='draft', max_length=20, verbose_name='状态')),
-                ('template', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='Yuser.assessmenttemplate')),
+                ('template', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='yuser.assessmenttemplate')),
             ],
         ),
         migrations.CreateModel(
@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=50, verbose_name='分类名称')),
                 ('weight', models.DecimalField(decimal_places=2, default=0, max_digits=5, verbose_name='权重')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('template', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='categories', to='Yuser.assessmenttemplate')),
+                ('template', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='categories', to='yuser.assessmenttemplate')),
             ],
             options={
                 'verbose_name': '考核分类',
@@ -70,7 +70,7 @@ class Migration(migrations.Migration):
                 ('scoring_type', models.CharField(choices=[('manual', '手动评分'), ('auto', '自动计算'), ('deduct', '扣分制'), ('bonus', '加分项')], default='manual', max_length=20, verbose_name='评分方式')),
                 ('formula', models.TextField(blank=True, null=True, verbose_name='计算公式')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Yuser.templatecategory')),
+                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='yuser.templatecategory')),
             ],
             options={
                 'verbose_name': '考核项目',
@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
                 ('condition', models.CharField(max_length=300, verbose_name='条件描述')),
                 ('score_rule', models.CharField(max_length=100, verbose_name='得分规则')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='criteria', to='Yuser.templateitem')),
+                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='criteria', to='yuser.templateitem')),
             ],
         ),
         migrations.CreateModel(
@@ -93,8 +93,8 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('actual_score', models.DecimalField(decimal_places=2, max_digits=6, verbose_name='实际得分')),
                 ('remarks', models.TextField(blank=True, verbose_name='备注')),
-                ('instance', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='Yuser.assessmentinstance')),
-                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Yuser.templateitem')),
+                ('instance', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scores', to='yuser.assessmentinstance')),
+                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='yuser.templateitem')),
             ],
         ),
     ]

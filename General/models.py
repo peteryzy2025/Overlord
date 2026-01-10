@@ -165,7 +165,7 @@ class OperationalAccount(models.Model):
 class AmazonShop(models.Model):
     id = models.BigIntegerField(primary_key=True, db_comment='主键')
     ops = models.ForeignKey(
-        'General.User',
+        'general.User',
         on_delete=models.SET_NULL,  # 用户删除时店铺保留
         null=True,
         blank=True,

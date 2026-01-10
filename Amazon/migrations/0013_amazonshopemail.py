@@ -7,8 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0012_amazonorders_earliest_ship_date_local_and_more'),
-        ('General', '0026_alter_announcement_valid_to'),
+        ('amazon', '0012_amazonorders_earliest_ship_date_local_and_more'),
+        ('general', '0026_alter_announcement_valid_to'),
     ]
 
     operations = [
@@ -24,7 +24,7 @@ class Migration(migrations.Migration):
                 ('remark', models.TextField(blank=True, null=True, verbose_name='处理备注')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='更新时间')),
-                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='shop_emails', to='General.amazonshop')),
+                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='shop_emails', to='general.amazonshop')),
             ],
             options={
                 'verbose_name': '店铺邮件',

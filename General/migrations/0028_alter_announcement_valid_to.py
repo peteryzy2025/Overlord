@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0027_alter_announcement_valid_to_and_more'),
+        ('general', '0027_alter_announcement_valid_to_and_more'),
     ]
 
     operations = [

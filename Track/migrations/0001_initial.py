@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ('ship_to', models.CharField(blank=True, db_comment='收货地国家代码', max_length=10)),
                 ('shipment_type', models.CharField(blank=True, db_comment='运输方式', max_length=100)),
                 ('raw_data', models.JSONField(blank=True, db_comment='原始API返回数据（备份用）', null=True)),
-                ('courier', models.ForeignKey(blank=True, db_comment='关联物流商', null=True, on_delete=django.db.models.deletion.SET_NULL, to='Track.courier')),
+                ('courier', models.ForeignKey(blank=True, db_comment='关联物流商', null=True, on_delete=django.db.models.deletion.SET_NULL, to='track.courier')),
             ],
             options={
                 'verbose_name': '物流运单主表',
@@ -60,7 +60,7 @@ class Migration(migrations.Migration):
                 ('address', models.CharField(blank=True, db_comment='事件地点', max_length=200)),
                 ('event_detail', models.CharField(db_comment="事件描述，如 'Delivered, In/At Mailbox'", max_length=500)),
                 ('transit_sub_status', models.CharField(blank=True, db_comment='该事件子状态', max_length=50)),
-                ('tracking', models.ForeignKey(db_comment='关联运单', on_delete=django.db.models.deletion.CASCADE, related_name='details', to='Track.tracking')),
+                ('tracking', models.ForeignKey(db_comment='关联运单', on_delete=django.db.models.deletion.CASCADE, related_name='details', to='track.tracking')),
             ],
             options={
                 'verbose_name': '物流轨迹明细表',

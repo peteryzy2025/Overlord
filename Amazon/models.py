@@ -83,7 +83,7 @@ class LingXingAmazonShop(models.Model):
     # ========== 绑定你本地 AmazonShop ==========
 
     amazon_shop = models.ForeignKey(
-        'General.AmazonShop',
+        'general.AmazonShop',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -153,7 +153,7 @@ class AmazonOrders(models.Model):
 
     # 绑定到本地 AmazonShop
     amazon_shop = models.ForeignKey(
-        'General.AmazonShop',
+        'general.AmazonShop',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -358,7 +358,7 @@ class AmazonShopDailyCheck(models.Model):
 
     # 关联亚马逊店铺
     shop = models.ForeignKey(
-        'General.AmazonShop',
+        'general.AmazonShop',
         on_delete=models.CASCADE,
         related_name='daily_checks',
         db_comment='关联的亚马逊店铺'
@@ -455,7 +455,7 @@ class AmazonPerformanceNotification(models.Model):
 
     # 关联店铺
     shop = models.ForeignKey(
-        'General.AmazonShop',
+        'general.AmazonShop',
         on_delete=models.CASCADE,
         related_name='performance_notifications',
         db_comment='关联的亚马逊店铺'
@@ -521,7 +521,7 @@ class AmazonPerformanceNotification(models.Model):
 class AmazonShopEmail(models.Model):
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
     shop = models.ForeignKey(
-        'General.AmazonShop',
+        'general.AmazonShop',
         on_delete=models.CASCADE,
         related_name='shop_emails',
         db_comment='关联的亚马逊店铺'

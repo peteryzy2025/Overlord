@@ -41,9 +41,9 @@ logger = logging.getLogger(__name__)
 # ========== 导入Django模型 ==========
 from django.db.models import Q, Count
 from django.utils import timezone
-from General.models import User
-from Amazon.models import AmazonShopEmail
-from Api.WX.wx import send_wechat_work_message
+from general.models import User
+from amazon.models import AmazonShopEmail
+from api.WX.wx import send_wechat_work_message
 
 
 def calculate_backlog_days(receive_time):

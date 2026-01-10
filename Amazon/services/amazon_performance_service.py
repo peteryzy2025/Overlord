@@ -47,9 +47,9 @@ logger = logging.getLogger(__name__)
 # ========== 导入Django模型 ==========
 from django.db.models import Q, Count
 from django.utils import timezone
-from General.models import User
-from Amazon.models import AmazonPerformanceNotification
-from Api.WX.wx import send_wechat_work_message
+from general.models import User
+from amazon.models import AmazonPerformanceNotification
+from api.WX.wx import send_wechat_work_message
 
 
 def build_performance_notification_message(operator_name, shop_details, pending_count):

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Theme', '0003_alter_amazonproduct_product_type'),
+        ('theme', '0003_alter_amazonproduct_product_type'),
     ]
 
     operations = [

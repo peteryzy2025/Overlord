@@ -6,20 +6,20 @@ from django.http import JsonResponse
 from datetime import datetime
 from django.utils import timezone
 
-from Api.lingxing.Y_OpenApi import get_api_resp
-from Api.divi.divi_order_service import (
+from api.lingxing.Y_OpenApi import get_api_resp
+from api.divi.divi_order_service import (
     query_divi_order,
     import_order_from_lingxing_to_divi,
     get_divi_brand_id_from_sid,
 )
-from Amazon.models import AmazonOrders, AmazonOrderItem, LingXingAmazonShop
+from amazon.models import AmazonOrders, AmazonOrderItem, LingXingAmazonShop
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 # ✅ 新增：日志模型导入
 from django.contrib.auth.decorators import login_required
-from General.models import UserOperationLog
+from general.models import UserOperationLog
 
 
 def parse_divi_time(time_str):

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 import json
-from Track.models import Tracking, Courier, TrackingDetail, Factory
-from Api.track.track_api import register_tracking, get_tracking_updates
+from track.models import Tracking, Courier, TrackingDetail, Factory
+from api.track.track_api import register_tracking, get_tracking_updates
 
 
 # 主页视图
@@ -910,7 +910,7 @@ def refresh_tracking(request):
             }, status=400)
 
         # 调用完整的更新函数
-        from Api.track.track_api import get_tracking_updates
+        from api.track.track_api import get_tracking_updates
         result = get_tracking_updates(track_nos)
 
         if result['success']:
@@ -965,7 +965,7 @@ def toggle_cancel_status(request):
             }, status=403)
 
         # 执行更新
-        from General.models import UserOperationLog
+        from general.models import UserOperationLog
 
         if action == 'cancel':
             updated_count = Tracking.objects.filter(
@@ -1052,7 +1052,7 @@ def update_tracking_remark(request):
         if updated:
             # 记录操作日志
             try:
-                from General.models import UserOperationLog
+                from general.models import UserOperationLog
                 tracking = Tracking.objects.get(track_no=track_no)
                 UserOperationLog.objects.create(
                     user=request.user,

@@ -15,8 +15,8 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Api.track.track_api import query_tracking_v2
-from Track.models import Tracking, Courier, TrackingDetail
+from api.track.track_api import query_tracking_v2
+from track.models import Tracking, Courier, TrackingDetail
 
 # 设置日志
 logging.basicConfig(

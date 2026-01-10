@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Track', '0004_tracking_cancel_bool'),
+        ('track', '0004_tracking_cancel_bool'),
     ]
 
     operations = [

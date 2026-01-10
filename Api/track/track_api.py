@@ -2,11 +2,11 @@ import requests
 import logging
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
-from Track.models import Tracking, Courier, TrackingDetail
+from track.models import Tracking, Courier, TrackingDetail
 from datetime import datetime
-from Amazon.models import AmazonOrders
-from Temu.models import TemuOrder
-from General.models import User
+from amazon.models import AmazonOrders
+from temu.models import TemuOrder
+from general.models import User
 logger = logging.getLogger(__name__)
 
 

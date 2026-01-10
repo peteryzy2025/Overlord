@@ -5,9 +5,9 @@ import copy
 import time
 from typing import Optional
 
-from Api.lingxing.http_util import HttpBase
-from Api.lingxing.resp_schema import AccessTokenDto, ResponseResult
-from Api.lingxing.sign import SignBase
+from api.lingxing.http_util import HttpBase
+from api.lingxing.resp_schema import AccessTokenDto, ResponseResult
+from api.lingxing.sign import SignBase
 
 
 class OpenApiBase(object):

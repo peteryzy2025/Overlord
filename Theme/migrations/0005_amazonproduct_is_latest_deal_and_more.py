@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Theme', '0004_alter_productrankhistory_rank_category'),
+        ('theme', '0004_alter_productrankhistory_rank_category'),
     ]
 
     operations = [

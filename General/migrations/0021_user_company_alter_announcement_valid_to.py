@@ -8,14 +8,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0020_company_alter_announcement_valid_to'),
+        ('general', '0020_company_alter_announcement_valid_to'),
     ]
 
     operations = [
         migrations.AddField(
             model_name='user',
             name='company',
-            field=models.ForeignKey(blank=True, help_text='用户所属的公司，多租户隔离用', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='users', to='General.company', verbose_name='所属公司'),
+            field=models.ForeignKey(blank=True, help_text='用户所属的公司，多租户隔离用', null=True, on_delete=django.db.models.deletion.PROTECT, related_name='users', to='general.company', verbose_name='所属公司'),
         ),
         migrations.AlterField(
             model_name='announcement',

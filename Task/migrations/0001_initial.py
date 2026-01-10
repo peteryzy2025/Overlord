@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Task',
+            name = 'task',
             fields=[
                 ('id', models.BigAutoField(db_comment='任务主键ID', primary_key=True, serialize=False, verbose_name='主键ID')),
                 ('title', models.CharField(db_comment='任务标题', max_length=200, verbose_name='任务标题')),
@@ -46,7 +46,7 @@ class Migration(migrations.Migration):
                 ('execution_result', models.JSONField(blank=True, db_comment='子任务执行结果（成功/失败详情）', default=dict, null=True, verbose_name='执行结果')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='子任务创建时间', verbose_name='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='子任务最后更新时间', verbose_name='更新时间')),
-                ('task', models.ForeignKey(db_comment='关联的主任务ID', on_delete=django.db.models.deletion.CASCADE, related_name='subtasks', to='Task.task', verbose_name='所属任务')),
+                ('task', models.ForeignKey(db_comment='关联的主任务ID', on_delete=django.db.models.deletion.CASCADE, related_name='subtasks', to='task.task', verbose_name='所属任务')),
             ],
             options={
                 'verbose_name': '子任务',

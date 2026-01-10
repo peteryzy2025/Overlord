@@ -18,7 +18,7 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.services.amazon_shop_email_service import execute_email_notification
+from amazon.services.amazon_shop_email_service import execute_email_notification
 
 # ========== 日志配置 ==========
 logging.basicConfig(

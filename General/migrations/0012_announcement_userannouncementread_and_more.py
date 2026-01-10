@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0011_user_remark'),
+        ('general', '0011_user_remark'),
     ]
 
     operations = [
@@ -43,7 +43,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(db_comment='记录ID', primary_key=True, serialize=False, verbose_name='主键')),
                 ('read_at', models.DateTimeField(auto_now_add=True, db_comment='用户点击"不再提示"的时间', verbose_name='已读时间')),
                 ('dismissed_at', models.DateTimeField(blank=True, db_comment='用户仅点击关闭的时间（可记录但不影响逻辑）', null=True, verbose_name='关闭时间')),
-                ('announcement', models.ForeignKey(db_comment='被标记已读的的公告ID', on_delete=django.db.models.deletion.CASCADE, related_name='user_reads', to='General.announcement', verbose_name='公告')),
+                ('announcement', models.ForeignKey(db_comment='被标记已读的的公告ID', on_delete=django.db.models.deletion.CASCADE, related_name='user_reads', to='general.announcement', verbose_name='公告')),
                 ('user', models.ForeignKey(db_comment='已读公告的用户ID', on_delete=django.db.models.deletion.CASCADE, related_name='read_announcements', to=settings.AUTH_USER_MODEL, verbose_name='用户')),
             ],
             options={

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Yuser', '0006_assessmentitemconfig_scoring_criteria'),
+        ('yuser', '0006_assessmentitemconfig_scoring_criteria'),
     ]
 
     operations = [

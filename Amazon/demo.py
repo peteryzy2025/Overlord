@@ -10,7 +10,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 from django.db.models import Q
-from General.models import User, Announcement, UserAnnouncementRead
+from general.models import User, Announcement, UserAnnouncementRead
 
 # ====== 1. 获取所有运营用户（只查一次）======
 ops_users = User.objects.filter(role__in=['运营', '运营助理', '运营组长']).only('id', 'first_name', 'role')

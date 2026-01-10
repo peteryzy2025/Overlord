@@ -15,8 +15,8 @@ django.setup()
 # 导入模型
 from django.db.models import F, Count, Sum, Q
 from django.db.models.functions import TruncDate
-from General.models import User, TemuShop
-from Temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
+from general.models import User, TemuShop
+from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
 
 # 导入Excel库
 try:

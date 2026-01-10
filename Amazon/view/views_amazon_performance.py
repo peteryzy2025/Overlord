@@ -7,13 +7,13 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.shortcuts import render
 from datetime import datetime, timedelta
 import json
-from Amazon.models import AmazonPerformanceNotification
-from General.models import AmazonShop, User, OperationalAccount
-from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value
-from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
-from Amazon.amazon_order_views import get_shop_ids_by_filter
-from Api.WX.wx import send_wechat_work_message
-from Amazon.services.amazon_performance_service import (
+from amazon.models import AmazonPerformanceNotification
+from general.models import AmazonShop, User, OperationalAccount
+from amazon.amazon_views import parse_permissions, determine_filter_type_and_value
+from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
+from amazon.amazon_order_views import get_shop_ids_by_filter
+from api.WX.wx import send_wechat_work_message
+from amazon.services.amazon_performance_service import (
     send_performance_notifications,
     get_pending_performance_stats
 )

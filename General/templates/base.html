@@ -1130,6 +1130,15 @@
     // 页面加载完成后初始化公告管理器
     let announcementManager;
     document.addEventListener('DOMContentLoaded', function () {
+        // 隐藏 Loading 遮罩
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            // 给一个小延迟，让过渡更平滑，也避免闪烁
+            setTimeout(() => {
+                loadingOverlay.classList.add('hidden');
+            }, 300);
+        }
+
         // 延迟初始化，确保DOM完全加载
         setTimeout(() => {
             announcementManager = new AnnouncementManager();

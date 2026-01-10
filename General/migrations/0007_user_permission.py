@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0006_remove_user_ops_group'),
+        ('general', '0006_remove_user_ops_group'),
     ]
 
     operations = [

@@ -5,7 +5,7 @@ from django.db import migrations
 
 def init_assessment_items(apps, schema_editor):
     """初始化绩效考核评分项配置"""
-    AssessmentItemConfig = apps.get_model('Yuser', 'AssessmentItemConfig')
+    AssessmentItemConfig = apps.get_model('yuser', 'AssessmentItemConfig')
 
     # 清空旧数据（确保可重复执行）
     AssessmentItemConfig.objects.all().delete()
@@ -562,13 +562,13 @@ def init_assessment_items(apps, schema_editor):
 
 def reverse_init_assessment_items(apps, schema_editor):
     """反向迁移：删除所有配置数据"""
-    AssessmentItemConfig = apps.get_model('Yuser', 'AssessmentItemConfig')
+    AssessmentItemConfig = apps.get_model('yuser', 'AssessmentItemConfig')
     AssessmentItemConfig.objects.all().delete()
 
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('Yuser', '0004_remove_assessmentitem_category_and_more'),  # 请修改为实际的上一个迁移文件名
+        ('yuser', '0004_remove_assessmentitem_category_and_more'),  # 请修改为实际的上一个迁移文件名
     ]
 
     operations = [

@@ -8,8 +8,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0038_alter_announcement_valid_to'),
-        ('Yuser', '0003_assessmentitem_category_alter_assessmentitem_group_and_more'),
+        ('general', '0038_alter_announcement_valid_to'),
+        ('yuser', '0003_assessmentitem_category_alter_assessmentitem_group_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -83,7 +83,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='更新时间')),
                 ('employee', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='assessments', to=settings.AUTH_USER_MODEL)),
                 ('leader', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assessments_as_leader', to=settings.AUTH_USER_MODEL)),
-                ('performance_target', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='General.personalperformancetarget', verbose_name='关联绩效目标')),
+                ('performance_target', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, to='general.personalperformancetarget', verbose_name='关联绩效目标')),
             ],
             options={
                 'verbose_name': '绩效考核记录',
@@ -98,7 +98,7 @@ class Migration(migrations.Migration):
                 ('snapshot_data', models.JSONField(verbose_name='快照数据')),
                 ('snapshot_type', models.CharField(default='final_confirm', max_length=20, verbose_name='快照类型')),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='快照时间')),
-                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Yuser.performanceassessment', verbose_name='原始考核记录')),
+                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='yuser.performanceassessment', verbose_name='原始考核记录')),
             ],
             options={
                 'verbose_name': '考核历史快照',
@@ -112,7 +112,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('item_key', models.CharField(max_length=50, verbose_name='评分项标识')),
                 ('score_value', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='得分')),
-                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='score_details', to='Yuser.performanceassessment', verbose_name='关联考核')),
+                ('assessment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='score_details', to='yuser.performanceassessment', verbose_name='关联考核')),
             ],
             options={
                 'verbose_name': '评分明细',

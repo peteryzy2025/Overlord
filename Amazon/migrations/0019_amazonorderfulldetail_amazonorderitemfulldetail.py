@@ -7,14 +7,14 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0018_amazonorders_latest_ship_date_and_more'),
+        ('amazon', '0018_amazonorders_latest_ship_date_and_more'),
     ]
 
     operations = [
         migrations.CreateModel(
             name='AmazonOrderFullDetail',
             fields=[
-                ('order', models.OneToOneField(db_comment='关联的亚马逊订单（一对一）', on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='full_detail', serialize=False, to='Amazon.amazonorders', verbose_name='关联订单')),
+                ('order', models.OneToOneField(db_comment='关联的亚马逊订单（一对一）', on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='full_detail', serialize=False, to='amazon.amazonorders', verbose_name='关联订单')),
                 ('sid', models.BigIntegerField(db_comment='领星店铺ID', verbose_name='店铺ID')),
                 ('amazon_order_id', models.CharField(db_comment='亚马逊订单号', max_length=50, verbose_name='亚马逊订单号')),
                 ('fulfillment_channel', models.CharField(blank=True, db_comment='发货渠道（AFN/MFN）', max_length=20, null=True, verbose_name='发货渠道')),
@@ -127,7 +127,7 @@ class Migration(migrations.Migration):
                 ('attachments', models.JSONField(blank=True, db_comment='附件信息列表', default=list, null=True, verbose_name='附件信息')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='明细写入时间', verbose_name='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='最后更新时间', verbose_name='更新时间')),
-                ('order', models.ForeignKey(db_comment='关联的亚马逊订单', on_delete=django.db.models.deletion.CASCADE, related_name='item_full_details', to='Amazon.amazonorders', verbose_name='关联订单')),
+                ('order', models.ForeignKey(db_comment='关联的亚马逊订单', on_delete=django.db.models.deletion.CASCADE, related_name='item_full_details', to='amazon.amazonorders', verbose_name='关联订单')),
             ],
             options={
                 'verbose_name': '亚马逊订单商品详情',

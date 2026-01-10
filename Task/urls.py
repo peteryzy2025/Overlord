@@ -1,7 +1,7 @@
 # Task/urls.py
 
 from django.urls import path
-from Task.view import task_api_views, task_page_views
+from task.view import task_api_views, task_page_views
 
 app_name = 'task'  # 命名空间
 urlpatterns = [

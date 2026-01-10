@@ -38,7 +38,7 @@ class Migration(migrations.Migration):
                 ('rank', models.IntegerField(blank=True, null=True, verbose_name='当前排名')),
                 ('rank_category', models.CharField(blank=True, max_length=100, verbose_name='排名大类')),
                 ('crawled_at', models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')),
-                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rank_history', to='Theme.amazonproduct', verbose_name='关联产品')),
+                ('product', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rank_history', to='theme.amazonproduct', verbose_name='关联产品')),
             ],
             options={
                 'verbose_name': '排名历史',

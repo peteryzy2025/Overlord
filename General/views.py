@@ -6,7 +6,7 @@ from django.shortcuts import render
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
-from General.models import Announcement, UserAnnouncementRead
+from general.models import Announcement, UserAnnouncementRead
 from django.forms.models import model_to_dict
 import json
 from django.views.decorators.http import require_http_methods, require_POST

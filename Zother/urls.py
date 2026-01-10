@@ -2,7 +2,7 @@
 from django.urls import path
 from .views import export_bargaining_orders  # 导入导出视图
 
-app_name = 'Zother'  # 命名空间
+app_name = 'zother'  # 命名空间
 
 urlpatterns = [
     # 页面路由

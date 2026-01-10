@@ -12,7 +12,7 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.services.amazon_performance_service import execute_performance_notification
+from amazon.services.amazon_performance_service import execute_performance_notification
 
 logging.basicConfig(
     level=logging.INFO,

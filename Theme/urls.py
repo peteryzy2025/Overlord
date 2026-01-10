@@ -1,6 +1,7 @@
-# urls.py
 from django.urls import path
 from . import views
+
+app_name = 'theme'
 
 urlpatterns = [
     # 页面渲染

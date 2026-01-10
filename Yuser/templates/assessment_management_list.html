@@ -511,7 +511,7 @@
                     <td>
                         <!-- ========== 【修复3】添加flex-wrap防止按钮挤在一起 ========== -->
                         <div class="d-flex gap-1 flex-wrap">
-                            <a href="{% url 'Yuser:assessment_detail' assessment.pk %}"
+                            <a href="{% url 'yuser:assessment_detail' assessment.pk %}"
                                 class="btn btn-sm btn-outline-primary">
                                 <i class="far fa-eye"></i> 详情
                             </a>
@@ -775,7 +775,7 @@
             formData.append('month', month); // 使用缓存的月份
             formData.append('csrfmiddlewaretoken', csrfToken);
 
-            const response = await fetch('{% url "Yuser:assessment_create_batch" %}', {
+            const response = await fetch('{% url "yuser:assessment_create_batch" %}', {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -810,7 +810,7 @@
         const assess_type = document.getElementById('typeFilter').value;
         const status = document.getElementById('statusFilter').value;
 
-        let url = '{% url "Yuser:assessment_list" %}';
+        let url = '{% url "yuser:assessment_list" %}';
         const params = [];
         if (month) params.push('month=' + month);
         if (employee) params.push('employee=' + employee);
@@ -828,7 +828,7 @@
         document.getElementById('employeeFilter').value = '';
         document.getElementById('typeFilter').value = '';
         document.getElementById('statusFilter').value = '';
-        window.location.href = '{% url "Yuser:assessment_list" %}';
+        window.location.href = '{% url "yuser:assessment_list" %}';
     }
 
     async function submitToMember(assessmentId) {
@@ -1011,7 +1011,7 @@
             if (assess_type) formData.append('assess_type', assess_type);
             if (status) formData.append('status', status);
 
-            const response = await fetch('{% url "Yuser:assessment_batch_refresh_orders" %}', {
+            const response = await fetch('{% url "yuser:assessment_batch_refresh_orders" %}', {
                 method: 'POST',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'

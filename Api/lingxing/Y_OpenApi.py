@@ -1,6 +1,6 @@
 
-from Api.lingxing.openapi import OpenApiBase
-from Api.lingxing.resp_schema import ResponseResult
+from api.lingxing.openapi import OpenApiBase
+from api.lingxing.resp_schema import ResponseResult
 
 async def get_api_resp(req_body:dict, api_path:str, method:str="POST") -> ResponseResult:
     op_api = OpenApiBase(

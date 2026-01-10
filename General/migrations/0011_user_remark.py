@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0010_groupperformancetarget_personalperformancetarget_and_more'),
+        ('general', '0010_groupperformancetarget_personalperformancetarget_and_more'),
     ]
 
     operations = [

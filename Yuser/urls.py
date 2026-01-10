@@ -1,8 +1,8 @@
 # Yuser/urls.py
 from django.urls import path
-from Yuser import view_assessment_management
+from yuser import view_assessment_management
 
-app_name = 'Yuser'
+app_name = 'yuser'
 
 urlpatterns = [
     # 新增动态版本

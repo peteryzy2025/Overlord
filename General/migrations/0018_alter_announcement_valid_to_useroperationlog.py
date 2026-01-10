@@ -9,7 +9,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0017_user_theme_alter_announcement_valid_to'),
+        ('general', '0017_user_theme_alter_announcement_valid_to'),
     ]
 
     operations = [

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Track', '0003_factory_tracking_factory'),
+        ('track', '0003_factory_tracking_factory'),
     ]
 
     operations = [

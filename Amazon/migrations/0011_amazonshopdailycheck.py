@@ -7,8 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0010_amazonperformancenotification_uniq_shop_subject_date'),
-        ('General', '0015_alter_announcement_valid_to'),
+        ('amazon', '0010_amazonperformancenotification_uniq_shop_subject_date'),
+        ('general', '0015_alter_announcement_valid_to'),
     ]
 
     operations = [
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('withdrawal_processed', models.BooleanField(db_comment='是否进行提现操作', default=False)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间')),
-                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='daily_checks', to='General.amazonshop')),
+                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='daily_checks', to='general.amazonshop')),
             ],
             options={
                 'verbose_name': '亚马逊巡店日报',

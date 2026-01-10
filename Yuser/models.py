@@ -27,7 +27,7 @@ class PerformanceAssessment(models.Model):
 
     # 关联绩效目标（获取target_orders）
     performance_target = models.ForeignKey(
-        'General.PersonalPerformanceTarget',
+        'general.PersonalPerformanceTarget',
         on_delete=models.PROTECT,
         verbose_name='关联绩效目标'
     )

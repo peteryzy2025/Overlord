@@ -1,11 +1,11 @@
 # Amazon/urls.py
 from django.urls import path
-from Amazon import (
+from amazon import (
     amazon_views,
     amazon_views_jc,
     views_ranking,
 )
-from Amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
+from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 app_name = 'amazon'
 
 urlpatterns = [

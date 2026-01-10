@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
-from Api.Y.y_tiem import Timer
+from api.Y.y_tiem import Timer
 
 # ====== Django 初始化部分（照抄你原来的） ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,9 +20,9 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from General.models import AmazonShop  # 目前没直接用到，先保留
-from Api.lingxing_p.lingxing_jc1 import get_lingxing_orders
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from general.models import AmazonShop  # 目前没直接用到，先保留
+from api.lingxing_p.lingxing_jc1 import get_lingxing_orders
 
 
 def _to_decimal(value, default=None):

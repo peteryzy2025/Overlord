@@ -8,9 +8,9 @@ from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 
 # 模型导入
-from General.models import User, AmazonShop, TemuShop, OperationalAccount
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from Temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
+from general.models import User, AmazonShop, TemuShop, OperationalAccount
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 
 
 @login_required

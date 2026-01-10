@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
-from General.models import User, OperationalAccount, TemuShop
+from general.models import User, OperationalAccount, TemuShop
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.db.models import Q

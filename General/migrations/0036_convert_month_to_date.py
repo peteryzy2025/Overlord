@@ -7,8 +7,8 @@ logger = logging.getLogger(__name__)
 
 def convert_char_to_date(apps, schema_editor):
     """将 CharField 的 YYYY-MM 格式转换为 DateField"""
-    GroupPerformanceTarget = apps.get_model('General', 'GroupPerformanceTarget')
-    PersonalPerformanceTarget = apps.get_model('General', 'PersonalPerformanceTarget')
+    GroupPerformanceTarget = apps.get_model('general', 'GroupPerformanceTarget')
+    PersonalPerformanceTarget = apps.get_model('general', 'PersonalPerformanceTarget')
 
     # 处理组绩效目标
     for target in GroupPerformanceTarget.objects.all().iterator():
@@ -35,7 +35,7 @@ def convert_char_to_date(apps, schema_editor):
 class Migration(migrations.Migration):
     # ⚠️⚠️⚠️ 务必修改为实际的上一版迁移文件名 ⚠️⚠️⚠️
     dependencies = [
-        ('General', '0035_alter_announcement_valid_to'),  # ← 改成你的实际文件名，不要.py
+        ('general', '0035_alter_announcement_valid_to'),  # ← 改成你的实际文件名，不要.py
     ]
 
     operations = [

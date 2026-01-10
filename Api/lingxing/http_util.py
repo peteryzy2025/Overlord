@@ -4,7 +4,7 @@
 import aiohttp
 import orjson
 from typing import Optional
-from Api.lingxing.resp_schema import ResponseResult
+from api.lingxing.resp_schema import ResponseResult
 
 
 class HttpBase(object):

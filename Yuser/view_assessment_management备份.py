@@ -13,17 +13,17 @@ from django.db.models import Sum, Q
 from django.utils.dateparse import parse_date
 from decimal import Decimal
 
-from General.models import UserOperationLog, PersonalPerformanceTarget
-from Yuser.models import (
+from general.models import UserOperationLog, PersonalPerformanceTarget
+from yuser.models import (
     PerformanceAssessment,
     PerformanceScoreDetail,
     AssessmentItemConfig,
     User,
     AssessmentHistory
 )
-from General.models import AmazonShop, TemuShop
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from Temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
+from general.models import AmazonShop, TemuShop
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 
 
 class AssessmentManagementView(LoginRequiredMixin, View):
@@ -495,7 +495,7 @@ class AssessmentEditView(AssessmentManagementView, DetailView):
             kpi_weight = 30
             behavior_weight = 70
 
-        from Yuser.templatetags.yuser_extras import get_special_rules
+        from yuser.templatetags.yuser_extras import get_special_rules
         special_rules = get_special_rules(assessment.assess_type)
 
         context.update({

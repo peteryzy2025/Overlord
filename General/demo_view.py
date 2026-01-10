@@ -7,7 +7,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.db.models import Q, Sum
-from General.models import User, OperationalAccount, GroupPerformanceTarget, PersonalPerformanceTarget
+from general.models import User, OperationalAccount, GroupPerformanceTarget, PersonalPerformanceTarget
 import json
 import traceback
 from datetime import datetime

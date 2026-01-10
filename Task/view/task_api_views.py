@@ -9,9 +9,9 @@ from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
 
-from General.models import User, AmazonShop, TemuShop
-from Task.models import Task, SubTask, TaskTemplate
-from Task.utils import (
+from general.models import User, AmazonShop, TemuShop
+from task.models import Task, SubTask, TaskTemplate
+from task.utils import (
     generate_task_no,
     get_visible_shops,
     parse_permissions,

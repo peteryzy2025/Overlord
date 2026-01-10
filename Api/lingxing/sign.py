@@ -3,7 +3,7 @@
 """基于 aes文件 基础加密功能 封装 openapi签名算法"""
 import orjson
 from typing import Union
-from Api.lingxing.aes import aes_encrypt, md5_encrypt
+from api.lingxing.aes import aes_encrypt, md5_encrypt
 
 
 class SignBase(object):

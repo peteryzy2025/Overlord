@@ -33,7 +33,7 @@ class AnnouncementMiddleware:
 
     def inject_announcements(self, request):
         """注入未读公告到请求对象"""
-        from General.models import Announcement, UserAnnouncementRead
+        from general.models import Announcement, UserAnnouncementRead
 
         now = timezone.now()
 
