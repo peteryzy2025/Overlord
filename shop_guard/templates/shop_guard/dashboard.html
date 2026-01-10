@@ -1,0 +1,944 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}店铺风控驾驶舱{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== 医疗科技体检报告风格 ===== */
+    :root {
+        --bg-primary: #0a0a0a;        /* 医疗级深黑背景 */
+        --bg-card: rgba(15, 20, 30, 0.7);  /* 半透明仪表盘 */
+        --color-ecg: #00ff9d;         /* 医疗绿(心电图) */
+        --color-primary: #00b8ff;     /* 医疗蓝 */
+        --color-warning: #ffaa00;     /* 琥珀警告 */
+        --color-danger: #ff0044;      /* 危险红 */
+        --color-grid: rgba(0, 255, 157, 0.1); /* 网格线 */
+        --text-main: #ffffff;         /* 主文字-纯白保证可见 */
+        --text-sub: #e0e0e0;          /* 次文字 */
+        --text-dim: #a0a0a0;          /* 辅助文字 */
+    }
+
+    body {
+        background: var(--bg-primary);
+        background-image:
+            radial-gradient(circle at 30% 30%, rgba(0, 255, 157, 0.05) 0%, transparent 50%),
+            radial-gradient(circle at 70% 70%, rgba(0, 184, 255, 0.05) 0%, transparent 50%);
+        color: var(--text-main);
+        font-family: 'Segoe UI', 'Roboto Mono', monospace;
+        overflow-x: hidden;
+    }
+
+    /* 医疗网格背景 */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image:
+            linear-gradient(var(--color-grid) 1px, transparent 1px),
+            linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+        background-size: 40px 40px;
+        animation: gridPulse 4s ease-in-out infinite;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    @keyframes gridPulse {
+        0%, 100% { opacity: 0.1; }
+        50% { opacity: 0.2; }
+    }
+
+    /* ===== 心电图动态Header ===== */
+    .dashboard-header {
+        position: relative;
+        padding: 3rem;
+        margin-bottom: 2rem;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--bg-card) 0%, rgba(10, 15, 25, 0.9) 100%);
+        border: 1px solid rgba(0, 255, 157, 0.2);
+        overflow: hidden;
+    }
+
+    .ecg-monitor {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 80px;
+        pointer-events: none;
+    }
+
+    .ecg-line {
+        stroke: var(--color-ecg);
+        stroke-width: 3;
+        fill: none;
+        filter: drop-shadow(0 0 15px var(--color-ecg));
+        animation: ecgScroll 3s linear infinite;
+    }
+
+    @keyframes ecgScroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-100%); }
+    }
+
+    .header-content {
+        position: relative;
+        z-index: 1;
+        margin-top: 3rem;
+    }
+
+    .header-title {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--color-ecg);
+        text-shadow: 0 0 30px rgba(0, 255, 157, 0.5);
+        letter-spacing: 2px;
+    }
+
+    .header-subtitle {
+        font-size: 1rem;
+        color: var(--text-sub);
+        margin-top: 0.5rem;
+        font-weight: 300;
+        letter-spacing: 1px;
+    }
+
+    .header-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .stat-block {
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 15px;
+        border-left: 4px solid var(--color-ecg);
+        transition: all 0.4s ease;
+    }
+
+    .stat-block:hover {
+        transform: translateY(-5px);
+        background: rgba(0, 255, 157, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 255, 157, 0.2);
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--color-ecg);
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-sub);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* ===== 医疗指标卡片 - 两列布局 ===== */
+    .metrics-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .metric-card {
+        background: var(--bg-card);
+        border: 1px solid rgba(0, 184, 255, 0.3);
+        border-radius: 20px;
+        padding: 2.5rem;
+        position: relative;
+        transition: all 0.4s ease;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--color-ecg), var(--color-primary));
+        transform: scaleX(0);
+        transition: transform 0.6s ease;
+    }
+
+    .metric-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .metric-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--color-ecg);
+        box-shadow: 0 15px 35px rgba(0, 255, 157, 0.2);
+    }
+
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    .card-title {
+        font-size: 0.875rem;
+        color: var(--color-primary);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 0.75rem;
+        font-weight: 600;
+    }
+
+    .card-value {
+        font-size: 3rem;
+        font-weight: 800;
+        color: var(--text-main);
+        line-height: 1;
+    }
+
+    .card-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        background: rgba(0, 0, 0, 0.4);
+        border: 2px solid;
+        transition: all 0.4s ease;
+    }
+
+    .metric-card:hover .card-icon {
+        transform: rotate(10deg) scale(1.1);
+    }
+
+    .icon-warning {
+        border-color: var(--color-warning);
+        color: var(--color-warning);
+    }
+
+    .icon-risk {
+        border-color: var(--color-danger);
+        color: var(--color-danger);
+    }
+
+    /* ===== 医疗级进度条 ===== */
+    .medical-progress {
+        margin: 1.5rem 0;
+    }
+
+    .progress-track {
+        height: 12px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .progress-fill {
+        height: 100%;
+        border-radius: 6px;
+        transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+    }
+
+    .progress-fill::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        animation: shimmerScan 2s linear infinite;
+    }
+
+    @keyframes shimmerScan {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(100%); }
+    }
+
+    .fill-warning {
+        background: linear-gradient(90deg, var(--color-warning), var(--color-danger));
+    }
+
+    .fill-success {
+        background: linear-gradient(90deg, var(--color-ecg), var(--color-primary));
+    }
+
+    .progress-legends {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    /* ===== 店铺健康总览大卡片 ===== */
+    .health-overview-card {
+        background: var(--bg-card);
+        border: 1px solid rgba(0, 255, 157, 0.4);
+        border-radius: 20px;
+        padding: 3rem;
+        margin-bottom: 2rem;
+        position: relative;
+    }
+
+    .health-overview-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--color-ecg);
+        transform: scaleX(0);
+        transition: transform 0.6s ease;
+    }
+
+    .health-overview-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .health-overview-card:hover {
+        border-color: var(--color-ecg);
+        box-shadow: 0 20px 50px rgba(0, 255, 157, 0.3);
+    }
+
+    .health-check {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .health-btn {
+        padding: 2rem;
+        border-radius: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid;
+        text-align: center;
+        transition: all 0.4s ease;
+        cursor: pointer;
+    }
+
+    .health-btn:hover {
+        transform: scale(1.08);
+    }
+
+    .health-btn.healthy {
+        border-color: var(--color-ecg);
+        color: var(--color-ecg);
+    }
+
+    .health-btn.healthy:hover {
+        box-shadow: 0 15px 40px rgba(0, 255, 157, 0.4);
+        background: rgba(0, 255, 157, 0.1);
+    }
+
+    .health-btn.risky {
+        border-color: var(--color-warning);
+        color: var(--color-warning);
+    }
+
+    .health-btn.risky:hover {
+        box-shadow: 0 15px 40px rgba(255, 170, 0, 0.4);
+        background: rgba(255, 170, 0, 0.1);
+    }
+
+    .health-btn.disabled {
+        border-color: var(--text-dim);
+        color: var(--text-dim);
+    }
+
+    .health-btn.disabled:hover {
+        box-shadow: 0 15px 40px rgba(160, 160, 160, 0.3);
+        background: rgba(160, 160, 160, 0.1);
+    }
+
+    .health-count {
+        font-size: 2.5rem;
+        font-weight: 800;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .health-label {
+        font-size: 0.875rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-sub);
+    }
+
+    /* ===== 风险指标矩阵 ===== */
+    .risk-indicators {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+
+    .risk-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        border-radius: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(0, 184, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .risk-item:hover {
+        border-color: var(--color-primary);
+        background: rgba(0, 184, 255, 0.1);
+        transform: translateX(8px);
+    }
+
+    .risk-indicator {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1rem;
+        flex-shrink: 0;
+        animation: pulseRing 2s ease-in-out infinite;
+    }
+
+    @keyframes pulseRing {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 157, 0.4); }
+        70% { box-shadow: 0 0 0 20px rgba(0, 255, 157, 0); }
+    }
+
+    .risk-indicator.warning {
+        background: var(--color-warning);
+        color: var(--bg-primary);
+    }
+
+    .risk-indicator.danger {
+        background: var(--color-danger);
+        color: white;
+    }
+
+    .risk-indicator.ecg {
+        background: var(--color-ecg);
+        color: var(--bg-primary);
+    }
+
+    .risk-indicator.primary {
+        background: var(--color-primary);
+        color: white;
+    }
+
+    .risk-name {
+        font-size: 0.875rem;
+        color: var(--text-sub);
+        font-weight: 500;
+    }
+
+    /* ===== 图表区域 ===== */
+    .chart-section {
+        display: grid;
+        grid-template-columns: 1.8fr 1fr;
+        gap: 2rem;
+        margin-top: 2rem;
+    }
+
+    .chart-panel {
+        background: var(--bg-card);
+        border: 1px solid rgba(0, 184, 255, 0.3);
+        border-radius: 20px;
+        overflow: hidden;
+        transition: all 0.4s ease;
+    }
+
+    .chart-panel:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 184, 255, 0.2);
+    }
+
+    .panel-header {
+        padding: 1.75rem 2rem;
+        border-bottom: 1px solid rgba(0, 184, 255, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .panel-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--color-ecg);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .panel-content {
+        padding: 2rem;
+        height: 420px;
+    }
+
+    .panel-content.small {
+        height: 350px;
+    }
+
+    /* ===== 医疗清单 ===== */
+    .status-medical {
+        padding: 0 2rem 2rem;
+    }
+
+    .medical-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.25rem 0;
+        border-bottom: 1px solid rgba(0, 184, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+
+    .medical-item:hover {
+        background: rgba(0, 184, 255, 0.05);
+        border-radius: 10px;
+        padding: 1.25rem;
+        margin: 0 -1rem;
+    }
+
+    .medical-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .medical-indicator {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        position: relative;
+        animation: medicalPulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes medicalPulse {
+        0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+        70% { box-shadow: 0 0 0 12px rgba(0, 0, 0, 0); }
+    }
+
+    .medical-indicator.healthy {
+        background: var(--color-ecg);
+        color: rgba(0, 255, 157, 0.5);
+    }
+
+    .medical-indicator.risky {
+        background: var(--color-danger);
+        color: rgba(255, 0, 68, 0.5);
+    }
+
+    .medical-indicator.disabled {
+        background: var(--text-dim);
+        color: rgba(160, 160, 160, 0.5);
+    }
+
+    .medical-text {
+        font-size: 0.875rem;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    .medical-count {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--color-ecg);
+        text-shadow: 0 0 10px rgba(0, 255, 157, 0.3);
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="container-fluid px-4 py-4">
+    <!-- 随机心电图Header -->
+    <div class="dashboard-header">
+        <svg class="ecg-monitor">
+            <path class="ecg-line" id="ecgPath" />
+        </svg>
+        <div class="header-content">
+            <h1 class="header-title">店铺风控体检报告</h1>
+            <p class="header-subtitle">医疗级精准诊断系统</p>
+            <div class="header-stats">
+                <div class="stat-block">
+                    <span class="stat-value">{{ shop_health.total }}</span>
+                    <span class="stat-label">检测店铺</span>
+                </div>
+                <div class="stat-block">
+                    <span class="stat-value">{{ policy_compliance.total }}</span>
+                    <span class="stat-label">异常指标</span>
+                </div>
+                <div class="stat-block">
+                    <span class="stat-value">{{ balance_warning.total }}</span>
+                    <span class="stat-label">预警项目</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 核心指标卡片 - 两列 -->
+    <div class="metrics-row">
+        <!-- 资金风险提示 -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">资金风险提示</div>
+                    <div class="card-value">{{ balance_warning.total }}</div>
+                </div>
+                <div class="card-icon icon-warning">
+                    <i class="fas fa-wallet"></i>
+                </div>
+            </div>
+            <div class="medical-progress">
+                <div class="progress-track">
+                    <!-- 进度条总长=检测店铺总数 -->
+                    <div class="progress-fill fill-warning" style="width: {{ balance_warning.medium_risk_percent }}%"></div>
+                    <div class="progress-fill fill-success" style="width: {{ balance_warning.low_risk_percent }}%"></div>
+                </div>
+                <div class="progress-legends">
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: var(--color-danger);"></div>
+                        <span>中风险: {{ balance_warning.medium_risk }}家 ({{ balance_warning.medium_risk_percent }}%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: var(--color-ecg);"></div>
+                        <span>低风险: {{ balance_warning.low_risk }}家 ({{ balance_warning.low_risk_percent }}%)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot" style="background: var(--text-dim);"></div>
+                        <span>正常: {{ shop_health.total|add:-balance_warning.medium_risk|add:-balance_warning.low_risk }}家</span>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3" style="font-size: 0.875rem; color: var(--color-warning);">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <span>重点关注中风险店铺资金回款</span>
+            </div>
+        </div>
+
+        <!-- 核心合规风险 - 修正add过滤器语法 -->
+        <div class="metric-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">核心合规风险</div>
+                    <!-- 正确写法：add过滤器不能有空格 -->
+                    <div class="card-value">{{ consumer_act_risk.total|add:legal_person_cooperation_risk.total|add:company_subject_risk.total|add:order_subject_risk.total }}</div>
+                </div>
+                <div class="card-icon icon-risk">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+            </div>
+            <div class="risk-indicators">
+                <div class="risk-item">
+                    <div class="risk-indicator warning">{{ consumer_act_risk.total }}</div>
+                    <div class="risk-name">消费者法案</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-indicator danger">{{ legal_person_cooperation_risk.total }}</div>
+                    <div class="risk-name">法人配合度</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-indicator ecg">{{ company_subject_risk.total }}</div>
+                    <div class="risk-name">公司主体</div>
+                </div>
+                <div class="risk-item">
+                    <div class="risk-indicator primary">{{ order_subject_risk.total }}</div>
+                    <div class="risk-name">出单主体</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 店铺健康总览 - 独立大卡片 -->
+    <div class="health-overview-card">
+        <div class="card-header">
+            <div>
+                <div class="card-title">店铺健康总览</div>
+                <div class="card-value">{{ shop_health.total }}</div>
+            </div>
+            <div class="card-icon" style="border-color: var(--color-ecg); color: var(--color-ecg);">
+                <i class="fas fa-heartbeat"></i>
+            </div>
+        </div>
+        <div class="health-check">
+            <div class="health-btn healthy">
+                <span class="health-count">{{ shop_health.healthy }}</span>
+                <span class="health-label">健康店铺</span>
+            </div>
+            <div class="health-btn risky">
+                <span class="health-count">{{ shop_health.risky }}</span>
+                <span class="health-label">风险店铺</span>
+            </div>
+            <div class="health-btn disabled">
+                <span class="health-count">{{ shop_health.disabled }}</span>
+                <span class="health-label">停用店铺</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="chart-section">
+        <!-- 异常指标详细分析 -->
+        <div class="chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="fas fa-stethoscope"></i>
+                    异常指标详细分析
+                </h3>
+                <span class="badge" style="background: var(--color-ecg); color: var(--bg-primary);">
+                    {{ policy_compliance.total }} 项异常
+                </span>
+            </div>
+            <div class="panel-content">
+                <canvas id="policyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 店铺健康状态分布 -->
+        <div class="chart-panel">
+            <div class="panel-header">
+                <h3 class="panel-title">
+                    <i class="fas fa-chart-line"></i>
+                    店铺健康状态分布
+                </h3>
+            </div>
+            <div class="panel-content small">
+                <canvas id="healthChart"></canvas>
+            </div>
+            <div class="status-medical">
+                <div class="medical-item">
+                    <div class="medical-info">
+                        <div class="medical-indicator healthy"></div>
+                        <span class="medical-text">健康店铺</span>
+                    </div>
+                    <span class="medical-count">{{ shop_health.healthy }}</span>
+                </div>
+                <div class="medical-item">
+                    <div class="medical-info">
+                        <div class="medical-indicator risky"></div>
+                        <span class="medical-text">风险店铺</span>
+                    </div>
+                    <span class="medical-count">{{ shop_health.risky }}</span>
+                </div>
+                <div class="medical-item">
+                    <div class="medical-info">
+                        <div class="medical-indicator disabled"></div>
+                        <span class="medical-text">停用店铺</span>
+                    </div>
+                    <span class="medical-count">{{ shop_health.disabled }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // ===== 随机心电图生成器 =====
+    function generateRealisticECG() {
+        const width = window.innerWidth * 2.5;
+        const height = 80;
+        const points = [];
+        let x = 0;
+        let lastPulse = 0;
+
+        while (x < width) {
+            const baseY = height / 2;
+            const timeSinceLastPulse = x - lastPulse;
+            const nextPulse = 50 + Math.random() * 30;
+
+            if (timeSinceLastPulse >= nextPulse) {
+                points.push(`${x},${baseY}`);
+                points.push(`${x + 3},${baseY - 8}`);
+                points.push(`${x + 8},${baseY}`);
+                points.push(`${x + 12},${baseY + 5}`);
+                points.push(`${x + 15},${height - 5}`);
+                points.push(`${x + 18},${baseY + 5}`);
+                points.push(`${x + 25},${baseY - 5}`);
+                points.push(`${x + 35},${baseY}`);
+                lastPulse = x + 35;
+                x += 35;
+            } else {
+                const drift = Math.sin(x * 0.1) * 3;
+                points.push(`${x},${baseY + drift + (Math.random() - 0.5) * 3}`);
+                x += 2;
+            }
+        }
+
+        return `M ${points.join(' L ')}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const ecgPath = document.getElementById('ecgPath');
+        ecgPath.setAttribute('d', generateRealisticECG());
+        setInterval(() => {
+            ecgPath.setAttribute('d', generateRealisticECG());
+        }, 3500);
+
+        // ===== 医疗级图表 =====
+        const medicalColors = {
+            critical: 'rgba(255, 68, 0, 0.9)',
+            warning: 'rgba(255, 170, 0, 0.9)',
+            normal: 'rgba(160, 160, 160, 0.7)',
+            ecg: 'rgba(0, 255, 157, 0.9)'
+        };
+
+        const policyCtx = document.getElementById('policyChart').getContext('2d');
+        const policyData = [
+            {{ policy_compliance.breakdown.suspected_ip_infringement|default:0 }},
+            {{ policy_compliance.breakdown.ip_complaints|default:0 }},
+            {{ policy_compliance.breakdown.authenticity_complaints|default:0 }},
+            {{ policy_compliance.breakdown.condition_complaints|default:0 }},
+            {{ policy_compliance.breakdown.safety_issues|default:0 }},
+            {{ policy_compliance.breakdown.listing_policy_violations|default:0 }},
+            {{ policy_compliance.breakdown.restricted_product_policy|default:0 }},
+            {{ policy_compliance.breakdown.review_policy_violations|default:0 }},
+            {{ policy_compliance.breakdown.other_policy_violations|default:0 }},
+            {{ policy_compliance.breakdown.regulatory_compliance|default:0 }}
+        ];
+
+        const barColors = policyData.map(val => {
+            if (val >= 5) return medicalColors.critical;
+            if (val >= 3) return medicalColors.warning;
+            return val > 0 ? medicalColors.normal : medicalColors.ecg;
+        });
+
+        new Chart(policyCtx, {
+            type: 'bar',
+            data: {
+                labels: ['涉嫌侵权', '知产投诉', '真实性', '状况投诉', '安全问题', '上架违规', '受限商品', '评论违规', '其他', '监管合规'],
+                datasets: [{
+                    label: '异常指标',
+                    data: policyData,
+                    backgroundColor: barColors,
+                    borderColor: barColors.map(c => c.replace('0.9', '1')),
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(10, 15, 30, 0.95)',
+                        titleColor: '#00ff9d',
+                        bodyColor: '#ffffff',
+                        borderColor: '#00b8ff',
+                        borderWidth: 2,
+                        cornerRadius: 10,
+                        callbacks: {
+                            label: (ctx) => `异常指标: ${ctx.parsed.y} 项`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0, 184, 255, 0.1)' },
+                        ticks: { color: '#94a3b8', font: { size: 12 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#e0e0e0',
+                            font: { size: 11 },
+                            maxRotation: 45
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutBounce'
+                }
+            }
+        });
+
+        const healthCtx = document.getElementById('healthChart').getContext('2d');
+        new Chart(healthCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['健康', '风险', '停用'],
+                datasets: [{
+                    data: [
+                        {{ shop_health.healthy|default:0 }},
+                        {{ shop_health.risky|default:0 }},
+                        {{ shop_health.disabled|default:0 }}
+                    ],
+                    backgroundColor: [
+                        medicalColors.ecg,
+                        medicalColors.warning,
+                        medicalColors.normal
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 25,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            color: '#ffffff',
+                            font: { size: 13, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(10, 15, 30, 0.95)',
+                        titleColor: '#00ff9d',
+                        bodyColor: '#ffffff',
+                        borderColor: '#00b8ff',
+                        borderWidth: 2,
+                        cornerRadius: 10,
+                        callbacks: {
+                            label: (ctx) => `${ctx.label}: ${ctx.parsed} 家店铺`
+                        }
+                    }
+                },
+                cutout: '70%',
+                animation: {
+                    animateRotate: true,
+                    duration: 1500,
+                    easing: 'easeOutElastic'
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
