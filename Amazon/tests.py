@@ -16,8 +16,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 from django.db.models import Sum
-from General.models import User, AmazonShop
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from general.models import User, AmazonShop
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 
 # ===== 配置 =====
 TEST_USER_ID = 23

@@ -9,13 +9,13 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import json
 
-from General.models import AmazonShop, User, OperationalAccount
-from Amazon.models import AmazonShopDailyCheck
-from Amazon.view.views_amazon_performance import parse_permissions, determine_filter_type_and_value, \
+from general.models import AmazonShop, User, OperationalAccount
+from amazon.models import AmazonShopDailyCheck
+from amazon.view.views_amazon_performance import parse_permissions, determine_filter_type_and_value, \
     get_shop_ids_by_filter
 # 修正导入路径：从Amazon模块下的amazon_order_views导入
-from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
-from General.models import UserOperationLog
+from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
+from general.models import UserOperationLog
 
 # ============= 操作类型常量 =============
 DAILY_CHECK_RESET = 4011

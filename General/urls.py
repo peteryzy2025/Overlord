@@ -1,6 +1,6 @@
 # General/urls.py
 from django.urls import path
-from General import (
+from general import (
     views,
     views_user_management,
     views_amazon_management,
@@ -8,7 +8,7 @@ from General import (
     views_performance,
     demo_view
 )
-from General.view import view_operation_log, views_general
+from general.view import view_operation_log, views_general
 app_name = 'general'
 
 urlpatterns = [

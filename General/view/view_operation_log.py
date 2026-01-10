@@ -7,7 +7,7 @@ from django.shortcuts import render
 from datetime import datetime, timedelta
 import json
 
-from General.models import User, UserOperationLog
+from general.models import User, UserOperationLog
 
 SYSTEM_ACCOUNTS = [55, 56]  # 特殊系统账号，所有人可见
 def get_operation_log_permissions(user):

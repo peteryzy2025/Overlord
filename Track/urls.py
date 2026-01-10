@@ -1,6 +1,6 @@
 # track/urls.py
 from django.urls import path
-from Track.view import view_tracking_management
+from track.view import view_tracking_management
 
 app_name = 'track'  # 命名空间
 

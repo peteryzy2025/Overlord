@@ -7,8 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0008_alter_amazonorderitem_unique_together'),
-        ('General', '0013_alter_announcement_valid_to'),
+        ('amazon', '0008_alter_amazonorderitem_unique_together'),
+        ('general', '0013_alter_announcement_valid_to'),
     ]
 
     operations = [
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('is_processed', models.SmallIntegerField(db_comment='是否已处理（0=否，1=是）', default=0, verbose_name='已处理')),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间')),
-                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='performance_notifications', to='General.amazonshop')),
+                ('shop', models.ForeignKey(db_comment='关联的亚马逊店铺', on_delete=django.db.models.deletion.CASCADE, related_name='performance_notifications', to='general.amazonshop')),
             ],
             options={
                 'verbose_name': '亚马逊绩效通知',

@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0008_temushop'),
+        ('general', '0008_temushop'),
     ]
 
     operations = [

@@ -13,9 +13,9 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import AmazonOrders
-from Api.lingxing.Y_OpenApi import get_api_resp
-from Api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
+from amazon.models import AmazonOrders
+from api.lingxing.Y_OpenApi import get_api_resp
+from api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
 
 # ==================== 物流匹配 ====================
 from typing import Optional

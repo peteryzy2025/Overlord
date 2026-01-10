@@ -1,4 +1,4 @@
-from Api.lingxing.Y_OpenApi import get_api_resp
+from api.lingxing.Y_OpenApi import get_api_resp
 import datetime
 from typing import List, Dict, Any
 import asyncio

@@ -8,8 +8,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('General', '0011_user_remark'),
-        ('Temu', '0002_remove_temuorder_id_alter_temuorder_global_order_no_and_more'),
+        ('general', '0011_user_remark'),
+        ('temu', '0002_remove_temuorder_id_alter_temuorder_global_order_no_and_more'),
     ]
 
     operations = [
@@ -173,7 +173,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='temuorder',
             name='temu_shop',
-            field=models.ForeignKey(blank=True, db_comment='关联的本地 TemuShop（冗余）', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='temu_orders', to='General.temushop'),
+            field=models.ForeignKey(blank=True, db_comment='关联的本地 TemuShop（冗余）', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='temu_orders', to='general.temushop'),
         ),
         migrations.AlterField(
             model_name='temuorder',

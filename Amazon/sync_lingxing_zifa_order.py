@@ -15,7 +15,7 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.db.models import Q  # 正确导入路径
 
-from Api.Y.y_tiem import Timer
+from api.Y.y_tiem import Timer
 
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,8 +24,8 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import AmazonOrders, LingXingAmazonShop
-from Api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order
+from amazon.models import AmazonOrders, LingXingAmazonShop
+from api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order
 
 # ========== 配置项 ==========
 DAYS_BACK = 10  # 查询最近5天 order_no 为空的订单

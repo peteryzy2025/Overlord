@@ -1,7 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
-from General.models import User, OperationalAccount
+from general.models import User, OperationalAccount
 
 
 def parse_permissions(user_permission):

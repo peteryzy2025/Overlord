@@ -1,7 +1,7 @@
 # Task/models.py
 
 from django.db import models
-from General.models import User
+from general.models import User
 from django.utils import timezone
 
 
@@ -82,7 +82,7 @@ class Task(models.Model):
         保存时自动生成任务单号
         """
         if not self.task_no:
-            from Task.utils.task_utils import generate_task_no
+            from task.utils.task_utils import generate_task_no
             self.task_no = generate_task_no(self.created_by)
 
         # 状态变更时更新时间

@@ -24,10 +24,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 # ===== 导入Django模型 =====
-from General.models import User, AmazonShop, TemuShop, OperationalAccount
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from Temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
-from General.models import PersonalPerformanceTarget, GroupPerformanceTarget
+from general.models import User, AmazonShop, TemuShop, OperationalAccount
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
+from general.models import PersonalPerformanceTarget, GroupPerformanceTarget
 from django.db.models import Sum, Q, Count
 # 导入新的鼓励语库
 from encouragement_bank import get_encouragement

@@ -1,6 +1,6 @@
 import asyncio
 from typing import List, Dict
-from Api.lingxing.Y_OpenApi import get_api_resp
+from api.lingxing.Y_OpenApi import get_api_resp
 from datetime import datetime, timedelta
 
 

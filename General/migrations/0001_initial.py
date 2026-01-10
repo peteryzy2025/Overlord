@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='OperationalAccount',
             fields=[
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='operational_account', serialize=False, to='General.user', verbose_name='关联用户')),
+                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, primary_key=True, related_name='operational_account', serialize=False, to='general.user', verbose_name='关联用户')),
                 ('shandianyun_account', models.CharField(blank=True, max_length=100, null=True, verbose_name='闪电云账号')),
                 ('shandianyun_username', models.CharField(blank=True, max_length=100, null=True, verbose_name='闪电云用户名')),
                 ('shandianyun_password', models.CharField(blank=True, max_length=100, null=True, verbose_name='闪电云密码')),

@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0014_amazonshopdailycheck_last_restock_date_and_more'),
+        ('amazon', '0014_amazonshopdailycheck_last_restock_date_and_more'),
     ]
 
     operations = [

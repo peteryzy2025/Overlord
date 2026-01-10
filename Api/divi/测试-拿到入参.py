@@ -14,7 +14,7 @@ sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Overlord.settings')  # 修改 Overlord 为你的项目名
 django.setup()
 
-from Api.divi.divi_order_service import build_order_payload_from_amazon_order_id
+from api.divi.divi_order_service import build_order_payload_from_amazon_order_id
 
 if __name__ == '__main__':
     # 测试订单号

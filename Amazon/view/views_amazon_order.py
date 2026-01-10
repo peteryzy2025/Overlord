@@ -20,26 +20,26 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 # 项目内模型
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from General.models import UserOperationLog
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from general.models import UserOperationLog
 
 # 项目内工具函数 / 视图函数
-from Amazon.amazon_views import (
+from amazon.amazon_views import (
     parse_permissions,
     determine_filter_type_and_value,
     get_date_range_from_option,
     get_shop_ids_by_filter,
 )
-from Amazon.amazon_divi_views import update_divi_order_fields
+from amazon.amazon_divi_views import update_divi_order_fields
 
 # 领星 & DIVI 接口服务
-from Api.lingxing.Y_OpenApi import get_api_resp
-from Api.divi.divi_order_service import (
+from api.lingxing.Y_OpenApi import get_api_resp
+from api.divi.divi_order_service import (
     query_divi_order,
     import_order_from_lingxing_to_divi,
     get_divi_brand_id_from_sid,
 )
-from Api.lingxing_p.lingxing_fh import lingxing_ship_order
+from api.lingxing_p.lingxing_fh import lingxing_ship_order
 
 
 @login_required

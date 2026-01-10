@@ -6,8 +6,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Amazon', '0009_amazonperformancenotification'),
-        ('General', '0014_alter_announcement_valid_to'),
+        ('amazon', '0009_amazonperformancenotification'),
+        ('general', '0014_alter_announcement_valid_to'),
     ]
 
     operations = [

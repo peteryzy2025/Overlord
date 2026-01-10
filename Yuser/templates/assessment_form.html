@@ -484,7 +484,7 @@
 
         <!-- 评分表格 -->
         <div class="table-container">
-            <form id="assessmentForm" method="post" action="{% url 'Yuser:assessment_submit' assessment.pk %}">
+            <form id="assessmentForm" method="post" action="{% url 'yuser:assessment_submit' assessment.pk %}">
                 {% csrf_token %}
                 <table class="table">
                     <thead>
@@ -657,7 +657,7 @@
                 </button>
             {% endif %}
 
-            <a href="{% url 'Yuser:assessment_list' %}" class="btn btn-secondary">
+            <a href="{% url 'yuser:assessment_list' %}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> 返回列表
             </a>
         </div>
@@ -769,7 +769,7 @@
             formData.append('csrfmiddlewaretoken', getCookie('csrftoken'));
 
             try {
-                const response = await fetch('{% url "Yuser:assessment_submit" assessment.pk %}', {
+                const response = await fetch('{% url "yuser:assessment_submit" assessment.pk %}', {
                     method: 'POST',
                     headers: {'X-Requested-With': 'XMLHttpRequest'},
                     body: formData
@@ -949,7 +949,7 @@
             icon.classList.add('fa-spin');
 
             try {
-                const response = await fetch(`{% url "Yuser:assessment_refresh_orders" assessment.pk %}`, {
+                const response = await fetch(`{% url "yuser:assessment_refresh_orders" assessment.pk %}`, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',

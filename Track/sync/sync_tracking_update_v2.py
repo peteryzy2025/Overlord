@@ -12,8 +12,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 # ========== 导入模型与函数 ==========
-from Track.models import Tracking
-from Api.track.track_api import get_tracking_updates
+from track.models import Tracking
+from api.track.track_api import get_tracking_updates
 
 
 def main():

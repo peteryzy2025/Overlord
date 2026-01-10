@@ -33,7 +33,7 @@ class LingXingTemuShop(models.Model):
 
     # 绑定本地 Temu 店铺（General.TemuShop）
     temu_shop = models.ForeignKey(
-        'General.TemuShop',
+        'general.TemuShop',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -83,7 +83,7 @@ class TemuOrder(models.Model):
 
     # 冗余的本地店铺关联（可选）
     temu_shop = models.ForeignKey(
-        'General.TemuShop',
+        'general.TemuShop',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

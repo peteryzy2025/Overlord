@@ -59,14 +59,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'General.apps.GeneralConfig',
-    'Amazon.apps.AmazonConfig',
-    'Temu.apps.TemuConfig',
-    'Track.apps.TrackConfig',
-    'Yuser.apps.YuserConfig',
-    'Zother.apps.ZotherConfig',
-    'Theme.apps.ThemeConfig',
-    'Task.apps.TaskConfig'
+    'general.apps.GeneralConfig',
+    'amazon.apps.AmazonConfig',
+    'temu.apps.TemuConfig',
+    'track.apps.TrackConfig',
+    'yuser.apps.YuserConfig',
+    'zother.apps.ZotherConfig',
+    'theme.apps.ThemeConfig',
+    'task.apps.TaskConfig',
+    'shop_guard.apps.ShopGuardConfig',
 ]
 
 MIDDLEWARE = [
@@ -78,10 +79,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'General.middleware.login_required.LoginRequiredMiddleware',
-    'General.middleware.permission.PermissionMiddleware',
-    'General.middleware.announcement.AnnouncementMiddleware',
-    'General.middleware.middleware.ThemeMiddleware'
+    'general.middleware.login_required.LoginRequiredMiddleware',
+    'general.middleware.permission.PermissionMiddleware',
+    'general.middleware.announcement.AnnouncementMiddleware',
+    'general.middleware.middleware.ThemeMiddleware'
 
 ]
 
@@ -98,7 +99,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'General.context_processors.announcements_processor',
+                'general.context_processors.announcements_processor',
             ],
         },
     },
@@ -155,7 +156,7 @@ TIME_ZONE = 'Asia/Shanghai'
 USE_I18N = True
 USE_TZ = False
 
-AUTH_USER_MODEL = 'General.User'  # 你的自定义用户模型路径
+AUTH_USER_MODEL = 'general.User'  # 你的自定义用户模型路径
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/

@@ -9,11 +9,11 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-from Api.lingxing.Y_OpenApi import get_api_resp
-from Api.lingxing.resp_schema import ResponseResult
+from api.lingxing.Y_OpenApi import get_api_resp
+from api.lingxing.resp_schema import ResponseResult
 
-from Amazon.models import LingXingAmazonShop
-from General.models import AmazonShop
+from amazon.models import LingXingAmazonShop
+from general.models import AmazonShop
 import random
 
 # ================== 通用 Divi 请求封装（就是你原来的签名逻辑） ==================
@@ -419,7 +419,7 @@ def import_order_from_lingxing_to_divi(
         print(f"🔄 准备用领星数据更新本地订单...")
 
         try:
-            from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+            from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 
             sid = lx_order_data.get('sid')
             amazon_order_id = lx_order_data.get('amazon_order_id')
@@ -488,7 +488,9 @@ def import_order_from_lingxing_to_divi(
 
     # ==================== 更新逻辑结束 ====================
     if not y_resp.data:
-        raise ValueError(f"未找到订单 {order_id} 的领星详情")
+        print(y_resp)
+        message = y_resp.message or "未知错误"
+        raise ValueError(f"未找到订单 {order_id} 的领星详情：{message}")
 
     order = y_resp.data[0]
 
@@ -535,7 +537,7 @@ def import_order_from_lingxing_to_divi(
         # 检查是否为签名错误
         error_str = str(e)
         if "签名不正确" in error_str:
-            print(f"⚠️ 检测到签名错误，准备简化商品标题后重试...")
+            print(f"⚠️ 检测到签名错误：{error_str}，准备简化商品标题后重试...")
             print(f"   原商品标题可能导致签名计算问题，将标题替换为3个空格")
 
             # 创建简化标题后的商品列表
@@ -543,7 +545,7 @@ def import_order_from_lingxing_to_divi(
             for goods in order_goods_list:
                 simplified_goods = goods.copy()
                 # 将标题替换为3个空格
-                simplified_goods["title"] = "   "
+                simplified_goods["title"] = "【标题异常】"
                 simplified_order_goods_list.append(simplified_goods)
 
             try:
@@ -581,7 +583,7 @@ def build_order_payload_from_amazon_order_id(
     """
     try:
         # 1. 查找本地订单
-        from Amazon.models import AmazonOrders
+        from amazon.models import AmazonOrders
 
         order = AmazonOrders.objects.filter(amazon_order_id=amazon_order_id).first()
         if not order:

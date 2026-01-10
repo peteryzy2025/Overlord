@@ -5,7 +5,7 @@ from datetime import datetime
 
 from django.db.models import Q
 
-from General.models import User, AmazonShop, TemuShop
+from general.models import User, AmazonShop, TemuShop
 
 
 def parse_permissions(permission_str):

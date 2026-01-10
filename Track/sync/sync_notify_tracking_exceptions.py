@@ -29,11 +29,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ========== 导入Django模型 ==========
-from Track.models import Tracking
-from General.models import User
+from track.models import Tracking
+from general.models import User
 # 导入 Django 的 timezone
 from django.utils import timezone
-from Api.WX.wx import send_wechat_work_message
+from api.WX.wx import send_wechat_work_message
 
 def calculate_stale_hours(last_update_time):
     """计算停滞小时数"""

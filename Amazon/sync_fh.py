@@ -30,9 +30,9 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import AmazonOrders
-from Api.lingxing_p.lingxing_fh import lingxing_ship_order
-from Api.Y.y_tiem import Timer  # 引入计时器工具（如无需可删除）
+from amazon.models import AmazonOrders
+from api.lingxing_p.lingxing_fh import lingxing_ship_order
+from api.Y.y_tiem import Timer  # 引入计时器工具（如无需可删除）
 
 # ========== 日志配置 ==========
 logging.basicConfig(

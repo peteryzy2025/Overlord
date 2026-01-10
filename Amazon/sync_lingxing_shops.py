@@ -15,12 +15,12 @@ sys.path.append(PROJECT_ROOT)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
-from Api.Y.y_tiem import Timer
-from Amazon.models import LingXingAmazonShop
-from Temu.models import LingXingTemuShop
-from General.models import AmazonShop, TemuShop
-from Api.lingxing_p.lingxing_jc1 import get_lingxing_shop
-from Api.lingxing_p.lingxing_temu import get_lx_temu_shops
+from api.Y.y_tiem import Timer
+from amazon.models import LingXingAmazonShop
+from temu.models import LingXingTemuShop
+from general.models import AmazonShop, TemuShop
+from api.lingxing_p.lingxing_jc1 import get_lingxing_shop
+from api.lingxing_p.lingxing_temu import get_lx_temu_shops
 
 
 def sync_lingxing_shops(data_list):

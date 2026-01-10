@@ -15,7 +15,7 @@ import sys
 import django
 from datetime import datetime
 
-from Api.Y.y_tiem import Timer
+from api.Y.y_tiem import Timer
 
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -24,13 +24,13 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import AmazonOrders
-from Api.divi.divi_order_service import (
+from amazon.models import AmazonOrders
+from api.divi.divi_order_service import (
     query_divi_order,
     get_divi_brand_id_from_sid,
     import_order_from_lingxing_to_divi,
 )
-from Amazon.amazon_divi_views import update_divi_order_fields
+from amazon.amazon_divi_views import update_divi_order_fields
 
 # 要排除的亚马逊订单状态
 EXCLUDE_AMAZON_STATUS = {'PendingAvailability', 'Pending', 'Canceled'}

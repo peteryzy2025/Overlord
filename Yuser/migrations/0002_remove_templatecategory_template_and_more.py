@@ -7,7 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Yuser', '0001_initial'),
+        ('yuser', '0001_initial'),
     ]
 
     operations = [
@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='assessmentscore',
             name='instance',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='item_scores', to='Yuser.assessmentinstance'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='item_scores', to='yuser.assessmentinstance'),
         ),
         migrations.CreateModel(
             name='AssessmentCategory',
@@ -31,7 +31,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=50, verbose_name='分类名称')),
                 ('weight', models.DecimalField(decimal_places=2, max_digits=5, verbose_name='权重(%)')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('template', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='categories', to='Yuser.assessmenttemplate')),
+                ('template', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='categories', to='yuser.assessmenttemplate')),
             ],
             options={
                 'verbose_name': '考核分类',
@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=50, verbose_name='分组名称')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='groups', to='Yuser.assessmentcategory')),
+                ('category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='groups', to='yuser.assessmentcategory')),
             ],
             options={
                 'verbose_name': '考核分组',
@@ -65,7 +65,7 @@ class Migration(migrations.Migration):
                 ('is_zero_if_violated', models.BooleanField(default=False, verbose_name='违规则分数全无')),
                 ('is_bonus_item', models.BooleanField(default=False, verbose_name='加分项')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Yuser.assessmentgroup')),
+                ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='items', to='yuser.assessmentgroup')),
             ],
             options={
                 'verbose_name': '考核项目',
@@ -75,7 +75,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='assessmentscore',
             name='item',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Yuser.assessmentitem'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='yuser.assessmentitem'),
         ),
         migrations.CreateModel(
             name='ScoringRule',
@@ -85,7 +85,7 @@ class Migration(migrations.Migration):
                 ('deduction_per_unit', models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True, verbose_name='每单位扣分')),
                 ('score_rule', models.CharField(max_length=100, verbose_name='计分规则描述')),
                 ('order', models.IntegerField(default=0, verbose_name='排序')),
-                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scoring_rules', to='Yuser.assessmentitem')),
+                ('item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scoring_rules', to='yuser.assessmentitem')),
             ],
             options={
                 'verbose_name': '评分标准',

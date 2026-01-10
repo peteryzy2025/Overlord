@@ -9,13 +9,13 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 import json
 
-from Amazon.models import AmazonShopEmail
-from General.models import AmazonShop, User, OperationalAccount, UserOperationLog
-from Amazon.amazon_views import parse_permissions, determine_filter_type_and_value
-from Amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
-from Amazon.amazon_order_views import get_shop_ids_by_filter
-from Api.WX.wx import send_wechat_work_message
-from Amazon.services.amazon_shop_email_service import send_email_notifications
+from amazon.models import AmazonShopEmail
+from general.models import AmazonShop, User, OperationalAccount, UserOperationLog
+from amazon.amazon_views import parse_permissions, determine_filter_type_and_value
+from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
+from amazon.amazon_order_views import get_shop_ids_by_filter
+from api.WX.wx import send_wechat_work_message
+from amazon.services.amazon_shop_email_service import send_email_notifications
 
 
 # 扩展日期范围函数，支持'unlimited'

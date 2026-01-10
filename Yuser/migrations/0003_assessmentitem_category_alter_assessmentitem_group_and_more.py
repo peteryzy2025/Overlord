@@ -7,20 +7,20 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('Yuser', '0002_remove_templatecategory_template_and_more'),
+        ('yuser', '0002_remove_templatecategory_template_and_more'),
     ]
 
     operations = [
         migrations.AddField(
             model_name='assessmentitem',
             name='category',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Yuser.assessmentcategory'),
+            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.CASCADE, related_name='items', to='yuser.assessmentcategory'),
             preserve_default=False,
         ),
         migrations.AlterField(
             model_name='assessmentitem',
             name='group',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Yuser.assessmentgroup'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='items', to='yuser.assessmentgroup'),
         ),
         migrations.AlterField(
             model_name='assessmentitem',

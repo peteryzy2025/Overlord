@@ -10,9 +10,9 @@ import json
 from django.shortcuts import render
 
 # 模型导入
-from General.models import User, AmazonShop, OperationalAccount, TemuShop
-from Amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from Temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
+from general.models import User, AmazonShop, OperationalAccount, TemuShop
+from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
+from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
 
 
 @login_required

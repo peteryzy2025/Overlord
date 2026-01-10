@@ -10,7 +10,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('General', '0011_user_remark'),
+        ('general', '0011_user_remark'),
     ]
 
     operations = [
@@ -28,7 +28,7 @@ class Migration(migrations.Migration):
                 ('country_code', models.CharField(blank=True, db_comment='店铺国家码', max_length=10, null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间')),
-                ('temu_shop', models.ForeignKey(blank=True, db_comment='绑定的本地Temu店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='lingxing_temu_shops', to='General.temushop')),
+                ('temu_shop', models.ForeignKey(blank=True, db_comment='绑定的本地Temu店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='lingxing_temu_shops', to='general.temushop')),
             ],
             options={
                 'db_table': 'lingxing_temu_shop',
@@ -71,8 +71,8 @@ class Migration(migrations.Migration):
                 ('order_custom_fields', models.JSONField(blank=True, db_comment='自定义字段', null=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间（本地）')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间（本地）')),
-                ('lingxing_shop', models.ForeignKey(blank=True, db_comment='关联的领星 Temu 店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='orders', to='Temu.lingxingtemushop')),
-                ('temu_shop', models.ForeignKey(blank=True, db_comment='关联的本地 TemuShop（冗余）', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='orders', to='General.temushop')),
+                ('lingxing_shop', models.ForeignKey(blank=True, db_comment='关联的领星 Temu 店铺', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='orders', to='temu.lingxingtemushop')),
+                ('temu_shop', models.ForeignKey(blank=True, db_comment='关联的本地 TemuShop（冗余）', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='orders', to='general.temushop')),
             ],
             options={
                 'db_table': 'temu_orders',
@@ -102,7 +102,7 @@ class Migration(migrations.Migration):
                 ('is_delete', models.SmallIntegerField(default=0)),
                 ('created_at', models.DateTimeField(auto_now_add=True, db_comment='创建时间')),
                 ('updated_at', models.DateTimeField(auto_now=True, db_comment='更新时间')),
-                ('order', models.ForeignKey(db_comment='关联的 TemuOrder', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='Temu.temuorder')),
+                ('order', models.ForeignKey(db_comment='关联的 TemuOrder', on_delete=django.db.models.deletion.CASCADE, related_name='items', to='temu.temuorder')),
             ],
             options={
                 'db_table': 'temu_order_item',

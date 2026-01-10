@@ -1,12 +1,12 @@
-from Amazon.sync_lingxing_shops import lx_shop_main, lx_shop_main2
-from Amazon.sync_lingxing_orders import lx_order_main
-from Amazon.sync_lingxing_zifa_order import lx_zf_main
-from Amazon.sync_check_divi_status_v4 import divi_process_orders
-from Amazon.sync_check_divi_k_v1 import amazon_order_divi_guer
-from Amazon.sync.sync_lingxing_order_info import lx_order_info_main
-from Amazon.sync.sync_amazon_shipment import amazon_shipment
-from Amazon.sync_lx_temu_orders import temu_orders
-from Api.Y.y_tiem import Timer
+from amazon.sync_lingxing_shops import lx_shop_main, lx_shop_main2
+from amazon.sync_lingxing_orders import lx_order_main
+from amazon.sync_lingxing_zifa_order import lx_zf_main
+from amazon.sync_check_divi_status_v4 import divi_process_orders
+from amazon.sync_check_divi_k_v1 import amazon_order_divi_guer
+from amazon.sync.sync_lingxing_order_info import lx_order_info_main
+from amazon.sync.sync_amazon_shipment import amazon_shipment
+from amazon.sync_lx_temu_orders import temu_orders
+from api.Y.y_tiem import Timer
 import asyncio
 import time
 

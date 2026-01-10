@@ -16,8 +16,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 from django.db.models import Sum, Q
-from General.models import User, AmazonShop
-from Amazon.models import AmazonOrders, AmazonOrderItem
+from general.models import User, AmazonShop
+from amazon.models import AmazonOrders, AmazonOrderItem
 
 TEST_USER_ID = 23
 TARGET_DATE = date(2025, 12, 31)
@@ -26,7 +26,7 @@ MONTH_START = date(2025, 12, 1)
 
 def calculate_with_old_logic(user_id, start_date, end_date):
     """旧逻辑：通过LingXing映射查询"""
-    from Amazon.models import LingXingAmazonShop
+    from amazon.models import LingXingAmazonShop
 
     # 获取映射
     amazon_shops = AmazonShop.objects.filter(ops_id=user_id)
@@ -83,7 +83,7 @@ def main():
         print("需要进一步检查映射表是否还有未发现问题")
 
     # 显示缺失映射的店铺
-    from Amazon.models import LingXingAmazonShop
+    from amazon.models import LingXingAmazonShop
     all_shops = AmazonShop.objects.filter(ops_id=TEST_USER_ID)
     missing = []
     for shop in all_shops:

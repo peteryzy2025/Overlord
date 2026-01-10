@@ -20,9 +20,9 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from Amazon.models import AmazonOrders, LingXingAmazonShop
-from Api.divi.divi_order_service import query_divi_order, get_divi_brand_id_from_sid
-from Api.Y.y_tiem import Timer
+from amazon.models import AmazonOrders, LingXingAmazonShop
+from api.divi.divi_order_service import query_divi_order, get_divi_brand_id_from_sid
+from api.Y.y_tiem import Timer
 
 # ========== 核心配置 ==========
 DAYS_BACK = 7  # 扫描近7天的订单
