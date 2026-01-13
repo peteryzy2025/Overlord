@@ -12,6 +12,7 @@ class Factory(models.Model):
         return self.name
 
     class Meta:
+        db_table="Track_factory"
         verbose_name = "工厂"
         verbose_name_plural = "工厂"
 
@@ -28,6 +29,7 @@ class Courier(models.Model):
         return f"{self.name_en or self.name_cn} ({self.code})"
 
     class Meta:
+        db_table = "Track_courier"
         verbose_name = "物流商基础信息表"
         verbose_name_plural = "物流商"
 
@@ -130,6 +132,7 @@ class Tracking(models.Model):
         return self.track_no
 
     class Meta:
+        db_table = "Track_tracking"
         verbose_name = "物流运单主表"
         verbose_name_plural = "运单"
         ordering = ['-create_time']
@@ -159,6 +162,7 @@ class TrackingDetail(models.Model):
         return f"{self.event_time} | {self.event_detail[:50]}"
 
     class Meta:
+        db_table = "Track_trackingdetail"
         verbose_name = "物流轨迹明细表"
         verbose_name_plural = "轨迹明细"
         ordering = ['-event_time']
