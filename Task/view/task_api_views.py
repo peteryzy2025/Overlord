@@ -1,6 +1,8 @@
 # Task/view/task_api_views.py
 
 import json
+import os
+import time
 from datetime import datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -536,22 +538,15 @@ def save_template_api(request):
         if not isinstance(content, list) or not content:
             return JsonResponse({'success': False, 'message': '模板内容不能为空'})
 
-        # 清理内容（移除敏感数据）
+        # 清理内容
         cleaned_content = []
         for item in content:
             if not isinstance(item, dict):
                 continue
 
-            # 清理params中的敏感数据
-            params = item.get('params', {})
-            cleaned_params = {
-                k: v for k, v in params.items()
-                if k not in ['product_ids', 'export_shop_ids']
-            }
-
             cleaned_content.append({
                 'type': item.get('type'),
-                'params': cleaned_params
+                'params': item.get('params', {})
             })
 
         # 创建模板
@@ -628,4 +623,48 @@ def delete_template_api(request, template_id):
         return JsonResponse({
             'success': False,
             'message': f'删除模板失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def upload_task_file_api(request):
+    """
+    上传任务文件
+    POST /api/tasks/upload/
+    """
+    try:
+        if 'file' not in request.FILES:
+            return JsonResponse({'success': False, 'message': '未找到文件'}, status=400)
+
+        uploaded_file = request.FILES['file']
+        
+        # 目标目录
+        target_dir = r'D:\Overlord共享\Amazon上架'
+        if not os.path.exists(target_dir):
+            os.makedirs(target_dir)
+
+        # 生成文件名 (时间戳_文件名)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"{timestamp}_{uploaded_file.name}"
+        file_path = os.path.join(target_dir, filename)
+
+        # 保存文件
+        with open(file_path, 'wb+') as destination:
+            for chunk in uploaded_file.chunks():
+                destination.write(chunk)
+
+        return JsonResponse({
+            'success': True, 
+            'data': {
+                'file_path': file_path,
+                'file_name': uploaded_file.name,
+                'saved_name': filename
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'文件上传失败: {str(e)}'
         }, status=500)
