@@ -658,13 +658,13 @@
             }
         }
 
-            {
-            % block layout_css %
+        /* 主容器通用样式 - 预留导航栏空间 */
+        .main-container {
+            margin-top: 80px;
+            min-height: calc(100vh - 80px);
         }
 
-            {
-            % endblock %
-        }
+        {% block layout_css %}{% endblock %}
     </style>
 </head>
 
@@ -963,7 +963,7 @@
                     margin-left: auto;
                     padding: 0.25rem;
                     border-radius: 4px;
-                ">
+                    ">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
