@@ -406,6 +406,11 @@ class PersonalPerformanceTarget(models.Model):
         return self.month.strftime('%Y-%m')
 
 
+def get_default_valid_to():
+    """默认过期时间为7天后"""
+    return timezone.now() + timedelta(days=7)
+
+
 class Announcement(models.Model):
     """
     系统公告表
@@ -428,8 +433,11 @@ class Announcement(models.Model):
 
     # 有效期控制
     valid_from = models.DateTimeField('生效时间', default=timezone.now, db_comment='公告开始显示时间')
-    valid_to = models.DateTimeField('过期时间', default=timezone.now() + timedelta(days=7),
-                                    db_comment='公告停止显示时间')
+    valid_to = models.DateTimeField(
+        '过期时间',
+        default=get_default_valid_to,  # 关键：传函数对象，不是调用结果
+        db_comment='公告停止显示时间'
+    )
 
     # 状态控制
     is_active = models.BooleanField('是否激活', default=True, db_comment='后台控制是否启用该公告')
