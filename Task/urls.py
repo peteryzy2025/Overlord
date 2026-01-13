@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/tasks/drafts/', task_api_views.get_drafts_api, name='get_drafts'),
     path('api/tasks/drafts/latest/', task_api_views.get_latest_draft_api, name='get_latest_draft'),
     path('api/tasks/drafts/<int:task_id>/delete/', task_api_views.delete_draft_api, name='delete_draft'),
+    path('api/tasks/upload/', task_api_views.upload_task_file_api, name='upload_task_file'),
 
     # 模板管理
     path('api/tasks/templates/', task_api_views.get_task_templates_api, name='get_task_templates'),

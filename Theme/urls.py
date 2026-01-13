@@ -5,7 +5,7 @@ app_name = 'theme'
 
 urlpatterns = [
     # 页面渲染
-    path('Theme/products/', views.product_list_page, name='product_list'),
+    path('Theme/products/', views.product_list_page, name='theme_product_list'),
 
     # 产品数据API
     path('api/amazon-products/', views.api_amazon_products, name='api_amazon_products'),

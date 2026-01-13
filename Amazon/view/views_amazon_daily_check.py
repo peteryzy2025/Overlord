@@ -65,7 +65,7 @@ def get_amazon_daily_check_list_api(request):
         # 排序参数
         sort_field = data.get('sort_field', 'check_date')
         sort_order = data.get('sort_order', 'desc')
-        valid_sort_fields = ['check_date', 'shop_name', 'operator_name', 'ops_group', 'role', 'last_restock_date']
+        valid_sort_fields = ['check_date', 'shop_name', 'operator_name', 'ops_group', 'role', 'last_restock_date', 'withdrawal_amount', 'shop_status']
         if sort_field not in valid_sort_fields:
             sort_field = 'check_date'
 
@@ -131,6 +131,11 @@ def get_amazon_daily_check_list_api(request):
             else:
                 daily_check_filter &= Q(shop__ops_id=user.id)
 
+        # 运营分组筛选
+        ops_group = data.get('ops_group', '').strip()
+        if ops_group:
+            daily_check_filter &= Q(shop__ops__operational_account__ops_group__icontains=ops_group)
+
         # 店铺名称模糊搜索
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
@@ -184,6 +189,10 @@ def get_amazon_daily_check_list_api(request):
             ordering = f'{order_by_prefix}shop__ops__role'
         elif sort_field == 'last_restock_date':
             ordering = f'{order_by_prefix}last_restock_date'
+        elif sort_field == 'withdrawal_amount':
+            ordering = f'{order_by_prefix}withdrawal_amount'
+        elif sort_field == 'shop_status':
+            ordering = f'{order_by_prefix}shop_status'
 
         # 查询数据
         daily_checks_queryset = AmazonShopDailyCheck.objects.filter(
@@ -192,7 +201,7 @@ def get_amazon_daily_check_list_api(request):
             'shop', 'shop__ops', 'shop__ops__operational_account'
         ).only(
             'id', 'shop_id', 'check_date', 'visited', 'performance_checked',
-            'withdrawal_processed', 'last_restock_date', 'shop_status',
+            'withdrawal_processed', 'withdrawal_amount', 'last_restock_date', 'shop_status',
             'shop__shop_name', 'shop__ops__first_name', 'shop__ops__role',
             'shop__ops__operational_account__ops_group',
         ).order_by(ordering)
@@ -253,6 +262,7 @@ def get_amazon_daily_check_list_api(request):
                 'visited': daily_check.visited,
                 'performance_checked': daily_check.performance_checked,
                 'withdrawal_processed': daily_check.withdrawal_processed,
+                'withdrawal_amount': daily_check.withdrawal_amount,
                 'last_restock_date': daily_check.last_restock_date.strftime(
                     '%Y-%m-%d') if daily_check.last_restock_date else '',
                 'shop_status': daily_check.shop_status or '',

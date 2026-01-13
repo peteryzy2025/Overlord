@@ -191,6 +191,13 @@
             </div>
 
             <div class="filter-group">
+                <label class="filter-label">运营分组</label>
+                <select class="form-select" id="opsGroupFilter" onchange="applyFilters()">
+                    <option value="">全部</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
                 <label class="filter-label">店铺名称</label>
                 <input type="text" class="form-control" id="shopNameFilter"
                        placeholder="输入店铺名称（模糊查询）"
@@ -264,13 +271,14 @@
                     <th>进入店铺</th>
                     <th>绩效检查</th>
                     <th>提现操作</th>
-                    <th>最后上货日期</th>
-                    <th>店铺状况</th>
+                    <th class="sortable" data-field="withdrawal_amount" onclick="handleSort('withdrawal_amount')">提现金额</th>
+                    <th class="sortable" data-field="last_restock_date" onclick="handleSort('last_restock_date')">最后上货日期</th>
+                    <th class="sortable" data-field="shop_status" onclick="handleSort('shop_status')">店铺状况</th>
                 </tr>
                 </thead>
                 <tbody id="dailyCheckTableBody">
                 <tr>
-                    <td colspan="10" class="empty-state">
+                    <td colspan="11" class="empty-state">
                         <i class="fas fa-info-circle"></i>
                         <p>请选择筛选条件并点击"应用筛选"</p>
                         <p>巡店报告数据将在此处显示</p>
@@ -334,6 +342,7 @@ let currentFilters = {
     start_date: '',
     end_date: '',
     operator_ids: [],
+    ops_group: '',
     shop_name: '',
     visited: '',
     performance_checked: '',
@@ -461,12 +470,32 @@ function updateOperatorSelection() {
     document.getElementById('operatorSelectedText').textContent = selectedText;
 }
 
+function populateOpsGroupDropdown(operators) {
+    const select = document.getElementById('opsGroupFilter');
+    // 保留第一个“全部”选项
+    select.innerHTML = '<option value="">全部</option>';
+
+    // 提取并去重分组信息
+    const groups = [...new Set(operators
+        .map(op => op.group)
+        .filter(g => g && g.trim() !== '')
+    )].sort();
+
+    groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group;
+        option.textContent = group;
+        select.appendChild(option);
+    });
+}
+
 async function loadOperators() {
     try {
         const response = await fetch('/api/amazon-daily-check/operators/');
         const result = await response.json();
         if (result.success && result.data) {
             populateOperatorDropdown(result.data);
+            populateOpsGroupDropdown(result.data);
             currentUserPermissions = {
                 can_reset_daily_check: result.can_reset_daily_check || false
             };
@@ -486,6 +515,7 @@ function getCurrentFilters() {
         start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
         end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
         operator_ids: currentFilters.operator_ids,
+        ops_group: document.getElementById('opsGroupFilter').value.trim(),
         shop_name: document.getElementById('shopNameFilter').value.trim(),
         visited: document.getElementById('visitedFilter').value,
         performance_checked: document.getElementById('performanceCheckedFilter').value,
@@ -502,6 +532,7 @@ function setDefaultFilters() {
     document.getElementById('dateRange').value = 'unlimited';
     document.getElementById('startDate').value = '';
     document.getElementById('endDate').value = '';
+    document.getElementById('opsGroupFilter').value = '';
     document.getElementById('shopNameFilter').value = '';
     document.getElementById('visitedFilter').value = '';
     document.getElementById('performanceCheckedFilter').value = '';
@@ -710,7 +741,7 @@ async function loadDailyCheckTable() {
         console.error('加载错误:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state">
+                <td colspan="11" class="empty-state">
                     <i class="fas fa-exclamation-circle"></i>
                     <p>数据请求失败: ${error.message}</p>
                 </td>
@@ -739,7 +770,7 @@ function renderDailyCheckTable(dailyChecks) {
     if (!dailyChecks || dailyChecks.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state">
+                <td colspan="11" class="empty-state">
                     <i class="fas fa-inbox"></i>
                     <p>暂无巡店报告数据</p>
                 </td>
@@ -758,6 +789,7 @@ function renderDailyCheckTable(dailyChecks) {
             <td>${renderStatusBadge(check.visited, 'visited')}</td>
             <td>${renderStatusBadge(check.performance_checked, 'checked')}</td>
             <td>${renderStatusBadge(check.withdrawal_processed, 'checked')}</td>
+            <td>${check.withdrawal_amount !== null && check.withdrawal_amount !== undefined ? check.withdrawal_amount : '-'}</td>
             <td>${check.last_restock_date || '-'}</td>
             <td title="${check.shop_status || ''}">${check.shop_status || '-'}</td>
         </tr>

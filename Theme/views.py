@@ -72,6 +72,7 @@ def product_list_page(request):
 
     context = {
         'page_title': 'Amazon产品管理',
+        'active_nav': 'theme_products',
         'stats': stats,
         'product_types': product_types,
         'date_range': date_range,
