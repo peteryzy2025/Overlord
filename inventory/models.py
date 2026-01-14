@@ -15,10 +15,8 @@ class InventoryMaster(models.Model):
     color = models.CharField('颜色', max_length=100, blank=True, db_index=True)
     size = models.CharField('尺码', max_length=100, blank=True, db_index=True)
     location = models.CharField('库位', max_length=100, db_index=True)
-
+    stock_qty = models.IntegerField('库存数量', default=0)
     is_active = models.BooleanField('是否启用', default=True)
-    created_at = models.DateTimeField('创建时间', auto_now_add=True)
-    updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
         db_table = 'inventory_master'
@@ -43,10 +41,8 @@ class InventoryDaily(models.Model):
     )
     date = models.DateField('日期', db_index=True)
     available_qty = models.IntegerField('可用数量', default=0)
-    stock_qty = models.IntegerField('库存数量', default=0)
 
-    created_at = models.DateTimeField('创建时间', auto_now_add=True)
-    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
 
     class Meta:
         db_table = 'inventory_daily'
