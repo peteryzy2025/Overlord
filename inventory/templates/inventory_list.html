@@ -1,0 +1,508 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}库存清单 - Overlord{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<style>
+    :root {
+        /* 定义主题色变量 */
+        --accent-color: #3B82F6;
+        --accent-hover: #2563EB;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --bg-secondary: #f8fafc;
+        --border-color: #e2e8f0;
+    }
+
+    .sparkline {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="loading-overlay" id="loadingOverlay" style="display: none;">
+    <div class="loading-content">
+        <div class="spinner"></div>
+        <p>数据加载中...</p>
+    </div>
+</div>
+
+<div class="performance-main">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">库存清单</h1>
+            <p class="page-subtitle">查看和管理库存基础信息</p>
+        </div>
+        <div>
+            <button class="btn" onclick="refreshData(event)">
+                <i class="fas fa-sync-alt"></i> 刷新数据
+            </button>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-card">
+        <i class="fas fa-boxes stats-icon"></i>
+        <div class="stats-content">
+            <h4>总SKU数量</h4>
+            <p id="totalCount">-</p>
+        </div>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div class="control-panel">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">MOSKU</label>
+                <input type="text" class="form-control" id="moskuFilter" placeholder="输入MOSKU"
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">产品名称</label>
+                <input type="text" class="form-control" id="productNameFilter" placeholder="输入产品名称"
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">工厂名称</label>
+                <input type="text" class="form-control" id="factoryNameFilter" placeholder="输入工厂名称"
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">供应商名称</label>
+                <input type="text" class="form-control" id="supplierNameFilter" placeholder="输入供应商名称"
+                    onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+
+            <div class="filter-group" style="align-self: flex-end;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn" onclick="applyFilters()">应用筛选</button>
+                    <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="data-section">
+        <h3 class="section-title" style="margin-bottom: 1.5rem;">库存列表</h3>
+
+        <div class="table-container" id="inventoryTableContainer">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-field="mosku" onclick="handleSort('mosku')">MOSKU</th>
+                        <th class="sortable" data-field="product_name" onclick="handleSort('product_name')">产品名称</th>
+                        <th class="sortable" data-field="factory_name" onclick="handleSort('factory_name')">工厂名称</th>
+                        <th class="sortable" data-field="supplier_name" onclick="handleSort('supplier_name')">供应商名称</th>
+                        <th>备货库存</th>
+                        <th>最新库存</th>
+                        <th>库存占比</th>
+                        <th>7天趋势</th>
+                        <th>3日同比</th>
+                        <th>7日同比</th>
+                        <th>更新日期</th>
+                        <th>颜色</th>
+                        <th>尺码</th>
+                        <th>库位</th>
+                        <th>是否启用</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                    <tr>
+                        <td colspan="15" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>正在加载数据...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-controls" id="paginationControls" style="display: none;">
+            <div class="page-size-selector">
+                <label for="pageSize">每页显示：</label>
+                <select class="form-select" id="pageSize" onchange="changePageSize()">
+                    <option value="10">10条</option>
+                    <option value="20" selected>20条</option>
+                    <option value="50">50条</option>
+                    <option value="100">100条</option>
+                </select>
+            </div>
+
+            <div class="pagination-buttons" id="paginationButtons">
+                <!-- 动态生成 -->
+            </div>
+
+            <div class="pagination-info" id="paginationInfo">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ===== 全局变量定义 =====
+    let currentFilters = {
+        mosku: '',
+        product_name: '',
+        factory_name: '',
+        supplier_name: '',
+        sort_field: 'mosku',
+        sort_order: 'asc'
+    };
+
+    let pagination = {
+        page: 1,
+        page_size: 20,
+        total: 0,
+        total_pages: 0
+    };
+
+    // ===== 工具函数 =====
+    function showLoading(show = true) {
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.style.display = show ? 'flex' : 'none';
+        overlay.style.visibility = show ? 'visible' : 'hidden';
+        overlay.style.opacity = show ? '1' : '0';
+    }
+
+    if (typeof showNotification === 'undefined') {
+        window.showNotification = function (message, type = 'info') {
+            console.log(`[${type}] ${message}`);
+        };
+    }
+
+    function renderSparkline(data) {
+        if (!data || data.length < 2) return '<span class="text-muted" style="font-size: 0.8em;">数据不足</span>';
+
+        const width = 100;
+        const height = 30;
+        const padding = 2;
+
+        const max = Math.max(...data);
+        const min = Math.min(...data);
+        const range = max - min || 1; // Avoid division by zero
+
+        const stepX = (width - padding * 2) / (data.length - 1);
+
+        let path = '';
+        data.forEach((val, i) => {
+            const x = padding + i * stepX;
+            // Invert Y because SVG coordinates go down
+            const y = height - padding - ((val - min) / range * (height - padding * 2));
+            path += (i === 0 ? 'M' : 'L') + ` ${x} ${y}`;
+        });
+
+        return `<svg width="${width}" height="${height}" class="sparkline">
+            <path d="${path}" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <circle cx="${padding + (data.length - 1) * stepX}" cy="${height - padding - ((data[data.length - 1] - min) / range * (height - padding * 2))}" r="3" fill="#3B82F6" />
+        </svg>`;
+    }
+
+    // ===== 筛选逻辑 =====
+    function getCurrentFilters() {
+        return {
+            mosku: document.getElementById('moskuFilter').value.trim(),
+            product_name: document.getElementById('productNameFilter').value.trim(),
+            factory_name: document.getElementById('factoryNameFilter').value.trim(),
+            supplier_name: document.getElementById('supplierNameFilter').value.trim(),
+            sort_field: currentFilters.sort_field,
+            sort_order: currentFilters.sort_order
+        };
+    }
+
+    function setDefaultFilters() {
+        document.getElementById('moskuFilter').value = '';
+        document.getElementById('productNameFilter').value = '';
+        document.getElementById('factoryNameFilter').value = '';
+        document.getElementById('supplierNameFilter').value = '';
+        document.getElementById('pageSize').value = '20';
+    }
+
+    async function resetFilters(event) {
+        showLoading(true);
+        try {
+            setDefaultFilters();
+            pagination.page = 1;
+            pagination.page_size = 20;
+            await applyFilters();
+            showNotification('筛选条件已重置', 'success');
+        } catch (error) {
+            showNotification('重置失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function refreshData(event) {
+        const icon = event.target.closest('button').querySelector('i');
+        if (icon) {
+            icon.style.animation = 'spin 1s linear infinite';
+        }
+        applyFilters().finally(() => {
+            if (icon) {
+                icon.style.animation = '';
+            }
+        });
+    }
+
+    async function applyFilters() {
+        showLoading(true);
+        currentFilters = getCurrentFilters();
+        try {
+            await loadInventoryTable();
+            showNotification('库存数据已更新', 'success');
+        } catch (error) {
+            showNotification('数据请求失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function handleSort(field) {
+        if (currentFilters.sort_field === field) {
+            currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentFilters.sort_field = field;
+            currentFilters.sort_order = 'asc';
+        }
+
+        document.querySelectorAll('thead th.sortable').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.dataset.field === field) {
+                th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+
+        pagination.page = 1;
+        loadInventoryTable();
+    }
+
+    // ===== 表格渲染 =====
+    async function loadInventoryTable() {
+        const tbody = document.getElementById('inventoryTableBody');
+        const paginationControls = document.getElementById('paginationControls');
+
+        showLoading(true);
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+            const requestData = {
+                ...currentFilters,
+                page: pagination.page,
+                page_size: pagination.page_size
+            };
+
+            const response = await fetch('/inventory/api/list/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(requestData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                const data = result.data;
+                pagination.total = data.total;
+                pagination.total_pages = data.total_pages;
+
+                document.getElementById('totalCount').textContent = data.total;
+
+                renderInventoryTable(data.items || []);
+                renderPagination();
+
+                paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
+            } else {
+                throw new Error(result.message || '加载失败');
+            }
+        } catch (error) {
+            console.error('加载错误:', error);
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="15" class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>数据请求失败: ${error.message}</p>
+                </td>
+            </tr>
+        `;
+            paginationControls.style.display = 'none';
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function renderInventoryTable(items) {
+        const tbody = document.getElementById('inventoryTableBody');
+        if (!items || items.length === 0) {
+            tbody.innerHTML = `
+            <tr>
+                <td colspan="15" class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无库存数据</p>
+                </td>
+            </tr>
+        `;
+            return;
+        }
+
+        tbody.innerHTML = items.map(item => {
+            const stockQty = item.stock_qty || 0;
+            const availableQty = item.available_qty || 0;
+            let percentage = 0;
+            let percentageClass = '';
+
+            if (stockQty > 0) {
+                percentage = Math.round((availableQty / stockQty) * 100);
+            }
+
+            if (percentage < 20) {
+                percentageClass = 'text-danger';
+            } else if (percentage > 80) {
+                percentageClass = 'text-success';
+            } else {
+                percentageClass = 'text-warning';
+            }
+
+            // 渲染趋势图
+            const trendSvg = renderSparkline(item.trend_data);
+
+            // 渲染同比
+            const diff3Class = item.diff_3_pct > 0 ? 'text-success' : (item.diff_3_pct < 0 ? 'text-danger' : 'text-secondary');
+            const diff3Icon = item.diff_3_pct > 0 ? 'fa-arrow-up' : (item.diff_3_pct < 0 ? 'fa-arrow-down' : 'fa-minus');
+
+            const diff7Class = item.diff_7_pct > 0 ? 'text-success' : (item.diff_7_pct < 0 ? 'text-danger' : 'text-secondary');
+            const diff7Icon = item.diff_7_pct > 0 ? 'fa-arrow-up' : (item.diff_7_pct < 0 ? 'fa-arrow-down' : 'fa-minus');
+
+            return `
+    <tr data-mosku="${item.mosku}">
+        <td>${item.mosku}</td>
+        <td title="${item.product_name}">${item.product_name}</td>
+        <td>${item.factory_name}</td>
+        <td>${item.supplier_name || '-'}</td>
+        <td>${stockQty}</td>
+        <td class="font-weight-bold">${availableQty}</td>
+        <td>
+            <span class="${percentageClass} font-weight-bold">${percentage}%</span>
+            <div class="progress" style="height: 5px; width: 100px; margin-top: 5px;">
+                <div class="progress-bar ${percentage < 20 ? 'bg-danger' : (percentage > 80 ? 'bg-success' : 'bg-warning')}" 
+                     role="progressbar" 
+                     style="width: ${Math.min(percentage, 100)}%" 
+                     aria-valuenow="${percentage}" 
+                     aria-valuemin="0" 
+                     aria-valuemax="100"></div>
+            </div>
+        </td>
+        <td>${trendSvg}</td>
+        <td class="${diff3Class}"><i class="fas ${diff3Icon}"></i> ${Math.abs(item.diff_3_pct)}%</td>
+        <td class="${diff7Class}"><i class="fas ${diff7Icon}"></i> ${Math.abs(item.diff_7_pct)}%</td>
+        <td>${item.latest_date || '-'}</td>
+        <td>${item.color || '-'}</td>
+        <td>${item.size || '-'}</td>
+        <td>${item.location || '-'}</td>
+        <td>
+            ${item.is_active ? '<span class="status-badge processed">已启用</span>' : '<span class="status-badge needs-attention">未启用</span>'}
+        </td>
+    </tr>
+`;
+        }).join('');
+    }
+
+    // ===== 分页渲染 =====
+    function renderPagination() {
+        const buttonsContainer = document.getElementById('paginationButtons');
+        const infoContainer = document.getElementById('paginationInfo');
+
+        const { page, page_size, total, total_pages } = pagination;
+
+        infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+        let buttonsHTML = '';
+
+        buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+        <i class="fas fa-chevron-left"></i> 上一页
+    </button>`;
+
+        const maxButtons = 7;
+        let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        if (startPage > 1) {
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+            if (startPage > 2) {
+                buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+        }
+
+        if (endPage < total_pages) {
+            if (endPage < total_pages - 1) {
+                buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+            }
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+        }
+
+        buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+        下一页 <i class="fas fa-chevron-right"></i>
+    </button>`;
+
+        buttonsContainer.innerHTML = buttonsHTML;
+    }
+
+    function changePage(newPage) {
+        if (newPage < 1 || newPage > pagination.total_pages) return;
+        pagination.page = newPage;
+        loadInventoryTable();
+        document.getElementById('inventoryTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function changePageSize() {
+        const newSize = parseInt(document.getElementById('pageSize').value);
+        pagination.page_size = newSize;
+        pagination.page = 1;
+        loadInventoryTable();
+    }
+
+    // ===== 初始化 =====
+    function initializeSortHeader() {
+        const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
+        if (th) {
+            th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+        showLoading(true);
+        try {
+            setDefaultFilters();
+            initializeSortHeader();
+            await applyFilters();
+        } catch (error) {
+            console.error('初始化错误:', error);
+            showNotification('初始化失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    });
+</script>
+{% endblock %}
