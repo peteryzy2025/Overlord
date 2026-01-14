@@ -31,7 +31,7 @@ def tracking_management(request):
         from django.shortcuts import redirect
         return redirect('general:main')
 
-    return render(request, 'tracking_management.html', {})
+    return render(request, 'tracking_management.html', {'active_nav': 'tracking_management'})
 
 
 def get_date_range_from_option(option):
