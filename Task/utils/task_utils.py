@@ -144,12 +144,6 @@ def validate_subtask_params(subtask_type, params, user):
                 if shop_id not in visible_shop_ids:
                     return {'valid': False, 'message': f'无权操作店铺ID: {shop_id}'}
 
-        elif subtask_type == 'amazon_upload':
-            # 验证文件路径
-            file_paths = params.get('file_paths', [])
-            if not isinstance(file_paths, list) or not file_paths:
-                return {'valid': False, 'message': '必须上传至少一个文件'}
-
         else:
             return {'valid': False, 'message': f'未知的子任务类型: {subtask_type}'}
 

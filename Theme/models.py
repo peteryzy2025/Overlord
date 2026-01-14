@@ -73,7 +73,7 @@ class AmazonTheme(models.Model):
     launch_date = models.DateField(null=True, blank=True, verbose_name='上架日期')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
-    a = models.CharField(max_length=50, verbose_name='主题分类')
+    is_latest_deal = models.BooleanField(default=False, verbose_name='是否为最新成交')
     class Meta:
         db_table = 'theme_amazon'
         verbose_name = '亚马逊主题表'
@@ -109,7 +109,6 @@ class ThemeRecord(models.Model):
         blank=True,
         verbose_name='侵权词列表(AI)'
     )
-    score = models.IntegerField(default=0, verbose_name='分值')
     duplicate_count = models.IntegerField(default=1, verbose_name='重复数')
     record_date = models.DateField(verbose_name='生成日期')
     record_time = models.DateTimeField(verbose_name='生成时间')
@@ -117,6 +116,7 @@ class ThemeRecord(models.Model):
     class Meta:
         db_table = 'theme_record'
         indexes = [
+
             models.Index(fields=['record_date']),
             models.Index(fields=['score']),
             models.Index(fields=['infringement_level']),
@@ -141,7 +141,8 @@ class ThemeDailyData(models.Model):
     rank = models.IntegerField(null=True, blank=True, verbose_name='排名')
     rank_category = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类')
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
-
+    appear_count = models.IntegerField(default=1, verbose_name='重复数')
+    score = models.IntegerField(default=0, verbose_name='分值')
     class Meta:
         db_table = 'theme_daily_data'
         indexes = [
@@ -158,7 +159,7 @@ class ThemeDailyData(models.Model):
 
 
 class ThemeDailySubjectStat(models.Model):
-    """当日主题汇总表，用于榜单/趋势统计"""
+    """当日主题汇总表，用于榜单/趋势统计 这个暂时不写入"""
     record_date = models.DateField(verbose_name='统计日期')
     subject_snapshot = models.CharField(max_length=200, verbose_name='主题')
     appear_count = models.IntegerField(default=0, verbose_name='出现次数')

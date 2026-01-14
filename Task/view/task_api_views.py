@@ -1,8 +1,6 @@
 # Task/view/task_api_views.py
 
 import json
-import os
-import time
 from datetime import datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -623,48 +621,4 @@ def delete_template_api(request, template_id):
         return JsonResponse({
             'success': False,
             'message': f'删除模板失败: {str(e)}'
-        }, status=500)
-
-
-@login_required
-@require_http_methods(["POST"])
-def upload_task_file_api(request):
-    """
-    上传任务文件
-    POST /api/tasks/upload/
-    """
-    try:
-        if 'file' not in request.FILES:
-            return JsonResponse({'success': False, 'message': '未找到文件'}, status=400)
-
-        uploaded_file = request.FILES['file']
-        
-        # 目标目录
-        target_dir = r'D:\Overlord共享\Amazon上架'
-        if not os.path.exists(target_dir):
-            os.makedirs(target_dir)
-
-        # 生成文件名 (时间戳_文件名)
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"{timestamp}_{uploaded_file.name}"
-        file_path = os.path.join(target_dir, filename)
-
-        # 保存文件
-        with open(file_path, 'wb+') as destination:
-            for chunk in uploaded_file.chunks():
-                destination.write(chunk)
-
-        return JsonResponse({
-            'success': True, 
-            'data': {
-                'file_path': file_path,
-                'file_name': uploaded_file.name,
-                'saved_name': filename
-            }
-        })
-
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'文件上传失败: {str(e)}'
         }, status=500)

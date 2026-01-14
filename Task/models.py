@@ -106,12 +106,10 @@ class SubTask(models.Model):
     # 子任务类型定义
     TYPE_CUSTOM_UPLOAD = 'custom_upload'
     TYPE_TEMU_EXPORT = 'temu_export'
-    TYPE_AMAZON_UPLOAD = 'amazon_upload'
 
     TYPE_CHOICES = [
         (TYPE_CUSTOM_UPLOAD, '定制上架'),
         (TYPE_TEMU_EXPORT, 'Temu导单'),
-        (TYPE_AMAZON_UPLOAD, 'Amazon上传商品'),
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')

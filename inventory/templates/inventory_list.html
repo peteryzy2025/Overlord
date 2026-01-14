@@ -491,11 +491,35 @@
         }
     }
 
+    async function loadFactoryOptions() {
+        try {
+            const response = await fetch('/inventory/api/factories/');
+            const result = await response.json();
+            if (result.success) {
+                const select = document.getElementById('factoryNameFilter');
+                // 保持现有的 "所有工厂" 选项
+                const currentVal = select.value;
+                
+                let optionsHtml = '<option value="">所有工厂</option>';
+                result.data.forEach(factory => {
+                    optionsHtml += `<option value="${factory.name}">${factory.name}</option>`;
+                });
+                select.innerHTML = optionsHtml;
+                
+                // 恢复选中状态（如果有）
+                select.value = currentVal;
+            }
+        } catch (error) {
+            console.error('加载工厂列表失败:', error);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async function () {
         showLoading(true);
         try {
             setDefaultFilters();
             initializeSortHeader();
+            loadFactoryOptions(); // 异步加载工厂，不阻塞主流程
             await applyFilters();
         } catch (error) {
             console.error('初始化错误:', error);
