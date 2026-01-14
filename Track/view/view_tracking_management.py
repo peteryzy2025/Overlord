@@ -7,9 +7,8 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
-from django.db import transaction
 from django.utils import timezone
 from datetime import datetime, timedelta
 import openpyxl
@@ -31,7 +30,7 @@ def tracking_management(request):
         from django.shortcuts import redirect
         return redirect('general:main')
 
-    return render(request, 'tracking_management.html', {'active_nav': 'tracking_management'})
+    return render(request, 'tracking_management.html', {})
 
 
 def get_date_range_from_option(option):
@@ -68,7 +67,6 @@ def get_factories(request):
         })
     except Exception as e:
         print(f"获取工厂列表失败: {str(e)}")
-        transaction.set_rollback(True)
         return JsonResponse({
             'success': False,
             'message': f'获取失败: {str(e)}'
@@ -84,7 +82,6 @@ def get_couriers(request):
         return JsonResponse({'success': True, 'data': list(couriers)})
     except Exception as e:
         print(f"获取物流商列表失败: {str(e)}")
-        transaction.set_rollback(True)
         return JsonResponse({
             'success': False,
             'message': f'获取失败: {str(e)}'
@@ -228,7 +225,7 @@ def tracking_list(request):
 
         try:
             page_obj = paginator.page(page)
-        except (EmptyPage, PageNotAnInteger):
+        except:
             page_obj = paginator.page(1)
 
         # 序列化数据（包含 stale_hours 字段）
@@ -276,7 +273,6 @@ def tracking_list(request):
         print(f"获取运单列表失败: {str(e)}")
         import traceback
         traceback.print_exc()
-        transaction.set_rollback(True)
         return JsonResponse({
             'success': False,
             'message': f'获取失败: {str(e)}'
@@ -324,7 +320,6 @@ def tracking_details(request):
 
     except Exception as e:
         print(f"获取轨迹详情失败: {str(e)}")
-        transaction.set_rollback(True)
         return JsonResponse({
             'success': False,
             'message': f'获取失败: {str(e)}'
@@ -375,7 +370,6 @@ def tracking_stats(request):
 
     except Exception as e:
         print(f"获取统计数据失败: {str(e)}")
-        transaction.set_rollback(True)
         return JsonResponse({
             'success': False,
             'message': f'获取失败: {str(e)}'
