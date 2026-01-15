@@ -116,7 +116,6 @@ class ThemeRecord(models.Model):
     class Meta:
         db_table = 'theme_record'
         indexes = [
-
             models.Index(fields=['record_date']),
             models.Index(fields=['score']),
             models.Index(fields=['infringement_level']),
