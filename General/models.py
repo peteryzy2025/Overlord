@@ -7,6 +7,28 @@ from django.utils import timezone
 from datetime import timedelta
 
 
+class PermissionConfig(models.Model):
+    """
+    业务权限配置表
+    示例数据：
+        id | code | name         | description
+        ---|------|--------------|-------------------
+        1  | 123  | 查看店铺     | 允许查看店铺列表
+        2  | 546  | 删除订单     | 允许删除订单记录
+        3  | 555  | 管理组目标   | 允许创建/编辑组绩效目标
+    """
+    code = models.IntegerField('权限码', unique=True)  # 123, 546, 555...
+    name = models.CharField('权限名称', max_length=50)
+    description = models.TextField('权限描述', blank=True)
+    category = models.CharField('权限分类', max_length=50, blank=True)  # 可选：订单、店铺、用户...
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        db_table = 'user_permission_configs'
+        verbose_name = '权限配置'
+        # 按 code 排序，方便查看
+        ordering = ['code']
+
 class Company(models.Model):
     """
     公司模型，用于多租户区分
@@ -43,6 +65,13 @@ class User(AbstractUser):
         related_name='users',  # 关键！让 Company 能通过 .users 反向查用户
         verbose_name='所属公司',
         help_text='用户所属的公司，多租户隔离用'
+    )
+    permission_configs = models.ManyToManyField(
+        PermissionConfig,
+        blank=True,
+        verbose_name='业务权限列表',
+        related_name='users',  # 反向查询：perm.users.all() 获取有该权限的所有用户
+        db_table='user_permission_config'  # 自定义中间表名
     )
     # 基础业务字段
     phone = models.CharField('联系电话', max_length=20, blank=True, null=True)

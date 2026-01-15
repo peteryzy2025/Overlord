@@ -1,6 +1,8 @@
 # Task/view/task_api_views.py
 
 import json
+import requests
+import threading
 from datetime import datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -290,6 +292,35 @@ def create_task_api(request):
             except Exception as e:
                 # 回滚事务
                 raise ValueError(f"子任务 #{idx + 1} 验证失败: {str(e)}")
+
+        # 发送 Webhook 通知 (仅正式任务)
+        if not is_draft:
+            try:
+                # 构造完整的通知数据
+                webhook_data = data.copy()
+                webhook_data.update({
+                    'task_id': task.id,
+                    'task_no': task_no,
+                    'created_by_id': current_user.id,
+                    'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
+                    'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
+                    'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'status': 'pending'
+                })
+
+                def send_webhook_task(payload):
+                    url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/873825669915136000"
+                    try:
+                        requests.post(url, json=payload, timeout=10)
+                    except Exception as e:
+                        print(f"Webhook send failed: {e}")
+
+                # 事务提交后异步发送，避免阻塞响应且确保数据已持久化
+                transaction.on_commit(lambda: threading.Thread(target=send_webhook_task, args=(webhook_data,)).start())
+            
+            except Exception as e:
+                # 仅打印错误，不影响任务创建流程
+                print(f"Error preparing webhook: {e}")
 
         return JsonResponse({
             'success': True,
