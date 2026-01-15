@@ -423,6 +423,13 @@
         background: rgba(59, 130, 246, 0.05);
     }
 
+    .subtask-type-card.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+        background-color: var(--bg-secondary);
+    }
+
     .type-icon {
         font-size: 2rem;
         color: var(--accent-color);
@@ -704,21 +711,28 @@
         </div>
         <div class="modal-body">
             <div class="subtask-type-options">
-                <div class="subtask-type-card" data-type="custom_upload" onclick="selectSubtaskType(this)">
+                <div class="subtask-type-card" data-type="multi_side_custom" onclick="selectSubtaskType(this)">
+                    <div class="type-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h4>多面定制</h4>
+                    <p>多面定制产品上架</p>
+                </div>
+                <div class="subtask-type-card disabled" data-type="custom_upload">
                     <div class="type-icon">
                         <i class="fas fa-tshirt"></i>
                     </div>
                     <h4>Temu定制上架</h4>
                     <p>上传定制产品到店铺</p>
                 </div>
-                <div class="subtask-type-card" data-type="temu_export" onclick="selectSubtaskType(this)">
+                <div class="subtask-type-card disabled" data-type="temu_export">
                     <div class="type-icon">
                         <i class="fas fa-download"></i>
                     </div>
                     <h4>Temu导单</h4>
                     <p>导出Temu订单数据</p>
                 </div>
-                <div class="subtask-type-card" data-type="amazon_upload" onclick="selectSubtaskType(this)">
+                <div class="subtask-type-card disabled" data-type="amazon_upload">
                     <div class="type-icon">
                         <i class="fas fa-cloud-upload-alt"></i>
                     </div>
@@ -1094,7 +1108,8 @@
     function confirmAddSubtask() {
         if (!selectedSubtaskType) return;
 
-        addSubtask(selectedSubtaskType);
+        // addSubtask 内部已处理默认参数合并，这里直接传递空对象即可触发默认值
+        addSubtask(selectedSubtaskType, {});
         closeAddSubtaskModal();
         triggerAutoSave();
     }
@@ -1102,10 +1117,52 @@
     function addSubtask(type, params = {}) {
         const subtaskId = subtaskIdCounter++;
 
+        // 定义默认参数（确保包含所有可能需要的字段）
+        let defaultParams = {};
+        if (type === 'multi_side_custom' || type === 'custom_upload') {
+            defaultParams = {
+                mode: 'adapt',
+                gallery_account: '侯益山',
+                craft_type: 'print',
+                custom_method: 'batch',
+                add_black_border: false,
+                recognize_theme: false,
+                add_custom_coords: false,
+                custom_coords: '', // 默认为空字符串
+                add_background_color: false,
+                background_color: '#ffffff',
+                export_quantity: 400,
+                product_ids: [],
+                gallery_path: [],
+                export_shop_ids: []
+            };
+        } else if (type === 'temu_export') {
+            defaultParams = {
+                export_shop_ids: []
+            };
+        } else if (type === 'amazon_upload') {
+            defaultParams = {
+                file_paths: []
+            };
+        }
+
+        // 合并参数（优先使用传入的params，缺失的使用defaultParams）
+        // 对于引用类型（数组），如果params中没有，则使用新创建的数组，避免引用共享
+        const mergedParams = { ...defaultParams, ...params };
+
+        // 确保数组字段是独立的实例
+        if (!params.product_ids) mergedParams.product_ids = [];
+        if (!params.gallery_path) mergedParams.gallery_path = [];
+        if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
+        if (!params.file_paths) mergedParams.file_paths = [];
+
+        // 确保字符串字段存在
+        if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
+
         const subtask = {
             id: subtaskId,
             type: type,
-            params: params,
+            params: mergedParams,
             order: taskData.subtasks.length
         };
 
@@ -1256,7 +1313,148 @@
     }
 
     function renderSubtaskEditForm(subtask) {
-        if (subtask.type === 'custom_upload') {
+        if (subtask.type === 'multi_side_custom') {
+            return `
+                    <div class="dynamic-fields">
+                        <div class="form-group">
+                            <label class="form-label">产品ID <span style="color: var(--danger-color);">*</span></label>
+                            <div class="product-ids-wrapper">
+                                <input type="text" class="form-control"
+                                       id="product-ids-input-${subtask.id}"
+                                       placeholder="输入多个产品ID，用空格分隔"
+                                       value="${subtask.params.product_ids ? subtask.params.product_ids.join(' ') : ''}"
+                                       oninput="handleProductIdsInput(this, ${subtask.id})">
+                                <div class="product-ids-preview" id="product-preview-${subtask.id}">
+                                    <!-- 动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group has-autocomplete">
+                            <label class="form-label">图库目录 <span style="color: var(--danger-color);">*</span></label>
+                            <div class="product-ids-wrapper">
+                                <input type="text" class="form-control gallery-path-input"
+                                       id="gallery-path-input-${subtask.id}"
+                                       value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
+                                       placeholder="输入多级目录，如 10月 10.31 10.31-樱花"
+                                       data-subtask-id="${subtask.id}"
+                                       oninput="handleGalleryPathInput(this, ${subtask.id})"
+                                       onfocus="showPathSuggestions(this)">
+                                <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}">
+                                    <!-- 动态生成 -->
+                                </div>
+                                <div class="path-suggestions" id="path-suggestions-${subtask.id}">
+                                    <!-- 自动补全建议 -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select mode-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'mode', this.value)">
+                                <option value="adapt" ${subtask.params.mode === 'adapt' ? 'selected' : ''}>适应</option>
+                                <option value="fill" ${subtask.params.mode === 'fill' ? 'selected' : ''}>填充</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">图库账号 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select gallery-account-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'gallery_account', this.value)">
+                                <option value="曾雪莹" ${subtask.params.gallery_account === '曾雪莹' ? 'selected' : ''}>曾雪莹</option>
+                                <option value="杨涵" ${subtask.params.gallery_account === '杨涵' ? 'selected' : ''}>杨涵</option>
+                                <option value="魏李杰" ${subtask.params.gallery_account === '魏李杰' ? 'selected' : ''}>魏李杰</option>
+                                <option value="吴杰柱" ${subtask.params.gallery_account === '吴杰柱' ? 'selected' : ''}>吴杰柱</option>
+                                <option value="侯益山" ${subtask.params.gallery_account === '侯益山' ? 'selected' : ''} selected>侯益山</option>
+                                <option value="郭子伊" ${subtask.params.gallery_account === '郭子伊' ? 'selected' : ''}>郭子伊</option>
+                                <option value="吴晓纯" ${subtask.params.gallery_account === '吴晓纯' ? 'selected' : ''}>吴晓纯</option>
+                                <option value="林焕源" ${subtask.params.gallery_account === '林焕源' ? 'selected' : ''}>林焕源</option>
+                                <option value="罗仕明" ${subtask.params.gallery_account === '罗仕明' ? 'selected' : ''}>罗仕明</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select craft-type-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'craft_type', this.value)">
+                                <option value="print" ${subtask.params.craft_type === 'print' ? 'selected' : ''}>印花</option>
+                                <option value="emboss" ${subtask.params.craft_type === 'emboss' ? 'selected' : ''}>刺绣</option>
+                                <option value="laser" ${subtask.params.craft_type === 'laser' ? 'selected' : ''}>镭射</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">定制方式 <span style="color: var(--danger-color);">*</span></label>
+                            <select class="form-select custom-method-select" data-subtask-id="${subtask.id}"
+                                    onchange="updateSubtaskParam(${subtask.id}, 'custom_method', this.value)">
+                                <option value="batch" ${(!subtask.params.custom_method || subtask.params.custom_method === 'batch') ? 'selected' : ''}>批量定制</option>
+                                <option value="single" ${subtask.params.custom_method === 'single' ? 'selected' : ''}>单个定制</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input" 
+                                    ${subtask.params.add_black_border ? 'checked' : ''}
+                                    onchange="updateSubtaskParam(${subtask.id}, 'add_black_border', this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否添加黑色描边</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input" 
+                                    ${subtask.params.recognize_theme ? 'checked' : ''}
+                                    onchange="updateSubtaskParam(${subtask.id}, 'recognize_theme', this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否判断主题</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input" 
+                                    ${subtask.params.add_custom_coords ? 'checked' : ''}
+                                    onchange="toggleCustomCoords(${subtask.id}, this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否添加定制坐标</span>
+                            </label>
+                            <div id="custom-coords-input-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.add_custom_coords ? 'block' : 'none'}">
+                                <input type="text" class="form-control" 
+                                    id="coords-input-${subtask.id}"
+                                    value="${subtask.params.custom_coords || ''}"
+                                    placeholder="输入4个数字，顺序：横 纵 宽 高 (如: 100 200 500 500)"
+                                    oninput="handleCustomCoordsInput(this, ${subtask.id})">
+                                <div id="coords-preview-${subtask.id}" class="task-no-preview" style="margin-top: 0.5rem; display: ${subtask.params.custom_coords ? 'block' : 'none'}; font-size: 0.8rem; color: var(--text-secondary);">
+                                    ${formatCoordsPreview(subtask.params.custom_coords)}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input" 
+                                    ${subtask.params.add_background_color ? 'checked' : ''}
+                                    onchange="toggleBackgroundColor(${subtask.id}, this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否需要添加背景色</span>
+                            </label>
+                            <div id="background-color-input-${subtask.id}" class="color-picker-wrapper" style="display: ${subtask.params.add_background_color ? 'flex' : 'none'}">
+                                <input type="color" 
+                                    value="${subtask.params.background_color || '#ffffff'}"
+                                    onchange="updateBackgroundColor(${subtask.id}, this.value)"
+                                    style="height: 38px; width: 50px; padding: 0; border: none; background: none;">
+                                <input type="text" class="form-control" style="width: 120px;"
+                                    value="${subtask.params.background_color || '#ffffff'}"
+                                    oninput="updateBackgroundColor(${subtask.id}, this.value)"
+                                    placeholder="#RRGGBB">
+                            </div>
+                        </div>
+                    </div>
+                `;
+        } else if (subtask.type === 'custom_upload') {
             return `
                     <div class="dynamic-fields">
                         <div class="form-group">
@@ -1501,6 +1699,7 @@
 
     function getSubtaskTypeDisplay(type) {
         const typeMap = {
+            'multi_side_custom': '多面定制',
             'custom_upload': 'Temu定制上架',
             'temu_export': 'Temu导单',
             'amazon_upload': 'Amazon上传商品'
@@ -2071,7 +2270,22 @@
         }
 
         for (let subtask of data.subtasks) {
-            if (subtask.type === 'custom_upload') {
+            if (subtask.type === 'multi_side_custom') {
+                if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
+                    showNotification(`子任务 #${subtask.order + 1} 的产品ID不能为空`, 'warning');
+                    return false;
+                }
+
+                // 校验定制坐标
+                if (subtask.params.add_custom_coords) {
+                    const coords = (subtask.params.custom_coords || '').trim().split(/\s+/);
+                    // 强制要求4个数字
+                    if (coords.length !== 4 || !coords.every(c => /^\d+$/.test(c))) {
+                        showNotification(`子任务 #${subtask.order + 1} 的定制坐标必须为4个数字（空格分隔）`, 'warning');
+                        return false;
+                    }
+                }
+            } else if (subtask.type === 'custom_upload') {
                 if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
                     showNotification(`子任务 #${subtask.order + 1} 的产品ID不能为空`, 'warning');
                     return false;

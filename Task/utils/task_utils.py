@@ -132,6 +132,32 @@ def validate_subtask_params(subtask_type, params, user):
                 if shop_id not in visible_shop_ids:
                     return {'valid': False, 'message': f'无权操作店铺ID: {shop_id}'}
 
+        elif subtask_type == 'multi_side_custom':
+            # 多面定制验证逻辑
+            required_fields = ['product_ids', 'mode', 'gallery_account',
+                               'gallery_path', 'craft_type']
+
+            for field in required_fields:
+                if field not in params:
+                    return {'valid': False, 'message': f'缺少必填参数: {field}'}
+
+            # 验证产品ID
+            product_ids = params.get('product_ids', [])
+            if not isinstance(product_ids, list) or not product_ids:
+                return {'valid': False, 'message': '产品ID必须为非空数组'}
+
+            for pid in product_ids:
+                if not re.match(r'^\d+$', str(pid)):
+                    return {'valid': False, 'message': f'产品ID必须是数字: {pid}'}
+
+            # 验证模式
+            if params.get('mode') not in ['adapt', 'fill']:
+                return {'valid': False, 'message': '模式必须是"adapt"或"fill"'}
+
+            # 验证工艺类型
+            if params.get('craft_type') not in ['print', 'emboss', 'laser']:
+                return {'valid': False, 'message': '工艺类型无效'}
+
         elif subtask_type == 'temu_export':
             # 验证店铺ID
             shop_ids = params.get('export_shop_ids', [])
