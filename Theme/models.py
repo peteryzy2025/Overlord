@@ -22,6 +22,7 @@ class AmazonProduct(models.Model):
         choices=PRODUCT_TYPE_CHOICES,
         verbose_name='产品类型'
     )
+
     class Meta:
         db_table = 'amazon_product'
         verbose_name = '亚马逊产品'
@@ -41,7 +42,7 @@ class ProductRankHistory(models.Model):
     )  # FK 会自动关联到 ASIN 主键
     crawl_date = models.DateField(verbose_name='爬取日期')
     rank = models.IntegerField(null=True, blank=True, verbose_name='当前排名')
-    rank_category = models.CharField(max_length=100, null=True,blank=True, verbose_name='排名大类')
+    rank_category = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名大类')
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
 
     class Meta:
@@ -74,6 +75,7 @@ class AmazonTheme(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     is_latest_deal = models.BooleanField(default=False, verbose_name='是否为最新成交')
+
     class Meta:
         db_table = 'theme_amazon'
         verbose_name = '亚马逊主题表'
@@ -127,6 +129,7 @@ class ThemeRecord(models.Model):
         # 改为使用 product.subject，这个字段存在
         return f"{self.product.asin} - {self.product.subject[:30]}"
 
+
 class ThemeDailyData(models.Model):
     """主题每日数据"""
     product = models.ForeignKey(
@@ -141,6 +144,7 @@ class ThemeDailyData(models.Model):
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
     appear_count = models.IntegerField(default=1, verbose_name='重复数')
     score = models.IntegerField(default=0, verbose_name='分值')
+
     class Meta:
         db_table = 'theme_daily_data'
         indexes = [
@@ -174,3 +178,11 @@ class ThemeDailySubjectStat(models.Model):
 
     def __str__(self):
         return f"{self.record_date} - {self.subject_snapshot[:30]}"
+
+
+class ThemeTrashBin(models.Model):
+    asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
+    class Meta:
+        db_table= "theme_trash_bin"
+    def __str__(self):
+        return self.asin
