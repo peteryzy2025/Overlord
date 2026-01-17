@@ -502,6 +502,7 @@
     <script>
         // 全局变量
         let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
+        let allPermissions = [];    // 从数据库加载的权限列表 [{id, code, name, description}]
         let modalMode = null;       // 'create' | 'edit'
         let currentUserId = null;   // 当前编辑的用户ID
         let currentPage = 1;        // 当前页码
@@ -583,6 +584,29 @@
             } catch (error) {
                 console.error('角色API请求错误:', error);
                 allRoles = [];
+                return false;
+            }
+        }
+
+        /**
+         * 从API加载权限配置列表
+         * @returns {Promise<boolean>}
+         */
+        async function loadPermissionConfigsFromAPI() {
+            try {
+                const response = await fetch('/api/permissions/');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (result.success) {
+                    allPermissions = result.data; // [{id, code, name, description}, ...]
+                    console.log("权限配置加载成功:", allPermissions);
+                    return true;
+                }
+                console.error('获取权限列表失败:', result.error);
+                return false;
+            } catch (error) {
+                console.error('权限API请求错误:', error);
                 return false;
             }
         }
@@ -745,7 +769,7 @@
             tbody.innerHTML = users.map(user => {
                 const account = user.operational_account || {};
                 return `
-            <tr data-user-id="${user.id}">
+            <tr data-user-id="${user.id}" data-permissions='${JSON.stringify(user.permissions || [])}'>
                 <td>${user.id}</td>
                 <td class="field-username">${user.username}</td>
                 <td class="field-first_name">${user.first_name || '-'}</td>
@@ -841,6 +865,7 @@
                 platform: row.querySelector('.field-platform').textContent,
                 ops_group: row.querySelector('.field-ops_group').textContent,
                 remark: row.querySelector('.field-remark').textContent,
+                permissions: [],
                 operational_account: {
                     shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
                     shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
@@ -855,6 +880,24 @@
                 }
             };
 
+            // 从 data-permissions 属性解析权限列表
+            try {
+                const permissionsStr = row.dataset.permissions;
+                console.log("data-permissions 原始值:", permissionsStr); // 检查原始值
+                if (permissionsStr) {
+                    // 兼容处理：去除可能存在的方括号，支持 JSON 数组格式或纯逗号分隔
+                    const cleanStr = permissionsStr.toString().replace(/[\[\]"]/g, '');
+                    userData.permissions = cleanStr.split(',')
+                        .filter(s => s.trim() !== '')
+                        .map(s => parseInt(s))
+                        .filter(n => !isNaN(n)); // 过滤掉可能的 NaN
+                }
+            } catch (e) {
+                console.error("解析权限失败", e);
+                userData.permissions = [];
+            }
+
+            console.log("用户权限数据:", userData.permissions); // 检查解析后的权限数据
             document.getElementById('modalBody').innerHTML = generateModalForm(userData);
             document.getElementById('userModalOverlay').style.display = 'block';
         }
@@ -884,11 +927,30 @@
                 return `<option value="${roleDef.key}" ${selected}>${roleDef.name}</option>`;
             }).join('');
 
+            // 动态生成权限复选框
+            const currentPermissions = data.permissions || [];
+            const permissionsHtml = allPermissions.map(perm => {
+                const checked = currentPermissions.includes(perm.code) ? 'checked' : '';
+                return `
+                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0;">
+                        <input type="checkbox" id="perm-${perm.code}" name="permissions" value="${perm.code}" ${checked}>
+                        <label for="perm-${perm.code}" style="margin:0; font-weight: normal;">
+                            <span style="font-weight:600;">[${perm.code}]</span> ${perm.name}
+                            <span style="color:var(--text-secondary); font-size:0.8rem;">- ${perm.description}</span>
+                        </label>
+                    </div>
+                `;
+            }).join('');
+
             return `
         <div class="modal-form-wrapper">
             <div class="form-group">
                 <label>用户名 <span style="color:red;">*</span></label>
                 <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
+            </div>
+            <div class="form-group">
+                <label>密码 ${!isCreate ? '<span style="font-weight:normal; color:var(--text-secondary);">(留空则不修改)</span>' : ''}</label>
+                <input type="text" id="modal-password" class="password-input" placeholder="${isCreate ? '默认: default123' : '输入新密码以修改'}">
             </div>
             <div class="form-group">
                 <label>名字</label>
@@ -905,6 +967,13 @@
             <div class="form-group">
                 <label>角色</label>
                 <select id="modal-role">${roleOptionsHtml}</select>
+            </div>
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>业务权限配置</label>
+                <div style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; background-color: var(--bg-secondary); display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.5rem;">
+                    ${permissionsHtml || '<div style="color:var(--text-secondary);">暂无可用权限配置</div>'}
+                </div>
             </div>
 
             <div class="form-group">
@@ -951,13 +1020,19 @@
          * 保存模态框数据（新建或编辑）
          */
         async function saveUserModal() {
+            // 收集选中的权限
+            const selectedPermissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+                .map(cb => parseInt(cb.value));
+
             // 收集表单数据
             const formData = {
                 username: document.getElementById('modal-username').value.trim(),
+                password: document.getElementById('modal-password').value.trim(),
                 first_name: document.getElementById('modal-first_name').value.trim(),
                 phone: document.getElementById('modal-phone').value.trim(),
                 department: document.getElementById('modal-department').value.trim(),
                 role: document.getElementById('modal-role').value,
+                permissions: selectedPermissions,
                 status: document.getElementById('modal-status').value,
                 company_name: document.getElementById('modal-company_name').value.trim(),
                 platform: document.getElementById('modal-platform').value.trim(),
@@ -979,7 +1054,7 @@
 
             // 验证必填项
             if (!formData.username) {
-                alert('用户名是必填项！');
+                showNotification('用户名是必填项！', 'error');
                 return;
             }
 
@@ -987,7 +1062,7 @@
             if (modalMode === 'create') {
                 const allUsers = await loadUsersFromAPI(1, 9999, false).then(r => r.data);
                 if (allUsers.some(user => user.username === formData.username)) {
-                    alert('用户名已存在，请使用其他用户名！');
+                    showNotification('用户名已存在，请使用其他用户名！', 'error');
                     return;
                 }
             }
@@ -1005,15 +1080,15 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！');
+                    showNotification(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！', 'success');
                     closeModal();
                     loadUsersTable();
                 } else {
-                    alert('操作失败：' + result.error);
+                    showNotification('操作失败：' + result.error, 'error');
                 }
             } catch (error) {
                 console.error('保存失败:', error);
-                alert('保存失败，请检查网络连接并重试');
+                showNotification('保存失败，请检查网络连接并重试', 'error');
             }
         }
 
@@ -1035,7 +1110,10 @@
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', async function () {
-            await loadRolesFromAPI();
+            await Promise.all([
+                loadRolesFromAPI(),
+                loadPermissionConfigsFromAPI()
+            ]);
             loadUsersTable();
 
             // 添加回车键快捷键：在筛选区域按回车触发筛选

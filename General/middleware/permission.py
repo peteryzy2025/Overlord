@@ -6,7 +6,7 @@ from django.http import JsonResponse
 
 class PermissionMiddleware:
     """
-    权限控制中间件：只有 permission 字段包含 "555" 的用户才能访问管理功能
+    权限控制中间件：只有拥有code=555的PermissionConfig的用户才能访问管理功能
     只拦截明确需要管控的路径，其他路径完全不受影响
     """
 
@@ -40,18 +40,13 @@ class PermissionMiddleware:
         return False
 
     def _has_permission_555(self, user):
-        """检查用户permission字段是否包含555"""
-        user_permissions = getattr(user, 'permission', '') or ''
-
-        if not user_permissions:
+        """检查用户是否拥有code=555的业务权限"""
+        if not hasattr(user, 'permission_configs'):
             return False
-
-        # 支持字符串格式："555" 或 "555,666,777"
-        if isinstance(user_permissions, str):
-            permission_list = [p.strip() for p in user_permissions.split(',') if p.strip()]
-            return "555" in permission_list
-
-        return False
+        try:
+            return user.permission_configs.filter(code=555).exists()
+        except Exception:
+            return False
 
     def _redirect_or_forbid(self, request):
         """
