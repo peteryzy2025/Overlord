@@ -13,6 +13,8 @@
 
 import os
 import sys
+import time
+
 import django
 from datetime import datetime
 
@@ -268,6 +270,7 @@ def divi_process_orders(target_date_str, force_reimport):
 
         if reimport_total > 0:
             reimport_success, reimport_errors = reimport_orders(reimport_queryset, reimport_total)
+            time.sleep(1)
 
     # 步骤2：所有模式都执行的批量字段同步操作（已过滤店铺状态）
     print("\n【批量同步阶段】正在提取需要同步的品牌...")

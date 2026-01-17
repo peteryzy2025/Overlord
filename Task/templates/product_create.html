@@ -1,0 +1,744 @@
+{% extends 'base_r.html' %}
+{% load static %}
+
+{% block title %}创建产品需求 - Overlord{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=1.1">
+<link rel="stylesheet" href="{% static 'css/task_create.css' %}?v=1.1">
+<script src="{% static 'js/Sortable.min.js' %}"></script>
+{% endblock %}
+
+{% block sidebar %}
+{{ block.super }}
+{% endblock %}
+
+{% block content %}
+<div class="task-create-container">
+    {% csrf_token %}
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-tasks"></i> 创建产品需求
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="cancelCreation()">
+                <i class="fas fa-times"></i> 取消
+            </button>
+        </div>
+    </div>
+
+    <!-- 任务主信息 -->
+    <div class="task-card">
+        <h2 class="card-title">
+            <i class="fas fa-info-circle"></i> 基础信息
+        </h2>
+        <div class="task-info-grid">
+            <div class="form-group">
+                <label class="form-label">需求标题 <span style="color: var(--danger-color);">*</span></label>
+                <input type="text" class="form-control" id="taskTitle" placeholder="请输入需求标题" maxlength="200">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">负责人 <span style="color: var(--danger-color);">*</span></label>
+                <select class="form-select" id="taskOwner">
+                    <option value="">加载中...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">需求单号（自动生成）</label>
+                <div class="task-no-preview" id="taskNoPreview">
+                    <i class="fas fa-spinner fa-spin"></i> 生成中...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 产品列表管理 -->
+    <div class="task-card">
+        <div class="subtasks-section">
+            <div class="subtasks-toolbar">
+                <h2 class="card-title">
+                    <i class="fas fa-list-check"></i> 产品列表
+                </h2>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span class="subtasks-count" id="subtasksCount">已添加 0 个产品</span>
+                    <button class="btn btn-primary" onclick="showAddSubtaskModal()">
+                        <i class="fas fa-plus"></i> 添加产品
+                    </button>
+                </div>
+            </div>
+
+            <div class="subtasks-container" id="subtasksContainer">
+                <div class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无产品</p>
+                    <p>点击"添加产品"开始创建</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部操作区 -->
+    <div class="form-actions">
+        <button class="btn btn-secondary" onclick="cancelCreation()">
+            <i class="fas fa-times"></i> 取消
+        </button>
+        <button class="btn" onclick="saveDraft()">
+            <i class="fas fa-save"></i> 保存草稿
+        </button>
+        <button class="btn btn-primary" onclick="createTask()">
+            <i class="fas fa-paper-plane"></i> 提交需求
+        </button>
+    </div>
+</div>
+
+<!-- 自动保存提示 -->
+<div class="autosave-indicator" id="autosaveIndicator">
+    <i class="fas fa-check-circle" style="color: #48bb78;"></i> 草稿已自动保存
+</div>
+
+<!-- 添加产品模态框 -->
+<div class="modal-overlay" id="addSubtaskModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">选择产品类型</h3>
+            <button class="btn-icon" onclick="closeAddSubtaskModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="subtask-type-options">
+                <div class="subtask-type-card" data-type="print_external" onclick="selectSubtaskType(this)">
+                    <div class="type-icon">
+                        <i class="fas fa-print"></i>
+                    </div>
+                    <h4>印花外采</h4>
+                    <p>外采平台定制</p>
+                </div>
+                <div class="subtask-type-card" data-type="embroidery" onclick="selectSubtaskType(this)">
+                    <div class="type-icon">
+                        <i class="fas fa-cut"></i>
+                    </div>
+                    <h4>刺绣</h4>
+                    <p>刺绣产品定制</p>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="confirmAddSubtaskBtn" onclick="confirmAddSubtask()"
+                style="width: 100%; margin-top: 1.5rem;" disabled>
+                <i class="fas fa-check"></i> 确认添加
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除模态框 -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 class="modal-title">确认删除</h3>
+            <button class="btn-icon" onclick="closeDeleteModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>确定要删除该产品吗？</p>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex: 1;">
+                    取消
+                </button>
+                <button class="btn btn-danger" id="confirmDeleteBtn" style="flex: 1;">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 发现草稿模态框 -->
+<div class="modal-overlay" id="loadDraftModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3 class="modal-title">发现未完成草稿</h3>
+            <button class="btn-icon" onclick="closeLoadDraftModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>检测到您有一个未完成的需求草稿，是否加载？</p>
+            <div class="draft-info" id="draftInfoPreview"
+                style="margin: 1rem 0; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; font-size: 0.9rem; color: var(--text-secondary);">
+                <!-- 动态填充 -->
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="discardDraft()" style="flex: 1;">
+                    不加载 (删除)
+                </button>
+                <button class="btn btn-primary" onclick="confirmLoadDraft()" style="flex: 1;">
+                    <i class="fas fa-check"></i> 加载草稿
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // ===== 全局状态 =====
+    let taskData = {
+        title: '',
+        ownerId: null,
+        taskId: null, // 草稿ID
+        subtasks: [] // {id, type, params, order}
+    };
+
+    let availableOwners = [];
+    let selectedSubtaskType = null;
+    let subtaskIdCounter = 1;
+    let isAutoSaving = false;
+    let autoSaveTimer = null;
+    let lastSavedData = null;
+
+    // ===== 工具函数 =====
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+
+    function showLoading(show = true) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+        }
+    }
+
+    function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // ===== 初始化 =====
+    document.addEventListener('DOMContentLoaded', async function () {
+        showLoading(true);
+        try {
+            await Promise.all([
+                loadAvailableOwners(),
+                generateTaskNoPreview()
+            ]);
+
+            initDragAndDrop();
+            setupAutoSave();
+            checkDraft();
+
+        } catch (error) {
+            console.error('初始化失败:', error);
+            showNotification('初始化失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    });
+
+    // ===== 加载所有者列表 =====
+    async function loadAvailableOwners() {
+        try {
+            const response = await fetch('/api/tasks/available-owners/');
+            const result = await response.json();
+
+            if (result.success) {
+                availableOwners = result.data;
+                const ownerSelect = document.getElementById('taskOwner');
+                ownerSelect.innerHTML = availableOwners.map(owner =>
+                    `<option value="${owner.id}" ${owner.id == "{{ request.user.id }}" ? 'selected' : ''}>
+                            ${owner.name}
+                        </option>`
+                ).join('');
+
+                taskData.ownerId = "{{ request.user.id }}";
+
+                ownerSelect.addEventListener('change', function () {
+                    taskData.ownerId = this.value;
+                    triggerAutoSave();
+                });
+            }
+        } catch (error) {
+            console.error('加载所有者列表失败:', error);
+        }
+    }
+
+    // ===== 生成任务单号 =====
+    async function generateTaskNoPreview() {
+        try {
+            const response = await fetch('/api/tasks/generate-no/');
+            const result = await response.json();
+
+            if (result.success) {
+                document.getElementById('taskNoPreview').textContent = result.data.task_no;
+            } else {
+                document.getElementById('taskNoPreview').textContent = '生成失败';
+            }
+        } catch (error) {
+            console.error('生成任务单号失败:', error);
+            document.getElementById('taskNoPreview').textContent = '生成失败';
+        }
+    }
+
+    // ===== 拖拽排序初始化 =====
+    function initDragAndDrop() {
+        const container = document.getElementById('subtasksContainer');
+
+        new Sortable(container, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: function (evt) {
+                updateSubtasksOrder();
+                renderSubtasksCount();
+                triggerAutoSave();
+            }
+        });
+    }
+
+    function updateSubtasksOrder() {
+        const items = document.querySelectorAll('.subtask-item');
+        items.forEach((item, index) => {
+            const subtaskId = parseInt(item.dataset.subtaskId);
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+
+            if (subtask) {
+                subtask.order = index;
+                const numberEl = item.querySelector('.subtask-number');
+                if (numberEl) {
+                    numberEl.textContent = `#${index + 1}`;
+                }
+            }
+        });
+
+        taskData.subtasks.sort((a, b) => a.order - b.order);
+        triggerAutoSave();
+    }
+
+    // ===== 自动保存机制 =====
+    function setupAutoSave() {
+        const debouncedSave = debounce(triggerAutoSave, 30000);
+        document.addEventListener('input', debouncedSave);
+        document.addEventListener('change', debouncedSave);
+        setTimeout(checkAndTriggerAutoSave, 10000);
+    }
+
+    function triggerAutoSave() {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(checkAndTriggerAutoSave, 30000);
+    }
+
+    async function checkAndTriggerAutoSave() {
+        const currentData = collectFormData();
+        if (currentData.subtasks.length === 0) return;
+        if (lastSavedData && JSON.stringify(lastSavedData) === JSON.stringify(currentData)) {
+            return;
+        }
+        await autoSaveDraft();
+    }
+
+    async function autoSaveDraft() {
+        if (isAutoSaving) return;
+        isAutoSaving = true;
+        try {
+            const currentData = collectFormData();
+            if (!currentData.title) {
+                currentData.title = '未命名需求_' + new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+            }
+            // 暂时复用原有的保存草稿接口
+            const response = await fetch('/api/tasks/save-draft/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify(currentData)
+            });
+            const result = await response.json();
+            if (result.success) {
+                if (!taskData.taskId) {
+                    taskData.taskId = result.data.task_id;
+                }
+                lastSavedData = currentData;
+                showAutosaveIndicator();
+            }
+        } catch (error) {
+            console.error('自动保存失败:', error);
+        } finally {
+            isAutoSaving = false;
+        }
+    }
+
+    function showAutosaveIndicator() {
+        const indicator = document.getElementById('autosaveIndicator');
+        indicator.classList.add('show');
+        setTimeout(() => {
+            indicator.classList.remove('show');
+        }, 3000);
+    }
+
+    // ===== 子任务相关操作 =====
+    function showAddSubtaskModal() {
+        document.getElementById('addSubtaskModal').classList.add('active');
+        selectedSubtaskType = null;
+        document.querySelectorAll('.subtask-type-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        document.getElementById('confirmAddSubtaskBtn').disabled = true;
+    }
+
+    function closeAddSubtaskModal() {
+        document.getElementById('addSubtaskModal').classList.remove('active');
+        selectedSubtaskType = null;
+    }
+
+    function selectSubtaskType(element) {
+        document.querySelectorAll('.subtask-type-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        selectedSubtaskType = element.dataset.type;
+        document.getElementById('confirmAddSubtaskBtn').disabled = false;
+    }
+
+    function confirmAddSubtask() {
+        if (!selectedSubtaskType) return;
+        addSubtask(selectedSubtaskType, {});
+        closeAddSubtaskModal();
+        triggerAutoSave();
+    }
+
+    function addSubtask(type, params = {}) {
+        const subtaskId = subtaskIdCounter++;
+
+        let defaultParams = {};
+        if (type === 'print_external') {
+            defaultParams = {
+                platform: 'yizhiguan', // 默认艺之冠
+                url: ''
+            };
+        } else if (type === 'embroidery') {
+            defaultParams = {
+                url: ''
+            };
+        }
+
+        const mergedParams = { ...defaultParams, ...params };
+
+        const subtask = {
+            id: subtaskId,
+            type: type,
+            params: mergedParams,
+            order: taskData.subtasks.length
+        };
+
+        taskData.subtasks.push(subtask);
+        renderSubtask(subtask);
+        renderSubtasksCount();
+
+        const container = document.getElementById('subtasksContainer');
+        const emptyState = container.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        document.querySelector(`[data-subtask-id="${subtaskId}"]`)?.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderSubtask(subtask) {
+        const container = document.getElementById('subtasksContainer');
+        const subtaskHtml = `
+            <div class="subtask-item" data-subtask-id="${subtask.id}">
+                <div class="subtask-header">
+                    <div class="subtask-info">
+                        <span class="drag-handle"><i class="fas fa-bars"></i></span>
+                        <span class="subtask-number">#${subtask.order + 1}</span>
+                        <span class="subtask-type">${getSubtaskTypeDisplay(subtask.type)}</span>
+                    </div>
+                    <button class="btn-icon" onclick="deleteSubtask(${subtask.id})" title="删除">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="subtask-edit-form">
+                    ${renderSubtaskEditForm(subtask)}
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', subtaskHtml);
+    }
+
+    function renderSubtaskEditForm(subtask) {
+        if (subtask.type === 'print_external') {
+            return `
+                <div class="dynamic-fields">
+                    <div class="form-group">
+                        <label class="form-label">外采平台 <span style="color: var(--danger-color);">*</span></label>
+                        <select class="form-select" onchange="updateSubtaskParam(${subtask.id}, 'platform', this.value)">
+                            <option value="yizhiguan" ${subtask.params.platform === 'yizhiguan' ? 'selected' : ''}>艺之冠</option>
+                            <option value="s2b" ${subtask.params.platform === 's2b' ? 'selected' : ''}>S2B</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label class="form-label">URL链接 <span style="color: var(--danger-color);">*</span></label>
+                        <input type="text" class="form-control" 
+                               value="${subtask.params.url || ''}"
+                               placeholder="请输入产品链接"
+                               oninput="updateSubtaskParam(${subtask.id}, 'url', this.value)">
+                    </div>
+                </div>
+            `;
+        } else if (subtask.type === 'embroidery') {
+            return `
+                <div class="dynamic-fields">
+                    <div class="form-group" style="grid-column: span 3;">
+                        <label class="form-label">URL链接 <span style="color: var(--danger-color);">*</span></label>
+                        <input type="text" class="form-control" 
+                               value="${subtask.params.url || ''}"
+                               placeholder="请输入刺绣产品链接"
+                               oninput="updateSubtaskParam(${subtask.id}, 'url', this.value)">
+                    </div>
+                </div>
+            `;
+        }
+        return '';
+    }
+
+    function updateSubtaskParam(subtaskId, paramName, value) {
+        const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+        if (subtask) {
+            subtask.params[paramName] = value;
+            triggerAutoSave();
+        }
+    }
+
+    function getSubtaskTypeDisplay(type) {
+        const typeMap = {
+            'print_external': '印花外采',
+            'embroidery': '刺绣'
+        };
+        return typeMap[type] || type;
+    }
+
+    // ===== 删除子任务 =====
+    function deleteSubtask(subtaskId) {
+        document.getElementById('deleteModal').classList.add('active');
+        document.getElementById('confirmDeleteBtn').onclick = function () {
+            taskData.subtasks = taskData.subtasks.filter(s => s.id != subtaskId);
+            document.querySelector(`[data-subtask-id="${subtaskId}"]`)?.remove();
+            updateSubtasksOrder();
+            renderSubtasksCount();
+
+            if (taskData.subtasks.length === 0) {
+                document.getElementById('subtasksContainer').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>暂无产品</p>
+                        <p>点击"添加产品"开始创建</p>
+                    </div>
+                `;
+            }
+            triggerAutoSave();
+            closeDeleteModal();
+            showNotification('产品已删除', 'success');
+        };
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('active');
+    }
+
+    function renderSubtasksCount() {
+        document.getElementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个产品`;
+    }
+
+    // ===== 表单数据收集与提交 =====
+    function collectFormData() {
+        return {
+            task_id: taskData.taskId,
+            task_type: 'product_requirement', // 明确任务类型
+            title: document.getElementById('taskTitle').value.trim() || taskData.title,
+            owner_id: document.getElementById('taskOwner').value,
+            subtasks: taskData.subtasks.map(subtask => ({
+                id: subtask.id,
+                type: subtask.type,
+                params: subtask.params
+            }))
+        };
+    }
+
+    function saveDraft() {
+        const data = collectFormData();
+        if (data.subtasks.length === 0) {
+            showNotification('请至少添加一个产品', 'warning');
+            return;
+        }
+        // 复用原有的保存草稿逻辑
+        autoSaveDraft().then(() => {
+            showNotification('草稿保存成功', 'success');
+        });
+    }
+
+    async function createTask() {
+        const data = collectFormData();
+        if (!validateForm(data)) return;
+
+        if (!confirm(`确认提交需求"${data.title}"吗？`)) return;
+
+        showLoading(true);
+        try {
+            // 复用原有的创建任务接口
+            const response = await fetch('/api/tasks/create/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    ...data,
+                    is_draft: false,
+                    task_type: 'product_requirement' // 标记任务类型（如果后端支持）
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                clearTimeout(autoSaveTimer);
+                showNotification('需求提交成功，正在跳转...', 'success');
+                setTimeout(() => {
+                    window.location.href = '/task/list/';
+                }, 1500);
+            } else {
+                throw new Error(result.message || '提交失败');
+            }
+        } catch (error) {
+            showNotification('提交失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    function validateForm(data) {
+        if (!data.title) {
+            showNotification('请输入需求标题', 'warning');
+            document.getElementById('taskTitle').focus();
+            return false;
+        }
+        if (data.subtasks.length === 0) {
+            showNotification('请至少添加一个产品', 'warning');
+            return false;
+        }
+
+        for (let subtask of data.subtasks) {
+            if (subtask.type === 'print_external') {
+                if (!subtask.params.url) {
+                    showNotification(`产品 #${subtask.order + 1} 的链接不能为空`, 'warning');
+                    return false;
+                }
+            } else if (subtask.type === 'embroidery') {
+                if (!subtask.params.url) {
+                    showNotification(`产品 #${subtask.order + 1} 的链接不能为空`, 'warning');
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function cancelCreation() {
+        window.location.href = '/task/list/';
+    }
+
+    // ===== 检查草稿 =====
+    async function checkDraft() {
+        console.log('正在检查草稿...');
+        try {
+            const response = await fetch('/api/tasks/drafts/latest/?task_type=product_requirement');
+            const result = await response.json();
+            console.log('检查草稿结果:', result);
+
+            if (result.success && result.data) {
+                console.log('发现草稿，准备显示模态框');
+                draftDataToLoad = result.data;
+                showLoadDraftModal(result.data);
+            } else {
+                console.log('未发现草稿');
+            }
+        } catch (error) {
+            console.error('检查草稿失败:', error);
+        }
+    }
+
+    function showLoadDraftModal(draftData) {
+        const modal = document.getElementById('loadDraftModal');
+        const info = document.getElementById('draftInfoPreview');
+        info.innerHTML = `
+            <div style="margin-bottom: 4px;"><strong>标题:</strong> ${draftData.title || '未命名'}</div>
+            <div style="margin-bottom: 4px;"><strong>时间:</strong> ${formatDateTime(draftData.updated_at || new Date())}</div>
+            <div><strong>产品:</strong> ${draftData.subtasks ? draftData.subtasks.length : 0} 个</div>
+        `;
+        modal.classList.add('active');
+    }
+
+    function closeLoadDraftModal() {
+        document.getElementById('loadDraftModal').classList.remove('active');
+        draftDataToLoad = null;
+    }
+
+    async function confirmLoadDraft() {
+        if (draftDataToLoad) {
+            await loadDraft(draftDataToLoad);
+        }
+        closeLoadDraftModal();
+    }
+
+    async function discardDraft() {
+        if (draftDataToLoad && draftDataToLoad.id) {
+            try {
+                await fetch(`/api/tasks/drafts/${draftDataToLoad.id}/delete/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': getCsrfToken() }
+                });
+                showNotification('草稿已丢弃', 'info');
+            } catch (error) {
+                console.error('删除草稿失败:', error);
+            }
+        }
+        closeLoadDraftModal();
+    }
+
+    async function loadDraft(draftData) {
+        taskData.taskId = draftData.id;
+        document.getElementById('taskTitle').value = draftData.title || '';
+        document.getElementById('taskOwner').value = draftData.owner_id;
+
+        draftData.subtasks.forEach(subtask => {
+            addSubtask(subtask.type, subtask.params);
+        });
+
+        showNotification('草稿已加载', 'success');
+    }
+
+    function debounce(func, wait) {
+        let timeout;
+        return function (...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func(...args), wait);
+        };
+    }
+
+    document.getElementById('taskTitle').addEventListener('input', function () {
+        taskData.title = this.value;
+    });
+</script>
+{% endblock %}
