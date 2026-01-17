@@ -260,11 +260,15 @@ def create_task_api(request):
         # 生成任务单号
         task_no = generate_task_no(current_user)
 
+        # 获取任务类型
+        task_type = data.get('task_type', Task.TYPE_STANDARD)
+
         # 创建主任务
         is_draft = data.get('is_draft', False)
         task = Task.objects.create(
             title=title,
             task_no=task_no,
+            task_type=task_type,
             status='draft' if is_draft else 'pending',
             created_by=current_user,
             owner=owner,
@@ -371,12 +375,15 @@ def save_draft_api(request):
 
         # 获取或创建主任务
         task_id = data.get('task_id')
+        task_type = data.get('task_type', Task.TYPE_STANDARD)
+
         if task_id:
             # 更新现有草稿
             try:
                 task = Task.objects.get(id=task_id, created_by=current_user)
                 task.title = data.get('title', task.title)
                 task.owner = owner
+                task.task_type = task_type
                 task.save()
             except Task.DoesNotExist:
                 return JsonResponse({'success': False, 'message': '草稿不存在或无权修改'}, status=404)
@@ -388,6 +395,7 @@ def save_draft_api(request):
             task = Task.objects.create(
                 title=title,
                 task_no=task_no,
+                task_type=task_type,
                 status='draft',
                 created_by=current_user,
                 owner=owner
@@ -464,15 +472,19 @@ def get_drafts_api(request):
 def get_latest_draft_api(request):
     """
     获取最新的草稿（用于自动恢复）
+    GET /api/tasks/drafts/latest/?task_type=standard|product_requirement
     """
     try:
+        task_type = request.GET.get('task_type', Task.TYPE_STANDARD)
+
         draft = Task.objects.filter(
             created_by=request.user,
-            status='draft'
+            status='draft',
+            task_type=task_type
         ).order_by('-updated_at').first()
 
         if not draft:
-            return JsonResponse({'success': False, 'message': '没有草稿'}, status=404)
+            return JsonResponse({'success': True, 'data': None})
 
         subtasks = draft.subtasks.order_by('order')
 

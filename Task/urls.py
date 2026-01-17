@@ -1,12 +1,13 @@
 # Task/urls.py
 
 from django.urls import path
-from task.view import task_api_views, task_page_views
+from task.view import task_api_views, task_page_views, product_views
 
 app_name = 'task'  # 命名空间
 urlpatterns = [
     # 页面路由
     path('task/create/', task_page_views.task_create_page, name='task_create_page'),
+    path('task/product/create/', product_views.product_create_page, name='product_create_page'),
     path('task/list/', task_page_views.task_list_page, name='task_list_page'),
 
     # API路由

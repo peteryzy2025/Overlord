@@ -14,6 +14,11 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+import mimetypes
+
+mimetypes.add_type("text/css", ".css", True)
+mimetypes.add_type("application/javascript", ".js", True)
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, '.env'))  # 必须加这行
@@ -120,10 +125,6 @@ DATABASES = {
         "PORT": "5432",
         # "PORT": "12763",
 
-        # "NAME": "overlord_db",
-        # "USER": "postgres",
-        # "PASSWORD": "YUEER0811",
-
         "NAME": os.getenv('DB_NAME', 'overlord_db'),  # ✅ 数据库名
         "USER": os.getenv('DB_USER', 'track'),  # ✅ 用户名
         "PASSWORD": os.getenv('DB_PASSWORD'),  # ✅ 密码从环境变量读
@@ -164,7 +165,10 @@ AUTH_USER_MODEL = 'general.User'  # 你的自定义用户模型路径
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
+# STATIC_ROOT = BASE_DIR / 'static'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 
 MEDIA_ROOT = BASE_DIR / 'media'  # 或者可以设置为 D:/Y-Project/Overlord/media
 

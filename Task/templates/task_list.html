@@ -4,13 +4,17 @@
 {% block title %}任务列表 - Overlord{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
     <style>
+        /* 复用 task_create 的容器样式 */
         .task-list-container {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            width: 100%;
             max-width: 1400px;
             margin: 0 auto;
+            padding: 2rem;
         }
 
         .page-header {
@@ -18,11 +22,11 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1rem;
+            padding-bottom: 1.5rem;
         }
 
         .page-title {
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 600;
             color: var(--text-primary);
             margin: 0;
@@ -33,20 +37,8 @@
             gap: 0.75rem;
         }
 
-        .btn-create {
-            background: var(--accent-color);
-            color: white;
-            border: none;
-        }
-
-        .btn-create:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-medium);
-        }
-
-        /* 筛选面板 */
-        .filter-panel {
+        /* 复用 task_create 的卡片样式 */
+        .task-card {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -54,10 +46,46 @@
             box-shadow: var(--shadow-light);
         }
 
+        /* 统计卡片网格 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-light);
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-medium);
+            transform: translateY(-2px);
+            border-color: var(--accent-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* 筛选区样式 */
         .filter-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            gap: 1.5rem;
             align-items: end;
         }
 
@@ -73,46 +101,8 @@
             font-size: 0.9rem;
         }
 
-        /* 统计卡片 */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .stat-card {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1.5rem;
-            text-align: center;
-            transition: all 0.2s ease;
-        }
-
-        .stat-card:hover {
-            box-shadow: var(--shadow-light);
-            transform: translateY(-2px);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-color);
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        /* 任务列表表格 */
-        .task-table-container {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-light);
+        /* 列表容器 */
+        .task-table-wrapper {
             overflow-x: auto;
         }
 
@@ -123,19 +113,19 @@
 
         .task-table th {
             background: var(--bg-secondary);
-            padding: 1rem 0.75rem;
+            padding: 1rem;
             text-align: left;
             font-weight: 600;
             color: var(--text-primary);
             border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
+            white-space: nowrap;
         }
 
         .task-table td {
-            padding: 1rem 0.75rem;
+            padding: 1rem;
             border-bottom: 1px solid var(--border-color);
             color: var(--text-primary);
+            vertical-align: middle;
         }
 
         .task-table tr:last-child td {
@@ -157,41 +147,21 @@
             white-space: nowrap;
         }
 
-        .status-draft {
-            background: var(--bg-tertiary);
-            color: var(--text-tertiary);
-        }
+        .status-draft { background: var(--bg-tertiary); color: var(--text-tertiary); }
+        .status-pending { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+        .status-in-progress { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
+        .status-completed { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
+        .status-failed { background: rgba(229, 62, 62, 0.1); color: var(--danger-color); }
+        .status-cancelled { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); }
 
-        .status-pending {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--accent-color);
-        }
-
-        .status-in-progress {
-            background: rgba(72, 187, 120, 0.1);
-            color: #48bb78;
-        }
-
-        .status-completed {
-            background: rgba(72, 187, 120, 0.1);
-            color: #48bb78;
-        }
-
-        .status-failed {
-            background: rgba(229, 62, 62, 0.1);
-            color: var(--danger-color);
-        }
-
-        .status-cancelled {
-            background: rgba(107, 114, 128, 0.1);
-            color: var(--text-secondary);
-        }
-
-        /* 子任务缩略信息 */
+        /* 子任务标签 */
         .subtask-summary {
             font-size: 0.75rem;
             color: var(--text-tertiary);
-            margin-top: 0.25rem;
+            margin-top: 0.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .subtask-type-tag {
@@ -199,9 +169,9 @@
             align-items: center;
             gap: 0.25rem;
             padding: 0.15rem 0.5rem;
-            margin-right: 0.5rem;
             background: var(--bg-tertiary);
             border-radius: 4px;
+            border: 1px solid var(--border-color);
         }
 
         /* 操作按钮 */
@@ -211,10 +181,6 @@
         }
 
         .btn-action {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
             width: 32px;
             height: 32px;
             display: flex;
@@ -222,27 +188,19 @@
             justify-content: center;
             border-radius: 6px;
             transition: all 0.2s ease;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
         }
 
         .btn-action:hover {
             background: var(--bg-tertiary);
-            color: var(--text-primary);
+            color: var(--accent-color);
+            border-color: var(--border-color);
         }
 
-        /* 空状态 */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-tertiary);
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            color: var(--text-secondary);
-        }
-
-        /* 分页控件 */
+        /* 分页 */
         .pagination-container {
             display: flex;
             justify-content: space-between;
@@ -250,16 +208,6 @@
             margin-top: 1.5rem;
             padding-top: 1rem;
             border-top: 1px solid var(--border-color);
-        }
-
-        .pagination-info {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-        }
-
-        .pagination-buttons {
-            display: flex;
-            gap: 0.5rem;
         }
 
         .pagination-btn {
@@ -272,7 +220,7 @@
             transition: all 0.2s ease;
         }
 
-        .pagination-btn:hover {
+        .pagination-btn:hover:not(:disabled) {
             border-color: var(--accent-color);
             color: var(--accent-color);
         }
@@ -288,30 +236,11 @@
             cursor: not-allowed;
         }
 
-        /* 响应式设计 */
+        /* 响应式 */
         @media (max-width: 768px) {
-            .filter-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .task-table {
-                font-size: 0.875rem;
-            }
-            
-            .task-table th,
-            .task-table td {
-                padding: 0.75rem 0.5rem;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-                gap: 0.25rem;
-            }
-            
-            .btn-action {
-                width: 24px;
-                height: 24px;
-            }
+            .task-list-container { padding: 1rem; }
+            .filter-row { grid-template-columns: 1fr; }
+            .task-table th, .task-table td { padding: 0.75rem 0.5rem; }
         }
     </style>
 {% endblock %}
@@ -324,7 +253,7 @@
                 <i class="fas fa-tasks"></i> 任务列表
             </h1>
             <div class="header-actions">
-                <button class="btn btn-create" onclick="createNewTask()">
+                <button class="btn btn-primary" onclick="createNewTask()">
                     <i class="fas fa-plus"></i> 创建新任务
                 </button>
             </div>
@@ -351,7 +280,7 @@
         </div>
 
         <!-- 筛选面板 -->
-        <div class="filter-panel">
+        <div class="task-card">
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">状态筛选</label>
@@ -409,30 +338,32 @@
         </div>
 
         <!-- 任务列表 -->
-        <div class="task-table-container">
-            <table class="task-table" id="taskTable">
-                <thead>
-                    <tr>
-                        <th style="width: 120px;">任务单号</th>
-                        <th style="width: 25%;">任务标题</th>
-                        <th>状态</th>
-                        <th>子任务数</th>
-                        <th>创建人</th>
-                        <th>所有者</th>
-                        <th>创建时间</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="taskTableBody">
-                    <tr>
-                        <td colspan="8" class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>暂无任务数据</p>
-                            <p>点击"创建新任务"开始</p>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="task-card">
+            <div class="task-table-wrapper">
+                <table class="task-table" id="taskTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">任务单号</th>
+                            <th style="width: 25%;">任务标题</th>
+                            <th>状态</th>
+                            <th>子任务数</th>
+                            <th>创建人</th>
+                            <th>所有者</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="taskTableBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>暂无任务数据</p>
+                                <p>点击"创建新任务"开始</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <!-- 分页控件 -->
             <div class="pagination-container" id="paginationContainer" style="display: none;">

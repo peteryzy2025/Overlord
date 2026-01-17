@@ -42,6 +42,23 @@ class Task(models.Model):
         db_comment='任务当前状态'
     )
 
+    # 任务类型
+    TYPE_STANDARD = 'standard'
+    TYPE_PRODUCT = 'product_requirement'
+
+    TYPE_CHOICES = [
+        (TYPE_STANDARD, '标准任务'),
+        (TYPE_PRODUCT, '产品需求'),
+    ]
+
+    task_type = models.CharField(
+        '任务类型',
+        max_length=50,
+        choices=TYPE_CHOICES,
+        default=TYPE_STANDARD,
+        db_comment='任务类型：standard/product_requirement'
+    )
+
     # 关联关系
     created_by = models.ForeignKey(
         User,
