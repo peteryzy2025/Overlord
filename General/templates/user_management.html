@@ -4,423 +4,460 @@
 {% block title %}人员管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <style>
-        /* 核心改动：限制内容宽度 */
-        .content {
-            max-width: 100vw;
-            overflow-x: hidden;
-        }
+<style>
+    /* 核心改动：限制内容宽度 */
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
 
-        .tab-content {
-            display: block;
-            max-width: 100%;
-            width: 100%;
-            padding: 2rem;
-            box-sizing: border-box;
-            overflow-x: hidden;
-        }
+    .tab-content {
+        display: block;
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
 
-        .page-header {
-            margin-bottom: 0.2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .page-title {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
 
-        .page-subtitle {
-            color: var(--text-secondary);
-        }
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
 
-        .btn-create {
-            background-color: #22c55e;
-            color: white;
-        }
+    .btn-create {
+        background-color: #22c55e;
+        color: white;
+    }
 
-        .btn-create:hover {
-            background-color: #16a34a;
-        }
+    .btn-create:hover {
+        background-color: #16a34a;
+    }
 
-        .filter-section {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 0.2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
 
-        .filter-row {
-            display: flex;
-            gap: 1rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 200px;
-        }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
 
-        .filter-actions {
-            display: flex;
-            flex-direction: row;
-            gap: 0.5rem;
-            align-self: flex-end;
-            margin-top: auto;
-        }
+    .filter-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        align-self: flex-end;
+        margin-top: auto;
+    }
 
-        .filter-label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
 
-        .form-control, .form-select {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.5rem 0.75rem;
-            transition: all 0.3s ease;
-        }
+    .form-control,
+    .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+    }
 
-        .btn {
-            background-color: var(--accent-color);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
 
-        .btn-secondary {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
 
-        /* 关键改动：表格容器允许横向滚动 */
-        .table-container {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-            overflow-x: auto;
-            max-height: 700px;
-            overflow-y: auto;
-            width: 100%;
-        }
+    /* 关键改动：表格容器允许横向滚动 */
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+        width: 100%;
+    }
 
-        /* 核心修复：操作列固定定位 */
-        .table-container th:last-child,
-        .table-container td:last-child {
-            position: sticky;
-            right: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
-        }
+    /* 核心修复：操作列固定定位 */
+    .table-container th:last-child,
+    .table-container td:last-child {
+        position: sticky;
+        right: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+    }
 
-        .table-container table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
 
-        .table-container thead {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: var(--bg-secondary);
-        }
+    .table-container thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--bg-secondary);
+    }
 
-        .table {
-            width: 100%;
-            margin: 0;
-            color: var(--text-primary);
-        }
+    .table {
+        width: 100%;
+        margin: 0;
+        color: var(--text-primary);
+    }
 
-        .table th {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: 600;
-            border-bottom: 1px solid var(--border-color);
-            padding: 1rem;
-            white-space: nowrap;
-            position: sticky;
-            top: 0;
-            z-index: 11;
-        }
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 11;
+    }
 
-        .table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            vertical-align: middle;
-            white-space: nowrap;
-        }
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
 
-        .table tbody tr:hover {
-            background-color: var(--bg-secondary);
-        }
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
 
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
 
-        .status-active {
-            background-color: #C6F6D5;
-            color: #22543D;
-        }
+    .status-active {
+        background-color: #C6F6D5;
+        color: #22543D;
+    }
 
-        .status-inactive {
-            background-color: #FED7D7;
-            color: #742A2A;
-        }
+    .status-inactive {
+        background-color: #FED7D7;
+        color: #742A2A;
+    }
 
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 0.5rem;
-            padding: 1rem;
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
 
-        /* 模态框样式 - 与Amazon店铺管理完全一致 */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            backdrop-filter: blur(4px);
-        }
+    /* 模态框样式 - 与Amazon店铺管理完全一致 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
 
-        /* 模态框容器 - 改为flex布局以便底部固定 */
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: var(--bg-primary);
-            border-radius: 16px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-heavy);
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            box-sizing: border-box;
-        }
+    /* 模态框容器 - 改为flex布局以便底部固定 */
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        box-sizing: border-box;
+    }
 
-        /* 模态框头部 - 增加sticky定位 */
-        .modal-header {
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    /* 模态框头部 - 增加sticky定位 */
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
 
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-        }
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
 
-        .modal-close:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
 
-        /* 模态框主体 - 修复：不设置display: grid，使用默认block */
-        .modal-body {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 1rem;
-        }
+    /* 模态框主体 - 修复：不设置display: grid，使用默认block */
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
 
-        /* 表单网格布局 - 在.modal-body内部使用wrapper */
-        .modal-form-wrapper {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1rem;
-        }
+    /* 表单网格布局 - 在.modal-body内部使用wrapper */
+    .modal-form-wrapper {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
 
-        .form-group label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
 
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.75rem;
-            transition: all 0.3s ease;
-        }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
 
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--accent-color);
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
 
-        .form-group input:disabled,
-        .form-group textarea:disabled {
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-        }
+    .form-group input:disabled,
+    .form-group textarea:disabled {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
 
-        /* 模态框底部 - 固定定位 */
-        .modal-footer {
-            position: sticky;
-            bottom: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-            margin-top: auto;
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
+    /* 模态框底部 - 固定定位 */
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
 
-        .btn-cancel-modal {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
+    .btn-cancel-modal {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
 
-        .btn-save-modal {
-            background-color: #22c55e;
-        }
+    .btn-save-modal {
+        background-color: #22c55e;
+    }
 
-        .btn-save-modal:hover {
-            background-color: #16a34a;
-        }
+    .btn-save-modal:hover {
+        background-color: #16a34a;
+    }
 
-        .password-input {
-            font-family: monospace;
-        }
+    .password-input {
+        font-family: monospace;
+    }
 
-        .section-title {
-            grid-column: 1 / -1;
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--accent-color);
-            margin: 1rem 0 0.5rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid var(--border-color);
-        }
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
 
-        .field-disabled {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-secondary) !important;
-            cursor: not-allowed;
-        }
-    </style>
+    .field-disabled {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-secondary) !important;
+        cursor: not-allowed;
+    }
+
+    /* 批量操作栏样式 */
+    .bulk-action-bar {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(150%);
+        /* 默认隐藏 */
+        background-color: var(--bg-primary);
+        padding: 1rem 2rem;
+        border-radius: 50px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        z-index: 1000;
+        border: 1px solid var(--border-color);
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .bulk-action-bar.visible {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .selected-count {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .w-checkbox {
+        width: 50px;
+        text-align: center;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div id="users-tab" class="tab-content">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">人员管理</h1>
-                <p class="page-subtitle">管理团队成员信息、权限和外部平台账号</p>
-            </div>
-            <button class="btn btn-create" onclick="openCreateModal()">
-                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建用户
-            </button>
+<div id="users-tab" class="tab-content">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">人员管理</h1>
+            <p class="page-subtitle">管理团队成员信息、权限和外部平台账号</p>
         </div>
+        <button class="btn btn-create" onclick="openCreateModal()">
+            <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建用户
+        </button>
+    </div>
 
-        <div class="filter-section">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">角色筛选</label>
-                    <select class="form-select" id="userRoleFilter">
-                        <option value="">全部角色</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">状态筛选</label>
-                    <select class="form-select" id="userStatusFilter">
-                        <option value="">全部状态</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">部门</label>
-                    <input type="text" class="form-control" id="userDepartmentFilter" placeholder="搜索部门">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">搜索</label>
-                    <input type="text" class="form-control" id="userSearch" placeholder="搜索用户名/名字">
-                </div>
-                <div class="filter-actions">
-                    <button class="btn" onclick="filterUsers()">筛选</button>
-                    <button class="btn btn-secondary" onclick="resetUserFilters()">重置</button>
-                </div>
+    <div class="filter-section">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">角色筛选</label>
+                <select class="form-select" id="userRoleFilter">
+                    <option value="">全部角色</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">状态筛选</label>
+                <select class="form-select" id="userStatusFilter">
+                    <option value="">全部状态</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">部门</label>
+                <input type="text" class="form-control" id="userDepartmentFilter" placeholder="搜索部门">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">搜索</label>
+                <input type="text" class="form-control" id="userSearch" placeholder="搜索用户名/名字">
+            </div>
+            <div class="filter-actions">
+                <button class="btn" onclick="filterUsers()">筛选</button>
+                <button class="btn btn-secondary" onclick="resetUserFilters()">重置</button>
             </div>
         </div>
+    </div>
 
-        <div class="table-container">
-            <table class="table" id="usersTable">
-                <thead>
+    <div class="table-container">
+        <table class="table" id="usersTable">
+            <thead>
                 <tr>
+                    <th class="w-checkbox">
+                        <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                    </th>
                     <th>ID</th>
                     <th>用户名</th>
                     <th>名字</th>
@@ -428,11 +465,9 @@
                     <th>部门</th>
                     <th>角色</th>
                     <th>状态</th>
-                    <th>公司</th>
                     <th>平台</th>
                     <th>分组</th>
                     <th>备注</th>
-                    <th>创建时间</th>
                     <th>闪电云账号</th>
                     <th>闪电云用户名</th>
                     <th>闪电云密码</th>
@@ -445,296 +480,329 @@
                     <th>迪唯密码</th>
                     <th>操作</th>
                 </tr>
-                </thead>
-                <tbody id="usersTableBody">
+            </thead>
+            <tbody id="usersTableBody">
                 <!-- 动态生成内容 -->
-                </tbody>
-            </table>
-        </div>
-
-        <div class="pagination-container">
-            <div class="pagination-info" data-total="0">
-                显示第 1 到 10 条，共 0 条记录
-                <select id="pageSizeSelect"
-                        style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
-                        onchange="changePageSize(this.value)">
-                    <option value="10">10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                    <option value="100">100条/页</option>
-                </select>
-            </div>
-            <nav>
-                <ul class="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">上一页</a>
-                    </li>
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">下一页</a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
+            </tbody>
+        </table>
     </div>
 
-    <!-- 新增：模态框 -->
-    <div class="modal-overlay" id="userModalOverlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modalTitle">编辑用户</h2>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <div class="modal-body" id="modalBody">
-                <!-- 动态生成表单内容 -->
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
-                <button class="btn btn-save-modal" onclick="saveUserModal()">保存</button>
-            </div>
+    <div class="pagination-container">
+        <div class="pagination-info" data-total="0">
+            显示第 1 到 10 条，共 0 条记录
+            <select id="pageSizeSelect"
+                style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
+                onchange="changePageSize(this.value)">
+                <option value="10">10条/页</option>
+                <option value="20">20条/页</option>
+                <option value="50">50条/页</option>
+                <option value="100">100条/页</option>
+            </select>
+        </div>
+        <nav>
+            <ul class="pagination">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">上一页</a>
+                </li>
+                <li class="page-item active">
+                    <a class="page-link" href="#">1</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="#">下一页</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    <!-- 批量操作栏 -->
+    <div class="bulk-action-bar" id="bulkActionBar">
+        <span class="selected-count" id="selectedCountText">已选择 0 位用户</span>
+        <button class="btn btn-create" onclick="openBulkPermissionModal('add')">
+            <i class="fas fa-plus-circle" style="margin-right: 0.5rem;"></i>批量添加权限
+        </button>
+        <button class="btn btn-secondary" onclick="openBulkPermissionModal('remove')"
+            style="background-color: #ef4444; color: white;">
+            <i class="fas fa-minus-circle" style="margin-right: 0.5rem;"></i>批量移除权限
+        </button>
+    </div>
+</div>
+
+<!-- 新增：模态框 -->
+<div class="modal-overlay" id="userModalOverlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title" id="modalTitle">编辑用户</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <!-- 动态生成表单内容 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveUserModal()">保存</button>
         </div>
     </div>
+</div>
+
+<!-- 批量权限模态框 -->
+<div class="modal-overlay" id="bulkPermissionModalOverlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title" id="bulkModalTitle">批量操作</h2>
+            <button class="modal-close" onclick="closeBulkModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="bulkModalDescription" style="margin-bottom: 1rem; color: var(--text-secondary);">请选择要操作的权限：</p>
+            <div id="bulkPermissionList"
+                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+                <!-- 动态生成 -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeBulkModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitBulkPermission()">确认执行</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-    <script>
-        // 全局变量
-        let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
-        let allPermissions = [];    // 从数据库加载的权限列表 [{id, code, name, description}]
-        let modalMode = null;       // 'create' | 'edit'
-        let currentUserId = null;   // 当前编辑的用户ID
-        let currentPage = 1;        // 当前页码
-        let currentPageSize = 10;   // 每页条数
+<script>
+    // 全局变量
+    let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
+    let allPermissions = [];    // 从数据库加载的权限列表 [{id, code, name, description}]
+    let modalMode = null;       // 'create' | 'edit'
+    let currentUserId = null;   // 当前编辑的用户ID
+    let currentPage = 1;        // 当前页码
+    let currentPageSize = 10;   // 每页条数
 
-        // ==========================================
-        // API 数据获取
-        // ==========================================
+    // ==========================================
+    // API 数据获取
+    // ==========================================
 
-        /**
-         * 从API加载用户列表数据（带分页和筛选）
-         * @param {number} page - 页码
-         * @param {number} pageSize - 每页条数
-         * @param {boolean} useFilters - 是否应用当前筛选条件
-         * @returns {Promise<{data: Array, total: number}>} 用户数据和总条数
-         */
-        async function loadUsersFromAPI(page = 1, pageSize = 10, useFilters = true) {
-            // 构建参数对象
-            const params = new URLSearchParams({
-                page: page,
-                page_size: pageSize,
-            });
+    /**
+     * 从API加载用户列表数据（带分页和筛选）
+     * @param {number} page - 页码
+     * @param {number} pageSize - 每页条数
+     * @param {boolean} useFilters - 是否应用当前筛选条件
+     * @returns {Promise<{data: Array, total: number}>} 用户数据和总条数
+     */
+    async function loadUsersFromAPI(page = 1, pageSize = 10, useFilters = true) {
+        // 构建参数对象
+        const params = new URLSearchParams({
+            page: page,
+            page_size: pageSize,
+        });
 
-            // 如果使用筛选器，则添加筛选参数
-            if (useFilters) {
-                const role = document.getElementById('userRoleFilter')?.value;
-                const status = document.getElementById('userStatusFilter')?.value;
-                const department = document.getElementById('userDepartmentFilter')?.value;
-                const search = document.getElementById('userSearch')?.value;
+        // 如果使用筛选器，则添加筛选参数
+        if (useFilters) {
+            const role = document.getElementById('userRoleFilter')?.value;
+            const status = document.getElementById('userStatusFilter')?.value;
+            const department = document.getElementById('userDepartmentFilter')?.value;
+            const search = document.getElementById('userSearch')?.value;
 
-                if (role) params.append('role', role);
-                if (status) params.append('status', status);
-                if (department) params.append('department', department);
-                if (search) params.append('search', search);
-            }
-
-            try {
-                const response = await fetch(`/api/users/?${params}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (result.success) {
-                    return {
-                        data: result.data,
-                        total: result.total,
-                        page: result.page,
-                        pageSize: result.page_size
-                    };
-                }
-
-                console.error('获取用户数据失败:', result.error);
-                alert('加载用户数据失败: ' + result.error);
-                return {data: [], total: 0};
-            } catch (error) {
-                console.error('API请求错误:', error);
-                alert('无法连接到服务器，请检查网络连接');
-                return {data: [], total: 0};
-            }
+            if (role) params.append('role', role);
+            if (status) params.append('status', status);
+            if (department) params.append('department', department);
+            if (search) params.append('search', search);
         }
 
-        /**
-         * 从API加载角色列表（从数据库去重获取）
-         * @returns {Promise<Array>} 角色数据数组
-         */
-        async function loadRolesFromAPI() {
-            try {
-                const response = await fetch('/api/roles/');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        try {
+            const response = await fetch(`/api/users/?${params}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const result = await response.json();
-                if (result.success) {
-                    allRoles = result.data; // 格式: [{key: 'role_name', name: 'role_name'}, ...]
-                    return true;
-                }
-
-                console.error('获取角色列表失败:', result.error);
-                allRoles = [];
-                return false;
-            } catch (error) {
-                console.error('角色API请求错误:', error);
-                allRoles = [];
-                return false;
+            const result = await response.json();
+            if (result.success) {
+                return {
+                    data: result.data,
+                    total: result.total,
+                    page: result.page,
+                    pageSize: result.page_size
+                };
             }
+
+            console.error('获取用户数据失败:', result.error);
+            alert('加载用户数据失败: ' + result.error);
+            return { data: [], total: 0 };
+        } catch (error) {
+            console.error('API请求错误:', error);
+            alert('无法连接到服务器，请检查网络连接');
+            return { data: [], total: 0 };
         }
+    }
 
-        /**
-         * 从API加载权限配置列表
-         * @returns {Promise<boolean>}
-         */
-        async function loadPermissionConfigsFromAPI() {
-            try {
-                const response = await fetch('/api/permissions/');
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    /**
+     * 从API加载角色列表（从数据库去重获取）
+     * @returns {Promise<Array>} 角色数据数组
+     */
+    async function loadRolesFromAPI() {
+        try {
+            const response = await fetch('/api/roles/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-                const result = await response.json();
-                if (result.success) {
-                    allPermissions = result.data; // [{id, code, name, description}, ...]
-                    console.log("权限配置加载成功:", allPermissions);
-                    return true;
-                }
-                console.error('获取权限列表失败:', result.error);
-                return false;
-            } catch (error) {
-                console.error('权限API请求错误:', error);
-                return false;
+            const result = await response.json();
+            if (result.success) {
+                allRoles = result.data; // 格式: [{key: 'role_name', name: 'role_name'}, ...]
+                return true;
             }
+
+            console.error('获取角色列表失败:', result.error);
+            allRoles = [];
+            return false;
+        } catch (error) {
+            console.error('角色API请求错误:', error);
+            allRoles = [];
+            return false;
         }
+    }
 
-        // ==========================================
-        // 分页控件渲染
-        // ==========================================
+    /**
+     * 从API加载权限配置列表
+     * @returns {Promise<boolean>}
+     */
+    async function loadPermissionConfigsFromAPI() {
+        try {
+            const response = await fetch('/api/permissions/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-        /**
-         * 渲染分页控件
-         * @param {number} totalItems - 总条数
-         * @param {number} currentPage - 当前页
-         * @param {number} pageSize - 每页条数
-         */
-        function renderPagination(totalItems, currentPage, pageSize) {
-            const totalPages = Math.ceil(totalItems / pageSize);
-            const paginationHtml = [];
+            const result = await response.json();
+            if (result.success) {
+                allPermissions = result.data; // [{id, code, name, description}, ...]
+                console.log("权限配置加载成功:", allPermissions);
+                return true;
+            }
+            console.error('获取权限列表失败:', result.error);
+            return false;
+        } catch (error) {
+            console.error('权限API请求错误:', error);
+            return false;
+        }
+    }
 
-            // 上一页
-            const prevDisabled = currentPage === 1 ? 'disabled' : '';
-            paginationHtml.push(`
+    // ==========================================
+    // 分页控件渲染
+    // ==========================================
+
+    /**
+     * 渲染分页控件
+     * @param {number} totalItems - 总条数
+     * @param {number} currentPage - 当前页
+     * @param {number} pageSize - 每页条数
+     */
+    function renderPagination(totalItems, currentPage, pageSize) {
+        const totalPages = Math.ceil(totalItems / pageSize);
+        const paginationHtml = [];
+
+        // 上一页
+        const prevDisabled = currentPage === 1 ? 'disabled' : '';
+        paginationHtml.push(`
         <li class="page-item ${prevDisabled}">
             <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
         </li>
     `);
 
-            // 页码（显示最多5页）
-            const startPage = Math.max(1, currentPage - 2);
-            const endPage = Math.min(totalPages, startPage + 4);
+        // 页码（显示最多5页）
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, startPage + 4);
 
-            for (let i = startPage; i <= endPage; i++) {
-                const active = i === currentPage ? 'active' : '';
-                paginationHtml.push(`
+        for (let i = startPage; i <= endPage; i++) {
+            const active = i === currentPage ? 'active' : '';
+            paginationHtml.push(`
             <li class="page-item ${active}">
                 <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
             </li>
         `);
-            }
+        }
 
-            // 下一页
-            const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-            paginationHtml.push(`
+        // 下一页
+        const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+        paginationHtml.push(`
         <li class="page-item ${nextDisabled}">
             <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
         </li>
     `);
 
-            document.querySelector('.pagination').innerHTML = paginationHtml.join('');
+        document.querySelector('.pagination').innerHTML = paginationHtml.join('');
+    }
+
+    /**
+     * 切换页码
+     * @param {number} page - 目标页码
+     */
+    async function changePage(page) {
+        const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
+        const totalPages = Math.ceil(totalItems / currentPageSize);
+
+        if (page < 1 || page > totalPages) return;
+
+        currentPage = page;
+        await loadUsersTable();
+    }
+
+    /**
+     * 改变每页条数
+     * @param {number} pageSize - 新的每页条数
+     */
+    async function changePageSize(pageSize) {
+        currentPageSize = parseInt(pageSize);
+        currentPage = 1; // 重置到第一页
+        await loadUsersTable();
+    }
+
+    // ==========================================
+    // 筛选器与表格渲染
+    // ==========================================
+
+    /**
+     * 根据用户数据动态更新筛选器选项
+     * @param {Array} users - 用户数据数组
+     */
+    function updateFilterOptions(users) {
+        // 角色筛选器：使用从数据库获取的所有角色
+        const roleSelect = document.getElementById('userRoleFilter');
+        roleSelect.innerHTML = '<option value="">全部角色</option>';
+        allRoles.forEach(roleDef => {
+            const option = document.createElement('option');
+            option.value = roleDef.key;
+            option.textContent = roleDef.name;
+            roleSelect.appendChild(option);
+        });
+
+        // 状态筛选器：从现有数据中动态提取
+        const statusMap = { 'active': '正常', 'inactive': '停用' };
+        // 手动指定需要的状态选项，不再从数据动态生成，以确保只显示正常和停用
+        const uniqueStatuses = ['active', 'inactive'];
+
+        const statusSelect = document.getElementById('userStatusFilter');
+        statusSelect.innerHTML = '<option value="">全部状态</option>';
+        uniqueStatuses.forEach(status => {
+            const option = document.createElement('option');
+            option.value = status;
+            option.textContent = statusMap[status] || status;
+            statusSelect.appendChild(option);
+        });
+    }
+
+    /**
+     * 加载并渲染用户表格（含分页）
+ */
+    async function loadUsersTable() {
+        const tbody = document.getElementById('usersTableBody');
+        tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+
+        const { data, total, page, pageSize } = await loadUsersFromAPI(currentPage, currentPageSize);
+        tbody.innerHTML = '';
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+            document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
+            document.querySelector('.pagination').innerHTML = '';
+            return;
         }
 
-        /**
-         * 切换页码
-         * @param {number} page - 目标页码
-         */
-        async function changePage(page) {
-            const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
-            const totalPages = Math.ceil(totalItems / currentPageSize);
-
-            if (page < 1 || page > totalPages) return;
-
-            currentPage = page;
-            await loadUsersTable();
-        }
-
-        /**
-         * 改变每页条数
-         * @param {number} pageSize - 新的每页条数
-         */
-        async function changePageSize(pageSize) {
-            currentPageSize = parseInt(pageSize);
-            currentPage = 1; // 重置到第一页
-            await loadUsersTable();
-        }
-
-        // ==========================================
-        // 筛选器与表格渲染
-        // ==========================================
-
-        /**
-         * 根据用户数据动态更新筛选器选项
-         * @param {Array} users - 用户数据数组
-         */
-        function updateFilterOptions(users) {
-            // 角色筛选器：使用从数据库获取的所有角色
-            const roleSelect = document.getElementById('userRoleFilter');
-            roleSelect.innerHTML = '<option value="">全部角色</option>';
-            allRoles.forEach(roleDef => {
-                const option = document.createElement('option');
-                option.value = roleDef.key;
-                option.textContent = roleDef.name;
-                roleSelect.appendChild(option);
-            });
-
-            // 状态筛选器：从现有数据中动态提取
-            const statusMap = {'active': '正常', 'inactive': '停用', 'cancelled': '注销'};
-            const uniqueStatuses = [...new Set(users.map(u => u.status).filter(Boolean))];
-
-            const statusSelect = document.getElementById('userStatusFilter');
-            statusSelect.innerHTML = '<option value="">全部状态</option>';
-            uniqueStatuses.sort().forEach(status => {
-                const option = document.createElement('option');
-                option.value = status;
-                option.textContent = statusMap[status] || status;
-                statusSelect.appendChild(option);
-            });
-        }
-
-        /**
-         * 加载并渲染用户表格（含分页）
-         */
-        async function loadUsersTable() {
-            const tbody = document.getElementById('usersTableBody');
-            tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">加载中...</td></tr>';
-
-            const {data, total, page, pageSize} = await loadUsersFromAPI(currentPage, currentPageSize);
-            tbody.innerHTML = '';
-
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
-                document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
-                document.querySelector('.pagination').innerHTML = '';
-                return;
-            }
-
-            // 更新分页信息
-            const start = (page - 1) * pageSize + 1;
-            const end = start + data.length - 1;
-            const pageInfoHtml = `
+        // 更新分页信息
+        const start = (page - 1) * pageSize + 1;
+        const end = start + data.length - 1;
+        const pageInfoHtml = `
         显示第 ${start} 到 ${end} 条，共 ${total} 条记录
         <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
             <option value="10" ${pageSize === 10 ? 'selected' : ''}>10条/页</option>
@@ -743,33 +811,35 @@
             <option value="100" ${pageSize === 100 ? 'selected' : ''}>100条/页</option>
         </select>
     `;
-            document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
-            document.querySelector('.pagination-info').dataset.total = total;
+        document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
+        document.querySelector('.pagination-info').dataset.total = total;
 
-            // 获取所有用户数据（不应用筛选条件）用于更新筛选器选项
-            updateFilterOptions(await loadUsersFromAPI(1, 9999, false).then(r => r.data));
-            renderUserRows(data);
-            renderPagination(total, page, pageSize);
-        }
+        // 获取所有用户数据（不应用筛选条件）用于更新筛选器选项
+        updateFilterOptions(await loadUsersFromAPI(1, 9999, false).then(r => r.data));
+        renderUserRows(data);
+        renderPagination(total, page, pageSize);
+    }
 
-        /**
-         * 渲染用户表格行
-         * @param {Array} users - 用户数据数组
-         */
-        function renderUserRows(users) {
-            const tbody = document.getElementById('usersTableBody');
-            const roleMap = {'admin': '管理员', 'operator': '运营', 'assistant': '运营助理', 'leader': '运营组长'};
-            const statusNames = {'active': '正常', 'inactive': '停用', 'cancelled': '注销'};
-            const statusClasses = {
-                'active': 'status-active',
-                'inactive': 'status-inactive',
-                'cancelled': 'status-inactive'
-            };
+    /**
+     * 渲染用户表格行
+     * @param {Array} users - 用户数据数组
+     */
+    function renderUserRows(users) {
+        const tbody = document.getElementById('usersTableBody');
+        const roleMap = { 'admin': '管理员', 'operator': '运营', 'assistant': '运营助理', 'leader': '运营组长' };
+        const statusNames = { 'active': '正常', 'inactive': '停用' };
+        const statusClasses = {
+            'active': 'status-active',
+            'inactive': 'status-inactive',
+        };
 
-            tbody.innerHTML = users.map(user => {
-                const account = user.operational_account || {};
-                return `
+        tbody.innerHTML = users.map(user => {
+            const account = user.operational_account || {};
+            return `
             <tr data-user-id="${user.id}" data-permissions='${JSON.stringify(user.permissions || [])}'>
+                <td class="w-checkbox">
+                    <input type="checkbox" class="user-select-checkbox" value="${user.id}" onchange="updateBulkActionBar()">
+                </td>
                 <td>${user.id}</td>
                 <td class="field-username">${user.username}</td>
                 <td class="field-first_name">${user.first_name || '-'}</td>
@@ -781,11 +851,10 @@
                         ${statusNames[user.status] || '-'}
                     </span>
                 </td>
-                <td class="field-company_name">${user.company_name || '-'}</td>
                 <td class="field-platform">${user.platform || '-'}</td>
                 <td class="field-ops_group">${user.ops_group || '-'}</td>
                 <td class="field-remark">${user.remark || '-'}</td>
-                <td>${user.createdAt}</td>
+                <td class="field-wx_url" style="display:none;">${user.wx_url || ''}</td>
                 <td class="field-shandianyun_account">${account.shandianyun_account || '-'}</td>
                 <td class="field-shandianyun_username">${account.shandianyun_username || '-'}</td>
                 <td class="field-shandianyun_password">${account.shandianyun_password || '-'}</td>
@@ -801,137 +870,137 @@
                 </td>
             </tr>
         `;
-            }).join('');
-        }
+        }).join('');
+    }
 
-        /**
-         * 执行用户筛选（带分页重置）
-         */
-        async function filterUsers() {
-            currentPage = 1; // 筛选时重置到第一页
-            await loadUsersTable();
-        }
+    /**
+     * 执行用户筛选（带分页重置）
+     */
+    async function filterUsers() {
+        currentPage = 1; // 筛选时重置到第一页
+        await loadUsersTable();
+    }
 
-        /**
-         * 重置所有筛选条件（带分页重置）
-         */
-        function resetUserFilters() {
-            document.getElementById('userRoleFilter').value = '';
-            document.getElementById('userStatusFilter').value = '';
-            document.getElementById('userDepartmentFilter').value = '';
-            document.getElementById('userSearch').value = '';
-            currentPage = 1; // 重置页码
-            loadUsersTable();
-        }
+    /**
+     * 重置所有筛选条件（带分页重置）
+     */
+    function resetUserFilters() {
+        document.getElementById('userRoleFilter').value = '';
+        document.getElementById('userStatusFilter').value = '';
+        document.getElementById('userDepartmentFilter').value = '';
+        document.getElementById('userSearch').value = '';
+        currentPage = 1; // 重置页码
+        loadUsersTable();
+    }
 
-        // ==========================================
-        // 模态框操作
-        // ==========================================
+    // ==========================================
+    // 模态框操作
+    // ==========================================
 
-        /**
-         * 打开新建用户模态框
-         */
-        function openCreateModal() {
-            modalMode = 'create';
-            currentUserId = null;
-            document.getElementById('modalTitle').textContent = '新建用户';
-            document.getElementById('modalBody').innerHTML = generateModalForm();
-            document.getElementById('userModalOverlay').style.display = 'block';
-        }
+    /**
+     * 打开新建用户模态框
+     */
+    function openCreateModal() {
+        modalMode = 'create';
+        currentUserId = null;
+        document.getElementById('modalTitle').textContent = '新建用户';
+        document.getElementById('modalBody').innerHTML = generateModalForm();
+        document.getElementById('userModalOverlay').style.display = 'block';
+    }
 
-        /**
-         * 打开编辑用户模态框
-         * @param {number} userId - 用户ID
-         */
-        function openEditModal(userId) {
-            modalMode = 'edit';
-            currentUserId = userId;
+    /**
+     * 打开编辑用户模态框
+     * @param {number} userId - 用户ID
+     */
+    function openEditModal(userId) {
+        modalMode = 'edit';
+        currentUserId = userId;
 
-            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
-            if (!row) return;
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        if (!row) return;
 
-            document.getElementById('modalTitle').textContent = '编辑用户';
+        document.getElementById('modalTitle').textContent = '编辑用户';
 
-            // 提取行数据
-            const userData = {
-                id: userId,
-                username: row.querySelector('.field-username').textContent,
-                first_name: row.querySelector('.field-first_name').textContent,
-                phone: row.querySelector('.field-phone').textContent,
-                department: row.querySelector('.field-department').textContent,
-                role: row.querySelector('.field-role').textContent,
-                status: row.querySelector('.field-status .status-badge').dataset.status || 'active',
-                company_name: row.querySelector('.field-company_name').textContent,
-                platform: row.querySelector('.field-platform').textContent,
-                ops_group: row.querySelector('.field-ops_group').textContent,
-                remark: row.querySelector('.field-remark').textContent,
-                permissions: [],
-                operational_account: {
-                    shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
-                    shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
-                    shandianyun_password: row.querySelector('.field-shandianyun_password').textContent,
-                    lingxing_username: row.querySelector('.field-lingxing_username').textContent,
-                    lingxing_password: row.querySelector('.field-lingxing_password').textContent,
-                    ziniao_company: row.querySelector('.field-ziniao_company').textContent,
-                    ziniao_username: row.querySelector('.field-ziniao_username').textContent,
-                    ziniao_password: row.querySelector('.field-ziniao_password').textContent,
-                    diwei_account: row.querySelector('.field-diwei_account').textContent,
-                    diwei_password: row.querySelector('.field-diwei_password').textContent,
-                }
-            };
-
-            // 从 data-permissions 属性解析权限列表
-            try {
-                const permissionsStr = row.dataset.permissions;
-                console.log("data-permissions 原始值:", permissionsStr); // 检查原始值
-                if (permissionsStr) {
-                    // 兼容处理：去除可能存在的方括号，支持 JSON 数组格式或纯逗号分隔
-                    const cleanStr = permissionsStr.toString().replace(/[\[\]"]/g, '');
-                    userData.permissions = cleanStr.split(',')
-                        .filter(s => s.trim() !== '')
-                        .map(s => parseInt(s))
-                        .filter(n => !isNaN(n)); // 过滤掉可能的 NaN
-                }
-            } catch (e) {
-                console.error("解析权限失败", e);
-                userData.permissions = [];
+        // 提取行数据
+        const userData = {
+            id: userId,
+            username: row.querySelector('.field-username').textContent,
+            first_name: row.querySelector('.field-first_name').textContent,
+            phone: row.querySelector('.field-phone').textContent,
+            department: row.querySelector('.field-department').textContent,
+            role: row.querySelector('.field-role').textContent,
+            status: row.querySelector('.field-status .status-badge').dataset.status || 'active',
+            platform: row.querySelector('.field-platform').textContent,
+            ops_group: row.querySelector('.field-ops_group').textContent,
+            remark: row.querySelector('.field-remark').textContent,
+            wx_url: row.querySelector('.field-wx_url').textContent,
+            permissions: [],
+            operational_account: {
+                shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
+                shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
+                shandianyun_password: row.querySelector('.field-shandianyun_password').textContent,
+                lingxing_username: row.querySelector('.field-lingxing_username').textContent,
+                lingxing_password: row.querySelector('.field-lingxing_password').textContent,
+                ziniao_company: row.querySelector('.field-ziniao_company').textContent,
+                ziniao_username: row.querySelector('.field-ziniao_username').textContent,
+                ziniao_password: row.querySelector('.field-ziniao_password').textContent,
+                diwei_account: row.querySelector('.field-diwei_account').textContent,
+                diwei_password: row.querySelector('.field-diwei_password').textContent,
             }
+        };
 
-            console.log("用户权限数据:", userData.permissions); // 检查解析后的权限数据
-            document.getElementById('modalBody').innerHTML = generateModalForm(userData);
-            document.getElementById('userModalOverlay').style.display = 'block';
+        // 从 data-permissions 属性解析权限列表
+        try {
+            const permissionsStr = row.dataset.permissions;
+            console.log("data-permissions 原始值:", permissionsStr); // 检查原始值
+            if (permissionsStr) {
+                // 兼容处理：去除可能存在的方括号，支持 JSON 数组格式或纯逗号分隔
+                const cleanStr = permissionsStr.toString().replace(/[\[\]"]/g, '');
+                userData.permissions = cleanStr.split(',')
+                    .filter(s => s.trim() !== '')
+                    .map(s => parseInt(s))
+                    .filter(n => !isNaN(n)); // 过滤掉可能的 NaN
+            }
+        } catch (e) {
+            console.error("解析权限失败", e);
+            userData.permissions = [];
         }
 
-        /**
-         * 关闭模态框
-         */
-        function closeModal() {
-            document.getElementById('userModalOverlay').style.display = 'none';
-            modalMode = null;
-            currentUserId = null;
-        }
+        console.log("用户权限数据:", userData.permissions); // 检查解析后的权限数据
+        document.getElementById('modalBody').innerHTML = generateModalForm(userData);
+        document.getElementById('userModalOverlay').style.display = 'block';
+    }
 
-        /**
-         * 生成模态框表单HTML
-         * @param {Object} userData - 用户数据（编辑时传入）
-         * @returns {string} HTML字符串
-         */
-        function generateModalForm(userData = null) {
-            const isCreate = !userData;
-            const data = userData || {};
-            const account = data.operational_account || {};
+    /**
+     * 关闭模态框
+     */
+    function closeModal() {
+        document.getElementById('userModalOverlay').style.display = 'none';
+        modalMode = null;
+        currentUserId = null;
+    }
 
-            // 动态生成角色选项（来自数据库）
-            const roleOptionsHtml = allRoles.map(roleDef => {
-                const selected = data.role === roleDef.key ? 'selected' : '';
-                return `<option value="${roleDef.key}" ${selected}>${roleDef.name}</option>`;
-            }).join('');
+    /**
+     * 生成模态框表单HTML
+     * @param {Object} userData - 用户数据（编辑时传入）
+     * @returns {string} HTML字符串
+     */
+    function generateModalForm(userData = null) {
+        const isCreate = !userData;
+        const data = userData || {};
+        const account = data.operational_account || {};
 
-            // 动态生成权限复选框
-            const currentPermissions = data.permissions || [];
-            const permissionsHtml = allPermissions.map(perm => {
-                const checked = currentPermissions.includes(perm.code) ? 'checked' : '';
-                return `
+        // 动态生成角色选项（来自数据库）
+        const roleOptionsHtml = allRoles.map(roleDef => {
+            const selected = data.role === roleDef.key ? 'selected' : '';
+            return `<option value="${roleDef.key}" ${selected}>${roleDef.name}</option>`;
+        }).join('');
+
+        // 动态生成权限复选框
+        const currentPermissions = data.permissions || [];
+        const permissionsHtml = allPermissions.map(perm => {
+            const checked = currentPermissions.includes(perm.code) ? 'checked' : '';
+            return `
                     <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0;">
                         <input type="checkbox" id="perm-${perm.code}" name="permissions" value="${perm.code}" ${checked}>
                         <label for="perm-${perm.code}" style="margin:0; font-weight: normal;">
@@ -940,9 +1009,9 @@
                         </label>
                     </div>
                 `;
-            }).join('');
+        }).join('');
 
-            return `
+        return `
         <div class="modal-form-wrapper">
             <div class="form-group">
                 <label>用户名 <span style="color:red;">*</span></label>
@@ -981,20 +1050,15 @@
                 <select id="modal-status">
                     <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
                     <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
-                    <option value="cancelled" ${data.status === 'cancelled' ? 'selected' : ''}>注销</option>
                 </select>
-            </div>
-            <div class="form-group">
-                <label>公司</label>
-                <input type="text" id="modal-company_name" value="${data.company_name === '-' ? '' : (data.company_name || '')}">
             </div>
             <div class="form-group">
                 <label>平台</label>
                 <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
             </div>
             <div class="form-group">
-                <label>分组</label>
-                <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
+                <label>企业微信Webhook</label>
+                <input type="text" id="modal-wx_url" value="${data.wx_url || ''}">
             </div>
 <div class="form-group">
     <label>备注</label>
@@ -1002,6 +1066,10 @@
 </div>
 
             <div class="section-title">运营账号信息</div>
+            <div class="form-group">
+                <label>分组</label>
+                <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
+            </div>
             <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
             <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
             <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
@@ -1014,142 +1082,274 @@
             <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
         </div>
     `;
+    }
+
+    /**
+     * 保存模态框数据（新建或编辑）
+     */
+    async function saveUserModal() {
+        // 收集选中的权限
+        const selectedPermissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
+            .map(cb => parseInt(cb.value));
+
+        // 收集表单数据
+        const formData = {
+            username: document.getElementById('modal-username').value.trim(),
+            password: document.getElementById('modal-password').value.trim(),
+            first_name: document.getElementById('modal-first_name').value.trim(),
+            phone: document.getElementById('modal-phone').value.trim(),
+            department: document.getElementById('modal-department').value.trim(),
+            role: document.getElementById('modal-role').value,
+            permissions: selectedPermissions,
+            status: document.getElementById('modal-status').value,
+            platform: document.getElementById('modal-platform').value.trim(),
+            remark: document.getElementById('modal-remark').value.trim(),
+            wx_url: document.getElementById('modal-wx_url').value.trim(),
+            operational_account: {
+                ops_group: document.getElementById('modal-ops_group').value.trim(),
+                shandianyun_account: document.getElementById('modal-shandianyun_account').value.trim(),
+                shandianyun_username: document.getElementById('modal-shandianyun_username').value.trim(),
+                shandianyun_password: document.getElementById('modal-shandianyun_password').value.trim(),
+                lingxing_username: document.getElementById('modal-lingxing_username').value.trim(),
+                lingxing_password: document.getElementById('modal-lingxing_password').value.trim(),
+                ziniao_company: document.getElementById('modal-ziniao_company').value.trim(),
+                ziniao_username: document.getElementById('modal-ziniao_username').value.trim(),
+                ziniao_password: document.getElementById('modal-ziniao_password').value.trim(),
+                diwei_account: document.getElementById('modal-diwei_account').value.trim(),
+                diwei_password: document.getElementById('modal-diwei_password').value.trim(),
+            }
+        };
+
+        // 验证必填项
+        if (!formData.username) {
+            showNotification('用户名是必填项！', 'error');
+            return;
         }
 
-        /**
-         * 保存模态框数据（新建或编辑）
-         */
-        async function saveUserModal() {
-            // 收集选中的权限
-            const selectedPermissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
-                .map(cb => parseInt(cb.value));
-
-            // 收集表单数据
-            const formData = {
-                username: document.getElementById('modal-username').value.trim(),
-                password: document.getElementById('modal-password').value.trim(),
-                first_name: document.getElementById('modal-first_name').value.trim(),
-                phone: document.getElementById('modal-phone').value.trim(),
-                department: document.getElementById('modal-department').value.trim(),
-                role: document.getElementById('modal-role').value,
-                permissions: selectedPermissions,
-                status: document.getElementById('modal-status').value,
-                company_name: document.getElementById('modal-company_name').value.trim(),
-                platform: document.getElementById('modal-platform').value.trim(),
-                remark: document.getElementById('modal-remark').value.trim(),
-                operational_account: {
-                    ops_group: document.getElementById('modal-ops_group').value.trim(),
-                    shandianyun_account: document.getElementById('modal-shandianyun_account').value.trim(),
-                    shandianyun_username: document.getElementById('modal-shandianyun_username').value.trim(),
-                    shandianyun_password: document.getElementById('modal-shandianyun_password').value.trim(),
-                    lingxing_username: document.getElementById('modal-lingxing_username').value.trim(),
-                    lingxing_password: document.getElementById('modal-lingxing_password').value.trim(),
-                    ziniao_company: document.getElementById('modal-ziniao_company').value.trim(),
-                    ziniao_username: document.getElementById('modal-ziniao_username').value.trim(),
-                    ziniao_password: document.getElementById('modal-ziniao_password').value.trim(),
-                    diwei_account: document.getElementById('modal-diwei_account').value.trim(),
-                    diwei_password: document.getElementById('modal-diwei_password').value.trim(),
-                }
-            };
-
-            // 验证必填项
-            if (!formData.username) {
-                showNotification('用户名是必填项！', 'error');
+        // 新建模式：验证用户名唯一性
+        if (modalMode === 'create') {
+            const allUsers = await loadUsersFromAPI(1, 9999, false).then(r => r.data);
+            if (allUsers.some(user => user.username === formData.username)) {
+                showNotification('用户名已存在，请使用其他用户名！', 'error');
                 return;
             }
-
-            // 新建模式：验证用户名唯一性
-            if (modalMode === 'create') {
-                const allUsers = await loadUsersFromAPI(1, 9999, false).then(r => r.data);
-                if (allUsers.some(user => user.username === formData.username)) {
-                    showNotification('用户名已存在，请使用其他用户名！', 'error');
-                    return;
-                }
-            }
-
-            try {
-                const url = modalMode === 'create' ? '/api/users/create/' : `/api/users/${currentUserId}/update/`;
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken(),
-                    },
-                    body: JSON.stringify(formData),
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    showNotification(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！', 'success');
-                    closeModal();
-                    loadUsersTable();
-                } else {
-                    showNotification('操作失败：' + result.error, 'error');
-                }
-            } catch (error) {
-                console.error('保存失败:', error);
-                showNotification('保存失败，请检查网络连接并重试', 'error');
-            }
         }
 
-        /**
-         * 获取CSRF Token
-         * @returns {string} CSRF Token值
-         */
-        function getCSRFToken() {
-            const cookieValue = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrftoken='))
-                ?.split('=')[1];
-            return cookieValue || '';
+        try {
+            const url = modalMode === 'create' ? '/api/users/create/' : `/api/users/${currentUserId}/update/`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify(formData),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！', 'success');
+                closeModal();
+                loadUsersTable();
+            } else {
+                showNotification('操作失败：' + result.error, 'error');
+            }
+        } catch (error) {
+            console.error('保存失败:', error);
+            showNotification('保存失败，请检查网络连接并重试', 'error');
+        }
+    }
+
+    /**
+     * 获取CSRF Token
+     * @returns {string} CSRF Token值
+     */
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+
+    // ==========================================
+    // 事件监听
+    // ==========================================
+
+    // 页面初始化
+    document.addEventListener('DOMContentLoaded', async function () {
+        await Promise.all([
+            loadRolesFromAPI(),
+            loadPermissionConfigsFromAPI()
+        ]);
+        loadUsersTable();
+
+        // 添加回车键快捷键：在筛选区域按回车触发筛选
+        const filterSection = document.querySelector('.filter-section');
+        if (filterSection) {
+            filterSection.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                    e.preventDefault(); // 阻止默认行为
+                    filterUsers(); // 执行筛选
+                }
+            });
+        }
+        // 页面动画效果
+        if (window.anime) {
+            anime({
+                targets: '.sidebar',
+                translateX: [-280, 0],
+                opacity: [0, 1],
+                duration: 600,
+                easing: 'easeOutQuart'
+            });
+            anime({
+                targets: '.content',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: 200,
+                easing: 'easeOutQuart'
+            });
+        }
+    });
+
+
+    // ==========================================
+    // 批量操作逻辑
+    // ==========================================
+    let bulkAction = null; // 'add' | 'remove'
+
+    /**
+     * 全选/反选所有用户
+     */
+    function toggleSelectAll() {
+        const selectAll = document.getElementById('selectAll');
+        const checkboxes = document.querySelectorAll('.user-select-checkbox');
+        checkboxes.forEach(cb => cb.checked = selectAll.checked);
+        updateBulkActionBar();
+    }
+
+    /**
+     * 更新批量操作栏显示状态
+     */
+    function updateBulkActionBar() {
+        const checkedBoxes = document.querySelectorAll('.user-select-checkbox:checked');
+        const count = checkedBoxes.length;
+        const bar = document.getElementById('bulkActionBar');
+
+        // 更新全选框状态
+        const allCheckboxes = document.querySelectorAll('.user-select-checkbox');
+        const selectAll = document.getElementById('selectAll');
+        if (allCheckboxes.length > 0 && checkedBoxes.length === allCheckboxes.length) {
+            selectAll.checked = true;
+            selectAll.indeterminate = false;
+        } else if (checkedBoxes.length > 0) {
+            selectAll.checked = false;
+            selectAll.indeterminate = true;
+        } else {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
         }
 
-        // ==========================================
-        // 事件监听
-        // ==========================================
+        document.getElementById('selectedCountText').textContent = `已选择 ${count} 位用户`;
 
-        // 页面初始化
-        document.addEventListener('DOMContentLoaded', async function () {
-            await Promise.all([
-                loadRolesFromAPI(),
-                loadPermissionConfigsFromAPI()
-            ]);
-            loadUsersTable();
+        if (count > 0) {
+            bar.classList.add('visible');
+        } else {
+            bar.classList.remove('visible');
+        }
+    }
 
-            // 添加回车键快捷键：在筛选区域按回车触发筛选
-            const filterSection = document.querySelector('.filter-section');
-            if (filterSection) {
-                filterSection.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-                        e.preventDefault(); // 阻止默认行为
-                        filterUsers(); // 执行筛选
-                    }
-                });
+    /**
+     * 打开批量权限模态框
+     * @param {string} action - 'add' | 'remove'
+     */
+    function openBulkPermissionModal(action) {
+        bulkAction = action;
+        const title = action === 'add' ? '批量添加权限' : '批量移除权限';
+        const desc = action === 'add'
+            ? '请选择要统一<b>添加</b>给选中用户的权限：'
+            : '请选择要从选中用户中统一<b>移除</b>的权限：';
+
+        document.getElementById('bulkModalTitle').textContent = title;
+        document.getElementById('bulkModalDescription').innerHTML = desc;
+
+        // 生成权限列表
+        const listContainer = document.getElementById('bulkPermissionList');
+        listContainer.innerHTML = allPermissions.map(perm => `
+                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary);">
+                    <input type="checkbox" id="bulk-perm-${perm.code}" name="bulk-permissions" value="${perm.code}">
+                    <label for="bulk-perm-${perm.code}" style="margin:0; font-weight: normal; cursor: pointer; flex: 1;">
+                        <span style="font-weight:600;">[${perm.code}]</span> ${perm.name}
+                    </label>
+                </div>
+            `).join('');
+
+        document.getElementById('bulkPermissionModalOverlay').style.display = 'block';
+    }
+
+    /**
+     * 关闭批量权限模态框
+     */
+    function closeBulkModal() {
+        document.getElementById('bulkPermissionModalOverlay').style.display = 'none';
+        bulkAction = null;
+    }
+
+    /**
+     * 提交批量权限修改
+     */
+    async function submitBulkPermission() {
+        const checkedUsers = Array.from(document.querySelectorAll('.user-select-checkbox:checked')).map(cb => parseInt(cb.value));
+        const checkedPerms = Array.from(document.querySelectorAll('input[name="bulk-permissions"]:checked')).map(cb => parseInt(cb.value));
+
+        if (checkedUsers.length === 0) {
+            showNotification('未选择任何用户', 'error');
+            return;
+        }
+        if (checkedPerms.length === 0) {
+            showNotification('未选择任何权限', 'error');
+            return;
+        }
+
+        if (!confirm(`确定要对 ${checkedUsers.length} 位用户执行权限${bulkAction === 'add' ? '添加' : '移除'}操作吗？`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/users/bulk-permissions/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify({
+                    user_ids: checkedUsers,
+                    action: bulkAction,
+                    permissions: checkedPerms
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification(result.message, 'success');
+                closeBulkModal();
+                loadUsersTable(); // 刷新表格
+                document.getElementById('selectAll').checked = false; // 重置全选
+                updateBulkActionBar(); // 重置操作栏
+            } else {
+                showNotification('操作失败：' + result.error, 'error');
             }
-            // 页面动画效果
-            if (window.anime) {
-                anime({
-                    targets: '.sidebar',
-                    translateX: [-280, 0],
-                    opacity: [0, 1],
-                    duration: 600,
-                    easing: 'easeOutQuart'
-                });
-                anime({
-                    targets: '.content',
-                    translateY: [30, 0],
-                    opacity: [0, 1],
-                    duration: 800,
-                    delay: 200,
-                    easing: 'easeOutQuart'
-                });
-            }
-        });
+        } catch (error) {
+            console.error('批量操作失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
+    }
 
-
-        // ESC键关闭模态框
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeModal();
-        });
-    </script>
+    // ESC键关闭模态框
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeModal();
+    });
+</script>
 {% endblock %}

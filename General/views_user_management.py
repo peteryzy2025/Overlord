@@ -106,7 +106,7 @@ def get_users_api(request):
             status_map = {
                 User.STATUS_NORMAL: 'active',
                 User.STATUS_DISABLED: 'inactive',
-                User.STATUS_CANCELLED: 'cancelled'
+                User.STATUS_CANCELLED: 'inactive'  # 将注销合并为停用
             }
 
             # ✅ 关键修改：安全获取关联的运营账号对象
@@ -126,6 +126,7 @@ def get_users_api(request):
                 'company_name': user.company_name or '-',
                 'platform': user.platform or '-',
                 'remark': user.remark or '',
+                'wx_url': user.wx_url or '',  # ✅ 新增 wx_url
                 'ops_group': account.ops_group or '-' if account else '-',
                 'createdAt': user.date_joined.strftime('%Y-%m-%d') if user.date_joined else '-',
                 'permissions': permissions,  # 返回权限列表
@@ -205,11 +206,13 @@ def create_user_api(request):
                 status={
                     'active': User.STATUS_NORMAL,
                     'inactive': User.STATUS_DISABLED,
-                    'cancelled': User.STATUS_CANCELLED
+                    # 'cancelled': User.STATUS_CANCELLED # 不再支持创建注销状态
                 }.get(data.get('status'), User.STATUS_NORMAL),
-                company_name=data.get('company_name', ''),
+                company_name=request.user.company_name,  # 继承创建者的公司名称
+                company=request.user.company,            # 继承创建者的公司关联
                 platform=data.get('platform', ''),
                 remark=data.get('remark', ''),
+                wx_url=data.get('wx_url', ''), # ✅ 新增 wx_url
             )
 
             # 设置密码
@@ -297,13 +300,14 @@ def update_user_api(request, user_id):
             status_reverse_map = {
                 'active': User.STATUS_NORMAL,
                 'inactive': User.STATUS_DISABLED,
-                'cancelled': User.STATUS_CANCELLED
+                # 'cancelled': User.STATUS_CANCELLED # 不再支持更新为注销状态，前端传来inactive会映射为disabled
             }
             user.status = status_reverse_map.get(data.get('status'), user.status)
 
             user.company_name = data.get('company_name', user.company_name)
             user.platform = data.get('platform', user.platform)
             user.remark = data.get('remark', user.remark)
+            user.wx_url = data.get('wx_url', user.wx_url) # ✅ 新增 wx_url
             
             # 更新密码（如果有）
             password = data.get('password', '').strip()
@@ -436,3 +440,57 @@ def get_permission_configs_api(request):
             'success': False,
             'error': f'获取权限列表失败: {str(e)}'
         }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def bulk_update_permissions_api(request):
+    """
+    API接口：批量添加/移除用户权限
+    请求体:
+    {
+        "user_ids": [1, 2, 3],
+        "action": "add" | "remove",
+        "permissions": [101, 102]
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        user_ids = data.get('user_ids', [])
+        action = data.get('action')
+        permissions = data.get('permissions', [])
+
+        if not user_ids or not isinstance(user_ids, list):
+            return JsonResponse({'success': False, 'error': '未选择任何用户'}, status=400)
+        
+        if not permissions or not isinstance(permissions, list):
+            return JsonResponse({'success': False, 'error': '未选择任何权限'}, status=400)
+            
+        if action not in ['add', 'remove']:
+            return JsonResponse({'success': False, 'error': '操作类型无效'}, status=400)
+
+        # 验证权限操作权限（防止非超管修改超管权限）
+        # 只有 ID=555 的用户可以授予或移除 555 权限
+        if 555 in permissions and request.user.id != 555:
+             return JsonResponse({'success': False, 'error': '只有超级管理员(ID:555)可以操作管理员权限(555)'}, status=403)
+
+        permission_objs = PermissionConfig.objects.filter(code__in=permissions)
+        
+        with transaction.atomic():
+            users = User.objects.filter(id__in=user_ids)
+            
+            # 批量操作
+            if action == 'add':
+                for user in users:
+                    user.permission_configs.add(*permission_objs)
+            elif action == 'remove':
+                for user in users:
+                    user.permission_configs.remove(*permission_objs)
+
+        return JsonResponse({'success': True, 'message': f'已成功更新 {users.count()} 位用户的权限'})
+
+    except Exception as e:
+        print(f"批量权限操作错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
