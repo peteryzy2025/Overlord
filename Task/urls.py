@@ -8,9 +8,16 @@ urlpatterns = [
     # 页面路由
     path('task/create/', task_page_views.task_create_page, name='task_create_page'),
     path('task/product/create/', product_views.product_create_page, name='product_create_page'),
+    path('task/product/list/', product_views.product_list_page, name='product_list_page'),
     path('task/list/', task_page_views.task_list_page, name='task_list_page'),
 
     # API路由
+    # 产品需求相关
+    path('api/products/create/', product_views.create_product_requirement_api, name='create_product_requirement'),
+    path('api/products/list/', product_views.get_product_requirements_api, name='get_product_requirements'),
+    path('api/products/<int:pk>/', product_views.get_product_requirement_detail_api, name='get_product_requirement_detail'),
+    path('api/products/<int:pk>/update/', product_views.update_product_requirement_api, name='update_product_requirement'),
+
     # 店铺相关
     path('api/tasks/shops/', task_api_views.get_available_shops_api, name='get_available_shops'),
 

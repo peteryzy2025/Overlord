@@ -1,0 +1,628 @@
+{% extends 'base_r.html' %}
+{% load static %}
+
+{% block title %}产品需求列表 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <style>
+        .task-list-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .task-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+        }
+
+        /* 筛选区样式 */
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        /* 列表容器 */
+        .task-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .task-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .task-table th {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .task-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+
+        .task-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .task-table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* 状态标签 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .status-submitted { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+        .status-approved { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
+        .status-processing { background: rgba(237, 137, 54, 0.1); color: #ed8936; }
+        .status-designing { background: rgba(159, 122, 234, 0.1); color: #9f7aea; }
+        .status-uploading { background: rgba(66, 153, 225, 0.1); color: #4299e1; }
+        .status-testing { background: rgba(236, 201, 75, 0.1); color: #ecc94b; }
+        .status-completed { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
+
+        /* 分页 */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .pagination-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            overscroll-behavior: contain;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--bg-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+            z-index: 10000;
+        }
+
+        .modal-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .detail-section {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .detail-section-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .detail-item {
+            margin-bottom: 0.5rem;
+            display: flex;
+        }
+
+        .detail-label {
+            color: var(--text-secondary);
+            width: 120px;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="task-list-container">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-boxes"></i> 产品需求列表
+            </h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="createNewProduct()">
+                    <i class="fas fa-plus"></i> 创建新产品
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="task-card">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">状态筛选</label>
+                    <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                        <option value="">全部状态</option>
+                        <option value="submitted">已提交</option>
+                        <option value="approved">已审核</option>
+                        <option value="processing">抓取中</option>
+                        <option value="designing">设计中</option>
+                        <option value="uploading">上传中</option>
+                        <option value="testing">测试中</option>
+                        <option value="completed">已完成</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">搜索产品</label>
+                    <input type="text" class="form-control" id="searchFilter" placeholder="输入产品名称搜索..." oninput="debounceSearch()">
+                </div>
+            </div>
+        </div>
+
+        <!-- 列表 -->
+        <div class="task-card">
+            <div class="task-table-wrapper">
+                <table class="task-table">
+                    <thead>
+                        <tr>
+                            <th>产品名称</th>
+                            <th>英文名称</th>
+                            <th>产品简称</th>
+                            <th>状态</th>
+                            <th>创建人</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody">
+                        <tr>
+                            <td colspan="7" class="empty-state" style="text-align: center; padding: 2rem;">
+                                <i class="fas fa-spinner fa-spin"></i> 加载中...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-container" id="paginationContainer" style="display: none;">
+                <div class="pagination-info" id="paginationInfo"></div>
+                <div class="pagination-buttons" id="paginationButtons"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="detailTitle">产品详情</h3>
+                <button class="btn btn-icon" onclick="closeDetailModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" id="detailBody">
+                <!-- 详情内容将通过JS注入 -->
+            </div>
+            <div class="modal-footer" style="padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="closeDetailModal()">关闭</button>
+                <button class="btn btn-primary" id="editBtn" style="display: none;" onclick="enableEdit()">编辑</button>
+                <button class="btn btn-success" id="saveBtn" style="display: none;" onclick="saveChanges()">保存</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let currentData = {
+            list: [],
+            pagination: { page: 1, page_size: 20, total: 0, total_pages: 0 },
+            filters: { status: '', search: '' }
+        };
+        let currentDetailId = null;
+        let canEdit = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadProducts();
+        });
+
+        function createNewProduct() {
+            window.location.href = '/task/product/create/';
+        }
+
+        async function loadProducts() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentData.pagination.page,
+                    page_size: currentData.pagination.page_size,
+                    status: currentData.filters.status,
+                    search: currentData.filters.search
+                });
+
+                const response = await fetch(`/api/products/list/?${params}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    currentData.list = result.data.items;
+                    currentData.pagination = {
+                        page: result.data.page,
+                        total: result.data.total,
+                        total_pages: result.data.total_pages,
+                        page_size: 20
+                    };
+                    renderTable();
+                    renderPagination();
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+            }
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('productTableBody');
+            if (currentData.list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 2rem;">暂无数据</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = currentData.list.map(item => `
+                <tr style="cursor: pointer;" onclick="viewDetail(${item.id})">
+                    <td>${item.product_name || '-'}</td>
+                    <td>${item.english_name || '-'}</td>
+                    <td>${item.product_abbr || '-'}</td>
+                    <td><span class="status-badge status-${item.status}">${item.status_display}</span></td>
+                    <td>${item.created_by}</td>
+                    <td>${item.created_at}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewDetail(${item.id})">查看</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const { page, total_pages, total } = currentData.pagination;
+            const container = document.getElementById('paginationContainer');
+            if (total === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'flex';
+            
+            document.getElementById('paginationInfo').textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+            
+            let html = '';
+            html += `<button class="pagination-btn" onclick="changePage(${page-1})" ${page===1?'disabled':''}>上一页</button>`;
+            html += `<span style="margin: 0 1rem;">${page}</span>`;
+            html += `<button class="pagination-btn" onclick="changePage(${page+1})" ${page===total_pages?'disabled':''}>下一页</button>`;
+            
+            document.getElementById('paginationButtons').innerHTML = html;
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > currentData.pagination.total_pages) return;
+            currentData.pagination.page = newPage;
+            loadProducts();
+        }
+
+        function applyFilters() {
+            currentData.filters.status = document.getElementById('statusFilter').value;
+            currentData.pagination.page = 1;
+            loadProducts();
+        }
+
+        let debounceTimer;
+        function debounceSearch() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                currentData.filters.search = document.getElementById('searchFilter').value;
+                currentData.pagination.page = 1;
+                loadProducts();
+            }, 500);
+        }
+
+        async function viewDetail(id) {
+            currentDetailId = id;
+            try {
+                const response = await fetch(`/api/products/${id}/`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const data = result.data;
+                    canEdit = result.meta.can_edit;
+                    
+                    document.getElementById('detailTitle').textContent = `${data.product_name || '未命名'} - 详情`;
+                    document.getElementById('editBtn').style.display = canEdit ? 'block' : 'none';
+                    document.getElementById('saveBtn').style.display = 'none';
+                    
+                    renderDetailBody(data);
+                    document.getElementById('detailModal').classList.add('active');
+                }
+            } catch (error) {
+                console.error('获取详情失败:', error);
+            }
+        }
+
+        function renderDetailBody(data) {
+            const body = document.getElementById('detailBody');
+            
+            const fields = [
+                { title: '基本信息', items: [
+                    { label: '外采平台', value: data.platform === 'yizhiguan' ? '艺之冠' : data.platform, key: 'platform' },
+                    { label: '产品链接', value: data.product_url ? `<a href="${data.product_url}" target="_blank">点击查看</a>` : '-', key: 'product_url', type: 'url' },
+                    { label: '产品名称', value: data.product_name, key: 'product_name' },
+                    { label: '产品简称', value: data.product_abbr, key: 'product_abbr' },
+                    { label: '英文名称', value: data.english_name, key: 'english_name' },
+                    { label: '状态', value: data.status_display, raw_value: data.status, key: 'status', type: 'select', options: [
+                        {val:'submitted', txt:'已提交'}, {val:'approved', txt:'已审核'}, 
+                        {val:'processing', txt:'抓取中'}, {val:'designing', txt:'设计中'},
+                        {val:'uploading', txt:'上传中'}, {val:'testing', txt:'测试中'},
+                        {val:'completed', txt:'已完成'}
+                    ]},
+                    { label: '材质', value: data.material, key: 'material' },
+                    { label: '生产工艺', value: Array.isArray(data.craft) ? data.craft.join(', ') : data.craft, key: 'craft', type: 'checkbox-group' },
+                    { label: '计量单位', value: data.unit, key: 'unit' }
+                ]},
+                { title: '报关信息', items: [
+                    { label: '中文名称', value: data.customs_cn_name, key: 'customs_cn_name' },
+                    { label: '英文名称', value: data.customs_en_name, key: 'customs_en_name' },
+                    { label: '申报重量', value: data.declared_weight, key: 'declared_weight' },
+                    { label: '申报单价', value: data.declared_price, key: 'declared_price' },
+                    { label: '海关编码', value: data.customs_code, key: 'customs_code' },
+                    { label: '材质(中)', value: data.material_cn, key: 'material_cn' },
+                    { label: '材质(英)', value: data.material_en, key: 'material_en' }
+                ]},
+                { title: '其他描述', items: [
+                    { label: '材质说明', value: data.material_desc, key: 'material_desc', type: 'textarea' },
+                    { label: '配件构造', value: data.accessory_struct, key: 'accessory_struct', type: 'textarea' },
+                    { label: '产品性能', value: data.product_performance, key: 'product_performance', type: 'textarea' },
+                    { label: '适用情景', value: data.applicable_scenario, key: 'applicable_scenario', type: 'textarea' },
+                    { label: '洗涤说明', value: data.washing_instructions, key: 'washing_instructions', type: 'textarea' },
+                    { label: '特别说明', value: data.special_note, key: 'special_note', type: 'textarea' },
+                    { label: '温馨提醒', value: data.reminder, key: 'reminder', type: 'textarea' }
+                ]},
+                { title: '设计说明', items: [
+                    { label: '设计说明', value: data.design_desc, key: 'design_desc', type: 'textarea' },
+                    { label: '设计区域', value: data.design_area, key: 'design_area', type: 'textarea' },
+                    { label: '图片要求', value: data.image_requirement, key: 'image_requirement', type: 'textarea' }
+                ]}
+            ];
+
+            let html = '<div class="detail-grid">';
+            fields.forEach(section => {
+                html += `
+                    <div class="detail-section">
+                        <div class="detail-section-title">${section.title}</div>
+                        ${section.items.map(item => `
+                            <div class="detail-item">
+                                <div class="detail-label">${item.label}:</div>
+                                <div class="detail-value" data-key="${item.key}" data-val="${item.value || ''}" data-raw-val="${item.raw_value || ''}" data-type="${item.type || 'text'}" ${item.type==='select'?'data-options=\''+JSON.stringify(item.options)+"'":''}>
+                                    ${item.value || '-'}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+            html += '</div>';
+            body.innerHTML = html;
+        }
+
+        function enableEdit() {
+            document.getElementById('editBtn').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'block';
+            
+            const values = document.querySelectorAll('.detail-value');
+            values.forEach(el => {
+                const key = el.dataset.key;
+                const val = el.dataset.val;
+                const type = el.dataset.type;
+                
+                if (type === 'textarea') {
+                    el.innerHTML = `<textarea class="form-control edit-input" rows="3" name="${key}">${val}</textarea>`;
+                } else if (type === 'select') {
+                    const options = JSON.parse(el.dataset.options);
+                    const rawVal = el.dataset.rawVal;
+                    let optsHtml = options.map(opt => `<option value="${opt.val}" ${rawVal===opt.val?'selected':''}>${opt.txt}</option>`).join('');
+                     el.innerHTML = `<select class="form-select edit-input" name="${key}">${optsHtml}</select>`;
+                } else if (type === 'checkbox-group') {
+                    const currentVals = val.split(', ').filter(v => v);
+                    const allOpts = ['热转印', '丝网印', '刺绣', '直喷', '激光'];
+                    let html = '<div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">';
+                    allOpts.forEach(opt => {
+                        html += `<label><input type="checkbox" class="edit-input-checkbox" name="${key}" value="${opt}" ${currentVals.includes(opt)?'checked':''}> ${opt}</label>`;
+                    });
+                    html += '</div>';
+                    el.innerHTML = html;
+                } else if (type === 'url') {
+                    // For URL, if it's editing, show input
+                    // But wait, the value in renderDetailBody for url is an <a> tag. 
+                    // We need raw value.
+                    // Let's assume data.product_url is available in scope or we fetch it.
+                    // Actually, let's fix renderDetailBody to put raw url in dataset.
+                    const rawUrl = el.querySelector('a')?.href || '';
+                    el.innerHTML = `<input type="url" class="form-control edit-input" name="${key}" value="${rawUrl}">`;
+                } else {
+                    el.innerHTML = `<input type="text" class="form-control edit-input" name="${key}" value="${val}">`;
+                }
+            });
+        }
+
+        async function saveChanges() {
+            const inputs = document.querySelectorAll('.edit-input');
+            const checkboxes = document.querySelectorAll('.edit-input-checkbox');
+            const data = {};
+            
+            inputs.forEach(input => {
+                data[input.name] = input.value;
+            });
+            
+            // Handle checkboxes specifically
+            const craftVals = [];
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    craftVals.push(cb.value);
+                }
+            });
+            if (checkboxes.length > 0) {
+                data.craft = craftVals;
+            }
+
+            try {
+                const response = await fetch(`/api/products/${currentDetailId}/update/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    closeDetailModal();
+                    loadProducts();
+                    alert('更新成功');
+                } else {
+                    alert('更新失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('更新出错');
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                   document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+    </script>
+{% endblock %}

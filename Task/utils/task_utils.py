@@ -170,6 +170,22 @@ def validate_subtask_params(subtask_type, params, user):
                 if shop_id not in visible_shop_ids:
                     return {'valid': False, 'message': f'无权操作店铺ID: {shop_id}'}
 
+        elif subtask_type == 'print_external':
+            # 印花外采验证
+            # url 为必填
+            url = params.get('url', '').strip()
+            if not url:
+                return {'valid': False, 'message': '产品链接(URL)不能为空'}
+            
+            # platform 可选，默认 yizhiguan
+            
+        elif subtask_type == 'embroidery':
+            # 刺绣验证
+            # url 为必填
+            url = params.get('url', '').strip()
+            if not url:
+                return {'valid': False, 'message': '产品链接(URL)不能为空'}
+
         else:
             return {'valid': False, 'message': f'未知的子任务类型: {subtask_type}'}
 
