@@ -46,11 +46,12 @@
             box-shadow: var(--shadow-light);
         }
 
-        /* 统计卡片网格 */
-        .stats-grid {
+        /* 统计看板 - 复用 tracking_management 样式 */
+        .stats-dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .stat-card {
@@ -58,27 +59,114 @@
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1.5rem;
-            text-align: center;
-            transition: all 0.2s ease;
             box-shadow: var(--shadow-light);
+            transition: all 0.3s ease;
         }
 
         .stat-card:hover {
-            box-shadow: var(--shadow-medium);
             transform: translateY(-2px);
-            border-color: var(--accent-color);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--accent-color);
-            margin-bottom: 0.5rem;
+            box-shadow: var(--shadow-medium);
         }
 
         .stat-label {
             font-size: 0.875rem;
             color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .stat-change {
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        /* 模态框样式 - 复用 tracking_management 样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            overscroll-behavior: contain;
+        }
+
+        .modal-overlay[style*="display: block"] {
+            display: flex !important;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--bg-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 500px; /* 调整为适合删除确认框的宽度 */
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+            z-index: 10000;
+        }
+
+        .modal-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close, .btn-icon {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            line-height: 1;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover, .btn-icon:hover {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
         }
 
         /* 筛选区样式 */
@@ -259,23 +347,39 @@
             </div>
         </div>
 
-        <!-- 统计卡片 -->
-        <div class="stats-grid">
+        <!-- 统计看板 -->
+        <div class="stats-dashboard" id="statsDashboard">
             <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-tasks"></i>
+                    总任务数
+                </div>
                 <div class="stat-value" id="totalCount">0</div>
-                <div class="stat-label">总任务数</div>
+                <div class="stat-change">&nbsp;</div>
             </div>
             <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-file-alt"></i>
+                    草稿
+                </div>
                 <div class="stat-value" id="draftCount">0</div>
-                <div class="stat-label">草稿</div>
+                <div class="stat-change">&nbsp;</div>
             </div>
             <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-clock"></i>
+                    待执行
+                </div>
                 <div class="stat-value" id="pendingCount">0</div>
-                <div class="stat-label">待执行</div>
+                <div class="stat-change">&nbsp;</div>
             </div>
             <div class="stat-card">
+                <div class="stat-label">
+                    <i class="fas fa-spinner"></i>
+                    进行中
+                </div>
                 <div class="stat-value" id="inProgressCount">0</div>
-                <div class="stat-label">进行中</div>
+                <div class="stat-change">&nbsp;</div>
             </div>
         </div>
 

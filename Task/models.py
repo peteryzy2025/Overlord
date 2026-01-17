@@ -123,10 +123,13 @@ class SubTask(models.Model):
     # 子任务类型定义
     TYPE_CUSTOM_UPLOAD = 'custom_upload'
     TYPE_TEMU_EXPORT = 'temu_export'
+    TYPE_PRINT_EXTERNAL = 'print_external'
 
     TYPE_CHOICES = [
         (TYPE_CUSTOM_UPLOAD, '定制上架'),
         (TYPE_TEMU_EXPORT, 'Temu导单'),
+        (TYPE_PRINT_EXTERNAL, '印花外采'),
+        ('embroidery', '刺绣'),
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')
@@ -302,3 +305,115 @@ class TaskTemplate(models.Model):
         检查模板是否属于指定用户
         """
         return self.created_by_id == user.id
+
+
+class ProductRequirement(models.Model):
+    """
+    产品需求表
+    存放艺之冠等平台的产品需求
+    """
+    # 状态定义
+    STATUS_SUBMITTED = 'submitted'
+    STATUS_APPROVED = 'approved'
+    STATUS_PROCESSING = 'processing'
+    STATUS_DESIGNING = 'designing'
+    STATUS_UPLOADING = 'uploading'
+    STATUS_TESTING = 'testing'
+    STATUS_COMPLETED = 'completed'
+
+    STATUS_CHOICES = [
+        (STATUS_SUBMITTED, '已提交'),
+        (STATUS_APPROVED, '已审核'),
+        (STATUS_PROCESSING, '抓取中'),
+        (STATUS_DESIGNING, '设计中'),
+        (STATUS_UPLOADING, '上传中'),
+        (STATUS_TESTING, '测试中'),
+        (STATUS_COMPLETED, '已完成'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='产品需求主键ID')
+
+    # 关联任务 (可选，如果通过任务流程创建)
+    task = models.OneToOneField(
+        Task,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='product_requirement',
+        verbose_name='关联任务',
+        db_comment='关联的任务ID'
+    )
+
+    status = models.CharField(
+        '状态',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_SUBMITTED,
+        db_comment='需求状态'
+    )
+
+    # 外采平台
+    PLATFORM_YIZHIGUAN = 'yizhiguan'
+    PLATFORM_CHOICES = [
+        (PLATFORM_YIZHIGUAN, '艺之冠'),
+    ]
+
+    platform = models.CharField(
+        '外采平台',
+        max_length=50,
+        choices=PLATFORM_CHOICES,
+        default=PLATFORM_YIZHIGUAN,
+        db_comment='外采平台：yizhiguan'
+    )
+    product_url = models.URLField('产品链接', max_length=500, blank=True, null=True, db_comment='外采产品链接')
+
+    # 产品详情
+    product_name = models.CharField('产品名称', max_length=200, blank=True, null=True)
+    product_abbr = models.CharField('产品简称', max_length=100, blank=True, null=True)
+    english_name = models.CharField('英文名称', max_length=200, blank=True, null=True)
+    material = models.CharField('产品材质', max_length=100, blank=True, null=True)
+    craft = models.JSONField('生产工艺', default=list, blank=True, null=True, db_comment='多选：生产工艺列表')
+    unit = models.CharField('计量单位', max_length=20, blank=True, null=True)
+
+    # 报关信息
+    customs_cn_name = models.CharField('报关中文名称', max_length=200, blank=True, null=True)
+    customs_en_name = models.CharField('报关英文名称', max_length=200, blank=True, null=True)
+    declared_weight = models.IntegerField('申报重量(克)', blank=True, null=True)
+    declared_price = models.DecimalField('海关申报单价(USD)', max_digits=10, decimal_places=2, blank=True, null=True)
+    customs_code = models.CharField('海关申报编码', max_length=50, blank=True, null=True)
+    material_cn = models.CharField('产品材质(中文)', max_length=100, blank=True, null=True)
+    material_en = models.CharField('产品材质(英文)', max_length=100, blank=True, null=True)
+
+    # 其他描述
+    material_desc = models.TextField('材质说明', blank=True, null=True)
+    accessory_struct = models.TextField('配件构造', blank=True, null=True)
+    product_performance = models.TextField('产品性能', blank=True, null=True)
+    applicable_scenario = models.TextField('适用情景', blank=True, null=True)
+    washing_instructions = models.TextField('洗涤说明', blank=True, null=True)
+    special_note = models.TextField('特别说明', blank=True, null=True)
+    reminder = models.TextField('温馨提醒', blank=True, null=True)
+
+    # 设计说明
+    design_desc = models.TextField('设计说明', blank=True, null=True)
+    design_area = models.TextField('设计区域', blank=True, null=True)
+    image_requirement = models.TextField('图片要求', blank=True, null=True)
+
+    # 元数据
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='created_product_requirements',
+        verbose_name='创建人',
+        db_comment='创建人'
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'task_product_requirements'
+        verbose_name = '产品需求'
+        verbose_name_plural = '产品需求列表'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.product_name or '未命名'} ({self.get_status_display()})"

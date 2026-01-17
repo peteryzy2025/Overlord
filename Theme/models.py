@@ -186,3 +186,23 @@ class ThemeTrashBin(models.Model):
         db_table= "theme_trash_bin"
     def __str__(self):
         return self.asin
+
+
+class TroTable(models.Model):
+    """侵权词表,仅用作读取"""
+    word_mark = models.CharField(max_length=100, verbose_name='侵权词')
+    risk_rank = models.CharField(max_length=1, verbose_name='风险等级')
+    created_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'tro_words_record'
+        indexes = [
+            models.Index(fields=['word_mark']),
+            models.Index(fields=['word_mark', 'risk_rank']),
+        ]
+        verbose_name = '侵权词库'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.word_mark} - {self.risk_rank}"
+
