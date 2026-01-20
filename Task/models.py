@@ -466,6 +466,12 @@ class ProductRequirement(models.Model):
     packaging_weight_g = models.CharField('包装重量(g)', max_length=100, blank=True, null=True)
     packaging_weight_lb = models.CharField('包装重量(lb)', max_length=100, blank=True, null=True)
 
+    # 报关额外信息
+    trademark_category = models.CharField('商标类目', max_length=100, blank=True, null=True, default='')
+    category = models.CharField('所属分类', max_length=100, blank=True, null=True)
+    special_cargo_type = models.CharField('特殊货物类型', max_length=100, blank=True, null=True)
+    product_label = models.CharField('产品标识', max_length=100, blank=True, null=True)
+
     # 额外信息
     color_name = models.JSONField('颜色列表', default=list, blank=True, null=True)
     img_urls_list = models.JSONField('图片链接列表', default=list, blank=True, null=True)

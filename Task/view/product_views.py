@@ -188,10 +188,15 @@ def recrawl_product_requirement_api(request):
             item.packaging_volumn_inch3 = crawler_data.get('packaging_volumn_inch3', item.packaging_volumn_inch3)
             item.packaging_weight_g = crawler_data.get('packaging_weight_g', item.packaging_weight_g)
             item.packaging_weight_lb = crawler_data.get('packaging_weight_lb', item.packaging_weight_lb)
+
+            # 新增报关字段
+            item.category = crawler_data.get('category', item.category)
+            item.special_cargo_type = crawler_data.get('special_cargo_type', item.special_cargo_type)
+            item.product_label = crawler_data.get('product_label', item.product_label)
             
             item.save()
             
-            return JsonResponse({'success': True, 'message': '重新爬取成功'})
+            return JsonResponse({'success': True, 'message': '重新爬取并更新成功'})
             
         except Exception as e:
             return JsonResponse({'success': False, 'message': f'爬虫执行出错: {str(e)}'}, status=500)
@@ -305,6 +310,12 @@ def get_product_requirement_detail_api(request, pk):
             'packaging_weight_g': item.packaging_weight_g,
             'packaging_weight_lb': item.packaging_weight_lb,
 
+            # 报关额外信息
+            'trademark_category': item.trademark_category,
+            'category': item.category,
+            'special_cargo_type': item.special_cargo_type,
+            'product_label': item.product_label,
+
             # 额外信息
             'color_name': item.color_name,
             'img_urls_list': item.img_urls_list,
@@ -350,13 +361,27 @@ def update_product_requirement_api(request, pk):
             'design_desc', 'design_area', 'image_requirement', 'remark', 'status',
             'packaging_size_cm', 'packaging_size_inch', 'packaging_volumn_cm3', 
             'packaging_volumn_inch3', 'packaging_weight_g', 'packaging_weight_lb',
-            'color_name', 'img_urls_list'
+            'color_name', 'img_urls_list',
+            'category', 'special_cargo_type', 'product_label', 'trademark_category'
         ]
         
         for field in fields:
             if field in data:
-                setattr(item, field, data[field])
-                
+                # 特殊处理 JSON 字段
+                if field in ['color_name', 'img_urls_list']:
+                     try:
+                        # 如果是字符串，尝试解析为 JSON
+                         if isinstance(data[field], str):
+                             import json
+                             setattr(item, field, json.loads(data[field]))
+                         else:
+                             setattr(item, field, data[field])
+                     except:
+                         # 解析失败则跳过或设为空列表，视需求而定
+                         pass
+                else:
+                    setattr(item, field, data[field])
+        
         item.save()
         
         return JsonResponse({'success': True, 'message': '更新成功'})
