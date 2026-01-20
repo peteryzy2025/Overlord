@@ -4,6 +4,7 @@ import json
 import time
 import re
 
+
 def fetch_product(product_id: int):
     """
     拉取 ykartwood 商品 JSON
@@ -172,19 +173,20 @@ def test(flat, target):
     idx = next((i for i, d in enumerate(flat) if d.get("content") == target), -1)
     print(idx)  # 找不到就是 -1
 
+
 def get_ykartwood_product(pid, platform, select_platform):
     """
     获取艺之冠产品信息
     :param pid: 产品ID
     :param platform: 平台名称 amazon temu
-    :param select_platform: 选择的平台 waicai
+    :param select_platform: 选择的平台 外采平台
     :return: 产品信息字典
     """
     data = fetch_product(pid)
     if data:
         declaration_name = data.get("declaration_name", "")  # 报关中文名称    360直喷全印中筒袜（男女同款）【TEMU,TK,SHEIN官方面单】
         declaration_name = re.sub(r"【.*?】", "", declaration_name).rstrip()  # 360直喷全印中筒袜（男女同款）  #?
-        title, product_abbr = build_titles(declaration_name, platform,select_platform)  # 产品标题，产品简称
+        title, product_abbr = build_titles(declaration_name, platform, select_platform)  # 产品标题，产品简称
         english_name = data.get("english_name", "")  # 英文标题与报关英文名称
         product_details = data.get("product_details", {})
         material_description = product_details.get("material_description", "")  # 产品材质，
@@ -196,7 +198,7 @@ def get_ykartwood_product(pid, platform, select_platform):
         unit = get_product_unit(title)  # 计量单位
         item = data.get("subproducts").get("items", [{}])[0]
         weight = item.get("weight", 0)  # 申报重量
-        current_price = item.get("currentPrice", 0)# 当前售价
+        current_price = item.get("currentPrice", 0)  # 当前售价
         price = round(current_price / 7.3 + 1, 1)  # 海关申报单价
 
         product_performance = product_details.get("product_performance")  # 产品性能
@@ -211,6 +213,11 @@ def get_ykartwood_product(pid, platform, select_platform):
         packaging_info = process_packaging_specification(data, pid)
         img_urls_list = get_img_urls(data)
         # -------------------------
+        category = ''
+        if platform == 'amazon':
+            category = '美国本土直发'
+        elif platform == 'temu':
+            category = '美国TEMU面单'
 
         ykat_dict = {
             "product_name": title,
@@ -246,11 +253,11 @@ def get_ykartwood_product(pid, platform, select_platform):
             "packaging_weight_lb": packaging_info.get("packaging_weight_lb", ""),  # 包装重量（lb）
 
             # ----------------
+            "category": category,
+            "special_cargo_type": "是否USPS",
+            "product_label": "北美生产",
         }
         return ykat_dict
     return None
 
-
 # print(get_ykartwood_product("188678", "amazon", "艺之冠"))
-
-

@@ -5,6 +5,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
     .task-list-container {
         display: flex;
@@ -856,23 +858,26 @@
             const result = await response.json();
 
             if (result.success) {
-                showNotification(result.message, 'success');
+                displayNotification(result.message, 'success');
                 closeRejectModal();
                 selectedIds.clear(); // 清空选择
                 loadProducts(); // 刷新列表
             } else {
-                showNotification(result.message, 'error');
+                displayNotification(result.message, 'error');
             }
         } catch (error) {
             console.error('驳回失败:', error);
-            showNotification('操作失败，请重试', 'error');
+            displayNotification('操作失败，请重试', 'error');
         }
     }
 
-    function showNotification(message, type = 'info', duration = 3000) {
-        if (window.showNotification) {
+    function displayNotification(message, type = 'info', duration = 3000) {
+        // 避免递归调用：检查 window.showNotification 是否存在且不等于当前函数
+        // 实际上，只要我们把当前函数改名为 displayNotification，window.showNotification 就只会是外部定义的（如果有的话）
+        if (typeof window.showNotification === 'function') {
             window.showNotification(message, type, duration);
         } else {
+            // Fallback
             alert(`${type}: ${message}`);
         }
     }
@@ -971,7 +976,7 @@
                 setTimeout(() => {
                     closeRecrawlModal();
                     loadProducts();
-                    showNotification('重新爬取成功', 'success');
+                    displayNotification('重新爬取成功', 'success');
                 }, 1000);
             } else {
                 updateProgress(currentProgress, '失败: ' + (result.message || '未知错误'));
@@ -1104,6 +1109,14 @@
                 ]
             },
             {
+                title: '设计说明', items: [
+                    { label: '设计说明', value: data.design_desc, key: 'design_desc', type: 'textarea' },
+                    { label: '设计区域', value: data.design_area, key: 'design_area', type: 'textarea' },
+                    { label: '图片要求', value: data.image_requirement, key: 'image_requirement', type: 'textarea' },
+                    { label: '备注', value: data.remark, key: 'remark', type: 'textarea' }
+                ]
+            },
+            {
                 title: '报关信息', items: [
                     { label: '中文名称', value: data.customs_cn_name, key: 'customs_cn_name' },
                     { label: '英文名称', value: data.customs_en_name, key: 'customs_en_name' },
@@ -1111,7 +1124,15 @@
                     { label: '申报单价', value: data.declared_price, key: 'declared_price' },
                     { label: '海关编码', value: data.customs_code, key: 'customs_code' },
                     { label: '材质(中)', value: data.material_cn, key: 'material_cn' },
-                    { label: '材质(英)', value: data.material_en, key: 'material_en' }
+                    { label: '材质(英)', value: data.material_en, key: 'material_en' },
+
+                    // 分割线
+                    { type: 'separator' },
+
+                    { label: '商标类目', value: data.trademark_category, key: 'trademark_category' },
+                    { label: '所属分类', value: data.category, key: 'category' },
+                    { label: '特殊货物类型', value: data.special_cargo_type, key: 'special_cargo_type' },
+                    { label: '产品标识', value: data.product_label, key: 'product_label' }
                 ]
             },
             {
@@ -1138,15 +1159,15 @@
             {
                 title: '额外信息', items: [
                     { label: '颜色列表', value: Array.isArray(data.color_name) ? data.color_name.join(', ') : data.color_name, key: 'color_name', type: 'text' },
-                    { label: '图片链接', value: Array.isArray(data.img_urls_list) ? data.img_urls_list.map((url, index) => `<a href="${url}" target="_blank">图片${index + 1}</a>`).join(' ') : data.img_urls_list, key: 'img_urls_list', type: 'html' }
-                ]
-            },
-            {
-                title: '设计说明', items: [
-                    { label: '设计说明', value: data.design_desc, key: 'design_desc', type: 'textarea' },
-                    { label: '设计区域', value: data.design_area, key: 'design_area', type: 'textarea' },
-                    { label: '图片要求', value: data.image_requirement, key: 'image_requirement', type: 'textarea' },
-                    { label: '备注', value: data.remark, key: 'remark', type: 'textarea' }
+                    {
+                        label: '图片链接',
+                        // 使用函数处理图片链接显示，包含下载按钮
+                        value: renderImageLinks(data.img_urls_list),
+                        // 存储原始数组供逻辑使用
+                        raw_value: JSON.stringify(data.img_urls_list || []),
+                        key: 'img_urls_list',
+                        type: 'img_list'
+                    }
                 ]
             }
         ];
@@ -1156,19 +1177,126 @@
             html += `
                     <div class="detail-section">
                         <div class="detail-section-title">${section.title}</div>
-                        ${section.items.map(item => `
+                        ${section.items.map(item => {
+                if (item.type === 'separator') {
+                    return '<hr style="margin: 1rem 0; border: 0; border-top: 1px dashed var(--border-color);">';
+                }
+
+                // 安全处理属性值，防止 HTML 截断
+                const safeValue = (item.value || '').toString().replace(/"/g, '&quot;');
+                // 对于 raw_value，如果是 JSON 字符串，也需要转义
+                let safeRawValue = '';
+                if (item.raw_value !== undefined && item.raw_value !== null) {
+                    safeRawValue = item.raw_value.toString().replace(/"/g, '&quot;');
+                }
+
+                // 对于 html 类型，直接插入 value，但在 data-val 中存储 safeValue
+                // 注意：如果是复杂 HTML，放入 data-val 可能会有问题，但为了兼容 edit 逻辑，我们尽量存
+
+                return `
                             <div class="detail-item">
                                 <div class="detail-label">${item.label}:</div>
-                                <div class="detail-value" data-key="${item.key}" data-val="${item.value || ''}" data-raw-val="${item.raw_value || ''}" data-type="${item.type || 'text'}" ${item.type === 'select' ? 'data-options=\'' + JSON.stringify(item.options) + "'" : ''}>
+                                <div class="detail-value" 
+                                     data-key="${item.key}" 
+                                     data-val="${safeValue}" 
+                                     data-raw-val="${safeRawValue}" 
+                                     data-type="${item.type || 'text'}" 
+                                     ${item.type === 'select' ? "data-options='" + JSON.stringify(item.options) + "'" : ''}>
                                     ${item.value || '-'}
                                 </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 `;
         });
         html += '</div>';
         body.innerHTML = html;
+    }
+
+    function renderImageLinks(urls) {
+        if (!urls || (Array.isArray(urls) && urls.length === 0)) return '-';
+
+        let urlList = Array.isArray(urls) ? urls : [urls];
+        // 过滤空值
+        urlList = urlList.filter(u => u);
+
+        if (urlList.length === 0) return '-';
+
+        let html = `<div style="margin-bottom: 0.5rem;">
+            <button class="btn btn-sm btn-outline-primary" onclick="downloadImages(this)" data-urls='${JSON.stringify(urlList)}'>
+                <i class="fas fa-download"></i> 打包下载全部 (${urlList.length})
+            </button>
+        </div>`;
+
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
+        urlList.forEach((url, index) => {
+            html += `<a href="${url}" target="_blank" class="btn btn-sm btn-link">图片${index + 1}</a>`;
+        });
+        html += `</div>`;
+
+        return html;
+    }
+
+    async function downloadImages(btn) {
+        const urls = JSON.parse(btn.dataset.urls);
+        if (!urls || urls.length === 0) {
+            alert('没有可下载的图片');
+            return;
+        }
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 打包中...';
+        btn.disabled = true;
+
+        try {
+            const zip = new JSZip();
+            const folder = zip.folder("images");
+
+            // 并发下载图片
+            const promises = urls.map(async (url, index) => {
+                try {
+                    // 尝试通过 fetch 获取图片数据
+                    // 注意：这需要图片服务器支持 CORS
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const blob = await response.blob();
+
+                    // 获取文件扩展名
+                    let ext = 'jpg';
+                    const contentType = response.headers.get('content-type');
+                    if (contentType) {
+                        if (contentType.includes('png')) ext = 'png';
+                        else if (contentType.includes('gif')) ext = 'gif';
+                        else if (contentType.includes('webp')) ext = 'webp';
+                    } else {
+                        // 尝试从 URL 获取
+                        const match = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                        if (match) ext = match[1];
+                    }
+
+                    const filename = `image_${index + 1}.${ext}`;
+                    folder.file(filename, blob);
+                } catch (err) {
+                    console.error(`Failed to download ${url}:`, err);
+                    // 可以选择生成一个错误文本文件
+                    folder.file(`image_${index + 1}_error.txt`, `Failed to download: ${url}\nError: ${err.message}`);
+                }
+            });
+
+            await Promise.all(promises);
+
+            const content = await zip.generateAsync({ type: "blob" });
+            saveAs(content, "product_images.zip");
+
+            displayNotification('下载已开始', 'success');
+
+        } catch (error) {
+            console.error('打包失败:', error);
+            alert('打包下载失败，请检查控制台日志或尝试单独下载。');
+        } finally {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
 
     function enableEdit() {
@@ -1205,6 +1333,17 @@
                 // Actually, let's fix renderDetailBody to put raw url in dataset.
                 const rawUrl = el.querySelector('a')?.href || '';
                 el.innerHTML = `<input type="url" class="form-control edit-input" name="${key}" value="${rawUrl}">`;
+            } else if (type === 'img_list') {
+                const rawVal = el.dataset.rawVal;
+                let urls = [];
+                try {
+                    urls = JSON.parse(rawVal);
+                } catch (e) {
+                    urls = [];
+                }
+                // 将数组转换为每行一个 URL 的字符串
+                const textVal = Array.isArray(urls) ? urls.join('\n') : '';
+                el.innerHTML = `<textarea class="form-control edit-input" rows="5" name="${key}" placeholder="每行输入一个图片链接">${textVal}</textarea>`;
             } else {
                 el.innerHTML = `<input type="text" class="form-control edit-input" name="${key}" value="${val}">`;
             }
@@ -1217,7 +1356,12 @@
         const data = {};
 
         inputs.forEach(input => {
-            data[input.name] = input.value;
+            if (input.name === 'img_urls_list') {
+                // 特殊处理图片列表：按行分割并过滤空行
+                data[input.name] = input.value.split('\n').map(u => u.trim()).filter(u => u);
+            } else {
+                data[input.name] = input.value;
+            }
         });
 
         // Handle checkboxes specifically
@@ -1245,12 +1389,12 @@
             if (result.success) {
                 closeDetailModal();
                 loadProducts();
-                alert('更新成功');
+                displayNotification('更新成功', 'success');
             } else {
-                alert('更新失败: ' + result.message);
+                displayNotification('更新失败: ' + result.message, 'error');
             }
         } catch (error) {
-            alert('更新出错');
+            displayNotification('更新出错', 'error');
         }
     }
 

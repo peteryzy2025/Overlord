@@ -63,7 +63,7 @@ class ProductRankHistory(models.Model):
 #  下面是新的模型
 
 
-class AmazonTheme(models.Model):
+class AmazonThemeNovelty(models.Model):
     """亚马逊主题，存放稳定的基础信息"""
     asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
     title = models.CharField(max_length=500, verbose_name='产品标题')
@@ -77,7 +77,7 @@ class AmazonTheme(models.Model):
     is_latest_deal = models.BooleanField(default=False, verbose_name='是否为最新成交')
 
     class Meta:
-        db_table = 'theme_amazon'
+        db_table = 'theme_amazon_novelty'
         verbose_name = '亚马逊主题表'
         verbose_name_plural = verbose_name
 
@@ -88,7 +88,7 @@ class AmazonTheme(models.Model):
 class ThemeRecord(models.Model):
     """AI主题记录表，存放AI输出/推断的主题与风险数据"""
     product = models.ForeignKey(
-        AmazonTheme,
+        AmazonThemeNovelty,
         on_delete=models.CASCADE,
         related_name='ai_records',
         verbose_name='关联产品'
@@ -133,7 +133,7 @@ class ThemeRecord(models.Model):
 class ThemeDailyData(models.Model):
     """主题每日数据"""
     product = models.ForeignKey(
-        AmazonTheme,
+        AmazonThemeNovelty,
         on_delete=models.CASCADE,
         related_name='rank_history',
         verbose_name='关联产品'

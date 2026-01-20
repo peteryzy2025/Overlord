@@ -578,6 +578,11 @@ def create_task_api(request):
                     'packaging_volumn_inch3': crawler_data.get('packaging_volumn_inch3', ''),
                     'packaging_weight_g': crawler_data.get('packaging_weight_g', ''),
                     'packaging_weight_lb': crawler_data.get('packaging_weight_lb', ''),
+
+                    # 新增报关字段
+                    'category': crawler_data.get('category', ''),
+                    'special_cargo_type': crawler_data.get('special_cargo_type', ''),
+                    'product_label': crawler_data.get('product_label', ''),
                 }
                 
                 # 清理 None 值
