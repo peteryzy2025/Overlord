@@ -15,6 +15,8 @@ urlpatterns = [
     # 产品需求相关
     path('api/products/create/', product_views.create_product_requirement_api, name='create_product_requirement'),
     path('api/products/list/', product_views.get_product_requirements_api, name='get_product_requirements'),
+    path('api/products/recrawl/', product_views.recrawl_product_requirement_api, name='recrawl_product_requirement'),
+    path('api/products/reject/', product_views.reject_product_requirements_api, name='reject_product_requirements'),
     path('api/products/<int:pk>/', product_views.get_product_requirement_detail_api, name='get_product_requirement_detail'),
     path('api/products/<int:pk>/update/', product_views.update_product_requirement_api, name='update_product_requirement'),
 
@@ -31,7 +33,11 @@ urlpatterns = [
     path('api/tasks/gallery-paths/suggest/', task_api_views.suggest_gallery_paths_api, name='suggest_gallery_paths'),
 
     # 任务管理
+    path('api/tasks/list/', task_api_views.get_tasks_list_api, name='get_tasks_list'),
+    path('api/tasks/stats/', task_api_views.get_task_stats_api, name='get_task_stats'),
+    path('api/tasks/creators/', task_api_views.get_task_creators_api, name='get_task_creators'),
     path('api/tasks/create/', task_api_views.create_task_api, name='create_task'),
+    path('api/tasks/<int:task_id>/delete/', task_api_views.delete_task_api, name='delete_task'),
     path('api/tasks/save-draft/', task_api_views.save_draft_api, name='save_draft'),
     path('api/tasks/drafts/', task_api_views.get_drafts_api, name='get_drafts'),
     path('api/tasks/drafts/latest/', task_api_views.get_latest_draft_api, name='get_latest_draft'),

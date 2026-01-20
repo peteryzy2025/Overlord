@@ -91,6 +91,16 @@ class Task(models.Model):
             models.Index(fields=['task_no'], name='idx_task_no_unique'),
         ]
 
+    def save(self, *args, **kwargs):
+        """
+        保存时自动生成需求单号
+        """
+        if not self.requirement_no and self.created_by:
+            from task.utils.task_utils import generate_task_no
+            self.requirement_no = generate_task_no(self.created_by)
+            
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.task_no} - {self.title}"
 
@@ -316,24 +326,39 @@ class ProductRequirement(models.Model):
     STATUS_SUBMITTED = 'submitted'
     STATUS_APPROVED = 'approved'
     STATUS_PROCESSING = 'processing'
+    STATUS_PENDING_DESIGN = 'pending_design' # 新增状态
     STATUS_DESIGNING = 'designing'
     STATUS_UPLOADING = 'uploading'
     STATUS_TESTING = 'testing'
     STATUS_COMPLETED = 'completed'
+    STATUS_REJECTED = 'rejected'
 
     STATUS_CHOICES = [
         (STATUS_SUBMITTED, '已提交'),
         (STATUS_APPROVED, '已审核'),
         (STATUS_PROCESSING, '抓取中'),
+        (STATUS_PENDING_DESIGN, '待设计'),
         (STATUS_DESIGNING, '设计中'),
         (STATUS_UPLOADING, '上传中'),
         (STATUS_TESTING, '测试中'),
         (STATUS_COMPLETED, '已完成'),
+        (STATUS_REJECTED, '已驳回'),
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='产品需求主键ID')
 
-    # 关联任务 (可选，如果通过任务流程创建)
+    # 关联关系
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='owned_product_requirements',
+        verbose_name='负责人',
+        db_comment='需求负责人',
+        null=True, 
+        blank=True
+    )
+
+    # 关联任务 (可选 - 逐渐废弃，改为独立)
     task = models.OneToOneField(
         Task,
         on_delete=models.SET_NULL,
@@ -341,7 +366,7 @@ class ProductRequirement(models.Model):
         blank=True,
         related_name='product_requirement',
         verbose_name='关联任务',
-        db_comment='关联的任务ID'
+        db_comment='关联的任务ID (旧数据兼容)'
     )
 
     status = models.CharField(
@@ -354,8 +379,10 @@ class ProductRequirement(models.Model):
 
     # 外采平台
     PLATFORM_YIZHIGUAN = 'yizhiguan'
+    PLATFORM_S2B = 's2b'
     PLATFORM_CHOICES = [
         (PLATFORM_YIZHIGUAN, '艺之冠'),
+        (PLATFORM_S2B, 'S2B'),
     ]
 
     platform = models.CharField(
@@ -363,17 +390,55 @@ class ProductRequirement(models.Model):
         max_length=50,
         choices=PLATFORM_CHOICES,
         default=PLATFORM_YIZHIGUAN,
-        db_comment='外采平台：yizhiguan'
+        db_comment='外采平台：yizhiguan, s2b'
     )
     product_url = models.URLField('产品链接', max_length=500, blank=True, null=True, db_comment='外采产品链接')
+    product_id = models.CharField('平台产品ID', max_length=100, blank=True, null=True, db_comment='从URL提取的平台唯一ID')
+
+    # 上架平台
+    LISTING_PLATFORM_AMAZON = 'amazon'
+    LISTING_PLATFORM_TEMU = 'temu'
+    LISTING_PLATFORM_CHOICES = [
+        (LISTING_PLATFORM_AMAZON, 'Amazon'),
+        (LISTING_PLATFORM_TEMU, 'Temu'),
+    ]
+    listing_platform = models.CharField(
+        '上架平台',
+        max_length=50,
+        choices=LISTING_PLATFORM_CHOICES,
+        blank=True,
+        null=True,
+        db_comment='上架平台：amazon, temu'
+    )
 
     # 产品详情
     product_name = models.CharField('产品名称', max_length=200, blank=True, null=True)
     product_abbr = models.CharField('产品简称', max_length=100, blank=True, null=True)
     english_name = models.CharField('英文名称', max_length=200, blank=True, null=True)
     material = models.CharField('产品材质', max_length=100, blank=True, null=True)
-    craft = models.JSONField('生产工艺', default=list, blank=True, null=True, db_comment='多选：生产工艺列表')
+    CRAFT_PRINT = '印花'
+    CRAFT_EMBROIDERY = '刺绣'
+    CRAFT_LASER = '镭射'
+    
+    CRAFT_CHOICES = [
+        (CRAFT_PRINT, '印花'),
+        (CRAFT_EMBROIDERY, '刺绣'),
+        (CRAFT_LASER, '镭射'),
+    ]
+
+    craft = models.CharField(
+        '生产工艺', 
+        max_length=50, 
+        choices=CRAFT_CHOICES, 
+        blank=True, 
+        null=True, 
+        db_comment='单选：生产工艺'
+    )
     unit = models.CharField('计量单位', max_length=20, blank=True, null=True)
+
+    # 冗余字段（方便查询展示，数据源自Task）
+    requirement_no = models.CharField('需求单号', max_length=50, blank=True, null=True, db_comment='冗余：对应Task的task_no')
+    title = models.CharField('需求标题', max_length=200, blank=True, null=True, db_comment='冗余：对应Task的title')
 
     # 报关信息
     customs_cn_name = models.CharField('报关中文名称', max_length=200, blank=True, null=True)
@@ -393,10 +458,23 @@ class ProductRequirement(models.Model):
     special_note = models.TextField('特别说明', blank=True, null=True)
     reminder = models.TextField('温馨提醒', blank=True, null=True)
 
+    # 包装信息
+    packaging_size_cm = models.CharField('包装尺寸(cm)', max_length=100, blank=True, null=True)
+    packaging_size_inch = models.CharField('包装尺寸(inch)', max_length=100, blank=True, null=True)
+    packaging_volumn_cm3 = models.CharField('包装体积(cm3)', max_length=100, blank=True, null=True)
+    packaging_volumn_inch3 = models.CharField('包装体积(inch3)', max_length=100, blank=True, null=True)
+    packaging_weight_g = models.CharField('包装重量(g)', max_length=100, blank=True, null=True)
+    packaging_weight_lb = models.CharField('包装重量(lb)', max_length=100, blank=True, null=True)
+
+    # 额外信息
+    color_name = models.JSONField('颜色列表', default=list, blank=True, null=True)
+    img_urls_list = models.JSONField('图片链接列表', default=list, blank=True, null=True)
+
     # 设计说明
     design_desc = models.TextField('设计说明', blank=True, null=True)
     design_area = models.TextField('设计区域', blank=True, null=True)
     image_requirement = models.TextField('图片要求', blank=True, null=True)
+    remark = models.TextField('备注', blank=True, null=True)
 
     # 元数据
     created_by = models.ForeignKey(
@@ -414,6 +492,16 @@ class ProductRequirement(models.Model):
         verbose_name = '产品需求'
         verbose_name_plural = '产品需求列表'
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        """
+        保存时自动生成需求单号
+        """
+        if not self.requirement_no and self.created_by:
+            from task.utils.task_utils import generate_task_no
+            self.requirement_no = generate_task_no(self.created_by)
+            
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.product_name or '未命名'} ({self.get_status_display()})"

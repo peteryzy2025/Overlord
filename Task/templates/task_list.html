@@ -330,6 +330,78 @@
             .filter-row { grid-template-columns: 1fr; }
             .task-table th, .task-table td { padding: 0.75rem 0.5rem; }
         }
+        .dropdown-check-list {
+            display: inline-block;
+            width: 100%;
+            position: relative;
+        }
+
+        .dropdown-check-list .anchor {
+            position: relative;
+            cursor: pointer;
+            display: inline-block;
+            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-primary);
+            border-radius: 8px;
+            width: 100%;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-check-list .anchor:hover {
+            border-color: var(--accent-color);
+        }
+
+        .dropdown-check-list .anchor::after {
+            position: absolute;
+            content: "";
+            border-left: 2px solid var(--text-primary);
+            border-top: 2px solid var(--text-primary);
+            padding: 5px;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-135deg);
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-check-list .anchor.active::after {
+            transform: translateY(-50%) rotate(45deg);
+        }
+
+        .dropdown-check-list .items {
+            padding: 0.5rem;
+            display: none;
+            margin: 0;
+            border: 1px solid var(--border-color);
+            border-top: none;
+            background-color: var(--bg-primary);
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            width: 100%;
+            z-index: 100;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .dropdown-check-list .items .item {
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+
+        .dropdown-check-list .items .item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .dropdown-check-list.visible .items {
+            display: block;
+        }
     </style>
 {% endblock %}
 
@@ -388,23 +460,32 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">状态筛选</label>
-                    <select class="form-select" id="statusFilter">
-                        <option value="">全部状态</option>
-                        <option value="draft">草稿</option>
-                        <option value="pending">待执行</option>
-                        <option value="in_progress">进行中</option>
-                        <option value="completed">已完成</option>
-                        <option value="failed">执行失败</option>
-                        <option value="cancelled">已取消</option>
-                    </select>
+                    <div id="statusDropdown" class="dropdown-check-list">
+                        <div class="anchor" id="statusAnchor">
+                            <span id="statusSelectedText">全部状态</span>
+                        </div>
+                        <div class="items" id="statusItems">
+                            <div class="item"><input type="checkbox" value="all" checked> 全部状态</div>
+                            <div class="item"><input type="checkbox" value="draft"> 草稿</div>
+                            <div class="item"><input type="checkbox" value="pending"> 待执行</div>
+                            <div class="item"><input type="checkbox" value="in_progress"> 进行中</div>
+                            <div class="item"><input type="checkbox" value="completed"> 已完成</div>
+                            <div class="item"><input type="checkbox" value="failed"> 执行失败</div>
+                            <div class="item"><input type="checkbox" value="cancelled"> 已取消</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">创建人</label>
-                    <select class="form-select" id="creatorFilter">
-                        <option value="">全部人员</option>
-                        <!-- 动态加载 -->
-                    </select>
+                    <div id="creatorDropdown" class="dropdown-check-list">
+                        <div class="anchor" id="creatorAnchor">
+                            <span id="creatorSelectedText">全部人员</span>
+                        </div>
+                        <div class="items" id="creatorItems">
+                            <!-- 动态加载 -->
+                        </div>
+                    </div>
                 </div>
 
                 <div class="filter-group">
@@ -516,8 +597,8 @@
                 total_pages: 0
             },
             filters: {
-                status: '',
-                creator: '',
+                status: [],
+                creator: [],
                 date_range: 'all',
                 start_date: '',
                 end_date: ''
@@ -572,7 +653,103 @@
             setupDateFilter();
             loadTasks();
             loadStats();
+            initDropdowns();
         });
+
+        // 初始化下拉框逻辑
+        function initDropdowns() {
+            setupDropdown('statusDropdown', 'statusAnchor', 'statusItems', updateStatusSelection);
+            setupDropdown('creatorDropdown', 'creatorAnchor', 'creatorItems', updateCreatorSelection);
+        }
+
+        function setupDropdown(dropdownId, anchorId, itemsId, updateCallback) {
+            const dropdown = document.getElementById(dropdownId);
+            const anchor = document.getElementById(anchorId);
+            const items = document.getElementById(itemsId);
+
+            anchor.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Close other dropdowns
+                document.querySelectorAll('.dropdown-check-list').forEach(d => {
+                    if (d.id !== dropdownId) d.classList.remove('visible');
+                });
+                dropdown.classList.toggle('visible');
+            });
+
+            items.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // 绑定checkbox事件
+            items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    handleCheckboxChange(this, itemsId);
+                    updateCallback();
+                    taskData.pagination.page = 1;
+                    loadTasks();
+                });
+            });
+
+            document.addEventListener('click', function() {
+                dropdown.classList.remove('visible');
+            });
+        }
+
+        function handleCheckboxChange(checkbox, itemsId) {
+            const allCheckbox = document.querySelector(`#${itemsId} input[value="all"]`);
+            
+            if (checkbox.value === 'all') {
+                if (checkbox.checked) {
+                    document.querySelectorAll(`#${itemsId} input[type="checkbox"]`).forEach(cb => {
+                        if (cb !== checkbox) cb.checked = false;
+                    });
+                }
+            } else {
+                if (checkbox.checked && allCheckbox) {
+                    allCheckbox.checked = false;
+                }
+            }
+        }
+
+        function updateStatusSelection() {
+            const checkboxes = document.querySelectorAll('#statusItems input[type="checkbox"]');
+            const selected = [];
+            let allChecked = false;
+
+            checkboxes.forEach(cb => {
+                if (cb.value === 'all' && cb.checked) allChecked = true;
+                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+            });
+
+            taskData.filters.status = allChecked ? [] : selected;
+            
+            const textEl = document.getElementById('statusSelectedText');
+            if (allChecked || selected.length === 0) {
+                textEl.textContent = '全部状态';
+            } else {
+                textEl.textContent = `已选 ${selected.length} 项`;
+            }
+        }
+
+        function updateCreatorSelection() {
+            const checkboxes = document.querySelectorAll('#creatorItems input[type="checkbox"]');
+            const selected = [];
+            let allChecked = false;
+
+            checkboxes.forEach(cb => {
+                if (cb.value === 'all' && cb.checked) allChecked = true;
+                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+            });
+
+            taskData.filters.creator = allChecked ? [] : selected;
+
+            const textEl = document.getElementById('creatorSelectedText');
+            if (allChecked || selected.length === 0) {
+                textEl.textContent = '全部人员';
+            } else {
+                textEl.textContent = `已选 ${selected.length} 人`;
+            }
+        }
 
         // ===== 加载创建人列表 =====
         async function loadCreators() {
@@ -581,11 +758,22 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    const creatorSelect = document.getElementById('creatorFilter');
-                    creatorSelect.innerHTML = '<option value="">全部人员</option>' +
-                        result.data.map(creator => 
-                            `<option value="${creator.id}">${creator.name}</option>`
-                        ).join('');
+                    const items = document.getElementById('creatorItems');
+                    let html = '<div class="item"><input type="checkbox" value="all" checked> 全部人员</div>';
+                    result.data.forEach(creator => {
+                        html += `<div class="item"><input type="checkbox" value="${creator.id}"> ${creator.name}</div>`;
+                    });
+                    items.innerHTML = html;
+
+                    // Re-bind events for new items
+                    items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        cb.addEventListener('change', function() {
+                            handleCheckboxChange(this, 'creatorItems');
+                            updateCreatorSelection();
+                            taskData.pagination.page = 1;
+                            loadTasks();
+                        });
+                    });
                 }
             } catch (error) {
                 console.error('加载创建人列表失败:', error);
@@ -617,12 +805,17 @@
                 const params = new URLSearchParams({
                     page: taskData.pagination.page,
                     page_size: taskData.pagination.page_size,
-                    status: taskData.filters.status,
-                    creator: taskData.filters.creator,
                     date_range: taskData.filters.date_range,
                     start_date: taskData.filters.start_date,
                     end_date: taskData.filters.end_date
                 });
+
+                if (taskData.filters.status.length > 0) {
+                    params.append('status', taskData.filters.status.join(','));
+                }
+                if (taskData.filters.creator.length > 0) {
+                    params.append('creator', taskData.filters.creator.join(','));
+                }
                 
                 const response = await fetch(`/api/tasks/list/?${params}`);
                 const result = await response.json();
@@ -814,8 +1007,6 @@
 
         // ===== 筛选操作 =====
         function applyFilters() {
-            taskData.filters.status = document.getElementById('statusFilter').value;
-            taskData.filters.creator = document.getElementById('creatorFilter').value;
             taskData.filters.date_range = document.getElementById('dateRangeFilter').value;
             
             if (taskData.filters.date_range === 'custom') {
@@ -831,15 +1022,22 @@
         }
 
         function resetFilters() {
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('creatorFilter').value = '';
+            // 重置多选下拉框
+            document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = cb.value === 'all';
+            });
+            updateStatusSelection();
+            updateCreatorSelection();
+
             document.getElementById('dateRangeFilter').value = 'all';
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
+            document.getElementById('customDateGroup').style.display = 'none';
+            document.getElementById('customDateGroup2').style.display = 'none';
             
             taskData.filters = {
-                status: '',
-                creator: '',
+                status: [],
+                creator: [],
                 date_range: 'all',
                 start_date: '',
                 end_date: ''

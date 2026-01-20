@@ -191,7 +191,7 @@ class ThemeTrashBin(models.Model):
 
 class StatusCodeMapping(models.Model):
     """商标状态码映射表"""
-    status_code = models.IntegerField(verbose_name='商标状态码', primary_key=True)
+    status_code = models.CharField(max_length=50,verbose_name='商标状态码', primary_key=True)
     status_type = models.CharField(max_length=50, verbose_name='商标状态类型')
 
     class Meta:
@@ -221,7 +221,7 @@ class MarkDrawingTypeMapping(models.Model):
 
 class EntityTypeMapping(models.Model):
     """法律实体类型映射表"""
-    code = models.CharField(max_length=5, verbose_name='法律实体类型码', primary_key=True)
+    code = models.CharField(max_length=50, verbose_name='法律实体类型码', primary_key=True)
     description = models.CharField(max_length=100, verbose_name='法律实体类型描述')
 
     class Meta:
@@ -233,35 +233,13 @@ class EntityTypeMapping(models.Model):
         return f"{self.code} - {self.description}"
 
 
-# 准备新增的映射表
-class NameTypeMapping(models.Model):
-    """侵权类型映射表"""
-    code = models.CharField(max_length=5, verbose_name='侵权类型码', primary_key=True)
-    rank_level = models.CharField(max_length=50, verbose_name='侵权类型等级')
-
-    class Meta:
-        db_table = 'theme_name_type_mapping'
-        verbose_name = '侵权类型映射'
-        verbose_name_plural = verbose_name
-
-    def __str__(self):
-        return f"{self.code} - {self.rank_level}"
-
-
 # =====================================侵权词表===================================#
 
 class TroTable(models.Model):
     """侵权词表,用于判断高/低风险"""
     id = models.AutoField(primary_key=True, verbose_name='ID')
     theme_name = models.CharField(max_length=765, verbose_name='侵权词名')
-    name_type = models.ForeignKey(
-        NameTypeMapping,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name='tro_words',
-        verbose_name='侵权类型'
-    )
+    name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
@@ -282,9 +260,9 @@ class TroTable(models.Model):
 class TrademarkInfo(models.Model):
     """美标网商标信息表，用于判断中风险"""
     serial_number = models.CharField(max_length=10, verbose_name='商标注册号', primary_key=True)
-    word_mark = models.CharField(max_length=100, verbose_name='侵权词')
+    word_mark = models.CharField(max_length=525, verbose_name='侵权词')
     registration_number = models.CharField(max_length=100, verbose_name='注册号', null=True, blank=True)
-    filing_date = models.DateField(verbose_name='入库时间', auto_now_add=True)
+    filing_date = models.DateField(verbose_name='入库时间', auto_now_add=True, null=True, blank=True)
     registration_date = models.DateField(verbose_name='注册日期', null=True, blank=True)
     transaction_date = models.DateField(verbose_name='交易日期', null=True, blank=True)
     status_code = models.ForeignKey(
@@ -301,6 +279,7 @@ class TrademarkInfo(models.Model):
     mark_drawing_type = models.ForeignKey(
         MarkDrawingTypeMapping,
         on_delete=models.PROTECT,
+        to_field='code',
         null=True,
         blank=True,
         related_name='trademarks',
@@ -309,6 +288,7 @@ class TrademarkInfo(models.Model):
     owner_name = models.CharField(max_length=525, verbose_name='商标所有者', null=True, blank=True)
     legal_entity_type = models.ForeignKey(
         EntityTypeMapping,
+        to_field='code',
         on_delete=models.PROTECT,
         related_name='trademark_entities',
         verbose_name='法律实体类型',

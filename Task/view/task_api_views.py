@@ -3,6 +3,7 @@
 import json
 import requests
 import threading
+import re
 from datetime import datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
@@ -12,13 +13,212 @@ from django.db.models import Q
 from django.db import transaction
 
 from general.models import User, AmazonShop, TemuShop
-from task.models import Task, SubTask, TaskTemplate
+from task.models import Task, SubTask, TaskTemplate, ProductRequirement
 from task.utils import (
     generate_task_no,
     get_visible_shops,
     parse_permissions,
     validate_subtask_params
 )
+from api.wc.crawler_wc import get_ykartwood_product
+
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_tasks_list_api(request):
+    """
+    获取任务列表（支持分页和筛选）
+    GET /api/tasks/list/
+    """
+    try:
+        page = int(request.GET.get('page', 1))
+        page_size = int(request.GET.get('page_size', 20))
+        
+        # 筛选参数
+        status = request.GET.get('status')
+        creator = request.GET.get('creator')
+        date_range = request.GET.get('date_range', 'all')
+        start_date = request.GET.get('start_date')
+        end_date = request.GET.get('end_date')
+
+        # 基础查询：只能看到自己创建的，或自己负责的，或者有权限看到的
+        current_user = request.user
+        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        
+        queryset = Task.objects.exclude(task_type=Task.TYPE_PRODUCT).select_related('created_by', 'owner').prefetch_related('subtasks')
+
+        if 'ops_all' not in permissions:
+            if 'ops_group' in permissions and hasattr(current_user, 'operational_account'):
+                group_name = current_user.operational_account.ops_group
+                # 组长可以看到组内成员创建或负责的任务
+                if group_name:
+                    queryset = queryset.filter(
+                        Q(created_by=current_user) | 
+                        Q(owner=current_user) |
+                        Q(created_by__operational_account__ops_group=group_name) |
+                        Q(owner__operational_account__ops_group=group_name)
+                    )
+                else:
+                    queryset = queryset.filter(Q(created_by=current_user) | Q(owner=current_user))
+            else:
+                # 普通用户只能看到相关任务
+                queryset = queryset.filter(Q(created_by=current_user) | Q(owner=current_user))
+
+        # 应用筛选
+        if status:
+            status_list = status.split(',')
+            queryset = queryset.filter(status__in=status_list)
+
+        if creator:
+            creator_list = creator.split(',')
+            queryset = queryset.filter(created_by_id__in=creator_list)
+
+        if date_range != 'all':
+            now = timezone.now()
+            if date_range == 'today':
+                queryset = queryset.filter(created_at__date=now.date())
+            elif date_range == 'week':
+                start_week = now - timezone.timedelta(days=now.weekday())
+                queryset = queryset.filter(created_at__gte=start_week.date())
+            elif date_range == 'month':
+                queryset = queryset.filter(created_at__month=now.month, created_at__year=now.year)
+            elif date_range == 'custom' and start_date and end_date:
+                queryset = queryset.filter(created_at__range=[start_date, end_date + ' 23:59:59'])
+
+        # 排序
+        queryset = queryset.order_by('-created_at')
+
+        # 分页
+        from django.core.paginator import Paginator
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+
+        tasks_data = []
+        for task in page_obj:
+            tasks_data.append({
+                'id': task.id,
+                'task_no': task.task_no,
+                'title': task.title,
+                'status': task.status,
+                'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'created_by_name': task.created_by.first_name or task.created_by.username,
+                'owner_name': task.owner.first_name or task.owner.username,
+                'creator_name': task.created_by.first_name or task.created_by.username, # Frontend expects creator_name
+                'subtasks': [{
+                    'id': st.id,
+                    'type': st.subtask_type
+                } for st in task.subtasks.all()]
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'tasks': tasks_data,
+                'pagination': {
+                    'page': page,
+                    'page_size': page_size,
+                    'total': paginator.count,
+                    'total_pages': paginator.num_pages
+                }
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_task_api(request, task_id):
+    """
+    删除任务
+    DELETE /api/tasks/<task_id>/delete/
+    """
+    try:
+        # 只能删除自己创建的，或者管理员可以删除
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        
+        if 'ops_all' in permissions:
+            task = Task.objects.get(id=task_id)
+        else:
+            task = Task.objects.get(id=task_id, created_by=request.user)
+            
+        task.delete()
+
+        return JsonResponse({'success': True, 'message': '任务已删除'})
+
+    except Task.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': '任务不存在或无权删除'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'删除任务失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_task_stats_api(request):
+    """
+    获取任务统计数据
+    GET /api/tasks/stats/
+    """
+    try:
+        current_user = request.user
+        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        
+        queryset = Task.objects.exclude(task_type=Task.TYPE_PRODUCT)
+
+        # 权限过滤
+        if 'ops_all' not in permissions:
+            if 'ops_group' in permissions and hasattr(current_user, 'operational_account'):
+                group_name = current_user.operational_account.ops_group
+                if group_name:
+                    queryset = queryset.filter(
+                        Q(created_by=current_user) | 
+                        Q(owner=current_user) |
+                        Q(created_by__operational_account__ops_group=group_name) |
+                        Q(owner__operational_account__ops_group=group_name)
+                    )
+                else:
+                    queryset = queryset.filter(Q(created_by=current_user) | Q(owner=current_user))
+            else:
+                queryset = queryset.filter(Q(created_by=current_user) | Q(owner=current_user))
+        
+        stats = {
+            'total': queryset.count(),
+            'draft': queryset.filter(status='draft').count(),
+            'pending': queryset.filter(status='pending').count(),
+            'in_progress': queryset.filter(status='in_progress').count()
+        }
+        
+        return JsonResponse({'success': True, 'data': stats})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_task_creators_api(request):
+    """
+    获取任务创建人列表（用于筛选）
+    GET /api/tasks/creators/
+    """
+    try:
+        # 获取所有创建过任务的用户
+        # 简单起见，这里返回所有有权限的用户，或者复用 available-owners 的逻辑
+        # 为了更准确，我们可以查询 Task 表中 distinct 的 created_by
+        # 但考虑到性能和权限，直接返回所有可能的运营人员可能更好
+        
+        # 复用 get_available_owners_api 的逻辑，因为通常创建人就是所有者池子里的
+        return get_available_owners_api(request)
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 @login_required
@@ -262,9 +462,166 @@ def create_task_api(request):
 
         # 获取任务类型
         task_type = data.get('task_type', Task.TYPE_STANDARD)
+        is_draft = data.get('is_draft', False)
+
+        # 特殊处理产品需求：每个子任务创建一个独立的 ProductRequirement (不创建 Task)
+        if task_type == 'product_requirement' and not is_draft:
+            created_ids = []
+            
+            for idx, subtask_data in enumerate(subtasks_data):
+                # 生成唯一的任务单号 (加后缀以防冲突)
+                # 为了确保唯一性，如果循环处理过快，generate_task_no 可能生成相同的时间戳
+                import time
+                time.sleep(1.1) 
+                task_no = generate_task_no(current_user)
+
+                # 构造子任务标题
+                sub_title = title
+                if len(subtasks_data) > 1:
+                    sub_title = f"{title} - {idx + 1}"
+
+                params = subtask_data.get('params', {})
+                subtask_type = subtask_data.get('type')
+                product_url = params.get('url')
+                platform = params.get('platform', 'yizhiguan')
+                listing_platform = params.get('listing_platform', 'amazon')
+                
+                # 提取 Product ID
+                product_id = None
+                if product_url:
+                    if 'yizhiguan' in platform or 'ykartwood' in product_url:
+                        match = re.search(r'detail/(\d+)', product_url)
+                        if match:
+                            product_id = match.group(1)
+                    elif 's2b' in platform or 's2bdiy' in product_url:
+                        match = re.search(r'productDesignDetail/(\d+)', product_url)
+                        if match:
+                            product_id = match.group(1)
+                    elif 'amazon' in platform or 'amazon' in product_url:
+                         # Amazon ID通常是ASIN，如 /dp/B08...
+                         match = re.search(r'/dp/([A-Z0-9]{10})', product_url)
+                         if not match:
+                             match = re.search(r'/gp/product/([A-Z0-9]{10})', product_url)
+                         if match:
+                             product_id = match.group(1)
+                    elif 'temu' in platform or 'temu' in product_url:
+                        # Temu ID通常在URL末尾或 goods_id 参数
+                         match = re.search(r'goods_id=(\d+)', product_url)
+                         if not match:
+                            # 尝试匹配URL路径中的数字
+                            match = re.search(r'-g-(\d+)\.html', product_url)
+                         if match:
+                             product_id = match.group(1)
+
+                # 查重逻辑
+                if product_id and ProductRequirement.objects.filter(product_id=product_id, platform=platform).exists():
+                     # 回滚事务并返回错误
+                     raise ValueError(f'产品ID {product_id} (平台: {platform}) 已存在，请勿重复创建')
+                
+                # 抓取数据逻辑 (如果是艺之冠且提取到了ID)
+                crawler_data = {}
+                initial_status = ProductRequirement.STATUS_SUBMITTED
+                
+                if 'yizhiguan' in platform and product_id:
+                    try:
+                        ykat_data = get_ykartwood_product(product_id, listing_platform, platform)
+                        if ykat_data:
+                            crawler_data = ykat_data
+                            initial_status = ProductRequirement.STATUS_PENDING_DESIGN # 状态改为待设计
+                    except Exception as e:
+                        print(f"Crawler failed: {e}")
+                
+                craft_map = {
+                    'print_external': '印花',
+                    'embroidery': '刺绣'
+                }
+                
+                req_data = {
+                    'created_by': current_user,
+                    'owner': owner, # 新增 owner 字段
+                    'platform': platform,
+                    'listing_platform': listing_platform,
+                    'product_url': product_url,
+                    'product_id': product_id,
+                    'craft': crawler_data.get('craft') or craft_map.get(subtask_type, ''),
+                    'status': initial_status,
+                    'title': sub_title,
+                    'requirement_no': task_no,
+                    
+                    # 爬虫抓取的字段
+                    'product_name': crawler_data.get('product_name', ''),
+                    'product_abbr': crawler_data.get('product_abbr', ''),
+                    'english_name': crawler_data.get('english_name', ''),
+                    'material': crawler_data.get('material', ''),
+                    'unit': crawler_data.get('unit', ''),
+                    'customs_cn_name': crawler_data.get('customs_cn_name', ''),
+                    'customs_en_name': crawler_data.get('customs_en_name', ''),
+                    'declared_weight': crawler_data.get('declared_weight'),
+                    'declared_price': crawler_data.get('declared_price'),
+                    'material_cn': crawler_data.get('material_cn', ''),
+                    'material_desc': crawler_data.get('material_desc', ''),
+                    'accessory_struct': crawler_data.get('accessory_struct', ''),
+                    'product_performance': crawler_data.get('product_performance', ''),
+                    'applicable_scenario': crawler_data.get('applicable_scenario', ''),
+                    'washing_instructions': crawler_data.get('washing_instructions', ''),
+                    'special_note': crawler_data.get('special_note', ''),
+                    'reminder': crawler_data.get('reminder', ''),
+                    'design_desc': crawler_data.get('design_desc', ''),
+                    'design_area': crawler_data.get('design_area', ''),
+                    
+                    # 新增字段
+                    'color_name': crawler_data.get('color_name', []),
+                    'img_urls_list': crawler_data.get('img_urls_list', []),
+                    'packaging_size_cm': crawler_data.get('packaging_size_cm', ''),
+                    'packaging_size_inch': crawler_data.get('packaging_size_inch', ''),
+                    'packaging_volumn_cm3': crawler_data.get('packaging_volumn_cm3', ''),
+                    'packaging_volumn_inch3': crawler_data.get('packaging_volumn_inch3', ''),
+                    'packaging_weight_g': crawler_data.get('packaging_weight_g', ''),
+                    'packaging_weight_lb': crawler_data.get('packaging_weight_lb', ''),
+                }
+                
+                # 清理 None 值
+                req_data = {k: v for k, v in req_data.items() if v is not None}
+                
+                req = ProductRequirement.objects.create(**req_data)
+                
+                created_ids.append(req.id)
+                
+                # 发送 webhook (针对每个任务发送)
+                try:
+                    webhook_data = data.copy()
+                    webhook_data.update({
+                        'task_id': req.id, # 使用 Requirement ID
+                        'task_no': req.requirement_no,
+                        'title': sub_title,
+                        'created_by_id': current_user.id,
+                        'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
+                        'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
+                        'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        'status': 'pending',
+                        'product_url': params.get('url')
+                    })
+
+                    def send_webhook_task(payload):
+                        url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/873825669915136000"
+                        try:
+                            requests.post(url, json=payload, timeout=10)
+                        except Exception as e:
+                            print(f"Webhook send failed: {e}")
+
+                    transaction.on_commit(lambda data=webhook_data: threading.Thread(target=send_webhook_task, args=(data,)).start())
+                except Exception:
+                    pass
+
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'task_ids': created_ids,
+                    'redirect_url': '/task/product/list/'
+                }
+            })
 
         # 创建主任务
-        is_draft = data.get('is_draft', False)
         task = Task.objects.create(
             title=title,
             task_no=task_no,
