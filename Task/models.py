@@ -459,12 +459,7 @@ class ProductRequirement(models.Model):
     reminder = models.TextField('温馨提醒', blank=True, null=True)
 
     # 包装信息
-    packaging_size_cm = models.CharField('包装尺寸(cm)', max_length=100, blank=True, null=True)
-    packaging_size_inch = models.CharField('包装尺寸(inch)', max_length=100, blank=True, null=True)
-    packaging_volumn_cm3 = models.CharField('包装体积(cm3)', max_length=100, blank=True, null=True)
-    packaging_volumn_inch3 = models.CharField('包装体积(inch3)', max_length=100, blank=True, null=True)
-    packaging_weight_g = models.CharField('包装重量(g)', max_length=100, blank=True, null=True)
-    packaging_weight_lb = models.CharField('包装重量(lb)', max_length=100, blank=True, null=True)
+    packaging_specification = models.JSONField('包装规格', default=list, blank=True, null=True)
 
     # 报关额外信息
     trademark_category = models.CharField('商标类目', max_length=100, blank=True, null=True, default='')

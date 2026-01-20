@@ -103,45 +103,6 @@ def build_titles(declaration_name: str, pt: str, supplier: str = "艺之冠") ->
     return title, sub_title
 
 
-def process_packaging_specification(data, pid):
-    """
-    处理包装说明，提取包装尺寸
-    :param packaging_specification: 包装说明
-    :return: 包装尺寸
-    """
-    # data = fetch_product(pid)
-    product_details = data.get("product_details", {})
-    packaging_specification = product_details.get("packaging_specification", "")  # 包装说明
-    packaging_specification = json.loads(packaging_specification)
-    try:
-        flat = [cell for row in packaging_specification for cell in row]
-        packaging_size_cm = flat[8].get("content", "")
-        packaging_size_inch = flat[9].get("content", "")
-        packaging_volumn_cm3 = flat[10].get("content", "")
-        packaging_volumn_inch3 = flat[11].get("content", "")
-        packaging_weight_g = flat[12].get("content", "")
-        packaging_weight_lb = flat[13].get("content", "")
-
-        packaging_info = {
-            "packaging_size_cm": packaging_size_cm,
-            "packaging_size_inch": packaging_size_inch,
-            "packaging_volumn_cm3": packaging_volumn_cm3,
-            "packaging_volumn_inch3": packaging_volumn_inch3,
-            "packaging_weight_g": packaging_weight_g,
-            "packaging_weight_lb": packaging_weight_lb,
-        }
-    except Exception as e:
-        print(f"Error processing packaging specification for product {pid}: {e}")
-        packaging_info = {
-            "packaging_size_cm": "",
-            "packaging_size_inch": "",
-            "packaging_volumn_cm3": "",
-            "packaging_volumn_inch3": "",
-            "packaging_weight_g": "",
-            "packaging_weight_lb": "",
-        }
-
-    return packaging_info
 
 
 def get_img_urls(data):
@@ -208,9 +169,10 @@ def get_ykartwood_product(pid, platform, select_platform):
         reminder = product_details.get("reminder")
         design_explanation = product_details.get("design_explanation")  # 设计说明
         design_area = product_details.get("design_area")  # 设计区域
+
         color_name = get_color_name(data)
-        # psd_img_url = product_details.get("psd_img_url")  # 产品图片链接
-        packaging_info = process_packaging_specification(data, pid)
+        product_details = data.get("product_details", {})
+        packaging_specification = json.loads(product_details.get("packaging_specification", ""))  # 包装说明
         img_urls_list = get_img_urls(data)
         # -------------------------
         category = ''
@@ -245,19 +207,15 @@ def get_ykartwood_product(pid, platform, select_platform):
 
             "color_name": color_name,  # 颜色
             "img_urls_list": img_urls_list,  # 产品图片链接列表
-            "packaging_size_cm": packaging_info.get("packaging_size_cm", ""),  # 包装尺寸（cm）
-            "packaging_size_inch": packaging_info.get("packaging_size_inch", ""),  # 包装尺寸（英寸）
-            "packaging_volumn_cm3": packaging_info.get("packaging_volumn_cm3", ""),  # 包装体积（cm³）
-            "packaging_volumn_inch3": packaging_info.get("packaging_volumn_inch3", ""),  # 包装体积（英寸³）
-            "packaging_weight_g": packaging_info.get("packaging_weight_g", ""),  # 包装重量（g）
-            "packaging_weight_lb": packaging_info.get("packaging_weight_lb", ""),  # 包装重量（lb）
+            "packaging_specification": packaging_specification,
 
             # ----------------
             "category": category,
             "special_cargo_type": "是否USPS",
             "product_label": "北美生产",
+            # "trademark_category": "", # 商标类目，爬虫不修改
         }
         return ykat_dict
     return None
 
-# print(get_ykartwood_product("188678", "amazon", "艺之冠"))
+# print(get_ykartwood_product("216484", "amazon", "艺之冠"))

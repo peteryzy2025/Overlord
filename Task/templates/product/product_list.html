@@ -1147,13 +1147,13 @@
                 ]
             },
             {
-                title: '包装信息', items: [
-                    { label: '包装尺寸(cm)', value: data.packaging_size_cm, key: 'packaging_size_cm' },
-                    { label: '包装尺寸(inch)', value: data.packaging_size_inch, key: 'packaging_size_inch' },
-                    { label: '包装体积(cm3)', value: data.packaging_volumn_cm3, key: 'packaging_volumn_cm3' },
-                    { label: '包装体积(inch3)', value: data.packaging_volumn_inch3, key: 'packaging_volumn_inch3' },
-                    { label: '包装重量(g)', value: data.packaging_weight_g, key: 'packaging_weight_g' },
-                    { label: '包装重量(lb)', value: data.packaging_weight_lb, key: 'packaging_weight_lb' }
+                title: '包装规格', items: [
+                    {
+                        label: '包装规格表',
+                        value: renderPackagingTable(data.packaging_specification),
+                        key: 'packaging_specification',
+                        type: 'packaging_table'
+                    }
                 ]
             },
             {
@@ -1190,12 +1190,17 @@
                     safeRawValue = item.raw_value.toString().replace(/"/g, '&quot;');
                 }
 
+                // 如果是包装表格，直接把整个对象转为字符串存在 raw_value
+                if (item.type === 'packaging_table') {
+                    safeRawValue = JSON.stringify(item.value || []).replace(/"/g, '&quot;');
+                }
+
                 // 对于 html 类型，直接插入 value，但在 data-val 中存储 safeValue
                 // 注意：如果是复杂 HTML，放入 data-val 可能会有问题，但为了兼容 edit 逻辑，我们尽量存
 
                 return `
-                            <div class="detail-item">
-                                <div class="detail-label">${item.label}:</div>
+                            <div class="detail-item" ${item.type === 'packaging_table' ? 'style="display:block;"' : ''}>
+                                <div class="detail-label" ${item.type === 'packaging_table' ? 'style="width:100%; margin-bottom:0.5rem;"' : ''}>${item.label}:</div>
                                 <div class="detail-value" 
                                      data-key="${item.key}" 
                                      data-val="${safeValue}" 
@@ -1211,6 +1216,33 @@
         });
         html += '</div>';
         body.innerHTML = html;
+    }
+
+    function renderPackagingTable(specs) {
+        if (!specs || !Array.isArray(specs) || specs.length === 0) return '暂无数据';
+
+        // specs 是一个二维数组
+        // 第一行通常是表头
+
+        let html = '<table class="table table-bordered table-sm" style="width:100%; font-size:0.85rem;">';
+
+        specs.forEach((row, rowIndex) => {
+            html += '<tr>';
+            row.forEach(cell => {
+                const content = cell.content || '';
+                const remark = cell.remark ? `<br><small style="color:var(--text-secondary)">${cell.remark}</small>` : '';
+
+                if (rowIndex === 0) {
+                    html += `<th style="background:var(--bg-secondary); padding:0.5rem;">${content}${remark}</th>`;
+                } else {
+                    html += `<td style="padding:0.5rem;">${content}${remark}</td>`;
+                }
+            });
+            html += '</tr>';
+        });
+
+        html += '</table>';
+        return html;
     }
 
     function renderImageLinks(urls) {
@@ -1309,6 +1341,8 @@
             const val = el.dataset.val;
             const type = el.dataset.type;
 
+            if (type === 'packaging_table') return; // 跳过不可编辑字段
+
             if (type === 'textarea') {
                 el.innerHTML = `<textarea class="form-control edit-input" rows="3" name="${key}">${val}</textarea>`;
             } else if (type === 'select') {
@@ -1344,6 +1378,12 @@
                 // 将数组转换为每行一个 URL 的字符串
                 const textVal = Array.isArray(urls) ? urls.join('\n') : '';
                 el.innerHTML = `<textarea class="form-control edit-input" rows="5" name="${key}" placeholder="每行输入一个图片链接">${textVal}</textarea>`;
+            } else if (type === 'packaging_table') {
+                // 包装规格不可编辑，保持原样显示
+                // do nothing or re-render table? 
+                // 由于 innerHTML 被清空，我们需要重新放入原值。
+                // 实际上，我们应该跳过不可编辑的字段。
+                // 在 enableEdit 循环中添加判断。
             } else {
                 el.innerHTML = `<input type="text" class="form-control edit-input" name="${key}" value="${val}">`;
             }
