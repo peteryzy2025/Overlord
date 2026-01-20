@@ -1154,6 +1154,7 @@
             if (type === 'print_external') {
                 defaultParams = {
                     platform: 'yizhiguan', // 默认艺之冠
+                    listing_platform: 'amazon', // 默认Amazon
                     url: ''
                 };
             } else if (type === 'embroidery') {
@@ -1213,6 +1214,13 @@
                         <select class="form-select" onchange="updateSubtaskParam(${subtask.id}, 'platform', this.value)">
                             <option value="yizhiguan" ${subtask.params.platform === 'yizhiguan' ? 'selected' : ''}>艺之冠</option>
                             <option value="s2b" ${subtask.params.platform === 's2b' ? 'selected' : ''}>S2B</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">上架平台 <span style="color: var(--danger-color);">*</span></label>
+                        <select class="form-select" onchange="updateSubtaskParam(${subtask.id}, 'listing_platform', this.value)">
+                            <option value="amazon" ${subtask.params.listing_platform === 'amazon' ? 'selected' : ''}>Amazon</option>
+                            <option value="temu" ${subtask.params.listing_platform === 'temu' ? 'selected' : ''}>Temu</option>
                         </select>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
@@ -1342,7 +1350,7 @@
                     clearTimeout(autoSaveTimer);
                     showNotification('需求提交成功，正在跳转...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/task/list/';
+                        window.location.href = result.data.redirect_url || '/task/product/list/';
                     }, 1500);
                 } else {
                     throw new Error(result.message || '提交失败');
@@ -1371,6 +1379,10 @@
                         showNotification(`产品 #${subtask.order + 1} 的链接不能为空`, 'warning');
                         return false;
                     }
+                    if (!subtask.params.listing_platform) {
+                        showNotification(`产品 #${subtask.order + 1} 的上架平台不能为空`, 'warning');
+                        return false;
+                    }
                 } else if (subtask.type === 'embroidery') {
                     if (!subtask.params.url) {
                         showNotification(`产品 #${subtask.order + 1} 的链接不能为空`, 'warning');
@@ -1382,7 +1394,7 @@
         }
 
         function cancelCreation() {
-            window.location.href = '/task/list/';
+            window.location.href = '/task/product/list/';
         }
 
         // ===== 检查草稿 =====
