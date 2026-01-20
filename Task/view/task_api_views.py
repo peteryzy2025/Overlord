@@ -583,6 +583,7 @@ def create_task_api(request):
                     'category': crawler_data.get('category', ''),
                     'special_cargo_type': crawler_data.get('special_cargo_type', ''),
                     'product_label': crawler_data.get('product_label', ''),
+                    'packaging_specification': crawler_data.get('packaging_specification', []),
                 }
                 
                 # 清理 None 值

@@ -182,17 +182,12 @@ def recrawl_product_requirement_api(request):
             # 新增字段
             item.color_name = crawler_data.get('color_name', item.color_name)
             item.img_urls_list = crawler_data.get('img_urls_list', item.img_urls_list)
-            item.packaging_size_cm = crawler_data.get('packaging_size_cm', item.packaging_size_cm)
-            item.packaging_size_inch = crawler_data.get('packaging_size_inch', item.packaging_size_inch)
-            item.packaging_volumn_cm3 = crawler_data.get('packaging_volumn_cm3', item.packaging_volumn_cm3)
-            item.packaging_volumn_inch3 = crawler_data.get('packaging_volumn_inch3', item.packaging_volumn_inch3)
-            item.packaging_weight_g = crawler_data.get('packaging_weight_g', item.packaging_weight_g)
-            item.packaging_weight_lb = crawler_data.get('packaging_weight_lb', item.packaging_weight_lb)
-
+            
             # 新增报关字段
             item.category = crawler_data.get('category', item.category)
             item.special_cargo_type = crawler_data.get('special_cargo_type', item.special_cargo_type)
             item.product_label = crawler_data.get('product_label', item.product_label)
+            item.packaging_specification = crawler_data.get('packaging_specification', item.packaging_specification)
             
             item.save()
             
@@ -295,20 +290,15 @@ def get_product_requirement_detail_api(request, pk):
             'washing_instructions': item.washing_instructions,
             'special_note': item.special_note,
             'reminder': item.reminder,
-            
-            # 设计说明
             'design_desc': item.design_desc,
             'design_area': item.design_area,
             'image_requirement': item.image_requirement,
             'remark': item.remark,
+            'status': item.status,
+            'status_display': item.get_status_display(),
             
             # 包装信息
-            'packaging_size_cm': item.packaging_size_cm,
-            'packaging_size_inch': item.packaging_size_inch,
-            'packaging_volumn_cm3': item.packaging_volumn_cm3,
-            'packaging_volumn_inch3': item.packaging_volumn_inch3,
-            'packaging_weight_g': item.packaging_weight_g,
-            'packaging_weight_lb': item.packaging_weight_lb,
+            'packaging_specification': item.packaging_specification,
 
             # 报关额外信息
             'trademark_category': item.trademark_category,
@@ -359,16 +349,15 @@ def update_product_requirement_api(request, pk):
             'accessory_struct', 'product_performance', 'applicable_scenario',
             'washing_instructions', 'special_note', 'reminder',
             'design_desc', 'design_area', 'image_requirement', 'remark', 'status',
-            'packaging_size_cm', 'packaging_size_inch', 'packaging_volumn_cm3', 
-            'packaging_volumn_inch3', 'packaging_weight_g', 'packaging_weight_lb',
             'color_name', 'img_urls_list',
-            'category', 'special_cargo_type', 'product_label', 'trademark_category'
+            'category', 'special_cargo_type', 'product_label', 'trademark_category',
+            'packaging_specification'
         ]
         
         for field in fields:
             if field in data:
                 # 特殊处理 JSON 字段
-                if field in ['color_name', 'img_urls_list']:
+                if field in ['color_name', 'img_urls_list', 'packaging_specification']:
                      try:
                         # 如果是字符串，尝试解析为 JSON
                          if isinstance(data[field], str):
