@@ -419,11 +419,13 @@ class ProductRequirement(models.Model):
     CRAFT_PRINT = '印花'
     CRAFT_EMBROIDERY = '刺绣'
     CRAFT_LASER = '镭射'
+    CRAFT_FINISHED = '成品'
     
     CRAFT_CHOICES = [
         (CRAFT_PRINT, '印花'),
         (CRAFT_EMBROIDERY, '刺绣'),
         (CRAFT_LASER, '镭射'),
+        (CRAFT_FINISHED, '成品'),
     ]
 
     craft = models.CharField(
@@ -438,8 +440,8 @@ class ProductRequirement(models.Model):
 
     # 冗余字段（方便查询展示，数据源自Task）
     requirement_no = models.CharField('需求单号', max_length=50, blank=True, null=True, db_comment='冗余：对应Task的task_no')
-    title = models.CharField('需求标题', max_length=200, blank=True, null=True, db_comment='冗余：对应Task的title')
-
+    # title 字段已移除
+    
     # 报关信息
     customs_cn_name = models.CharField('报关中文名称', max_length=200, blank=True, null=True)
     customs_en_name = models.CharField('报关英文名称', max_length=200, blank=True, null=True)
@@ -460,6 +462,7 @@ class ProductRequirement(models.Model):
 
     # 包装信息
     packaging_specification = models.JSONField('包装规格', default=list, blank=True, null=True)
+    product_size = models.JSONField('产品尺码表', default=list, blank=True, null=True)
 
     # 报关额外信息
     trademark_category = models.CharField('商标类目', max_length=100, blank=True, null=True, default='')
@@ -469,7 +472,8 @@ class ProductRequirement(models.Model):
 
     # 额外信息
     color_name = models.JSONField('颜色列表', default=list, blank=True, null=True)
-    img_urls_list = models.JSONField('图片链接列表', default=list, blank=True, null=True)
+    size_list = models.JSONField('尺码列表', default=list, blank=True, null=True)
+    img_urls_list = models.JSONField('图片链接', default=list, blank=True, null=True)
 
     # 设计说明
     design_desc = models.TextField('设计说明', blank=True, null=True)

@@ -62,6 +62,14 @@
     color: #EF4444;
 }
 
+.stat-card.danger {
+    border-left: 4px solid #DC2626;
+}
+
+.stat-card.danger .stat-value {
+    color: #DC2626;
+}
+
 .stat-label {
     font-size: 0.875rem;
     color: var(--text-secondary);
@@ -76,6 +84,32 @@
     font-weight: 700;
     color: var(--text-primary);
     line-height: 1;
+}
+
+/* 分割显示的数值样式 */
+.stat-value.split-value {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    font-size: 1.5rem; /* 稍微调小一点以适应两个数字 */
+}
+
+.stat-primary {
+    font-weight: 700;
+}
+
+.stat-divider {
+    font-weight: 300;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    transform: skew(-15deg); /* 斜线效果 */
+    margin: 0 2px;
+}
+
+.stat-secondary {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .stat-change {
@@ -685,6 +719,94 @@
     color: var(--text-secondary);
     font-size: 0.875rem;
     display: block;
+}
+
+/* 运营人员多选下拉框样式 - 復刻 Amazon 样式 */
+.dropdown-check-list {
+    display: inline-block;
+    width: 100%;
+    position: relative;
+}
+
+.dropdown-check-list .anchor {
+    position: relative;
+    cursor: pointer;
+    display: inline-block;
+    padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    width: 100%;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.dropdown-check-list .anchor:hover {
+    border-color: var(--accent-color);
+}
+
+.dropdown-check-list .anchor::after {
+    position: absolute;
+    content: "";
+    border-left: 2px solid var(--text-primary);
+    border-top: 2px solid var(--text-primary);
+    padding: 5px;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%) rotate(-135deg);
+    transition: all 0.3s ease;
+}
+
+.dropdown-check-list .anchor.active::after {
+    transform: translateY(-50%) rotate(45deg);
+}
+
+.dropdown-check-list .items {
+    padding: 0.5rem;
+    display: none;
+    margin: 0;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    background-color: var(--bg-secondary);
+    border-radius: 0 0 8px 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    position: absolute;
+    width: 100%;
+    z-index: 100;
+    box-shadow: var(--shadow-medium);
+}
+
+.dropdown-check-list .items .item {
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.dropdown-check-list .items .item:hover {
+    background-color: var(--bg-primary);
+}
+
+.dropdown-check-list .items .item input[type="checkbox"] {
+    margin: 0;
+}
+
+.dropdown-check-list .items .item label {
+    margin: 0;
+    cursor: pointer;
+    flex: 1;
+}
+
+.dropdown-check-list.visible .items {
+    display: block;
+}
+
+.dropdown-check-list .selected-text {
+    font-size: 0.875rem;
 }
 
 /* 新增：导入模态框样式 */

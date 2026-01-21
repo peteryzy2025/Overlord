@@ -230,8 +230,8 @@
         border-radius: 16px;
         padding: 2rem;
         width: 90%;
-        max-width: 1000px;
-        /* 加宽到 1000px */
+        max-width: 1200px;
+        /* 加宽到 1200px */
         max-height: 85vh;
         display: flex;
         flex-direction: column;
@@ -443,9 +443,10 @@
                     <tr>
                         <th style="width: 40px;"><input type="checkbox" id="selectAllProducts"
                                 onchange="toggleSelectAll()"></th>
-                        <th>需求标题</th>
+                        <!-- <th>需求标题</th> -->
                         <th>需求单号</th>
-                        <th>平台</th>
+                        <th>外采平台</th>
+                        <th>上架平台</th>
                         <th>产品ID</th>
                         <th>状态</th>
                         <th>创建人</th>
@@ -546,6 +547,9 @@
         <div class="modal-footer"
             style="padding-top: 1rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 1rem;">
             <button class="btn btn-secondary" onclick="closeDetailModal()">关闭</button>
+            <button class="btn btn-info" id="exportBtn" style="display: none; color: white;" onclick="exportProduct()">
+                <i class="fas fa-file-excel"></i> 导出
+            </button>
             <button class="btn btn-primary" id="editBtn" style="display: none;" onclick="enableEdit()">编辑</button>
             <button class="btn btn-success" id="saveBtn" style="display: none;" onclick="saveChanges()">保存</button>
         </div>
@@ -752,9 +756,10 @@
                             ${selectedIds.has(item.id.toString()) ? 'checked' : ''} 
                             onchange="toggleSelection('${item.id}')">
                     </td>
-                    <td>${item.title || '-'}</td>
+                    <!-- <td>${item.title || '-'}</td> -->
                     <td>${item.requirement_no || '-'}</td>
-                    <td>${item.platform || '-'}${item.listing_platform ? ' <i class="fas fa-arrow-right" style="font-size: 0.8em; color: var(--text-secondary);"></i> ' + item.listing_platform : ''}</td>
+                    <td>${item.platform || '-'}</td>
+                    <td>${item.listing_platform || '-'}</td>
                     <td>${item.product_id || '-'}</td>
                     <td><span class="status-badge status-${item.status}">${item.status_display}</span></td>
                     <td>${item.created_by}</td>
@@ -1055,6 +1060,7 @@
 
                 document.getElementById('detailTitle').textContent = `${data.product_name || '未命名'} - 详情`;
                 document.getElementById('editBtn').style.display = canEdit ? 'block' : 'none';
+                document.getElementById('exportBtn').style.display = 'block';
                 document.getElementById('saveBtn').style.display = 'none';
 
                 renderDetailBody(data);
@@ -1102,7 +1108,8 @@
                             { val: '', txt: '请选择' },
                             { val: '印花', txt: '印花' },
                             { val: '刺绣', txt: '刺绣' },
-                            { val: '镭射', txt: '镭射' }
+                            { val: '镭射', txt: '镭射' },
+                            { val: '成品', txt: '成品' }
                         ]
                     },
                     { label: '计量单位', value: data.unit, key: 'unit' }
@@ -1153,7 +1160,14 @@
                         value: renderPackagingTable(data.packaging_specification),
                         key: 'packaging_specification',
                         type: 'packaging_table'
-                    }
+                    },
+                    {
+                        label: '产品尺码表',
+                        value: renderPackagingTable(data.product_size),
+                        key: 'product_size',
+                        type: 'packaging_table'
+                    },
+                    { label: '尺码列表', value: Array.isArray(data.size_list) ? data.size_list.join(', ') : data.size_list, key: 'size_list', type: 'text' }
                 ]
             },
             {
@@ -1224,7 +1238,7 @@
         // specs 是一个二维数组
         // 第一行通常是表头
 
-        let html = '<table class="table table-bordered table-sm" style="width:100%; font-size:0.85rem;">';
+        let html = '<div style="overflow-x: auto; width: 100%;"><table class="table table-bordered table-sm" style="width:100%; font-size:0.85rem; min-width: 600px;">';
 
         specs.forEach((row, rowIndex) => {
             html += '<tr>';
@@ -1233,15 +1247,15 @@
                 const remark = cell.remark ? `<br><small style="color:var(--text-secondary)">${cell.remark}</small>` : '';
 
                 if (rowIndex === 0) {
-                    html += `<th style="background:var(--bg-secondary); padding:0.5rem;">${content}${remark}</th>`;
+                    html += `<th style="background:var(--bg-secondary); padding:0.5rem; white-space: nowrap;">${content}${remark}</th>`;
                 } else {
-                    html += `<td style="padding:0.5rem;">${content}${remark}</td>`;
+                    html += `<td style="padding:0.5rem; white-space: nowrap;">${content}${remark}</td>`;
                 }
             });
             html += '</tr>';
         });
 
-        html += '</table>';
+        html += '</table></div>';
         return html;
     }
 
@@ -1436,6 +1450,14 @@
         } catch (error) {
             displayNotification('更新出错', 'error');
         }
+    }
+
+    function exportProduct() {
+        if (!currentDetailId) return;
+        const name = document.getElementById('detailTitle').textContent.replace(' - 详情', '') || 'product';
+        // Check if we can use a direct link or need to fetch blob
+        // Using direct link is easier for browser to handle filename
+        window.location.href = `/api/products/${currentDetailId}/export/?filename=${encodeURIComponent(name)}`;
     }
 
     function closeDetailModal() {

@@ -103,8 +103,6 @@ def build_titles(declaration_name: str, pt: str, supplier: str = "艺之冠") ->
     return title, sub_title
 
 
-
-
 def get_img_urls(data):
     '''
     从商品数据中提取产品图片URL列表。
@@ -127,7 +125,17 @@ def get_color_name(data):
     color_name_list = []
     for item in items:
         color_name_list.append(item.get("color_name", ""))
-    return color_name_list
+    # 去重
+    return list(set(color_name_list))
+
+def get_size_list(data):
+    subproducts = data.get("subproducts", {})
+    items = subproducts.get("items", {})
+    size_list = []
+    for item in items:
+        size_list.append(item.get("size_name", ""))
+    # 去重并排序 (简单去重，不排序)
+    return list(set(size_list))
 
 
 def test(flat, target):
@@ -171,8 +179,10 @@ def get_ykartwood_product(pid, platform, select_platform):
         design_area = product_details.get("design_area")  # 设计区域
 
         color_name = get_color_name(data)
+        size_list = get_size_list(data)
         product_details = data.get("product_details", {})
         packaging_specification = json.loads(product_details.get("packaging_specification", ""))  # 包装说明
+        product_size = json.loads(product_details.get("product_size", ""))  # 产品尺码
         img_urls_list = get_img_urls(data)
         # -------------------------
         category = ''
@@ -206,8 +216,10 @@ def get_ykartwood_product(pid, platform, select_platform):
             "design_area": design_area,  # 设计区域
 
             "color_name": color_name,  # 颜色
+            "size_list": size_list,    # 尺码
             "img_urls_list": img_urls_list,  # 产品图片链接列表
-            "packaging_specification": packaging_specification,
+            "packaging_specification": packaging_specification,  # 包装说明
+            "product_size": product_size,  # 产品尺码
 
             # ----------------
             "category": category,
@@ -215,7 +227,11 @@ def get_ykartwood_product(pid, platform, select_platform):
             "product_label": "北美生产",
             # "trademark_category": "", # 商标类目，爬虫不修改
         }
+
+        print(ykat_dict)
         return ykat_dict
+
     return None
+
 
 # print(get_ykartwood_product("216484", "amazon", "艺之冠"))

@@ -111,110 +111,123 @@ def tracking_list(request):
         # 构建查询条件
         filters = Q()
 
-        # 1. 日期范围筛选
-        date_range = data.get('date_range', 'last30days')
-        if date_range == 'custom':
-            start_date = data.get('start_date')
-            end_date = data.get('end_date')
-            if start_date:
-                filters &= Q(order_time__gte=start_date)
-            if end_date:
-                filters &= Q(order_time__lte=end_date)
-        else:
-            days = {
-                'today': 0,
-                'yesterday': 1,
-                'last7days': 7,
-                'last30days': 30
-            }.get(date_range, 30)
-            start_date = timezone.now() - timedelta(days=days)
-            filters &= Q(order_time__gte=start_date)
-
         # 2. 多值模糊查询筛选（支持空格/逗号分隔）
         tracking_numbers = data.get('tracking_number', [])
         order_ids = data.get('order_id', [])
 
         # 处理运单号（数组形式）
+        # 🔴 修改：如果运单号有输入内容，其他筛选通通无视跳过，只筛选运单号
+        has_tracking_number = False
         if tracking_numbers and isinstance(tracking_numbers, list) and len(tracking_numbers) > 0:
-            if len(tracking_numbers) == 1:
-                filters &= Q(track_no__icontains=tracking_numbers[0])
-            else:
-                tracking_q = Q()
-                for tn in tracking_numbers:
-                    if tn:  # 确保不为空
+            # 过滤空字符串
+            tracking_numbers = [tn for tn in tracking_numbers if tn and tn.strip()]
+            if tracking_numbers:
+                has_tracking_number = True
+                if len(tracking_numbers) == 1:
+                    filters = Q(track_no__icontains=tracking_numbers[0])
+                else:
+                    tracking_q = Q()
+                    for tn in tracking_numbers:
                         tracking_q |= Q(track_no__icontains=tn)
-                filters &= tracking_q
-        elif isinstance(tracking_numbers, str) and tracking_numbers:
-            # 兼容旧的字符串格式（如果前端没传数组）
-            filters &= Q(track_no__icontains=tracking_numbers)
+                    filters = tracking_q
+        elif isinstance(tracking_numbers, str) and tracking_numbers and tracking_numbers.strip():
+            has_tracking_number = True
+            filters = Q(track_no__icontains=tracking_numbers.strip())
 
-        # 处理订单号（数组形式）
-        if order_ids and isinstance(order_ids, list) and len(order_ids) > 0:
-            if len(order_ids) == 1:
-                filters &= Q(order_id__icontains=order_ids[0])
+        # 只有在没有运单号筛选时，才应用其他筛选条件
+        if not has_tracking_number:
+            # 1. 日期范围筛选
+            date_range = data.get('date_range', 'last30days')
+            if date_range == 'custom':
+                start_date = data.get('start_date')
+                end_date = data.get('end_date')
+                if start_date:
+                    filters &= Q(order_time__gte=start_date)
+                if end_date:
+                    filters &= Q(order_time__lte=end_date)
             else:
-                order_q = Q()
-                for oid in order_ids:
-                    if oid:  # 确保不为空
-                        order_q |= Q(order_id__icontains=oid)
-                filters &= order_q
-        elif isinstance(order_ids, str) and order_ids:
-            # 兼容旧的字符串格式
-            filters &= Q(order_id__icontains=order_ids)
+                days = {
+                    'today': 0,
+                    'yesterday': 1,
+                    'last7days': 7,
+                    'last30days': 30
+                }.get(date_range, 30)
+                start_date = timezone.now() - timedelta(days=days)
+                filters &= Q(order_time__gte=start_date)
 
-        # 3. 下拉框筛选
-        if data.get('logistics_method'):
-            filters &= Q(courier__code=data['logistics_method'])
-        if data.get('factory'):
-            filters &= Q(factory_id=data['factory'])
-        if data.get('status'):
-            filters &= Q(transit_status=data['status'])
+            # 处理订单号（数组形式）
+            if order_ids and isinstance(order_ids, list) and len(order_ids) > 0:
+                if len(order_ids) == 1:
+                    filters &= Q(order_id__icontains=order_ids[0])
+                else:
+                    order_q = Q()
+                    for oid in order_ids:
+                        if oid:  # 确保不为空
+                            order_q |= Q(order_id__icontains=oid)
+                    filters &= order_q
+            elif isinstance(order_ids, str) and order_ids:
+                # 兼容旧的字符串格式
+                filters &= Q(order_id__icontains=order_ids)
 
-        # 4. 运营分组/人员筛选（冲突处理：分组优先）
-        ops_group = data.get('ops_group', '').strip()
-        ops_name = data.get('ops_name', '').strip()
-        if ops_group:
-            filters &= Q(ops_group=ops_group)
-        elif ops_name:
-            filters &= Q(ops_name=ops_name)
+            # 3. 下拉框筛选
+            if data.get('logistics_method'):
+                filters &= Q(courier__code=data['logistics_method'])
+            if data.get('factory'):
+                filters &= Q(factory_id=data['factory'])
+            if data.get('status'):
+                filters &= Q(transit_status=data['status'])
 
-        # === 5. 新增：未揽收天数筛选（互斥）===
-        uncollected_statuses = ['INIT', 'NO_RECORD', 'INFO_RECEIVED']
+            # 4. 运营分组/人员筛选（冲突处理：分组优先）
+            ops_group = data.get('ops_group', '').strip()
+            # 🔴 修改：支持多选运营人员
+            ops_names = data.get('ops_name', [])
+            
+            if ops_group:
+                filters &= Q(ops_group=ops_group)
+            elif ops_names:
+                if isinstance(ops_names, list) and len(ops_names) > 0:
+                    filters &= Q(ops_name__in=ops_names)
+                elif isinstance(ops_names, str) and ops_names.strip():
+                    filters &= Q(ops_name=ops_names.strip())
 
-        # 参数A：只显示未揽收超过X天的
-        uncollected_days = data.get('uncollected_days')
-        if uncollected_days:
-            hours = int(uncollected_days) * 24
-            filters &= Q(transit_status__in=uncollected_statuses)
-            filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=hours))
-            # 排除已签收和已过期
-            filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
+            # === 5. 新增：未揽收天数筛选（互斥）===
+            uncollected_statuses = ['INIT', 'NO_RECORD', 'INFO_RECEIVED']
 
-        # 参数B：排除未揽收，显示其他状态超过X天的
-        exclude_uncollected_days = data.get('exclude_uncollected_days')
-        if exclude_uncollected_days:
-            hours = int(exclude_uncollected_days) * 24
-            filters &= ~Q(transit_status__in=uncollected_statuses)
-            filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=hours))
-            # 排除已签收和已过期
-            filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
+            # 参数A：只显示未揽收超过X天的
+            uncollected_days = data.get('uncollected_days')
+            if uncollected_days:
+                hours = int(uncollected_days) * 24
+                filters &= Q(transit_status__in=uncollected_statuses)
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=hours))
+                # 排除已签收和已过期
+                filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
 
-        # 6. 轨迹更新情况筛选（原有的）
-        tracking_update = data.get('tracking_update')
-        if tracking_update:
-            if tracking_update == 'today':
-                filters &= Q(last_update_time__date=timezone.now().date())
-            elif tracking_update == 'stale_3d':
-                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=72))
-                filters &= ~Q(transit_status='DELIVERED')
-            elif tracking_update == 'stale_5d':
-                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=120))
-                filters &= ~Q(transit_status='DELIVERED')
-        cancel_status = data.get('cancel_status', 'all')
-        if cancel_status == 'active':
-            filters &= Q(cancel_bool=False)
-        elif cancel_status == 'cancelled':
-            filters &= Q(cancel_bool=True)
+            # 参数B：排除未揽收，显示其他状态超过X天的
+            exclude_uncollected_days = data.get('exclude_uncollected_days')
+            if exclude_uncollected_days:
+                hours = int(exclude_uncollected_days) * 24
+                filters &= ~Q(transit_status__in=uncollected_statuses)
+                filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=hours))
+                # 排除已签收和已过期
+                filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
+
+            # 6. 轨迹更新情况筛选（原有的）
+            tracking_update = data.get('tracking_update')
+            if tracking_update:
+                if tracking_update == 'today':
+                    filters &= Q(last_update_time__date=timezone.now().date())
+                elif tracking_update == 'stale_3d':
+                    filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=72))
+                    filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
+                elif tracking_update == 'stale_5d':
+                    filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=120))
+                    filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])
+            cancel_status = data.get('cancel_status', 'all')
+            if cancel_status == 'active':
+                filters &= Q(cancel_bool=False)
+            elif cancel_status == 'cancelled':
+                filters &= Q(cancel_bool=True)
+
         # 应用筛选条件
         queryset = queryset.filter(filters)
 
@@ -326,44 +339,136 @@ def tracking_details(request):
         }, status=500)
 
 
-# 统计看板API（保持不变）
+# 统计看板API
 @login_required
 def tracking_stats(request):
-    """获取统计看板数据"""
+    """获取统计看板数据（支持筛选条件）"""
     try:
+        # 获取筛选参数（支持 POST JSON 或 GET QueryDict）
+        data = {}
+        if request.method == 'POST':
+            data = json.loads(request.body) if request.body else {}
+        else:
+            data = request.GET.dict()
+
         today = timezone.now().date()
         now = timezone.now()  # 用于计算小时差
 
-        # 今日签收
-        delivered_today = Tracking.objects.filter(
-            delivered_time__date=today
-        ).count()
+        # 1. 基础查询集 - 只统计未取消的正常运单
+        base_qs = Tracking.objects.filter(cancel_bool=False)
 
-        # 在途中
-        in_transit = Tracking.objects.filter(
+        # ==================== 应用上下文筛选（日期、工厂、物流商、运营） ====================
+        filters = Q()
+
+        # A. 日期范围筛选 (默认为 last30days 以匹配列表默认视图)
+        date_range = data.get('date_range', 'last30days')
+        if date_range == 'custom':
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+            if start_date:
+                filters &= Q(order_time__gte=start_date)
+            if end_date:
+                filters &= Q(order_time__lte=end_date)
+        else:
+            days = {
+                'today': 0,
+                'yesterday': 1,
+                'last7days': 7,
+                'last30days': 30,
+                'unlimited': 36500 # 100年，相当于不限
+            }.get(date_range, 30)
+            
+            # 只有非 unlimited 时才应用时间筛选
+            if date_range != 'unlimited':
+                start_date = timezone.now() - timedelta(days=days)
+                filters &= Q(order_time__gte=start_date)
+
+        # B. 工厂/物流商筛选
+        if data.get('factory'):
+            filters &= Q(factory_id=data['factory'])
+        if data.get('logistics_method'):
+            filters &= Q(courier__code=data['logistics_method'])
+
+        # C. 运营分组/人员筛选
+        ops_group = data.get('ops_group', '').strip()
+        ops_names = data.get('ops_name', [])
+        
+        if ops_group:
+            filters &= Q(ops_group=ops_group)
+        elif ops_names:
+            if isinstance(ops_names, list) and len(ops_names) > 0:
+                filters &= Q(ops_name__in=ops_names)
+            elif isinstance(ops_names, str) and ops_names.strip():
+                filters &= Q(ops_name=ops_names.strip())
+        
+        # 应用筛选条件到 base_qs
+        base_qs = base_qs.filter(filters)
+
+        # ==================== 统计计算 ====================
+
+        # 2. 在途中
+        in_transit = base_qs.filter(
             transit_status__in=['IN_TRANSIT', 'WAITING_DELIVERY']
         ).count()
 
-        # 🔴 修改：超过3天无更新（72小时），只排除已签收
-        stale_3_days = Tracking.objects.filter(
-            last_update_time__lte=now - timedelta(hours=72)  # 3天 = 72小时
-        ).exclude(
-            transit_status='DELIVERED'  # 只排除已签收
-        ).count()
+        # 3. 超过3天无更新（72小时），排除已签收和已过期
+        stale_3d_qs = base_qs.filter(
+            last_update_time__lte=now - timedelta(hours=72)
+        ).exclude(transit_status__in=['DELIVERED', 'EXPIRED'])
 
-        # 平均运输时效（仅计算已签收的）
-        avg_transit = Tracking.objects.filter(
+        # 4. 超过5天无更新（120小时），排除已签收和已过期
+        stale_5d_qs = base_qs.filter(
+            last_update_time__lte=now - timedelta(hours=120)
+        ).exclude(transit_status__in=['DELIVERED', 'EXPIRED'])
+
+        # 5. 平均运输时效（仅计算已签收的，且未取消的）
+        avg_transit = base_qs.filter(
             delivered_time__isnull=False
         ).aggregate(
             avg_days=Avg('transit_days')
         )['avg_days'] or 0
 
+        # ==================== 权限显示处理 ====================
+        user = request.user
+        user_perms = []
+        if hasattr(user, 'permission_configs'):
+            user_perms = list(user.permission_configs.values_list('code', flat=True))
+
+        # 默认值（显示全部）
+        stale_3_days_display = stale_3d_qs.count()
+        stale_5_days_display = stale_5d_qs.count()
+
+        # code=2: 显示 "个人/分组"
+        if 2 in user_perms:
+            # 个人数据
+            personal_qs_3d = stale_3d_qs.filter(ops_name=user.first_name).count()
+            personal_qs_5d = stale_5d_qs.filter(ops_name=user.first_name).count()
+            
+            # 分组数据
+            group_qs_3d = 0
+            group_qs_5d = 0
+            
+            if hasattr(user, 'operational_account') and user.operational_account:
+                ops_group = user.operational_account.ops_group
+                if ops_group:
+                    group_qs_3d = stale_3d_qs.filter(ops_group=ops_group).count()
+                    group_qs_5d = stale_5d_qs.filter(ops_group=ops_group).count()
+            
+            stale_3_days_display = f"{personal_qs_3d} / {group_qs_3d}"
+            stale_5_days_display = f"{personal_qs_5d} / {group_qs_5d}"
+            
+        # code=1: 只显示 "个人"
+        elif 1 in user_perms:
+            stale_3_days_display = stale_3d_qs.filter(ops_name=user.first_name).count()
+            stale_5_days_display = stale_5d_qs.filter(ops_name=user.first_name).count()
+
         return JsonResponse({
             'success': True,
             'data': {
-                'delivered_today': delivered_today,
+                # 'delivered_today': delivered_today, # 已移除
                 'in_transit': in_transit,
-                'stale_3_days': stale_3_days,
+                'stale_3_days': stale_3_days_display,
+                'stale_5_days': stale_5_days_display,
                 'avg_transit_days': round(avg_transit, 1)
             }
         })
@@ -482,11 +587,11 @@ def export_tracking_excel(request):
             elif tracking_update == 'stale_3d':
                 # 超过3天无更新 = 72小时
                 filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=72))
-                filters &= ~Q(transit_status='DELIVERED')  # 排除已签收
+                filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])  # 排除已签收和已过期
             elif tracking_update == 'stale_5d':
                 # 超过5天无更新 = 120小时
                 filters &= Q(last_update_time__lte=timezone.now() - timedelta(hours=120))
-                filters &= ~Q(transit_status='DELIVERED')  # 排除已签收
+                filters &= ~Q(transit_status__in=['DELIVERED', 'EXPIRED'])  # 排除已签收和已过期
 
         # 查询所有字段（添加 factory__name）
         queryset = Tracking.objects.filter(filters).select_related('courier', 'factory')

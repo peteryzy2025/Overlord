@@ -1,11 +1,12 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.db import transaction
 from django.db.models import Q
 from django.core.paginator import Paginator
 import json
+import openpyxl
 
 from general.models import User
 from task.models import ProductRequirement
@@ -59,6 +60,154 @@ def create_product_requirement_api(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
+
+@login_required
+@require_http_methods(["GET"])
+def export_product_requirement_excel_api(request, pk):
+    """
+    导出产品需求为Excel
+    GET /api/products/<pk>/export/
+    """
+    try:
+        item = ProductRequirement.objects.get(pk=pk)
+        
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "产品详情"
+        
+        # Helper to write row
+        row_num = 1
+        def write_row(label, value):
+            nonlocal row_num
+            ws.cell(row=row_num, column=1, value=label)
+            ws.cell(row=row_num, column=2, value=str(value) if value is not None else '')
+            row_num += 1
+            
+        # Basic Info
+        ws.merge_cells('A1:B1')
+        ws['A1'] = "基本信息"
+        ws['A1'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        write_row('需求标题', item.task.title if item.task else '-') # item.title removed
+        write_row('需求单号', item.requirement_no or (item.task.task_no if item.task else '-'))
+        write_row('外采平台', item.get_platform_display())
+        write_row('上架平台', item.get_listing_platform_display())
+        write_row('产品链接', item.product_url)
+        write_row('产品ID', item.product_id)
+        write_row('产品名称', item.product_name)
+        write_row('产品简称', item.product_abbr)
+        write_row('英文名称', item.english_name)
+        write_row('状态', item.get_status_display())
+        write_row('材质', item.material)
+        write_row('生产工艺', item.craft)
+        write_row('计量单位', item.unit)
+        
+        # Design Info
+        row_num += 1
+        ws.merge_cells(f'A{row_num}:B{row_num}')
+        ws[f'A{row_num}'] = "设计说明"
+        ws[f'A{row_num}'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        write_row('设计说明', item.design_desc)
+        write_row('设计区域', item.design_area)
+        write_row('图片要求', item.image_requirement)
+        write_row('备注', item.remark)
+        
+        # Customs Info
+        row_num += 1
+        ws.merge_cells(f'A{row_num}:B{row_num}')
+        ws[f'A{row_num}'] = "报关信息"
+        ws[f'A{row_num}'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        write_row('中文名称', item.customs_cn_name)
+        write_row('英文名称', item.customs_en_name)
+        write_row('申报重量(g)', item.declared_weight)
+        write_row('申报单价($)', item.declared_price)
+        write_row('海关编码', item.customs_code)
+        write_row('材质(中)', item.material_cn)
+        write_row('材质(英)', item.material_en)
+        write_row('商标类目', item.trademark_category)
+        write_row('所属分类', item.category)
+        write_row('特殊货物类型', item.special_cargo_type)
+        write_row('产品标识', item.product_label)
+        
+        # Other Desc
+        row_num += 1
+        ws.merge_cells(f'A{row_num}:B{row_num}')
+        ws[f'A{row_num}'] = "其他描述"
+        ws[f'A{row_num}'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        write_row('材质说明', item.material_desc)
+        write_row('配件构造', item.accessory_struct)
+        write_row('产品性能', item.product_performance)
+        write_row('适用情景', item.applicable_scenario)
+        write_row('洗涤说明', item.washing_instructions)
+        write_row('特别说明', item.special_note)
+        write_row('温馨提醒', item.reminder)
+        
+        # Extra Info
+        row_num += 1
+        ws.merge_cells(f'A{row_num}:B{row_num}')
+        ws[f'A{row_num}'] = "额外信息"
+        ws[f'A{row_num}'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        # Colors
+        colors = item.color_name
+        if isinstance(colors, list):
+            colors = ", ".join(colors)
+        write_row('颜色列表', colors)
+
+        # Sizes
+        sizes = item.size_list
+        if isinstance(sizes, list):
+            sizes = ", ".join(sizes)
+        write_row('尺码列表', sizes)
+        
+        # Packaging
+        row_num += 1
+        ws.merge_cells(f'A{row_num}:B{row_num}')
+        ws[f'A{row_num}'] = "包装规格"
+        ws[f'A{row_num}'].font = openpyxl.styles.Font(bold=True)
+        row_num += 1
+        
+        specs = item.packaging_specification
+        if specs and isinstance(specs, list):
+            # Write table
+            for r_idx, row_data in enumerate(specs):
+                for c_idx, cell_data in enumerate(row_data):
+                    content = cell_data.get('content', '')
+                    remark = cell_data.get('remark', '')
+                    val = content
+                    if remark:
+                        val += f"\n({remark})"
+                    ws.cell(row=row_num, column=c_idx+1, value=val)
+                row_num += 1
+        else:
+            write_row('包装规格', '暂无数据')
+
+        # Adjust column width
+        ws.column_dimensions['A'].width = 20
+        ws.column_dimensions['B'].width = 50
+
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        filename = request.GET.get('filename', item.product_name or 'product')
+        import urllib.parse
+        filename = urllib.parse.quote(filename)
+        response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"; filename*=UTF-8\'\'{filename}.xlsx'
+        
+        wb.save(response)
+        return response
+        
+    except ProductRequirement.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '未找到该记录'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
 @login_required
 @require_http_methods(["GET"])
 def get_product_requirements_api(request):
@@ -87,7 +236,7 @@ def get_product_requirements_api(request):
         if search:
             queryset = queryset.filter(
                 Q(product_name__icontains=search) | 
-                Q(title__icontains=search) | 
+                # Q(title__icontains=search) | 
                 Q(requirement_no__icontains=search) |
                 Q(product_id__icontains=search) # 支持搜索 Product ID
             )
@@ -99,7 +248,7 @@ def get_product_requirements_api(request):
         for item in page_obj:
             data.append({
                 'id': item.id,
-                'title': item.title or (item.task.title if item.task else '-'),
+                'title': item.task.title if item.task else '-', # item.title removed
                 'requirement_no': item.requirement_no or (item.task.task_no if item.task else '-'),
                 'product_url': item.product_url,
                 'product_id': item.product_id, # 返回 Product ID
@@ -188,6 +337,7 @@ def recrawl_product_requirement_api(request):
             item.special_cargo_type = crawler_data.get('special_cargo_type', item.special_cargo_type)
             item.product_label = crawler_data.get('product_label', item.product_label)
             item.packaging_specification = crawler_data.get('packaging_specification', item.packaging_specification)
+            item.product_size = crawler_data.get('product_size', item.product_size)
             
             item.save()
             
@@ -257,7 +407,7 @@ def get_product_requirement_detail_api(request, pk):
                     
         data = {
             'id': item.id,
-            'title': item.title or (item.task.title if item.task else '-'),
+            'title': item.task.title if item.task else '-', # item.title removed
             'requirement_no': item.requirement_no or (item.task.task_no if item.task else '-'),
             'platform': item.platform,
             'platform_display': item.get_platform_display(), # 增加显示名称
@@ -308,7 +458,9 @@ def get_product_requirement_detail_api(request, pk):
 
             # 额外信息
             'color_name': item.color_name,
+            'size_list': item.size_list,
             'img_urls_list': item.img_urls_list,
+            'product_size': item.product_size,
         }
         
         return JsonResponse({
@@ -349,15 +501,15 @@ def update_product_requirement_api(request, pk):
             'accessory_struct', 'product_performance', 'applicable_scenario',
             'washing_instructions', 'special_note', 'reminder',
             'design_desc', 'design_area', 'image_requirement', 'remark', 'status',
-            'color_name', 'img_urls_list',
+            'color_name', 'size_list', 'img_urls_list',
             'category', 'special_cargo_type', 'product_label', 'trademark_category',
-            'packaging_specification'
+            'packaging_specification', 'product_size'
         ]
         
         for field in fields:
             if field in data:
                 # 特殊处理 JSON 字段
-                if field in ['color_name', 'img_urls_list', 'packaging_specification']:
+                if field in ['color_name', 'img_urls_list', 'packaging_specification', 'size_list', 'product_size']:
                      try:
                         # 如果是字符串，尝试解析为 JSON
                          if isinstance(data[field], str):

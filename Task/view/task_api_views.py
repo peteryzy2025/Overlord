@@ -429,8 +429,8 @@ def create_task_api(request):
 
         # 基础验证
         title = data.get('title', '').strip()
-        if not title:
-            return JsonResponse({'success': False, 'message': '任务标题不能为空'})
+        # if not title:
+        #    return JsonResponse({'success': False, 'message': '任务标题不能为空'})
 
         # 确定所有者（可为他人创建）
         owner_id = data.get('owner_id', current_user.id)
@@ -467,18 +467,41 @@ def create_task_api(request):
         # 特殊处理产品需求：每个子任务创建一个独立的 ProductRequirement (不创建 Task)
         if task_type == 'product_requirement' and not is_draft:
             created_ids = []
+
+            # 支持多上架平台：展开子任务
+            expanded_subtasks = []
+            for st in subtasks_data:
+                params = st.get('params', {})
+                lps = params.get('listing_platform', 'amazon')
+                if isinstance(lps, str):
+                    if ',' in lps:
+                        lps = [x.strip() for x in lps.split(',')]
+                    else:
+                        lps = [lps]
+                
+                # Ensure lps is a list
+                if not isinstance(lps, list):
+                    lps = [str(lps)]
+
+                for lp in lps:
+                    if not lp: continue # Skip empty
+                    new_st = st.copy()
+                    new_st['params'] = params.copy()
+                    new_st['params']['listing_platform'] = lp
+                    expanded_subtasks.append(new_st)
             
-            for idx, subtask_data in enumerate(subtasks_data):
+            skipped_count = 0
+            for idx, subtask_data in enumerate(expanded_subtasks):
                 # 生成唯一的任务单号 (加后缀以防冲突)
                 # 为了确保唯一性，如果循环处理过快，generate_task_no 可能生成相同的时间戳
                 import time
                 time.sleep(1.1) 
                 task_no = generate_task_no(current_user)
 
-                # 构造子任务标题
-                sub_title = title
-                if len(subtasks_data) > 1:
-                    sub_title = f"{title} - {idx + 1}"
+                # 构造子任务标题 (产品需求不再使用标题，但为了兼容性可以设为产品名或空)
+                sub_title = '' # title
+                if len(expanded_subtasks) > 1:
+                     pass # sub_title = f"{title} - {idx + 1}"
 
                 params = subtask_data.get('params', {})
                 subtask_type = subtask_data.get('type')
@@ -514,9 +537,13 @@ def create_task_api(request):
                              product_id = match.group(1)
 
                 # 查重逻辑
-                if product_id and ProductRequirement.objects.filter(product_id=product_id, platform=platform).exists():
-                     # 回滚事务并返回错误
-                     raise ValueError(f'产品ID {product_id} (平台: {platform}) 已存在，请勿重复创建')
+                if product_id and ProductRequirement.objects.filter(
+                    product_id=product_id, 
+                    platform=platform, 
+                    listing_platform=listing_platform
+                ).exists():
+                     skipped_count += 1
+                     continue
                 
                 # 抓取数据逻辑 (如果是艺之冠且提取到了ID)
                 crawler_data = {}
@@ -545,7 +572,7 @@ def create_task_api(request):
                     'product_id': product_id,
                     'craft': crawler_data.get('craft') or craft_map.get(subtask_type, ''),
                     'status': initial_status,
-                    'title': sub_title,
+                    # 'title': sub_title, # Removed field
                     'requirement_no': task_no,
                     
                     # 爬虫抓取的字段
@@ -571,19 +598,15 @@ def create_task_api(request):
                     
                     # 新增字段
                     'color_name': crawler_data.get('color_name', []),
+                    'size_list': crawler_data.get('size_list', []),
                     'img_urls_list': crawler_data.get('img_urls_list', []),
-                    'packaging_size_cm': crawler_data.get('packaging_size_cm', ''),
-                    'packaging_size_inch': crawler_data.get('packaging_size_inch', ''),
-                    'packaging_volumn_cm3': crawler_data.get('packaging_volumn_cm3', ''),
-                    'packaging_volumn_inch3': crawler_data.get('packaging_volumn_inch3', ''),
-                    'packaging_weight_g': crawler_data.get('packaging_weight_g', ''),
-                    'packaging_weight_lb': crawler_data.get('packaging_weight_lb', ''),
 
                     # 新增报关字段
                     'category': crawler_data.get('category', ''),
                     'special_cargo_type': crawler_data.get('special_cargo_type', ''),
                     'product_label': crawler_data.get('product_label', ''),
                     'packaging_specification': crawler_data.get('packaging_specification', []),
+                    'product_size': crawler_data.get('product_size', []),
                 }
                 
                 # 清理 None 值
@@ -599,7 +622,7 @@ def create_task_api(request):
                     webhook_data.update({
                         'task_id': req.id, # 使用 Requirement ID
                         'task_no': req.requirement_no,
-                        'title': sub_title,
+                        # 'title': sub_title,
                         'created_by_id': current_user.id,
                         'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
                         'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
@@ -621,6 +644,7 @@ def create_task_api(request):
 
             return JsonResponse({
                 'success': True,
+                'message': f'创建成功 {len(created_ids)} 条' + (f'，跳过重复 {skipped_count} 条' if skipped_count > 0 else ''),
                 'data': {
                     'task_ids': created_ids,
                     'redirect_url': '/task/product/list/'
