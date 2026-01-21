@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/products/reject/', product_views.reject_product_requirements_api, name='reject_product_requirements'),
     path('api/products/<int:pk>/', product_views.get_product_requirement_detail_api, name='get_product_requirement_detail'),
     path('api/products/<int:pk>/update/', product_views.update_product_requirement_api, name='update_product_requirement'),
+    path('api/products/<int:pk>/export/', product_views.export_product_requirement_excel_api, name='export_product_requirement'),
 
     # 店铺相关
     path('api/tasks/shops/', task_api_views.get_available_shops_api, name='get_available_shops'),

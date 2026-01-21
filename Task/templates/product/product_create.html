@@ -760,9 +760,9 @@
                 <i class="fas fa-info-circle"></i> 基础信息
             </h2>
             <div class="task-info-grid">
-                <div class="form-group">
+                <div class="form-group" style="display: none;">
                     <label class="form-label">需求标题 <span style="color: var(--danger-color);">*</span></label>
-                    <input type="text" class="form-control" id="taskTitle" placeholder="请输入需求标题" maxlength="200">
+                    <input type="text" class="form-control" id="taskTitle" placeholder="请输入需求标题" maxlength="200" value="自动生成">
                 </div>
 
                 <div class="form-group">
@@ -1218,10 +1218,18 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">上架平台 <span style="color: var(--danger-color);">*</span></label>
-                        <select class="form-select" onchange="updateSubtaskParam(${subtask.id}, 'listing_platform', this.value)">
-                            <option value="amazon" ${subtask.params.listing_platform === 'amazon' ? 'selected' : ''}>Amazon</option>
-                            <option value="temu" ${subtask.params.listing_platform === 'temu' ? 'selected' : ''}>Temu</option>
-                        </select>
+                        <div class="checkbox-group">
+                            <label class="checkbox-inline" style="margin-right: 15px; cursor: pointer;">
+                                <input type="checkbox" value="amazon"
+                                       ${(subtask.params.listing_platform === undefined ? 'amazon' : subtask.params.listing_platform).includes('amazon') ? 'checked' : ''}
+                                       onchange="let v=[]; this.closest('.checkbox-group').querySelectorAll('input:checked').forEach(e=>v.push(e.value)); updateSubtaskParam(${subtask.id}, 'listing_platform', v.join(','))"> Amazon
+                            </label>
+                            <label class="checkbox-inline" style="cursor: pointer;">
+                                <input type="checkbox" value="temu"
+                                       ${(subtask.params.listing_platform || '').includes('temu') ? 'checked' : ''}
+                                       onchange="let v=[]; this.closest('.checkbox-group').querySelectorAll('input:checked').forEach(e=>v.push(e.value)); updateSubtaskParam(${subtask.id}, 'listing_platform', v.join(','))"> Temu
+                            </label>
+                        </div>
                     </div>
                     <div class="form-group" style="grid-column: span 2;">
                         <label class="form-label">URL链接 <span style="color: var(--danger-color);">*</span></label>
@@ -1327,7 +1335,8 @@
             const data = collectFormData();
             if (!validateForm(data)) return;
 
-            if (!confirm(`确认提交需求"${data.title}"吗？`)) return;
+            // if (!confirm(`确认提交需求"${data.title}"吗？`)) return;
+            if (!confirm(`确认提交需求吗？`)) return;
 
             showLoading(true);
             try {
@@ -1348,10 +1357,10 @@
                 const result = await response.json();
                 if (result.success) {
                     clearTimeout(autoSaveTimer);
-                    showNotification('需求提交成功，正在跳转...', 'success');
+                    showNotification(result.message || '需求提交成功，正在跳转...', 'success');
                     setTimeout(() => {
                         window.location.href = result.data.redirect_url || '/task/product/list/';
-                    }, 1500);
+                    }, 2000);
                 } else {
                     throw new Error(result.message || '提交失败');
                 }
@@ -1363,11 +1372,11 @@
         }
 
         function validateForm(data) {
-            if (!data.title) {
-                showNotification('请输入需求标题', 'warning');
-                document.getElementById('taskTitle').focus();
-                return false;
-            }
+            // if (!data.title) {
+            //     showNotification('请输入需求标题', 'warning');
+            //     document.getElementById('taskTitle').focus();
+            //     return false;
+            // }
             if (data.subtasks.length === 0) {
                 showNotification('请至少添加一个产品', 'warning');
                 return false;

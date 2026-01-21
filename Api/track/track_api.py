@@ -178,6 +178,30 @@ def update_tracking_detail(tracking, details_data):
         logger.error(f"更新轨迹明细失败 {tracking.track_no}: {e}")
 
 
+def refresh_tracking_batch(items, api_key="34546e68d4c74ab2849318a1b50be83d"):
+    """
+    调用Track123批量刷新运单API
+    items: [{"trackNo": "...", "courierCode": "..."}]
+    """
+    if not items:
+        return
+
+    url = "https://api.track123.com/gateway/open-api/tk/v2.1/track/refresh-batch"
+    headers = {
+        "Track123-Api-Secret": api_key,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.post(url, json=items, headers=headers, timeout=60)
+        response.raise_for_status()
+        logger.info(f"成功刷新 {len(items)} 个运单的轨迹")
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"刷新API请求失败: {str(e)}")
+        return None
+
+
 def get_tracking_updates(track_nos):
     """
     批量查询并更新物流轨迹（新增填充冗余字段逻辑）
@@ -213,6 +237,24 @@ def get_tracking_updates(track_nos):
             print(f"处理第 {i // batch_size + 1} 批: {len(batch)} 个单号")
 
             try:
+                # 刷新数据
+                try:
+                    trackings = Tracking.objects.filter(track_no__in=batch).select_related('courier')
+                    refresh_items = []
+                    for t in trackings:
+                        if t.courier and t.courier.code:
+                            refresh_items.append({
+                                "trackNo": t.track_no,
+                                "courierCode": t.courier.code
+                            })
+                    
+                    if refresh_items:
+                        print(f"尝试刷新 {len(refresh_items)} 个运单...")
+                        refresh_tracking_batch(refresh_items)
+                except Exception as e:
+                    logger.error(f"刷新运单失败，但不影响查询: {e}")
+                    print(f"刷新运单失败: {e}")
+
                 api_result = query_tracking_v2(batch)
 
                 if api_result.get('code') != '00000':

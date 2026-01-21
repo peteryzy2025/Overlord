@@ -20,26 +20,30 @@ def parse_permissions(permission_str):
 def generate_task_no(user):
     """
     生成任务单号：名字拼音缩写 + 日期时间
-    格式：ZF2026-0105-1153-30
+    格式：YXD20260121-0846-17
     """
     # 获取名字（使用first_name）
     first_name = user.first_name or user.username
-
+    
     # 提取名字拼音首字母
-    # 假设first_name是中文名，取每个字的首字母
+    from pypinyin import pinyin, Style
+    
+    # 获取拼音首字母
+    initials_list = pinyin(first_name, style=Style.FIRST_LETTER, errors='default')
+    # pinyin返回如 [['y'], ['x'], ['d']]
+    
     initials = []
-    for char in first_name:
-        if '\u4e00' <= char <= '\u9fff':
-            # 这里是简化处理，实际项目中可能需要拼音库
-            initials.append(char[0].upper())
-        elif char.isalpha():
-            initials.append(char[0].upper())
-
+    for item in initials_list:
+        if item:
+            char = item[0]
+            if char.isalnum():
+                initials.append(char)
+    
     if not initials:
         # 如果没有有效首字母，使用用户名前2-4位
         pinyin_initials = user.username[:4].upper()
     else:
-        pinyin_initials = ''.join(initials[:4])  # 最多4位
+        pinyin_initials = ''.join(initials[:4]).upper()  # 最多4位，转大写
 
     # 生成日期时间字符串
     now = datetime.now()
