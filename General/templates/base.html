@@ -664,7 +664,13 @@
             min-height: calc(100vh - 80px);
         }
 
-        {% block layout_css %}{% endblock %}
+            {
+            % block layout_css %
+        }
+
+            {
+            % endblock %
+        }
     </style>
 </head>
 
@@ -747,6 +753,20 @@
                     </div>
                 </div>
                 <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
+                <div class="nav-item-wrapper">
+                    <a class="nav-link" href="{% url 'task:task_list_page' %}">
+                        任务
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </a>
+                    <div class="nav-dropdown">
+                        <a href="{% url 'task:task_list_page' %}" class="nav-dropdown-item">
+                            <i class="fas fa-robot"></i> 自动化任务
+                        </a>
+                        <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-item">
+                            <i class="fas fa-lightbulb"></i> 产品需求
+                        </a>
+                    </div>
+                </div>
                 <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
 
                 <div class="nav-item-wrapper">
