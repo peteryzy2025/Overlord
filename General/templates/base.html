@@ -6,12 +6,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Overlord{% endblock %}</title>
-    <link rel="icon" href="{% static 'img/ico/favicon.ico' %}" type="image/x-icon" />
+    <link rel="icon" href="{% static 'img/ico/favicon.ico' %}" type="image/x-icon"/>
     <!-- Bootstrap 5 -->
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet">
+          rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Anime.js -->
@@ -664,299 +664,293 @@
             min-height: calc(100vh - 80px);
         }
 
-            {
-            % block layout_css %
-        }
-
-            {
-            % endblock %
-        }
+        {% block layout_css %}{% endblock %}
     </style>
 </head>
 
 <body>
-    <!-- 加载遮罩 -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
+<!-- 加载遮罩 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
 
-    <!-- 顶部导航栏 -->
-    <nav class="navbar">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'general:main' %}">
-                <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
-                Overlord
-            </a>
+<!-- 顶部导航栏 -->
+<nav class="navbar">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'general:main' %}">
+            <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
+            Overlord
+        </a>
 
-            <div class="navbar-nav">
-                <div class="nav-item-wrapper">
-                    <a class="nav-link {% if active_nav == 'management' %}active{% endif %}"
-                        href="{% url 'general:management' %}">
-                        管理
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+        <div class="navbar-nav">
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}"
+                   href="{% url 'general:management' %}">
+                    管理
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'general:user_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-users"></i> 人员管理
                     </a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'general:user_management' %}" class="nav-dropdown-item">
-                            <i class="fas fa-users"></i> 人员管理
-                        </a>
-                        <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-item">
-                            <i class="fas fa-chart-line"></i> 绩效管理
-                        </a>
-                        <a href="{% url 'general:operation_log_management' %}" class="nav-dropdown-item">
-                            <i class="fas fa-history"></i> 操作日志
-                        </a>
-                        <a href="{% url 'general:amazon_management' %}" class="nav-dropdown-item">
-                            <i class="fab fa-amazon"></i> Amazon店铺
-                        </a>
-                        <a href="{% url 'general:temu_management' %}" class="nav-dropdown-item">
-                            <i class="fas fa-store"></i> Temu店铺
-                        </a>
-                    </div>
-                </div>
-
-                <div class="nav-item-wrapper">
-                    <a class="nav-link {% if active_nav == 'dashboard' or active_nav == 'ranking' %}active{% endif %}"
-                        href="{% url 'amazon:dashboard' %}">
-                        驾驶舱
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-item">
+                        <i class="fas fa-chart-line"></i> 绩效管理
                     </a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'amazon:dashboard' %}" class="nav-dropdown-item">
-                            <i class="fas fa-chart-line"></i> 驾驶舱
-                        </a>
-                        <a href="{% url 'amazon:ranking_page' %}" class="nav-dropdown-item">
-                            <i class="fas fa-trophy"></i> 华山之巅
-                        </a>
-                    </div>
-                </div>
-
-                <div class="nav-item-wrapper">
-                    <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
-                        href="{% url 'amazon:amazon_order_management' %}">
-                        Amazon
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    <a href="{% url 'general:operation_log_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-history"></i> 操作日志
                     </a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-item">
-                            <i class="fas fa-shopping-cart"></i> 订单管理
-                        </a>
-                        <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-item">
-                            <i class="fas fa-bell"></i> 绩效通知
-                        </a>
-                        <a href="{% url 'amazon:amazon_shop_emails' %}" class="nav-dropdown-item">
-                            <i class="fas fa-envelope"></i> 店铺邮件
-                        </a>
-                        <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-item"
-                            onclick="showComingSoon()">
-                            <i class="fas fa-clipboard-check"></i> 巡店报告
-                        </a>
-                    </div>
-                </div>
-                <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
-                <div class="nav-item-wrapper">
-                    <a class="nav-link" href="{% url 'task:task_list_page' %}">
-                        任务
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    <a href="{% url 'general:amazon_management' %}" class="nav-dropdown-item">
+                        <i class="fab fa-amazon"></i> Amazon店铺
                     </a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'task:task_list_page' %}" class="nav-dropdown-item">
-                            <i class="fas fa-robot"></i> 自动化任务
-                        </a>
-                        <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-item">
-                            <i class="fas fa-lightbulb"></i> 产品需求
-                        </a>
-                    </div>
-                </div>
-                <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
-
-                <div class="nav-item-wrapper">
-                    <a class="nav-link {% if active_nav == 'theme_products' %}active{% endif %}"
-                        href="{% url 'theme:theme_product_list' %}">
-                        主题
-                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    <a href="{% url 'general:temu_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-store"></i> Temu店铺
                     </a>
-                    <div class="nav-dropdown">
-                        <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
-                            <i class="fas fa-list"></i> 主题明细
-                        </a>
-                        <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
-                            <i class="fas fa-chart-line"></i> 主题趋势
-                        </a>
-                    </div>
                 </div>
-
             </div>
 
-            <div class="user-area">
-                <button class="theme-toggle" id="themeToggle" title="切换主题">
-                    <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
-                </button>
-
-
-                <!-- 用户菜单 -->
-                <div class="user-menu">
-                    <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
-                        <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
-                        <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
-                    </div>
-
-                    <div class="user-menu-dropdown" id="userMenuDropdown">
-                        <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
-                            <i class="fas fa-cog"></i> 设置
-                        </a>
-                        <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
-                        <a href="{% url 'general:logout' %}" class="user-menu-item" onclick="return confirmLogout()">
-                            <i class="fas fa-sign-out-alt"></i> 退出登录
-                        </a>
-                    </div>
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'dashboard' or active_nav == 'ranking' %}active{% endif %}"
+                   href="{% url 'amazon:dashboard' %}">
+                    驾驶舱
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'amazon:dashboard' %}" class="nav-dropdown-item">
+                        <i class="fas fa-chart-line"></i> 驾驶舱
+                    </a>
+                    <a href="{% url 'amazon:ranking_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-trophy"></i> 华山之巅
+                    </a>
                 </div>
-
-                <button class="mobile-menu-toggle" onclick="showComingSoon()">
-                    <i class="fas fa-bars"></i>
-                </button>
             </div>
+
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
+                   href="{% url 'amazon:amazon_order_management' %}">
+                    Amazon
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-shopping-cart"></i> 订单管理
+                    </a>
+                    <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-item">
+                        <i class="fas fa-bell"></i> 绩效通知
+                    </a>
+                    <a href="{% url 'amazon:amazon_shop_emails' %}" class="nav-dropdown-item">
+                        <i class="fas fa-envelope"></i> 店铺邮件
+                    </a>
+                    <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-item"
+                       onclick="showComingSoon()">
+                        <i class="fas fa-clipboard-check"></i> 巡店报告
+                    </a>
+                </div>
+            </div>
+            <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
+            <div class="nav-item-wrapper">
+                <a class="nav-link" href="{% url 'task:task_list_page' %}">
+                    任务
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'task:task_list_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-robot"></i> 自动化任务
+                    </a>
+                    <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-lightbulb"></i> 产品需求
+                    </a>
+                </div>
+            </div>
+            <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
+
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'theme_products' %}active{% endif %}"
+                   href="{% url 'theme:theme_product_list' %}">
+                    主题
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
+                        <i class="fas fa-list"></i> 主题明细
+                    </a>
+                    <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
+                        <i class="fas fa-chart-line"></i> 主题趋势
+                    </a>
+                </div>
+            </div>
+
         </div>
-    </nav>
 
-    <!-- 主容器 -->
-    {% block main_container %}{% endblock %}
+        <div class="user-area">
+            <button class="theme-toggle" id="themeToggle" title="切换主题">
+                <i class="fas {% if theme == 'dark' %}fa-moon{% else %}fa-sun{% endif %}" id="themeIcon"></i>
+            </button>
 
-    <!-- 通知容器 -->
-    <div id="notificationContainer"></div>
 
-    <!-- 公告系统弹窗容器 -->
-    <div id="announcementOverlay" class="announcement-overlay">
-        <!-- 弹窗将通过JS动态插入这里 -->
+            <!-- 用户菜单 -->
+            <div class="user-menu">
+                <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
+                    <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
+                    <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                </div>
+
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
+                        <i class="fas fa-cog"></i> 设置
+                    </a>
+                    <div style="border-top: 1px solid var(--border-color); margin: 0.5rem 0;"></div>
+                    <a href="{% url 'general:logout' %}" class="user-menu-item" onclick="return confirmLogout()">
+                        <i class="fas fa-sign-out-alt"></i> 退出登录
+                    </a>
+                </div>
+            </div>
+
+            <button class="mobile-menu-toggle" onclick="showComingSoon()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
     </div>
+</nav>
+
+<!-- 主容器 -->
+{% block main_container %}{% endblock %}
+
+<!-- 通知容器 -->
+<div id="notificationContainer"></div>
+
+<!-- 公告系统弹窗容器 -->
+<div id="announcementOverlay" class="announcement-overlay">
+    <!-- 弹窗将通过JS动态插入这里 -->
+</div>
 
 
-    <script>
-        // ========== 主题切换功能（修复版） ==========
-        document.addEventListener('DOMContentLoaded', function () {
-            const themeToggle = document.getElementById('themeToggle');
-            const themeIcon = document.getElementById('themeIcon');
-            const html = document.documentElement;
+<script>
+    // ========== 主题切换功能（修复版） ==========
+    document.addEventListener('DOMContentLoaded', function () {
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const html = document.documentElement;
 
-            // 初始化主题（优先使用后端传入的theme变量）
-            const initialTheme = "{{ theme|default:'light' }}";
-            html.setAttribute('data-theme', initialTheme);
-            localStorage.setItem('theme', initialTheme);
+        // 初始化主题（优先使用后端传入的theme变量）
+        const initialTheme = "{{ theme|default:'light' }}";
+        html.setAttribute('data-theme', initialTheme);
+        localStorage.setItem('theme', initialTheme);
 
-            // 确保图标状态正确
-            themeIcon.className = initialTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+        // 确保图标状态正确
+        themeIcon.className = initialTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
 
-            // 绑定切换事件
-            themeToggle.addEventListener('click', async function () {
-                const currentTheme = html.getAttribute('data-theme');
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        // 绑定切换事件
+        themeToggle.addEventListener('click', async function () {
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
 
-                // 立即更新UI，提升用户体验
-                html.setAttribute('data-theme', newTheme);
-                localStorage.setItem('theme', newTheme);
+            // 立即更新UI，提升用户体验
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
 
-                // 动画效果
-                if (window.anime) {
-                    anime({
-                        targets: themeIcon,
-                        rotate: '360deg',
-                        duration: 500,
-                        easing: 'easeInOutQuart',
-                        complete: function () {
-                            themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                            anime({ targets: themeIcon, rotate: '0deg', duration: 0 });
-                        }
-                    });
+            // 动画效果
+            if (window.anime) {
+                anime({
+                    targets: themeIcon,
+                    rotate: '360deg',
+                    duration: 500,
+                    easing: 'easeInOutQuart',
+                    complete: function () {
+                        themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+                        anime({targets: themeIcon, rotate: '0deg', duration: 0});
+                    }
+                });
+            } else {
+                // 如果没有anime.js，直接切换图标
+                themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+
+            // 发送到后端保存（添加错误处理和验证）
+            try {
+                const csrfToken = getCookie('csrftoken');
+                if (!csrfToken) {
+                    console.warn('CSRF Token未找到，可能未登录或Cookie设置问题');
+                    showNotification('主题切换：未登录，更改仅本地生效', 'warning', 3000);
+                    return;
+                }
+
+                const response = await fetch('/api/update-theme/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                        'X-Requested-With': 'XMLHttpRequest' // 标识AJAX请求
+                    },
+                    body: JSON.stringify({theme: newTheme})
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP错误: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // 验证后端是否成功处理
+                if (data.success) {
+                    console.log(`主题已成功切换到: ${newTheme}`);
                 } else {
-                    // 如果没有anime.js，直接切换图标
-                    themeIcon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+                    throw new Error(data.message || '后端处理失败');
                 }
 
-                // 发送到后端保存（添加错误处理和验证）
-                try {
-                    const csrfToken = getCookie('csrftoken');
-                    if (!csrfToken) {
-                        console.warn('CSRF Token未找到，可能未登录或Cookie设置问题');
-                        showNotification('主题切换：未登录，更改仅本地生效', 'warning', 3000);
-                        return;
-                    }
+            } catch (error) {
+                console.error('主题切换失败:', error);
+                showNotification(`主题切换失败: ${error.message}`, 'error', 5000);
 
-                    const response = await fetch('/api/update-theme/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken,
-                            'X-Requested-With': 'XMLHttpRequest' // 标识AJAX请求
-                        },
-                        body: JSON.stringify({ theme: newTheme })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP错误: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-
-                    // 验证后端是否成功处理
-                    if (data.success) {
-                        console.log(`主题已成功切换到: ${newTheme}`);
-                    } else {
-                        throw new Error(data.message || '后端处理失败');
-                    }
-
-                } catch (error) {
-                    console.error('主题切换失败:', error);
-                    showNotification(`主题切换失败: ${error.message}`, 'error', 5000);
-
-                    // 失败时回滚到之前的主题
-                    html.setAttribute('data-theme', currentTheme);
-                    localStorage.setItem('theme', currentTheme);
-                    themeIcon.className = currentTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-                }
-            });
+                // 失败时回滚到之前的主题
+                html.setAttribute('data-theme', currentTheme);
+                localStorage.setItem('theme', currentTheme);
+                themeIcon.className = currentTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
         });
+    });
 
-        // ========== 获取CSRF Token（原有） ==========
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
+    // ========== 获取CSRF Token（原有） ==========
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
                 }
             }
-            return cookieValue;
         }
+        return cookieValue;
+    }
 
-        // ========== 显示通知（优化版） ==========
-        function showNotification(message, type = 'info', duration = 3000) {
-            const container = document.getElementById('notificationContainer');
+    // ========== 显示通知（优化版） ==========
+    function showNotification(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('notificationContainer');
 
-            // 避免重复通知
-            const existing = Array.from(container.children).find(el => el.textContent.includes(message.substring(0, 20)));
-            if (existing) return;
+        // 避免重复通知
+        const existing = Array.from(container.children).find(el => el.textContent.includes(message.substring(0, 20)));
+        if (existing) return;
 
-            const notification = document.createElement('div');
-            notification.className = `notification notification-${type}`;
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
 
-            const icons = {
-                success: 'fa-check-circle',
-                error: 'fa-exclamation-circle',
-                warning: 'fa-exclamation-triangle',
-                info: 'fa-info-circle'
-            };
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
 
-            const colors = {
-                success: '#48bb78',
-                error: '#e53e3e',
-                warning: '#dd6b20',
-                info: '#3182ce'
-            };
+        const colors = {
+            success: '#48bb78',
+            error: '#e53e3e',
+            warning: '#dd6b20',
+            info: '#3182ce'
+        };
 
-            notification.style.cssText = `
+        notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
@@ -972,7 +966,7 @@
             max-width: 400px;
         `;
 
-            notification.innerHTML = `
+        notification.innerHTML = `
             <div style="display: flex; align-items: center; gap: 0.75rem;">
                 <i class="fas ${icons[type]}" style="color: ${colors[type]};"></i>
                 <span>${message}</span>
@@ -990,107 +984,107 @@
             </div>
         `;
 
-            container.appendChild(notification);
+        container.appendChild(notification);
 
+        setTimeout(() => {
+            notification.style.transform = 'translateX(0)';
+        }, 10);
+
+        setTimeout(() => {
+            notification.style.transform = 'translateX(100%)';
             setTimeout(() => {
-                notification.style.transform = 'translateX(0)';
-            }, 10);
+                if (notification.parentElement) notification.remove();
+            }, 300);
+        }, duration);
+    }
 
-            setTimeout(() => {
-                notification.style.transform = 'translateX(100%)';
-                setTimeout(() => {
-                    if (notification.parentElement) notification.remove();
-                }, 300);
-            }, duration);
+    // ========== 显示即将推出提示（原有） ==========
+    function showComingSoon() {
+        showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
+    }
+
+    // ========== 切换用户菜单（原有） ==========
+    function toggleUserMenu() {
+        const dropdown = document.getElementById('userMenuDropdown');
+        dropdown.classList.toggle('show');
+    }
+
+    document.addEventListener('click', function (e) {
+        const userMenu = document.querySelector('.user-menu');
+        if (userMenu && !userMenu.contains(e.target)) {
+            document.getElementById('userMenuDropdown').classList.remove('show');
+        }
+    });
+
+    // ========== 退出登录确认（原有） ==========
+    function confirmLogout() {
+        return confirm('确定要退出登录吗？');
+    }
+
+    // ========== 公告系统核心逻辑（V1 + 优先级标签） ==========
+    class AnnouncementManager {
+        constructor() {
+            this.announcements = [];
+            this.currentIndex = 0;
+            this.overlay = document.getElementById('announcementOverlay');
+            this.init();
         }
 
-        // ========== 显示即将推出提示（原有） ==========
-        function showComingSoon() {
-            showNotification('🚀 功能即将推出，敬请期待！', 'info', 5000);
-        }
+        init() {
+            const unreadJson = '{{ unread_announcements|default:"[]"|escapejs }}';
+            const unreadData = JSON.parse(unreadJson);
 
-        // ========== 切换用户菜单（原有） ==========
-        function toggleUserMenu() {
-            const dropdown = document.getElementById('userMenuDropdown');
-            dropdown.classList.toggle('show');
-        }
+            console.log('[公告系统] 检测到未读公告:', unreadData);
 
-        document.addEventListener('click', function (e) {
-            const userMenu = document.querySelector('.user-menu');
-            if (userMenu && !userMenu.contains(e.target)) {
-                document.getElementById('userMenuDropdown').classList.remove('show');
+            if (unreadData && unreadData.length > 0) {
+                this.announcements = unreadData;
+                this.showSummaryNotification();
+                setTimeout(() => this.showCurrentAnnouncement(), 1500);
+            } else {
+                console.log('[公告系统] 没有未读公告，跳过');
             }
-        });
 
-        // ========== 退出登录确认（原有） ==========
-        function confirmLogout() {
-            return confirm('确定要退出登录吗？');
-        }
-
-        // ========== 公告系统核心逻辑（V1 + 优先级标签） ==========
-        class AnnouncementManager {
-            constructor() {
-                this.announcements = [];
-                this.currentIndex = 0;
-                this.overlay = document.getElementById('announcementOverlay');
-                this.init();
-            }
-
-            init() {
-                const unreadJson = '{{ unread_announcements|default:"[]"|escapejs }}';
-                const unreadData = JSON.parse(unreadJson);
-
-                console.log('[公告系统] 检测到未读公告:', unreadData);
-
-                if (unreadData && unreadData.length > 0) {
-                    this.announcements = unreadData;
-                    this.showSummaryNotification();
-                    setTimeout(() => this.showCurrentAnnouncement(), 1500);
-                } else {
-                    console.log('[公告系统] 没有未读公告，跳过');
+            // ESC键关闭当前公告
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.overlay.classList.contains('active')) {
+                    this.closeCurrentAnnouncement(false);
                 }
+            });
+        }
 
-                // ESC键关闭当前公告
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && this.overlay.classList.contains('active')) {
-                        this.closeCurrentAnnouncement(false);
-                    }
-                });
+        showSummaryNotification() {
+            const count = this.announcements.length;
+            showNotification(
+                `<i class="fas fa-bullhorn"></i> 您有 <strong>${count}</strong> 条未读公告，请查收！`,
+                'info',
+                5000
+            );
+        }
+
+        showCurrentAnnouncement() {
+            if (this.currentIndex >= this.announcements.length) {
+                this.hideOverlay();
+                return;
             }
 
-            showSummaryNotification() {
-                const count = this.announcements.length;
-                showNotification(
-                    `<i class="fas fa-bullhorn"></i> 您有 <strong>${count}</strong> 条未读公告，请查收！`,
-                    'info',
-                    5000
-                );
-            }
+            const announcement = this.announcements[this.currentIndex];
+            this.renderAnnouncement(announcement);
+            this.overlay.classList.add('active');
+        }
 
-            showCurrentAnnouncement() {
-                if (this.currentIndex >= this.announcements.length) {
-                    this.hideOverlay();
-                    return;
-                }
+        renderAnnouncement(announcement) {
+            const priorityClass = `priority-${announcement.priority}`;
+            const progressText = `${this.currentIndex + 1} / ${this.announcements.length}`;
 
-                const announcement = this.announcements[this.currentIndex];
-                this.renderAnnouncement(announcement);
-                this.overlay.classList.add('active');
-            }
+            // 优先级文字映射
+            const priorityTextMap = {
+                'high': '高',
+                'medium': '中',
+                'low': '低'
+            };
+            const priorityText = priorityTextMap[announcement.priority] || '中';
 
-            renderAnnouncement(announcement) {
-                const priorityClass = `priority-${announcement.priority}`;
-                const progressText = `${this.currentIndex + 1} / ${this.announcements.length}`;
-
-                // 优先级文字映射
-                const priorityTextMap = {
-                    'high': '高',
-                    'medium': '中',
-                    'low': '低'
-                };
-                const priorityText = priorityTextMap[announcement.priority] || '中';
-
-                this.overlay.innerHTML = `
+            this.overlay.innerHTML = `
                 <div class="announcement-modal ${priorityClass}">
                     <div class="announcement-header">
                         <h3 class="announcement-title">
@@ -1109,10 +1103,10 @@
                         <span class="announcement-meta">发布于 ${announcement.created_at}</span>
                         <div class="announcement-actions">
                             ${announcement.can_mark_read ?
-                        `<button class="announcement-btn btn-mark-read" onclick="announcementManager.markAsRead(${announcement.id})">
+                `<button class="announcement-btn btn-mark-read" onclick="announcementManager.markAsRead(${announcement.id})">
                                     <i class="fas fa-check"></i> 标记已读
                                 </button>` : ''
-                    }
+            }
                             <button class="announcement-btn btn-close-only" onclick="announcementManager.closeCurrentAnnouncement(false)">
                                 <i class="fas fa-times"></i> 关闭
                             </button>
@@ -1120,84 +1114,84 @@
                     </div>
                 </div>
             `;
-            }
-
-            closeCurrentAnnouncement(markAsRead = false) {
-                // 先添加关闭动画类
-                const modal = this.overlay.querySelector('.announcement-modal');
-                if (modal) {
-                    modal.classList.add('closing');
-                }
-
-                if (markAsRead) {
-                    const announcementId = this.announcements[this.currentIndex].id;
-                    this.markAnnouncementRead(announcementId);
-                }
-
-                // 等待动画结束后移除公告
-                setTimeout(() => {
-                    this.announcements.splice(this.currentIndex, 1);
-
-                    if (this.announcements.length > 0) {
-                        if (this.currentIndex >= this.announcements.length) {
-                            this.currentIndex = this.announcements.length - 1;
-                        }
-                        this.showCurrentAnnouncement();
-                    } else {
-                        this.hideOverlay();
-                    }
-                }, 200); // 与 CSS 动画时间一致
-            }
-
-            markAsRead(announcementId) {
-                this.markAnnouncementRead(announcementId);
-                this.closeCurrentAnnouncement(false);
-            }
-
-            markAnnouncementRead(announcementId) {
-                fetch('/api/announcement/mark-as-read/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ announcement_id: announcementId })
-                }).then(response => {
-                    if (!response.ok) {
-                        console.error('标记已读失败:', response.status);
-                    }
-                }).catch(error => {
-                    console.error('标记已读请求错误:', error);
-                });
-            }
-
-            hideOverlay() {
-                this.overlay.classList.remove('active');
-                this.overlay.innerHTML = '';
-            }
         }
 
-        // 页面加载完成后初始化公告管理器
-        let announcementManager;
-        document.addEventListener('DOMContentLoaded', function () {
-            // 隐藏 Loading 遮罩
-            const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay) {
-                // 给一个小延迟，让过渡更平滑，也避免闪烁
-                setTimeout(() => {
-                    loadingOverlay.classList.add('hidden');
-                }, 300);
+        closeCurrentAnnouncement(markAsRead = false) {
+            // 先添加关闭动画类
+            const modal = this.overlay.querySelector('.announcement-modal');
+            if (modal) {
+                modal.classList.add('closing');
             }
 
-            // 延迟初始化，确保DOM完全加载
-            setTimeout(() => {
-                announcementManager = new AnnouncementManager();
-            }, 100);
-        });
+            if (markAsRead) {
+                const announcementId = this.announcements[this.currentIndex].id;
+                this.markAnnouncementRead(announcementId);
+            }
 
-        {% block layout_js %} {% endblock %}
-    </script>
-    {% block extra_js %}{% endblock %}
+            // 等待动画结束后移除公告
+            setTimeout(() => {
+                this.announcements.splice(this.currentIndex, 1);
+
+                if (this.announcements.length > 0) {
+                    if (this.currentIndex >= this.announcements.length) {
+                        this.currentIndex = this.announcements.length - 1;
+                    }
+                    this.showCurrentAnnouncement();
+                } else {
+                    this.hideOverlay();
+                }
+            }, 200); // 与 CSS 动画时间一致
+        }
+
+        markAsRead(announcementId) {
+            this.markAnnouncementRead(announcementId);
+            this.closeCurrentAnnouncement(false);
+        }
+
+        markAnnouncementRead(announcementId) {
+            fetch('/api/announcement/mark-as-read/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({announcement_id: announcementId})
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('标记已读失败:', response.status);
+                }
+            }).catch(error => {
+                console.error('标记已读请求错误:', error);
+            });
+        }
+
+        hideOverlay() {
+            this.overlay.classList.remove('active');
+            this.overlay.innerHTML = '';
+        }
+    }
+
+    // 页面加载完成后初始化公告管理器
+    let announcementManager;
+    document.addEventListener('DOMContentLoaded', function () {
+        // 隐藏 Loading 遮罩
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            // 给一个小延迟，让过渡更平滑，也避免闪烁
+            setTimeout(() => {
+                loadingOverlay.classList.add('hidden');
+            }, 300);
+        }
+
+        // 延迟初始化，确保DOM完全加载
+        setTimeout(() => {
+            announcementManager = new AnnouncementManager();
+        }, 100);
+    });
+
+    {% block layout_js %} {% endblock %}
+</script>
+{% block extra_js %}{% endblock %}
 </body>
 
 </html>

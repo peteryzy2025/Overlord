@@ -11,14 +11,16 @@ import json
 
 from amazon.models import AmazonShopEmail
 from general.models import AmazonShop, User, OperationalAccount, UserOperationLog
-from amazon.amazon_views import parse_permissions, determine_filter_type_and_value
-from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
-from amazon.amazon_order_views import get_shop_ids_by_filter
 from api.WX.wx import send_wechat_work_message
 from amazon.services.amazon_shop_email_service import send_email_notifications
+from universal.permission_utils import get_user_permission_codes
 
-
-# 扩展日期范围函数，支持'unlimited'
+def get_user_ops_group(user):
+    """获取用户的运营分组（安全获取）"""
+    try:
+        return user.operational_account.ops_group
+    except AttributeError:
+        return None
 def get_date_range_from_option(option):
     """
     获取日期范围，支持'unlimited'选项
@@ -26,7 +28,43 @@ def get_date_range_from_option(option):
     """
     if option == 'unlimited':
         return None, None
-    return base_get_date_range(option)
+
+    today = datetime.now().date()
+    if option == 'today':
+        return today, today
+    elif option == 'last7days':
+        return today - timedelta(days=6), today
+    elif option == 'last30days':
+        return today - timedelta(days=29), today
+    else:
+        return None, None
+
+
+def get_user_permission_codes(user):
+    """
+    获取用户的所有权限code列表
+    返回: list[int] - 如 [1, 2, 555] 或 []
+    """
+    if not user or not user.is_authenticated:
+        return []
+    return list(user.permission_configs.values_list('code', flat=True))
+
+
+def is_user_in_same_group(user, target_user_id):
+    """
+    判断目标用户是否和当前用户在同一个运营组
+    用于组长权限验证
+    """
+    try:
+        user_group = user.operational_account.ops_group
+        if not user_group:
+            return False
+        return OperationalAccount.objects.filter(
+            user_id=target_user_id,
+            ops_group=user_group
+        ).exists()
+    except AttributeError:
+        return False
 
 
 @login_required(login_url='/login/')
@@ -41,7 +79,7 @@ def amazon_shop_emails_page(request):
 def get_amazon_shop_emails_api(request):
     """
     获取店铺邮件列表（带分页、排序、筛选）
-    权限控制：组长看全组+自己，运营看个人，管理员看全部
+    权限控制：基于permission_configs的code判断
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -49,10 +87,64 @@ def get_amazon_shop_emails_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 权限控制核心逻辑
-        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
+        # 新权限判断
+        permission_codes = get_user_permission_codes(user)
+
+        # 解析前端参数
+        ops_id_raw = data.get('operator_id')
+        ops_group_raw = data.get('group') or data.get('ops_group')
+
+        # 默认无权限
+        filter_type, filter_value = 'none', None
+
+        # code=3或555：运营全部权限（可查看所有）
+        if 3 in permission_codes or 555 in permission_codes:
+            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                filter_type, filter_value = 'ops_group', ops_group_raw.strip()
+            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                try:
+                    filter_type, filter_value = 'ops_id', int(ops_id_raw)
+                except:
+                    pass
+            else:
+                filter_type, filter_value = 'all', None
+
+        # code=2：组长权限（只能看本组）
+        elif 2 in permission_codes:
+            try:
+                user_group = user.operational_account.ops_group
+                if not user_group:
+                    filter_type, filter_value = 'none', None
+                else:
+                    # 组内筛选具体人员（需验证是否属于本组）
+                    if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                        try:
+                            target_id = int(ops_id_raw)
+                            if OperationalAccount.objects.filter(
+                                    user_id=target_id, ops_group=user_group
+                            ).exists():
+                                filter_type, filter_value = 'ops_id', target_id
+                            else:
+                                filter_type, filter_value = 'none', None  # 越权
+                        except:
+                            filter_type, filter_value = 'none', None
+                    # 筛选其他组（拒绝）
+                    elif ops_group_raw and ops_group_raw != user_group:
+                        filter_type, filter_value = 'none', None
+                    # 默认查本组
+                    else:
+                        filter_type, filter_value = 'ops_group', user_group
+            except AttributeError:
+                filter_type, filter_value = 'none', None
+
+        # code=1：普通运营（只能看自己）
+        elif 1 in permission_codes:
+            filter_type, filter_value = 'ops_id', user.id
+
+        # 无任何权限
+        else:
+            filter_type, filter_value = 'none', None
 
         # 分页参数
         page = int(data.get('page', 1))
@@ -98,31 +190,40 @@ def get_amazon_shop_emails_api(request):
             })
 
         # 获取权限范围内的店铺
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        if filter_type == 'ops_id':
+            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+        elif filter_type == 'ops_group':
+            user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
+            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+        elif filter_type == 'all':
+            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+        else:
+            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
 
         # 构建查询条件
         email_filter = Q(shop_id__in=list(shop_ids))
 
-        # 日期筛选（如果不限则不添加条件）
+        # 日期筛选
         if current_start and current_end:
-            # 因为receive_time是DateTimeField，需要转换为日期范围查询
             email_filter &= Q(receive_time__date__gte=current_start)
             email_filter &= Q(receive_time__date__lte=current_end)
 
         # 运营人员多选筛选
         operator_ids = data.get('operator_ids', [])
         if operator_ids:
-            if 'ops_all' in permissions:
+            if 3 in permission_codes or 555 in permission_codes:
                 email_filter &= Q(shop__ops_id__in=operator_ids)
-            elif 'ops_group' in permissions:
-                valid_shop_ids = set(shop_ids)
-                operator_shops = AmazonShop.objects.filter(ops_id__in=operator_ids).values_list('id', flat=True)
-                valid_operator_ids = AmazonShop.objects.filter(
-                    id__in=valid_shop_ids.intersection(operator_shops)
-                ).values_list('ops_id', flat=True)
-                email_filter &= Q(shop__ops_id__in=valid_operator_ids)
+            elif 2 in permission_codes:
+                user_group = get_user_ops_group(user)
+                valid_ids = list(OperationalAccount.objects.filter(
+                    ops_group=user_group, user_id__in=operator_ids
+                ).values_list('user_id', flat=True))
+                if set(operator_ids).issubset(set(valid_ids)):
+                    email_filter &= Q(shop__ops_id__in=operator_ids)
+                else:
+                    return JsonResponse({'success': False, 'message': '无权筛选指定运营人员'}, status=403)
             else:
-                email_filter &= Q(shop__ops_id=user.id)
+                return JsonResponse({'success': False, 'message': '无权筛选运营人员'}, status=403)
 
         # 店铺名称模糊搜索
         shop_name = data.get('shop_name', '').strip()
@@ -175,13 +276,9 @@ def get_amazon_shop_emails_api(request):
         ).order_by(ordering)
 
         # 统计未处理数量
-        stats_base_queryset = emails_queryset
-        if operator_ids and len(operator_ids) == 1:
-            stats_base_queryset = stats_base_queryset.filter(shop__ops_id=operator_ids[0])
-
-        pending_count = stats_base_queryset.filter(
+        pending_count = emails_queryset.filter(
             is_attention_needed=True, is_processed=False
-        ).count() if stats_base_queryset.exists() else 0
+        ).count() if emails_queryset.exists() else 0
 
         # 分页
         total = emails_queryset.count()
@@ -206,7 +303,7 @@ def get_amazon_shop_emails_api(request):
                 try:
                     ops_group = email.shop.ops.operational_account.ops_group or ''
                 except:
-                    ops_group = ''
+                    pass
 
             emails_data.append({
                 'id': email.id,
@@ -246,7 +343,7 @@ def get_amazon_shop_emails_api(request):
 def notify_operators_preview_api(request):
     """
     预览待通知的运营人员列表
-    POST /api/amazon-shop-emails/notify/preview/
+    权限判断：code=555/3/2 可通知
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -254,9 +351,68 @@ def notify_operators_preview_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
 
-        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
+        # 新权限判断
+        permission_codes = get_user_permission_codes(user)
+
+        # 只有code=2/3/555可以通知
+        if not any(code in permission_codes for code in [2, 3, 555]):
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'operators': [],
+                    'total_pending': 0
+                }
+            })
+
+        # 解析前端参数
+        ops_id_raw = data.get('operator_id')
+        ops_group_raw = data.get('group') or data.get('ops_group')
+
+        # 默认无权限
+        filter_type, filter_value = 'none', None
+
+        # code=3或555：可查看所有
+        if 3 in permission_codes or 555 in permission_codes:
+            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                filter_type, filter_value = 'ops_group', ops_group_raw.strip()
+            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                try:
+                    filter_type, filter_value = 'ops_id', int(ops_id_raw)
+                except:
+                    pass
+            else:
+                filter_type, filter_value = 'all', None
+
+        # code=2：组长权限（只能看本组）
+        elif 2 in permission_codes:
+            try:
+                user_group = user.operational_account.ops_group
+                if not user_group:
+                    filter_type, filter_value = 'none', None
+                else:
+                    # 组内筛选具体人员（需验证是否属于本组）
+                    if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                        try:
+                            target_id = int(ops_id_raw)
+                            if OperationalAccount.objects.filter(
+                                    user_id=target_id, ops_group=user_group
+                            ).exists():
+                                filter_type, filter_value = 'ops_id', target_id
+                            else:
+                                filter_type, filter_value = 'none', None
+                        except:
+                            filter_type, filter_value = 'none', None
+                    # 筛选其他组（拒绝）
+                    elif ops_group_raw and ops_group_raw != user_group:
+                        filter_type, filter_value = 'none', None
+                    # 默认查本组
+                    else:
+                        filter_type, filter_value = 'ops_group', user_group
+            except AttributeError:
+                filter_type, filter_value = 'none', None
+        else:
+            filter_type, filter_value = 'none', None
 
         if filter_type == 'none':
             return JsonResponse({
@@ -267,8 +423,18 @@ def notify_operators_preview_api(request):
                 }
             })
 
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        # 获取店铺ID
+        if filter_type == 'ops_id':
+            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+        elif filter_type == 'ops_group':
+            user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
+            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+        elif filter_type == 'all':
+            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+        else:
+            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
 
+        # 构建基础筛选条件
         email_filter = Q(
             shop_id__in=list(shop_ids),
             is_attention_needed=True,
@@ -295,7 +461,7 @@ def notify_operators_preview_api(request):
             email_filter &= Q(receive_time__date__gte=current_start)
             email_filter &= Q(receive_time__date__lte=current_end)
 
-        # 店铺名称和关键词筛选
+        # 其他筛选条件
         shop_name = data.get('shop_name', '').strip()
         if shop_name:
             email_filter &= Q(shop__shop_name__icontains=shop_name)
@@ -310,26 +476,20 @@ def notify_operators_preview_api(request):
 
         # 权限范围控制
         operators_query = Q()
-        if 'ops_all' in permissions:
+        if 3 in permission_codes or 555 in permission_codes:
+            # 全部权限，不限制
             pass
-        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
-            group_name = user.operational_account.ops_group
-            operators_query &= Q(shop__ops__operational_account__ops_group=group_name)
-        else:
-            return JsonResponse({
-                'success': True,
-                'data': {
-                    'operators': [],
-                    'total_pending': 0
-                }
-            })
+        elif 2 in permission_codes:
+            # 组长，限制到本组
+            user_group = get_user_ops_group(user)
+            if user_group:
+                operators_query &= Q(shop__ops__operational_account__ops_group=user_group)
 
         # 聚合统计每个运营的待处理数量
         pending_stats = AmazonShopEmail.objects.filter(
             email_filter & operators_query
         ).values(
-            'shop__ops_id',
-            'shop__ops__first_name'
+            'shop__ops_id', 'shop__ops__first_name'
         ).annotate(
             pending_count=Count('id')
         ).order_by('-pending_count')
@@ -364,7 +524,7 @@ def notify_operators_preview_api(request):
 def notify_operators_api(request):
     """
     执行通知运营人员
-    POST /api/amazon-shop-emails/notify/
+    权限判断：code=2/3/555可执行
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -372,15 +532,65 @@ def notify_operators_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
 
-        if 'ops_all' not in permissions and 'ops_group' not in permissions:
+        # 新权限判断
+        permission_codes = get_user_permission_codes(user)
+
+        # 只有code=2/3/555可以通知
+        if not any(code in permission_codes for code in [2, 3, 555]):
             return JsonResponse({
                 'success': False,
-                'message': '无权操作：需要 ops_all 或 ops_group 权限'
+                'message': '无权操作：需要组长或更高权限'
             }, status=403)
 
-        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
+        # 解析前端参数
+        ops_id_raw = data.get('operator_id')
+        ops_group_raw = data.get('group') or data.get('ops_group')
+
+        # 默认无权限
+        filter_type, filter_value = 'none', None
+
+        # code=3或555：可查看所有
+        if 3 in permission_codes or 555 in permission_codes:
+            if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
+                filter_type, filter_value = 'ops_group', ops_group_raw.strip()
+            elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                try:
+                    filter_type, filter_value = 'ops_id', int(ops_id_raw)
+                except:
+                    pass
+            else:
+                filter_type, filter_value = 'all', None
+
+        # code=2：组长权限（只能看本组）
+        elif 2 in permission_codes:
+            try:
+                user_group = user.operational_account.ops_group
+                if not user_group:
+                    filter_type, filter_value = 'none', None
+                else:
+                    # 组内筛选具体人员（需验证是否属于本组）
+                    if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+                        try:
+                            target_id = int(ops_id_raw)
+                            if OperationalAccount.objects.filter(
+                                    user_id=target_id, ops_group=user_group
+                            ).exists():
+                                filter_type, filter_value = 'ops_id', target_id
+                            else:
+                                filter_type, filter_value = 'none', None
+                        except:
+                            filter_type, filter_value = 'none', None
+                    # 筛选其他组（拒绝）
+                    elif ops_group_raw and ops_group_raw != user_group:
+                        filter_type, filter_value = 'none', None
+                    # 默认查本组
+                    else:
+                        filter_type, filter_value = 'ops_group', user_group
+            except AttributeError:
+                filter_type, filter_value = 'none', None
+        else:
+            filter_type, filter_value = 'none', None
 
         if filter_type == 'none':
             return JsonResponse({
@@ -392,7 +602,16 @@ def notify_operators_api(request):
                 }
             })
 
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        # 获取店铺ID
+        if filter_type == 'ops_id':
+            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+        elif filter_type == 'ops_group':
+            user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
+            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+        elif filter_type == 'all':
+            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+        else:
+            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
 
         # 使用Q对象构建基础筛选条件
         base_filter = Q(
@@ -435,28 +654,19 @@ def notify_operators_api(request):
             base_filter &= Q(subject__icontains=subject_keyword)
 
         # 权限范围控制
-        if 'ops_all' in permissions:
-            operators_query = Q()
-        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
-            group_name = user.operational_account.ops_group
-            operators_query = Q(shop__ops__operational_account__ops_group=group_name)
-        else:
-            return JsonResponse({
-                'success': True,
-                'data': {
-                    'success_count': 0,
-                    'fail_count': 0,
-                    'fail_details': []
-                }
-            })
+        operators_query = Q()
+        if 3 in permission_codes or 555 in permission_codes:
+            pass  # 全部权限
+        elif 2 in permission_codes:
+            user_group = get_user_ops_group(user)
+            if user_group:
+                operators_query &= Q(shop__ops__operational_account__ops_group=user_group)
 
         # 获取每个运营的待处理统计
         pending_stats = AmazonShopEmail.objects.filter(
             base_filter & operators_query
         ).values(
-            'shop__ops_id',
-            'shop__ops__first_name',
-            'shop__ops__wx_url'
+            'shop__ops_id', 'shop__ops__first_name', 'shop__ops__wx_url'
         ).annotate(
             pending_count=Count('id')
         ).order_by('-pending_count')
@@ -539,27 +749,31 @@ def notify_operators_api(request):
 @login_required
 def get_shop_emails_operators_api(request):
     """
-    获取邮件模块可用的运营人员列表（带权限控制）
-    组长只能看自己组（包含自己），管理员看全部
-    返回用户通知权限标识
+    获取邮件模块可用的运营人员列表
+    权限判断：code=3/555看全部，code=2看本组，code=1看自己
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permission_codes = get_user_permission_codes(user)
 
         # 判断权限范围
-        if 'ops_all' in permissions:
+        if 3 in permission_codes or 555 in permission_codes:
             shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
-        elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
-            group_name = user.operational_account.ops_group
-            shops = AmazonShop.objects.filter(
-                ops__operational_account__ops_group=group_name
-            ).select_related('ops')
-        else:
+        elif 2 in permission_codes:
+            try:
+                user_group = user.operational_account.ops_group
+                shops = AmazonShop.objects.filter(
+                    ops__operational_account__ops_group=user_group
+                ).select_related('ops')
+            except AttributeError:
+                shops = AmazonShop.objects.none()
+        elif 1 in permission_codes:
             shops = AmazonShop.objects.filter(ops=user).select_related('ops')
+        else:
+            shops = AmazonShop.objects.none()
 
         # 去重并组装数据
         operators_dict = {}
@@ -583,8 +797,8 @@ def get_shop_emails_operators_api(request):
             })
 
         # 返回权限标识
-        can_notify_all = 'ops_all' in permissions
-        can_notify_group = 'ops_group' in permissions
+        can_notify_all = 3 in permission_codes or 555 in permission_codes
+        can_notify_group = 2 in permission_codes
         group_name = user.operational_account.ops_group if hasattr(user,
                                                                    'operational_account') and user.operational_account.ops_group else ''
 
@@ -607,62 +821,61 @@ def get_shop_emails_operators_api(request):
 def mark_email_processed_api(request, email_id):
     """
     标记邮件为已处理
-    PUT /api/amazon-shop-emails/<id>/mark-processed/
+    权限判断：code=555/3可操作所有，code=2可操作本组(含组员)，code=1只能操作自己的
     """
     if request.method != 'PUT':
         return JsonResponse({'success': False, 'message': '只支持PUT请求'}, status=405)
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permission_codes = get_user_permission_codes(user)
 
         try:
-            email = AmazonShopEmail.objects.select_related(
-                'shop', 'shop__ops'
-            ).get(id=email_id)
+            email = AmazonShopEmail.objects.select_related('shop', 'shop__ops').get(id=email_id)
         except AmazonShopEmail.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': '邮件不存在'
-            }, status=404)
+            return JsonResponse({'success': False, 'message': '邮件不存在'}, status=404)
 
-        # 权限验证：确保用户有权限操作此邮件
-        if 'ops_all' not in permissions:
-            user_shop_ids = get_shop_ids_by_filter('ops', user.id)
-            user_shop_ids_list = list(user_shop_ids)
-            if email.shop_id not in user_shop_ids_list:
-                if hasattr(email.shop, 'ops') and email.shop.ops_id == user.id:
-                    pass
+        # 权限判断：code=3或555可操作任何邮件
+        if 3 not in permission_codes and 555 not in permission_codes:
+            # code=2：组长可操作本组人员（包括自己）的邮件
+            if 2 in permission_codes:
+                if email.shop and email.shop.ops_id:
+                    # 检查是否是组员或自己
+                    if not (email.shop.ops_id == user.id or is_user_in_same_group(user, email.shop.ops_id)):
+                        return JsonResponse({
+                            'success': False,
+                            'message': '无权操作此邮件（非本组成员）'
+                        }, status=403)
                 else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': '邮件无关联运营人员'
+                    }, status=403)
+            # code=1：普通运营只能操作自己的
+            elif 1 in permission_codes:
+                if email.shop and email.shop.ops_id != user.id:
                     return JsonResponse({
                         'success': False,
                         'message': '无权操作此邮件'
                     }, status=403)
+            # 无任何权限
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': '无权操作此邮件'
+                }, status=403)
 
-        # 更新状态
+        # 更新状态（后续代码保持不变）
         email.is_processed = True
         email.save(update_fields=['is_processed', 'updated_at'])
-        print(f"用户 {user.username} 标记邮件 {email.id} 为已处理")
-        try:
-            # 先打印准备信息
-            print(
-                f"【准备创建日志】用户={user.username}, 类型={UserOperationLog.EMAIL_MARK_PROCESSED}, 记录={email.subject[:50]}")
 
-            # 执行创建并捕获返回值
-            log = UserOperationLog.objects.create(
-                user=user,
-                operation_type=UserOperationLog.EMAIL_MARK_PROCESSED,
-                operation_record=f"标记邮件已处理: {email.subject[:50]}"
-            )
+        # 记录操作日志
+        UserOperationLog.objects.create(
+            user=user,
+            operation_type=UserOperationLog.EMAIL_MARK_PROCESSED,
+            operation_record=f"标记邮件已处理: {email.subject[:50]}"
+        )
 
-            # 打印成功信息（如果执行到这里，说明一定成功了）
-            print(f"✅ 日志创建成功！ID={log.id}, 时间={log.created_at}")
-
-        except Exception as e:
-            # 如果失败，会跳到这里
-            print(f"❌ 日志创建失败: {e}")
-            # 如果你想继续执行，可以 pass
-            # 如果你想中断，可以 raise e
         # 返回更新后的数据
         operator_name = email.shop.ops.first_name if email.shop and email.shop.ops else ''
         role = email.shop.ops.role if email.shop and email.shop.ops else ''
@@ -696,46 +909,55 @@ def mark_email_processed_api(request, email_id):
         }, status=500)
 
 
-# 在文件末尾添加以下代码
-
-@login_required
 @login_required
 def get_email_detail_api(request, email_id):
     """
     获取邮件详情
-    GET /api/amazon-shop-emails/<id>/
+    权限判断：code=555/3可查看所有，code=2可查看本组(含组员)，code=1只能看自己的
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permission_codes = get_user_permission_codes(user)
 
         try:
-            email = AmazonShopEmail.objects.select_related(
-                'shop', 'shop__ops'
-            ).get(id=email_id)
+            email = AmazonShopEmail.objects.select_related('shop', 'shop__ops').get(id=email_id)
         except AmazonShopEmail.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': '邮件不存在'
-            }, status=404)
+            return JsonResponse({'success': False, 'message': '邮件不存在'}, status=404)
 
-        # 权限验证：确保用户有权限查看此邮件
-        if 'ops_all' not in permissions:
-            user_shop_ids = get_shop_ids_by_filter('ops', user.id)
-            user_shop_ids_list = list(user_shop_ids)
-            if email.shop_id not in user_shop_ids_list:
-                if hasattr(email.shop, 'ops') and email.shop.ops_id == user.id:
-                    pass
+        # 权限判断：code=3或555可查看任何邮件
+        if 3 not in permission_codes and 555 not in permission_codes:
+            # code=2：组长可查看本组人员（包括自己）的邮件
+            if 2 in permission_codes:
+                if email.shop and email.shop.ops_id:
+                    # 检查是否是组员或自己
+                    if not (email.shop.ops_id == user.id or is_user_in_same_group(user, email.shop.ops_id)):
+                        return JsonResponse({
+                            'success': False,
+                            'message': '无权查看此邮件（非本组成员）'
+                        }, status=403)
                 else:
+                    return JsonResponse({
+                        'success': False,
+                        'message': '邮件无关联运营人员'
+                    }, status=403)
+            # code=1：普通运营只能查看自己的
+            elif 1 in permission_codes:
+                if email.shop and email.shop.ops_id != user.id:
                     return JsonResponse({
                         'success': False,
                         'message': '无权查看此邮件'
                     }, status=403)
+            # 无任何权限
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': '无权查看此邮件'
+                }, status=403)
 
-        # 组装返回数据
+        # 组装返回数据（后续代码保持不变）
         operator_name = email.shop.ops.first_name if email.shop and email.shop.ops else ''
         role = email.shop.ops.role if email.shop and email.shop.ops else ''
         ops_group = ''
@@ -743,8 +965,7 @@ def get_email_detail_api(request, email_id):
             try:
                 ops_group = email.shop.ops.operational_account.ops_group or ''
             except:
-                ops_group = ''
-
+                pass
         shop_email = email.shop.email_account if email.shop else ''
 
         return JsonResponse({
@@ -752,7 +973,7 @@ def get_email_detail_api(request, email_id):
             'data': {
                 'id': email.id,
                 'shop_name': email.shop.shop_name if email.shop else '未知店铺',
-                'shop_email': shop_email,  # 新增：收件邮箱
+                'shop_email': shop_email,
                 'operator_name': operator_name,
                 'role': role,
                 'ops_group': ops_group,
