@@ -20,13 +20,12 @@ class PermissionConfig(models.Model):
     code = models.IntegerField('权限码', unique=True)  # 123, 546, 555...
     name = models.CharField('权限名称', max_length=50)
     description = models.TextField('权限描述', blank=True)
-    category = models.CharField('权限分类', max_length=50, blank=True)  # 可选：订单、店铺、用户...
+    category = models.CharField('权限分类', max_length=50, blank=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
         db_table = 'user_permission_configs'
         verbose_name = '权限配置'
-        # 按 code 排序，方便查看
         ordering = ['code']
 
 class Company(models.Model):

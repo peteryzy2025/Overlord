@@ -6,7 +6,8 @@ from general import (
     views_amazon_management,
     views_temu_management,
     views_performance,
-    demo_view
+    demo_view,
+    views_announcement_management
 )
 from general.view import view_operation_log, views_general
 app_name = 'general'
@@ -27,6 +28,13 @@ urlpatterns = [
     path('api/update-theme/', views.update_theme, name='update_theme'),
     path('demo1/', demo_view.demo_view),
     path('api/announcement/mark-as-read/', views.mark_announcement_as_read, name='mark_announcement_read'),
+
+    # ========== 公告管理 ==========
+    path('management/announcements/', views_announcement_management.announcement_management_view, name='announcement_management'),
+    path('api/announcements/', views_announcement_management.get_announcements_api, name='get_announcements_api'),
+    path('api/announcements/create/', views_announcement_management.create_announcement_api, name='create_announcement_api'),
+    path('api/announcements/<int:announcement_id>/update/', views_announcement_management.update_announcement_api, name='update_announcement_api'),
+    path('api/announcements/<int:announcement_id>/delete/', views_announcement_management.delete_announcement_api, name='delete_announcement_api'),
 
     # ========== 用户管理 ==========
     path('management/users/', views_user_management.user_management_view, name='user_management'),
