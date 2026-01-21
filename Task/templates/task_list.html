@@ -4,849 +4,887 @@
 {% block title %}任务列表 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
-    <style>
-        /* 复用 task_create 的容器样式 */
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<style>
+    /* 复用 task_create 的容器样式 */
+    .task-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    /* 复用 task_create 的卡片样式 */
+    .task-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    /* 统计看板 - 复用 tracking_management 样式 */
+    .stats-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .stat-change {
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+        color: var(--text-secondary);
+    }
+
+    /* 模态框样式 - 复用 tracking_management 样式 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        overscroll-behavior: contain;
+    }
+
+    .modal-overlay[style*="display: block"] {
+        display: flex !important;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 500px;
+        /* 调整为适合删除确认框的宽度 */
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+        z-index: 10000;
+    }
+
+    .modal-header {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .modal-close,
+    .btn-icon {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        line-height: 1;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover,
+    .btn-icon:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    /* 筛选区样式 */
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        align-items: end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+
+    /* 列表容器 */
+    .task-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .task-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .task-table th {
+        background: var(--bg-secondary);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .task-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .task-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .task-table tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    /* 状态标签 */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .status-draft {
+        background: var(--bg-tertiary);
+        color: var(--text-tertiary);
+    }
+
+    .status-pending {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .status-in-progress {
+        background: rgba(72, 187, 120, 0.1);
+        color: #48bb78;
+    }
+
+    .status-completed {
+        background: rgba(72, 187, 120, 0.1);
+        color: #48bb78;
+    }
+
+    .status-failed {
+        background: rgba(229, 62, 62, 0.1);
+        color: var(--danger-color);
+    }
+
+    .status-cancelled {
+        background: rgba(107, 114, 128, 0.1);
+        color: var(--text-secondary);
+    }
+
+    /* 子任务标签 */
+    .subtask-summary {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        margin-top: 0.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .subtask-type-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem;
+        background: var(--bg-tertiary);
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+    }
+
+    /* 操作按钮 */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+
+    .btn-action:hover {
+        background: var(--bg-tertiary);
+        color: var(--accent-color);
+        border-color: var(--border-color);
+    }
+
+    /* 分页 */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .pagination-btn {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+
+    .pagination-btn.active {
+        background: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
         .task-list-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            width: 100%;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem;
         }
 
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 1.5rem;
-        }
-
-        .page-title {
-            font-size: 1.75rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin: 0;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 0.75rem;
-        }
-
-        /* 复用 task_create 的卡片样式 */
-        .task-card {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-light);
-        }
-
-        /* 统计看板 - 复用 tracking_management 样式 */
-        .stats-dashboard {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 1.5rem;
-            box-shadow: var(--shadow-light);
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-medium);
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1;
-        }
-
-        .stat-change {
-            font-size: 0.75rem;
-            margin-top: 0.5rem;
-            color: var(--text-secondary);
-        }
-
-        /* 模态框样式 - 复用 tracking_management 样式 */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
-            backdrop-filter: blur(4px);
-            align-items: center;
-            justify-content: center;
-            overscroll-behavior: contain;
-        }
-
-        .modal-overlay[style*="display: block"] {
-            display: flex !important;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-content {
-            position: relative;
-            background-color: var(--bg-primary);
-            border-radius: 16px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 500px; /* 调整为适合删除确认框的宽度 */
-            max-height: 85vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: var(--shadow-heavy);
-            border: 1px solid var(--border-color);
-            z-index: 10000;
-        }
-
-        .modal-header {
-            flex-shrink: 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-header h3 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .modal-close, .btn-icon {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.25rem;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-            line-height: 1;
-            transition: all 0.2s;
-        }
-
-        .modal-close:hover, .btn-icon:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        /* 筛选区样式 */
         .filter-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            align-items: end;
+            grid-template-columns: 1fr;
         }
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .filter-label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.9rem;
-        }
-
-        /* 列表容器 */
-        .task-table-wrapper {
-            overflow-x: auto;
-        }
-
-        .task-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .task-table th {
-            background: var(--bg-secondary);
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-primary);
-            border-bottom: 1px solid var(--border-color);
-            white-space: nowrap;
-        }
-
+        .task-table th,
         .task-table td {
-            padding: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-            vertical-align: middle;
+            padding: 0.75rem 0.5rem;
         }
+    }
 
-        .task-table tr:last-child td {
-            border-bottom: none;
-        }
+    .dropdown-check-list {
+        display: inline-block;
+        width: 100%;
+        position: relative;
+    }
 
-        .task-table tr:hover {
-            background: var(--bg-secondary);
-        }
+    .dropdown-check-list .anchor {
+        position: relative;
+        cursor: pointer;
+        display: inline-block;
+        padding: 0.5rem 2.5rem 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        background-color: var(--bg-primary);
+        border-radius: 8px;
+        width: 100%;
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+    }
 
-        /* 状态标签 */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            white-space: nowrap;
-        }
+    .dropdown-check-list .anchor:hover {
+        border-color: var(--accent-color);
+    }
 
-        .status-draft { background: var(--bg-tertiary); color: var(--text-tertiary); }
-        .status-pending { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
-        .status-in-progress { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
-        .status-completed { background: rgba(72, 187, 120, 0.1); color: #48bb78; }
-        .status-failed { background: rgba(229, 62, 62, 0.1); color: var(--danger-color); }
-        .status-cancelled { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); }
+    .dropdown-check-list .anchor::after {
+        position: absolute;
+        content: "";
+        border-left: 2px solid var(--text-primary);
+        border-top: 2px solid var(--text-primary);
+        padding: 5px;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%) rotate(-135deg);
+        transition: all 0.3s ease;
+    }
 
-        /* 子任务标签 */
-        .subtask-summary {
-            font-size: 0.75rem;
-            color: var(--text-tertiary);
-            margin-top: 0.5rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
+    .dropdown-check-list .anchor.active::after {
+        transform: translateY(-50%) rotate(45deg);
+    }
 
-        .subtask-type-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.25rem;
-            padding: 0.15rem 0.5rem;
-            background: var(--bg-tertiary);
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-        }
+    .dropdown-check-list .items {
+        padding: 0.5rem;
+        display: none;
+        margin: 0;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        background-color: var(--bg-primary);
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        position: absolute;
+        width: 100%;
+        z-index: 100;
+        box-shadow: var(--shadow-medium);
+    }
 
-        /* 操作按钮 */
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
+    .dropdown-check-list .items .item {
+        padding: 0.5rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
 
-        .btn-action {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-            border: 1px solid transparent;
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-        }
+    .dropdown-check-list .items .item:hover {
+        background-color: var(--bg-tertiary);
+    }
 
-        .btn-action:hover {
-            background: var(--bg-tertiary);
-            color: var(--accent-color);
-            border-color: var(--border-color);
-        }
-
-        /* 分页 */
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .pagination-btn {
-            padding: 0.5rem 0.75rem;
-            border: 1px solid var(--border-color);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .pagination-btn:hover:not(:disabled) {
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-        }
-
-        .pagination-btn.active {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
-
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* 响应式 */
-        @media (max-width: 768px) {
-            .task-list-container { padding: 1rem; }
-            .filter-row { grid-template-columns: 1fr; }
-            .task-table th, .task-table td { padding: 0.75rem 0.5rem; }
-        }
-        .dropdown-check-list {
-            display: inline-block;
-            width: 100%;
-            position: relative;
-        }
-
-        .dropdown-check-list .anchor {
-            position: relative;
-            cursor: pointer;
-            display: inline-block;
-            padding: 0.5rem 2.5rem 0.5rem 0.75rem;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-primary);
-            border-radius: 8px;
-            width: 100%;
-            color: var(--text-primary);
-            transition: all 0.3s ease;
-        }
-
-        .dropdown-check-list .anchor:hover {
-            border-color: var(--accent-color);
-        }
-
-        .dropdown-check-list .anchor::after {
-            position: absolute;
-            content: "";
-            border-left: 2px solid var(--text-primary);
-            border-top: 2px solid var(--text-primary);
-            padding: 5px;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%) rotate(-135deg);
-            transition: all 0.3s ease;
-        }
-
-        .dropdown-check-list .anchor.active::after {
-            transform: translateY(-50%) rotate(45deg);
-        }
-
-        .dropdown-check-list .items {
-            padding: 0.5rem;
-            display: none;
-            margin: 0;
-            border: 1px solid var(--border-color);
-            border-top: none;
-            background-color: var(--bg-primary);
-            border-radius: 0 0 8px 8px;
-            max-height: 200px;
-            overflow-y: auto;
-            position: absolute;
-            width: 100%;
-            z-index: 100;
-            box-shadow: var(--shadow-medium);
-        }
-
-        .dropdown-check-list .items .item {
-            padding: 0.5rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            border-radius: 4px;
-            transition: background-color 0.2s;
-        }
-
-        .dropdown-check-list .items .item:hover {
-            background-color: var(--bg-tertiary);
-        }
-
-        .dropdown-check-list.visible .items {
-            display: block;
-        }
-    </style>
+    .dropdown-check-list.visible .items {
+        display: block;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="task-list-container">
-        <!-- 页面标题 -->
-        <div class="page-header">
-            <h1 class="page-title">
-                <i class="fas fa-tasks"></i> 任务列表
-            </h1>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="createNewTask()">
-                    <i class="fas fa-plus"></i> 创建新任务
-                </button>
-            </div>
-        </div>
-
-        <!-- 统计看板 -->
-        <div class="stats-dashboard" id="statsDashboard">
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-tasks"></i>
-                    总任务数
-                </div>
-                <div class="stat-value" id="totalCount">0</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-file-alt"></i>
-                    草稿
-                </div>
-                <div class="stat-value" id="draftCount">0</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-clock"></i>
-                    待执行
-                </div>
-                <div class="stat-value" id="pendingCount">0</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-spinner"></i>
-                    进行中
-                </div>
-                <div class="stat-value" id="inProgressCount">0</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-        </div>
-
-        <!-- 筛选面板 -->
-        <div class="task-card">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">状态筛选</label>
-                    <div id="statusDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="statusAnchor">
-                            <span id="statusSelectedText">全部状态</span>
-                        </div>
-                        <div class="items" id="statusItems">
-                            <div class="item"><input type="checkbox" value="all" checked> 全部状态</div>
-                            <div class="item"><input type="checkbox" value="draft"> 草稿</div>
-                            <div class="item"><input type="checkbox" value="pending"> 待执行</div>
-                            <div class="item"><input type="checkbox" value="in_progress"> 进行中</div>
-                            <div class="item"><input type="checkbox" value="completed"> 已完成</div>
-                            <div class="item"><input type="checkbox" value="failed"> 执行失败</div>
-                            <div class="item"><input type="checkbox" value="cancelled"> 已取消</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">创建人</label>
-                    <div id="creatorDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="creatorAnchor">
-                            <span id="creatorSelectedText">全部人员</span>
-                        </div>
-                        <div class="items" id="creatorItems">
-                            <!-- 动态加载 -->
-                        </div>
-                    </div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">时间范围</label>
-                    <select class="form-select" id="dateRangeFilter">
-                        <option value="all">全部时间</option>
-                        <option value="today">今天</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
-                </div>
-
-                <div class="filter-group" id="customDateGroup" style="display: none;">
-                    <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="startDate">
-                </div>
-
-                <div class="filter-group" id="customDateGroup2" style="display: none;">
-                    <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="endDate">
-                </div>
-
-                <div class="filter-group" style="align-self: flex-end;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-secondary" onclick="resetFilters()">
-                            <i class="fas fa-undo"></i> 重置
-                        </button>
-                        <button class="btn btn-primary" onclick="applyFilters()">
-                            <i class="fas fa-filter"></i> 应用筛选
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 任务列表 -->
-        <div class="task-card">
-            <div class="task-table-wrapper">
-                <table class="task-table" id="taskTable">
-                    <thead>
-                        <tr>
-                            <th style="width: 120px;">任务单号</th>
-                            <th style="width: 25%;">任务标题</th>
-                            <th>状态</th>
-                            <th>子任务数</th>
-                            <th>创建人</th>
-                            <th>所有者</th>
-                            <th>创建时间</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="taskTableBody">
-                        <tr>
-                            <td colspan="8" class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>暂无任务数据</p>
-                                <p>点击"创建新任务"开始</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 分页控件 -->
-            <div class="pagination-container" id="paginationContainer" style="display: none;">
-                <div class="pagination-info" id="paginationInfo"></div>
-                <div class="pagination-buttons" id="paginationButtons"></div>
-            </div>
+<div class="task-list-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-tasks"></i> 任务列表
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="createNewTask()">
+                <i class="fas fa-plus"></i> 创建新任务
+            </button>
         </div>
     </div>
 
-    <!-- 确认删除模态框 -->
-    <div class="modal-overlay" id="deleteModal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h3>确认删除</h3>
-                <button class="btn-icon" onclick="closeDeleteModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+    <!-- 统计看板 -->
+    <div class="stats-dashboard" id="statsDashboard">
+        <div class="stat-card">
+            <div class="stat-label">
+                <i class="fas fa-tasks"></i>
+                总任务数
             </div>
-            <div class="modal-body">
-                <p>确定要删除任务 <strong id="deleteTaskTitle"></strong> 吗？</p>
-                <p style="color: var(--text-tertiary); font-size: 0.875rem; margin-top: 0.5rem;">
-                    删除后无法恢复，请谨慎操作。
-                </p>
-                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
-                    <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex: 1;">
-                        取消
+            <div class="stat-value" id="totalCount">0</div>
+            <div class="stat-change">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">
+                <i class="fas fa-file-alt"></i>
+                草稿
+            </div>
+            <div class="stat-value" id="draftCount">0</div>
+            <div class="stat-change">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">
+                <i class="fas fa-clock"></i>
+                待执行
+            </div>
+            <div class="stat-value" id="pendingCount">0</div>
+            <div class="stat-change">&nbsp;</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">
+                <i class="fas fa-spinner"></i>
+                进行中
+            </div>
+            <div class="stat-value" id="inProgressCount">0</div>
+            <div class="stat-change">&nbsp;</div>
+        </div>
+    </div>
+
+    <!-- 筛选面板 -->
+    <div class="task-card">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">状态筛选</label>
+                <div id="statusDropdown" class="dropdown-check-list">
+                    <div class="anchor" id="statusAnchor">
+                        <span id="statusSelectedText">全部状态</span>
+                    </div>
+                    <div class="items" id="statusItems">
+                        <div class="item"><input type="checkbox" value="all" checked> 全部状态</div>
+                        <div class="item"><input type="checkbox" value="draft"> 草稿</div>
+                        <div class="item"><input type="checkbox" value="pending"> 待执行</div>
+                        <div class="item"><input type="checkbox" value="in_progress"> 进行中</div>
+                        <div class="item"><input type="checkbox" value="completed"> 已完成</div>
+                        <div class="item"><input type="checkbox" value="failed"> 执行失败</div>
+                        <div class="item"><input type="checkbox" value="cancelled"> 已取消</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">创建人</label>
+                <div id="creatorDropdown" class="dropdown-check-list">
+                    <div class="anchor" id="creatorAnchor">
+                        <span id="creatorSelectedText">全部人员</span>
+                    </div>
+                    <div class="items" id="creatorItems">
+                        <!-- 动态加载 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label">时间范围</label>
+                <select class="form-select" id="dateRangeFilter">
+                    <option value="all">全部时间</option>
+                    <option value="today">今天</option>
+                    <option value="last7days">最近7天</option>
+                    <option value="last30days">最近30天</option>
+                    <option value="custom">自定义范围</option>
+                </select>
+            </div>
+
+            <div class="filter-group" id="customDateGroup" style="display: none;">
+                <label class="filter-label">开始日期</label>
+                <input type="date" class="form-control" id="startDate">
+            </div>
+
+            <div class="filter-group" id="customDateGroup2" style="display: none;">
+                <label class="filter-label">结束日期</label>
+                <input type="date" class="form-control" id="endDate">
+            </div>
+
+            <div class="filter-group" style="align-self: flex-end;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="resetFilters()">
+                        <i class="fas fa-undo"></i> 重置
                     </button>
-                    <button class="btn btn-danger" onclick="confirmDelete()" style="flex: 1;">
-                        <i class="fas fa-trash"></i> 删除
+                    <button class="btn btn-primary" onclick="applyFilters()">
+                        <i class="fas fa-filter"></i> 应用筛选
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- 任务列表 -->
+    <div class="task-card">
+        <div class="task-table-wrapper">
+            <table class="task-table" id="taskTable">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">任务单号</th>
+                        <th style="width: 25%;">任务标题</th>
+                        <th>状态</th>
+                        <th>子任务数</th>
+                        <th>创建人</th>
+                        <th>所有者</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无任务数据</p>
+                            <p>点击"创建新任务"开始</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-buttons" id="paginationButtons"></div>
+        </div>
+    </div>
+</div>
+
+<!-- 确认删除模态框 -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h3>确认删除</h3>
+            <button class="btn-icon" onclick="closeDeleteModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>确定要删除任务 <strong id="deleteTaskTitle"></strong> 吗？</p>
+            <p style="color: var(--text-tertiary); font-size: 0.875rem; margin-top: 0.5rem;">
+                删除后无法恢复，请谨慎操作。
+            </p>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex: 1;">
+                    取消
+                </button>
+                <button class="btn btn-danger" onclick="confirmDelete()" style="flex: 1;">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-    <script>
-        // ===== 全局变量 =====
-        let taskData = {
-            list: [],
-            pagination: {
-                page: 1,
-                page_size: 20,
-                total: 0,
-                total_pages: 0
-            },
-            filters: {
-                status: [],
-                creator: [],
-                date_range: 'all',
-                start_date: '',
-                end_date: ''
-            }
-        };
-
-        let currentUser = {
-            id: "{{ request.user.id }}",
-            name: "{{ request.user.first_name|default:request.user.username }}",
-            permissions: "{{ request.user.permission|default:'' }}".split(',')
-        };
-
-        let deleteTargetId = null;
-
-        // ===== 工具函数 =====
-        function getCsrfToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                   document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+<script>
+    // ===== 全局变量 =====
+    let taskData = {
+        list: [],
+        pagination: {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        },
+        filters: {
+            status: [],
+            creator: [],
+            date_range: 'all',
+            start_date: '',
+            end_date: ''
         }
+    };
 
-        function showLoading(show = true) {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                overlay.style.display = show ? 'flex' : 'none';
-                overlay.style.visibility = show ? 'visible' : 'hidden';
-                overlay.style.opacity = show ? '1' : '0';
-            }
+    let currentUser = {
+        id: "{{ request.user.id }}",
+        name: "{{ request.user.first_name|default:request.user.username }}",
+        permissions: "{{ request.user.permission|default:'' }}".split(',')
+    };
+
+    let deleteTargetId = null;
+
+    // ===== 工具函数 =====
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+
+    function showLoading(show = true) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
         }
+    }
 
-        function showNotification(message, type = 'info', duration = 3000) {
-            if (window.showNotification) {
-                window.showNotification(message, type, duration);
-            } else {
-                console.log(`[${type}] ${message}`);
-            }
+    function showNotification(message, type = 'info', duration = 3000) {
+        if (window.showNotification) {
+            window.showNotification(message, type, duration);
+        } else {
+            console.log(`[${type}] ${message}`);
         }
+    }
 
-        function formatDateTime(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString('zh-CN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
+    function formatDateTime(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    // ===== 初始化 =====
+    document.addEventListener('DOMContentLoaded', function () {
+        loadCreators();
+        setupDateFilter();
+        loadTasks();
+        loadStats();
+        initDropdowns();
+    });
+
+    // 初始化下拉框逻辑
+    function initDropdowns() {
+        setupDropdown('statusDropdown', 'statusAnchor', 'statusItems', updateStatusSelection);
+        setupDropdown('creatorDropdown', 'creatorAnchor', 'creatorItems', updateCreatorSelection);
+    }
+
+    function setupDropdown(dropdownId, anchorId, itemsId, updateCallback) {
+        const dropdown = document.getElementById(dropdownId);
+        const anchor = document.getElementById(anchorId);
+        const items = document.getElementById(itemsId);
+
+        anchor.addEventListener('click', function (e) {
+            e.stopPropagation();
+            // Close other dropdowns
+            document.querySelectorAll('.dropdown-check-list').forEach(d => {
+                if (d.id !== dropdownId) d.classList.remove('visible');
             });
-        }
-
-        // ===== 初始化 =====
-        document.addEventListener('DOMContentLoaded', function() {
-            loadCreators();
-            setupDateFilter();
-            loadTasks();
-            loadStats();
-            initDropdowns();
+            dropdown.classList.toggle('visible');
         });
 
-        // 初始化下拉框逻辑
-        function initDropdowns() {
-            setupDropdown('statusDropdown', 'statusAnchor', 'statusItems', updateStatusSelection);
-            setupDropdown('creatorDropdown', 'creatorAnchor', 'creatorItems', updateCreatorSelection);
-        }
+        items.addEventListener('click', function (e) {
+            e.stopPropagation();
+        });
 
-        function setupDropdown(dropdownId, anchorId, itemsId, updateCallback) {
-            const dropdown = document.getElementById(dropdownId);
-            const anchor = document.getElementById(anchorId);
-            const items = document.getElementById(itemsId);
+        // 绑定checkbox事件
+        items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', function () {
+                handleCheckboxChange(this, itemsId);
+                updateCallback();
+                taskData.pagination.page = 1;
+                loadTasks();
+            });
+        });
 
-            anchor.addEventListener('click', function(e) {
-                e.stopPropagation();
-                // Close other dropdowns
-                document.querySelectorAll('.dropdown-check-list').forEach(d => {
-                    if (d.id !== dropdownId) d.classList.remove('visible');
+        document.addEventListener('click', function () {
+            dropdown.classList.remove('visible');
+        });
+    }
+
+    function handleCheckboxChange(checkbox, itemsId) {
+        const allCheckbox = document.querySelector(`#${itemsId} input[value="all"]`);
+
+        if (checkbox.value === 'all') {
+            if (checkbox.checked) {
+                document.querySelectorAll(`#${itemsId} input[type="checkbox"]`).forEach(cb => {
+                    if (cb !== checkbox) cb.checked = false;
                 });
-                dropdown.classList.toggle('visible');
-            });
+            }
+        } else {
+            if (checkbox.checked && allCheckbox) {
+                allCheckbox.checked = false;
+            }
+        }
+    }
 
-            items.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
+    function updateStatusSelection() {
+        const checkboxes = document.querySelectorAll('#statusItems input[type="checkbox"]');
+        const selected = [];
+        let allChecked = false;
 
-            // 绑定checkbox事件
-            items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.addEventListener('change', function() {
-                    handleCheckboxChange(this, itemsId);
-                    updateCallback();
-                    taskData.pagination.page = 1;
-                    loadTasks();
+        checkboxes.forEach(cb => {
+            if (cb.value === 'all' && cb.checked) allChecked = true;
+            if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+        });
+
+        taskData.filters.status = allChecked ? [] : selected;
+
+        const textEl = document.getElementById('statusSelectedText');
+        if (allChecked || selected.length === 0) {
+            textEl.textContent = '全部状态';
+        } else {
+            textEl.textContent = `已选 ${selected.length} 项`;
+        }
+    }
+
+    function updateCreatorSelection() {
+        const checkboxes = document.querySelectorAll('#creatorItems input[type="checkbox"]');
+        const selected = [];
+        let allChecked = false;
+
+        checkboxes.forEach(cb => {
+            if (cb.value === 'all' && cb.checked) allChecked = true;
+            if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+        });
+
+        taskData.filters.creator = allChecked ? [] : selected;
+
+        const textEl = document.getElementById('creatorSelectedText');
+        if (allChecked || selected.length === 0) {
+            textEl.textContent = '全部人员';
+        } else {
+            textEl.textContent = `已选 ${selected.length} 人`;
+        }
+    }
+
+    // ===== 加载创建人列表 =====
+    async function loadCreators() {
+        try {
+            const response = await fetch('/api/tasks/creators/');
+            const result = await response.json();
+
+            if (result.success) {
+                const items = document.getElementById('creatorItems');
+                let html = '<div class="item"><input type="checkbox" value="all" checked> 全部人员</div>';
+                result.data.forEach(creator => {
+                    html += `<div class="item"><input type="checkbox" value="${creator.id}"> ${creator.name}</div>`;
                 });
-            });
+                items.innerHTML = html;
 
-            document.addEventListener('click', function() {
-                dropdown.classList.remove('visible');
-            });
-        }
-
-        function handleCheckboxChange(checkbox, itemsId) {
-            const allCheckbox = document.querySelector(`#${itemsId} input[value="all"]`);
-            
-            if (checkbox.value === 'all') {
-                if (checkbox.checked) {
-                    document.querySelectorAll(`#${itemsId} input[type="checkbox"]`).forEach(cb => {
-                        if (cb !== checkbox) cb.checked = false;
+                // Re-bind events for new items
+                items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                    cb.addEventListener('change', function () {
+                        handleCheckboxChange(this, 'creatorItems');
+                        updateCreatorSelection();
+                        taskData.pagination.page = 1;
+                        loadTasks();
                     });
-                }
-            } else {
-                if (checkbox.checked && allCheckbox) {
-                    allCheckbox.checked = false;
-                }
-            }
-        }
-
-        function updateStatusSelection() {
-            const checkboxes = document.querySelectorAll('#statusItems input[type="checkbox"]');
-            const selected = [];
-            let allChecked = false;
-
-            checkboxes.forEach(cb => {
-                if (cb.value === 'all' && cb.checked) allChecked = true;
-                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
-            });
-
-            taskData.filters.status = allChecked ? [] : selected;
-            
-            const textEl = document.getElementById('statusSelectedText');
-            if (allChecked || selected.length === 0) {
-                textEl.textContent = '全部状态';
-            } else {
-                textEl.textContent = `已选 ${selected.length} 项`;
-            }
-        }
-
-        function updateCreatorSelection() {
-            const checkboxes = document.querySelectorAll('#creatorItems input[type="checkbox"]');
-            const selected = [];
-            let allChecked = false;
-
-            checkboxes.forEach(cb => {
-                if (cb.value === 'all' && cb.checked) allChecked = true;
-                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
-            });
-
-            taskData.filters.creator = allChecked ? [] : selected;
-
-            const textEl = document.getElementById('creatorSelectedText');
-            if (allChecked || selected.length === 0) {
-                textEl.textContent = '全部人员';
-            } else {
-                textEl.textContent = `已选 ${selected.length} 人`;
-            }
-        }
-
-        // ===== 加载创建人列表 =====
-        async function loadCreators() {
-            try {
-                const response = await fetch('/api/tasks/creators/');
-                const result = await response.json();
-                
-                if (result.success) {
-                    const items = document.getElementById('creatorItems');
-                    let html = '<div class="item"><input type="checkbox" value="all" checked> 全部人员</div>';
-                    result.data.forEach(creator => {
-                        html += `<div class="item"><input type="checkbox" value="${creator.id}"> ${creator.name}</div>`;
-                    });
-                    items.innerHTML = html;
-
-                    // Re-bind events for new items
-                    items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                        cb.addEventListener('change', function() {
-                            handleCheckboxChange(this, 'creatorItems');
-                            updateCreatorSelection();
-                            taskData.pagination.page = 1;
-                            loadTasks();
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error('加载创建人列表失败:', error);
-            }
-        }
-
-        // ===== 日期筛选设置 =====
-        function setupDateFilter() {
-            const dateRangeSelect = document.getElementById('dateRangeFilter');
-            const customDateGroup = document.getElementById('customDateGroup');
-            const customDateGroup2 = document.getElementById('customDateGroup2');
-            
-            dateRangeSelect.addEventListener('change', function() {
-                if (this.value === 'custom') {
-                    customDateGroup.style.display = 'flex';
-                    customDateGroup2.style.display = 'flex';
-                } else {
-                    customDateGroup.style.display = 'none';
-                    customDateGroup2.style.display = 'none';
-                }
-            });
-        }
-
-        // ===== 加载任务列表 =====
-        async function loadTasks() {
-            showLoading(true);
-            
-            try {
-                const params = new URLSearchParams({
-                    page: taskData.pagination.page,
-                    page_size: taskData.pagination.page_size,
-                    date_range: taskData.filters.date_range,
-                    start_date: taskData.filters.start_date,
-                    end_date: taskData.filters.end_date
                 });
-
-                if (taskData.filters.status.length > 0) {
-                    params.append('status', taskData.filters.status.join(','));
-                }
-                if (taskData.filters.creator.length > 0) {
-                    params.append('creator', taskData.filters.creator.join(','));
-                }
-                
-                const response = await fetch(`/api/tasks/list/?${params}`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    taskData.list = result.data.tasks;
-                    taskData.pagination = result.data.pagination;
-                    
-                    renderTasks();
-                    renderPagination();
-                    
-                    // 显示/隐藏分页
-                    document.getElementById('paginationContainer').style.display = 
-                        taskData.pagination.total > 0 ? 'flex' : 'none';
-                } else {
-                    throw new Error(result.message || '加载失败');
-                }
-                
-            } catch (error) {
-                showNotification('加载任务列表失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
             }
+        } catch (error) {
+            console.error('加载创建人列表失败:', error);
         }
+    }
 
-        // ===== 渲染任务列表 =====
-        function renderTasks() {
-            const tbody = document.getElementById('taskTableBody');
-            
-            if (taskData.list.length === 0) {
-                tbody.innerHTML = `
+    // ===== 日期筛选设置 =====
+    function setupDateFilter() {
+        const dateRangeSelect = document.getElementById('dateRangeFilter');
+        const customDateGroup = document.getElementById('customDateGroup');
+        const customDateGroup2 = document.getElementById('customDateGroup2');
+
+        dateRangeSelect.addEventListener('change', function () {
+            if (this.value === 'custom') {
+                customDateGroup.style.display = 'flex';
+                customDateGroup2.style.display = 'flex';
+            } else {
+                customDateGroup.style.display = 'none';
+                customDateGroup2.style.display = 'none';
+            }
+        });
+    }
+
+    // ===== 加载任务列表 =====
+    async function loadTasks() {
+        showLoading(true);
+
+        try {
+            const params = new URLSearchParams({
+                page: taskData.pagination.page,
+                page_size: taskData.pagination.page_size,
+                date_range: taskData.filters.date_range,
+                start_date: taskData.filters.start_date,
+                end_date: taskData.filters.end_date
+            });
+
+            if (taskData.filters.status.length > 0) {
+                params.append('status', taskData.filters.status.join(','));
+            }
+            if (taskData.filters.creator.length > 0) {
+                params.append('creator', taskData.filters.creator.join(','));
+            }
+
+            const response = await fetch(`/api/tasks/list/?${params}`, {
+                cache: 'no-cache' // 添加这行，避免浏览器缓存
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                taskData.list = result.data.tasks;
+                taskData.pagination = result.data.pagination;
+
+                renderTasks();
+                renderPagination();
+
+                // 显示/隐藏分页
+                document.getElementById('paginationContainer').style.display =
+                    taskData.pagination.total > 0 ? 'flex' : 'none';
+            } else {
+                throw new Error(result.message || '加载失败');
+            }
+
+        } catch (error) {
+            showNotification('加载任务列表失败: ' + error.message, 'error');
+        } finally {
+            showLoading(false);
+        }
+    }
+
+    // ===== 渲染任务列表 =====
+    function renderTasks() {
+        const tbody = document.getElementById('taskTableBody');
+
+        if (taskData.list.length === 0) {
+            tbody.innerHTML = `
                     <tr>
                         <td colspan="8" class="empty-state">
                             <i class="fas fa-inbox"></i>
@@ -855,14 +893,14 @@
                         </td>
                     </tr>
                 `;
-                return;
-            }
-            
-            tbody.innerHTML = taskData.list.map(task => {
-                const statusClass = `status-${task.status}`;
-                const statusText = getStatusDisplay(task.status);
-                
-                return `
+            return;
+        }
+
+        tbody.innerHTML = taskData.list.map(task => {
+            const statusClass = `status-${task.status}`;
+            const statusText = getStatusDisplay(task.status);
+
+            return `
                     <tr>
                         <td>
                             <div style="font-family: 'Courier New', monospace; font-size: 0.875rem; color: var(--text-primary);">
@@ -909,188 +947,188 @@
                         </td>
                     </tr>
                 `;
-            }).join('');
-        }
+        }).join('');
+    }
 
-        function getStatusDisplay(status) {
-            const statusMap = {
-                'draft': '草稿',
-                'pending': '待执行',
-                'in_progress': '进行中',
-                'completed': '已完成',
-                'failed': '执行失败',
-                'cancelled': '已取消'
-            };
-            return statusMap[status] || status;
-        }
+    function getStatusDisplay(status) {
+        const statusMap = {
+            'draft': '草稿',
+            'pending': '待执行',
+            'in_progress': '进行中',
+            'completed': '已完成',
+            'failed': '执行失败',
+            'cancelled': '已取消'
+        };
+        return statusMap[status] || status;
+    }
 
-        function getSubtaskIcon(type) {
-            const iconMap = {
-                'custom_upload': 'fa-upload',
-                'temu_export': 'fa-download'
-            };
-            return iconMap[type] || 'fa-tasks';
-        }
+    function getSubtaskIcon(type) {
+        const iconMap = {
+            'custom_upload': 'fa-upload',
+            'temu_export': 'fa-download'
+        };
+        return iconMap[type] || 'fa-tasks';
+    }
 
-        function getSubtaskTypeText(type) {
-            const typeMap = {
-                'custom_upload': '定制上架',
-                'temu_export': 'Temu导单'
-            };
-            return typeMap[type] || type;
-        }
+    function getSubtaskTypeText(type) {
+        const typeMap = {
+            'custom_upload': '定制上架',
+            'temu_export': 'Temu导单'
+        };
+        return typeMap[type] || type;
+    }
 
-        // ===== 分页渲染 =====
-        function renderPagination() {
-            const {page, page_size, total, total_pages} = taskData.pagination;
-            
-            document.getElementById('paginationInfo').textContent = 
-                `共 ${total} 条，第 ${page}/${total_pages} 页`;
-            
-            let buttonsHtml = '';
-            
-            // 上一页
-            buttonsHtml += `
+    // ===== 分页渲染 =====
+    function renderPagination() {
+        const { page, page_size, total, total_pages } = taskData.pagination;
+
+        document.getElementById('paginationInfo').textContent =
+            `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+        let buttonsHtml = '';
+
+        // 上一页
+        buttonsHtml += `
                 <button class="pagination-btn" onclick="changePage(${page - 1})" 
                         ${page === 1 ? 'disabled' : ''}>
                     <i class="fas fa-chevron-left"></i>
                 </button>
             `;
-            
-            // 页码按钮
-            const maxButtons = 7;
-            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
-            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
-            
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
+
+        // 页码按钮
+        const maxButtons = 7;
+        let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        if (startPage > 1) {
+            buttonsHtml += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+            if (startPage > 2) {
+                buttonsHtml += `<span class="pagination-btn disabled">...</span>`;
             }
-            
-            if (startPage > 1) {
-                buttonsHtml += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
-                if (startPage > 2) {
-                    buttonsHtml += `<span class="pagination-btn disabled">...</span>`;
-                }
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                buttonsHtml += `
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            buttonsHtml += `
                     <button class="pagination-btn ${i === page ? 'active' : ''}" 
                             onclick="changePage(${i})">${i}</button>
                 `;
+        }
+
+        if (endPage < total_pages) {
+            if (endPage < total_pages - 1) {
+                buttonsHtml += `<span class="pagination-btn disabled">...</span>`;
             }
-            
-            if (endPage < total_pages) {
-                if (endPage < total_pages - 1) {
-                    buttonsHtml += `<span class="pagination-btn disabled">...</span>`;
-                }
-                buttonsHtml += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
-            }
-            
-            // 下一页
-            buttonsHtml += `
+            buttonsHtml += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+        }
+
+        // 下一页
+        buttonsHtml += `
                 <button class="pagination-btn" onclick="changePage(${page + 1})" 
                         ${page === total_pages ? 'disabled' : ''}>
                     <i class="fas fa-chevron-right"></i>
                 </button>
             `;
-            
-            document.getElementById('paginationButtons').innerHTML = buttonsHtml;
+
+        document.getElementById('paginationButtons').innerHTML = buttonsHtml;
+    }
+
+    function changePage(newPage) {
+        if (newPage < 1 || newPage > taskData.pagination.total_pages) return;
+
+        taskData.pagination.page = newPage;
+        loadTasks();
+    }
+
+    // ===== 筛选操作 =====
+    function applyFilters() {
+        taskData.filters.date_range = document.getElementById('dateRangeFilter').value;
+
+        if (taskData.filters.date_range === 'custom') {
+            taskData.filters.start_date = document.getElementById('startDate').value;
+            taskData.filters.end_date = document.getElementById('endDate').value;
+        } else {
+            taskData.filters.start_date = '';
+            taskData.filters.end_date = '';
         }
 
-        function changePage(newPage) {
-            if (newPage < 1 || newPage > taskData.pagination.total_pages) return;
-            
-            taskData.pagination.page = newPage;
-            loadTasks();
-        }
+        taskData.pagination.page = 1;
+        loadTasks();
+    }
 
-        // ===== 筛选操作 =====
-        function applyFilters() {
-            taskData.filters.date_range = document.getElementById('dateRangeFilter').value;
-            
-            if (taskData.filters.date_range === 'custom') {
-                taskData.filters.start_date = document.getElementById('startDate').value;
-                taskData.filters.end_date = document.getElementById('endDate').value;
-            } else {
-                taskData.filters.start_date = '';
-                taskData.filters.end_date = '';
+    function resetFilters() {
+        // 重置多选下拉框
+        document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(cb => {
+            cb.checked = cb.value === 'all';
+        });
+        updateStatusSelection();
+        updateCreatorSelection();
+
+        document.getElementById('dateRangeFilter').value = 'all';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('customDateGroup').style.display = 'none';
+        document.getElementById('customDateGroup2').style.display = 'none';
+
+        taskData.filters = {
+            status: [],
+            creator: [],
+            date_range: 'all',
+            start_date: '',
+            end_date: ''
+        };
+
+        taskData.pagination.page = 1;
+        loadTasks();
+    }
+
+    // ===== 加载统计 =====
+    async function loadStats() {
+        try {
+            const response = await fetch('/api/tasks/stats/');
+            const result = await response.json();
+
+            if (result.success) {
+                document.getElementById('totalCount').textContent = result.data.total;
+                document.getElementById('draftCount').textContent = result.data.draft;
+                document.getElementById('pendingCount').textContent = result.data.pending;
+                document.getElementById('inProgressCount').textContent = result.data.in_progress;
             }
-            
-            taskData.pagination.page = 1;
-            loadTasks();
+        } catch (error) {
+            console.error('加载统计失败:', error);
         }
+    }
 
-        function resetFilters() {
-            // 重置多选下拉框
-            document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(cb => {
-                cb.checked = cb.value === 'all';
-            });
-            updateStatusSelection();
-            updateCreatorSelection();
+    // ===== 任务操作 =====
+    function createNewTask() {
+        window.location.href = '/task/create/';
+    }
 
-            document.getElementById('dateRangeFilter').value = 'all';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            document.getElementById('customDateGroup').style.display = 'none';
-            document.getElementById('customDateGroup2').style.display = 'none';
-            
-            taskData.filters = {
-                status: [],
-                creator: [],
-                date_range: 'all',
-                start_date: '',
-                end_date: ''
-            };
-            
-            taskData.pagination.page = 1;
-            loadTasks();
-        }
+    function viewTask(taskId) {
+        // 查看任务详情（可跳转到详情页）
+        window.open(`/task/detail/${taskId}/`, '_blank');
+    }
 
-        // ===== 加载统计 =====
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/tasks/stats/');
-                const result = await response.json();
-                
-                if (result.success) {
-                    document.getElementById('totalCount').textContent = result.data.total;
-                    document.getElementById('draftCount').textContent = result.data.draft;
-                    document.getElementById('pendingCount').textContent = result.data.pending;
-                    document.getElementById('inProgressCount').textContent = result.data.in_progress;
-                }
-            } catch (error) {
-                console.error('加载统计失败:', error);
-            }
-        }
+    function editTask(taskId) {
+        // 编辑草稿任务（跳转到创建页面并加载数据）
+        window.location.href = `/task/create/?draft_id=${taskId}`;
+    }
 
-        // ===== 任务操作 =====
-        function createNewTask() {
-            window.location.href = '/task/create/';
-        }
+    function deleteTask(taskId, taskTitle) {
+        deleteTargetId = taskId;
+        document.getElementById('deleteTaskTitle').textContent = taskTitle;
+        document.getElementById('deleteModal').classList.add('active');
+    }
 
-        function viewTask(taskId) {
-            // 查看任务详情（可跳转到详情页）
-            window.open(`/task/detail/${taskId}/`, '_blank');
-        }
+    function closeDeleteModal() {
+        document.getElementById('deleteModal').classList.remove('active');
+        deleteTargetId = null;
+    }
 
-        function editTask(taskId) {
-            // 编辑草稿任务（跳转到创建页面并加载数据）
-            window.location.href = `/task/create/?draft_id=${taskId}`;
-        }
-
-        function deleteTask(taskId, taskTitle) {
-            deleteTargetId = taskId;
-            document.getElementById('deleteTaskTitle').textContent = taskTitle;
-            document.getElementById('deleteModal').classList.add('active');
-        }
-
-        function closeDeleteModal() {
-            document.getElementById('deleteModal').classList.remove('active');
-            deleteTargetId = null;
-        }
-
-        async function confirmDelete() {
+    async function confirmDelete() {
             if (!deleteTargetId) return;
             
             showLoading(true);
@@ -1107,7 +1145,13 @@
                 
                 if (result.success) {
                     showNotification('任务已删除', 'success');
-                    closeDeleteModal();
+                    // 手动从列表中移除被删除的任务，确保表格立即更新
+                    taskData.list = taskData.list.filter(task => task.id !== deleteTargetId);
+                    // 重新渲染表格
+                    renderTasks();
+                    // 重新渲染分页
+                    renderPagination();
+                    // 调用API刷新最新数据，确保数据一致性
                     loadTasks();
                     loadStats();
                 } else {
@@ -1117,8 +1161,9 @@
             } catch (error) {
                 showNotification('删除失败: ' + error.message, 'error');
             } finally {
+                closeDeleteModal();
                 showLoading(false);
             }
         }
-    </script>
+</script>
 {% endblock %}
