@@ -111,7 +111,6 @@ class ThemeRecord(models.Model):
         blank=True,
         verbose_name='侵权词列表(AI)'
     )
-    duplicate_count = models.IntegerField(default=1, verbose_name='重复数')
     record_date = models.DateField(verbose_name='生成日期')
     record_time = models.DateTimeField(verbose_name='生成时间')
 

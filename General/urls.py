@@ -35,6 +35,7 @@ urlpatterns = [
     path('api/announcements/create/', views_announcement_management.create_announcement_api, name='create_announcement_api'),
     path('api/announcements/<int:announcement_id>/update/', views_announcement_management.update_announcement_api, name='update_announcement_api'),
     path('api/announcements/<int:announcement_id>/delete/', views_announcement_management.delete_announcement_api, name='delete_announcement_api'),
+    path('api/announcements/<int:announcement_id>/read-records/', views_announcement_management.get_announcement_read_records_api, name='get_announcement_read_records_api'),
 
     # ========== 用户管理 ==========
     path('management/users/', views_user_management.user_management_view, name='user_management'),
