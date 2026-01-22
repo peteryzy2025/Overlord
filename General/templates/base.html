@@ -767,7 +767,7 @@
             <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'theme_products' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' %}active{% endif %}"
                    href="{% url 'theme:theme_product_list' %}">
                     主题
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -775,6 +775,12 @@
                 <div class="nav-dropdown">
                     <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
                         <i class="fas fa-list"></i> 主题明细
+                    </a>
+                    <a href="{% url 'theme:tro_table_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-gavel"></i> 侵权词库
+                    </a>
+                    <a href="{% url 'theme:trademark_info_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-registered"></i> 美标网词库
                     </a>
                     <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
                         <i class="fas fa-chart-line"></i> 主题趋势

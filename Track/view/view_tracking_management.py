@@ -178,7 +178,10 @@ def tracking_list(request):
                 filters &= Q(transit_status=data['status'])
 
             # 4. 运营分组/人员筛选（冲突处理：分组优先）
-            ops_group = data.get('ops_group', '').strip()
+            ops_group = data.get('ops_group')
+            if isinstance(ops_group, list):
+                ops_group = ops_group[0] if ops_group else ''
+            ops_group = str(ops_group).strip() if ops_group else ''
             # 🔴 修改：支持多选运营人员
             ops_names = data.get('ops_name', [])
             
@@ -390,7 +393,10 @@ def tracking_stats(request):
             filters &= Q(courier__code=data['logistics_method'])
 
         # C. 运营分组/人员筛选
-        ops_group = data.get('ops_group', '').strip()
+        ops_group = data.get('ops_group')
+        if isinstance(ops_group, list):
+            ops_group = ops_group[0] if ops_group else ''
+        ops_group = str(ops_group).strip() if ops_group else ''
         ops_names = data.get('ops_name', [])
         
         if ops_group:
@@ -571,8 +577,15 @@ def export_tracking_excel(request):
             filters &= Q(transit_status=data['status'])
 
         # 4. 运营分组/人员筛选（冲突处理：分组优先）
-        ops_group = data.get('ops_group', '').strip()
-        ops_name = data.get('ops_name', '').strip()
+        ops_group = data.get('ops_group')
+        if isinstance(ops_group, list):
+            ops_group = ops_group[0] if ops_group else ''
+        ops_group = str(ops_group).strip() if ops_group else ''
+
+        ops_name = data.get('ops_name')
+        if isinstance(ops_name, list):
+            ops_name = ops_name[0] if ops_name else ''
+        ops_name = str(ops_name).strip() if ops_name else ''
         if ops_group:
             filters &= Q(ops_group=ops_group)
         elif ops_name:
@@ -1134,7 +1147,10 @@ def update_tracking_remark(request):
     try:
         data = json.loads(request.body) if request.body else {}
         track_no = data.get('track_no')
-        remark = data.get('remark', '').strip()[:200]  # 截断到200字符
+        remark = data.get('remark')
+        if isinstance(remark, list):
+            remark = remark[0] if remark else ''
+        remark = str(remark).strip()[:200] if remark else ''
 
         if not track_no:
             return JsonResponse({
