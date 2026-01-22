@@ -93,19 +93,6 @@ class Task(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        保存时自动生成需求单号
-        """
-        if not self.requirement_no and self.created_by:
-            from task.utils.task_utils import generate_task_no
-            self.requirement_no = generate_task_no(self.created_by)
-            
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f"{self.task_no} - {self.title}"
-
-    def save(self, *args, **kwargs):
-        """
         保存时自动生成任务单号
         """
         if not self.task_no:
@@ -323,26 +310,59 @@ class ProductRequirement(models.Model):
     存放艺之冠等平台的产品需求
     """
     # 状态定义
-    STATUS_SUBMITTED = 'submitted'
-    STATUS_APPROVED = 'approved'
-    STATUS_PROCESSING = 'processing'
-    STATUS_PENDING_DESIGN = 'pending_design' # 新增状态
-    STATUS_DESIGNING = 'designing'
-    STATUS_UPLOADING = 'uploading'
-    STATUS_TESTING = 'testing'
-    STATUS_COMPLETED = 'completed'
-    STATUS_REJECTED = 'rejected'
+    # ① 创建阶段
+    STATUS_DRAFT = 'draft'  # 草稿（未提交）
+    STATUS_CREATED = 'created'  # 创建完成（已提交）
+
+    # ② 数据抓取阶段（RPA路径）
+    STATUS_PENDING_CRAWL = 'pending_crawl'  # 等待数据抓取（触发RPA）
+    STATUS_CRAWLED = 'crawled'  # 数据抓取完成
+
+    # ③ 数据确认阶段（产品管理员岗）
+    STATUS_PENDING_CONFIRM = 'pending_confirm'  # 等待数据确认（待产品管理员确认）
+    STATUS_CONFIRMED = 'confirmed'  # 数据确认完成
+
+    # ④ 审核阶段（管理员岗）
+    STATUS_PENDING_REVIEW = 'pending_review'  # 等待审核
+    STATUS_REVIEWED = 'reviewed'  # 审核完成
+
+    # ⑤ 美工阶段
+    STATUS_PENDING_DESIGN = 'pending_design'  # 等待美工处理样机
+    STATUS_DESIGNED = 'designed'  # 样机处理成功
+
+    # ⑥ DIVI测试阶段
+    STATUS_PENDING_DIVI_TEST = 'pending_divi_test'  # 等待系统上传DIVI测试
+    STATUS_DIVI_TESTED = 'divi_tested'  # 上传DIVI测试已完成
+
+    # ⑦ 最终上传阶段
+    STATUS_UPLOADING = 'uploading'  # 系统上传DIVI中
+    STATUS_COMPLETED = 'completed'  # 上传DIVI已完成（全流程结束）
+
+    # ========== 异常状态（必须独立）==========
+    STATUS_REJECTED = 'rejected'  # 审核驳回（可退回至confirmed）
+    STATUS_CRAWL_FAILED = 'crawl_failed'  # 抓取失败（RPA异常）
+    STATUS_CANCELLED = 'cancelled'  # 已取消
 
     STATUS_CHOICES = [
-        (STATUS_SUBMITTED, '已提交'),
-        (STATUS_APPROVED, '已审核'),
-        (STATUS_PROCESSING, '抓取中'),
-        (STATUS_PENDING_DESIGN, '待设计'),
-        (STATUS_DESIGNING, '设计中'),
-        (STATUS_UPLOADING, '上传中'),
-        (STATUS_TESTING, '测试中'),
-        (STATUS_COMPLETED, '已完成'),
+        # 正向流程（按顺序排列）
+        (STATUS_DRAFT, '草稿'),
+        (STATUS_CREATED, '创建完成'),
+        (STATUS_PENDING_CRAWL, '等待数据抓取'),
+        (STATUS_CRAWLED, '数据抓取完成'),
+        (STATUS_PENDING_CONFIRM, '等待数据确认'),
+        (STATUS_CONFIRMED, '数据确认完成'),
+        (STATUS_PENDING_REVIEW, '等待审核'),
+        (STATUS_REVIEWED, '审核完成'),
+        (STATUS_PENDING_DESIGN, '等待美工处理样机'),
+        (STATUS_DESIGNED, '样机处理成功'),
+        (STATUS_PENDING_DIVI_TEST, '等待系统上传DIVI测试'),
+        (STATUS_DIVI_TESTED, '上传DIVI测试已完成'),
+        (STATUS_UPLOADING, '系统上传DIVI中'),
+        (STATUS_COMPLETED, '上传DIVI已完成'),
+        # 异常状态
         (STATUS_REJECTED, '已驳回'),
+        (STATUS_CRAWL_FAILED, '抓取失败'),
+        (STATUS_CANCELLED, '已取消'),
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='产品需求主键ID')
@@ -373,7 +393,7 @@ class ProductRequirement(models.Model):
         '状态',
         max_length=20,
         choices=STATUS_CHOICES,
-        default=STATUS_SUBMITTED,
+        default=STATUS_DRAFT,
         db_comment='需求状态'
     )
 

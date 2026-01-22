@@ -23,10 +23,42 @@ def announcement_management_view(request):
 
 @require_GET
 @login_required
+def get_announcement_read_records_api(request, announcement_id):
+    """
+    API接口：获取公告的已读记录
+    """
+    try:
+        # 权限检查
+        if not (hasattr(request.user, 'permission_configs') and
+                request.user.permission_configs.filter(code=555).exists()):
+             return JsonResponse({'success': False, 'error': '无权限访问'}, status=403)
+
+        records = Announcement.objects.get(id=announcement_id).user_reads.select_related('user').order_by('-read_at')
+        
+        data = []
+        for record in records:
+            data.append({
+                'user_name': record.user.first_name or record.user.username,
+                'read_at': record.read_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'department': record.user.department or '-',
+            })
+            
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+    except Announcement.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '公告不存在'}, status=404)
+    except Exception as e:
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'获取已读记录失败: {str(e)}'
+        }, status=500)
+
+@require_GET
+@login_required
 def get_announcements_api(request):
-    """
-    API接口：获取公告列表
-    """
     try:
         # 权限检查
         if not (hasattr(request.user, 'permission_configs') and
