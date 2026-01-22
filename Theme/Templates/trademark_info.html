@@ -1,0 +1,409 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}美标网词库 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <style>
+        :root {
+            --accent-color: #3B82F6;
+            --accent-hover: #2563EB;
+        }
+        /* 列宽调整 */
+        .col-serial { width: 100px; }
+        .col-word { min-width: 150px; }
+        .col-date { width: 110px; }
+        .col-status { width: 100px; }
+        .col-owner { width: 150px; }
+    </style>
+{% endblock %}
+
+{% block page_content %}
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="performance-main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">美标网词库</h1>
+                <p class="page-subtitle">查看和管理美国商标数据</p>
+            </div>
+            <div>
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="control-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">侵权词/商标名</label>
+                    <input type="text" class="form-control" id="wordMarkFilter"
+                           placeholder="输入关键词"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+                
+                <div class="filter-group">
+                    <label class="filter-label">商标注册号</label>
+                    <input type="text" class="form-control" id="serialNumberFilter"
+                           placeholder="输入注册号"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">注册号</label>
+                    <input type="text" class="form-control" id="registrationNumberFilter"
+                           placeholder="输入注册号"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">所有者</label>
+                    <input type="text" class="form-control" id="ownerNameFilter"
+                           placeholder="输入所有者"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group" style="align-self: flex-end;">
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn" onclick="applyFilters()">应用筛选</button>
+                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="data-section">
+            <h3 class="section-title" style="margin-bottom: 1.5rem;">商标列表</h3>
+
+            <div class="table-container" id="tableContainer">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th class="sortable col-serial" data-field="serial_number" onclick="handleSort('serial_number')">商标注册号</th>
+                        <th class="sortable col-word" data-field="word_mark" onclick="handleSort('word_mark')">侵权词</th>
+                        <th class="col-status">注册号</th>
+                        <th class="sortable col-date" data-field="filing_date" onclick="handleSort('filing_date')">入库时间</th>
+                        <th class="sortable col-date" data-field="registration_date" onclick="handleSort('registration_date')">注册日期</th>
+                        <th class="sortable col-date" data-field="transaction_date" onclick="handleSort('transaction_date')">交易日期</th>
+                        <th class="col-status">状态码</th>
+                        <th class="col-status">绘制类型</th>
+                        <th class="col-owner">所有者</th>
+                        <th>国际类</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>数据加载中...</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-controls" id="paginationControls" style="display: none;">
+                <div class="page-size-selector">
+                    <label for="pageSize">每页显示：</label>
+                    <select class="form-select" id="pageSize" onchange="changePageSize()">
+                        <option value="10">10条</option>
+                        <option value="20" selected>20条</option>
+                        <option value="50">50条</option>
+                        <option value="100">100条</option>
+                    </select>
+                </div>
+
+                <div class="pagination-buttons" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+
+                <div class="pagination-info" id="paginationInfo">
+                    <!-- 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // ===== 全局变量定义 =====
+        let currentFilters = {
+            word_mark: '',
+            serial_number: '',
+            registration_number: '',
+            owner_name: '',
+            sort_field: 'filing_date',
+            sort_order: 'desc'
+        };
+
+        let pagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        // ===== 工具函数 =====
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+
+        if (typeof showNotification === 'undefined') {
+            window.showNotification = function (message, type = 'info') {
+                console.log(`[${type}] ${message}`);
+            };
+        }
+
+        // ===== 筛选逻辑 =====
+        function getCurrentFilters() {
+            return {
+                word_mark: document.getElementById('wordMarkFilter').value.trim(),
+                serial_number: document.getElementById('serialNumberFilter').value.trim(),
+                registration_number: document.getElementById('registrationNumberFilter').value.trim(),
+                owner_name: document.getElementById('ownerNameFilter').value.trim(),
+                sort_field: currentFilters.sort_field,
+                sort_order: currentFilters.sort_order
+            };
+        }
+
+        function setDefaultFilters() {
+            document.getElementById('wordMarkFilter').value = '';
+            document.getElementById('serialNumberFilter').value = '';
+            document.getElementById('registrationNumberFilter').value = '';
+            document.getElementById('ownerNameFilter').value = '';
+            document.getElementById('pageSize').value = '20';
+        }
+
+        async function resetFilters(event) {
+            showLoading(true);
+            try {
+                setDefaultFilters();
+                pagination.page = 1;
+                pagination.page_size = 20;
+                await applyFilters();
+                showNotification('筛选条件已重置', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function refreshData(event) {
+            const icon = event.target.closest('button').querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+            applyFilters().finally(() => {
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            });
+        }
+
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+            try {
+                await loadTableData();
+                showNotification('数据已更新', 'success');
+            } catch (error) {
+                showNotification('数据请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function handleSort(field) {
+            if (currentFilters.sort_field === field) {
+                currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentFilters.sort_field = field;
+                currentFilters.sort_order = 'desc';
+            }
+
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.field === field) {
+                    th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            pagination.page = 1;
+            loadTableData();
+        }
+
+        // ===== 表格渲染 =====
+        async function loadTableData() {
+            const tbody = document.getElementById('tableBody');
+            const paginationControls = document.getElementById('paginationControls');
+
+            showLoading(true);
+
+            try {
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const requestData = {
+                    ...currentFilters,
+                    page: pagination.page,
+                    page_size: pagination.page_size
+                };
+
+                const response = await fetch('{% url "theme:api_trademark_info_list" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    pagination.total = data.total;
+                    pagination.total_pages = data.total_pages;
+
+                    renderTable(data.list || []);
+                    renderPagination();
+
+                    paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载错误:', error);
+                tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>数据请求失败: ${error.message}</p>
+                </td>
+            </tr>
+        `;
+                paginationControls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('tableBody');
+            if (!list || list.length === 0) {
+                tbody.innerHTML = `
+            <tr>
+                <td colspan="10" class="empty-state">
+                    <i class="fas fa-inbox"></i>
+                    <p>暂无数据</p>
+                </td>
+            </tr>
+        `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(item => `
+                <tr>
+                    <td>${item.serial_number || '-'}</td>
+                    <td>${item.word_mark || '-'}</td>
+                    <td>${item.registration_number || '-'}</td>
+                    <td>${item.filing_date || '-'}</td>
+                    <td>${item.registration_date || '-'}</td>
+                    <td>${item.transaction_date || '-'}</td>
+                    <td>${item.status_code || '-'}</td>
+                    <td>${item.mark_drawing_type || '-'}</td>
+                    <td>${item.owner_name || '-'}</td>
+                    <td>${item.intl_class || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ===== 分页渲染 =====
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const infoContainer = document.getElementById('paginationInfo');
+
+            const {page, total, total_pages} = pagination;
+
+            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+
+            let buttonsHTML = '';
+
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+        <i class="fas fa-chevron-left"></i> 上一页
+    </button>`;
+
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+            }
+
+            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+        下一页 <i class="fas fa-chevron-right"></i>
+    </button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > pagination.total_pages) return;
+            pagination.page = newPage;
+            loadTableData();
+            document.getElementById('tableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function changePageSize() {
+            const newSize = parseInt(document.getElementById('pageSize').value);
+            pagination.page_size = newSize;
+            pagination.page = 1;
+            loadTableData();
+        }
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                setDefaultFilters();
+                await applyFilters();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+    </script>
+{% endblock %}

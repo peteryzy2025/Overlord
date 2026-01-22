@@ -1,11 +1,21 @@
 from django.urls import path
 from . import views
+from . import views_vocabulary
 
 app_name = 'theme'
 
 urlpatterns = [
     # 页面渲染
     path('Theme/products/', views.product_list_page, name='theme_product_list'),
+    path('vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
+    path('vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
+
+    # 词库API
+    path('api/tro-table/', views_vocabulary.api_tro_table_list, name='api_tro_table_list'),
+    path('api/tro-table/create/', views_vocabulary.api_create_tro_record, name='api_create_tro_record'),
+    path('api/tro-table/update/', views_vocabulary.api_update_tro_record, name='api_update_tro_record'),
+    path('api/tro-table/delete/', views_vocabulary.api_delete_tro_record, name='api_delete_tro_record'),
+    path('api/trademark-info/', views_vocabulary.api_trademark_info_list, name='api_trademark_info_list'),
 
     # 产品数据API
     path('api/amazon-products/', views.api_amazon_products, name='api_amazon_products'),

@@ -13,7 +13,6 @@
             flex-direction: column;
             gap: 1.5rem;
             width: 100%;
-            {#max-width: 1400px;#}
             margin: 0 auto;
             padding: 2rem;
         }
@@ -30,95 +29,6 @@
             gap: 1rem;
             display: none;
             /* 默认隐藏，选中时显示 */
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        /* 正向流程：蓝色系 → 绿色系 */
-        .status-created {
-            background: #E0F2FE;
-            color: #0C4A6E;
-        }
-
-        .status-pending_crawl {
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-
-        .status-crawled {
-            background: #E0E7FF;
-            color: #3730A3;
-        }
-
-        .status-pending_confirm {
-            background: #EDE9FE;
-            color: #5B21B6;
-        }
-
-        .status-confirmed {
-            background: #F3E8FF;
-            color: #6B21A8;
-        }
-
-        .status-pending_review {
-            background: #FCE7F3;
-            color: #9D174D;
-        }
-
-        .status-reviewed {
-            background: #FFE4E6;
-            color: #BE123C;
-        }
-
-        .status-pending_design {
-            background: #FFEDD5;
-            color: #C2410C;
-        }
-
-        .status-designed {
-            background: #FED7AA;
-            color: #9A3412;
-        }
-
-        .status-pending_divi_test {
-            background: #FEF3C7;
-            color: #D97706;
-        }
-
-        .status-divi_tested {
-            background: #FDE68A;
-            color: #B45309;
-        }
-
-        .status-uploading {
-            background: #ECFCCB;
-            color: #365314;
-        }
-
-        .status-completed {
-            background: #D1FAE5;
-            color: #065F46;
-        }
-
-        /* 异常状态：红色/灰色 */
-        .status-rejected {
-            background: #FEE2E2;
-            color: #991B1B;
-        }
-
-        .status-crawl_failed {
-            background: #FEE2E2;
-            color: #991B1B;
-        }
-
-        .status-cancelled {
-            background: #F3F4F6;
-            color: #374151;
         }
 
         .batch-actions.visible {
@@ -220,39 +130,91 @@
             white-space: nowrap;
         }
 
-        .status-submitted {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--accent-color);
+        /* 正向流程：蓝色系 → 绿色系 */
+        .status-created {
+            background: #E0F2FE;
+            color: #0C4A6E;
         }
 
-        .status-approved {
-            background: rgba(72, 187, 120, 0.1);
-            color: #48bb78;
+        .status-pending_crawl {
+            background: #DBEAFE;
+            color: #1E40AF;
         }
 
-        .status-processing {
-            background: rgba(237, 137, 54, 0.1);
-            color: #ed8936;
+        .status-crawled {
+            background: #E0E7FF;
+            color: #3730A3;
         }
 
-        .status-designing {
-            background: rgba(159, 122, 234, 0.1);
-            color: #9f7aea;
+        .status-pending_confirm {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+
+        .status-confirmed {
+            background: #F3E8FF;
+            color: #6B21A8;
+        }
+
+        .status-pending_review {
+            background: #FCE7F3;
+            color: #9D174D;
+        }
+
+        .status-reviewed {
+            background: #FFE4E6;
+            color: #BE123C;
+        }
+
+        .status-pending_design {
+            background: #FFEDD5;
+            color: #C2410C;
+        }
+
+        .status-designed {
+            background: #FED7AA;
+            color: #9A3412;
+        }
+
+        .status-pending_divi_test {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+
+        .status-divi_tested {
+            background: #FDE68A;
+            color: #B45309;
         }
 
         .status-uploading {
-            background: rgba(66, 153, 225, 0.1);
-            color: #4299e1;
-        }
-
-        .status-testing {
-            background: rgba(236, 201, 75, 0.1);
-            color: #ecc94b;
+            background: #ECFCCB;
+            color: #365314;
         }
 
         .status-completed {
-            background: rgba(72, 187, 120, 0.1);
-            color: #48bb78;
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        /* 异常状态：红色/灰色 */
+        .status-draft {
+            background: #F3F4F6;
+            color: #374151;
+        }
+
+        .status-rejected {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .status-crawl_failed {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .status-cancelled {
+            background: #F3F4F6;
+            color: #374151;
         }
 
         /* 分页 */
@@ -480,16 +442,7 @@
                             <span id="statusSelectedText">全部状态</span>
                         </div>
                         <div class="items" id="statusItems">
-                            <div class="item"><input type="checkbox" value="all" checked> 全部状态</div>
-                            <div class="item"><input type="checkbox" value="submitted"> 已提交</div>
-                            <div class="item"><input type="checkbox" value="approved"> 已审核</div>
-                            <div class="item"><input type="checkbox" value="processing"> 抓取中</div>
-                            <div class="item"><input type="checkbox" value="pending_design"> 待设计</div>
-                            <div class="item"><input type="checkbox" value="rejected"> 已驳回</div>
-                            <div class="item"><input type="checkbox" value="designing"> 设计中</div>
-                            <div class="item"><input type="checkbox" value="uploading"> 上传中</div>
-                            <div class="item"><input type="checkbox" value="testing"> 测试中</div>
-                            <div class="item"><input type="checkbox" value="completed"> 已完成</div>
+                            <!-- 动态加载状态选项 -->
                         </div>
                     </div>
                 </div>
@@ -501,15 +454,16 @@
                             <span id="creatorSelectedText">全部创建人</span>
                         </div>
                         <div class="items" id="creatorItems">
-                            <!-- 动态加载 -->
+                            <!-- 动态加载创建人选项 -->
                         </div>
                     </div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">搜索产品</label>
+                    <!-- 🔥 修复：更新placeholder提示文本 -->
                     <input type="text" class="form-control" id="searchFilter"
-                           placeholder="输入需求标题/单号/产品名称..."
+                           placeholder="搜索: 产品名称/单号/ID/材质/报关名/创建人..."
                            oninput="debounceSearch()">
                 </div>
             </div>
@@ -667,9 +621,14 @@
         let progressInterval = null;
 
         document.addEventListener('DOMContentLoaded', function () {
-            loadCreators();
-            loadProducts();
-            initDropdowns();
+            // 🔥 修复：先加载状态选项，再加载创建人和产品列表
+            Promise.all([
+                loadStatusOptions(),  // 新增：加载状态选项
+                loadCreators(),
+                loadProducts()
+            ]).then(() => {
+                initDropdowns();
+            });
         });
 
         // 初始化下拉框逻辑
@@ -767,9 +726,44 @@
             }
         }
 
+        // 🔥 新增：动态加载状态选项
+        async function loadStatusOptions() {
+            try {
+                const response = await fetch('/api/products/status-choices/');
+                const result = await response.json();
+                if (result.success) {
+                    const items = document.getElementById('statusItems');
+                    let html = '<div class="item"><input type="checkbox" value="all" checked> 全部状态</div>';
+
+                    // 过滤掉草稿状态，按业务需求显示
+                    const excludeStatus = ['draft', 'cancelled'];
+                    result.data.forEach(status => {
+                        if (!excludeStatus.includes(status.code)) {
+                            html += `<div class="item"><input type="checkbox" value="${status.code}"> ${status.display}</div>`;
+                        }
+                    });
+
+                    items.innerHTML = html;
+
+                    // 重新绑定事件
+                    const dropdown = document.getElementById('statusDropdown');
+                    items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        cb.addEventListener('change', function () {
+                            handleCheckboxChange(this, 'statusItems');
+                            updateStatusSelection();
+                            currentData.pagination.page = 1;
+                            loadProducts();
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('加载状态选项失败', error);
+            }
+        }
+
         async function loadCreators() {
             try {
-                const response = await fetch('/api/tasks/available-owners/'); // Reuse this API or create new one for creators
+                const response = await fetch('/api/tasks/available-owners/');
                 const result = await response.json();
                 if (result.success) {
                     const items = document.getElementById('creatorItems');
@@ -779,10 +773,8 @@
                     });
                     items.innerHTML = html;
 
-                    // Re-bind events for new items
+                    // 重新绑定事件
                     const dropdown = document.getElementById('creatorDropdown');
-                    // Remove old event listener is hard, but setupDropdown re-adds to items container which is fine if we clear it?
-                    // Actually setupDropdown binds to existing inputs. We need to bind to new inputs.
                     items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                         cb.addEventListener('change', function () {
                             handleCheckboxChange(this, 'creatorItems');
@@ -817,6 +809,9 @@
                     params.append('created_by', currentData.filters.created_by.join(','));
                 }
 
+                // 🔥 调试日志
+                console.log('请求参数:', params.toString());
+
                 const response = await fetch(`/api/products/list/?${params}`);
                 const result = await response.json();
 
@@ -846,8 +841,8 @@
             tbody.innerHTML = currentData.list.map(item => `
                 <tr style="cursor: pointer;" onclick="viewDetail(${item.id})">
                     <td onclick="event.stopPropagation()">
-                        <input type="checkbox" class="product-checkbox" value="${item.id}" 
-                            ${selectedIds.has(item.id.toString()) ? 'checked' : ''} 
+                        <input type="checkbox" class="product-checkbox" value="${item.id}"
+                            ${selectedIds.has(item.id.toString()) ? 'checked' : ''}
                             onchange="toggleSelection('${item.id}')">
                     </td>
                     <!-- <td>${item.title || '-'}</td> -->
@@ -971,29 +966,20 @@
         }
 
         function displayNotification(message, type = 'info', duration = 3000) {
-            // 避免递归调用：检查 window.showNotification 是否存在且不等于当前函数
-            // 实际上，只要我们把当前函数改名为 displayNotification，window.showNotification 就只会是外部定义的（如果有的话）
             if (typeof window.showNotification === 'function') {
                 window.showNotification(message, type, duration);
             } else {
-                // Fallback
                 alert(`${type}: ${message}`);
             }
         }
 
         async function reCrawlProduct(id, productId, platform) {
-            // 保存目标信息并打开模态框
             recrawlTarget = {id, productId, platform};
-
-            // 重置 UI 状态
             document.getElementById('recrawlConfirmContent').style.display = 'block';
             document.getElementById('recrawlProgressContainer').style.display = 'none';
             document.getElementById('recrawlFooter').style.display = 'flex';
             document.getElementById('closeRecrawlBtn').disabled = false;
-
-            // 重置进度条
             updateProgress(0, '准备就绪');
-
             document.getElementById('recrawlModal').classList.add('active');
         }
 
@@ -1015,32 +1001,26 @@
             percentEl.textContent = `${percent}%`;
             if (status) statusEl.textContent = status;
 
-            // 颜色状态
             if (percent >= 100) {
-                bar.style.backgroundColor = '#48bb78'; // Green
+                bar.style.backgroundColor = '#48bb78';
             } else if (status && status.includes('失败')) {
-                bar.style.backgroundColor = '#f56565'; // Red
+                bar.style.backgroundColor = '#f56565';
             } else {
-                bar.style.backgroundColor = 'var(--accent-color)'; // Blue
+                bar.style.backgroundColor = 'var(--accent-color)';
             }
         }
 
         async function startRecrawl() {
             if (!recrawlTarget) return;
-
-            // 切换界面状态
             document.getElementById('recrawlConfirmContent').style.display = 'none';
             document.getElementById('recrawlFooter').style.display = 'none';
             document.getElementById('recrawlProgressContainer').style.display = 'block';
-            document.getElementById('closeRecrawlBtn').disabled = true; // 禁止关闭
+            document.getElementById('closeRecrawlBtn').disabled = true;
 
-            // 开始模拟进度
             let currentProgress = 0;
             updateProgress(0, '正在连接服务器...');
-
             progressInterval = setInterval(() => {
                 if (currentProgress < 90) {
-                    // 前期快，后期慢
                     const increment = currentProgress < 50 ? Math.random() * 10 : Math.random() * 2;
                     currentProgress = Math.min(90, currentProgress + increment);
                     updateProgress(Math.floor(currentProgress), '正在抓取数据...');
@@ -1062,16 +1042,11 @@
                 });
 
                 const result = await response.json();
-
-                // 清除模拟定时器
                 clearInterval(progressInterval);
                 progressInterval = null;
 
                 if (result.success) {
-                    // 完成进度条
                     updateProgress(100, '更新完成！');
-
-                    // 延迟关闭并刷新
                     setTimeout(() => {
                         closeRecrawlModal();
                         loadProducts();
@@ -1080,13 +1055,9 @@
                 } else {
                     updateProgress(currentProgress, '失败: ' + (result.message || '未知错误'));
                     document.getElementById('recrawlProgressBar').style.backgroundColor = '#f56565';
-
-                    // 恢复关闭按钮，允许用户关闭
                     document.getElementById('closeRecrawlBtn').disabled = false;
-
-                    // 3秒后允许重试
                     setTimeout(() => {
-                        document.getElementById('recrawlFooter').style.display = 'flex'; // 显示按钮让用户决定
+                        document.getElementById('recrawlFooter').style.display = 'flex';
                         document.getElementById('recrawlConfirmContent').style.display = 'block';
                         document.getElementById('recrawlConfirmContent').innerHTML = `<p style="color: #f56565;">错误：${result.message}</p><p>请重试或关闭。</p>`;
                     }, 1000);
@@ -1152,12 +1123,10 @@
                 if (result.success) {
                     const data = result.data;
                     canEdit = result.meta.can_edit;
-
                     document.getElementById('detailTitle').textContent = `${data.product_name || '未命名'} - 详情`;
                     document.getElementById('editBtn').style.display = canEdit ? 'block' : 'none';
                     document.getElementById('exportBtn').style.display = 'block';
                     document.getElementById('saveBtn').style.display = 'none';
-
                     renderDetailBody(data);
                     document.getElementById('detailModal').classList.add('active');
                 }
@@ -1206,10 +1175,22 @@
                             key: 'status',
                             type: 'select',
                             options: [
-                                {val: 'submitted', txt: '已提交'}, {val: 'approved', txt: '已审核'},
-                                {val: 'processing', txt: '抓取中'}, {val: 'designing', txt: '设计中'},
-                                {val: 'uploading', txt: '上传中'}, {val: 'testing', txt: '测试中'},
-                                {val: 'completed', txt: '已完成'}
+                                {val: 'created', txt: '创建完成'},
+                                {val: 'pending_crawl', txt: '等待数据抓取'},
+                                {val: 'crawled', txt: '数据抓取完成'},
+                                {val: 'pending_confirm', txt: '等待数据确认'},
+                                {val: 'confirmed', txt: '数据确认完成'},
+                                {val: 'pending_review', txt: '等待审核'},
+                                {val: 'reviewed', txt: '审核完成'},
+                                {val: 'pending_design', txt: '等待美工处理样机'},
+                                {val: 'designed', txt: '样机处理成功'},
+                                {val: 'pending_divi_test', txt: '等待系统上传DIVI测试'},
+                                {val: 'divi_tested', txt: '上传DIVI测试已完成'},
+                                {val: 'uploading', txt: '系统上传DIVI中'},
+                                {val: 'completed', txt: '上传DIVI已完成'},
+                                {val: 'rejected', txt: '已驳回'},
+                                {val: 'crawl_failed', txt: '抓取失败'},
+                                {val: 'cancelled', txt: '已取消'}
                             ]
                         },
                         {label: '材质', value: data.material, key: 'material'},
@@ -1315,9 +1296,7 @@
                         },
                         {
                             label: '图片链接',
-                            // 使用函数处理图片链接显示，包含下载按钮
                             value: renderImageLinks(data.img_urls_list),
-                            // 存储原始数组供逻辑使用
                             raw_value: JSON.stringify(data.img_urls_list || []),
                             key: 'img_urls_list',
                             type: 'img_list'
@@ -1336,30 +1315,20 @@
                         return '<hr style="margin: 1rem 0; border: 0; border-top: 1px dashed var(--border-color);">';
                     }
 
-                    // 安全处理属性值，防止 HTML 截断
                     const safeValue = (item.value || '').toString().replace(/"/g, '&quot;');
-                    // 对于 raw_value，如果是 JSON 字符串，也需要转义
                     let safeRawValue = '';
                     if (item.raw_value !== undefined && item.raw_value !== null) {
                         safeRawValue = item.raw_value.toString().replace(/"/g, '&quot;');
                     }
 
-                    // 如果是包装表格，直接把整个对象转为字符串存在 raw_value
-                    if (item.type === 'packaging_table') {
-                        safeRawValue = JSON.stringify(item.value || []).replace(/"/g, '&quot;');
-                    }
-
-                    // 对于 html 类型，直接插入 value，但在 data-val 中存储 safeValue
-                    // 注意：如果是复杂 HTML，放入 data-val 可能会有问题，但为了兼容 edit 逻辑，我们尽量存
-
                     return `
                             <div class="detail-item" ${item.type === 'packaging_table' ? 'style="display:block;"' : ''}>
                                 <div class="detail-label" ${item.type === 'packaging_table' ? 'style="width:100%; margin-bottom:0.5rem;"' : ''}>${item.label}:</div>
-                                <div class="detail-value" 
-                                     data-key="${item.key}" 
-                                     data-val="${safeValue}" 
-                                     data-raw-val="${safeRawValue}" 
-                                     data-type="${item.type || 'text'}" 
+                                <div class="detail-value"
+                                     data-key="${item.key}"
+                                     data-val="${safeValue}"
+                                     data-raw-val="${safeRawValue}"
+                                     data-type="${item.type || 'text'}"
                                      ${item.type === 'select' ? "data-options='" + JSON.stringify(item.options) + "'" : ''}>
                                     ${item.value || '-'}
                                 </div>
@@ -1375,18 +1344,12 @@
 
         function renderPackagingTable(specs) {
             if (!specs || !Array.isArray(specs) || specs.length === 0) return '暂无数据';
-
-            // specs 是一个二维数组
-            // 第一行通常是表头
-
             let html = '<div style="overflow-x: auto; width: 100%;"><table class="table table-bordered table-sm" style="width:100%; font-size:0.85rem; min-width: 600px;">';
-
             specs.forEach((row, rowIndex) => {
                 html += '<tr>';
                 row.forEach(cell => {
                     const content = cell.content || '';
                     const remark = cell.remark ? `<br><small style="color:var(--text-secondary)">${cell.remark}</small>` : '';
-
                     if (rowIndex === 0) {
                         html += `<th style="background:var(--bg-secondary); padding:0.5rem; white-space: nowrap;">${content}${remark}</th>`;
                     } else {
@@ -1395,32 +1358,25 @@
                 });
                 html += '</tr>';
             });
-
             html += '</table></div>';
             return html;
         }
 
         function renderImageLinks(urls) {
             if (!urls || (Array.isArray(urls) && urls.length === 0)) return '-';
-
             let urlList = Array.isArray(urls) ? urls : [urls];
-            // 过滤空值
             urlList = urlList.filter(u => u);
-
             if (urlList.length === 0) return '-';
-
             let html = `<div style="margin-bottom: 0.5rem;">
             <button class="btn btn-sm btn-outline-primary" onclick="downloadImages(this)" data-urls='${JSON.stringify(urlList)}'>
                 <i class="fas fa-download"></i> 打包下载全部 (${urlList.length})
             </button>
         </div>`;
-
             html += `<div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">`;
             urlList.forEach((url, index) => {
                 html += `<a href="${url}" target="_blank" class="btn btn-sm btn-link">图片${index + 1}</a>`;
             });
             html += `</div>`;
-
             return html;
         }
 
@@ -1430,25 +1386,17 @@
                 alert('没有可下载的图片');
                 return;
             }
-
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 打包中...';
             btn.disabled = true;
-
             try {
                 const zip = new JSZip();
                 const folder = zip.folder("images");
-
-                // 并发下载图片
                 const promises = urls.map(async (url, index) => {
                     try {
-                        // 尝试通过 fetch 获取图片数据
-                        // 注意：这需要图片服务器支持 CORS
                         const response = await fetch(url);
                         if (!response.ok) throw new Error('Network response was not ok');
                         const blob = await response.blob();
-
-                        // 获取文件扩展名
                         let ext = 'jpg';
                         const contentType = response.headers.get('content-type');
                         if (contentType) {
@@ -1456,27 +1404,20 @@
                             else if (contentType.includes('gif')) ext = 'gif';
                             else if (contentType.includes('webp')) ext = 'webp';
                         } else {
-                            // 尝试从 URL 获取
                             const match = url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
                             if (match) ext = match[1];
                         }
-
                         const filename = `image_${index + 1}.${ext}`;
                         folder.file(filename, blob);
                     } catch (err) {
                         console.error(`Failed to download ${url}:`, err);
-                        // 可以选择生成一个错误文本文件
                         folder.file(`image_${index + 1}_error.txt`, `Failed to download: ${url}\nError: ${err.message}`);
                     }
                 });
-
                 await Promise.all(promises);
-
                 const content = await zip.generateAsync({type: "blob"});
                 saveAs(content, "product_images.zip");
-
                 displayNotification('下载已开始', 'success');
-
             } catch (error) {
                 console.error('打包失败:', error);
                 alert('打包下载失败，请检查控制台日志或尝试单独下载。');
@@ -1489,15 +1430,12 @@
         function enableEdit() {
             document.getElementById('editBtn').style.display = 'none';
             document.getElementById('saveBtn').style.display = 'block';
-
             const values = document.querySelectorAll('.detail-value');
             values.forEach(el => {
                 const key = el.dataset.key;
                 const val = el.dataset.val;
                 const type = el.dataset.type;
-
-                if (type === 'packaging_table') return; // 跳过不可编辑字段
-
+                if (type === 'packaging_table') return;
                 if (type === 'textarea') {
                     el.innerHTML = `<textarea class="form-control edit-input" rows="3" name="${key}">${val}</textarea>`;
                 } else if (type === 'select') {
@@ -1515,11 +1453,6 @@
                     html += '</div>';
                     el.innerHTML = html;
                 } else if (type === 'url') {
-                    // For URL, if it's editing, show input
-                    // But wait, the value in renderDetailBody for url is an <a> tag.
-                    // We need raw value.
-                    // Let's assume data.product_url is available in scope or we fetch it.
-                    // Actually, let's fix renderDetailBody to put raw url in dataset.
                     const rawUrl = el.querySelector('a')?.href || '';
                     el.innerHTML = `<input type="url" class="form-control edit-input" name="${key}" value="${rawUrl}">`;
                 } else if (type === 'img_list') {
@@ -1530,15 +1463,10 @@
                     } catch (e) {
                         urls = [];
                     }
-                    // 将数组转换为每行一个 URL 的字符串
                     const textVal = Array.isArray(urls) ? urls.join('\n') : '';
                     el.innerHTML = `<textarea class="form-control edit-input" rows="5" name="${key}" placeholder="每行输入一个图片链接">${textVal}</textarea>`;
                 } else if (type === 'packaging_table') {
-                    // 包装规格不可编辑，保持原样显示
-                    // do nothing or re-render table?
-                    // 由于 innerHTML 被清空，我们需要重新放入原值。
-                    // 实际上，我们应该跳过不可编辑的字段。
-                    // 在 enableEdit 循环中添加判断。
+                    // 包装规格不可编辑
                 } else {
                     el.innerHTML = `<input type="text" class="form-control edit-input" name="${key}" value="${val}">`;
                 }
@@ -1549,17 +1477,13 @@
             const inputs = document.querySelectorAll('.edit-input');
             const checkboxes = document.querySelectorAll('.edit-input-checkbox');
             const data = {};
-
             inputs.forEach(input => {
                 if (input.name === 'img_urls_list') {
-                    // 特殊处理图片列表：按行分割并过滤空行
                     data[input.name] = input.value.split('\n').map(u => u.trim()).filter(u => u);
                 } else {
                     data[input.name] = input.value;
                 }
             });
-
-            // Handle checkboxes specifically
             const craftVals = [];
             checkboxes.forEach(cb => {
                 if (cb.checked) {
@@ -1569,7 +1493,6 @@
             if (checkboxes.length > 0) {
                 data.craft = craftVals;
             }
-
             try {
                 const response = await fetch(`/api/products/${currentDetailId}/update/`, {
                     method: 'POST',
@@ -1580,7 +1503,6 @@
                     body: JSON.stringify(data)
                 });
                 const result = await response.json();
-
                 if (result.success) {
                     closeDetailModal();
                     loadProducts();
@@ -1596,8 +1518,6 @@
         function exportProduct() {
             if (!currentDetailId) return;
             const name = document.getElementById('detailTitle').textContent.replace(' - 详情', '') || 'product';
-            // Check if we can use a direct link or need to fetch blob
-            // Using direct link is easier for browser to handle filename
             window.location.href = `/api/products/${currentDetailId}/export/?filename=${encodeURIComponent(name)}`;
         }
 

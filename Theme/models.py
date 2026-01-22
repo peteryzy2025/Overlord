@@ -241,6 +241,7 @@ class TroTable(models.Model):
     name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    created_by = models.CharField(max_length=150, null=True, blank=True, verbose_name='创建人')
 
     class Meta:
         db_table = 'theme_tro_table'
@@ -279,6 +280,7 @@ class TrademarkInfo(models.Model):
         MarkDrawingTypeMapping,
         on_delete=models.PROTECT,
         to_field='code',
+        db_column='mark_drawing_type',
         null=True,
         blank=True,
         related_name='trademarks',
@@ -288,6 +290,7 @@ class TrademarkInfo(models.Model):
     legal_entity_type = models.ForeignKey(
         EntityTypeMapping,
         to_field='code',
+        db_column='legal_entity_type',
         on_delete=models.PROTECT,
         related_name='trademark_entities',
         verbose_name='法律实体类型',

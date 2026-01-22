@@ -162,8 +162,12 @@ def get_ykartwood_product(pid, platform, select_platform):
         design_explanation = product_details.get("design_explanation", "")  # 设计说明
         if "印花" in design_explanation:
             craft = "印花"  # 工艺类型
+        elif "刺绣" in design_explanation:
+            craft = "刺绣"
+        elif "镭射" in design_explanation:
+            craft = "镭射"
         else:
-            craft = design_explanation
+            craft = "印花"
         unit = get_product_unit(title)  # 计量单位
         item = data.get("subproducts").get("items", [{}])[0]
         weight = item.get("weight", 0)  # 申报重量
