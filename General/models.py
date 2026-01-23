@@ -11,11 +11,7 @@ class PermissionConfig(models.Model):
     """
     业务权限配置表
     示例数据：
-        id | code | name         | description
-        ---|------|--------------|-------------------
-        1  | 123  | 查看店铺     | 允许查看店铺列表
-        2  | 546  | 删除订单     | 允许删除订单记录
-        3  | 555  | 管理组目标   | 允许创建/编辑组绩效目标
+    code=555就是管理员
     """
     code = models.IntegerField('权限码', unique=True)  # 123, 546, 555...
     name = models.CharField('权限名称', max_length=50)
@@ -91,7 +87,7 @@ class User(AbstractUser):
     company_name = models.CharField('公司名称', max_length=100, blank=True, null=True)
     platform = models.CharField('平台', max_length=255, blank=True, null=True)
     # ops_group = models.CharField('分组-弃用', max_length=255, blank=True, null=True)
-    permission = models.CharField("权限", max_length=255, blank=True, null=True)
+    permission = models.CharField("权限", max_length=255, blank=True, null=True) # 老权限字段，逗号分隔的权限码列表，如"123,555" 已经不用了
     wx_url = models.CharField('企业微信消息通知url', max_length=500, blank=True, null=True)
     remark = models.TextField('备注', blank=True, null=True)
     # ========== 关键修复：显式定义groups和user_permissions以避免冲突 ==========

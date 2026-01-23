@@ -262,6 +262,10 @@ def get_product_requirements_api(request):
         paginator = Paginator(queryset, page_size)
         page_obj = paginator.get_page(page)
 
+        # 检查当前用户是否有美工领取权限
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        can_claim_design = '7' in permissions or '555' in permissions
+
         data = []
         for item in page_obj:
             data.append({
@@ -270,12 +274,15 @@ def get_product_requirements_api(request):
                 'requirement_no': item.requirement_no or (item.task.task_no if item.task else '-'),
                 'product_url': item.product_url,
                 'product_id': item.product_id,  # 返回 Product ID
+                'listing_platform': item.get_listing_platform_display(),
                 'platform': item.get_platform_display(),  # 返回平台名称
                 'platform_code': item.platform,  # 返回平台代码，供前端逻辑使用
                 'status': item.status,
                 'status_display': item.get_status_display(),
                 'created_by': item.created_by.first_name or item.created_by.username,
                 'created_at': item.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'designer_name': item.designer.first_name or item.designer.username if item.designer else '-',
+                'can_claim': can_claim_design and item.status == ProductRequirement.STATUS_PENDING_DESIGN,
             })
 
         return JsonResponse({
@@ -547,6 +554,38 @@ def update_product_requirement_api(request, pk):
         item.save()
 
         return JsonResponse({'success': True, 'message': '更新成功'})
+
+    except ProductRequirement.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '未找到该记录'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def claim_product_requirement_api(request, pk):
+    """
+    美工领取需求
+    """
+    try:
+        # 权限检查
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        # 权限码 7 (美工) 或 555 (管理员)
+        if '7' not in permissions and '555' not in permissions:
+            return JsonResponse({'success': False, 'message': '无权限领取需求'}, status=403)
+
+        item = ProductRequirement.objects.get(pk=pk)
+
+        # 状态检查
+        if item.status != ProductRequirement.STATUS_PENDING_DESIGN:
+             return JsonResponse({'success': False, 'message': '当前状态不可领取'}, status=400)
+        
+        # 更新
+        item.designer = request.user
+        item.status = ProductRequirement.STATUS_DESIGNING
+        item.save()
+
+        return JsonResponse({'success': True, 'message': '领取成功'})
 
     except ProductRequirement.DoesNotExist:
         return JsonResponse({'success': False, 'message': '未找到该记录'}, status=404)

@@ -19,6 +19,7 @@ urlpatterns = [
     path('api/products/reject/', product_views.reject_product_requirements_api, name='reject_product_requirements'),
     path('api/products/<int:pk>/', product_views.get_product_requirement_detail_api, name='get_product_requirement_detail'),
     path('api/products/<int:pk>/update/', product_views.update_product_requirement_api, name='update_product_requirement'),
+    path('api/products/<int:pk>/claim/', product_views.claim_product_requirement_api, name='claim_product_requirement'),
     path('api/products/<int:pk>/export/', product_views.export_product_requirement_excel_api, name='export_product_requirement'),
 # 🔥 新增：状态选项API
     path('api/products/status-choices/', product_views.get_status_choices_api, name='get_status_choices'),
