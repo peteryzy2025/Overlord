@@ -72,7 +72,7 @@ def product_list_page(request):
     )
 
     context = {
-        'page_title': 'Amazon产品管理',
+        'page_title': 'Amazon新奇特主题',
         'active_nav': 'theme_products',
         'stats': stats,
         'latest_deal_stats': latest_deal_stats,
@@ -1083,7 +1083,7 @@ def export_products_excel(request):
             if created_at_end:
                 try:
                     end_datetime = datetime.strptime(created_at_end, '%Y-%m-%d') + timedelta(days=1)
-                    queryset = queryset.filter(created_at__lt(end_datetime))
+                    queryset = queryset.filter(created_at__lt=end_datetime)
                 except ValueError:
                     pass
 
