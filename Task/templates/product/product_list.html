@@ -627,6 +627,22 @@
             </div>
         </div>
     </div>
+    <!-- 完成确认模态框 -->
+    <div class="modal-overlay" id="completeModal">
+        <div class="modal-content" style="max-width: 400px; height: auto; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none;">
+                <h3 style="margin: 0;">确认完成样机处理?</h3>
+            </div>
+            <div class="modal-body" style="overflow: visible;">
+                <p>确认完成样机处理后，<br>状态将变更为"样机处理成功"。</p>
+            </div>
+            <div class="modal-footer"
+                 style="padding-top: 1rem; border-top: none; display: flex; justify-content: center; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="closeCompleteModal()">取消</button>
+                <button class="btn btn-warning" onclick="confirmComplete()">确认完成</button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -645,6 +661,7 @@
         let progressInterval = null;
         // 领取相关变量
         let claimTargetId = null;
+        let completeTargetId = null;
 
         document.addEventListener('DOMContentLoaded', function () {
             // 🔥 修复：先加载状态选项，再加载创建人和产品列表
@@ -883,6 +900,9 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewDetail(${item.id})">查看</button>
+                            ${item.can_complete_design ?
+                `<button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); showCompleteModal(${item.id})">完成</button>`
+                : ''}
                             ${item.can_claim ?
                 `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); showClaimModal(${item.id})">领取需求</button>`
                 : ''}
@@ -1592,6 +1612,40 @@
             } catch (error) {
                 console.error('领取失败', error);
                 displayNotification('领取失败', 'error');
+            }
+        }
+
+        function showCompleteModal(id) {
+            completeTargetId = id;
+            document.getElementById('completeModal').classList.add('active');
+        }
+
+        function closeCompleteModal() {
+            document.getElementById('completeModal').classList.remove('active');
+            completeTargetId = null;
+        }
+
+        async function confirmComplete() {
+            if (!completeTargetId) return;
+            try {
+                const response = await fetch(`/api/products/${completeTargetId}/complete/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    displayNotification('样机处理已完成', 'success');
+                    closeCompleteModal();
+                    loadProducts();
+                } else {
+                    displayNotification(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('完成失败', error);
+                displayNotification('完成失败', 'error');
             }
         }
     </script>

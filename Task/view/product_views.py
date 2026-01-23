@@ -227,6 +227,35 @@ def export_product_requirement_excel_api(request, pk):
 
 
 @login_required
+@require_http_methods(["POST"])
+def complete_product_design_api(request, pk):
+    """
+    美工完成样机处理
+    """
+    try:
+        item = ProductRequirement.objects.get(pk=pk)
+
+        # 权限检查：只有样机负责人可以完成
+        if item.designer != request.user:
+            return JsonResponse({'success': False, 'message': '只有样机负责人可以完成此操作'}, status=403)
+
+        # 状态检查
+        if item.status != ProductRequirement.STATUS_DESIGNING:
+            return JsonResponse({'success': False, 'message': '当前状态不可完成'}, status=400)
+
+        # 更新状态
+        item.status = ProductRequirement.STATUS_DESIGNED
+        item.save()
+
+        return JsonResponse({'success': True, 'message': '样机处理已完成'})
+
+    except ProductRequirement.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '未找到该记录'}, status=404)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+
+@login_required
 @require_http_methods(["GET"])
 def get_product_requirements_api(request):
     """
@@ -283,6 +312,7 @@ def get_product_requirements_api(request):
                 'created_at': item.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 'designer_name': item.designer.first_name or item.designer.username if item.designer else '-',
                 'can_claim': can_claim_design and item.status == ProductRequirement.STATUS_PENDING_DESIGN,
+                'can_complete_design': item.designer == request.user and item.status == ProductRequirement.STATUS_DESIGNING,
             })
 
         return JsonResponse({
