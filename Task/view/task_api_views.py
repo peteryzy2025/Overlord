@@ -547,7 +547,7 @@ def create_task_api(request):
                 
                 # 抓取数据逻辑 (如果是艺之冠且提取到了ID)
                 crawler_data = {}
-                initial_status = ProductRequirement.STATUS_SUBMITTED
+                initial_status = ProductRequirement.STATUS_CREATED
                 
                 if 'yizhiguan' in platform and product_id:
                     try:

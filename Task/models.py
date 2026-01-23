@@ -327,7 +327,8 @@ class ProductRequirement(models.Model):
     STATUS_REVIEWED = 'reviewed'  # 审核完成
 
     # ⑤ 美工阶段
-    STATUS_PENDING_DESIGN = 'pending_design'  # 等待美工处理样机
+    STATUS_PENDING_DESIGN = 'pending_design'  # 等待美工领取需求
+    STATUS_DESIGNING = 'designing'  # 美工处理样机中
     STATUS_DESIGNED = 'designed'  # 样机处理成功
 
     # ⑥ DIVI测试阶段
@@ -353,7 +354,8 @@ class ProductRequirement(models.Model):
         (STATUS_CONFIRMED, '数据确认完成'),
         (STATUS_PENDING_REVIEW, '等待审核'),
         (STATUS_REVIEWED, '审核完成'),
-        (STATUS_PENDING_DESIGN, '等待美工处理样机'),
+        (STATUS_PENDING_DESIGN, '等待美工领取需求'),
+        (STATUS_DESIGNING, '美工处理样机中'),
         (STATUS_DESIGNED, '样机处理成功'),
         (STATUS_PENDING_DIVI_TEST, '等待系统上传DIVI测试'),
         (STATUS_DIVI_TESTED, '上传DIVI测试已完成'),
@@ -375,6 +377,16 @@ class ProductRequirement(models.Model):
         verbose_name='负责人',
         db_comment='需求负责人',
         null=True, 
+        blank=True
+    )
+
+    designer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name='designed_product_requirements',
+        verbose_name='美工',
+        db_comment='美工负责人',
+        null=True,
         blank=True
     )
 
@@ -530,3 +542,121 @@ class ProductRequirement(models.Model):
 
     def __str__(self):
         return f"{self.product_name or '未命名'} ({self.get_status_display()})"
+
+
+class ExternalPlatformProduct(models.Model):
+    """
+    外采平台产品表
+    用于管理从外部采购平台导入的产品信息
+    """
+
+    # 产品编号（唯一标识）
+    product_divi_code = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name='产品编号',
+        help_text='divi_产品编码'
+    )
+
+    # 产品名称
+    product_name = models.CharField(
+        max_length=255,
+        verbose_name='产品名称',
+        help_text='产品完整名称'
+    )
+
+    # 是否上架
+    is_listed = models.BooleanField(
+        default=False,
+        verbose_name='是否上架',
+        help_text='True=已上架，False=未上架'
+    )
+
+    # 产品属性
+    color = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='颜色'
+    )
+
+    specification = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='规格'
+    )
+
+    # DIVI系统专用字段
+    divi_color = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='DIVI颜色'
+    )
+
+    divi_specification = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='DIVI规格'
+    )
+
+    # 采购信息
+    min_order_quantity = models.IntegerField(
+        default=1,
+        verbose_name='起批量',
+        help_text='单次采购最低数量'
+    )
+
+    purchase_unit_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='采购原单价',
+        help_text='原始采购单价（元）',
+        blank=True,
+        null=True,
+    )
+    new_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name='采购现单价',
+        help_text='现采购单价（元）',
+        blank=True,
+        null=True,
+    )
+    # 平台信息
+    platform_name = models.CharField(
+        max_length=100,
+        verbose_name='外采平台',
+        help_text='如：艺之冠等'
+    )
+
+    order_link = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='下单链接',
+        help_text='外部平台的产品下单页面URL'
+    )
+
+    # 时间戳（建议保留，便于数据追踪）
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='创建时间'
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='更新时间'
+    )
+
+
+    class Meta:
+        verbose_name = '外采平台产品'
+        verbose_name_plural = verbose_name
+        db_table = 'procurement_external_platform_product'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.product_divi_code} - {self.product_name}"

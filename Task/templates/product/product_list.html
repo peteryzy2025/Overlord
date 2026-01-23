@@ -171,6 +171,13 @@
             color: #C2410C;
         }
 
+        /* 🔥 新增：美工处理中状态样式 */
+        .status-designing {
+            background: #E0F2FE;
+            color: #0C4A6E;
+            font-weight: 600;
+        }
+
         .status-designed {
             background: #FED7AA;
             color: #9A3412;
@@ -494,6 +501,7 @@
                         <th>产品ID</th>
                         <th>状态</th>
                         <th>创建人</th>
+                        <th>样机负责人</th>
                         <th>创建时间</th>
                         <th>操作</th>
                     </tr>
@@ -603,6 +611,22 @@
             </div>
         </div>
     </div>
+    <!-- 领取确认模态框 -->
+    <div class="modal-overlay" id="claimModal">
+        <div class="modal-content" style="max-width: 400px; height: auto; text-align: center;">
+            <div class="modal-header" style="justify-content: center; border-bottom: none;">
+                <h3 style="margin: 0;">确认领取需求?</h3>
+            </div>
+            <div class="modal-body" style="overflow: visible;">
+                <p>领取后，您将成为该样机的负责人，<br>且状态将变更为"美工处理样机中"。</p>
+            </div>
+            <div class="modal-footer"
+                 style="padding-top: 1rem; border-top: none; display: flex; justify-content: center; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="closeClaimModal()">取消</button>
+                <button class="btn btn-success" onclick="confirmClaim()">确认领取</button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -619,6 +643,8 @@
         // 重新爬取相关变量
         let recrawlTarget = null;
         let progressInterval = null;
+        // 领取相关变量
+        let claimTargetId = null;
 
         document.addEventListener('DOMContentLoaded', function () {
             // 🔥 修复：先加载状态选项，再加载创建人和产品列表
@@ -852,10 +878,14 @@
                     <td>${item.product_id || '-'}</td>
                     <td><span class="status-badge status-${item.status}">${item.status_display}</span></td>
                     <td>${item.created_by}</td>
+                    <td>${item.designer_name || '-'}</td>
                     <td>${item.created_at}</td>
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
                             <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); viewDetail(${item.id})">查看</button>
+                            ${item.can_claim ?
+                `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); showClaimModal(${item.id})">领取需求</button>`
+                : ''}
                             ${item.product_url ?
                 `<a href="${item.product_url}" class="btn btn-sm btn-outline-secondary" onclick="event.stopPropagation()" target="_blank">链接</a>`
                 : ''}
@@ -1182,7 +1212,8 @@
                                 {val: 'confirmed', txt: '数据确认完成'},
                                 {val: 'pending_review', txt: '等待审核'},
                                 {val: 'reviewed', txt: '审核完成'},
-                                {val: 'pending_design', txt: '等待美工处理样机'},
+                                {val: 'pending_design', txt: '等待美工领取需求'},
+                                {val: 'designing', txt: '美工处理样机中'},
                                 {val: 'designed', txt: '样机处理成功'},
                                 {val: 'pending_divi_test', txt: '等待系统上传DIVI测试'},
                                 {val: 'divi_tested', txt: '上传DIVI测试已完成'},
@@ -1528,6 +1559,40 @@
         function getCsrfToken() {
             return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                 document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function showClaimModal(id) {
+            claimTargetId = id;
+            document.getElementById('claimModal').classList.add('active');
+        }
+
+        function closeClaimModal() {
+            document.getElementById('claimModal').classList.remove('active');
+            claimTargetId = null;
+        }
+
+        async function confirmClaim() {
+            if (!claimTargetId) return;
+            try {
+                const response = await fetch(`/api/products/${claimTargetId}/claim/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                });
+                const result = await response.json();
+                if (result.success) {
+                    displayNotification('领取成功', 'success');
+                    closeClaimModal();
+                    loadProducts();
+                } else {
+                    displayNotification(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('领取失败', error);
+                displayNotification('领取失败', 'error');
+            }
         }
     </script>
 {% endblock %}
