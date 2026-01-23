@@ -1,7 +1,7 @@
 {% extends 'base_z.html' %}
 {% load static %}
 
-{% block title %}Amazon产品管理 - Overlord{% endblock %}
+{% block title %}Amazon新奇特 - Overlord{% endblock %}
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
@@ -584,6 +584,57 @@
             background-color: #d1fae5;
             color: #059669;
         }
+
+        /* ASIN去重开关样式 */
+        .form-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+            margin-bottom: 0;
+            margin-left: 0 !important;
+            padding-left: 0 !important;
+        }
+
+        .switch-input {
+            display: none;
+        }
+
+        .switch-slider {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background-color: var(--border-color);
+            border-radius: 24px;
+            transition: 0.3s ease;
+        }
+
+        .switch-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .switch-input:checked + .switch-slider {
+            background-color: var(--accent-color);
+        }
+
+        .switch-input:checked + .switch-slider::before {
+            transform: translateX(20px);
+        }
+
+        .switch-label {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
     </style>
 {% endblock %}
 
@@ -598,7 +649,7 @@
     <div class="performance-main">
         <div class="page-header">
             <div>
-                <h1 class="page-title">{{ page_title|default:"Amazon新奇特主题" }}</h1>
+                <h1 class="page-title">{{ page_title|default:"Amazon新奇特" }}</h1>
                 <p class="page-subtitle"></p>
             </div>
             <div>
@@ -746,7 +797,14 @@
 
         <!-- 数据表格 -->
         <div class="data-section">
-            <h3 class="section-title" style="margin-bottom: 1.5rem;">产品列表</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title" style="margin-bottom: 0;">产品列表</h3>
+                <label class="form-switch">
+                    <input type="checkbox" class="switch-input" id="deduplicateSwitch" checked>
+                    <span class="switch-slider"></span>
+                    <span class="switch-label">是否去重 ASIN</span>
+                </label>
+            </div>
 
             <div class="table-container" id="productsTableContainer">
                 <table class="table">
@@ -1097,6 +1155,46 @@
             sort_order: 'desc'
         };
 
+        // ===== ASIN去重开关逻辑 =====
+        let currentDeduplicate = true; // 默认开启
+
+        // 从URL参数读取去重状态
+        function getDeduplicateFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const deduplicateParam = params.get('deduplicate');
+            if (deduplicateParam === null || deduplicateParam === 'on' || deduplicateParam === 'true') {
+                return true;
+            }
+            return false;
+        }
+
+        // 更新URL参数
+        function updateDeduplicateUrl(isEnabled) {
+            const url = new URL(window.location);
+            url.searchParams.set('deduplicate', isEnabled ? 'on' : 'off');
+            window.history.replaceState({}, '', url);
+        }
+
+        // 初始化开关
+        function setupDeduplicateSwitch() {
+            const switchElement = document.getElementById('deduplicateSwitch');
+            if (!switchElement) return;
+
+            currentDeduplicate = getDeduplicateFromUrl();
+            switchElement.checked = currentDeduplicate;
+
+            switchElement.addEventListener('change', function() {
+                currentDeduplicate = this.checked;
+                updateDeduplicateUrl(currentDeduplicate);
+                showLoading(true);
+                loadProductsTable().finally(() => {
+                    showLoading(false);
+                });
+                const status = currentDeduplicate ? '已开启' : '已关闭';
+                showNotification(`ASIN去重${status}`, 'info');
+            });
+        }
+
         let productsPagination = {
             page: 1,
             page_size: 20,
@@ -1208,7 +1306,8 @@
                 created_at_start: crawlDates.startDate,
                 created_at_end: crawlDates.endDate,
                 sort_field: currentFilters.sort_field,
-                sort_order: currentFilters.sort_order
+                sort_order: currentFilters.sort_order,
+                deduplicate: currentDeduplicate
             };
         }
 
@@ -1304,7 +1403,8 @@
                 const requestData = {
                     ...currentFilters,
                     page: productsPagination.page,
-                    page_size: productsPagination.page_size
+                    page_size: productsPagination.page_size,
+                    deduplicate: currentDeduplicate  // 确保去重参数被传递
                 };
 
                 const response = await fetch('/api/amazon-products/', {
@@ -2126,6 +2226,7 @@
             try {
                 setDefaultFilters();
                 initializeSortHeader();
+                setupDeduplicateSwitch();  // 初始化去重开关
                 await loadProductsTable();
                 updateBulkActions();
             } catch (error) {
