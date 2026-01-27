@@ -1,14 +1,15 @@
 from django.urls import path
 from theme.view import views, views_vocabulary, views_trend
 
+
 app_name = 'theme'
 
 urlpatterns = [
     # 页面渲染
-    path('theme/products/', views.product_list_page, name='theme_product_list'),
-    path('theme/vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
-    path('theme/vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
-    path('theme/trend', views_trend.trend_page, name='trend_page'),
+    path('Theme/products/', views.product_list_page, name='theme_product_list'),
+    path('vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
+    path('vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
+    path('Theme/trend',views_trend.trend_page, name='trend_page'),
 
     # 词库API
     path('api/tro-table/', views_vocabulary.api_tro_table_list, name='api_tro_table_list'),
@@ -49,4 +50,6 @@ urlpatterns = [
 
     # 侵权词搜索
     path('api/trend/search/', views_trend.trend_search, name='trend_search'),
+
+    
 ]
