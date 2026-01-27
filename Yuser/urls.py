@@ -1,6 +1,7 @@
 # Yuser/urls.py
 from django.urls import path
 from yuser import view_assessment_management
+from yuser.view import assessment_summary
 
 app_name = 'yuser'
 
@@ -8,6 +9,9 @@ urlpatterns = [
     # 新增动态版本
     # 绩效考核管理
     path('assessment/', view_assessment_management.AssessmentListView.as_view(), name='assessment_list'),
+
+    path('assessment/summary/', assessment_summary.AssessmentSummaryView.as_view(), name='assessment_summary'),
+    # 新增汇总页面
     path('assessment/create-batch/', view_assessment_management.CreateBatchAssessmentView.as_view(),
          name='assessment_create_batch'),
     path('assessment/<int:pk>/', view_assessment_management.AssessmentEditView.as_view(), name='assessment_detail'),
@@ -27,8 +31,7 @@ urlpatterns = [
          name='assessment_refresh_orders'),
     path('assessment/<int:pk>/delete/', view_assessment_management.AssessmentDeleteView.as_view(),
          name='assessment_delete'),
-path('assessment/batch-refresh-orders/', view_assessment_management.BatchRefreshOrdersView.as_view(),
-     name='assessment_batch_refresh_orders'),
-
+    path('assessment/batch-refresh-orders/', view_assessment_management.BatchRefreshOrdersView.as_view(),
+         name='assessment_batch_refresh_orders'),
 
 ]

@@ -1,0 +1,779 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}数据部需求进度 - Overlord{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tracking_management.css' %}">
+<style>
+.stat-card.total { border-left: 4px solid #10B981; }
+.stat-card.completed { border-left: 4px solid #10B981; }
+.stat-card.developing { border-left: 4px solid #3B82F6; }
+.stat-card.pending { border-left: 4px solid #F59E0B; }
+.stat-card.total .stat-value { color: #10B981; }
+.stat-card.completed .stat-value { color: #10B981; }
+.stat-card.developing .stat-value { color: #3B82F6; }
+.stat-card.pending .stat-value { color: #F59E0B; }
+
+.priority-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+.priority-P0 { background-color: #FEE2E2; color: #DC2626; }
+.priority-P1 { background-color: #FEF3C7; color: #D97706; }
+.priority-P2 { background-color: #DBEAFE; color: #1D4ED8; }
+.priority-P3 { background-color: #E5E7EB; color: #6B7280; }
+
+.status-pending { background-color: #FEF3C7; color: #D97706; }
+.status-claimed { background-color: #E0E7FF; color: #4338CA; }
+.status-developing { background-color: #DBEAFE; color: #1D4ED8; }
+.status-paused { background-color: #E5E7EB; color: #6B7280; }
+.status-completed { background-color: #C6F6D5; color: #22543D; }
+.status-cancelled { background-color: #FEE2E2; color: #DC2626; }
+
+.type-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+.type-system { background-color: #EDE9FE; color: #7C3AED; }
+.type-simple { background-color: #D1FAE5; color: #059669; }
+
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; backdrop-filter: blur(4px); align-items: center; justify-content: center; }
+.modal-overlay[style*="display: block"] { display: flex !important; }
+.modal-content { position: relative; background-color: var(--bg-primary); border-radius: 16px; padding: 2rem; width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow-heavy); border: 1px solid var(--border-color); z-index: 10000; }
+.modal-header { flex-shrink: 0; display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1.5rem; }
+.modal-title { font-size: 1.5rem; font-weight: 600; color: var(--text-primary); }
+.modal-close { background: none; border: none; color: var(--text-secondary); font-size: 1.5rem; cursor: pointer; padding: 0.25rem; border-radius: 4px; line-height: 1; }
+.modal-close:hover { background-color: var(--bg-secondary); color: var(--text-primary); }
+.modal-body { flex: 1; overflow-y: auto; padding-right: 0.5rem; }
+.modal-footer { flex-shrink: 0; padding-top: 1rem; border-top: 1px solid var(--border-color); margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem; }
+
+.form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.form-group { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+.form-group.full-width { flex: 100%; }
+.form-label { font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
+.form-control { background-color: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box; }
+.form-control:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 0.75rem center; padding-right: 2rem; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+.required::after { content: ' *'; color: #EF4444; }
+
+.custom-date-range { display: none; flex-direction: row; gap: 0.5rem; margin-top: 0.5rem; }
+.custom-date-range.show { display: flex; }
+.custom-date-range input { flex: 1; }
+
+.score-stats-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; color: white; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+.score-stats-info h4 { margin: 0 0 0.5rem 0; font-size: 1rem; opacity: 0.9; }
+.score-stats-info p { margin: 0; font-size: 0.875rem; opacity: 0.8; }
+.score-stats-value { text-align: right; }
+.score-stats-value .score-number { font-size: 2.5rem; font-weight: 700; line-height: 1; }
+.score-stats-value .score-label { font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="tracking-main">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">数据部需求进度</h1>
+            <p class="page-subtitle">管理和跟踪数据部开发需求进度</p>
+        </div>
+        <div>
+            <button class="btn" onclick="openModal()"><i class="fas fa-plus"></i> 新建需求</button>
+            <button class="btn btn-secondary" onclick="refreshData()"><i class="fas fa-sync-alt"></i> 刷新</button>
+        </div>
+    </div>
+
+    <div class="stats-dashboard">
+        <div class="stat-card total">
+            <div class="stat-label"><i class="fas fa-tasks"></i> 需求总数</div>
+            <div class="stat-value" id="statTotal">{{ stats.total }}</div>
+            <div class="stat-change">全部需求</div>
+        </div>
+        <div class="stat-card completed">
+            <div class="stat-label"><i class="fas fa-check-circle"></i> 已完成</div>
+            <div class="stat-value" id="statCompleted">{{ stats.completed }}</div>
+            <div class="stat-change">已交付</div>
+        </div>
+        <div class="stat-card developing">
+            <div class="stat-label"><i class="fas fa-code"></i> 开发中</div>
+            <div class="stat-value" id="statDeveloping">{{ stats.developing }}</div>
+            <div class="stat-change">进行中</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-label"><i class="fas fa-clock"></i> 待领取</div>
+            <div class="stat-value" id="statPending">{{ stats.pending }}</div>
+            <div class="stat-change">等待领取</div>
+        </div>
+    </div>
+
+    {% if show_score_stats %}
+    <div class="score-stats-card">
+        <div class="score-stats-info">
+            <h4><i class="fas fa-trophy"></i> {{ score_stats.developer_name }} - {{ score_stats.period }}</h4>
+            <p>已完成简单任务统计</p>
+        </div>
+        <div class="score-stats-value">
+            <div class="score-number">{{ score_stats.total_score }}</div>
+            <div class="score-label">难度系数总分（{{ score_stats.task_count }}个任务）</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="control-panel">
+        <div class="filter-row" style="flex-wrap: wrap;">
+            <div class="filter-group" style="flex: 2; min-width: 200px;">
+                <label class="filter-label">需求名称</label>
+                <input type="text" class="form-control" id="keywordFilter" placeholder="输入需求名称搜索..." value="{{ current_filters.keyword }}" onkeyup="if(event.key==='Enter') applyFilters()">
+            </div>
+
+            <div class="filter-group" style="min-width: 120px;">
+                <label class="filter-label">状态</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="statusFilter" onchange="applyFilters()">
+                        <option value="">全部状态</option>
+                        <option value="pending" {% if current_filters.status == 'pending' %}selected{% endif %}>待领取</option>
+                        <option value="claimed" {% if current_filters.status == 'claimed' %}selected{% endif %}>已领取</option>
+                        <option value="developing" {% if current_filters.status == 'developing' %}selected{% endif %}>开发中</option>
+                        <option value="paused" {% if current_filters.status == 'paused' %}selected{% endif %}>已暂停</option>
+                        <option value="completed" {% if current_filters.status == 'completed' %}selected{% endif %}>已完成</option>
+                        <option value="cancelled" {% if current_filters.status == 'cancelled' %}selected{% endif %}>已取消</option>
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+
+            <div class="filter-group" style="min-width: 100px;">
+                <label class="filter-label">优先级</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="priorityFilter" onchange="applyFilters()">
+                        <option value="">全部优先级</option>
+                        <option value="P0" {% if current_filters.priority == 'P0' %}selected{% endif %}>P0-紧急</option>
+                        <option value="P1" {% if current_filters.priority == 'P1' %}selected{% endif %}>P1-高</option>
+                        <option value="P2" {% if current_filters.priority == 'P2' %}selected{% endif %}>P2-中</option>
+                        <option value="P3" {% if current_filters.priority == 'P3' %}selected{% endif %}>P3-低</option>
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+
+            <div class="filter-group" style="min-width: 100px;">
+                <label class="filter-label">需求类型</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="typeFilter" onchange="applyFilters()">
+                        <option value="">全部类型</option>
+                        <option value="system" {% if current_filters.type == 'system' %}selected{% endif %}>系统</option>
+                        <option value="simple" {% if current_filters.type == 'simple' %}selected{% endif %}>任务</option>
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+
+            <div class="filter-group" style="min-width: 120px;">
+                <label class="filter-label">开发者</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="developerFilter" onchange="applyFilters()">
+                        <option value="">全部人员</option>
+                        {% for user in developers %}
+                        <option value="{{ user.id }}" {% if current_filters.developer == user.id|stringformat:"s" %}selected{% endif %}>{{ user.first_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+            </div>
+
+            <div class="filter-group" style="min-width: 150px;">
+                <label class="filter-label">完成时间</label>
+                <div class="select-wrapper">
+                    <select class="form-select" id="timeFilter" onchange="onTimeFilterChange()">
+                        <option value="" {% if current_filters.time_filter == '' %}selected{% endif %}>全部时间</option>
+                        <option value="this_month" {% if current_filters.time_filter == 'this_month' %}selected{% endif %}>当月</option>
+                        <option value="last_month" {% if current_filters.time_filter == 'last_month' %}selected{% endif %}>上个月</option>
+                        <option value="custom" {% if current_filters.time_filter == 'custom' %}selected{% endif %}>自定义</option>
+                    </select>
+                    <i class="fas fa-chevron-down select-arrow"></i>
+                </div>
+                <div class="custom-date-range {% if current_filters.time_filter == 'custom' %}show{% endif %}" id="customDateRange">
+                    <input type="date" class="form-control" id="customStart" value="{{ current_filters.custom_start }}">
+                    <span style="color: var(--text-secondary); align-self: center;">至</span>
+                    <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
+                </div>
+            </div>
+
+            <div class="filter-group" style="align-self: flex-end; min-width: 200px;">
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn" onclick="applyFilters()">应用筛选</button>
+                    <button class="btn btn-secondary" onclick="resetFilters()">重置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="data-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 class="section-title">需求列表</h3>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="requirementTable">
+                <thead>
+                    <tr>
+                        <th>需求名称</th>
+                        <th>难度系数</th>
+                        <th>需求人</th>
+                        <th>需求发布日期</th>
+                        <th>开发者</th>
+                        <th>需求领取日期</th>
+                        <th>开发开始日期</th>
+                        <th>预计完成时间</th>
+                        <th>完成日期</th>
+                        <th style="width: 200px;">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for req in requirements %}
+                    <tr data-id="{{ req.id }}" data-status="{{ req.status }}" data-developer="{{ req.developer.id|default:'' }}">
+                        <td>
+                            <a href="{% url 'data_req:detail' req.id %}" style="font-weight: 600; color: var(--accent-color); text-decoration: none;">{{ req.name }}</a>
+                            <div style="margin-top: 0.25rem;">
+                                <span class="type-badge type-{{ req.requirement_type }}" style="margin-right: 0.5rem;">{{ req.get_requirement_type_display }}</span>
+                                <span class="priority-badge priority-{{ req.priority }}" style="margin-right: 0.5rem;">{{ req.get_priority_display }}</span>
+                                <span class="status-badge status-{{ req.status }}">{{ req.get_status_display }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if req.requirement_type == 'simple' %}
+                            <span style="font-weight: 700; color: var(--accent-color);">{{ req.score|default:"-"|floatformat:1 }}</span>
+                            {% else %}
+                            <span style="color: var(--text-secondary);">-</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.requester.first_name|default:"-" }}</td>
+                        <td>{{ req.publish_date|date:"Y-m-d"|default:"-" }}</td>
+                        <td>{{ req.developer.first_name|default:"-" }}</td>
+                        <td>{{ req.claim_date|date:"Y-m-d"|default:"-" }}</td>
+                        <td>{{ req.start_date_display }}</td>
+                        <td>{{ req.expected_finish|date:"Y-m-d"|default:"-" }}</td>
+                        <td>{{ req.finish_date|date:"Y-m-d"|default:"-" }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-action" onclick="editRequirement({{ req.id }})" title="编辑"><i class="fas fa-edit"></i></button>
+                                {% if req.status == 'pending' and is_developer %}
+                                <button class="btn-action" onclick="changeStatus({{ req.id }}, 'claim')" title="领取任务" style="background: #3B82F6; color: white;"><i class="fas fa-hand-paper"></i></button>
+                                {% endif %}
+                                {% if req.status == 'claimed' %}
+                                    {% if req.developer == request.user %}
+                                    <button class="btn-action" onclick="changeStatus({{ req.id }}, 'start')" title="开始开发" style="background: #10B981; color: white;"><i class="fas fa-play"></i></button>
+                                    <button class="btn-action" onclick="changeStatusWithReason({{ req.id }}, 'unclaim', '退领原因')" title="退领任务" style="background: #6B7280; color: white;"><i class="fas fa-undo"></i></button>
+                                    {% endif %}
+                                    {% if req.developer == request.user or is_admin %}
+                                    <button class="btn-action" onclick="changeStatusWithReason({{ req.id }}, 'cancel', '取消原因')" title="取消任务" style="background: #EF4444; color: white;"><i class="fas fa-ban"></i></button>
+                                    {% endif %}
+                                {% endif %}
+                                {% if req.status == 'developing' and req.developer == request.user %}
+                                <button class="btn-action" onclick="changeStatusWithReason({{ req.id }}, 'pause', '暂停原因')" title="暂停开发" style="background: #F59E0B; color: white;"><i class="fas fa-pause"></i></button>
+                                <button class="btn-action" onclick="changeStatus({{ req.id }}, 'complete')" title="完成任务" style="background: #10B981; color: white;"><i class="fas fa-check"></i></button>
+                                <button class="btn-action" onclick="changeStatusWithReason({{ req.id }}, 'cancel', '取消原因')" title="取消任务" style="background: #EF4444; color: white;"><i class="fas fa-ban"></i></button>
+                                {% endif %}
+                                {% if req.status == 'paused' and req.developer == request.user %}
+                                <button class="btn-action" onclick="changeStatus({{ req.id }}, 'resume')" title="恢复开发" style="background: #3B82F6; color: white;"><i class="fas fa-play"></i></button>
+                                <button class="btn-action" onclick="changeStatusWithReason({{ req.id }}, 'cancel', '取消原因')" title="取消任务" style="background: #EF4444; color: white;"><i class="fas fa-ban"></i></button>
+                                {% endif %}
+                                {% if req.status == 'completed' and is_admin %}
+                                <button class="btn-action" onclick="changeStatus({{ req.id }}, 'restart')" title="重新开发" style="background: #6B7280; color: white;"><i class="fas fa-redo"></i></button>
+                                {% endif %}
+                                <button class="btn-action" onclick="deleteRequirement({{ req.id }})" title="删除" style="background: #DC2626; color: white;"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无需求数据</p>
+                            <p>点击"新建需求"创建第一个需求</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <div class="pagination-controls">
+            <div class="page-size-selector">
+                <label>每页显示：</label>
+                <select class="form-select" id="pageSize" onchange="changePageSize()">
+                    <option value="10" {% if paginator.per_page == 10 %}selected{% endif %}>10条</option>
+                    <option value="20" {% if paginator.per_page == 20 %}selected{% endif %}>20条</option>
+                    <option value="50" {% if paginator.per_page == 50 %}selected{% endif %}>50条</option>
+                </select>
+            </div>
+            <div class="pagination-buttons">
+                {% if page_obj.has_previous %}
+                <button class="pagination-btn" onclick="changePage({{ page_obj.previous_page_number }})"><i class="fas fa-chevron-left"></i> 上一页</button>
+                {% endif %}
+                <span class="pagination-btn active">{{ page_obj.number }}</span>
+                {% if page_obj.has_next %}
+                <button class="pagination-btn" onclick="changePage({{ page_obj.next_page_number }})">下一页 <i class="fas fa-chevron-right"></i></button>
+                {% endif %}
+            </div>
+            <div class="pagination-info">共 {{ paginator.count }} 条，第 {{ page_obj.number }}/{{ paginator.num_pages }} 页</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<div class="modal-overlay" id="requirementModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="modalTitle">新建需求</h5>
+            <button type="button" class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="requirementForm">
+                <input type="hidden" id="reqId" name="id">
+                <input type="hidden" id="originalDeveloperId" value="">
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label class="form-label required">需求名称</label>
+                        <input type="text" class="form-control" id="reqName" name="name" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label required">需求类型</label>
+                        <select class="form-control" id="reqType" name="requirement_type" onchange="toggleScoreField()">
+                            <option value="simple">任务</option>
+                            <option value="system">系统</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">优先级</label>
+                        <select class="form-control" id="reqPriority" name="priority">
+                            <option value="P0">P0-紧急</option>
+                            <option value="P1">P1-高</option>
+                            <option value="P2" selected>P2-中</option>
+                            <option value="P3">P3-低</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row" id="scoreRow">
+                    <div class="form-group">
+                        <label class="form-label">难度系数</label>
+                        <input type="number" step="0.1" class="form-control" id="reqScore" name="score" placeholder="如：3.5">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">发布日期</label>
+                        <input type="date" class="form-control" id="reqPublishDate" name="publish_date" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">父级需求（包含）</label>
+                        <select class="form-control" id="reqParent" name="parent">
+                            <option value="">无</option>
+                            {% for sys in systems %}
+                            <option value="{{ sys.id }}">[系统] {{ sys.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">延伸自（前置）</label>
+                        <select class="form-control" id="reqExtends" name="extends_from">
+                            <option value="">无</option>
+                            {% for task in simple_tasks %}
+                            <option value="{{ task.id }}">[任务] {{ task.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">需求人</label>
+                        <select class="form-control" id="reqRequester" name="requester">
+                            <option value="">无</option>
+                            {% for user in requesters %}
+                            <option value="{{ user.id }}">{{ user.first_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">开发者</label>
+                        <select class="form-control" id="reqDeveloper" name="developer" onchange="onDeveloperChange()">
+                            <option value="">未分配</option>
+                            {% for user in developers %}
+                            <option value="{{ user.id }}">{{ user.first_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <small id="developerHint" style="color: #10B981; display: none;"><i class="fas fa-info-circle"></i> 选择开发者将自动领取任务</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">预计完成时间</label>
+                        <input type="date" class="form-control" id="reqExpectedFinish" name="expected_finish">
+                    </div>
+                    <div class="form-group" id="finishDateGroup" style="display: none;">
+                        <label class="form-label">实际完成日期</label>
+                        <input type="date" class="form-control" id="reqFinishDate" name="finish_date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label class="form-label">备注</label>
+                        <textarea class="form-control" id="reqRemark" name="remark" rows="3"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+            <button type="button" class="btn" onclick="saveRequirement()">保存</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="unclaimReasonModal">
+    <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+            <h5 class="modal-title">取消开发者</h5>
+            <button type="button" class="modal-close" onclick="closeUnclaimModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i> 您正在取消已分配的开发者，任务将退回"待领取"状态。</p>
+            <div class="form-group">
+                <label class="form-label required">取消原因</label>
+                <textarea class="form-control" id="unclaimReasonInput" rows="3" placeholder="请填写取消开发者分配的原因..."></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeUnclaimModal()">取消</button>
+            <button type="button" class="btn" onclick="confirmUnclaimSave()" style="background: #EF4444;">确认取消</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let pendingSaveData = null;
+let needUnclaimReason = false;
+
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]')?.value || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+}
+
+function onTimeFilterChange() {
+    const timeFilter = document.getElementById('timeFilter').value;
+    const customDateRange = document.getElementById('customDateRange');
+    if (timeFilter === 'custom') {
+        customDateRange.classList.add('show');
+    } else {
+        customDateRange.classList.remove('show');
+    }
+}
+
+function openModal() {
+    document.getElementById('requirementForm').reset();
+    document.getElementById('reqId').value = '';
+    document.getElementById('originalDeveloperId').value = '';
+    document.getElementById('modalTitle').textContent = '新建需求';
+    document.getElementById('finishDateGroup').style.display = 'none';
+    document.getElementById('developerHint').style.display = 'block';
+    document.getElementById('requirementModal').style.display = 'block';
+    document.body.classList.add('modal-open');
+    document.getElementById('reqPublishDate').value = new Date().toISOString().split('T')[0];
+    toggleScoreField();
+}
+
+async function editRequirement(id) {
+    try {
+        const response = await fetch(`/data_req/api/detail/?id=${id}`);
+        const result = await response.json();
+        if (result.success) {
+            const data = result.data;
+            document.getElementById('reqId').value = data.id;
+            document.getElementById('reqName').value = data.name;
+            document.getElementById('reqType').value = data.requirement_type;
+            document.getElementById('reqPriority').value = data.priority;
+            document.getElementById('reqScore').value = data.score || '';
+            document.getElementById('reqParent').value = data.parent || '';
+            document.getElementById('reqExtends').value = data.extends_from || '';
+            document.getElementById('reqRequester').value = data.requester || '';
+            document.getElementById('reqDeveloper').value = data.developer || '';
+            document.getElementById('originalDeveloperId').value = data.developer || '';
+            document.getElementById('reqPublishDate').value = data.publish_date;
+            document.getElementById('reqExpectedFinish').value = data.expected_finish || '';
+            document.getElementById('reqRemark').value = data.remark || '';
+            if (data.status === 'completed' && data.finish_date) {
+                document.getElementById('reqFinishDate').value = data.finish_date;
+                document.getElementById('finishDateGroup').style.display = 'block';
+            } else {
+                document.getElementById('finishDateGroup').style.display = 'none';
+            }
+            const developerHint = document.getElementById('developerHint');
+            if (data.developer) {
+                developerHint.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 取消开发者将退回待领取状态，需填写原因';
+                developerHint.style.color = '#F59E0B';
+            } else {
+                developerHint.innerHTML = '<i class="fas fa-info-circle"></i> 选择开发者将自动领取任务';
+                developerHint.style.color = '#10B981';
+            }
+            developerHint.style.display = 'block';
+            toggleScoreField();
+            document.getElementById('modalTitle').textContent = '编辑需求';
+            document.getElementById('requirementModal').style.display = 'block';
+            document.body.classList.add('modal-open');
+        } else {
+            alert('获取数据失败：' + result.message);
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+}
+
+function closeModal() {
+    document.getElementById('requirementModal').style.display = 'none';
+    document.body.classList.remove('modal-open');
+    pendingSaveData = null;
+    needUnclaimReason = false;
+}
+
+function closeUnclaimModal() {
+    document.getElementById('unclaimReasonModal').style.display = 'none';
+    if (pendingSaveData) {
+        document.getElementById('reqDeveloper').value = document.getElementById('originalDeveloperId').value;
+    }
+}
+
+function toggleScoreField() {
+    const type = document.getElementById('reqType').value;
+    const scoreInput = document.getElementById('reqScore');
+    if (type === 'system') {
+        scoreInput.value = '';
+        scoreInput.disabled = true;
+        scoreInput.parentElement.style.opacity = '0.5';
+    } else {
+        scoreInput.disabled = false;
+        scoreInput.parentElement.style.opacity = '1';
+    }
+}
+
+function onDeveloperChange() {
+    const originalId = document.getElementById('originalDeveloperId').value;
+    const currentId = document.getElementById('reqDeveloper').value;
+    const isEdit = !!document.getElementById('reqId').value;
+    if (!isEdit) return;
+    const hint = document.getElementById('developerHint');
+    if (originalId && !currentId) {
+        hint.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 保存后将退回待领取状态，需填写原因';
+        hint.style.color = '#EF4444';
+    } else if (!originalId && currentId) {
+        hint.innerHTML = '<i class="fas fa-check-circle"></i> 保存后将自动领取任务';
+        hint.style.color = '#10B981';
+    } else {
+        hint.innerHTML = '<i class="fas fa-info-circle"></i> 开发者未变更';
+        hint.style.color = '#6B7280';
+    }
+}
+
+async function saveRequirement() {
+    const id = document.getElementById('reqId').value;
+    const isEdit = !!id;
+    const originalDeveloperId = document.getElementById('originalDeveloperId').value;
+    const currentDeveloperId = document.getElementById('reqDeveloper').value;
+    const data = {
+        name: document.getElementById('reqName').value,
+        requirement_type: document.getElementById('reqType').value,
+        priority: document.getElementById('reqPriority').value,
+        score: document.getElementById('reqScore').value,
+        parent: document.getElementById('reqParent').value,
+        extends_from: document.getElementById('reqExtends').value,
+        requester: document.getElementById('reqRequester').value,
+        developer: currentDeveloperId,
+        publish_date: document.getElementById('reqPublishDate').value,
+        expected_finish: document.getElementById('reqExpectedFinish').value,
+        remark: document.getElementById('reqRemark').value
+    };
+    if (isEdit) {
+        data.id = id;
+        data.finish_date = document.getElementById('reqFinishDate').value;
+    }
+    if (!data.name || !data.publish_date) {
+        alert('请填写必填项：需求名称、发布日期');
+        return;
+    }
+    if (isEdit && originalDeveloperId && !currentDeveloperId) {
+        needUnclaimReason = true;
+        pendingSaveData = data;
+        document.getElementById('unclaimReasonModal').style.display = 'block';
+        return;
+    }
+    await doSave(data);
+}
+
+async function confirmUnclaimSave() {
+    const reason = document.getElementById('unclaimReasonInput').value.trim();
+    if (!reason) {
+        alert('请填写取消原因');
+        return;
+    }
+    if (pendingSaveData) {
+        pendingSaveData.unclaim_reason = reason;
+        await doSave(pendingSaveData);
+        closeUnclaimModal();
+        document.getElementById('unclaimReasonInput').value = '';
+    }
+}
+
+async function doSave(data) {
+    const isEdit = !!data.id;
+    try {
+        const url = isEdit ? '/data_req/api/update/' : '/data_req/api/create/';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if (result.success) {
+            closeModal();
+            window.location.reload();
+        } else {
+            if (result.message === 'need_reason') {
+                needUnclaimReason = true;
+                pendingSaveData = data;
+                document.getElementById('unclaimReasonModal').style.display = 'block';
+            } else {
+                alert('保存失败：' + result.message);
+            }
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+}
+
+async function changeStatus(requirementId, action) {
+    const actionNames = { 'claim': '领取任务', 'start': '开始开发', 'resume': '恢复开发', 'complete': '完成任务', 'restart': '重新开发' };
+    if (!confirm(`确定要${actionNames[action]}吗？`)) return;
+    try {
+        const response = await fetch('/data_req/api/status/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ requirement_id: requirementId, action: action })
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('操作失败：' + result.message);
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+}
+
+async function changeStatusWithReason(requirementId, action, reasonTitle) {
+    const reason = prompt(`请输入${reasonTitle}：`);
+    if (reason === null) return;
+    if (reason.trim() === '') {
+        alert(`${reasonTitle}不能为空`);
+        return;
+    }
+    const actionNames = { 'unclaim': '退领任务', 'pause': '暂停开发', 'cancel': '取消任务' };
+    if (!confirm(`确定要${actionNames[action]}吗？\n原因：${reason}`)) return;
+    try {
+        const response = await fetch('/data_req/api/status/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ requirement_id: requirementId, action: action, reason: reason })
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('操作失败：' + result.message);
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+}
+
+async function deleteRequirement(id) {
+    if (!confirm('确定要删除这个需求吗？此操作不可恢复。')) return;
+    try {
+        const response = await fetch('/data_req/api/delete/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ id: id })
+        });
+        const result = await response.json();
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert('删除失败：' + result.message);
+        }
+    } catch (error) {
+        alert('请求失败：' + error.message);
+    }
+}
+
+async function refreshData() {
+    try {
+        const response = await fetch('/data_req/api/stats/');
+        const result = await response.json();
+        if (result.success) {
+            document.getElementById('statTotal').textContent = result.data.total;
+            document.getElementById('statCompleted').textContent = result.data.completed;
+            document.getElementById('statDeveloping').textContent = result.data.developing;
+            document.getElementById('statPending').textContent = result.data.pending;
+        }
+    } catch (error) {
+        console.error('刷新统计失败:', error);
+    }
+}
+
+function applyFilters() {
+    const params = new URLSearchParams();
+    const keyword = document.getElementById('keywordFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const priority = document.getElementById('priorityFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const developer = document.getElementById('developerFilter').value;
+    const timeFilter = document.getElementById('timeFilter').value;
+    if (keyword) params.append('keyword', keyword);
+    if (status) params.append('status', status);
+    if (priority) params.append('priority', priority);
+    if (type) params.append('type', type);
+    if (developer) params.append('developer', developer);
+    if (timeFilter) {
+        params.append('time_filter', timeFilter);
+        if (timeFilter === 'custom') {
+            const customStart = document.getElementById('customStart').value;
+            const customEnd = document.getElementById('customEnd').value;
+            if (customStart) params.append('custom_start', customStart);
+            if (customEnd) params.append('custom_end', customEnd);
+        }
+    }
+    window.location.href = '/data_req/?' + params.toString();
+}
+
+function resetFilters() {
+    window.location.href = '/data_req/';
+}
+
+document.getElementById('requirementModal').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+});
+document.getElementById('unclaimReasonModal').addEventListener('click', function (e) {
+    if (e.target === this) closeUnclaimModal();
+});
+document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+        closeModal();
+        closeUnclaimModal();
+    }
+});
+document.addEventListener('DOMContentLoaded', function () {
+    refreshData();
+    onTimeFilterChange();
+});
+</script>
+{% endblock %}

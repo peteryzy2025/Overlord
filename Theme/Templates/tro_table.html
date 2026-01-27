@@ -10,13 +10,58 @@
             --accent-color: #3B82F6;
             --accent-hover: #2563EB;
         }
+
         /* 简单调整表格列宽 */
-        .col-id { width: 80px; }
-        .col-type { width: 120px; }
-        .col-time { width: 180px; }
-        .col-action { width: 140px; }
-        
-        /* 模态框样式 - 参考用户管理 */
+        .col-id {
+            width: 80px;
+        }
+
+        .col-type {
+            width: 120px;
+        }
+
+        .col-time {
+            width: 180px;
+        }
+
+        .col-action {
+            width: 140px;
+        }
+
+        /* 搜索模式标签样式（放在输入框内） */
+        .search-mode-tag {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+            user-select: none;
+        }
+
+        .search-mode-tag:hover {
+            opacity: 0.8;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .search-mode-tag.fuzzy {
+            background-color: #DBEAFE;
+            color: #1D4ED8;
+            border-color: #93C5FD;
+        }
+
+        .search-mode-tag.exact {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+            border-color: #FCA5A5;
+        }
+
+        /* 模态框样式 */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -70,7 +115,7 @@
             border-radius: 4px;
             transition: all 0.2s;
         }
-        
+
         .close-btn:hover {
             background-color: #f3f4f6;
             color: #111827;
@@ -93,7 +138,7 @@
             color: #374151;
             font-size: 0.875rem;
         }
-        
+
         .form-control, .form-select {
             width: 100%;
             background-color: #f9fafb;
@@ -120,7 +165,7 @@
             justify-content: flex-end;
             gap: 1rem;
         }
-        
+
         .btn {
             padding: 0.5rem 1rem;
             border-radius: 8px;
@@ -129,30 +174,30 @@
             transition: all 0.2s;
             border: none;
         }
-        
+
         .btn-primary {
             background-color: var(--accent-color);
             color: white;
         }
-        
+
         .btn-primary:hover {
             background-color: var(--accent-hover);
         }
-        
+
         .btn-secondary {
             background-color: #f3f4f6;
             color: #374151;
         }
-        
+
         .btn-secondary:hover {
             background-color: #e5e7eb;
         }
-        
+
         .btn-danger {
             background-color: #ef4444;
             color: white;
         }
-        
+
         .btn-danger:hover {
             background-color: #dc2626;
         }
@@ -191,13 +236,19 @@
         <!-- 筛选面板 -->
         <div class="control-panel">
             <div class="filter-row">
+                <!-- 侵权词输入框 - 带内部搜索模式切换标签 -->
                 <div class="filter-group">
                     <label class="filter-label">侵权词</label>
-                    <input type="text" class="form-control" id="themeNameFilter"
-                           placeholder="输入侵权词搜索"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
+                    <div style="position: relative;">
+                        <input type="text" class="form-control" id="themeNameFilter"
+                               placeholder="输入侵权词搜索"
+                               style="padding-right: 50px;"
+                               onkeyup="if(event.key==='Enter') applyFilters()">
+                        <span class="search-mode-tag fuzzy" id="searchModeTag">模糊</span>
+                        <input type="checkbox" class="switch-input" id="fuzzySearchSwitch" checked style="display: none;">
+                    </div>
                 </div>
-                
+
                 <div class="filter-group">
                     <label class="filter-label">类型码</label>
                     <select class="form-select" id="nameTypeFilter" onchange="applyFilters()">
@@ -234,16 +285,21 @@
                     <tr>
                         <th class="col-id">ID</th>
                         <th class="sortable" data-field="theme_name" onclick="handleSort('theme_name')">侵权词</th>
-                        <th class="sortable col-type" data-field="name_type" onclick="handleSort('name_type')">类型码</th>
-                        <th class="sortable col-time" data-field="create_time" onclick="handleSort('create_time')">创建时间</th>
-                        <th class="sortable col-time" data-field="update_time" onclick="handleSort('update_time')">更新时间</th>
+                        <th class="sortable col-type" data-field="name_type" onclick="handleSort('name_type')">类型码
+                        </th>
+                        <th class="sortable col-time" data-field="create_time" onclick="handleSort('create_time')">
+                            创建时间
+                        </th>
+                        <th class="sortable col-time" data-field="update_time" onclick="handleSort('update_time')">
+                            更新时间
+                        </th>
                         <th>创建人</th>
                         <th class="col-action">操作</th>
                     </tr>
                     </thead>
                     <tbody id="tableBody">
                     <tr>
-                        <td colspan="5" class="empty-state">
+                        <td colspan="7" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>数据加载中...</p>
                         </td>
@@ -315,7 +371,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- 删除确认弹窗 -->
     <div class="modal-overlay" id="deleteModal">
         <div class="modal-content" style="width: 90%; max-width: 400px;">
@@ -327,7 +383,8 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="deleteRecordId">
-                <p style="color: #4b5563; font-size: 1rem; line-height: 1.5;">确定要删除该侵权词记录吗？<br><span style="color: #ef4444; font-size: 0.875rem;">此操作无法撤销。</span></p>
+                <p style="color: #4b5563; font-size: 1rem; line-height: 1.5;">确定要删除该侵权词记录吗？<br><span
+                        style="color: #ef4444; font-size: 0.875rem;">此操作无法撤销。</span></p>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
@@ -343,6 +400,7 @@
         let currentFilters = {
             theme_name: '',
             name_type: '',
+            fuzzy_search: true,
             sort_field: 'update_time',
             sort_order: 'desc'
         };
@@ -369,11 +427,27 @@
             };
         }
 
+        // ===== 更新搜索模式显示 =====
+        function updateSearchModeText() {
+            const isFuzzy = document.getElementById('fuzzySearchSwitch').checked;
+            const tag = document.getElementById('searchModeTag');
+            if (tag) {
+                if (isFuzzy) {
+                    tag.textContent = '模糊';
+                    tag.className = 'search-mode-tag fuzzy';
+                } else {
+                    tag.textContent = '精确';
+                    tag.className = 'search-mode-tag exact';
+                }
+            }
+        }
+
         // ===== 筛选逻辑 =====
         function getCurrentFilters() {
             return {
                 theme_name: document.getElementById('themeNameFilter').value.trim(),
                 name_type: document.getElementById('nameTypeFilter').value.trim(),
+                fuzzy_search: document.getElementById('fuzzySearchSwitch').checked,
                 sort_field: currentFilters.sort_field,
                 sort_order: currentFilters.sort_order
             };
@@ -382,7 +456,9 @@
         function setDefaultFilters() {
             document.getElementById('themeNameFilter').value = '';
             document.getElementById('nameTypeFilter').value = '';
+            document.getElementById('fuzzySearchSwitch').checked = true;
             document.getElementById('pageSize').value = '20';
+            updateSearchModeText(); // 重置时更新标签
         }
 
         async function resetFilters(event) {
@@ -486,13 +562,13 @@
             } catch (error) {
                 console.error('加载错误:', error);
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="empty-state">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>数据请求失败: ${error.message}</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
                 paginationControls.style.display = 'none';
             } finally {
                 showLoading(false);
@@ -503,22 +579,21 @@
             const tbody = document.getElementById('tableBody');
             if (!list || list.length === 0) {
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>暂无数据</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无数据</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
             tbody.innerHTML = list.map(item => {
-                // 判断权限
                 const isCreator = item.created_by === currentUser;
                 const canEdit = isAdmin || isCreator;
                 const canDelete = isAdmin;
-                
+
                 let actions = '';
                 if (canEdit) {
                     actions += `<button class="btn btn-sm btn-primary" style="margin-right: 0.5rem;" onclick="showEditModal(${item.id}, '${item.theme_name.replace(/'/g, "\\'")}', ${item.name_type})">编辑</button>`;
@@ -526,18 +601,19 @@
                 if (canDelete) {
                     actions += `<button class="btn btn-sm btn-danger" onclick="showDeleteModal(${item.id})">删除</button>`;
                 }
-                
+
                 return `
-                <tr>
-                    <td>${item.id}</td>
-                    <td>${item.theme_name || '-'}</td>
-                    <td>${item.name_type_desc || item.name_type || '-'}</td>
-                    <td>${item.create_time || '-'}</td>
-                    <td>${item.update_time || '-'}</td>
-                    <td>${item.created_by || '-'}</td>
-                    <td>${actions}</td>
-                </tr>
-            `}).join('');
+                    <tr>
+                        <td>${item.id}</td>
+                        <td>${item.theme_name || '-'}</td>
+                        <td>${item.name_type_desc || item.name_type || '-'}</td>
+                        <td>${item.create_time || '-'}</td>
+                        <td>${item.update_time || '-'}</td>
+                        <td>${item.created_by || '-'}</td>
+                        <td>${actions}</td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         // ===== 分页渲染 =====
@@ -552,8 +628,8 @@
             let buttonsHTML = '';
 
             buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
-        <i class="fas fa-chevron-left"></i> 上一页
-    </button>`;
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>`;
 
             const maxButtons = 7;
             let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
@@ -582,8 +658,8 @@
             }
 
             buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-        下一页 <i class="fas fa-chevron-right"></i>
-    </button>`;
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>`;
 
             buttonsContainer.innerHTML = buttonsHTML;
         }
@@ -607,6 +683,16 @@
             showLoading(true);
             try {
                 setDefaultFilters();
+
+                // 绑定搜索模式标签点击事件
+                document.getElementById('searchModeTag').addEventListener('click', function() {
+                    const checkbox = document.getElementById('fuzzySearchSwitch');
+                    checkbox.checked = !checkbox.checked;
+                    updateSearchModeText();
+                    const mode = checkbox.checked ? '模糊搜索（包含匹配）' : '精确搜索（完全匹配）';
+                    showNotification(`已切换为：${mode}`, 'info');
+                });
+
                 await applyFilters();
             } catch (error) {
                 console.error('初始化错误:', error);
@@ -624,7 +710,7 @@
             document.getElementById('newNameType').value = '';
             document.getElementById('createModal').style.display = 'flex';
         }
-        
+
         function showEditModal(id, name, type) {
             document.getElementById('modalTitle').textContent = '编辑侵权词';
             document.getElementById('editRecordId').value = id;
@@ -636,12 +722,12 @@
         function closeCreateModal() {
             document.getElementById('createModal').style.display = 'none';
         }
-        
+
         function showDeleteModal(id) {
             document.getElementById('deleteRecordId').value = id;
             document.getElementById('deleteModal').style.display = 'flex';
         }
-        
+
         function closeDeleteModal() {
             document.getElementById('deleteModal').style.display = 'none';
         }
@@ -667,8 +753,7 @@
 
             try {
                 const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-                
-                // 根据是否有ID判断是新增还是更新
+
                 const url = recordId ? '{% url "theme:api_update_tro_record" %}' : '{% url "theme:api_create_tro_record" %}';
                 const payload = {
                     theme_name: themeName,
@@ -677,7 +762,7 @@
                 if (recordId) {
                     payload.id = recordId;
                 }
-                
+
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -692,14 +777,12 @@
                 if (result.success) {
                     showNotification(recordId ? '更新成功' : '创建成功', 'success');
                     closeCreateModal();
-                    
+
                     if (!recordId) {
-                        // 新增时跳到第一页
                         currentFilters.sort_field = 'create_time';
                         currentFilters.sort_order = 'desc';
                         pagination.page = 1;
                     }
-                    // 无论是新增还是编辑，都刷新列表
                     loadTableData();
                 } else {
                     showNotification(result.message || '操作失败', 'error');
@@ -712,26 +795,26 @@
                 btn.textContent = originalText;
             }
         }
-        
+
         async function submitDelete() {
             const recordId = document.getElementById('deleteRecordId').value;
             if (!recordId) return;
-            
+
             const btn = document.getElementById('deleteBtn');
             const originalText = btn.textContent;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 删除中...';
-            
+
             try {
                 const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-                
+
                 const response = await fetch('{% url "theme:api_delete_tro_record" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify({ id: recordId })
+                    body: JSON.stringify({id: recordId})
                 });
 
                 const result = await response.json();
@@ -753,13 +836,13 @@
         }
 
         // 点击遮罩关闭
-        document.getElementById('createModal').addEventListener('click', function(e) {
+        document.getElementById('createModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeCreateModal();
             }
         });
-        
-        document.getElementById('deleteModal').addEventListener('click', function(e) {
+
+        document.getElementById('deleteModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeDeleteModal();
             }
