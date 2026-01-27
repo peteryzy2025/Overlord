@@ -158,6 +158,25 @@
             color: #dc2626;
         }
 
+        /* 风险词颜色样式 */
+        .trend-keyword.risk-high {
+            color: #dc2626;
+            border-color: #dc2626;
+            background: rgba(220, 38, 38, 0.05);
+            font-weight: 600;
+        }
+
+        .trend-keyword.risk-medium {
+            color: #d97706;
+            border-color: #d97706;
+            background: rgba(217, 119, 6, 0.05);
+            font-weight: 600;
+        }
+
+        .trend-keyword.risk-low {
+            color: var(--text-secondary);
+        }
+
         .trend-keywords {
             list-style: none;
             margin: 0;
@@ -329,7 +348,7 @@
             <div class="trend-card">
                 <div class="trend-card-header">
                     <div class="trend-card-title">风险等级</div>
-                    
+
                 </div>
                 <div>
                     <span class="risk-level risk-medium" id="riskLevelText">待判断</span>
@@ -443,11 +462,32 @@
                     throw new Error(data?.error || `请求失败 (${resp.status})`);
                 }
 
-                if (riskLevelText) riskLevelText.textContent = `已提交：${data?.query ?? query}`;
+                // 更新风险等级卡片
+                if (riskLevelText) {
+                    riskLevelText.textContent = data?.theme_risk_text || '低风险';
+
+                    // 更新风险等级颜色类
+                    riskLevelText.classList.remove('risk-low', 'risk-medium', 'risk-high');
+                    const riskLevelClass = `risk-${data?.theme_risk_level || 'low'}`;
+                    riskLevelText.classList.add(riskLevelClass);
+                }
 
                 // 存储商标详情数据和侵权词库详情数据
                 usptoDetailsData = data.uspto_details || {};
                 troDetailsData = data.tro_details || {};
+
+                // 辅助函数：查找词的风险等级（忽略大小写）
+                function getRiskLevel(word) {
+                    if (!data?.word_risk_map) return 'low';
+                    const wordLower = word.toLowerCase();
+                    // 遍历 word_risk_map 查找匹配的词（忽略大小写）
+                    for (const [key, riskLevel] of Object.entries(data.word_risk_map)) {
+                        if (key.toLowerCase() === wordLower) {
+                            return riskLevel;
+                        }
+                    }
+                    return 'low';
+                }
 
                 // 重置侵权词库风险类型显示
                 const troRiskTypeDisplay = document.getElementById('troRiskTypeDisplay');
@@ -458,7 +498,11 @@
                 if (usptoKeywords) {
                     if (data.uspto_keywords && data.uspto_keywords.length > 0) {
                         usptoKeywords.innerHTML = data.uspto_keywords
-                            .map(keyword => `<li class="trend-keyword" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`)
+                            .map(keyword => {
+                                const riskLevel = getRiskLevel(keyword);
+                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                                return `<li class="trend-keyword ${riskClass}" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                            })
                             .join('');
                     } else {
                         usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
@@ -470,7 +514,11 @@
                 if (riskKeywords) {
                     if (data.tro_keywords && data.tro_keywords.length > 0) {
                         riskKeywords.innerHTML = data.tro_keywords
-                            .map(keyword => `<li class="trend-keyword" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`)
+                            .map(keyword => {
+                                const riskLevel = getRiskLevel(keyword);
+                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                                return `<li class="trend-keyword ${riskClass}" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                            })
                             .join('');
                     } else {
                         riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';

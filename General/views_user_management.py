@@ -235,7 +235,8 @@ def create_user_api(request):
                 # 验证管理员权限设置：只有ID为555的用户可以设置code 555
                 if 555 in permissions and request.user.id != 555:
                     raise Exception("只有超级管理员(ID:555)可以设置管理员权限")
-                
+                if 5555 in permissions and request.user.id != 555:
+                    raise Exception("只有超级管理员(ID:555)可以设置开发管理员权限")
                 permission_objs = PermissionConfig.objects.filter(code__in=permissions)
                 user.permission_configs.set(permission_objs)
 
@@ -338,6 +339,14 @@ def update_user_api(request, user_id):
                     return JsonResponse({
                         'success': False,
                         'error': '只有超级管理员(ID:555)可以授予或撤销管理员权限'
+                    }, status=403)
+                is_removing_admin = (5555 in current_permissions) and (5555 not in new_permissions)
+                is_adding_admin = (5555 not in current_permissions) and (5555 in new_permissions)
+
+                if (is_removing_admin or is_adding_admin) and request.user.id != 555:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '只有超级管理员(ID:555)可以授予或撤销开发管理员权限'
                     }, status=403)
                 
                 permission_objs = PermissionConfig.objects.filter(code__in=new_permissions)
