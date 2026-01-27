@@ -15,7 +15,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 # 导入你的模型
-from .models import AmazonProduct, ProductRankHistory, AmazonThemeNovelty, ThemeRecord, ThemeDailyData
+from theme.models import AmazonProduct, ProductRankHistory, AmazonThemeNovelty, ThemeRecord, ThemeDailyData
 
 
 # ============================================
@@ -72,7 +72,7 @@ def product_list_page(request):
     )
 
     context = {
-        'page_title': 'Amazon新奇特主题',
+        'page_title': 'Amazon新奇特',
         'active_nav': 'theme_products',
         'stats': stats,
         'latest_deal_stats': latest_deal_stats,
@@ -100,38 +100,66 @@ def api_amazon_products(request):
         # 1. 解析请求数据
         data = json.loads(request.body)
 
+        # 获取去重标识，默认为True（开启）
+        deduplicate = data.get('deduplicate', True)
+        if isinstance(deduplicate, str):
+            deduplicate = deduplicate.lower() in ('true', 'on', '1', 'yes')
+
         # 2. 基础查询集：基于每日数据
-        queryset = ThemeDailyData.objects.select_related('product').all()  # ← 修复：product_id → product
+        queryset = ThemeDailyData.objects.select_related('product').all()
+
+        # ASIN去重逻辑
+        if deduplicate:
+            from django.db.models import Max
+
+            # 获取每个ASIN的最新crawl_date记录
+            latest_records = ThemeDailyData.objects.values('product__asin').annotate(
+                latest_crawl_date=Max('crawl_date'),
+                latest_crawled_at=Max('crawled_at')
+            )
+
+            # 构建去重条件
+            dedup_conditions = Q()
+            for record in latest_records:
+                dedup_conditions |= (
+                        Q(product__asin=record['product__asin']) &
+                        Q(crawl_date=record['latest_crawl_date']) &
+                        Q(crawled_at=record['latest_crawled_at'])
+                )
+
+            queryset = queryset.filter(dedup_conditions)
 
         # 3. 应用筛选条件
 
         # ASIN筛选（精确或模糊）
         asin_filter = data.get('asin', '').strip()
         if asin_filter:
-            queryset = queryset.filter(product__asin__icontains=asin_filter)  # ← 修复：product_id__ → product__
+            queryset = queryset.filter(product__asin__icontains=asin_filter)
 
         # 产品搜索（同时匹配标题和主题）
-        product_filter = data.get('title', '').strip()
-        subject_filter = data.get('subject', '').strip()
+        product_filter = data.get('title', '').strip()  # 前端productFilter映射到title
+        subject_filter = data.get('subject', '').strip()  # 前端productFilter也映射到subject
 
         # 如果有搜索关键词，合并标题和主题的筛选（OR逻辑）
         if product_filter or subject_filter:
+            # 使用相同的搜索词
             search_keyword = product_filter or subject_filter
             queryset = queryset.filter(
-                Q(product__title__icontains=search_keyword) |  # ← 修复
-                Q(product__title_translation__icontains=search_keyword) |  # ← 修复
-                Q(product__subject__icontains=search_keyword) |  # ← 修复
-                Q(product__subject_translation__icontains=search_keyword)  # ← 修复
+                Q(product__title__icontains=search_keyword) |
+                Q(product__title_translation__icontains=search_keyword) |
+                Q(product__subject__icontains=search_keyword) |
+                Q(product__subject_translation__icontains=search_keyword)
             )
 
         # 产品类型筛选（基于 is_latest_deal）
         is_latest_deal = data.get('product_type', '').strip()
         if is_latest_deal:
-            queryset = queryset.filter(product__is_latest_deal=(is_latest_deal == 'true'))  # ← 修复
+            queryset = queryset.filter(product__is_latest_deal=(is_latest_deal == 'true'))
 
         # 风险等级筛选（基于数据库侵权等级 infringement_level）
         risk_level = data.get('risk_level', '').strip()
         if risk_level:
+            # 筛选最新记录的侵权等级等于指定等级的产品
             queryset = queryset.filter(
                 product__ai_records__infringement_level=risk_level
             ).distinct()
@@ -143,18 +171,18 @@ def api_amazon_products(request):
         if launch_date_start:
             try:
                 start_date = datetime.strptime(launch_date_start, '%Y-%m-%d').date()
-                queryset = queryset.filter(product__launch_date__gte=start_date)  # ← 修复
+                queryset = queryset.filter(product__launch_date__gte=start_date)
             except ValueError:
                 pass
 
         if launch_date_end:
             try:
                 end_date = datetime.strptime(launch_date_end, '%Y-%m-%d').date()
-                queryset = queryset.filter(product__launch_date__lte=end_date)  # ← 修复
+                queryset = queryset.filter(product__launch_date__lte=end_date)
             except ValueError:
                 pass
 
-        # 爬取日期范围筛选
+        # 爬取日期范围筛选 (created_at_start/end 实际对应 crawl_date)
         crawled_at_start = data.get('created_at_start', '').strip()
         crawled_at_end = data.get('created_at_end', '').strip()
 
@@ -178,18 +206,19 @@ def api_amazon_products(request):
 
         # 映射前端排序字段到模型字段
         sort_map = {
-            'subject': 'product__subject',  # ← 修复
-            'launch_date': 'product__launch_date',  # ← 修复
-            'created_at': 'crawl_date',
-            'latest_crawled_at': 'crawled_at',
-            'is_latest_deal': 'product__is_latest_deal',  # ← 修复
-            'product_type': 'product__is_latest_deal',  # ← 修复
+            'subject': 'product__subject',
+            'launch_date': 'product__launch_date',
+            'created_at': 'crawl_date',  # 兼容旧字段名
+            'latest_crawled_at': 'crawled_at',  # 对应具体记录的抓取时间
+            'is_latest_deal': 'product__is_latest_deal',
+            'product_type': 'product__is_latest_deal',
             'score': 'score',
             'appear_count': 'appear_count',
         }
 
         real_sort_field = sort_map.get(sort_field, 'crawl_date')
 
+        # 处理降序排序
         if sort_order == 'desc':
             real_sort_field = f'-{real_sort_field}'
 
@@ -197,7 +226,7 @@ def api_amazon_products(request):
 
         # 4.5. 构建主题数据查找字典 (通过ASIN关联)
         # 收集所有ASIN
-        all_asins = set(q.product.asin for q in queryset)  # ← 修复：product_id → product
+        all_asins = set(q.product.asin for q in queryset)
 
         # 预取主题数据
         theme_novelties = AmazonThemeNovelty.objects.filter(
@@ -223,6 +252,7 @@ def api_amazon_products(request):
         page = data.get('page', 1)
         page_size = data.get('page_size', 20)
 
+        # 验证页码和页大小
         try:
             page = int(page)
             if page < 1:
@@ -249,7 +279,7 @@ def api_amazon_products(request):
         # 6. 序列化数据
         history_list = []
         for history in current_page:
-            product = history.product  # ← 修复：product_id → product
+            product = history.product
 
             # 格式化日期字段
             launch_date = None
@@ -262,37 +292,46 @@ def api_amazon_products(request):
             daily_data = theme_data.get('daily_data')
 
             history_list.append({
-                'id': history.id,
-                'asin': product.asin,
+                'id': history.id,  # 记录ID
+                'asin': product.asin,  # 产品ASIN
                 'title': product.title or '',
                 'subject': product.subject or '',
                 'subject_translation': product.subject_translation or '',
                 'image_url': product.image_url or '',
                 'launch_date': launch_date,
                 'created_at': product.created_at.strftime('%Y-%m-%d %H:%M:%S') if product.created_at else None,
+                # 产品首次抓取时间
                 'latest_crawled_at': history.crawled_at.strftime('%Y-%m-%d %H:%M:%S') if history.crawled_at else None,
+                # 当前记录抓取时间
                 'is_latest_deal': product.is_latest_deal,
+                # NEW: ThemeRecord 数据
                 'theme_record': {
                     'infringement_words': theme_record.infringement_words if theme_record else None,
                     'infringement_level': theme_record.infringement_level if theme_record else None,
                     'ai_infringement_words': theme_record.ai_infringement_words if theme_record else None,
                     'ai_infringement_level': theme_record.ai_infringement_level if theme_record else None,
                 } if theme_record else None,
+                # NEW: ThemeDailyData 数据
                 'daily_data': {
                     'score': daily_data.score if daily_data else None,
                     'appear_count': daily_data.appear_count if daily_data else None,
                 } if daily_data else None,
             })
 
-        # 7. 计算统计数据
+        # 7. 计算统计数据 (保持产品维度的统计，除了列表总数)
         total_records = paginator.count
+
+        # 产品总数 (独立查询)
         total_products = AmazonThemeNovelty.objects.count()
+
+        # 本月新增产品数量 (独立查询)
         now = timezone.now()
         first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         monthly_count = AmazonThemeNovelty.objects.filter(
             created_at__gte=first_day_of_month
         ).count()
 
+        # 产品类型分布 (独立查询，基于 is_latest_deal)
         latest_deal_distribution = {
             'latest_deal_count': AmazonThemeNovelty.objects.filter(is_latest_deal=True).count(),
             'latest_arrival_count': AmazonThemeNovelty.objects.filter(is_latest_deal=False).count(),
@@ -302,7 +341,7 @@ def api_amazon_products(request):
         return JsonResponse({
             'success': True,
             'data': {
-                'products': history_list,
+                'products': history_list,  # 列表现在是历史记录
                 'total': total_records,
                 'total_pages': paginator.num_pages,
                 'current_page': current_page.number,
@@ -311,13 +350,17 @@ def api_amazon_products(request):
                 'has_previous': current_page.has_previous(),
                 'next_page': current_page.next_page_number() if current_page.has_next() else None,
                 'previous_page': current_page.previous_page_number() if current_page.has_previous() else None,
+
+                # 统计信息
                 'stats': {
-                    'total_products': total_products,
+                    'total_products': total_products,  # 仍显示产品总数
                     'recent_subjects_7d': AmazonThemeNovelty.objects.filter(
                         launch_date__gte=(timezone.now().date() - timedelta(days=7))
                     ).exclude(subject__isnull=True).exclude(subject='').values('subject').distinct().count(),
                     'monthly_count': monthly_count,
                 },
+
+                # 分布信息
                 'distribution': {
                     'latest_deal': latest_deal_distribution,
                 }
@@ -330,9 +373,11 @@ def api_amazon_products(request):
             'message': '无效的JSON数据格式'
         }, status=400)
     except Exception as e:
+        # 记录错误日志
         print(f"API错误: {str(e)}")
         import traceback
         traceback.print_exc()
+
         return JsonResponse({
             'success': False,
             'message': f'服务器内部错误: {str(e)}',
@@ -340,6 +385,7 @@ def api_amazon_products(request):
                 'error_type': type(e).__name__,
             }
         }, status=500)
+
 
 # ============================================
 # 3. 产品详情API
@@ -610,7 +656,7 @@ def api_delete_product(request, asin):
 def export_products_csv(request):
     try:
         scope = request.GET.get('scope', 'all')
-        queryset = ThemeDailyData.objects.select_related('product_id').all()
+        queryset = ThemeDailyData.objects.select_related('product').all()
 
         if scope == 'selected':
             ids = request.GET.get('asins', '')
@@ -622,7 +668,7 @@ def export_products_csv(request):
         elif scope == 'filtered':
             asin_filter = request.GET.get('asin', '').strip()
             if asin_filter:
-                queryset = queryset.filter(product_id__asin__icontains=asin_filter)
+                queryset = queryset.filter(product__asin__icontains=asin_filter)
 
             # 产品搜索（合并标题和主题）
             title_filter = request.GET.get('title', '').strip()
@@ -630,28 +676,28 @@ def export_products_csv(request):
             if title_filter or subject_filter:
                 search_keyword = title_filter or subject_filter
                 queryset = queryset.filter(
-                    Q(product_id__title__icontains=search_keyword) |
-                    Q(product_id__title_translation__icontains=search_keyword) |
-                    Q(product_id__subject__icontains=search_keyword) |
-                    Q(product_id__subject_translation__icontains=search_keyword)
+                    Q(product__title__icontains=search_keyword) |
+                    Q(product__title_translation__icontains=search_keyword) |
+                    Q(product__subject__icontains=search_keyword) |
+                    Q(product__subject_translation__icontains=search_keyword)
                 )
 
             # 产品类型筛选
             is_latest_deal = request.GET.get('product_type', '').strip()
             if is_latest_deal:
-                queryset = queryset.filter(product_id__is_latest_deal=(is_latest_deal == 'true'))
+                queryset = queryset.filter(product__is_latest_deal=(is_latest_deal == 'true'))
             launch_date_start = request.GET.get('launch_date_start', '').strip()
             launch_date_end = request.GET.get('launch_date_end', '').strip()
             if launch_date_start:
                 try:
                     start_date = datetime.strptime(launch_date_start, '%Y-%m-%d').date()
-                    queryset = queryset.filter(product_id__launch_date__gte=start_date)
+                    queryset = queryset.filter(product__launch_date__gte=start_date)
                 except ValueError:
                     pass
             if launch_date_end:
                 try:
                     end_date = datetime.strptime(launch_date_end, '%Y-%m-%d').date()
-                    queryset = queryset.filter(product_id__launch_date__lte=end_date)
+                    queryset = queryset.filter(product__launch_date__lte=end_date)
                 except ValueError:
                     pass
             # 爬取日期
@@ -674,13 +720,13 @@ def export_products_csv(request):
         sort_order = request.GET.get('sort_order', 'asc')
 
         sort_map = {
-            'asin': 'product_id__asin',
-            'subject': 'product_id__subject',
-            'launch_date': 'product_id__launch_date',
+            'asin': 'product__asin',
+            'subject': 'product__subject',
+            'launch_date': 'product__launch_date',
             'created_at': 'crawl_date',
             'latest_crawled_at': 'crawled_at',
-            'is_latest_deal': 'product_id__is_latest_deal',
-            'product_type': 'product_id__is_latest_deal',
+            'is_latest_deal': 'product__is_latest_deal',
+            'product_type': 'product__is_latest_deal',
             'score': 'score',
             'appear_count': 'appear_count',
         }
@@ -701,7 +747,7 @@ def export_products_csv(request):
         ])
 
         for history in queryset:
-            product = history.product_id
+            product = history.product
             writer.writerow([
                 product.asin,
                 product.title,
@@ -1083,7 +1129,7 @@ def export_products_excel(request):
             if created_at_end:
                 try:
                     end_datetime = datetime.strptime(created_at_end, '%Y-%m-%d') + timedelta(days=1)
-                    queryset = queryset.filter(created_at__lt=end_datetime)
+                    queryset = queryset.filter(created_at__lt(end_datetime))
                 except ValueError:
                     pass
 

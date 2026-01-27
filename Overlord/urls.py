@@ -2,6 +2,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('general.urls')),  # 包含 General app 的所有路由
@@ -14,5 +15,5 @@ urlpatterns = [
     path('', include('task.urls')),
     path('shop_guard/', include('shop_guard.urls')),
     path('inventory/', include('inventory.urls')),
+    path('data_req/', include('data_req.urls')),
 ]
-

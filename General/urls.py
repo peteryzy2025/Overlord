@@ -45,6 +45,7 @@ urlpatterns = [
     path('api/users/', views_user_management.get_users_api, name='get_users_api'),
     path('api/roles/', views_user_management.get_roles_api, name='get_roles_api'),
     path('api/permissions/', views_user_management.get_permission_configs_api, name='get_permission_configs_api'),
+    path('api/users/ops-groups/', views_user_management.get_ops_groups_api, name='get_users_ops_groups_api'),
     path('management/temu/', views_user_management.temu_management_view, name='temu_management'),
 
     # ========== Amazon店铺管理（视图在General中） ==========

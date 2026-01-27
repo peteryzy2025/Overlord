@@ -444,6 +444,12 @@
                 <label class="filter-label">搜索</label>
                 <input type="text" class="form-control" id="userSearch" placeholder="搜索用户名/名字">
             </div>
+            <div class="filter-group">
+                <label class="filter-label">小组</label>
+                <select class="form-select" id="userOpsGroupFilter">
+                    <option value="">全部小组</option>
+                </select>
+            </div>
             <div class="filter-actions">
                 <button class="btn" onclick="filterUsers()">筛选</button>
                 <button class="btn btn-secondary" onclick="resetUserFilters()">重置</button>
@@ -599,11 +605,13 @@
             const status = document.getElementById('userStatusFilter')?.value;
             const department = document.getElementById('userDepartmentFilter')?.value;
             const search = document.getElementById('userSearch')?.value;
+            const opsGroup = document.getElementById('userOpsGroupFilter')?.value;
 
             if (role) params.append('role', role);
             if (status) params.append('status', status);
             if (department) params.append('department', department);
             if (search) params.append('search', search);
+            if (opsGroup) params.append('ops_group', opsGroup);
         }
 
         try {
@@ -674,6 +682,36 @@
             return false;
         } catch (error) {
             console.error('权限API请求错误:', error);
+            return false;
+        }
+    }
+
+    /**
+     * 从API加载运营小组列表
+     * @returns {Promise<boolean>}
+     */
+    async function loadOpsGroupsFromAPI() {
+        try {
+            const response = await fetch('/api/users/ops-groups/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                const opsGroupSelect = document.getElementById('userOpsGroupFilter');
+                opsGroupSelect.innerHTML = '<option value="">全部小组</option>';
+                result.data.forEach(group => {
+                    const option = document.createElement('option');
+                    option.value = group.key;
+                    option.textContent = group.name;
+                    opsGroupSelect.appendChild(option);
+                });
+                console.log("运营小组加载成功:", result.data);
+                return true;
+            }
+            console.error('获取运营小组列表失败:', result.error);
+            return false;
+        } catch (error) {
+            console.error('运营小组API请求错误:', error);
             return false;
         }
     }

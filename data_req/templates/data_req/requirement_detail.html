@@ -1,0 +1,412 @@
+{% extends 'base_z.html' %}
+{% load static %}
+
+{% block title %}{{ requirement.name }} - 需求详情{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tracking_management.css' %}">
+<style>
+    .detail-header {
+        background: var(--bg-primary);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .detail-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+    }
+
+    .detail-meta {
+        display: flex;
+        gap: 2rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .meta-label {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .meta-value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .detail-section {
+        background: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .section-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .relation-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .relation-item {
+        padding: 0.75rem;
+        border-left: 3px solid var(--accent-color);
+        margin-bottom: 0.5rem;
+        background: var(--bg-secondary);
+        border-radius: 0 8px 8px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .relation-item.child {
+        border-left-color: #10B981;
+    }
+
+    .relation-item.extended {
+        border-left-color: #3B82F6;
+    }
+
+    .relation-item.parent {
+        border-left-color: #F59E0B;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .timeline-item:last-child {
+        border-bottom: none;
+    }
+
+    .timeline-date {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        min-width: 150px;
+    }
+
+    .timeline-content {
+        flex: 1;
+    }
+
+    .timeline-action {
+        font-weight: 600;
+    }
+
+    .timeline-operator {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .empty-relation {
+        color: var(--text-secondary);
+        font-style: italic;
+        padding: 1rem;
+        text-align: center;
+    }
+
+    .back-btn {
+        margin-bottom: 1rem;
+    }
+
+    .priority-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .priority-P0 { background-color: #FEE2E2; color: #DC2626; }
+    .priority-P1 { background-color: #FEF3C7; color: #D97706; }
+    .priority-P2 { background-color: #DBEAFE; color: #1D4ED8; }
+    .priority-P3 { background-color: #E5E7EB; color: #6B7280; }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .status-pending { background-color: #FEF3C7; color: #D97706; }
+    .status-claimed { background-color: #E0E7FF; color: #4338CA; }
+    .status-developing { background-color: #DBEAFE; color: #1D4ED8; }
+    .status-paused { background-color: #E5E7EB; color: #6B7280; }
+    .status-completed { background-color: #C6F6D5; color: #22543D; }
+    .status-cancelled { background-color: #FEE2E2; color: #DC2626; }
+
+    .type-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .type-system { background-color: #EDE9FE; color: #7C3AED; }
+    .type-simple { background-color: #D1FAE5; color: #059669; }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="tracking-main">
+    <!-- 返回按钮 -->
+    <a href="{% url 'data_req:list' %}" class="btn btn-secondary back-btn">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </a>
+
+    <!-- 头部信息 -->
+    <div class="detail-header">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+                <h1 class="detail-title">{{ requirement.name }}</h1>
+                <div class="detail-meta">
+                    <div class="meta-item">
+                        <span class="meta-label">类型：</span>
+                        <span class="type-badge type-{{ requirement.requirement_type }}">
+                            {{ requirement.get_requirement_type_display }}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">优先级：</span>
+                        <span class="priority-badge priority-{{ requirement.priority }}">
+                            {{ requirement.get_priority_display }}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">难度系数：</span>
+                        <span class="meta-value">
+                            {% if requirement.requirement_type == 'simple' %}
+                                {{ requirement.score|floatformat:1|default:"未设置" }}
+                            {% else %}
+                                自动计算({{ total_score|floatformat:1 }})
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="meta-label">状态：</span>
+                        <span class="status-badge status-{{ requirement.status }}">
+                            {{ requirement.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="detail-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-user"></i>
+                        <span class="meta-label">需求人：</span>
+                        <span class="meta-value">{{ requirement.requester.first_name|default:"-" }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-code"></i>
+                        <span class="meta-label">开发者：</span>
+                        <span class="meta-value">{{ requirement.developer.first_name|default:"未分配" }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-calendar"></i>
+                        <span class="meta-label">发布日期：</span>
+                        <span class="meta-value">{{ requirement.publish_date|date:"Y-m-d" }}</span>
+                    </div>
+                    {% if requirement.claim_date %}
+                    <div class="meta-item">
+                        <i class="fas fa-hand-paper"></i>
+                        <span class="meta-label">领取日期：</span>
+                        <span class="meta-value">{{ requirement.claim_date|date:"Y-m-d" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if requirement.start_date %}
+                    <div class="meta-item">
+                        <i class="fas fa-play"></i>
+                        <span class="meta-label">开发开始：</span>
+                        <span class="meta-value">{{ requirement.start_date|date:"Y-m-d" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if requirement.expected_finish %}
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span class="meta-label">预计完成：</span>
+                        <span class="meta-value">{{ requirement.expected_finish|date:"Y-m-d" }}</span>
+                    </div>
+                    {% endif %}
+                    {% if requirement.finish_date %}
+                    <div class="meta-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span class="meta-label">实际完成：</span>
+                        <span class="meta-value">{{ requirement.finish_date|date:"Y-m-d" }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if requirement.remark %}
+        <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <div class="meta-label" style="margin-bottom: 0.5rem;">备注：</div>
+            <div style="color: var(--text-primary); line-height: 1.6;">{{ requirement.remark|linebreaks }}</div>
+        </div>
+        {% endif %}
+
+        {% if requirement.pause_reason %}
+        <div style="margin-top: 1rem; padding: 1rem; background: #FEF3C7; border-radius: 8px; color: #D97706;">
+            <i class="fas fa-pause-circle"></i> <strong>暂停原因：</strong>{{ requirement.pause_reason }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- 关联关系 -->
+    <div class="detail-section">
+        <h3 class="section-title">
+            <i class="fas fa-link"></i> 关联关系
+        </h3>
+
+        <!-- 父级系统 -->
+        {% if requirement.parent %}
+        <div style="margin-bottom: 1.5rem;">
+            <div class="meta-label" style="margin-bottom: 0.5rem;">📁 父级系统：</div>
+            <div class="relation-item parent">
+                <div>
+                    <a href="{% url 'data_req:detail' requirement.parent.id %}" style="font-weight: 600; color: var(--text-primary);">
+                        {{ requirement.parent.name }}
+                    </a>
+                    <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                        [系统]
+                    </span>
+                </div>
+                <span class="status-badge status-{{ requirement.parent.status }}">
+                    {{ requirement.parent.get_status_display }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 延伸自 -->
+        {% if requirement.extends_from %}
+        <div style="margin-bottom: 1.5rem;">
+            <div class="meta-label" style="margin-bottom: 0.5rem;">➡️ 延伸自：</div>
+            <div class="relation-item extended">
+                <div>
+                    <a href="{% url 'data_req:detail' requirement.extends_from.id %}" style="font-weight: 600; color: var(--text-primary);">
+                        {{ requirement.extends_from.name }}
+                    </a>
+                    <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                        [{{ requirement.extends_from.get_requirement_type_display }}]
+                    </span>
+                </div>
+                <span class="status-badge status-{{ requirement.extends_from.status }}">
+                    {{ requirement.extends_from.get_status_display }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 包含的子任务 -->
+        <div style="margin-bottom: 1.5rem;">
+            <div class="meta-label" style="margin-bottom: 0.5rem;">
+                📎 包含的子任务（{{ children|length }}个）：
+            </div>
+            {% if children %}
+            <ul class="relation-list">
+                {% for child in children %}
+                <li class="relation-item child">
+                    <div>
+                        <a href="{% url 'data_req:detail' child.id %}" style="font-weight: 600; color: var(--text-primary);">
+                            {{ child.name }}
+                        </a>
+                        <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                            [{{ child.get_requirement_type_display }}]
+                        </span>
+                        {% if child.developer %}
+                        <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: 0.5rem;">
+                            👤 {{ child.developer.first_name }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <span style="font-weight: 600; color: var(--accent-color);">难度: {{ child.score|floatformat:1|default:"-" }}</span>
+                        <span class="status-badge status-{{ child.status }}">
+                            {{ child.get_status_display }}
+                        </span>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-relation">暂无子任务</div>
+            {% endif %}
+        </div>
+
+        <!-- 延伸的后续任务 -->
+        <div>
+            <div class="meta-label" style="margin-bottom: 0.5rem;">
+                📝 延伸的后续任务（{{ extended_tasks|length }}个）：
+            </div>
+            {% if extended_tasks %}
+            <ul class="relation-list">
+                {% for task in extended_tasks %}
+                <li class="relation-item extended">
+                    <div>
+                        <a href="{% url 'data_req:detail' task.id %}" style="font-weight: 600; color: var(--text-primary);">
+                            {{ task.name }}
+                        </a>
+                        <span style="color: var(--text-secondary); font-size: 0.875rem; margin-left: 0.5rem;">
+                            [{{ task.get_requirement_type_display }}]
+                        </span>
+                    </div>
+                    <span class="status-badge status-{{ task.status }}">
+                        {{ task.get_status_display }}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="empty-relation">暂无后续任务</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 时间线 -->
+    <div class="detail-section">
+        <h3 class="section-title">
+            <i class="fas fa-history"></i> 操作时间线
+        </h3>
+        {% if timelines %}
+        <div class="timeline-list">
+            {% for tl in timelines %}
+            <div class="timeline-item">
+                <div class="timeline-date">{{ tl.timestamp|date:"Y-m-d H:i" }}</div>
+                <div class="timeline-content">
+                    <div class="timeline-action">{{ tl.get_action_display }}</div>
+                    <div class="timeline-operator">操作人：{{ tl.operator.first_name|default:"-" }}</div>
+                    {% if tl.reason %}
+                    <div style="margin-top: 0.25rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        备注：{{ tl.reason }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-relation">暂无操作记录</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

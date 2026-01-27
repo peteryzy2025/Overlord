@@ -48,6 +48,7 @@ def get_users_api(request):
         - status=状态值(active/inactive/cancelled)
         - department=部门搜索词
         - search=通用搜索词（搜索用户名/名字）
+        - ops_group=运营小组筛选
     返回: {success: true, data: [用户数据], total: 总条数, page: 当前页, page_size: 每页条数}
     """
     try:
@@ -64,6 +65,7 @@ def get_users_api(request):
         status_filter = request.GET.get('status', '').strip()
         department_filter = request.GET.get('department', '').strip()
         search_filter = request.GET.get('search', '').strip()
+        ops_group_filter = request.GET.get('ops_group', '').strip()
 
         # 构建基础查询集（使用 select_related 预加载关联数据）
         queryset = User.objects.select_related('operational_account').all()
@@ -92,6 +94,10 @@ def get_users_api(request):
                 Q(username__icontains=search_filter) |
                 Q(first_name__icontains=search_filter)
             )
+
+        if ops_group_filter:
+            # 按运营小组筛选
+            queryset = queryset.filter(operational_account__ops_group=ops_group_filter)
 
         # 查询总条数（应用筛选后）
         total_count = queryset.count()
@@ -157,7 +163,7 @@ def get_users_api(request):
             'total': total_count,
             'page': page,
             'page_size': page_size,
-            'filters_applied': bool(role_filter or status_filter or department_filter or search_filter)
+            'filters_applied': bool(role_filter or status_filter or department_filter or search_filter or ops_group_filter)
         })
 
     except Exception as e:
@@ -494,3 +500,40 @@ def bulk_update_permissions_api(request):
         print(f"批量权限操作错误: {str(e)}")
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+@require_GET
+@login_required
+def get_ops_groups_api(request):
+    """
+    API接口：获取所有运营小组列表
+    返回格式: [{'key': 'group_name', 'name': 'group_name'}, ...]
+    """
+    try:
+        # 从 OperationalAccount 表中获取所有不重复的 ops_group
+        ops_groups = OperationalAccount.objects.exclude(
+            ops_group__isnull=True
+        ).exclude(
+            ops_group=''
+        ).values_list(
+            'ops_group', flat=True
+        ).distinct().order_by('ops_group')
+
+        # 转换为前端需要的格式
+        groups_data = [
+            {'key': group, 'name': group}
+            for group in ops_groups
+        ]
+
+        return JsonResponse({
+            'success': True,
+            'data': groups_data
+        })
+
+    except Exception as e:
+        print(f"获取运营小组列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)

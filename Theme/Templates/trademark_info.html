@@ -10,12 +10,60 @@
             --accent-color: #3B82F6;
             --accent-hover: #2563EB;
         }
+
         /* 列宽调整 */
-        .col-serial { width: 100px; }
-        .col-word { min-width: 150px; }
-        .col-date { width: 110px; }
-        .col-status { width: 100px; }
-        .col-owner { width: 150px; }
+        .col-serial {
+            width: 100px;
+        }
+
+        .col-word {
+            min-width: 150px;
+        }
+
+        .col-date {
+            width: 110px;
+        }
+
+        .col-status {
+            width: 100px;
+        }
+
+        .col-owner {
+            width: 150px;
+        }
+
+        /* 搜索模式标签样式（放在输入框内） */
+        .search-mode-tag {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+            user-select: none;
+        }
+
+        .search-mode-tag:hover {
+            opacity: 0.8;
+            transform: translateY(-50%) scale(1.05);
+        }
+
+        .search-mode-tag.fuzzy {
+            background-color: #DBEAFE;
+            color: #1D4ED8;
+            border-color: #93C5FD;
+        }
+
+        .search-mode-tag.exact {
+            background-color: #FEE2E2;
+            color: #B91C1C;
+            border-color: #FCA5A5;
+        }
     </style>
 {% endblock %}
 
@@ -43,13 +91,19 @@
         <!-- 筛选面板 -->
         <div class="control-panel">
             <div class="filter-row">
+                <!-- 侵权词/商标名输入框 - 带内部搜索模式切换标签 -->
                 <div class="filter-group">
                     <label class="filter-label">侵权词/商标名</label>
-                    <input type="text" class="form-control" id="wordMarkFilter"
-                           placeholder="输入关键词"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
+                    <div style="position: relative;">
+                        <input type="text" class="form-control" id="wordMarkFilter"
+                               placeholder="输入关键词"
+                               style="padding-right: 50px;"
+                               onkeyup="if(event.key==='Enter') applyFilters()">
+                        <span class="search-mode-tag fuzzy" id="searchModeTag">模糊</span>
+                        <input type="checkbox" class="switch-input" id="fuzzySearchSwitch" checked style="display: none;">
+                    </div>
                 </div>
-                
+
                 <div class="filter-group">
                     <label class="filter-label">商标注册号</label>
                     <input type="text" class="form-control" id="serialNumberFilter"
@@ -88,12 +142,21 @@
                 <table class="table">
                     <thead>
                     <tr>
-                        <th class="sortable col-serial" data-field="serial_number" onclick="handleSort('serial_number')">商标注册号</th>
-                        <th class="sortable col-word" data-field="word_mark" onclick="handleSort('word_mark')">侵权词</th>
+                        <th class="sortable col-serial" data-field="serial_number"
+                            onclick="handleSort('serial_number')">商标注册号
+                        </th>
+                        <th class="sortable col-word" data-field="word_mark" onclick="handleSort('word_mark')">侵权词
+                        </th>
                         <th class="col-status">注册号</th>
-                        <th class="sortable col-date" data-field="filing_date" onclick="handleSort('filing_date')">入库时间</th>
-                        <th class="sortable col-date" data-field="registration_date" onclick="handleSort('registration_date')">注册日期</th>
-                        <th class="sortable col-date" data-field="transaction_date" onclick="handleSort('transaction_date')">交易日期</th>
+                        <th class="sortable col-date" data-field="filing_date" onclick="handleSort('filing_date')">
+                            入库时间
+                        </th>
+                        <th class="sortable col-date" data-field="registration_date"
+                            onclick="handleSort('registration_date')">注册日期
+                        </th>
+                        <th class="sortable col-date" data-field="transaction_date"
+                            onclick="handleSort('transaction_date')">交易日期
+                        </th>
                         <th class="col-status">状态码</th>
                         <th class="col-status">绘制类型</th>
                         <th class="col-owner">所有者</th>
@@ -143,6 +206,7 @@
             serial_number: '',
             registration_number: '',
             owner_name: '',
+            fuzzy_search: true,  // 新增：默认模糊搜索
             sort_field: 'filing_date',
             sort_order: 'desc'
         };
@@ -166,6 +230,21 @@
             };
         }
 
+        // ===== 更新搜索模式显示 =====
+        function updateSearchModeText() {
+            const isFuzzy = document.getElementById('fuzzySearchSwitch').checked;
+            const tag = document.getElementById('searchModeTag');
+            if (tag) {
+                if (isFuzzy) {
+                    tag.textContent = '模糊';
+                    tag.className = 'search-mode-tag fuzzy';
+                } else {
+                    tag.textContent = '精确';
+                    tag.className = 'search-mode-tag exact';
+                }
+            }
+        }
+
         // ===== 筛选逻辑 =====
         function getCurrentFilters() {
             return {
@@ -173,6 +252,7 @@
                 serial_number: document.getElementById('serialNumberFilter').value.trim(),
                 registration_number: document.getElementById('registrationNumberFilter').value.trim(),
                 owner_name: document.getElementById('ownerNameFilter').value.trim(),
+                fuzzy_search: document.getElementById('fuzzySearchSwitch').checked,  // 读取开关状态
                 sort_field: currentFilters.sort_field,
                 sort_order: currentFilters.sort_order
             };
@@ -183,7 +263,9 @@
             document.getElementById('serialNumberFilter').value = '';
             document.getElementById('registrationNumberFilter').value = '';
             document.getElementById('ownerNameFilter').value = '';
+            document.getElementById('fuzzySearchSwitch').checked = true;
             document.getElementById('pageSize').value = '20';
+            updateSearchModeText(); // 重置时更新标签
         }
 
         async function resetFilters(event) {
@@ -287,13 +369,13 @@
             } catch (error) {
                 console.error('加载错误:', error);
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="10" class="empty-state">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>数据请求失败: ${error.message}</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
                 paginationControls.style.display = 'none';
             } finally {
                 showLoading(false);
@@ -304,13 +386,13 @@
             const tbody = document.getElementById('tableBody');
             if (!list || list.length === 0) {
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="10" class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>暂无数据</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无数据</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -342,8 +424,8 @@
             let buttonsHTML = '';
 
             buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
-        <i class="fas fa-chevron-left"></i> 上一页
-    </button>`;
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>`;
 
             const maxButtons = 7;
             let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
@@ -372,8 +454,8 @@
             }
 
             buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-        下一页 <i class="fas fa-chevron-right"></i>
-    </button>`;
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>`;
 
             buttonsContainer.innerHTML = buttonsHTML;
         }
@@ -397,6 +479,16 @@
             showLoading(true);
             try {
                 setDefaultFilters();
+
+                // 绑定搜索模式标签点击事件
+                document.getElementById('searchModeTag').addEventListener('click', function() {
+                    const checkbox = document.getElementById('fuzzySearchSwitch');
+                    checkbox.checked = !checkbox.checked;
+                    updateSearchModeText();
+                    const mode = checkbox.checked ? '模糊搜索（包含匹配）' : '精确搜索（完全匹配）';
+                    showNotification(`已切换为：${mode}`, 'info');
+                });
+
                 await applyFilters();
             } catch (error) {
                 console.error('初始化错误:', error);
