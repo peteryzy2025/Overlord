@@ -1,0 +1,397 @@
+{% extends 'base_management.html' %}
+{% load static %}
+
+{% block title %}考核成绩汇总{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 180px;
+        max-width: 220px;
+        flex: 1;
+    }
+
+    .filter-group.d-flex {
+        flex: none !important;
+        max-width: none !important;
+        min-width: auto !important;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    input[type="month"]::-webkit-calendar-picker-indicator {
+        filter: invert(var(--text-secondary));
+        cursor: pointer;
+        padding: 5px;
+    }
+
+    .btn {
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        border: 1px solid transparent;
+    }
+
+    .btn-primary {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
+
+    .btn-success {
+        background-color: #22c55e;
+        color: white;
+        border-color: #22c55e;
+    }
+
+    .btn-outline-primary {
+        background: transparent;
+        color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .btn-outline-primary:hover {
+        background-color: var(--accent-color);
+        color: white;
+    }
+
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+    }
+
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 1100px;
+    }
+
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        padding: 0.75rem 1rem;
+        white-space: nowrap;
+        position: sticky;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+    }
+
+    .table thead tr:first-child th {
+        background-color: var(--bg-secondary);
+        font-weight: 700;
+        font-size: 0.9rem;
+        top: 0;
+        z-index: 10;
+        height: 45px;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .table thead tr:last-child th {
+        background-color: var(--bg-secondary);
+        font-weight: 500;
+        font-size: 0.85rem;
+        top: 45px;
+        z-index: 9;
+    }
+
+    .table thead tr:first-child th[rowspan="2"] {
+        vertical-align: middle;
+        height: 90px;
+        line-height: 1.2;
+    }
+
+    .table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    /* 组长汇总行样式 */
+    .leader-row {
+        background-color: rgba(102, 126, 234, 0.15) !important;
+        font-weight: 600;
+    }
+
+    .leader-row td {
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .achieved-yes {
+        color: #22c55e;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .achieved-no {
+        color: #ef4444;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .highlight-red {
+        color: #dc2626;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">考核成绩汇总</h1>
+            <p class="page-subtitle">查看已确认的考核成绩汇总</p>
+        </div>
+        {% if month %}
+        <div>
+            <button class="btn btn-success" onclick="exportExcel()">
+                <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出Excel
+            </button>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="filter-section">
+        <form method="get" action="{% url 'yuser:assessment_summary' %}" id="filterForm">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">考核月份 <span style="color: var(--danger-color);">*</span></label>
+                    <input type="month" class="form-control" id="monthFilter" name="month"
+                           value="{{ month }}" required>
+                </div>
+                <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>查询
+                    </button>
+                    <a href="{% url 'yuser:assessment_summary' %}" class="btn btn-outline-primary ms-2">
+                        <i class="fas fa-undo" style="margin-right: 0.5rem;"></i>重置
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if month %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th rowspan="2">序号</th>
+                    <th rowspan="2">姓名</th>
+                    <th rowspan="2">岗位</th>
+                    <th rowspan="2">考核成绩</th>
+                    <th colspan="4" style="text-align: center; background-color: rgba(102, 126, 234, 0.1);">业绩订单销售量</th>
+                    <th colspan="3" style="text-align: center; background-color: rgba(102, 126, 234, 0.1);">考核得分项</th>
+                </tr>
+                <tr>
+                    <th>KPI订单量</th>
+                    <th>完成订单量</th>
+                    <th>达成率</th>
+                    <th>是否达成<br><small style="font-weight: normal; color: var(--text-secondary);">(✓ / ✗)</small></th>
+                    <th>业绩指标<br><small style="font-weight: normal; color: var(--text-secondary);">(运营60%/助理30%)</small></th>
+                    <th>行为考核<br><small style="font-weight: normal; color: var(--text-secondary);">(运营40%/助理70%)</small></th>
+                    <th>加分项<br><small style="font-weight: normal; color: var(--text-secondary);">(超额业绩1分)</small></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data_list %}
+                <tr class="{% if item.is_leader_row %}leader-row{% endif %}">
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.employee_name }}</td>
+                    <td>{{ item.role }}</td>
+                    <td>
+                        {% if item.final_score != '-' and item.final_score > 150 %}
+                        <span class="highlight-red">{{ item.final_score }}</span>
+                        {% else %}
+                        <span style="color: var(--text-primary);">{{ item.final_score }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.target_orders }}</td>
+                    <td>{{ item.actual_orders }}</td>
+                    <td>
+                        {% if item.achievement_rate > 150 %}
+                        <span class="highlight-red">{{ item.achievement_rate }}%</span>
+                        {% else %}
+                        <span>{{ item.achievement_rate }}%</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if item.is_achieved == '是' %}
+                        <span class="achieved-yes">✓</span>
+                        {% else %}
+                        <span class="achieved-no">✗</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.performance_score }}</td>
+                    <td>{{ item.behavior_score }}</td>
+                    <td>{{ item.bonus_score }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="11" style="text-align:center; padding:2rem;">
+                        <i class="far fa-folder-open fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">暂无考核记录</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="pagination-container">
+        <div class="pagination-info">
+            共查询到 <strong>{{ data_list|length }}</strong> 条记录（含组长汇总行）
+        </div>
+        <div style="color: var(--text-secondary); font-size: 0.875rem;">
+            <i class="fas fa-info-circle"></i> 仅显示已确认状态的考核成绩
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function exportExcel() {
+        const month = document.getElementById('monthFilter').value;
+        if (!month) {
+            alert('请先选择考核月份');
+            return;
+        }
+
+        const csrfToken = getCookie('csrftoken');
+        if (!csrfToken) {
+            alert('CSRF Token 获取失败，请刷新页面重试');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "yuser:assessment_summary" %}';
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+
+        const monthInput = document.createElement('input');
+        monthInput.type = 'hidden';
+        monthInput.name = 'month';
+        monthInput.value = month;
+        form.appendChild(monthInput);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('monthFilter').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
+            }
+        });
+    });
+</script>
+{% endblock %}s

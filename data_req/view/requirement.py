@@ -25,6 +25,7 @@ class RequirementListView(LoginRequiredMixin, ListView):
         priority = self.request.GET.get('priority')
         req_type = self.request.GET.get('type')
         developer_id = self.request.GET.get('developer')
+        requester_id = self.request.GET.get('requester')
         keyword = self.request.GET.get('keyword', '').strip()
         time_filter = self.request.GET.get('time_filter', '')
         custom_start = self.request.GET.get('custom_start', '')
@@ -38,6 +39,8 @@ class RequirementListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(requirement_type=req_type)
         if developer_id:
             queryset = queryset.filter(developer_id=developer_id)
+        if requester_id:
+            queryset = queryset.filter(requester_id=requester_id)
         if keyword:
             queryset = queryset.filter(Q(name__icontains=keyword))
 
@@ -70,9 +73,23 @@ class RequirementListView(LoginRequiredMixin, ListView):
 
         requirements = context['requirements']
         for req in requirements:
+            # 开发开始日期显示
             start_date = req.start_date
             req.start_date_display = start_date.strftime('%Y-%m-%d') if start_date else '-'
 
+            # 预计完成天数（预计完成日期 - 开发开始日期）
+            if req.start_date and req.expected_finish:
+                delta = req.expected_finish.date() - req.start_date.date()
+                req.expected_days = delta.days + 1 if delta.days >= 0 else 0
+            else:
+                req.expected_days = None
+
+            # 实际完成天数（完成日期 - 开发开始日期）
+            if req.start_date and req.finish_date:
+                delta = req.finish_date.date() - req.start_date.date()
+                req.actual_days = delta.days + 1 if delta.days >= 0 else 0
+            else:
+                req.actual_days = None
         context['developers'] = User.objects.filter(status=1, permission_configs__code=554).distinct().order_by('first_name')
         context['requesters'] = User.objects.filter(status=1).order_by('first_name')
         context['systems'] = DataRequirement.objects.filter(requirement_type='system').order_by('-created_at')
@@ -80,13 +97,14 @@ class RequirementListView(LoginRequiredMixin, ListView):
 
         user = self.request.user
         context['is_developer'] = user.permission_configs.filter(code=554).exists()
-        context['is_admin'] = user.permission_configs.filter(code=555).exists()
+        context['is_dev_admin'] = user.permission_configs.filter(code=5555).exists()
 
         context['current_filters'] = {
             'status': self.request.GET.get('status', ''),
             'priority': self.request.GET.get('priority', ''),
             'type': self.request.GET.get('type', ''),
             'developer': self.request.GET.get('developer', ''),
+            'requester': self.request.GET.get('requester', ''),
             'keyword': self.request.GET.get('keyword', ''),
             'time_filter': self.request.GET.get('time_filter', ''),
             'custom_start': self.request.GET.get('custom_start', ''),
@@ -161,7 +179,7 @@ class RequirementDetailView(LoginRequiredMixin, DetailView):
             context['total_score'] = req.get_actual_score()
         user = self.request.user
         context['is_developer'] = user.permission_configs.filter(code=554).exists()
-        context['is_admin'] = user.permission_configs.filter(code=555).exists()
+        context['is_dev_admin'] = user.permission_configs.filter(code=5555).exists()
         return context
 
 
@@ -332,7 +350,7 @@ class RequirementStatusAPI(LoginRequiredMixin, View):
             user = request.user
             now = datetime.now()
             is_developer = user.permission_configs.filter(code=554).exists()
-            is_admin = user.permission_configs.filter(code=555).exists()
+            is_dev_admin = user.permission_configs.filter(code=5555).exists()
 
             if action == 'claim':
                 if not is_developer:
@@ -343,7 +361,7 @@ class RequirementStatusAPI(LoginRequiredMixin, View):
                 timeline_action = 'claim'
                 timeline_reason = '领取任务'
             elif action == 'unclaim':
-                if req.developer != user and not is_admin:
+                if req.developer != user and not is_dev_admin:
                     return JsonResponse({'success': False, 'message': '只能退领自己的任务'})
                 if not reason:
                     return JsonResponse({'success': False, 'message': '退领原因必填'})
@@ -382,7 +400,7 @@ class RequirementStatusAPI(LoginRequiredMixin, View):
                 timeline_action = 'complete'
                 timeline_reason = '任务完成'
             elif action == 'cancel':
-                if req.developer != user and not is_admin:
+                if req.developer != user and not is_dev_admin:
                     return JsonResponse({'success': False, 'message': '只能取消自己的任务'})
                 if not reason:
                     return JsonResponse({'success': False, 'message': '取消原因必填'})
@@ -390,8 +408,8 @@ class RequirementStatusAPI(LoginRequiredMixin, View):
                 timeline_action = 'cancel'
                 timeline_reason = f'取消任务：{reason}'
             elif action == 'restart':
-                if not is_admin:
-                    return JsonResponse({'success': False, 'message': '只有管理员可以重启任务'})
+                if not is_dev_admin:
+                    return JsonResponse({'success': False, 'message': '只有开发管理员可以重启任务'})
                 req.status = 'developing'
                 req.finish_date = None
                 timeline_action = 'restart'
