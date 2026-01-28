@@ -187,6 +187,8 @@ class AssessmentSummaryView(View):
 
     def post(self, request):
         """处理Excel导出"""
+        from decimal import Decimal  # 放这里或文件顶部都行
+
         if not request.user.permission or '555' not in request.user.permission.split(','):
             return JsonResponse({'success': False, 'message': '无权限导出'}, status=403)
 
@@ -194,9 +196,10 @@ class AssessmentSummaryView(View):
         if not month:
             return JsonResponse({'success': False, 'message': '请选择考核月份'}, status=400)
 
-        # 解析年月用于文件名
+        # 解析年月用于文件名和标题
         year, mon = month.split('-')
         file_name = f"{year}年{mon}月运营部kpi考核成绩汇总.xlsx"
+        big_title = f"{year}年{mon}月考核成绩汇总"
 
         assessments = PerformanceAssessment.objects.select_related(
             'employee', 'employee__operational_account'
@@ -229,66 +232,81 @@ class AssessmentSummaryView(View):
 
         # 定义样式
         title_font = Font(name='微软雅黑', size=11, bold=True, color='FFFFFF')
-        header_font = Font(name='微软雅黑', size=10, bold=True)
+        header_font = Font(name='微软雅黑', size=10, bold=True, color='2d3748')
         data_font = Font(name='微软雅黑', size=10)
         leader_font = Font(name='微软雅黑', size=10, bold=True)
 
-        title_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
-        header_fill = PatternFill(start_color='B4C7DC', end_color='B4C7DC', fill_type='solid')
-        leader_fill = PatternFill(start_color='E7E6E6', end_color='E7E6E6', fill_type='solid')
+        # 大标题样式
+        big_title_font = Font(name='微软雅黑', size=16, bold=True, color='FFFFFF')
+        big_title_fill = PatternFill(start_color='2d3748', end_color='2d3748', fill_type='solid')
+
+        # 分数标色字体（<60绿，>150红）
+        red_font = Font(name='微软雅黑', size=10, color='dc2626', bold=True)
+        green_font = Font(name='微软雅黑', size=10, color='16a34a', bold=True)
+
+        title_fill = PatternFill(start_color='4a5568', end_color='4a5568', fill_type='solid')
+        header_fill = PatternFill(start_color='e2e8f0', end_color='e2e8f0', fill_type='solid')
+        leader_fill = PatternFill(start_color='f7fafc', end_color='f7fafc', fill_type='solid')
 
         thin_border = Border(
-            left=Side(style='thin', color='000000'),
-            right=Side(style='thin', color='000000'),
-            top=Side(style='thin', color='000000'),
-            bottom=Side(style='thin', color='000000')
+            left=Side(style='thin', color='cbd5e0'),
+            right=Side(style='thin', color='cbd5e0'),
+            top=Side(style='thin', color='cbd5e0'),
+            bottom=Side(style='thin', color='cbd5e0')
         )
 
         center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-        # 第一行：一级标题（合并单元格）
-        # 序号(1) 姓名(1) 岗位(1) 考核成绩(1) | 业绩订单销售量(4) | 考核得分项(3)
-        ws.merge_cells('A1:A2')  # 序号
-        ws.merge_cells('B1:B2')  # 姓名
-        ws.merge_cells('C1:C2')  # 岗位
-        ws.merge_cells('D1:D2')  # 考核成绩
-        ws.merge_cells('E1:H1')  # 业绩订单销售量（4列）
-        ws.merge_cells('I1:K1')  # 考核得分项（3列）
+        # ========== 第1行：大标题（合并10列） ==========
+        ws.merge_cells('A1:J1')
+        title_cell = ws.cell(row=1, column=1)
+        title_cell.value = big_title
+        title_cell.font = big_title_font
+        title_cell.fill = big_title_fill
+        title_cell.alignment = center_align
 
-        # 设置一级标题内容
+        for col in range(1, 11):
+            ws.cell(row=1, column=col).border = thin_border
+
+        # ========== 第2行：一级表头 ==========
+        ws.merge_cells('A2:A3')  # 序号
+        ws.merge_cells('B2:B3')  # 姓名
+        ws.merge_cells('C2:C3')  # 岗位
+        ws.merge_cells('D2:D3')  # 考核成绩
+        ws.merge_cells('E2:G2')  # 业绩订单销售量（3列）
+        ws.merge_cells('H2:J2')  # 考核得分项（3列）
+
         headers_level1 = ['序号', '姓名', '岗位', '考核成绩', '业绩订单销售量', '考核得分项']
         for col, header in enumerate(headers_level1, 1):
-            if col == 5:  # 业绩订单销售量在E列，但合并了E-H
-                cell = ws.cell(row=1, column=5)
-            elif col == 6:  # 考核得分项在I列，但合并了I-K
-                cell = ws.cell(row=1, column=9)
+            if col == 5:
+                cell = ws.cell(row=2, column=5)
+            elif col == 6:
+                cell = ws.cell(row=2, column=8)
             else:
-                cell = ws.cell(row=1, column=col)
+                cell = ws.cell(row=2, column=col)
             cell.value = header
             cell.font = title_font
             cell.fill = title_fill
             cell.alignment = center_align
             cell.border = thin_border
 
-        # 第二行：二级标题
-        headers_level2 = ['KPI订单量', '完成订单量', '达成率', '是否达成',
+        # ========== 第3行：二级表头 ==========
+        headers_level2 = ['KPI订单量', '完成订单量', '是否达标',
                           '业绩指标得分', '行为考核得分', '加分项得分']
-        for col, header in enumerate(headers_level2, 5):  # 从E列开始
-            cell = ws.cell(row=2, column=col)
+        for col, header in enumerate(headers_level2, 5):
+            cell = ws.cell(row=3, column=col)
             cell.value = header
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = center_align
             cell.border = thin_border
 
-        # 给第一行的其他单元格也加上边框（合并单元格的边框）
-        for row in [1, 2]:
-            for col in range(1, 12):
-                cell = ws.cell(row=row, column=col)
-                cell.border = thin_border
+        for row in [2, 3]:
+            for col in range(1, 11):
+                ws.cell(row=row, column=col).border = thin_border
 
-        # 填充数据
-        row = 3
+        # ========== 填充数据（从第4行开始） ==========
+        row = 4
         idx = 1
         for ops_group, group_data in grouped_data.items():
             leader = group_data['leader']
@@ -297,8 +315,7 @@ class AssessmentSummaryView(View):
             # 组长汇总行
             group_target = sum(m.target_orders for m in members) if members else 0
             group_actual = sum(m.actual_orders for m in members) if members else 0
-            group_rate = (group_actual / group_target * 100) if group_target > 0 else 0
-            group_achieved = '是' if group_rate >= 100 else '否'
+            group_achieved = '是' if group_actual >= group_target else '否'
 
             leader_data = [
                 idx,
@@ -307,11 +324,8 @@ class AssessmentSummaryView(View):
                 '-',
                 group_target,
                 group_actual,
-                f"{round(group_rate, 2)}%",
                 group_achieved,
-                '-',
-                '-',
-                '-'
+                '-', '-', '-'
             ]
 
             for col, value in enumerate(leader_data, 1):
@@ -322,6 +336,10 @@ class AssessmentSummaryView(View):
                 cell.alignment = center_align
                 cell.border = thin_border
 
+                # 是否达标是=红
+                if col == 7 and value == '是':
+                    cell.font = red_font
+
             row += 1
             idx += 1
 
@@ -329,20 +347,16 @@ class AssessmentSummaryView(View):
             for assessment in members:
                 scores = self.calculate_weighted_scores(assessment)
                 is_achieved = '是' if assessment.actual_orders >= assessment.target_orders else '否'
-
-                # 判断是否标红（达成率或考核成绩>150）
-                achievement_rate_val = assessment.achievement_rate or 0
                 final_score_val = assessment.final_score or 0
 
                 data = [
                     idx,
                     assessment.employee.first_name,
                     assessment.employee.role or '-',
-                    final_score_val,
+                    final_score_val,  # D列 考核成绩
                     assessment.target_orders,
                     assessment.actual_orders,
-                    f"{achievement_rate_val}%",
-                    is_achieved,
+                    is_achieved,  # G列 是否达标
                     scores['performance_score'],
                     scores['behavior_score'],
                     scores['bonus_score']
@@ -355,20 +369,26 @@ class AssessmentSummaryView(View):
                     cell.alignment = center_align
                     cell.border = thin_border
 
-                    # 达成率或考核成绩>150标红
-                    if (col == 4 and final_score_val > 150) or (col == 7 and achievement_rate_val > 150):
-                        cell.font = Font(name='微软雅黑', size=10, color='FF0000', bold=True)
+                    # ===== 修正：Decimal 类型也包含进来 =====
+                    if col == 4 and isinstance(final_score_val, (int, float, Decimal)):
+                        if final_score_val < 60:
+                            cell.font = green_font
+                        elif final_score_val > 150:
+                            cell.font = red_font
+
+                    # 是否达标是=红
+                    if col == 7 and value == '是':
+                        cell.font = red_font
 
                 row += 1
                 idx += 1
 
-            # 组长个人行（如果有）
+            # 组长个人行
             if leader:
                 leader_in_members = any(m.id == leader.id for m in members)
                 if not leader_in_members:
                     scores = self.calculate_weighted_scores(leader)
                     is_achieved = '是' if leader.actual_orders >= leader.target_orders else '否'
-                    achievement_rate_val = leader.achievement_rate or 0
                     final_score_val = leader.final_score or 0
 
                     data = [
@@ -378,7 +398,6 @@ class AssessmentSummaryView(View):
                         final_score_val,
                         leader.target_orders,
                         leader.actual_orders,
-                        f"{achievement_rate_val}%",
                         is_achieved,
                         scores['performance_score'],
                         scores['behavior_score'],
@@ -392,20 +411,29 @@ class AssessmentSummaryView(View):
                         cell.alignment = center_align
                         cell.border = thin_border
 
-                        if (col == 4 and final_score_val > 150) or (col == 7 and achievement_rate_val > 150):
-                            cell.font = Font(name='微软雅黑', size=10, color='FF0000', bold=True)
+                        # 修正：Decimal 类型也包含进来
+                        if col == 4 and isinstance(final_score_val, (int, float, Decimal)):
+                            if final_score_val < 60:
+                                cell.font = green_font
+                            elif final_score_val > 150:
+                                cell.font = red_font
+
+                        # 是否达标是=红
+                        if col == 7 and value == '是':
+                            cell.font = red_font
 
                     row += 1
                     idx += 1
 
         # 设置列宽
-        column_widths = [6, 12, 12, 12, 12, 12, 10, 10, 12, 12, 12]
+        column_widths = [6, 12, 12, 12, 12, 12, 10, 12, 12, 12]
         for i, width in enumerate(column_widths, 1):
             ws.column_dimensions[chr(64 + i)].width = width
 
         # 设置行高
-        ws.row_dimensions[1].height = 30
-        ws.row_dimensions[2].height = 35
+        ws.row_dimensions[1].height = 40
+        ws.row_dimensions[2].height = 30
+        ws.row_dimensions[3].height = 35
 
         buffer = io.BytesIO()
         wb.save(buffer)
@@ -417,4 +445,3 @@ class AssessmentSummaryView(View):
         )
         response['Content-Disposition'] = f'attachment; filename="{file_name}"'
         return response
-
