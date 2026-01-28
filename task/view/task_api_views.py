@@ -21,7 +21,7 @@ from task.utils import (
     validate_subtask_params
 )
 from api.wc.crawler_wc import get_ykartwood_product
-
+from task.view.task_upload_views import process_amazon_upload_files
 
 
 @login_required
@@ -679,6 +679,8 @@ def create_task_api(request):
                     order=idx,
                     params=params
                 )
+                if subtask_type == 'amazon_upload' and not is_draft:
+                    process_amazon_upload_files(subtask_data.get('params', {}), task_no)
 
             except Exception as e:
                 # 回滚事务
