@@ -1,6 +1,5 @@
 from django.urls import path
-from theme.view import views, views_vocabulary, views_trend
-
+from theme.view import views, views_vocabulary, views_trend, views_trend_v2
 
 app_name = 'theme'
 
@@ -9,7 +8,7 @@ urlpatterns = [
     path('Theme/products/', views.product_list_page, name='theme_product_list'),
     path('vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
     path('vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
-    path('Theme/trend',views_trend.trend_page, name='trend_page'),
+    path('theme/trend', views_trend.trend_page, name='trend_page'),
 
     # 词库API
     path('api/tro-table/', views_vocabulary.api_tro_table_list, name='api_tro_table_list'),
@@ -51,5 +50,9 @@ urlpatterns = [
     # 侵权词搜索
     path('api/trend/search/', views_trend.trend_search, name='trend_search'),
 
-    
+
+    path('theme/trend/v2', views_trend_v2.trend_page_v2, name='trend_page_v2'),
+    path('api/trend/search/v2/', views_trend_v2.trend_search_v2, name='trend_search_v2'),
+    path('api/trend/ai/v2/', views_trend_v2.ai_analyze_v2, name='trend_ai_v2'),
+
 ]
