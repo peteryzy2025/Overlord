@@ -135,7 +135,33 @@
         white-space: nowrap;
         position: sticky;
         border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
         vertical-align: middle;
+        text-align: center;  /* 强制所有表头居中 */
+    }
+
+    .table th:last-child {
+        border-right: none;
+    }
+
+    /* rowspan=2 的单元格强制居中 */
+    .table th[rowspan="2"] {
+        vertical-align: middle !important;
+        text-align: center !important;
+    }
+
+    /* 所有数据单元格居中 */
+    .table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    .table td:last-child {
+        border-right: none;
     }
 
     .table thead tr:first-child th {
@@ -143,30 +169,25 @@
         font-weight: 700;
         font-size: 0.9rem;
         top: 0;
-        z-index: 10;
+        z-index: 12;
         height: 45px;
-        border-bottom: 2px solid var(--border-color);
+        border-bottom: 1px solid var(--border-color);
     }
 
     .table thead tr:last-child th {
         background-color: var(--bg-secondary);
-        font-weight: 500;
+        font-weight: 600;
         font-size: 0.85rem;
         top: 45px;
-        z-index: 9;
+        z-index: 11;
+        border-bottom: 2px solid var(--border-color);
     }
 
     .table thead tr:first-child th[rowspan="2"] {
-        vertical-align: middle;
         height: 90px;
         line-height: 1.2;
-    }
-
-    .table td {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color);
-        vertical-align: middle;
-        white-space: nowrap;
+        z-index: 13;
+        background-color: var(--bg-secondary);
     }
 
     .table tbody tr:hover {
@@ -175,12 +196,13 @@
 
     /* 组长汇总行样式 */
     .leader-row {
-        background-color: rgba(102, 126, 234, 0.15) !important;
+        background-color: rgba(102, 126, 234, 0.08) !important;
         font-weight: 600;
     }
 
     .leader-row td {
         border-bottom: 2px solid var(--border-color);
+        border-top: 2px solid var(--border-color);
     }
 
     .pagination-container {
@@ -212,9 +234,35 @@
         font-size: 1.1rem;
     }
 
-    .highlight-red {
+    /* 分数颜色 */
+    .score-green {
+        color: #16a34a;
+        font-weight: 700;
+    }
+
+    .score-red {
         color: #dc2626;
         font-weight: 700;
+    }
+
+    /* 表头分组标题样式 */
+    .table thead tr:first-child th[colspan="4"],
+    .table thead tr:first-child th[colspan="3"] {
+        background-color: var(--bg-secondary);
+        color: var(--accent-color);
+        font-weight: 700;
+        font-size: 0.95rem;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--accent-color);
+    }
+
+    /* small标签继承表头颜色 */
+    .table th small {
+        font-weight: normal;
+        color: inherit;
+        opacity: 0.85;
+        display: block;
+        margin-top: 2px;
     }
 </style>
 {% endblock %}
@@ -264,17 +312,17 @@
                     <th rowspan="2">姓名</th>
                     <th rowspan="2">岗位</th>
                     <th rowspan="2">考核成绩</th>
-                    <th colspan="4" style="text-align: center; background-color: rgba(102, 126, 234, 0.1);">业绩订单销售量</th>
-                    <th colspan="3" style="text-align: center; background-color: rgba(102, 126, 234, 0.1);">考核得分项</th>
+                    <th colspan="4" style="text-align: center;">业绩订单销售量</th>
+                    <th colspan="3" style="text-align: center;">考核得分项</th>
                 </tr>
                 <tr>
                     <th>KPI订单量</th>
                     <th>完成订单量</th>
                     <th>达成率</th>
-                    <th>是否达成<br><small style="font-weight: normal; color: var(--text-secondary);">(✓ / ✗)</small></th>
-                    <th>业绩指标<br><small style="font-weight: normal; color: var(--text-secondary);">(运营60%/助理30%)</small></th>
-                    <th>行为考核<br><small style="font-weight: normal; color: var(--text-secondary);">(运营40%/助理70%)</small></th>
-                    <th>加分项<br><small style="font-weight: normal; color: var(--text-secondary);">(超额业绩1分)</small></th>
+                    <th>是否达成<br><small>(✓ / ✗)</small></th>
+                    <th>业绩指标</th>
+                    <th>行为考核</th>
+                    <th>加分项<br><small>(超额业绩1分)</small></th>
                 </tr>
             </thead>
             <tbody>
@@ -284,22 +332,28 @@
                     <td>{{ item.employee_name }}</td>
                     <td>{{ item.role }}</td>
                     <td>
-                        {% if item.final_score != '-' and item.final_score > 150 %}
-                        <span class="highlight-red">{{ item.final_score }}</span>
+                        {% if item.final_score != '-' %}
+                            {% if item.final_score < 60 %}
+                                <span class="score-green">{{ item.final_score }}</span>
+                            {% elif item.final_score > 150 %}
+                                <span class="score-red">{{ item.final_score }}</span>
+                            {% else %}
+                                <span style="color: var(--text-primary);">{{ item.final_score }}</span>
+                            {% endif %}
                         {% else %}
-                        <span style="color: var(--text-primary);">{{ item.final_score }}</span>
+                            <span style="color: var(--text-primary);">{{ item.final_score }}</span>
                         {% endif %}
                     </td>
                     <td>{{ item.target_orders }}</td>
                     <td>{{ item.actual_orders }}</td>
                     <td>
                         {% if item.achievement_rate > 150 %}
-                        <span class="highlight-red">{{ item.achievement_rate }}%</span>
+                        <span class="score-red">{{ item.achievement_rate }}%</span>
                         {% else %}
                         <span>{{ item.achievement_rate }}%</span>
                         {% endif %}
                     </td>
-                    <td style="text-align: center;">
+                    <td>
                         {% if item.is_achieved == '是' %}
                         <span class="achieved-yes">✓</span>
                         {% else %}
@@ -394,4 +448,4 @@
         });
     });
 </script>
-{% endblock %}s
+{% endblock %}

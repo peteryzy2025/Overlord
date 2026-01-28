@@ -188,7 +188,7 @@ def trend_search(request):
         'low_risk_words': low_risk_words,
         'theme_risk_level': theme_risk_level,
         'theme_risk_text': theme_risk_text,
-    })
+    }, json_dumps_params={'ensure_ascii': False})
 
 
 def words_split(theme):
