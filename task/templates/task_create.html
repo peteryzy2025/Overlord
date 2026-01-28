@@ -146,7 +146,7 @@
                         <h4>Temu导单</h4>
                         <p>导出Temu订单数据</p>
                     </div>
-                    <div class="subtask-type-card disabled" data-type="amazon_upload">
+                    <div class="subtask-type-card" data-type="amazon_upload" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
@@ -552,14 +552,33 @@
         function confirmAddSubtask() {
             if (!selectedSubtaskType) return;
 
-            // addSubtask 内部已处理默认参数合并，这里直接传递空对象即可触发默认值
-            addSubtask(selectedSubtaskType, {});
-            closeAddSubtaskModal();
-            triggerAutoSave();
+            // 先关闭模态框（立即关闭）
+            document.getElementById('addSubtaskModal').classList.remove('active');
+
+            // 然后再添加子任务
+            setTimeout(() => {
+                addSubtask(selectedSubtaskType, {});
+                selectedSubtaskType = null;
+                document.getElementById('confirmAddSubtaskBtn').disabled = true;
+
+                // 清除选中状态
+                document.querySelectorAll('.subtask-type-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+
+                triggerAutoSave();
+            }, 100);
         }
 
         function addSubtask(type, params = {}) {
             const subtaskId = subtaskIdCounter++;
+
+            // 立即移除空状态框（确保最先执行）
+            const container = document.getElementById('subtasksContainer');
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
 
             // 定义默认参数（确保包含所有可能需要的字段）
             let defaultParams = {};
@@ -572,7 +591,7 @@
                     add_black_border: false,
                     recognize_theme: false,
                     add_custom_coords: false,
-                    custom_coords: '', // 默认为空字符串
+                    custom_coords: '',
                     add_background_color: false,
                     background_color: '#ffffff',
                     export_quantity: 400,
@@ -586,22 +605,24 @@
                 };
             } else if (type === 'amazon_upload') {
                 defaultParams = {
+                    file_list: [],
                     file_paths: []
                 };
             }
 
             // 合并参数（优先使用传入的params，缺失的使用defaultParams）
-            // 对于引用类型（数组），如果params中没有，则使用新创建的数组，避免引用共享
             const mergedParams = {...defaultParams, ...params};
 
-            // 确保数组字段是独立的实例
-            if (!params.product_ids) mergedParams.product_ids = [];
-            if (!params.gallery_path) mergedParams.gallery_path = [];
-            if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
-            if (!params.file_paths) mergedParams.file_paths = [];
-
-            // 确保字符串字段存在
-            if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
+            // 确保数组字段是独立的实例，避免引用共享
+            if (type === 'multi_side_custom' || type === 'custom_upload') {
+                if (!params.product_ids) mergedParams.product_ids = [];
+                if (!params.gallery_path) mergedParams.gallery_path = [];
+                if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
+                if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
+            } else if (type === 'amazon_upload') {
+                if (!params.file_list) mergedParams.file_list = [];
+                if (!params.file_paths) mergedParams.file_paths = [];
+            }
 
             const subtask = {
                 id: subtaskId,
@@ -615,13 +636,62 @@
             renderSubtask(subtask);
             renderSubtasksCount();
 
-            const container = document.getElementById('subtasksContainer');
-            const emptyState = container.querySelector('.empty-state');
-            if (emptyState) {
-                emptyState.remove();
+            // 如果是amazon_upload类型，添加拖拽事件监听
+            if (type === 'amazon_upload') {
+                setTimeout(() => {
+                    const subtaskItem = document.querySelector(`[data-subtask-id="${subtaskId}"]`);
+                    if (subtaskItem) {
+                        const uploadArea = subtaskItem.querySelector('[style*="border: 2px dashed"]');
+                        const fileInput = document.getElementById(`file-input-${subtaskId}`);
+
+                        if (uploadArea && fileInput) {
+                            // 阻止默认拖拽行为（防止浏览器下载文件）
+                            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                                uploadArea.addEventListener(eventName, preventDefaults, false);
+                                document.body.addEventListener(eventName, preventDefaults, false);
+                            });
+
+                            // 高亮样式 - 拖拽进入
+                            ['dragenter', 'dragover'].forEach(eventName => {
+                                uploadArea.addEventListener(eventName, () => {
+                                    uploadArea.style.borderColor = 'var(--accent-color)';
+                                    uploadArea.style.backgroundColor = 'rgba(59, 130, 246, 0.05)';
+                                }, false);
+                            });
+
+                            // 移除高亮 - 拖拽离开/放下
+                            ['dragleave', 'drop'].forEach(eventName => {
+                                uploadArea.addEventListener(eventName, () => {
+                                    uploadArea.style.borderColor = 'var(--border-color)';
+                                    uploadArea.style.backgroundColor = '';
+                                }, false);
+                            });
+
+                            // 处理文件放置
+                            uploadArea.addEventListener('drop', handleDrop, false);
+
+                            function preventDefaults(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+
+                            function handleDrop(e) {
+                                const dt = e.dataTransfer;
+                                const files = dt.files;
+
+                                if (files.length > 0) {
+                                    fileInput.files = files;
+                                    uploadFiles(fileInput, subtaskId);
+                                }
+                            }
+                        }
+                    }
+                }, 300);
             }
 
-            document.querySelector(`[data-subtask-id="${subtaskId}"]`)?.scrollIntoView({behavior: 'smooth'});
+            if (document.querySelector(`[data-subtask-id="${subtaskId}"]`)) {
+                document.querySelector(`[data-subtask-id="${subtaskId}"]`).scrollIntoView({behavior: 'smooth'});
+            }
         }
 
         function renderSubtask(subtask) {
@@ -669,26 +739,48 @@
                     handleGalleryPathInput(input, subtask.id);
                 }
             }
+
+            // 如果是amazon_upload类型，刷新文件列表
+            if (subtask.type === 'amazon_upload') {
+                refreshFileList(subtask.id);
+            }
         }
 
-        // ===== Amazon上传相关函数 =====
-        function renderFileItem(path, subtaskId) {
-            const displayName = path.split(/[/\\]/).pop();
+        // ===== Amazon上传文件相关函数 =====
+        function renderFileItem(fileInfo, subtaskId) {
+            // fileInfo: {temp_path, shop_name, filename, success, error}
 
-            // 处理反斜杠转义，用于onclick参数
-            const safePath = path.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            if (!fileInfo.success) {
+                return `
+                    <div class="file-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: rgba(229, 62, 62, 0.1); border-radius: 6px; border: 1px solid var(--danger-color); margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.875rem; color: var(--danger-color); word-break: break-all; flex: 1;">
+                            <i class="fas fa-exclamation-circle" style="margin-right: 0.5rem;"></i>
+                            ${fileInfo.filename || fileInfo.name || '未知文件'}
+                            <br>
+                            <small style="color: var(--text-secondary);">${fileInfo.error || '上传失败'}</small>
+                        </span>
+                        <button class="btn-icon" onclick="removeFile('${fileInfo.temp_path || ''}', ${subtaskId})" title="移除" style="color: var(--text-secondary);">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }
 
             return `
-            <div class="file-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color);">
-                <span style="font-size: 0.875rem; color: var(--text-primary); word-break: break-all;">
-                    <i class="fas fa-file-excel" style="color: #107c41; margin-right: 0.5rem;"></i>
-                    ${displayName}
-                </span>
-                <button class="btn-icon" onclick="removeFile('${safePath}', ${subtaskId})" title="删除文件" style="color: var(--danger-color);">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `;
+                <div class="file-item" style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background: rgba(72, 187, 120, 0.1); border-radius: 6px; border: 1px solid #48bb78; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.875rem; color: var(--text-primary); word-break: break-all; flex: 1;">
+                        <i class="fas fa-check-circle" style="color: #48bb78; margin-right: 0.5rem;"></i>
+                        ${fileInfo.filename}
+                        <br>
+                        <small style="color: var(--text-secondary);">
+                            <i class="fas fa-store"></i> 匹配店铺：${fileInfo.shop_name}
+                        </small>
+                    </span>
+                    <button class="btn-icon" onclick="removeFile('${fileInfo.temp_path}', ${subtaskId})" title="删除文件" style="color: var(--danger-color);">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
         }
 
         async function uploadFiles(inputElement, subtaskId) {
@@ -698,64 +790,105 @@
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             if (!subtask) return;
 
-            if (!subtask.params.file_paths) {
-                subtask.params.file_paths = [];
+            if (!subtask.params.file_list) {
+                subtask.params.file_list = []; // 存储 {temp_path, shop_name, filename, success}
             }
 
             showLoading(true);
 
             try {
                 for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
                     const formData = new FormData();
-                    formData.append('file', files[i]);
+                    formData.append('file', file);
 
-                    const response = await fetch('/api/tasks/upload/', {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': getCsrfToken()
-                        },
-                        body: formData
-                    });
+                    try {
+                        const response = await fetch('/api/tasks/upload-temp/', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCsrfToken()
+                            },
+                            body: formData
+                        });
 
-                    const result = await response.json();
-                    if (result.success) {
-                        subtask.params.file_paths.push(result.data.file_path);
-                    } else {
-                        showNotification(`文件 ${files[i].name} 上传失败: ${result.message}`, 'error');
+                        const result = await response.json();
+
+                        if (result.success) {
+                            // 上传成功且校验通过
+                            subtask.params.file_list.push({
+                                success: true,
+                                temp_path: result.temp_path,
+                                shop_name: result.shop_name,
+                                filename: result.filename
+                            });
+                            showNotification(`文件 ${result.filename} 校验通过（店铺：${result.shop_name}）`, 'success');
+                        } else {
+                            // 校验失败或上传失败
+                            subtask.params.file_list.push({
+                                success: false,
+                                filename: file.name,
+                                error: result.error || '上传失败'
+                            });
+                            showNotification(`文件 ${file.name} 上传失败：${result.error}`, 'error');
+                        }
+                    } catch (uploadError) {
+                        subtask.params.file_list.push({
+                            success: false,
+                            filename: file.name,
+                            error: '网络错误或服务器异常'
+                        });
+                        showNotification(`文件 ${file.name} 上传异常`, 'error');
                     }
                 }
 
-                // Refresh file list
-                const listContainer = document.getElementById(`file-list-${subtaskId}`);
-                if (listContainer) {
-                    listContainer.innerHTML = subtask.params.file_paths.map(path => renderFileItem(path, subtaskId)).join('');
-                }
+                // 刷新文件列表显示
+                refreshFileList(subtaskId);
+
+                // 更新file_paths（只保留成功的，给后端使用）
+                subtask.params.file_paths = subtask.params.file_list
+                    .filter(f => f.success)
+                    .map(f => f.temp_path);
 
                 triggerAutoSave();
-                showNotification('文件上传完成', 'success');
 
             } catch (error) {
-                showNotification('上传出错: ' + error.message, 'error');
+                showNotification('上传过程出错: ' + error.message, 'error');
             } finally {
-                inputElement.value = ''; // Reset input
+                inputElement.value = ''; // 重置input
                 showLoading(false);
             }
         }
 
-        function removeFile(path, subtaskId) {
+        function refreshFileList(subtaskId) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
-            if (subtask && subtask.params.file_paths) {
-                subtask.params.file_paths = subtask.params.file_paths.filter(p => p !== path);
+            const listContainer = document.getElementById(`file-list-${subtaskId}`);
 
-                const listContainer = document.getElementById(`file-list-${subtaskId}`);
-                if (listContainer) {
-                    listContainer.innerHTML = subtask.params.file_paths.map(p => renderFileItem(p, subtaskId)).join('');
-                }
+            if (!subtask || !subtask.params.file_list || subtask.params.file_list.length === 0) {
+                if (listContainer) listContainer.innerHTML = '';
+                return;
+            }
 
+            if (listContainer) {
+                listContainer.innerHTML = subtask.params.file_list.map(f => renderFileItem(f, subtaskId)).join('');
+            }
+        }
+
+        function removeFile(tempPath, subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask && subtask.params.file_list) {
+                subtask.params.file_list = subtask.params.file_list.filter(f => f.temp_path !== tempPath);
+
+                // 同步更新file_paths
+                subtask.params.file_paths = subtask.params.file_list
+                    .filter(f => f.success)
+                    .map(f => f.temp_path);
+
+                refreshFileList(subtaskId);
                 triggerAutoSave();
             }
         }
 
+        // ===== 子任务表单渲染 =====
         function renderSubtaskEditForm(subtask) {
             if (subtask.type === 'multi_side_custom') {
                 return `
@@ -839,7 +972,7 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_black_border ? 'checked' : ''}
                                     onchange="updateSubtaskParam(${subtask.id}, 'add_black_border', this.checked)">
                                 <span class="switch-slider"></span>
@@ -849,7 +982,7 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.recognize_theme ? 'checked' : ''}
                                     onchange="updateSubtaskParam(${subtask.id}, 'recognize_theme', this.checked)">
                                 <span class="switch-slider"></span>
@@ -859,14 +992,14 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_custom_coords ? 'checked' : ''}
                                     onchange="toggleCustomCoords(${subtask.id}, this.checked)">
                                 <span class="switch-slider"></span>
                                 <span class="switch-label">是否添加定制坐标</span>
                             </label>
                             <div id="custom-coords-input-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.add_custom_coords ? 'block' : 'none'}">
-                                <input type="text" class="form-control" 
+                                <input type="text" class="form-control"
                                     id="coords-input-${subtask.id}"
                                     value="${subtask.params.custom_coords || ''}"
                                     placeholder="输入4个数字，顺序：横 纵 宽 高 (如: 100 200 500 500)"
@@ -879,14 +1012,14 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_background_color ? 'checked' : ''}
                                     onchange="toggleBackgroundColor(${subtask.id}, this.checked)">
                                 <span class="switch-slider"></span>
                                 <span class="switch-label">是否需要添加背景色</span>
                             </label>
                             <div id="background-color-input-${subtask.id}" class="color-picker-wrapper" style="display: ${subtask.params.add_background_color ? 'flex' : 'none'}">
-                                <input type="color" 
+                                <input type="color"
                                     value="${subtask.params.background_color || '#ffffff'}"
                                     onchange="updateBackgroundColor(${subtask.id}, this.value)"
                                     style="height: 38px; width: 50px; padding: 0; border: none; background: none;">
@@ -980,7 +1113,7 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_black_border ? 'checked' : ''}
                                     onchange="updateSubtaskParam(${subtask.id}, 'add_black_border', this.checked)">
                                 <span class="switch-slider"></span>
@@ -991,7 +1124,7 @@
                         <!-- 新增开关组 -->
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.recognize_theme ? 'checked' : ''}
                                     onchange="updateSubtaskParam(${subtask.id}, 'recognize_theme', this.checked)">
                                 <span class="switch-slider"></span>
@@ -1008,14 +1141,14 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_custom_coords ? 'checked' : ''}
                                     onchange="toggleCustomCoords(${subtask.id}, this.checked)">
                                 <span class="switch-slider"></span>
                                 <span class="switch-label">是否添加定制坐标</span>
                             </label>
                             <div id="custom-coords-input-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.add_custom_coords ? 'block' : 'none'}">
-                                <input type="text" class="form-control" 
+                                <input type="text" class="form-control"
                                     id="coords-input-${subtask.id}"
                                     value="${subtask.params.custom_coords || ''}"
                                     placeholder="输入4个数字，顺序：横 纵 宽 高 (如: 100 200 500 500)"
@@ -1028,14 +1161,14 @@
 
                         <div class="form-group">
                             <label class="form-switch">
-                                <input type="checkbox" class="switch-input" 
+                                <input type="checkbox" class="switch-input"
                                     ${subtask.params.add_background_color ? 'checked' : ''}
                                     onchange="toggleBackgroundColor(${subtask.id}, this.checked)">
                                 <span class="switch-slider"></span>
                                 <span class="switch-label">是否需要添加背景色</span>
                             </label>
                             <div id="background-color-input-${subtask.id}" class="color-picker-wrapper" style="display: ${subtask.params.add_background_color ? 'flex' : 'none'}">
-                                <input type="color" 
+                                <input type="color"
                                     value="${subtask.params.background_color || '#ffffff'}"
                                     onchange="updateBackgroundColor(${subtask.id}, this.value)"
                                     style="height: 38px; width: 50px; padding: 0; border: none; background: none;">
@@ -1066,12 +1199,25 @@
                     <div class="dynamic-fields">
                         <div class="form-group" style="grid-column: span 2;">
                             <label class="form-label">上传文件 (Excel) <span style="color: var(--danger-color);">*</span></label>
-                            <input type="file" class="form-control" 
-                                   accept=".xls,.xlsx" multiple
-                                   onchange="uploadFiles(this, ${subtask.id})">
-                            <div class="file-list" id="file-list-${subtask.id}" style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                                ${(subtask.params.file_paths || []).map(path => renderFileItem(path, subtask.id)).join('')}
+                            <div style="padding: 1rem; border: 2px dashed var(--border-color); border-radius: 8px; text-align: center; margin-bottom: 1rem;">
+                                <i class="fas fa-cloud-upload-alt" style="font-size: 2rem; color: var(--text-secondary); margin-bottom: 0.5rem;"></i>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">拖拽文件到此处或点击上传</p>
+                                <input type="file" class="form-control"
+                                       accept=".xls,.xlsx" multiple
+                                       onchange="uploadFiles(this, ${subtask.id})"
+                                       style="display: none;"
+                                       id="file-input-${subtask.id}">
+                                <button class="btn btn-secondary" onclick="document.getElementById('file-input-${subtask.id}').click()">
+                                    <i class="fas fa-plus"></i> 选择文件
+                                </button>
                             </div>
+                            <div class="file-list" id="file-list-${subtask.id}" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                ${(subtask.params.file_list || []).map(f => renderFileItem(f, subtask.id)).join('')}
+                            </div>
+                            <small style="color: var(--text-tertiary); display: block; margin-top: 0.5rem;">
+                                <i class="fas fa-info-circle"></i>
+                                文件名必须包含店铺全称（如"承诺希航-16蔡婉婷"），系统会自动匹配并归档
+                            </small>
                         </div>
                     </div>
                 `;
@@ -1405,7 +1551,7 @@
 
         // ===== 渲染子任务数量 =====
         function renderSubtasksCount() {
-            document.getElementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个子任务`;
+            document.get_elementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个子任务`;
         }
 
         // ===== 模板相关操作 =====
@@ -1501,8 +1647,8 @@
                                      onclick="confirmLoadTemplate(${template.id}, '${template.name.replace(/'/g, "\\'")}')">
                                     <div class="template-header">
                                         <h4 class="template-name">${template.name}</h4>
-                                        <button class="btn-icon" 
-                                                onclick="event.stopPropagation(); deleteTemplate(${template.id}, '${template.name.replace(/'/g, "\\'")}')" 
+                                        <button class="btn-icon"
+                                                onclick="event.stopPropagation(); deleteTemplate(${template.id}, '${template.name.replace(/'/g, "\\'")}')"
                                                 title="删除模板"
                                                 style="color: var(--text-tertiary); padding: 4px;">
                                             <i class="fas fa-trash"></i>
@@ -1759,8 +1905,10 @@
                         return false;
                     }
                 } else if (subtask.type === 'amazon_upload') {
-                    if (!subtask.params.file_paths || subtask.params.file_paths.length === 0) {
-                        showNotification(`子任务 #${subtask.order + 1} 必须上传至少一个文件`, 'warning');
+                    // 检查是否有成功上传的文件
+                    const hasValidFiles = subtask.params.file_list && subtask.params.file_list.some(f => f.success);
+                    if (!hasValidFiles) {
+                        showNotification(`子任务 #${subtask.order + 1} 必须上传至少一个有效的Excel文件`, 'warning');
                         return false;
                     }
                 }

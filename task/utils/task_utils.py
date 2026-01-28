@@ -24,21 +24,21 @@ def generate_task_no(user):
     """
     # 获取名字（使用first_name）
     first_name = user.first_name or user.username
-    
+
     # 提取名字拼音首字母
     from pypinyin import pinyin, Style
-    
+
     # 获取拼音首字母
     initials_list = pinyin(first_name, style=Style.FIRST_LETTER, errors='default')
     # pinyin返回如 [['y'], ['x'], ['d']]
-    
+
     initials = []
     for item in initials_list:
         if item:
             char = item[0]
             if char.isalnum():
                 initials.append(char)
-    
+
     if not initials:
         # 如果没有有效首字母，使用用户名前2-4位
         pinyin_initials = user.username[:4].upper()
@@ -180,17 +180,41 @@ def validate_subtask_params(subtask_type, params, user):
             url = params.get('url', '').strip()
             if not url:
                 return {'valid': False, 'message': '产品链接(URL)不能为空'}
-            
+
             # platform 可选，默认 yizhiguan
-            
+
         elif subtask_type == 'embroidery':
+
             # 刺绣验证
+
             # url 为必填
+
             url = params.get('url', '').strip()
+
             if not url:
                 return {'valid': False, 'message': '产品链接(URL)不能为空'}
 
+
+        elif subtask_type == 'amazon_upload':
+
+            # Amazon上传商品验证
+
+            file_list = params.get('file_list', [])
+
+            file_paths = params.get('file_paths', [])
+
+            has_valid_files = False
+
+            if file_list and isinstance(file_list, list):
+                has_valid_files = any(f.get('success') for f in file_list if isinstance(f, dict))
+
+            if not has_valid_files and (not file_paths or not isinstance(file_paths, list) or len(file_paths) == 0):
+                return {'valid': False, 'message': '请上传至少一个有效的Excel文件'}
+
+            return {'valid': True, 'message': ''}
+
         else:
+
             return {'valid': False, 'message': f'未知的子任务类型: {subtask_type}'}
 
         return {'valid': True, 'message': '验证通过'}

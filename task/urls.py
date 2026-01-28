@@ -1,8 +1,7 @@
 # Task/urls.py
 
 from django.urls import path
-from task.view import task_api_views, task_page_views, product_views
-
+from task.view import task_api_views, task_page_views, product_views, task_upload_views
 app_name = 'task'  # 命名空间
 urlpatterns = [
     # 页面路由
@@ -52,4 +51,11 @@ urlpatterns = [
     path('api/tasks/templates/save/', task_api_views.save_template_api, name='save_template'),
     path('api/tasks/templates/<int:template_id>/load/', task_api_views.load_template_api, name='load_template'),
     path('api/tasks/templates/<int:template_id>/delete/', task_api_views.delete_template_api, name='delete_template'),
+
+    # ===== 文件上传相关（新增）=====
+    # Amazon店铺列表（用于文件名校验）
+    path('api/tasks/amazon-shops/', task_upload_views.get_amazon_shops_api, name='get_amazon_shops'),
+
+    # 临时文件上传（预校验店名）
+    path('api/tasks/upload-temp/', task_upload_views.upload_temp_file_api, name='upload_temp_file'),
 ]
