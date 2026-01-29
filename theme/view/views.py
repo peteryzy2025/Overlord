@@ -15,8 +15,14 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 
 # 导入你的模型
-from theme.models import AmazonProduct, ProductRankHistory, AmazonThemeNovelty, ThemeRecord, ThemeDailyData
+from theme.models import (
+    AmazonProduct, ProductRankHistory, AmazonThemeNovelty,
+    ThemeRecord, ThemeDailyData, ThemeReport
+)
+from theme.view.views_trend import analyze_theme_trend, batch_analyze_theme_trend
 
+
+from django.core.cache import cache
 
 # ============================================
 # 1. 页面渲染视图
@@ -70,7 +76,7 @@ def product_list_page(request):
         min_created_at=Min('created_at'),
         max_created_at=Max('created_at')
     )
-
+#peteryzy
     context = {
         'page_title': 'Amazon新奇特',
         'active_nav': 'theme_products',
@@ -200,6 +206,18 @@ def api_amazon_products(request):
             except ValueError:
                 pass
 
+        # 举报状态筛选
+        report_status = data.get('report_status', 'all')  # all, reported, unreported
+        
+        if report_status in ('reported', 'unreported'):
+            # 获取所有被举报且有效的ASIN
+            reported_asins = ThemeReport.objects.filter(is_active=True).values_list('product__asin', flat=True).distinct()
+            
+            if report_status == 'reported':
+                queryset = queryset.filter(product__asin__in=reported_asins)
+            else:  # unreported
+                queryset = queryset.exclude(product__asin__in=reported_asins)
+
         # 4. 应用排序
         sort_field = data.get('sort_field', 'crawl_date')
         sort_order = data.get('sort_order', 'desc')
@@ -278,6 +296,29 @@ def api_amazon_products(request):
 
         # 6. 序列化数据
         history_list = []
+
+        # 获取当前用户（如果已登录）
+        current_user = getattr(request, 'user', None)
+
+        # 批量获取举报状态 - 优化性能
+        all_asins = [h.product.asin for h in current_page]
+        reports_queryset = ThemeReport.objects.filter(
+            product__asin__in=all_asins,
+            is_active=True
+        ).select_related('reporter')
+
+        # 构建举报查找字典 {asin: [reporter_names]}
+        reports_lookup = {}
+        for report in reports_queryset:
+            asin = report.product.asin
+            if asin not in reports_lookup:
+                reports_lookup[asin] = []
+            if report.reporter:
+                reports_lookup[asin].append(report.reporter.first_name)
+        
+        # 移除同步批量分析，改为前端异步加载
+        # batch_risk_analysis = {}
+
         for history in current_page:
             product = history.product
 
@@ -290,6 +331,20 @@ def api_amazon_products(request):
             theme_data = theme_lookup.get(product.asin, {})
             theme_record = theme_data.get('theme_record')
             daily_data = theme_data.get('daily_data')
+            
+            # 异步加载不再需要在后端处理风险分析
+            # risk_analysis = batch_risk_analysis.get(product.subject, {})
+
+            # 获取举报状态
+            all_reporters = reports_lookup.get(product.asin, [])
+            is_reported_by_current_user = False
+            if current_user and current_user.is_authenticated:
+                # 检查当前用户是否举报了该产品
+                is_reported_by_current_user = ThemeReport.objects.filter(
+                    product=product,
+                    reporter=current_user,
+                    is_active=True
+                ).exists()
 
             history_list.append({
                 'id': history.id,  # 记录ID
@@ -306,36 +361,66 @@ def api_amazon_products(request):
                 'is_latest_deal': product.is_latest_deal,
                 # NEW: ThemeRecord 数据
                 'theme_record': {
-                    'infringement_words': theme_record.infringement_words if theme_record else None,
-                    'infringement_level': theme_record.infringement_level if theme_record else None,
+                    'infringement_words': None, # 前端异步加载
+                    'high_risk_words': [],
+                    'medium_risk_words': [],
+                    'low_risk_words': [],
+                    'infringement_level': 'loading', # 标记为加载中
                     'ai_infringement_words': theme_record.ai_infringement_words if theme_record else None,
                     'ai_infringement_level': theme_record.ai_infringement_level if theme_record else None,
-                } if theme_record else None,
+                },
                 # NEW: ThemeDailyData 数据
                 'daily_data': {
                     'score': daily_data.score if daily_data else None,
                     'appear_count': daily_data.appear_count if daily_data else None,
                 } if daily_data else None,
+                # NEW: 举报状态
+                'is_reported_by_current_user': is_reported_by_current_user,
+                'all_reporters': all_reporters,
             })
 
         # 7. 计算统计数据 (保持产品维度的统计，除了列表总数)
         total_records = paginator.count
-
-        # 产品总数 (独立查询)
-        total_products = AmazonThemeNovelty.objects.count()
-
-        # 本月新增产品数量 (独立查询)
-        now = timezone.now()
-        first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        monthly_count = AmazonThemeNovelty.objects.filter(
-            created_at__gte=first_day_of_month
-        ).count()
-
-        # 产品类型分布 (独立查询，基于 is_latest_deal)
-        latest_deal_distribution = {
-            'latest_deal_count': AmazonThemeNovelty.objects.filter(is_latest_deal=True).count(),
-            'latest_arrival_count': AmazonThemeNovelty.objects.filter(is_latest_deal=False).count(),
-        }
+        
+        # 尝试从缓存获取全局统计数据
+        cache_key_stats = 'amazon_products_stats_global'
+        stats_data = cache.get(cache_key_stats)
+        
+        if not stats_data:
+            # 产品总数 (独立查询)
+            total_products = AmazonThemeNovelty.objects.count()
+            
+            # 本月新增产品数量 (独立查询)
+            now = timezone.now()
+            first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            monthly_count = AmazonThemeNovelty.objects.filter(
+                created_at__gte=first_day_of_month
+            ).count()
+            
+            # 近七日新增主题
+            seven_days_ago = timezone.now().date() - timedelta(days=7)
+            recent_subjects_7d = AmazonThemeNovelty.objects.filter(
+                launch_date__gte=seven_days_ago
+            ).exclude(
+                subject__isnull=True
+            ).exclude(
+                subject=''
+            ).values('subject').distinct().count()
+            
+            # 产品类型分布 (独立查询，基于 is_latest_deal)
+            latest_deal_distribution = {
+                'latest_deal_count': AmazonThemeNovelty.objects.filter(is_latest_deal=True).count(),
+                'latest_arrival_count': AmazonThemeNovelty.objects.filter(is_latest_deal=False).count(),
+            }
+            
+            stats_data = {
+                'total_products': total_products,
+                'monthly_count': monthly_count,
+                'recent_subjects_7d': recent_subjects_7d,
+                'latest_deal_distribution': latest_deal_distribution
+            }
+            # 缓存 10 分钟 (600秒)
+            cache.set(cache_key_stats, stats_data, 600)
 
         # 8. 返回响应
         return JsonResponse({
@@ -353,16 +438,14 @@ def api_amazon_products(request):
 
                 # 统计信息
                 'stats': {
-                    'total_products': total_products,  # 仍显示产品总数
-                    'recent_subjects_7d': AmazonThemeNovelty.objects.filter(
-                        launch_date__gte=(timezone.now().date() - timedelta(days=7))
-                    ).exclude(subject__isnull=True).exclude(subject='').values('subject').distinct().count(),
-                    'monthly_count': monthly_count,
+                    'total_products': stats_data['total_products'],
+                    'recent_subjects_7d': stats_data['recent_subjects_7d'],
+                    'monthly_count': stats_data['monthly_count'],
                 },
 
                 # 分布信息
                 'distribution': {
-                    'latest_deal': latest_deal_distribution,
+                    'latest_deal': stats_data['latest_deal_distribution'],
                 }
             }
         })
@@ -385,6 +468,25 @@ def api_amazon_products(request):
                 'error_type': type(e).__name__,
             }
         }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def api_batch_risk_check(request):
+    """
+    批量风险检测API
+    请求体: {"themes": ["theme1", "theme2", ...]}
+    """
+    try:
+        data = json.loads(request.body)
+        themes = data.get('themes', [])
+        if not themes:
+            return JsonResponse({'success': True, 'data': {}})
+            
+        results = batch_analyze_theme_trend(themes)
+        return JsonResponse({'success': True, 'data': results})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
 # ============================================
@@ -1187,4 +1289,211 @@ def export_products_excel(request):
         return JsonResponse({
             'success': False,
             'message': f'导出Excel失败: {str(e)}'
+        }, status=500)
+
+
+# ============================================
+# 10. 举报功能API
+# ============================================
+
+@require_POST
+def api_report_product(request):
+    """
+    举报产品
+    请求方法: POST
+    请求地址: /api/amazon-products/report/
+    请求体: {"asin": "xxx"}
+    """
+    # 手动检查用户是否登录
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': '请先登录'
+        }, status=401)
+
+    try:
+        data = json.loads(request.body)
+        asin = data.get('asin', '').strip()
+
+        if not asin:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少ASIN参数'
+            }, status=400)
+
+        # 获取产品
+        try:
+            product = AmazonThemeNovelty.objects.get(asin=asin)
+        except AmazonThemeNovelty.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': f'未找到ASIN为 {asin} 的产品'
+            }, status=404)
+
+        # 检查用户是否已举报过该产品 (包括已取消的举报)
+        existing_report = ThemeReport.objects.filter(
+            product=product,
+            reporter=request.user
+        ).first()
+
+        if existing_report:
+            if existing_report.is_active:
+                # 已经是激活状态，返回当前状态
+                all_reports = ThemeReport.objects.filter(
+                    product=product,
+                    is_active=True
+                ).select_related('reporter')
+
+                return JsonResponse({
+                    'success': True,
+                    'message': '您已经举报过该产品',
+                    'data': {
+                        'asin': asin,
+                        'is_reported_by_current_user': True,
+                        'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+                    }
+                })
+            else:
+                # 曾经举报过但已取消，重新激活
+                existing_report.is_active = True
+                existing_report.save()
+
+                # 获取所有有效的举报记录
+                all_reports = ThemeReport.objects.filter(
+                    product=product,
+                    is_active=True
+                ).select_related('reporter')
+
+                return JsonResponse({
+                    'success': True,
+                    'message': '举报成功',
+                    'data': {
+                        'asin': asin,
+                        'is_reported_by_current_user': True,
+                        'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+                    }
+                })
+
+        # 创建举报记录
+        ThemeReport.objects.create(
+            product=product,
+            reporter=request.user,
+            is_active=True
+        )
+
+        # 获取所有有效的举报记录
+        all_reports = ThemeReport.objects.filter(
+            product=product,
+            is_active=True
+        ).select_related('reporter')
+
+        return JsonResponse({
+            'success': True,
+            'message': '举报成功',
+            'data': {
+                'asin': asin,
+                'is_reported_by_current_user': True,
+                'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': '无效的JSON数据格式'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'举报失败: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+def api_unreport_product(request):
+    """
+    撤销举报
+    请求方法: POST
+    请求地址: /api/amazon-products/unreport/
+    请求体: {"asin": "xxx"}
+    """
+    # 手动检查用户是否登录
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'message': '请先登录'
+        }, status=401)
+
+    try:
+        data = json.loads(request.body)
+        asin = data.get('asin', '').strip()
+
+        if not asin:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少ASIN参数'
+            }, status=400)
+
+        # 获取产品
+        try:
+            product = AmazonThemeNovelty.objects.get(asin=asin)
+        except AmazonThemeNovelty.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': f'未找到ASIN为 {asin} 的产品'
+            }, status=404)
+
+        # 查找当前用户的举报记录
+        report = ThemeReport.objects.filter(
+            product=product,
+            reporter=request.user,
+            is_active=True
+        ).first()
+
+        if not report:
+            # 未举报过，返回当前状态
+            all_reports = ThemeReport.objects.filter(
+                product=product,
+                is_active=True
+            ).select_related('reporter')
+
+            return JsonResponse({
+                'success': True,
+                'message': '您未举报过该产品',
+                'data': {
+                    'asin': asin,
+                    'is_reported_by_current_user': False,
+                    'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+                }
+            })
+
+        # 软删除：设置 is_active=False
+        report.is_active = False
+        report.save()
+
+        # 获取所有有效的举报记录
+        all_reports = ThemeReport.objects.filter(
+            product=product,
+            is_active=True
+        ).select_related('reporter')
+
+        return JsonResponse({
+            'success': True,
+            'message': '已撤销举报',
+            'data': {
+                'asin': asin,
+                'is_reported_by_current_user': False,
+                'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': '无效的JSON数据格式'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'撤销举报失败: {str(e)}'
         }, status=500)

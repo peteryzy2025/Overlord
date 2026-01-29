@@ -635,6 +635,190 @@
             font-size: 0.9rem;
             color: var(--text-primary);
         }
+
+        /* 点击复制相关样式 */
+        .copyable-subject {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .copyable-subject:hover {
+            color: var(--accent-color);
+        }
+
+        .copyable-subject:active {
+            transform: scale(0.98);
+        }
+        .reported-row .tooltip-content:not(.trans-text) {
+            color: #dc2626 !important; /* 红色字体，仅应用于产品主题 */
+            font-weight: bold;
+        }
+
+        .reporter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-radius: 999px; /* 胶囊形状 */
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-top: 6px;
+            cursor: help;
+            transition: all 0.2s;
+            border: 1px solid #fecaca;
+            max-width: 100%;
+            position: relative; /* 为tooltip定位 */
+        }
+
+        .reporter-badge:hover {
+            background-color: #fecaca;
+            transform: translateY(-1px);
+        }
+
+        .reporter-badge i {
+            font-size: 0.7rem;
+        }
+
+        /* 自定义简约Tooltip */
+        .reporter-tooltip {
+            visibility: hidden;
+            background-color: rgba(31, 41, 55, 0.95); /* 深色背景，微透明 */
+            color: #fff;
+            text-align: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            position: absolute;
+            z-index: 100;
+            bottom: calc(100% + 8px); /* 位于badge上方 */
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            opacity: 0;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.75rem;
+            font-weight: normal;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            pointer-events: none; /* 避免遮挡鼠标事件 */
+        }
+
+        /* Tooltip 小三角 */
+        .reporter-tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(31, 41, 55, 0.95) transparent transparent transparent;
+        }
+
+        .reporter-badge:hover .reporter-tooltip {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .btn-report {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-report:hover {
+            background-color: #b91c1c;
+        }
+
+        .btn-unreport {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-unreport:hover {
+            background-color: #1d4ed8;
+        }
+
+        .btn-disabled {
+            background-color: #d1d5db;
+            color: #9ca3af;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: not-allowed;
+            font-size: 0.875rem;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.875rem;
+        }
+        /* 三段式开关样式 */
+        .tri-state-toggle {
+            display: inline-flex;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            padding: 4px;
+            position: relative;
+            border: 1px solid var(--border-color);
+            margin-left: 1rem;
+        }
+
+        .toggle-option {
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            z-index: 1;
+            position: relative;
+            transition: color 0.3s;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .toggle-option.active {
+            color: var(--text-primary);
+        }
+
+        .toggle-indicator {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            left: 4px;
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 0;
+            /* 宽度和位置将由JS动态设置 */
+        }
+
+        /* 不同状态的指示器颜色 */
+        .tri-state-toggle[data-state="reported"] .toggle-indicator {
+            background-color: #fee2e2;
+        }
+        .tri-state-toggle[data-state="reported"] .toggle-option[data-value="reported"] {
+            color: #b91c1c;
+        }
+
+        .tri-state-toggle[data-state="unreported"] .toggle-indicator {
+            background-color: #d1fae5;
+        }
+        .tri-state-toggle[data-state="unreported"] .toggle-option[data-value="unreported"] {
+            color: #047857;
+        }
     </style>
 {% endblock %}
 
@@ -798,7 +982,24 @@
         <!-- 数据表格 -->
         <div class="data-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 class="section-title" style="margin-bottom: 0;">产品列表</h3>
+                <div style="display: flex; align-items: center;">
+                    <h3 class="section-title" style="margin-bottom: 0;">产品列表</h3>
+                    
+                    <!-- 三段式开关 -->
+                    <div class="tri-state-toggle" id="reportStatusToggle" data-state="all">
+                        <div class="toggle-indicator"></div>
+                        <div class="toggle-option" data-value="reported" onclick="setReportStatus('reported')">
+                            <i class="fas fa-exclamation-circle"></i> 被举报
+                        </div>
+                        <div class="toggle-option active" data-value="all" onclick="setReportStatus('all')">
+                            全部
+                        </div>
+                        <div class="toggle-option" data-value="unreported" onclick="setReportStatus('unreported')">
+                            未举报
+                        </div>
+                    </div>
+                </div>
+
                 <label class="form-switch">
                     <input type="checkbox" class="switch-input" id="deduplicateSwitch" checked>
                     <span class="switch-slider"></span>
@@ -815,14 +1016,12 @@
                         </th>
                         <th class="sortable" data-field="subject" onclick="handleSort('subject')">产品主题</th>
                         <th>图片</th>
-                        <th class="sortable" data-field="product_type" onclick="handleSort('product_type')">产品类型</th>
                         <th>数据库侵权词</th>
-                        <th>数据库侵权等级</th>
-                        <th>AI侵权词</th>
                         <th>AI侵权等级</th>
                         <th class="sortable" data-field="score" onclick="handleSort('score')">分值</th>
                         <th class="sortable" data-field="appear_count" onclick="handleSort('appear_count')">重复数</th>
                         <th class="sortable" data-field="launch_date" onclick="handleSort('launch_date')">上架/数据日期</th>
+                        <th>操作</th>
                     </tr>
                     </thead>
                     <tbody id="productsTableBody">
@@ -1152,8 +1351,42 @@
             created_at_start: '',
             created_at_end: '',
             sort_field: 'created_at',
-            sort_order: 'desc'
+            sort_order: 'desc',
+            report_status: 'all' // 新增：all, reported, unreported
         };
+
+        // ===== 举报状态开关逻辑 =====
+        function setReportStatus(status) {
+            currentFilters.report_status = status;
+            
+            // 更新UI状态
+            const toggle = document.getElementById('reportStatusToggle');
+            const options = toggle.querySelectorAll('.toggle-option');
+            const indicator = toggle.querySelector('.toggle-indicator');
+            
+            toggle.setAttribute('data-state', status);
+            
+            options.forEach(opt => {
+                if (opt.dataset.value === status) {
+                    opt.classList.add('active');
+                    
+                    // 移动指示器
+                    indicator.style.left = opt.offsetLeft + 'px';
+                    indicator.style.width = opt.offsetWidth + 'px';
+                } else {
+                    opt.classList.remove('active');
+                }
+            });
+
+            // 重新加载数据
+            productsPagination.page = 1;
+            loadProductsTable();
+        }
+
+        // 初始化开关状态
+        document.addEventListener('DOMContentLoaded', function() {
+            setReportStatus('all'); // 默认选中"全部"
+        });
 
         // ===== ASIN去重开关逻辑 =====
         let currentDeduplicate = true; // 默认开启
@@ -1220,8 +1453,9 @@
         }
 
         function getCSRFToken() {
-            const token = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                         document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+            const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+            const csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+            const token = (tokenInput && tokenInput.value) || (csrfMatch && csrfMatch[1]) || '';
             return token;
         }
 
@@ -1307,7 +1541,8 @@
                 created_at_end: crawlDates.endDate,
                 sort_field: currentFilters.sort_field,
                 sort_order: currentFilters.sort_order,
-                deduplicate: currentDeduplicate
+                deduplicate: currentDeduplicate,
+                report_status: currentFilters.report_status
             };
         }
 
@@ -1474,6 +1709,9 @@
         // 侵权等级英中映射
         function getInfringementLevelText(level) {
             const levelMap = {
+                'high': '高',
+                'medium': '中',
+                'low': '低',
                 'High Risk': '高',
                 'Mid Risk': '中',
                 'Low Risk': '低',
@@ -1497,6 +1735,10 @@
 
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
+            
+            // 清空已收集的主题集合
+            window.pageSubjects = new Set();
+            
             if (!products || products.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -1511,9 +1753,11 @@
 
             tbody.innerHTML = products.map(product => {
                 const isSelected = selectedProducts.has(product.id);
-                const latestDealClass = getLatestDealClass(product.is_latest_deal);
-                const latestDealText = getLatestDealText(product.is_latest_deal);
-
+                // 收集需要检测的主题
+                if (product.subject) {
+                    window.pageSubjects.add(product.subject);
+                }
+                
                 // 图片列HTML - 包装在A标签中，点击跳转到Amazon产品页面
                 let imageHtml = '';
                 if (product.image_url) {
@@ -1522,65 +1766,74 @@
                             <img src="${product.image_url}"
                                  alt="${product.title || '产品图片'}"
                                  class="product-thumbnail"
+                                 loading="lazy"
                                  onerror="this.onerror=null; this.remove();">
                         </a>
                     `;
                 }
 
+                // 成交/上架状态图标
+                const isLatestDeal = product.is_latest_deal;
+                const statusIconHtml = isLatestDeal
+                    ? '<i class="fas fa-check-circle text-success" title="最新成交"></i>'
+                    : '<i class="fas fa-arrow-alt-circle-up text-primary" title="最新上架"></i>';
+
                 // 产品主题（确保始终显示，无内容则显示"无主题"）
                 const subjectText = product.subject || '无主题';
                 const subjectHtml = `
-                    <div class="tooltip-wrapper">
+                    <div class="tooltip-wrapper copyable-subject" data-subject="${encodeURIComponent(subjectText)}">
                         <span class="tooltip-content">${subjectText}</span>
                         <span class="tooltip-full">${subjectText}</span>
+                    </div>
+                `;
+
+                // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
+                const themeRecord = product.theme_record;
+                let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
+                
+                // 数据库侵权等级
+                let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '"></span>';
+
+                // 如果有本地缓存的风险数据（后续实现），可以立即显示
+                // 目前先默认 loading
+
+                // 组合右侧图标栏 (侵权等级 + 状态图标)
+                let rightIconsHtml = `
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-left: 8px; gap: 4px; flex-shrink: 0;">
+                        <div class="level-container" data-subject="${encodeURIComponent(subjectText)}">${dbLevelHtml}</div>
+                        <div>${statusIconHtml}</div>
                     </div>
                 `;
 
                 // 主题翻译（始终显示，无内容则显示"-"，保留灰色样式）
                 const subjectTransText = product.subject_translation || '-';
                 const subjectTransHtml = `
-                    <div class="tooltip-wrapper">
-                        <span class="tooltip-content trans-text">${subjectTransText}</span>
+                    <div class="tooltip-wrapper" style="display: flex; align-items: center;">
+                        <span class="tooltip-content trans-text" style="flex: 1;">${subjectTransText}</span>
+                        ${rightIconsHtml}
                         <span class="tooltip-full">${subjectTransText}</span>
                     </div>
                 `;
-
-                // 数据库侵权词 - JSON数组转逗号分隔字符串
-                const dbWords = product.theme_record?.infringement_words
-                    ? (Array.isArray(product.theme_record.infringement_words)
-                        ? product.theme_record.infringement_words.join(', ')
-                        : product.theme_record.infringement_words)
-                    : '-';
-
-                // 数据库侵权等级 - 带颜色显示
-                const dbLevel = getInfringementLevelText(product.theme_record?.infringement_level);
-                const dbLevelClass = getInfringementLevelClass(product.theme_record?.infringement_level);
-                const dbLevelHtml = dbLevel !== '-'
-                    ? `<span class="infringement-level ${dbLevelClass}">${dbLevel}</span>`
-                    : '-';
-
-                // AI侵权词
-                const aiWords = product.theme_record?.ai_infringement_words
-                    ? (Array.isArray(product.theme_record.ai_infringement_words)
-                        ? product.theme_record.ai_infringement_words.join(', ')
-                        : product.theme_record.ai_infringement_words)
-                    : '-';
-
-                // AI侵权等级 - 带颜色显示
-                const aiLevel = getInfringementLevelText(product.theme_record?.ai_infringement_level);
-                const aiLevelClass = getInfringementLevelClass(product.theme_record?.ai_infringement_level);
+                const aiLevel = getInfringementLevelText(themeRecord && themeRecord.ai_infringement_level);
+                const aiLevelClass = getInfringementLevelClass(themeRecord && themeRecord.ai_infringement_level);
                 const aiLevelHtml = aiLevel !== '-'
                     ? `<span class="infringement-level ${aiLevelClass}">${aiLevel}</span>`
                     : '-';
 
                 // 分值 (来自 daily_data)
-                const score = product.daily_data?.score ?? '-';
+                const dailyData = product.daily_data;
+                const score = dailyData && dailyData.score != null ? dailyData.score : '-';
 
                 // 重复数 (来自 daily_data)
-                const appearCount = product.daily_data?.appear_count ?? '-';
+                const appearCount = dailyData && dailyData.appear_count != null ? dailyData.appear_count : '-';
+
+                // 举报状态
+                const isReported = product.is_reported_by_current_user || false;
+                const allReporters = product.all_reporters || [];
+                const rowClass = allReporters.length > 0 ? 'reported-row' : '';
 
                 return `
-                    <tr data-id="${product.id}">
+                    <tr data-id="${product.id}" class="${rowClass}" data-asin="${product.asin}">
                         <td>
                             <input type="checkbox" class="product-select"
                                    value="${product.id}"
@@ -1590,18 +1843,19 @@
                         <td>
                             ${subjectHtml}  <!-- 主题 -->
                             ${subjectTransHtml} <!-- 主题翻译 -->
+                            ${allReporters.length > 0 ? `
+                                <div class="reporter-badge">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span>${allReporters.length} 人举报</span>
+                                    <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
+                                </div>
+                            ` : ''}
                         </td>
                         <td style="text-align: center;">
                             ${imageHtml}
                         </td>
-                        <td>
-                            <span class="product-type-badge ${latestDealClass}">
-                                ${latestDealText}
-                            </span>
-                        </td>
                         <td>${dbWords}</td>
-                        <td>${dbLevelHtml}</td>
-                        <td>${aiWords}</td>
+                        <!-- 数据库侵权等级列已移除，整合到主题列 -->
                         <td>${aiLevelHtml}</td>
                         <td>${score}</td>
                         <td>${appearCount}</td>
@@ -1609,9 +1863,101 @@
                             <div>${product.launch_date || '-'}</div>
                             <div class="trans-text">${product.latest_crawled_at || '-'}</div>
                         </td>
+                        <td>
+                            <button class="btn btn-sm ${isReported ? 'btn-unreport' : 'btn-report'}"
+                                    data-reported="${isReported ? 'true' : 'false'}"
+                                    onclick="toggleReport('${product.asin}', this)">
+                                ${isReported ? '撤销' : '举报'}
+                            </button>
+                        </td>
                     </tr>
                 `;
             }).join('');
+            
+            // 渲染完成后，触发批量风险检测
+            if (window.pageSubjects && window.pageSubjects.size > 0) {
+                fetchRiskData(Array.from(window.pageSubjects));
+            }
+        }
+        
+        // 批量获取风险数据
+        async function fetchRiskData(themes) {
+            try {
+                const response = await fetch('/api/amazon-products/batch-risk-check/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ themes: themes })
+                });
+                
+                const result = await response.json();
+                if (result.success && result.data) {
+                    updateRiskCells(result.data);
+                }
+            } catch (error) {
+                console.error('批量获取风险数据失败:', error);
+            }
+        }
+        
+        // 更新表格中的风险单元格
+        function updateRiskCells(riskData) {
+            // 更新侵权词列
+            document.querySelectorAll('.loading-risk').forEach(el => {
+                const subjectEncoded = el.getAttribute('data-subject');
+                const subject = decodeURIComponent(subjectEncoded);
+                const data = riskData[subject];
+                
+                if (data) {
+                    let html = '-';
+                    const highRisk = data.high_risk_words || [];
+                    const mediumRisk = data.medium_risk_words || [];
+                    // lowRisk 不显示
+                    
+                    if (highRisk.length > 0 || mediumRisk.length > 0) {
+                        const parts = [];
+                        if (highRisk.length > 0) {
+                            parts.push(`<span style="color: #ef4444; font-weight: bold; display: inline-block;">${highRisk.join(', ')}</span>`);
+                        }
+                        if (mediumRisk.length > 0) {
+                            parts.push(`<span style="color: #f97316; font-weight: bold; display: inline-block;">${mediumRisk.join(', ')}</span>`);
+                        }
+                        
+                        html = `<div style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 200px; line-height: 1.4;">${parts.join(', ')}</div>`;
+                    }
+                    
+                    // 替换加载动画
+                    // 找到所在的td
+                    const td = el.closest('td');
+                    if (td) td.innerHTML = html;
+                } else {
+                     const td = el.closest('td');
+                     if (td) td.innerHTML = '-';
+                }
+            });
+            
+            // 更新侵权等级徽章
+            document.querySelectorAll('.loading-level').forEach(el => {
+                const subjectEncoded = el.getAttribute('data-subject');
+                const subject = decodeURIComponent(subjectEncoded);
+                const data = riskData[subject];
+                
+                if (data) {
+                    const level = data.theme_risk_level || 'low';
+                    const levelText = getInfringementLevelText(level);
+                    const levelClass = getInfringementLevelClass(level);
+                    
+                    let html = '';
+                    if (levelText !== '-' && levelText) {
+                         html = `<span class="infringement-level ${levelClass}" style="font-size: 0.75rem; padding: 1px 4px; line-height: 1.2;">${levelText}</span>`;
+                    } else {
+                         html = '<div style="height: 18px;"></div>'; // 占位
+                    }
+                    
+                    const container = el.closest('.level-container');
+                    if (container) container.innerHTML = html;
+                }
+            });
         }
 
         // ===== 选择操作 =====
@@ -1667,6 +2013,41 @@
             updateBulkActions();
         }
 
+        // ===== 复制功能 =====
+        async function copyToClipboard(text, label = '内容') {
+            const canUseClipboardApi = navigator && navigator.clipboard && navigator.clipboard.writeText;
+            if (canUseClipboardApi) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    showNotification(`${label}已复制到剪贴板`, 'success');
+                    return;
+                } catch (err) {
+                    console.error('复制失败:', err);
+                }
+            }
+
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.setAttribute('readonly', '');
+            textArea.style.position = 'fixed';
+            textArea.style.top = '-9999px';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                const succeeded = document.execCommand('copy');
+                if (succeeded) {
+                    showNotification(`${label}已复制到剪贴板`, 'success');
+                } else {
+                    showNotification('复制失败', 'error');
+                }
+            } catch (err) {
+                showNotification('复制失败', 'error');
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+
         // ===== 分页逻辑 =====
         function renderPagination() {
             const buttonsContainer = document.getElementById('paginationButtons');
@@ -1715,6 +2096,14 @@
             buttonsContainer.innerHTML = buttonsHTML;
         }
 
+        document.addEventListener('click', function (event) {
+            const subjectElement = event.target.closest('.copyable-subject');
+            if (!subjectElement) return;
+            const encodedSubject = subjectElement.getAttribute('data-subject') || '';
+            const subjectText = decodeURIComponent(encodedSubject);
+            copyToClipboard(subjectText, '主题');
+        });
+
         function changePage(newPage) {
             if (newPage < 1 || newPage > productsPagination.total_pages) return;
             productsPagination.page = newPage;
@@ -1727,6 +2116,154 @@
             productsPagination.page_size = newSize;
             productsPagination.page = 1;
             loadProductsTable();
+        }
+
+        // ===== 举报功能 =====
+        // 获取 CSRF token 的函数
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function toggleReport(asin, buttonElement) {
+            const isReported = buttonElement.getAttribute('data-reported') === 'true';
+            if (isReported) {
+                return unreportProduct(asin, buttonElement);
+            }
+            return reportProduct(asin, buttonElement);
+        }
+
+        async function reportProduct(asin, buttonElement) {
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+
+                const response = await fetch('/api/amazon-products/report/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ asin: asin })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message || '举报成功', 'success');
+                    
+                    // 更新UI - 无需刷新表格
+                    const row = buttonElement.closest('tr');
+                    const subjectCell = row.querySelector('td:nth-child(2)');
+
+                    // 添加红色样式到行
+                    row.classList.add('reported-row');
+
+                    // 更新举报人徽章
+                    let reporterBadge = subjectCell.querySelector('.reporter-badge');
+                    const allReporters = result.data.all_reporters || [];
+                    const reporterCount = allReporters.length;
+                    
+                    if (!reporterBadge && reporterCount > 0) {
+                        reporterBadge = document.createElement('div');
+                        reporterBadge.className = 'reporter-badge';
+                        subjectCell.appendChild(reporterBadge);
+                    }
+                    
+                    if (reporterBadge) {
+                        reporterBadge.removeAttribute('title');
+                        reporterBadge.innerHTML = `
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span>${reporterCount} 人举报</span>
+                            <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
+                        `;
+                    }
+
+                    buttonElement.classList.remove('btn-report');
+                    buttonElement.classList.add('btn-unreport');
+                    buttonElement.setAttribute('data-reported', 'true');
+                    buttonElement.textContent = '撤销';
+                } else {
+                    alert(result.message || '举报失败');
+                }
+            } catch (error) {
+                console.error('举报失败:', error);
+                alert('举报失败，请稍后重试');
+            }
+        }
+
+        async function unreportProduct(asin, buttonElement) {
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const headers = {
+                    'Content-Type': 'application/json',
+                };
+                if (csrfToken) {
+                    headers['X-CSRFToken'] = csrfToken;
+                }
+
+                const response = await fetch('/api/amazon-products/unreport/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ asin: asin })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message || '已撤销举报', 'success');
+                    
+                    // 更新UI - 无需刷新表格
+                    const row = buttonElement.closest('tr');
+                    const subjectCell = row.querySelector('td:nth-child(2)');
+
+                    // 如果没有其他举报人，移除红色样式
+                    if (!result.data.all_reporters || result.data.all_reporters.length === 0) {
+                        row.classList.remove('reported-row');
+                        // 移除举报人徽章
+                        const reporterBadge = subjectCell.querySelector('.reporter-badge');
+                        if (reporterBadge) {
+                            reporterBadge.remove();
+                        }
+                    } else {
+                        // 更新举报人徽章
+                        const reporterBadge = subjectCell.querySelector('.reporter-badge');
+                        const allReporters = result.data.all_reporters || [];
+                        const reporterCount = allReporters.length;
+                        
+                        if (reporterBadge) {
+                            reporterBadge.removeAttribute('title');
+                            reporterBadge.innerHTML = `
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>${reporterCount} 人举报</span>
+                                <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
+                            `;
+                        }
+                    }
+
+                    buttonElement.classList.remove('btn-unreport');
+                    buttonElement.classList.add('btn-report');
+                    buttonElement.setAttribute('data-reported', 'false');
+                    buttonElement.textContent = '举报';
+                } else {
+                    alert(result.message || '撤销失败');
+                }
+            } catch (error) {
+                console.error('撤销失败:', error);
+                alert('撤销失败，请稍后重试');
+            }
         }
 
         // ===== 产品详情 =====

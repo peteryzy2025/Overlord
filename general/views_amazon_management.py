@@ -123,6 +123,8 @@ def get_all_ops_groups_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
+
+
 # 获取客户列表API
 @require_GET
 @login_required
@@ -278,7 +280,8 @@ def get_amazon_shops_api(request):
 
         # 权限范围过滤：ops_all 查看全部；ops_group 查看本组；ops 查看本人
         if 'ops_all' not in permissions:
-            if 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
+            if 'ops_group' in permissions and hasattr(request.user,
+                                                      'operational_account') and request.user.operational_account.ops_group:
                 group_name = request.user.operational_account.ops_group
                 user_ids = OperationalAccount.objects.filter(ops_group=group_name).values_list('user_id', flat=True)
                 query = query.filter(ops_id__in=user_ids)
@@ -546,6 +549,8 @@ def create_amazon_shop_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
+
+
 @require_POST
 @csrf_exempt
 @login_required
@@ -575,7 +580,8 @@ def update_amazon_shop_api(request, shop_id):
         # 权限校验：ops_all/555 可更新任何；ops_group 仅能更新本组；ops 仅能更新本人店铺
         if 'ops_all' in permissions or '555' in permissions:
             pass
-        elif 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
+        elif 'ops_group' in permissions and hasattr(request.user,
+                                                    'operational_account') and request.user.operational_account.ops_group:
             group_name = request.user.operational_account.ops_group
             if not OperationalAccount.objects.filter(user_id=shop.ops_id, ops_group=group_name).exists():
                 return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)

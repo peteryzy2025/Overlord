@@ -177,6 +177,53 @@
             color: var(--text-secondary);
         }
 
+        /* 特殊国际分类橙色边框样式 - 用于商标详情卡片 */
+        .detail-group.special-intl-class {
+            border-color: #f97316 !important;
+            border-width: 2px;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+        }
+
+        /* 状态码悬浮提示样式 */
+        .status-code-tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .status-code-tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #1f2937;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 400;
+            white-space: nowrap;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 300px;
+            white-space: normal;
+            min-width: 150px;
+        }
+
+        .status-code-tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 6px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 1000;
+        }
+
         .trend-keywords {
             list-style: none;
             margin: 0;
@@ -412,6 +459,42 @@
             10: '知名IP'
         };
 
+        // 美标网状态码映射表
+        const STATUS_CODE_MAPPING = {
+            '700': '已注册',
+            '701': '第8款声明已接受 (维持有效)',
+            '702': '第8&15款声明已接受并确认',
+            '703': '第15款不可争议性声明已确认',
+            '706': '第71款声明已接受 (马德里商标)',
+            '800': '已注册且已续展',
+            '624': '已注册 (历史存量数据)',
+            '630': '新申请 - 记录初始化',
+            '638': '新申请 - 已分配审查员',
+            '641': '初步拒绝/官函 - 已邮寄',
+            '661': '官函答辩 - 已录入',
+            '686': '公告中 (异议期)',
+            '688': '准予注册通知 - 已签发',
+            '616': '已恢复 - 等待进一步行动',
+            '672': '已恢复原状 - 等待进一步行动',
+            '774': '异议程序进行中',
+            '790': '撤销程序进行中',
+            '600': '弃置 - 答辩不完整',
+            '601': '弃置 - 申请人主动撤回',
+            '602': '弃置 - 未能按时答辩',
+            '606': '弃置 - 未提交使用证据',
+            '710': '撤销 - 未提交维持声明 (第8款)',
+            '712': '撤销 - 法院判决',
+            '404': '美国注册已撤销',
+            '709': '撤销 - 未提交第71款声明',
+            '900': '已过期 (未续展)',
+            '610': '因制裁而终止',
+            '632': '不符合规范的申请',
+            '0': '未知状态',
+            '622': '序列号分配错误',
+            '970': '因转让申请创建的记录',
+            '715': '已撤销 - 但已恢复为审理状态'
+        };
+
         // 全局变量：存储商标详情数据和侵权词库详情数据
         let usptoDetailsData = {};
         let troDetailsData = {};
@@ -480,10 +563,10 @@
                 function getRiskLevel(word) {
                     if (!data?.word_risk_map) return 'low';
                     const wordLower = word.toLowerCase();
-                    // 遍历 word_risk_map 查找匹配的词（忽略大小写）
-                    for (const [key, riskLevel] of Object.entries(data.word_risk_map)) {
+                    // word_risk_map 格式: [riskLevel, statusCodes, intlClasses, hasSpecialClass]
+                    for (const [key, wordData] of Object.entries(data.word_risk_map)) {
                         if (key.toLowerCase() === wordLower) {
-                            return riskLevel;
+                            return wordData[0]; // 返回风险等级
                         }
                     }
                     return 'low';
@@ -584,6 +667,9 @@
             const detailContent = document.getElementById('detailContent');
             const toggleBtn = document.querySelector('.detail-toggle-btn');
 
+            // 特殊国际分类集合（与后端保持一致）
+            const SPECIAL_INTL_CLASSES = ['006', '015', '016', '018', '024', '025', '027', '035'];
+
             // 第一次点击时显示按钮
             toggleBtn.classList.add('visible');
             toggleBtn.classList.remove('collapsed');
@@ -596,8 +682,18 @@
             if (details && details.length > 0) {
                 detailContent.innerHTML = details.map(item => {
                     const usptoUrl = `https://tsdr.uspto.gov/#caseNumber=${escapeHtml(item.serial_number)}&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch`;
+
+                    // 检查国际分类是否包含特殊分类
+                    const intlClassStr = String(item.intl_class || '');
+                    const hasSpecialClass = SPECIAL_INTL_CLASSES.some(cls => intlClassStr.includes(cls));
+                    const specialClass = hasSpecialClass ? 'special-intl-class' : '';
+
+                    // 获取状态码说明
+                    const statusCode = String(item.status_code || '');
+                    const statusCodeDesc = STATUS_CODE_MAPPING[statusCode] || '未知状态';
+
                     return `
-                    <div class="detail-group">
+                    <div class="detail-group ${specialClass}">
                         <div class="detail-row">
                             <span class="detail-label">注册号</span>
                             <span class="detail-value"><a href="${usptoUrl}" target="_blank" rel="noopener noreferrer" class="detail-link">${escapeHtml(item.serial_number)}</a></span>
@@ -605,6 +701,10 @@
                         <div class="detail-row">
                             <span class="detail-label">国际类</span>
                             <span class="detail-value">${escapeHtml(item.intl_class)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">状态码</span>
+                            <span class="detail-value status-code-tooltip" data-tooltip="${escapeHtml(statusCodeDesc)}">${escapeHtml(statusCode)}</span>
                         </div>
                     </div>
                 `}).join('');
