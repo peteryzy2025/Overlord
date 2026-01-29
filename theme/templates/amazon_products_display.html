@@ -1708,18 +1708,22 @@
 
         // 侵权等级英中映射
         function getInfringementLevelText(level) {
+            // 归一化输入
+            if (!level) return '-';
+            const levelLower = String(level).toLowerCase();
+
             const levelMap = {
                 'high': '高',
+                'high risk': '高',
                 'medium': '中',
+                'mid risk': '中',
                 'low': '低',
-                'High Risk': '高',
-                'Mid Risk': '中',
-                'Low Risk': '低',
+                'low risk': '低',
                 '高': '高',
                 '中': '中',
                 '低': '低'
             };
-            return levelMap[level] || level || '-';
+            return levelMap[levelLower] || level || '-';
         }
 
         function getInfringementLevelClass(level) {
@@ -1730,15 +1734,24 @@
             return '';
         }
 
+        // 主题归一化：去除双引号与重复单引号，大小写不敏感
+        function normalizeSubject(text) {
+            if (!text) return '';
+            return String(text)
+                .trim()
+                .replace(/"/g, '')
+                .replace(/''/g, "'")
+                .toLowerCase();
+        }
 
 
 
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
-            
+
             // 清空已收集的主题集合
             window.pageSubjects = new Set();
-            
+
             if (!products || products.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -1757,7 +1770,7 @@
                 if (product.subject) {
                     window.pageSubjects.add(product.subject);
                 }
-                
+
                 // 图片列HTML - 包装在A标签中，点击跳转到Amazon产品页面
                 let imageHtml = '';
                 if (product.image_url) {
@@ -1780,7 +1793,11 @@
                     : `<i class="fas fa-arrow-alt-circle-up text-primary" title="${statusIconTitle}"></i>`;
 
                 // 产品主题（确保始终显示，无内容则显示"无主题"）
-                const subjectText = product.subject || '无主题';
+                let subjectText = product.subject || '无主题';
+                // 去除英文双引号
+                subjectText = subjectText.replace(/"/g, '');
+                // 如果有两个连续的单引号，替换为一个
+                subjectText = subjectText.replace(/''/g, "'");
                 const subjectTransText = product.subject_translation || '-'; // 移动定义到上方
 
                 // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
@@ -1881,13 +1898,13 @@
                     </tr>
                 `;
             }).join('');
-            
+
             // 渲染完成后，触发批量风险检测
             if (window.pageSubjects && window.pageSubjects.size > 0) {
                 fetchRiskData(Array.from(window.pageSubjects));
             }
         }
-        
+
         // 批量获取风险数据
         async function fetchRiskData(themes) {
             try {
@@ -1898,7 +1915,7 @@
                     },
                     body: JSON.stringify({ themes: themes })
                 });
-                
+
                 const result = await response.json();
                 if (result.success && result.data) {
                     updateRiskCells(result.data);
@@ -1907,21 +1924,30 @@
                 console.error('批量获取风险数据失败:', error);
             }
         }
-        
+
         // 更新表格中的风险单元格
         function updateRiskCells(riskData) {
             // 更新侵权词列
             document.querySelectorAll('.loading-risk').forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
                 const subject = decodeURIComponent(subjectEncoded);
-                const data = riskData[subject];
-                
+                let data = riskData[subject];
+                if (!data) {
+                    const norm = normalizeSubject(subject);
+                    for (const key in riskData) {
+                        if (normalizeSubject(key) === norm) {
+                            data = riskData[key];
+                            break;
+                        }
+                    }
+                }
+
                 if (data) {
                     let html = '-';
                     const highRisk = data.high_risk_words || [];
                     const mediumRisk = data.medium_risk_words || [];
                     // lowRisk 不显示
-                    
+
                     if (highRisk.length > 0 || mediumRisk.length > 0) {
                         const parts = [];
                         if (highRisk.length > 0) {
@@ -1930,10 +1956,10 @@
                         if (mediumRisk.length > 0) {
                             parts.push(`<span style="color: #f97316; font-weight: bold; display: inline-block;">${mediumRisk.join(', ')}</span>`);
                         }
-                        
+
                         html = `<div style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 200px; line-height: 1.4;">${parts.join(', ')}</div>`;
                     }
-                    
+
                     // 替换加载动画
                     // 找到所在的td
                     const td = el.closest('td');
@@ -1943,25 +1969,37 @@
                      if (td) td.innerHTML = '-';
                 }
             });
-            
+
             // 更新侵权等级徽章
             document.querySelectorAll('.loading-level').forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
                 const subject = decodeURIComponent(subjectEncoded);
-                const data = riskData[subject];
-                
+                let data = riskData[subject];
+                if (!data) {
+                    const norm = normalizeSubject(subject);
+                    for (const key in riskData) {
+                        if (normalizeSubject(key) === norm) {
+                            data = riskData[key];
+                            break;
+                        }
+                    }
+                }
+
                 if (data) {
                     const level = data.theme_risk_level || 'low';
                     const levelText = getInfringementLevelText(level);
                     const levelClass = getInfringementLevelClass(level);
-                    
+
                     let html = '';
-                    if (levelText !== '-' && levelText) {
+                    // 只要有等级（即使是"低"），就应该显示
+                    // 修改判断逻辑：只要 levelText 不是空且不是'-'
+                    if (levelText && levelText !== '-') {
                          html = `<span class="infringement-level ${levelClass}" style="font-size: 0.75rem; padding: 1px 4px; line-height: 1.2;">${levelText}</span>`;
                     } else {
-                         html = '<div style="height: 18px;"></div>'; // 占位
+                         // 如果确实没有风险等级数据，才显示空白占位
+                         html = '<div style="height: 18px;"></div>';
                     }
-                    
+
                     const container = el.closest('.level-container');
                     if (container) container.innerHTML = html;
                 }
@@ -2171,38 +2209,17 @@
 
                 if (result.success) {
                     showNotification(result.message || '举报成功', 'success');
-                    
-                    // 更新UI - 无需刷新表格
-                    const row = buttonElement.closest('tr');
-                    const subjectCell = row.querySelector('td:nth-child(2)');
 
-                    // 添加红色样式到行
-                    row.classList.add('reported-row');
+                    // 批量更新UI
+                    const relatedAsins = result.data.related_reported_asins || [asin];
+                    const isReported = true;
+                    // 这里我们假设当前操作是激活举报，暂时不传完整的reporters列表，
+                    // 而是简单地标记为已举报。如果需要精确的reporters列表，后端需要返回map
 
-                    // 更新举报人徽章
-                    let reporterBadge = subjectCell.querySelector('.reporter-badge');
-                    const allReporters = result.data.all_reporters || [];
-                    const reporterCount = allReporters.length;
-                    
-                    if (!reporterBadge && reporterCount > 0) {
-                        reporterBadge = document.createElement('div');
-                        reporterBadge.className = 'reporter-badge';
-                        subjectCell.appendChild(reporterBadge);
-                    }
-                    
-                    if (reporterBadge) {
-                        reporterBadge.removeAttribute('title');
-                        reporterBadge.innerHTML = `
-                            <i class="fas fa-exclamation-circle"></i>
-                            <span>${reporterCount} 人举报</span>
-                            <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
-                        `;
-                    }
+                    relatedAsins.forEach(targetAsin => {
+                        updateReportStatus(targetAsin, isReported);
+                    });
 
-                    buttonElement.classList.remove('btn-report');
-                    buttonElement.classList.add('btn-unreport');
-                    buttonElement.setAttribute('data-reported', 'true');
-                    buttonElement.textContent = '撤销';
                 } else {
                     alert(result.message || '举报失败');
                 }
@@ -2210,6 +2227,51 @@
                 console.error('举报失败:', error);
                 alert('举报失败，请稍后重试');
             }
+        }
+
+        // 更新举报状态 (辅助函数)
+        function updateReportStatus(asin, isReported) {
+            // 找到页面上所有对应ASIN的行
+            const rows = document.querySelectorAll(`tr[data-asin="${asin}"]`);
+            rows.forEach(row => {
+                const btn = row.querySelector('button[onclick^="toggleReport"]');
+                if (btn) {
+                    btn.dataset.reported = isReported ? 'true' : 'false';
+                    btn.className = `btn btn-sm ${isReported ? 'btn-unreport' : 'btn-report'}`;
+                    btn.innerHTML = isReported ? '撤销' : '举报';
+                }
+
+                // 更新主题颜色
+                const subjectContent = row.querySelector('.tooltip-content[style*="font-weight: 500"]');
+                if (subjectContent) {
+                    if (isReported) {
+                        subjectContent.style.color = '#ef4444'; // 红色
+                        subjectContent.style.fontWeight = 'bold';
+                    } else {
+                        subjectContent.style.color = ''; // 恢复默认
+                        subjectContent.style.fontWeight = '500';
+                    }
+                }
+
+                // 更新举报徽章 (简化处理：如果是举报操作且没有徽章，则添加；撤销逻辑暂略，因为API目前没返回批量撤销的ASIN列表)
+                // 仅处理添加逻辑
+                if (isReported) {
+                    row.classList.add('reported-row');
+                    const subjectCell = row.children[1];
+                    // 检查是否已有徽章
+                    if (!subjectCell.querySelector('.reporter-badge')) {
+                         const badgeHtml = `
+                            <div class="reporter-badge">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span>已举报</span>
+                            </div>
+                        `;
+                        // 插入到主题Block下方，或者append到td末尾
+                        // 注意：我们之前的布局是 finalSubjectHtml + badge
+                        subjectCell.insertAdjacentHTML('beforeend', badgeHtml);
+                    }
+                }
+            });
         }
 
         async function unreportProduct(asin, buttonElement) {
