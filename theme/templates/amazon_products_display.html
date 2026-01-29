@@ -1711,7 +1711,7 @@
             // 归一化输入
             if (!level) return '-';
             const levelLower = String(level).toLowerCase();
-
+            
             const levelMap = {
                 'high': '高',
                 'high risk': '高',
@@ -1748,10 +1748,10 @@
 
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
-
+            
             // 清空已收集的主题集合
             window.pageSubjects = new Set();
-
+            
             if (!products || products.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -1770,7 +1770,7 @@
                 if (product.subject) {
                     window.pageSubjects.add(product.subject);
                 }
-
+                
                 // 图片列HTML - 包装在A标签中，点击跳转到Amazon产品页面
                 let imageHtml = '';
                 if (product.image_url) {
@@ -1803,7 +1803,7 @@
                 // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
                 const themeRecord = product.theme_record;
                 let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
-
+                
                 // 数据库侵权等级
                 let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '"></span>';
 
@@ -1856,10 +1856,9 @@
                 // 举报状态
                 const isReported = product.is_reported_by_current_user || false;
                 const allReporters = product.all_reporters || [];
-                const rowClass = allReporters.length > 0 ? 'reported-row' : '';
 
                 return `
-                    <tr data-id="${product.id}" class="${rowClass}" data-asin="${product.asin}">
+                    <tr data-id="${product.id}" data-asin="${product.asin}">
                         <td>
                             <input type="checkbox" class="product-select"
                                    value="${product.id}"
@@ -1868,13 +1867,6 @@
                         </td>
                         <td>
                             ${finalSubjectHtml}
-                            ${allReporters.length > 0 ? `
-                                <div class="reporter-badge">
-                                    <i class="fas fa-exclamation-circle"></i>
-                                    <span>${allReporters.length} 人举报</span>
-                                    <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
-                                </div>
-                            ` : ''}
                         </td>
                         <td style="text-align: center;">
                             ${imageHtml}
@@ -1898,13 +1890,17 @@
                     </tr>
                 `;
             }).join('');
-
+            
+            products.forEach(p => {
+                updateReporterBadge(p.asin, p.all_reporters || []);
+            });
+            
             // 渲染完成后，触发批量风险检测
             if (window.pageSubjects && window.pageSubjects.size > 0) {
                 fetchRiskData(Array.from(window.pageSubjects));
             }
         }
-
+        
         // 批量获取风险数据
         async function fetchRiskData(themes) {
             try {
@@ -1915,7 +1911,7 @@
                     },
                     body: JSON.stringify({ themes: themes })
                 });
-
+                
                 const result = await response.json();
                 if (result.success && result.data) {
                     updateRiskCells(result.data);
@@ -1924,7 +1920,7 @@
                 console.error('批量获取风险数据失败:', error);
             }
         }
-
+        
         // 更新表格中的风险单元格
         function updateRiskCells(riskData) {
             // 更新侵权词列
@@ -1941,13 +1937,13 @@
                         }
                     }
                 }
-
+                
                 if (data) {
                     let html = '-';
                     const highRisk = data.high_risk_words || [];
                     const mediumRisk = data.medium_risk_words || [];
                     // lowRisk 不显示
-
+                    
                     if (highRisk.length > 0 || mediumRisk.length > 0) {
                         const parts = [];
                         if (highRisk.length > 0) {
@@ -1956,10 +1952,10 @@
                         if (mediumRisk.length > 0) {
                             parts.push(`<span style="color: #f97316; font-weight: bold; display: inline-block;">${mediumRisk.join(', ')}</span>`);
                         }
-
+                        
                         html = `<div style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 200px; line-height: 1.4;">${parts.join(', ')}</div>`;
                     }
-
+                    
                     // 替换加载动画
                     // 找到所在的td
                     const td = el.closest('td');
@@ -1969,7 +1965,7 @@
                      if (td) td.innerHTML = '-';
                 }
             });
-
+            
             // 更新侵权等级徽章
             document.querySelectorAll('.loading-level').forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
@@ -1984,12 +1980,12 @@
                         }
                     }
                 }
-
+                
                 if (data) {
                     const level = data.theme_risk_level || 'low';
                     const levelText = getInfringementLevelText(level);
                     const levelClass = getInfringementLevelClass(level);
-
+                    
                     let html = '';
                     // 只要有等级（即使是"低"），就应该显示
                     // 修改判断逻辑：只要 levelText 不是空且不是'-'
@@ -1997,9 +1993,9 @@
                          html = `<span class="infringement-level ${levelClass}" style="font-size: 0.75rem; padding: 1px 4px; line-height: 1.2;">${levelText}</span>`;
                     } else {
                          // 如果确实没有风险等级数据，才显示空白占位
-                         html = '<div style="height: 18px;"></div>';
+                         html = '<div style="height: 18px;"></div>'; 
                     }
-
+                    
                     const container = el.closest('.level-container');
                     if (container) container.innerHTML = html;
                 }
@@ -2209,15 +2205,16 @@
 
                 if (result.success) {
                     showNotification(result.message || '举报成功', 'success');
-
-                    // 批量更新UI
+                    
                     const relatedAsins = result.data.related_reported_asins || [asin];
-                    const isReported = true;
-                    // 这里我们假设当前操作是激活举报，暂时不传完整的reporters列表，
-                    // 而是简单地标记为已举报。如果需要精确的reporters列表，后端需要返回map
-
+                    const statusMap = result.data.related_status_map || {};
+                    const reportersMap = result.data.related_reporters_map || {};
+                    const isReportedByCurrentUser = !!result.data.is_reported_by_current_user;
                     relatedAsins.forEach(targetAsin => {
-                        updateReportStatus(targetAsin, isReported);
+                        const stillReported = statusMap.hasOwnProperty(targetAsin) ? !!statusMap[targetAsin] : true;
+                        updateReportStatus(targetAsin, isReportedByCurrentUser);
+                        updateReporterBadge(targetAsin, reportersMap[targetAsin] || []);
+                        updateRowVisibilityAfterReport(targetAsin, stillReported);
                     });
 
                 } else {
@@ -2228,7 +2225,7 @@
                 alert('举报失败，请稍后重试');
             }
         }
-
+        
         // 更新举报状态 (辅助函数)
         function updateReportStatus(asin, isReported) {
             // 找到页面上所有对应ASIN的行
@@ -2239,37 +2236,6 @@
                     btn.dataset.reported = isReported ? 'true' : 'false';
                     btn.className = `btn btn-sm ${isReported ? 'btn-unreport' : 'btn-report'}`;
                     btn.innerHTML = isReported ? '撤销' : '举报';
-                }
-
-                // 更新主题颜色
-                const subjectContent = row.querySelector('.tooltip-content[style*="font-weight: 500"]');
-                if (subjectContent) {
-                    if (isReported) {
-                        subjectContent.style.color = '#ef4444'; // 红色
-                        subjectContent.style.fontWeight = 'bold';
-                    } else {
-                        subjectContent.style.color = ''; // 恢复默认
-                        subjectContent.style.fontWeight = '500';
-                    }
-                }
-
-                // 更新举报徽章 (简化处理：如果是举报操作且没有徽章，则添加；撤销逻辑暂略，因为API目前没返回批量撤销的ASIN列表)
-                // 仅处理添加逻辑
-                if (isReported) {
-                    row.classList.add('reported-row');
-                    const subjectCell = row.children[1];
-                    // 检查是否已有徽章
-                    if (!subjectCell.querySelector('.reporter-badge')) {
-                         const badgeHtml = `
-                            <div class="reporter-badge">
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span>已举报</span>
-                            </div>
-                        `;
-                        // 插入到主题Block下方，或者append到td末尾
-                        // 注意：我们之前的布局是 finalSubjectHtml + badge
-                        subjectCell.insertAdjacentHTML('beforeend', badgeHtml);
-                    }
                 }
             });
         }
@@ -2295,38 +2261,17 @@
                 if (result.success) {
                     showNotification(result.message || '已撤销举报', 'success');
                     
-                    // 更新UI - 无需刷新表格
-                    const row = buttonElement.closest('tr');
-                    const subjectCell = row.querySelector('td:nth-child(2)');
-
-                    // 如果没有其他举报人，移除红色样式
-                    if (!result.data.all_reporters || result.data.all_reporters.length === 0) {
-                        row.classList.remove('reported-row');
-                        // 移除举报人徽章
-                        const reporterBadge = subjectCell.querySelector('.reporter-badge');
-                        if (reporterBadge) {
-                            reporterBadge.remove();
-                        }
-                    } else {
-                        // 更新举报人徽章
-                        const reporterBadge = subjectCell.querySelector('.reporter-badge');
-                        const allReporters = result.data.all_reporters || [];
-                        const reporterCount = allReporters.length;
-                        
-                        if (reporterBadge) {
-                            reporterBadge.removeAttribute('title');
-                            reporterBadge.innerHTML = `
-                                <i class="fas fa-exclamation-circle"></i>
-                                <span>${reporterCount} 人举报</span>
-                                <div class="reporter-tooltip">举报人: ${allReporters.join(', ')}</div>
-                            `;
-                        }
-                    }
-
-                    buttonElement.classList.remove('btn-unreport');
-                    buttonElement.classList.add('btn-report');
-                    buttonElement.setAttribute('data-reported', 'false');
-                    buttonElement.textContent = '举报';
+                    // 批量更新UI：根据后端返回的状态映射决定每个ASIN是否仍显示举报
+                    const relatedAsins = result.data.related_unreported_asins || [asin];
+                    const statusMap = result.data.related_status_map || {};
+                    const reportersMap = result.data.related_reporters_map || {};
+                    const isReportedByCurrentUser = !!result.data.is_reported_by_current_user;
+                    relatedAsins.forEach(targetAsin => {
+                        const stillReported = !!statusMap[targetAsin];
+                        updateReportStatus(targetAsin, isReportedByCurrentUser);
+                        updateReporterBadge(targetAsin, reportersMap[targetAsin] || []);
+                        updateRowVisibilityAfterReport(targetAsin, stillReported);
+                    });
                 } else {
                     alert(result.message || '撤销失败');
                 }
@@ -2334,6 +2279,43 @@
                 console.error('撤销失败:', error);
                 alert('撤销失败，请稍后重试');
             }
+        }
+
+        function updateReporterBadge(asin, reporterNames) {
+            const rows = document.querySelectorAll(`tr[data-asin="${asin}"]`);
+            const count = Array.isArray(reporterNames) ? reporterNames.length : 0;
+            rows.forEach(row => {
+                const subjectCell = row.children[1];
+                let badge = subjectCell.querySelector('.reporter-badge');
+                if (count > 0) {
+                    if (!badge) {
+                        badge = document.createElement('div');
+                        badge.className = 'reporter-badge';
+                        subjectCell.appendChild(badge);
+                    }
+                    const names = reporterNames.join(', ');
+                    badge.innerHTML = `
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span>${count} 人举报</span>
+                        <div class="reporter-tooltip">举报人: ${names}</div>
+                    `;
+                    row.classList.add('reported-row');
+                } else {
+                    if (badge) badge.remove();
+                    row.classList.remove('reported-row');
+                }
+            });
+        }
+
+        function updateRowVisibilityAfterReport(asin, isStillReported) {
+            const rows = document.querySelectorAll(`tr[data-asin="${asin}"]`);
+            rows.forEach(row => {
+                if (currentFilters && currentFilters.report_status === 'reported' && !isStillReported) {
+                    row.remove();
+                } else if (currentFilters && currentFilters.report_status === 'unreported' && isStillReported) {
+                    row.remove();
+                }
+            });
         }
 
         // ===== 产品详情 =====

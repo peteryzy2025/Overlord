@@ -76,7 +76,7 @@ def product_list_page(request):
         min_created_at=Min('created_at'),
         max_created_at=Max('created_at')
     )
-#peteryzy
+
     context = {
         'page_title': 'Amazon新奇特',
         'active_nav': 'theme_products',
@@ -1330,70 +1330,59 @@ def api_report_product(request):
                 'message': f'未找到ASIN为 {asin} 的产品'
             }, status=404)
 
-        # 检查用户是否已举报过该产品 (包括已取消的举报)
-        existing_report = ThemeReport.objects.filter(
-            product=product,
-            reporter=request.user
-        ).first()
+        # 创建或激活举报记录（批量处理同主题）
+        subject = product.subject
+        related_asins = []
+        status_map = {}
+        reporters_map = {}
+        
+        if subject:
+            # 找到所有相同主题的产品（忽略大小写）
+            same_subject_products = AmazonThemeNovelty.objects.filter(subject__iexact=subject)
+            
+            for p in same_subject_products:
+                related_asins.append(p.asin)
+                
+                # 检查是否已存在举报记录
+                existing_report = ThemeReport.objects.filter(
+                    product=p,
+                    reporter=request.user
+                ).first()
+                
+                if existing_report:
+                    if not existing_report.is_active:
+                        existing_report.is_active = True
+                        existing_report.save()
+                else:
+                    ThemeReport.objects.create(
+                        product=p,
+                        reporter=request.user,
+                        is_active=True
+                    )
+        else:
+            # 如果没有主题，只举报当前产品
+            related_asins.append(asin)
+            ThemeReport.objects.update_or_create(
+                product=product,
+                reporter=request.user,
+                defaults={'is_active': True}
+            )
 
-        if existing_report:
-            if existing_report.is_active:
-                # 已经是激活状态，返回当前状态
-                all_reports = ThemeReport.objects.filter(
-                    product=product,
-                    is_active=True
-                ).select_related('reporter')
-
-                return JsonResponse({
-                    'success': True,
-                    'message': '您已经举报过该产品',
-                    'data': {
-                        'asin': asin,
-                        'is_reported_by_current_user': True,
-                        'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
-                    }
-                })
-            else:
-                # 曾经举报过但已取消，重新激活
-                existing_report.is_active = True
-                existing_report.save()
-
-                # 获取所有有效的举报记录
-                all_reports = ThemeReport.objects.filter(
-                    product=product,
-                    is_active=True
-                ).select_related('reporter')
-
-                return JsonResponse({
-                    'success': True,
-                    'message': '举报成功',
-                    'data': {
-                        'asin': asin,
-                        'is_reported_by_current_user': True,
-                        'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
-                    }
-                })
-
-        # 创建举报记录
-        ThemeReport.objects.create(
-            product=product,
-            reporter=request.user,
-            is_active=True
-        )
-
-        # 获取所有有效的举报记录
-        all_reports = ThemeReport.objects.filter(
-            product=product,
-            is_active=True
-        ).select_related('reporter')
-
+        # 计算状态与举报人映射
+        for p in AmazonThemeNovelty.objects.filter(asin__in=related_asins):
+            qs = ThemeReport.objects.filter(product=p, is_active=True).select_related('reporter')
+            status_map[p.asin] = qs.exists()
+            reporters_map[p.asin] = [r.reporter.first_name for r in qs if r.reporter]
+        
         return JsonResponse({
             'success': True,
-            'message': '举报成功',
+            'message': f'举报成功，共标记 {len(related_asins)} 个同主题产品',
             'data': {
                 'asin': asin,
                 'is_reported_by_current_user': True,
-                'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+                'related_reported_asins': related_asins,
+                'related_status_map': status_map,
+                'related_reporters_map': reporters_map
             }
         })
 
@@ -1443,47 +1432,45 @@ def api_unreport_product(request):
                 'message': f'未找到ASIN为 {asin} 的产品'
             }, status=404)
 
-        # 查找当前用户的举报记录
-        report = ThemeReport.objects.filter(
-            product=product,
-            reporter=request.user,
-            is_active=True
-        ).first()
+        # 批量撤销：同主题（忽略大小写）的所有产品都撤销当前用户的举报
+        subject = product.subject
+        related_asins = []
+        status_map = {}
+        reporters_map = {}
 
-        if not report:
-            # 未举报过，返回当前状态
-            all_reports = ThemeReport.objects.filter(
-                product=product,
+        if subject:
+            same_subject_products = AmazonThemeNovelty.objects.filter(subject__iexact=subject)
+        else:
+            same_subject_products = AmazonThemeNovelty.objects.filter(asin=asin)
+
+        # 对每个同主题产品，撤销当前用户的举报（如存在）
+        for p in same_subject_products:
+            related_asins.append(p.asin)
+            report_qs = ThemeReport.objects.filter(
+                product=p,
+                reporter=request.user,
                 is_active=True
-            ).select_related('reporter')
+            )
+            if report_qs.exists():
+                report_qs.update(is_active=False)
 
-            return JsonResponse({
-                'success': True,
-                'message': '您未举报过该产品',
-                'data': {
-                    'asin': asin,
-                    'is_reported_by_current_user': False,
-                    'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
-                }
-            })
-
-        # 软删除：设置 is_active=False
-        report.is_active = False
-        report.save()
-
-        # 获取所有有效的举报记录
-        all_reports = ThemeReport.objects.filter(
-            product=product,
-            is_active=True
-        ).select_related('reporter')
+        # 计算每个ASIN是否仍有其他活跃举报，并返回举报人列表
+        for p in same_subject_products:
+            qs = ThemeReport.objects.filter(product=p, is_active=True).select_related('reporter')
+            has_active = qs.exists()
+            status_map[p.asin] = has_active
+            reporters_map[p.asin] = [r.reporter.first_name for r in qs if r.reporter]
 
         return JsonResponse({
             'success': True,
-            'message': '已撤销举报',
+            'message': f'已撤销同主题的举报，共处理 {len(related_asins)} 个产品',
             'data': {
                 'asin': asin,
                 'is_reported_by_current_user': False,
-                'all_reporters': [r.reporter.first_name for r in all_reports if r.reporter]
+                'related_unreported_asins': related_asins,
+                # map: asin -> 是否仍有活跃举报
+                'related_status_map': status_map,
+                'related_reporters_map': reporters_map
             }
         })
 
