@@ -409,16 +409,27 @@ def get_amazon_shops_api(request):
         }, status=500)
 
 
+from django.utils import timezone
+
+
 @require_POST
 @csrf_exempt
 @login_required
 def create_amazon_shop_api(request):
     """
-    API接口：创建新Amazon店铺（支持所有字段）
+    API接口：创建新Amazon店铺
+    权限要求：用户必须拥有 permission_configs 中的 555（超管）或 551（店铺管理员）
     """
     try:
         data = json.loads(request.body)
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+
+        # 检查权限：必须有 555 或 551
+        user_perm_codes = list(request.user.permission_configs.values_list('code', flat=True))
+        if 555 not in user_perm_codes and 551 not in user_perm_codes:
+            return JsonResponse({
+                'success': False,
+                'error': '无创建权限，需要店铺管理员权限（551）或超管权限（555）'
+            }, status=403)
 
         # 验证必填项
         shop_name = data.get('shop_name', '').strip()
@@ -428,79 +439,97 @@ def create_amazon_shop_api(request):
                 'error': '店铺名称不能为空'
             }, status=400)
 
-        # 权限校验：ops_all/555 可创建；ops_group 只能为本组创建；ops 只能为本人创建
-        ops_target_id = data.get('ops')
-        if 'ops_all' in permissions or '555' in permissions:
-            pass
-        elif 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
-            if not ops_target_id:
-                return JsonResponse({'success': False, 'error': '请指定运营人员'}, status=403)
-            group_name = request.user.operational_account.ops_group
-            if not OperationalAccount.objects.filter(user_id=ops_target_id, ops_group=group_name).exists():
-                return JsonResponse({'success': False, 'error': '无权限为该运营人员创建店铺'}, status=403)
-        elif 'ops' in permissions:
-            if not ops_target_id or int(ops_target_id) != request.user.id:
-                return JsonResponse({'success': False, 'error': '仅允许为本人创建店铺'}, status=403)
-        else:
-            return JsonResponse({'success': False, 'error': '无创建权限'}, status=403)
-
-        # 检查店铺名称是否已存在
+        # 检查店铺名是否已存在
         if AmazonShop.objects.filter(shop_name=shop_name).exists():
             return JsonResponse({
                 'success': False,
                 'error': '店铺名称已存在'
             }, status=400)
 
-        # 使用事务确保数据一致性
+        # 处理数字字段：空字符串转为 None
+        shop_number = data.get('shop_number')
+        if shop_number and str(shop_number).strip() not in ['', 'null', 'undefined']:
+            try:
+                shop_number = int(shop_number)
+            except ValueError:
+                return JsonResponse({'success': False, 'error': '店铺序号必须是数字'}, status=400)
+        else:
+            shop_number = None
+
+        divi_shop_id = data.get('divi_shop_id')
+        if divi_shop_id and str(divi_shop_id).strip() not in ['', 'null', 'undefined']:
+            try:
+                divi_shop_id = int(divi_shop_id)
+            except ValueError:
+                return JsonResponse({'success': False, 'error': '迪唯店铺ID必须是数字'}, status=400)
+        else:
+            divi_shop_id = None
+
+        # 处理 ling_xing_if（领星绑定）
+        ling_xing_if = data.get('ling_xing_if', 0)
+        if ling_xing_if and str(ling_xing_if).strip() not in ['', 'null', 'undefined']:
+            ling_xing_if = 1 if ling_xing_if in [1, '1', True, 'true'] else 0
+        else:
+            ling_xing_if = 0
+
+        now = timezone.now()  # 获取当前时间
+
         with transaction.atomic():
             shop = AmazonShop.objects.create(
                 # 基本信息
                 shop_name=shop_name,
-                shop_number=data.get('shop_number'),
-                amazon_shop_name=data.get('amazon_shop_name', ''),
-                customer=data.get('customer', ''),
+                shop_number=shop_number,
+                amazon_shop_name=data.get('amazon_shop_name', '') or '',
+                customer=data.get('customer', '') or '',
                 ops_id=data.get('ops') if data.get('ops') else None,
-                shop_status=data.get('shop_status', '正常'),
-                shop_date=data.get('shop_date'),
-                qu_dao=data.get('qu_dao', ''),
-                seller_mark=data.get('seller_mark', ''),
-                whitelist=data.get('whitelist', ''),
-                ip_address=data.get('ip_address', ''),
-                remark=data.get('remark', ''),
+                shop_status=data.get('shop_status', '正常') or '正常',
+                shop_date=data.get('shop_date') or None,
+                qu_dao=data.get('qu_dao', '') or '',
+                seller_mark=data.get('seller_mark', '') or '',
+                whitelist=data.get('whitelist', '') or '',
+                ip_address=data.get('ip_address', '') or '',
+                remark=data.get('remark', '') or '',
+
+                # 时间字段（关键修复）
+                created_at=now,
+                updated_at=now,
+
                 # 账号信息
-                email_account=data.get('email_account', ''),
-                email_password=data.get('email_password', ''),
-                shop_password=data.get('shop_password', ''),
-                backup_email_or_phone=data.get('backup_email_or_phone', ''),
-                voucher_163=data.get('voucher_163', ''),
-                email_163_account=data.get('email_163_account', ''),
-                browser=data.get('browser', ''),
-                ling_xing_if=data.get('ling_xing_if', 0),
-                divi_shop_id=data.get('divi_shop_id'),
+                email_account=data.get('email_account', '') or '',
+                email_password=data.get('email_password', '') or '',
+                shop_password=data.get('shop_password', '') or '',
+                registered_phone=data.get('registered_phone', '') or '',
+                backup_email_or_phone=data.get('backup_email_or_phone', '') or '',
+                voucher_163=data.get('voucher_163', '') or '',
+                email_163_account=data.get('email_163_account', '') or '',
+                browser=data.get('browser', '') or '',
+                ling_xing_if=ling_xing_if,
+                divi_shop_id=divi_shop_id,
+
                 # 收款信息
-                credit_card_channel=data.get('credit_card_channel', ''),
-                credit_card_number=data.get('credit_card_number', ''),
-                credit_card_expiry=data.get('credit_card_expiry', ''),
-                credit_card_cvv=data.get('credit_card_cvv', ''),
-                is_consolidated=data.get('is_consolidated', ''),
-                bind_collection=data.get('bind_collection', ''),
-                collection_channel=data.get('collection_channel', ''),
-                xunhui_login_account=data.get('xunhui_login_account', ''),
-                login_password=data.get('login_password', ''),
-                bind_phone=data.get('bind_phone', ''),
-                collection_card_number=data.get('collection_card_number', ''),
-                payment_password=data.get('payment_password', ''),
+                credit_card_channel=data.get('credit_card_channel', '') or '',
+                credit_card_number=data.get('credit_card_number', '') or '',
+                credit_card_expiry=data.get('credit_card_expiry', '') or '',
+                credit_card_cvv=data.get('credit_card_cvv', '') or '',
+                is_consolidated=data.get('is_consolidated', '') or '',
+                bind_collection=data.get('bind_collection', '') or '',
+                collection_channel=data.get('collection_channel', '') or '',
+                xunhui_login_account=data.get('xunhui_login_account', '') or '',
+                login_password=data.get('login_password', '') or '',
+                bind_phone=data.get('bind_phone', '') or '',
+                collection_card_number=data.get('collection_card_number', '') or '',
+                payment_password=data.get('payment_password', '') or '',
+
                 # 法人信息
-                id_number=data.get('id_number', ''),
-                legal_person_phone=data.get('legal_person_phone', ''),
-                company_name=data.get('company_name', ''),
-                license_number=data.get('license_number', ''),
-                business_license_date=data.get('business_license_date'),
-                birth_date=data.get('birth_date'),
-                id_expiry_date=data.get('id_expiry_date', ''),
-                additional_remark=data.get('additional_remark', ''),
-                # 其他
-                img1=data.get('img1', ''),
+                id_number=data.get('id_number', '') or '',
+                legal_person_phone=data.get('legal_person_phone', '') or '',
+                company_name=data.get('company_name', '') or '',
+                license_number=data.get('license_number', '') or '',
+                business_license_date=data.get('business_license_date') or None,
+                birth_date=data.get('birth_date') or None,
+                id_expiry_date=data.get('id_expiry_date', '') or '',
+                additional_remark=data.get('additional_remark', '') or '',
+                img1=data.get('img1', '') or '',
             )
 
         return JsonResponse({
@@ -510,15 +539,13 @@ def create_amazon_shop_api(request):
         })
 
     except Exception as e:
-        print(f"创建Amazon店铺错误: {str(e)}")
+        print(f"❌ 创建Amazon店铺错误: {str(e)}")
+        import traceback
         traceback.print_exc()
-
         return JsonResponse({
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
-
-
 @require_POST
 @csrf_exempt
 @login_required

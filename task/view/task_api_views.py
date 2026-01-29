@@ -673,14 +673,15 @@ def create_task_api(request):
                 if not validation_result['valid']:
                     raise ValueError(validation_result['message'])
 
-                SubTask.objects.create(
+                subtask = SubTask.objects.create(
                     task=task,
                     subtask_type=subtask_type,
                     order=idx,
                     params=params
                 )
                 if subtask_type == 'amazon_upload' and not is_draft:
-                    process_amazon_upload_files(subtask_data.get('params', {}), task_no)
+                    process_amazon_upload_files(subtask_data.get('params', {}), task_no, task_instance=task,
+                                                subtask_instance=subtask)
 
             except Exception as e:
                 # 回滚事务

@@ -660,3 +660,125 @@ class ExternalPlatformProduct(models.Model):
 
     def __str__(self):
         return f"{self.product_divi_code} - {self.product_name}"
+
+
+class AmazonUploadFile(models.Model):
+    """
+    Amazon上传文件追踪表
+    用于记录每个Excel文件的上传状态和SKU进度
+    """
+    # 状态定义
+    STATUS_PENDING = 'pending'
+    STATUS_UPLOADING = 'uploading'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '待上传'),
+        (STATUS_UPLOADING, '上传中'),
+        (STATUS_COMPLETED, '已完成'),
+        (STATUS_FAILED, '上传失败'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键ID')
+
+    # 关联关系
+    task = models.ForeignKey(
+        'Task',
+        on_delete=models.CASCADE,
+        related_name='amazon_upload_files',
+        verbose_name='所属任务',
+        db_comment='关联的主任务'
+    )
+    subtask = models.ForeignKey(
+        'SubTask',
+        on_delete=models.CASCADE,
+        related_name='amazon_upload_files',
+        verbose_name='所属子任务',
+        db_comment='关联的子任务'
+    )
+    amazon_shop = models.ForeignKey(
+        'general.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='upload_files',
+        verbose_name='所属店铺',
+        db_comment='关联的Amazon店铺'
+    )
+
+    # 文件信息
+    shop_name_suffix = models.CharField(
+        '店铺后缀',
+        max_length=100,
+        db_comment='提取的数字法人间，如"16蔡婉婷"'
+    )
+    excel_filename = models.CharField(
+        'Excel文件名',
+        max_length=255,
+        db_comment='完整的Excel文件名'
+    )
+    target_path = models.CharField(
+        '目标路径',
+        max_length=500,
+        db_comment='完整的UNC路径'
+    )
+
+    # 状态与进度
+    status = models.CharField(
+        '上传状态',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_comment='文件上传状态'
+    )
+    success_sku = models.IntegerField(
+        '成功SKU数',
+        null=True,
+        blank=True,
+        db_comment='成功上传的SKU数量'
+    )
+    total_sku = models.IntegerField(
+        '总SKU数',
+        null=True,
+        blank=True,
+        db_comment='Excel中的总SKU数量'
+    )
+
+    # 时间戳
+    uploaded_at = models.DateTimeField(
+        '上传完成时间',
+        null=True,
+        blank=True,
+        db_comment='影刀标记完成的时间'
+    )
+    created_at = models.DateTimeField(
+        '创建时间',
+        auto_now_add=True,
+        db_comment='记录创建时间'
+    )
+
+    class Meta:
+        db_table = 'task_amazon_upload_files'
+        verbose_name = 'Amazon上传文件'
+        verbose_name_plural = 'Amazon上传文件列表'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['task', 'status'], name='idx_amazon_upload_task_status'),
+            models.Index(fields=['amazon_shop', 'status'], name='idx_amazon_upload_shop_status'),
+            models.Index(fields=['created_at'], name='idx_amazon_upload_created'),
+        ]
+
+    def __str__(self):
+        return f"{self.excel_filename} ({self.get_status_display()})"
+
+    def update_status(self, status, success_sku=None, total_sku=None):
+        """
+        更新上传状态
+        """
+        self.status = status
+        if success_sku is not None:
+            self.success_sku = success_sku
+        if total_sku is not None:
+            self.total_sku = total_sku
+        if status == self.STATUS_COMPLETED:
+            self.uploaded_at = timezone.now()
+        self.save()

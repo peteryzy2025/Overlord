@@ -1,0 +1,365 @@
+{% extends 'base_r.html' %}
+{% load static %}
+
+{% block title %}任务详情 - {{ task.task_no }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-container {
+        padding: 1.5rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .detail-card {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border-color);
+    }
+    
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .detail-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .detail-meta {
+        display: flex;
+        gap: 2rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .status-draft { background: rgba(160, 174, 192, 0.2); color: #a0aec0; }
+    .status-pending { background: rgba(246, 173, 85, 0.2); color: #f6ad55; }
+    .status-in_progress { background: rgba(66, 153, 225, 0.2); color: #4299e1; }
+    .status-completed { background: rgba(72, 187, 120, 0.2); color: #48bb78; }
+    .status-failed { background: rgba(245, 101, 101, 0.2); color: #f56565; }
+    
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 1rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .files-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .files-table th {
+        text-align: left;
+        padding: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 0.85rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .files-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+    
+    .files-table tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .file-status {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .status-pending-file { background: rgba(246, 173, 85, 0.15); color: #f6ad55; }
+    .status-uploading-file { background: rgba(66, 153, 225, 0.15); color: #4299e1; }
+    .status-completed-file { background: rgba(72, 187, 120, 0.15); color: #48bb78; }
+    .status-failed-file { background: rgba(245, 101, 101, 0.15); color: #f56565; }
+    
+    .progress-text {
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+        color: var(--accent-color);
+    }
+    
+    .subtask-card {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-left: 3px solid var(--accent-color);
+    }
+    
+    .subtask-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .subtask-type {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    
+    .subtask-order {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--text-secondary);
+    }
+    
+    .back-btn {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .back-btn:hover {
+        color: var(--text-primary);
+        border-color: var(--accent-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="detail-container">
+    <!-- 返回按钮 -->
+    <button class="back-btn" onclick="window.location.href='/task/list/'" style="margin-bottom: 1rem;">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </button>
+
+    <!-- 加载中 -->
+    <div id="loadingState" class="detail-card">
+        <div class="empty-state">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <p>加载中...</p>
+        </div>
+    </div>
+
+    <!-- 任务详情内容 -->
+    <div id="taskDetail" style="display: none;">
+        <!-- 任务基本信息 -->
+        <div class="detail-card">
+            <div class="detail-header">
+                <div>
+                    <h1 class="detail-title" id="taskTitle">--</h1>
+                    <div class="detail-meta">
+                        <span class="meta-item">
+                            <i class="fas fa-hashtag"></i>
+                            <span id="taskNo">--</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-user"></i>
+                            <span id="taskCreator">--</span>
+                        </span>
+                        <span class="meta-item">
+                            <i class="fas fa-calendar"></i>
+                            <span id="taskDate">--</span>
+                        </span>
+                    </div>
+                </div>
+                <div>
+                    <span class="status-badge" id="taskStatus">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Amazon上传文件列表 -->
+        <div class="detail-card" id="uploadFilesSection" style="display: none;">
+            <h2 class="section-title">
+                <i class="fas fa-cloud-upload-alt"></i>
+                Amazon上传文件进度
+            </h2>
+            <div id="filesListContainer">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+
+        <!-- 其他子任务 -->
+        <div class="detail-card" id="otherSubtasksSection">
+            <h2 class="section-title">
+                <i class="fas fa-list-check"></i>
+                子任务列表
+            </h2>
+            <div id="subtasksList">
+                <!-- 动态填充 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const taskId = {{ task_id }};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        loadTaskDetail();
+    });
+    
+    async function loadTaskDetail() {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/detail/`);
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.message);
+            }
+            
+            renderTaskDetail(result.data);
+            
+        } catch (error) {
+            console.error('加载失败:', error);
+            document.getElementById('loadingState').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: var(--danger-color); margin-bottom: 1rem;"></i>
+                    <p>加载失败: ${error.message}</p>
+                </div>
+            `;
+        }
+    }
+    
+    function renderTaskDetail(data) {
+        const task = data.task;
+        const subtasks = data.subtasks;
+        
+        // 填充基本信息
+        document.getElementById('taskTitle').textContent = task.title || '无标题';
+        document.getElementById('taskNo').textContent = task.task_no;
+        document.getElementById('taskCreator').textContent = task.created_by_name;
+        document.getElementById('taskDate').textContent = task.created_at;
+        
+        // 状态标签
+        const statusEl = document.getElementById('taskStatus');
+        statusEl.textContent = task.status_display;
+        statusEl.className = `status-badge status-${task.status}`;
+        
+        // 渲染子任务
+        renderSubtasks(subtasks);
+        
+        // 显示内容
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('taskDetail').style.display = 'block';
+    }
+    
+    function renderSubtasks(subtasks) {
+        const container = document.getElementById('subtasksList');
+        let hasAmazonUpload = false;
+        
+        // 分离Amazon上传和其他类型
+        const amazonUploads = subtasks.filter(s => s.type === 'amazon_upload');
+        const others = subtasks.filter(s => s.type !== 'amazon_upload');
+        
+        // 渲染Amazon上传文件表格
+        if (amazonUploads.length > 0) {
+            hasAmazonUpload = true;
+            const filesSection = document.getElementById('uploadFilesSection');
+            const filesContainer = document.getElementById('filesListContainer');
+            
+            filesSection.style.display = 'block';
+            
+            let html = '<table class="files-table"><thead><tr>';
+            html += '<th>所属店铺</th>';
+            html += '<th>文件名</th>';
+            html += '<th>状态</th>';
+            html += '<th>SKU进度</th>';
+            html += '<th>创建时间</th>';
+            html += '<th>完成时间</th>';
+            html += '</tr></thead><tbody>';
+            
+            amazonUploads.forEach(subtask => {
+                if (subtask.files && subtask.files.length > 0) {
+                    subtask.files.forEach(file => {
+                        html += `<tr>
+                            <td>${file.shop_name}</td>
+                            <td>${file.filename}</td>
+                            <td><span class="file-status status-${file.status}-file">${file.status_display}</span></td>
+                            <td class="progress-text">${file.progress}</td>
+                            <td>${file.created_at}</td>
+                            <td>${file.uploaded_at || '-'}</td>
+                        </tr>`;
+                    });
+                }
+            });
+            
+            html += '</tbody></table>';
+            filesContainer.innerHTML = html;
+        }
+        
+        // 渲染其他子任务（简化展示）
+        if (others.length === 0 && !hasAmazonUpload) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>暂无子任务</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        others.forEach((subtask, index) => {
+            html += `
+                <div class="subtask-card">
+                    <div class="subtask-header">
+                        <span class="subtask-type">${subtask.type_display}</span>
+                        <span class="subtask-order">#${index + 1}</span>
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem;">
+                        ${subtask.is_executed ? 
+                            `<i class="fas fa-check-circle" style="color: #48bb78;"></i> 已执行 (${subtask.executed_at})` : 
+                            '<i class="fas fa-clock"></i> 未执行'
+                        }
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+</script>
+{% endblock %}
