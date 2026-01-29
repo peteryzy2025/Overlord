@@ -186,7 +186,6 @@ def validate_subtask_params(subtask_type, params, user):
         elif subtask_type == 'embroidery':
 
             # 刺绣验证
-
             # url 为必填
 
             url = params.get('url', '').strip()

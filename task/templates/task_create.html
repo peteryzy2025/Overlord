@@ -263,6 +263,7 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <script>
         // ===== 全局状态 =====
         let taskData = {
@@ -678,10 +679,9 @@
                             function handleDrop(e) {
                                 const dt = e.dataTransfer;
                                 const files = dt.files;
-
                                 if (files.length > 0) {
-                                    fileInput.files = files;
-                                    uploadFiles(fileInput, subtaskId);
+                                    // 直接传 files 给 uploadFiles，不要尝试给 input.files 赋值
+                                    uploadFiles(fileInput, subtaskId, files);
                                 }
                             }
                         }
@@ -783,8 +783,8 @@
             `;
         }
 
-        async function uploadFiles(inputElement, subtaskId) {
-            const files = inputElement.files;
+        async function uploadFiles(inputElement, subtaskId, filesOverride = null) {
+            const files = filesOverride || inputElement.files;
             if (!files || files.length === 0) return;
 
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
@@ -1551,7 +1551,7 @@
 
         // ===== 渲染子任务数量 =====
         function renderSubtasksCount() {
-            document.get_elementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个子任务`;
+            document.getElementById('subtasksCount').textContent = `已添加 ${taskData.subtasks.length} 个子任务`;
         }
 
         // ===== 模板相关操作 =====
@@ -2019,5 +2019,6 @@
         document.getElementById('taskTitle').addEventListener('input', function () {
             taskData.title = this.value;
         });
+
     </script>
 {% endblock %}
