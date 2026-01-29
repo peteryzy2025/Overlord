@@ -1,7 +1,7 @@
 # Task/urls.py
 
 from django.urls import path
-from task.view import task_api_views, task_page_views, product_views, task_upload_views
+from task.view import task_api_views, task_page_views, product_views, task_upload_views,task_detail_views
 app_name = 'task'  # 命名空间
 urlpatterns = [
     # 页面路由
@@ -58,4 +58,16 @@ urlpatterns = [
 
     # 临时文件上传（预校验店名）
     path('api/tasks/upload-temp/', task_upload_views.upload_temp_file_api, name='upload_temp_file'),
+
+    # ===== 任务详情页（新增）=====
+    # 页面路由
+    path('task/detail/<int:task_id>/', task_detail_views.task_detail_page, name='task_detail'),
+
+    # API路由
+    path('api/tasks/<int:task_id>/detail/', task_detail_views.get_task_detail_api, name='get_task_detail'),
+
+    # 影刀接口
+    path('api/tasks/amazon-upload/pending-files/', task_detail_views.get_pending_files_api, name='get_pending_files'),
+    path('api/tasks/amazon-upload/update-status/', task_detail_views.update_upload_status_api,
+         name='update_upload_status'),
 ]

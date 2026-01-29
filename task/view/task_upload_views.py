@@ -121,17 +121,16 @@ def upload_temp_file_api(request):
         }, status=500)
 
 
-def process_amazon_upload_files(subtask_params, task_no):
+def process_amazon_upload_files(subtask_params, task_no, task_instance=None, subtask_instance=None):
     """
-    处理Amazon上传文件：从临时目录移动到共享目录
+    处理Amazon上传文件：从临时目录移动到共享目录，并创建数据库记录
     在任务创建成功后调用
 
     Args:
         subtask_params: 子任务的params字典
-        task_no: 任务单号（用于重命名文件）
-
-    Returns:
-        list: 处理后的文件信息列表
+        task_no: 任务单号
+        task_instance: Task对象（新增参数）
+        subtask_instance: SubTask对象（新增参数）
     """
     processed_files = []
 
@@ -146,6 +145,8 @@ def process_amazon_upload_files(subtask_params, task_no):
 
         # 获取所有店铺名用于匹配
         from general.models import AmazonShop
+        from task.models import AmazonUploadFile  # 新增导入
+
         shop_names = list(AmazonShop.objects.all().values_list('shop_name', flat=True))
 
         for temp_path in file_paths:
@@ -160,22 +161,30 @@ def process_amazon_upload_files(subtask_params, task_no):
                 original_filename = os.path.basename(temp_path)
                 filename_without_ext = os.path.splitext(original_filename)[0]
 
-                shop_name = None
-                for name in shop_names:
-                    if name in filename_without_ext:
-                        shop_name = name
+                matched_shop = None
+                matched_shop_name = None
+
+                for shop_name in shop_names:
+                    if shop_name in filename_without_ext:
+                        matched_shop = AmazonShop.objects.get(shop_name=shop_name)
+                        matched_shop_name = shop_name
                         break
 
-                if not shop_name:
+                if not matched_shop:
                     continue
 
                 # 构建目标目录
-                target_dir = os.path.join(target_root, shop_name)
+                target_dir = os.path.join(target_root, matched_shop_name)
                 os.makedirs(target_dir, exist_ok=True)
 
-                # 新文件名：店铺名_任务单号.xlsx
-                # 如果存在多个文件，保留原文件的标识部分（如果有）
-                new_filename = f'{shop_name}_{task_no}.xlsx'
+                # 提取店铺后缀（数字法人部分）
+                if '-' in matched_shop_name:
+                    shop_suffix = matched_shop_name.split('-', 1)[1]
+                else:
+                    shop_suffix = matched_shop_name
+
+                # 新文件名：数字法人_任务号.xlsx
+                new_filename = f'{shop_suffix}_{task_no}.xlsx'
                 target_path = os.path.join(target_dir, new_filename)
 
                 # 如果目标文件已存在，直接覆盖
@@ -185,8 +194,21 @@ def process_amazon_upload_files(subtask_params, task_no):
                 # 移动文件
                 shutil.move(full_temp_path, target_path)
 
+                # ===== 关键新增：创建数据库记录 =====
+                if task_instance and subtask_instance:
+                    AmazonUploadFile.objects.create(
+                        task=task_instance,
+                        subtask=subtask_instance,
+                        amazon_shop=matched_shop,
+                        shop_name_suffix=shop_suffix,
+                        excel_filename=new_filename,
+                        target_path=target_path,
+                        status=AmazonUploadFile.STATUS_PENDING
+                    )
+                # ===================================
+
                 processed_files.append({
-                    'shop': shop_name,
+                    'shop': matched_shop_name,
                     'target_path': target_path,
                     'filename': new_filename
                 })
@@ -209,5 +231,4 @@ def process_amazon_upload_files(subtask_params, task_no):
         traceback.print_exc()
 
     return processed_files
-
 
