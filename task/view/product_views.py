@@ -533,7 +533,6 @@ def get_product_requirement_detail_api(request, pk):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
-
 @login_required
 @require_http_methods(["POST"])
 def update_product_requirement_api(request, pk):
