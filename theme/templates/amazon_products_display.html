@@ -1774,44 +1774,53 @@
 
                 // 成交/上架状态图标
                 const isLatestDeal = product.is_latest_deal;
+                const statusIconTitle = isLatestDeal ? "最新成交" : "最新上架";
                 const statusIconHtml = isLatestDeal
-                    ? '<i class="fas fa-check-circle text-success" title="最新成交"></i>'
-                    : '<i class="fas fa-arrow-alt-circle-up text-primary" title="最新上架"></i>';
+                    ? `<i class="fas fa-check-circle text-success" title="${statusIconTitle}"></i>`
+                    : `<i class="fas fa-arrow-alt-circle-up text-primary" title="${statusIconTitle}"></i>`;
 
                 // 产品主题（确保始终显示，无内容则显示"无主题"）
                 const subjectText = product.subject || '无主题';
-                const subjectHtml = `
-                    <div class="tooltip-wrapper copyable-subject" data-subject="${encodeURIComponent(subjectText)}">
-                        <span class="tooltip-content">${subjectText}</span>
-                        <span class="tooltip-full">${subjectText}</span>
-                    </div>
-                `;
+                const subjectTransText = product.subject_translation || '-'; // 移动定义到上方
 
                 // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
                 const themeRecord = product.theme_record;
                 let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
-                
+
                 // 数据库侵权等级
                 let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '"></span>';
 
                 // 如果有本地缓存的风险数据（后续实现），可以立即显示
                 // 目前先默认 loading
 
-                // 组合右侧图标栏 (侵权等级 + 状态图标)
-                let rightIconsHtml = `
-                    <div style="display: flex; flex-direction: column; align-items: center; margin-left: 8px; gap: 4px; flex-shrink: 0;">
-                        <div class="level-container" data-subject="${encodeURIComponent(subjectText)}">${dbLevelHtml}</div>
-                        <div>${statusIconHtml}</div>
+                // 主题内容Block (左侧)
+                const subjectContentHtml = `
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="tooltip-wrapper copyable-subject" data-subject="${encodeURIComponent(subjectText)}" style="margin-bottom: 4px;">
+                            <span class="tooltip-content" style="font-weight: 500;">${subjectText}</span>
+                            <span class="tooltip-full">${subjectText}</span>
+                        </div>
+                        <div class="tooltip-wrapper">
+                            <span class="tooltip-content trans-text">${subjectTransText}</span>
+                            <span class="tooltip-full">${subjectTransText}</span>
+                        </div>
                     </div>
                 `;
 
-                // 主题翻译（始终显示，无内容则显示"-"，保留灰色样式）
-                const subjectTransText = product.subject_translation || '-';
-                const subjectTransHtml = `
-                    <div class="tooltip-wrapper" style="display: flex; align-items: center;">
-                        <span class="tooltip-content trans-text" style="flex: 1;">${subjectTransText}</span>
-                        ${rightIconsHtml}
-                        <span class="tooltip-full">${subjectTransText}</span>
+                // 图标状态Block (右侧)
+                let statusBlockHtml = `
+                    <div style="flex-shrink: 0; margin-left: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; width: 24px; gap: 4px;">
+                        <div class="level-container" data-subject="${encodeURIComponent(subjectText)}" title="数据库侵权等级" style="height: 18px; display: flex; align-items: center; justify-content: center; cursor: help;">${dbLevelHtml}</div>
+                        <div style="height: 18px; display: flex; align-items: center; justify-content: center; cursor: help;">${statusIconHtml}</div>
+                    </div>
+                `;
+
+                // 组合整体布局
+                const finalSubjectHtml = `
+                    <div style="display: flex; align-items: stretch;">
+                        ${subjectContentHtml}
+                        <div style="width: 1px; background-color: #e5e7eb; margin: 0 8px;"></div>
+                        ${statusBlockHtml}
                     </div>
                 `;
                 const aiLevel = getInfringementLevelText(themeRecord && themeRecord.ai_infringement_level);
@@ -1841,8 +1850,7 @@
                                    onchange="toggleProductSelection('${product.id}', this)">
                         </td>
                         <td>
-                            ${subjectHtml}  <!-- 主题 -->
-                            ${subjectTransHtml} <!-- 主题翻译 -->
+                            ${finalSubjectHtml}
                             ${allReporters.length > 0 ? `
                                 <div class="reporter-badge">
                                     <i class="fas fa-exclamation-circle"></i>
