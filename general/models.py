@@ -2,7 +2,7 @@
 
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
-from pydantic import ValidationError
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 
@@ -10,10 +10,9 @@ from datetime import timedelta
 class PermissionConfig(models.Model):
     """
     业务权限配置表
-    示例数据：
-    code=555就是管理员
+    示例数据：555=管理员, 5555=开发管理员, 551=店铺管理员
     """
-    code = models.IntegerField('权限码', unique=True)  # 123, 546, 555...
+    code = models.IntegerField('权限码', unique=True)
     name = models.CharField('权限名称', max_length=50)
     description = models.TextField('权限描述', blank=True)
     category = models.CharField('权限分类', max_length=50, blank=True)
@@ -24,24 +23,101 @@ class PermissionConfig(models.Model):
         verbose_name = '权限配置'
         ordering = ['code']
 
+    def __str__(self):
+        return f"{self.code}-{self.name}"
+
+
 class Company(models.Model):
     """
-    公司模型，用于多租户区分
+    公司模型：多租户数据硬隔离边界
+    所有业务数据必须挂靠 Company，且不可更改（跨公司=数据导出）
     """
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
-    name = models.CharField('公司名称', max_length=200, unique=True)  # 唯一公司名
-    code = models.CharField('公司代码', max_length=50, unique=True, blank=True, null=True)  # 可选唯一代码，用于URL或标识
+    name = models.CharField('公司名称', max_length=200, unique=True)
+    code = models.CharField('公司代码', max_length=50, unique=True, blank=True, null=True)
     status = models.IntegerField('状态', choices=[(1, '正常'), (2, '停用')], default=1)
+
+    # 可选：公司级配置（如功能开关）
+    settings = models.JSONField('公司配置', default=dict, blank=True,
+                                help_text='{"enable_risk_check": true, "max_shops": 100}')  # 预留字段，暂时没用
+
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
     class Meta:
         db_table = 'companies'
         verbose_name = '公司'
-        verbose_name_plural = verbose_name
+        verbose_name_plural = '公司'
 
     def __str__(self):
         return self.name
+
+
+class Project(models.Model):
+    """
+    项目模型：公司内逻辑分组（软标签）
+    - 店铺可跨项目迁移（改 project_id 即可）
+    - 同一公司内项目数据完全互通
+    - 用于分类、报表、默认筛选，不做权限隔离
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='projects',
+        verbose_name='所属公司',
+        db_comment='项目所属公司'
+    )
+
+    # 项目基本信息
+    name = models.CharField('项目名称', max_length=100, db_index=True)
+    code = models.CharField('项目代码', max_length=50,
+                            help_text='公司内唯一标识，如 "CNXH001"')
+    description = models.TextField('项目描述', blank=True, null=True)
+
+    # 负责人（可选）
+    manager = models.ForeignKey(
+        'User',  # 字符串引用避免循环导入
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_projects',
+        verbose_name='项目负责人'
+    )
+
+    # 控制字段
+    sort_order = models.IntegerField('排序号', default=0,
+                                     help_text='数字越小越靠前，用于前端展示')
+    is_active = models.BooleanField('是否启用', default=True,
+                                    db_comment='停用后不允许店铺挂靠，但已有数据保留')
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'companies_projects'
+        verbose_name = '项目'
+        verbose_name_plural = '项目'
+        # 核心约束：公司内项目代码唯一
+        unique_together = [['company', 'code']]
+        ordering = ['company', 'sort_order', '-created_at']
+        indexes = [
+            models.Index(fields=['company', 'is_active'], name='idx_company_active'),
+        ]
+
+    def __str__(self):
+        return f"{self.company.name} / {self.name} ({self.code})"
+
+    def clean(self):
+        # 确保项目名称在公司内唯一（可选，看业务需求）
+        if self.name:
+            qs = Project.objects.filter(company=self.company, name=self.name)
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+            # 如果业务需要允许同名项目，注释掉下面这行
+            if qs.exists():
+                raise ValidationError({'name': '该公司下已存在同名项目'})
 
 
 class User(AbstractUser):
@@ -55,11 +131,28 @@ class User(AbstractUser):
     company = models.ForeignKey(
         'Company',
         on_delete=models.PROTECT,  # 防止误删公司导致用户数据丢失
-        null=True,
-        blank=True,
+
         related_name='users',  # 关键！让 Company 能通过 .users 反向查用户
         verbose_name='所属公司',
         help_text='用户所属的公司，多租户隔离用'
+    )
+    default_project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='default_users',
+        verbose_name='主属项目',
+        db_comment='用户默认所属项目，用于页面默认筛选（如"店铺列表"默认展示该项目店铺）'
+    )
+
+    # 参与项目列表：用户可在多个项目协作，同一公司内数据互通
+    projects = models.ManyToManyField(
+        Project,
+        blank=True,
+        related_name='members',
+        verbose_name='参与项目',
+        help_text='用户参与的项目列表，仅用于分类标记，不做权限隔离'
     )
     permission_configs = models.ManyToManyField(
         PermissionConfig,
@@ -71,26 +164,36 @@ class User(AbstractUser):
     # 基础业务字段
     phone = models.CharField('联系电话', max_length=20, blank=True, null=True)
 
-    # 状态：1=正常，2=停用，3=注销
-    STATUS_NORMAL = 1
-    STATUS_DISABLED = 2
-    STATUS_CANCELLED = 3
-    STATUS_CHOICES = [
-        (STATUS_NORMAL, '正常'),
-        (STATUS_DISABLED, '停用'),
-        (STATUS_CANCELLED, '注销'),
-    ]
-    status = models.IntegerField('状态', choices=STATUS_CHOICES, default=STATUS_NORMAL)
+    class Status(models.IntegerChoices):
+        NORMAL = 1, '正常'
+        DISABLED = 2, '停用'
 
-    department = models.CharField('部门', max_length=100, blank=True, null=True)
-    role = models.CharField('角色', max_length=100, blank=True, null=True)
-    company_name = models.CharField('公司名称', max_length=100, blank=True, null=True)
-    platform = models.CharField('平台', max_length=255, blank=True, null=True)
-    # ops_group = models.CharField('分组-弃用', max_length=255, blank=True, null=True)
-    permission = models.CharField("权限", max_length=255, blank=True, null=True) # 老权限字段，逗号分隔的权限码列表，如"123,555" 已经不用了
-    wx_url = models.CharField('企业微信消息通知url', max_length=500, blank=True, null=True)
+    status = models.IntegerField('状态', choices=Status.choices,  # type: ignore
+                                 default=Status.NORMAL)
+
+    class Department(models.TextChoices):
+        DATA = 'data', '数据部'
+        OPERATION = 'operation', '运营部'
+        HR = 'hr', '人事部'
+        SUPPLY_CHAIN = 'supply_chain', '供应链部'
+        ASSISTANT = 'assistant', '助理部'
+
+    department = models.CharField(
+        '部门',
+        max_length=20,  # 存英文代号，长度可缩短
+        choices=Department.choices,  # type: ignore
+        blank=True,
+        null=True,
+        db_comment='部门（静态选项：数据部、运营部、人事部、供应链部、助理部）'
+    )
+    role = models.CharField('角色', max_length=100, blank=True, null=True)  # 旧字段，后续不要了
+    company_name = models.CharField('公司名称', max_length=100, blank=True, null=True)  # # 旧字段，后续不要了
+    platform = models.CharField('平台', max_length=255, blank=True, null=True)  # 旧字段，后续不要了
+    permission = models.CharField("权限", max_length=255, blank=True, null=True)  # 老权限字段，逗号分隔的权限码列表，如"123,555" 已经不用了
+    wx_url = models.CharField('企业微信消息通知url', max_length=500, blank=True, null=True)  # 企业微信通知url
     remark = models.TextField('备注', blank=True, null=True)
     # ========== 关键修复：显式定义groups和user_permissions以避免冲突 ==========
+    # 下面两个是django自带的权限系统字段，必须显式定义以避免与自定义permission_configs冲突
     groups = models.ManyToManyField(
         Group,
         verbose_name='groups',
@@ -127,12 +230,8 @@ class User(AbstractUser):
         return f"{self.first_name} ({self.id})"
 
     def is_active_status(self):
-        """检查用户状态是否为正常"""
-        return self.status == self.STATUS_NORMAL
-
-    def is_group_leader(self):
-        """判断用户是否为运营组长"""
-        return self.role == '运营组长'
+        """检查用户状态是否为正常（status=1 且 Django用户可用）"""
+        return self.is_active and self.status == self.Status.NORMAL
 
     def get_ops_group(self):
         """获取用户的运营分组"""
@@ -140,17 +239,12 @@ class User(AbstractUser):
             return self.operational_account.ops_group
         return None
 
-    def can_manage_group_targets(self):
-        """判断是否可以管理组目标（permission包含555）"""
-        return self.permission and '555' in self.permission.split(',')
-
 
 class OperationalAccount(models.Model):
     """
     运营人员外部系统账号信息
     仅运营人员需要填写，与用户表一对一关联
     """
-
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -159,6 +253,30 @@ class OperationalAccount(models.Model):
         related_name='operational_account'
     )
     ops_group = models.CharField('分组', max_length=255, blank=True, null=True)
+    class Platform(models.TextChoices):
+        AMAZON = 'amazon', 'Amazon'
+        TEMU = 'temu', 'Temu'
+    platform = models.CharField(
+        '平台',
+        max_length=50,
+        choices=Platform.choices,  # type: ignore
+        blank=True,
+        null=True
+    )
+    class Role(models.TextChoices):
+        LEADER = 'leader', '运营组长'
+        STAFF = 'staff', '运营'
+        ASSISTANT = 'assistant', '运营助理'
+
+    role = models.CharField(
+        '角色',
+        max_length=50,
+        choices=Role.choices,  # type: ignore
+        default=Role.STAFF,
+        blank=True,
+        null=True
+    )
+
     # 闪电云账号信息
     shandianyun_account = models.CharField('闪电云账号', max_length=100, blank=True, null=True)
     shandianyun_username = models.CharField('闪电云用户名', max_length=100, blank=True, null=True)
@@ -185,9 +303,28 @@ class OperationalAccount(models.Model):
     def __str__(self):
         return f"{self.user.first_name} - 运营账号"
 
+    def is_group_leader(self):
+        """判断是否为运营组长"""
+        return self.role == self.Role.LEADER
+
 
 class AmazonShop(models.Model):
     id = models.BigAutoField(primary_key=True, db_comment='主键')
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.PROTECT,  # 公司不能删，除非先处理店铺
+        related_name='amazon_shops',
+        verbose_name='所属公司',
+        db_comment='数据隔离边界，不可变更'
+    )
+
+    project = models.ForeignKey(
+        'general.Project',
+        on_delete=models.PROTECT,  # 项目删了店铺还在，只是没项目
+        related_name='amazon_shops',
+        verbose_name='所属项目',
+        db_comment='业务分组标签，可自由迁移'
+    )
     ops = models.ForeignKey(
         'general.User',
         on_delete=models.SET_NULL,  # 用户删除时店铺保留
@@ -244,13 +381,44 @@ class AmazonShop(models.Model):
     browser = models.CharField(max_length=255, db_comment='浏览器')
     divi_shop_id = models.IntegerField(blank=True, null=True, db_comment='迪唯店铺id')
     qupital_if = models.BooleanField(db_comment='是否绑定qupital', default=False)
+
     class Meta:
         db_table = 'amazon_shop'
         db_table_comment = '亚马逊店铺信息表'
+        indexes = [
+            models.Index(fields=['company', 'project'], name='idx_shop_company_project'),
+            models.Index(fields=['company', 'ops'], name='idx_shop_company_ops'),
+        ]
 
+    def clean(self):
+        # 关键校验：如果填了 project，必须与 company 一致
+        if self.project and self.project.company_id != self.company_id:
+            raise ValidationError('所选项目不属于当前公司')
+
+    def migrate_project(self, new_project):
+        """店铺跨项目迁移方法"""
+        if new_project.company_id != self.company_id:
+            raise ValueError('不能跨公司迁移项目')
+        self.project = new_project
+        self.save(update_fields=['project'])
 
 class TemuShop(models.Model):
     id = models.BigIntegerField(primary_key=True, db_comment='主键')
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.PROTECT,  # 公司不能删，除非先处理店铺
+        related_name='temu_shops',
+        verbose_name='所属公司',
+        db_comment='数据隔离边界，不可变更'
+    )
+
+    project = models.ForeignKey(
+        'general.Project',
+        on_delete=models.PROTECT,  # 项目删了店铺还在，只是没项目
+        related_name='temu_shops',
+        verbose_name='所属项目',
+        db_comment='业务分组标签，可自由迁移'
+    )
     shop_name = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺名称')
     ops_id = models.IntegerField(blank=True, null=True, db_comment='运营id')
     divi_shop_id = models.IntegerField(blank=True, null=True, db_comment='迪唯店铺id')
@@ -285,7 +453,13 @@ class GroupPerformanceTarget(models.Model):
     只有permission包含555的用户可以创建
     """
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
-
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.PROTECT,
+        related_name='group_targets',
+        verbose_name='所属公司',
+        db_comment='数据隔离边界'
+    )
     # 目标月份 (格式: YYYY-MM)
     month = models.DateField('目标月份', default=timezone.now)
 
@@ -317,13 +491,14 @@ class GroupPerformanceTarget(models.Model):
         verbose_name = '组绩效目标'
         verbose_name_plural = verbose_name
         # 每个分组每月只能有一个目标
-        unique_together = ['ops_group', 'month']
+        unique_together = ['company', 'ops_group', 'month']
+
         indexes = [
-            models.Index(fields=['month', 'ops_group']),
+            models.Index(fields=['company', 'month', 'ops_group']),
         ]
 
     def __str__(self):
-        return f"{self.ops_group} - {self.month}: {self.target_performance}单"
+        return f"{self.company.name} - {self.ops_group} - {self.month}: {self.target_performance}单"
 
     def clean(self):
         """模型验证"""
@@ -363,7 +538,12 @@ class PersonalPerformanceTarget(models.Model):
     由运营组长为自己的组员批量设置
     """
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
-
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.PROTECT,
+        related_name='personal_targets',
+        verbose_name='所属公司',
+    )
     # 关联的运营人员
     user = models.ForeignKey(
         User,
@@ -403,9 +583,9 @@ class PersonalPerformanceTarget(models.Model):
         verbose_name = '个人绩效目标'
         verbose_name_plural = verbose_name
         # 每个人每月只能有一个目标
-        unique_together = ['user', 'month']
+        unique_together = ['company', 'user', 'month']
         indexes = [
-            models.Index(fields=['month', 'ops_group']),
+            models.Index(fields=['company', 'month', 'ops_group']),
             models.Index(fields=['user', 'month']),
         ]
 
@@ -528,67 +708,54 @@ class UserOperationLog(models.Model):
     记录所有用户的关键操作，便于审计和追踪
     """
 
-    # ============= 操作类型常量定义 =============
-    # 1xxx: 用户管理类操作
-    USER_CREATE = 1001
-    USER_UPDATE = 1002
-    USER_DELETE = 1003
+    # ============= 内置 Choices 类 =============
+    class OperationType(models.IntegerChoices):
+        """操作类型：1xxx用户, 2xxx店铺, 3xxx订单, 4xxx邮件, 6xxx考核, 7xxx物流"""
+        # 1xxx: 用户管理类操作
+        USER_CREATE = 1001, '新增用户'
+        USER_UPDATE = 1002, '修改用户信息'
+        USER_DELETE = 1003, '删除用户'
 
-    # 2xxx: 店铺管理类操作
-    SHOP_CREATE = 2001
-    SHOP_UPDATE = 2002
-    SHOP_DELETE = 2003
+        # 2xxx: 店铺管理类操作
+        SHOP_CREATE = 2001, '新增店铺'
+        SHOP_UPDATE = 2002, '修改店铺'
+        SHOP_DELETE = 2003, '删除店铺'
 
-    # 3xxx: 订单管理类操作
-    ORDER_IMPORT = 3001
-    ORDER_SHIP = 3002
-    ORDER_MARK_REAL = 3003
-    ORDER_RPA_LOGISTICS = 3004
-    ORDER_AUTO_SHIP = 3005
+        # 3xxx: 订单管理类操作
+        ORDER_IMPORT = 3001, '订单导单'
+        ORDER_SHIP = 3002, '订单发货'
+        ORDER_MARK_REAL = 3003, '订单标注真发'
+        ORDER_RPA_LOGISTICS = 3004, 'RPA真物流覆盖假物流'
+        ORDER_AUTO_SHIP = 3005, '自动发货'
 
-    # 4xxx: 邮件管理类操作
-    EMAIL_MARK_PROCESSED = 4001
-    EMAIL_NOTIFY_OPERATORS = 4002
-
-    DAILY_CHECK_RESET = 4011  # ✅ 新增
-
-    ASSESSMENT_BATCH_REFRESH = 6001  # 批量刷新考核订单数据
-    ASSESSMENT_SUBMIT = 6002  # 组长评分提交
-    ASSESSMENT_MEMBER_CONFIRM = 6003  # 组员评分确认
-    ASSESSMENT_LEADER_CONFIRM = 6004  # 组长评分确认
-    ASSESSMENT_CREATE = 6005  # 新增考核
-    ASSESSMENT_MEMBER_REJECT = 6006  # 组员评分拒绝
-    # 7xxx: 物流追踪管理类操作
-    TRACKING_MARK_CANCELLED = 7101  # 标记运单为已取消
-    TRACKING_UNDO_CANCEL = 7102  # 取消运单的取消标记（恢复为正常）
-    OPERATION_TYPE_CHOICES = [
-        (USER_CREATE, '新增用户'),
-        (USER_UPDATE, '修改用户信息'),
-        (USER_DELETE, '删除用户'),
-        (SHOP_CREATE, '新增店铺'),
-        (SHOP_UPDATE, '修改店铺'),
-        (SHOP_DELETE, '删除店铺'),
-        (ORDER_IMPORT, '订单导单'),
-        (ORDER_SHIP, '订单发货'),
-        (ORDER_MARK_REAL, '订单标注真发'),
-        (ORDER_RPA_LOGISTICS, 'RPA真物流覆盖假物流'),
-        (ORDER_AUTO_SHIP, '自动发货'),
-        (EMAIL_MARK_PROCESSED, '标记邮件已处理'),  # ✅ 添加
-        (EMAIL_NOTIFY_OPERATORS, '批量通知运营邮件'),  # ✅ 添加
-        (DAILY_CHECK_RESET, '重置巡店'),  # ✅ 新增
+        # 4xxx: 邮件管理类操作
+        EMAIL_MARK_PROCESSED = 4001, '标记邮件已处理'
+        EMAIL_NOTIFY_OPERATORS = 4002, '批量通知运营邮件'
+        DAILY_CHECK_RESET = 4011, '重置巡店'
 
         # 6xxx: 考核流程操作
-        (ASSESSMENT_BATCH_REFRESH, '绩效考核-批量刷新订单'),
-        (ASSESSMENT_SUBMIT, '绩效考核-组长评分提交'),
-        (ASSESSMENT_MEMBER_CONFIRM, '绩效考核-组员评分确认'),
-        (ASSESSMENT_LEADER_CONFIRM, '绩效考核-组长评分确认'),
-        (ASSESSMENT_CREATE, '考核创建'),
-        (ASSESSMENT_MEMBER_REJECT, '绩效考核-组员评分驳回'),
-        (TRACKING_MARK_CANCELLED, '物流追踪-标记运单取消'),
-        (TRACKING_UNDO_CANCEL, '物流追踪-恢复运单状态'),
-    ]
+        ASSESSMENT_BATCH_REFRESH = 6001, '绩效考核-批量刷新订单'
+        ASSESSMENT_SUBMIT = 6002, '绩效考核-组长评分提交'  # type: ignore
+        ASSESSMENT_MEMBER_CONFIRM = 6003, '绩效考核-组员评分确认'
+        ASSESSMENT_LEADER_CONFIRM = 6004, '绩效考核-组长评分确认'
+        ASSESSMENT_CREATE = 6005, '考核创建'
+        ASSESSMENT_MEMBER_REJECT = 6006, '绩效考核-组员评分驳回'
 
-    # ============= 模型字段 =============
+        # 7xxx: 物流追踪管理类操作
+        TRACKING_MARK_CANCELLED = 7101, '物流追踪-标记运单取消'
+        TRACKING_UNDO_CANCEL = 7102, '物流追踪-恢复运单状态'
+
+    # ============= 字段定义 =============
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.PROTECT,
+        related_name='operation_logs',
+        verbose_name='操作所属公司',
+        null=True,
+        blank=True,
+        db_comment='记录操作时的公司归属，用于审计和按公司查询'
+    )
+
     id = models.BigAutoField(primary_key=True, verbose_name='主键')
 
     user = models.ForeignKey(
@@ -601,26 +768,25 @@ class UserOperationLog(models.Model):
         db_comment='执行操作的用户'
     )
 
-    # 4位数字类型，带索引便于快速筛选（如查找所有3开头的订单操作）
+    # 使用 Choices 类
     operation_type = models.IntegerField(
         '操作类型',
-        choices=OPERATION_TYPE_CHOICES,
-        db_index=True,  # 为类型筛选加速
-        db_comment='4位数字类型：1xxx用户操作，2xxx店铺操作，3xxx订单操作'
+        choices=OperationType.choices,  # type: ignore
+        db_index=True,
+        db_comment='4位数字类型：1xxx用户操作，2xxx店铺操作，3xxx订单操作，4xxx邮件，6xxx考核，7xxx物流'
     )
 
-    # 操作详情文本，限制255字符，带索引支持模糊搜索
     operation_record = models.CharField(
         '操作记录',
         max_length=255,
-        db_index=True,  # 为文本搜索加速（支持前匹配查询）
+        db_index=True,
         db_comment='自由记录的文本内容'
     )
 
     created_at = models.DateTimeField(
         '操作时间',
         auto_now_add=True,
-        db_index=True,  # 为时间范围查询加速
+        db_index=True,
         db_comment='自动写入的操作时间'
     )
 
@@ -628,15 +794,15 @@ class UserOperationLog(models.Model):
         db_table = 'user_operation_logs'
         verbose_name = '用户操作日志'
         verbose_name_plural = verbose_name
-        ordering = ['-created_at']  # 默认按时间倒序排列
+        ordering = ['-created_at']
 
-        # 复合索引：常用查询场景
         indexes = [
-            # 按用户+时间查询某人的操作历史
+            # 按公司+时间查（高频：查本公司最近操作）
+            models.Index(fields=['company', '-created_at'], name='idx_company_time'),
+            # 按公司+类型查（高频：查本公司所有店铺操作）
+            models.Index(fields=['company', 'operation_type'], name='idx_company_type'),
+            # 按用户+时间查（低频：查某人操作历史）
             models.Index(fields=['user', '-created_at'], name='idx_user_time'),
-
-            # 按类型+时间查询某类操作记录（如所有订单操作）
-            models.Index(fields=['operation_type', '-created_at'], name='idx_type_time'),
         ]
 
     def __str__(self):

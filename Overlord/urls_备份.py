@@ -16,8 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from general import views, views_user_management, views_amazon_management, views_temu_management, views_performance, \
+from general import views, views_amazon_management, views_temu_management, views_performance, \
     demo_view
+from general.view import views_user_management
 from amazon import amazon_views, amazon_divi_views, amazon_order_views, amazon_views_jc, amazon_order_api_views, \
     views_ranking,amazon_jx_views
 

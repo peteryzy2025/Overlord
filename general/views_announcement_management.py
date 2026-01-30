@@ -19,7 +19,7 @@ def announcement_management_view(request):
     context = {
         'active_page': 'announcement_management'
     }
-    return render(request, 'announcement_management.html', context)
+    return render(request, 'management/announcement_management.html', context)
 
 @require_GET
 @login_required

@@ -22,7 +22,7 @@ def amazon_management_view(request):
         'user_ops_group': getattr(request.user, 'get_ops_group', lambda: None)(),
         'user_permissions_json': json.dumps(parse_permissions(getattr(request.user, 'permission', '')))
     }
-    return render(request, 'amazon_shop_management.html', context)
+    return render(request, 'management/amazon_shop_management.html', context)
 
 
 # 获取运营人员列表API（含OperationalAccount分组信息，按分组排序）

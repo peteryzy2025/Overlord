@@ -74,7 +74,7 @@ def operation_log_view(request):
     permissions = get_operation_log_permissions(user)
 
     # 将权限数据传递给前端
-    return render(request, 'user_operation_management.html', {
+    return render(request, 'management/user_operation_management.html', {
         'active_nav': 'operation_log',
         'currentUserPermissionsData': json.dumps(permissions)  # 传递给JS
     })
