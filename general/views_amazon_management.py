@@ -195,6 +195,8 @@ def get_amazon_shops_api(request):
                     'shop_name': shop.shop_name or '-',
                     'amazon_shop_name': shop.amazon_shop_name or '-',
                     'customer': shop.customer or '-',
+                    'project_id': shop.project_id,
+                    'project_name': shop.project.name if shop.project else '-',
                     'ops_id': shop.ops.id if shop.ops else None,
                     'ops_first_name': shop.ops.first_name if shop.ops else '-',
                     'ops_role': ops_role,
@@ -254,15 +256,22 @@ def get_amazon_shops_api(request):
 
         # ====== 正常分页 / 筛选逻辑 ======
         page = int(request.GET.get('page', 1))
-        page_size = int(request.GET.get('page_size', 10))
+        page_size = int(request.GET.get('page_size', 20))
 
-        status_filter = request.GET.get('status', '').strip()
-        operator_filter = request.GET.get('operator', '').strip()
-        ops_group_filter = request.GET.get('ops_group', '').strip()
-        customer_filter = request.GET.get('customer', '').strip()
+        # 支持多选参数处理
+        def get_list_param(name):
+            val = request.GET.get(name, '').strip()
+            if not val: return []
+            return [v.strip() for v in val.split(',') if v.strip()]
+
+        status_filters = get_list_param('status')
+        operator_filters = get_list_param('operator')
+        ops_group_filters = get_list_param('ops_group')
+        customer_filters = get_list_param('customer')
+        project_filters = get_list_param('project')
         search_term = request.GET.get('search', '').strip()
 
-        # 新增筛选参数
+        # 其他单选筛选
         shop_date_start = request.GET.get('shop_date_start', '').strip()
         shop_date_end = request.GET.get('shop_date_end', '').strip()
         qu_dao = request.GET.get('qu_dao', '').strip()
@@ -273,38 +282,41 @@ def get_amazon_shops_api(request):
         browser = request.GET.get('browser', '').strip()
         xunhui_login_account = request.GET.get('xunhui_login_account', '').strip()
         email_account = request.GET.get('email_account', '').strip()
-        if page < 1: page = 1
-        if page_size not in [10, 20, 50, 100, 5000]: page_size = 10
 
-        query = AmazonShop.objects.select_related('ops').prefetch_related('ops__operational_account')
+        if page < 1: page = 1
+        if page_size not in [10, 20, 50, 100, 200, 5000]: page_size = 20
+
+        query = AmazonShop.objects.select_related('ops', 'project').prefetch_related('ops__operational_account')
 
         # 权限范围过滤：ops_all 查看全部；ops_group 查看本组；ops 查看本人
         if 'ops_all' not in permissions:
-            if 'ops_group' in permissions and hasattr(request.user,
-                                                      'operational_account') and request.user.operational_account.ops_group:
+            if 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
                 group_name = request.user.operational_account.ops_group
                 user_ids = OperationalAccount.objects.filter(ops_group=group_name).values_list('user_id', flat=True)
                 query = query.filter(ops_id__in=user_ids)
             else:
                 query = query.filter(ops_id=request.user.id)
 
-        # 原有筛选逻辑
-        if status_filter:
-            query = query.filter(shop_status=status_filter)
-        if operator_filter:
-            query = query.filter(ops_id=int(operator_filter))
-        if ops_group_filter:
-            user_ids = OperationalAccount.objects.filter(ops_group=ops_group_filter).values_list('user_id', flat=True)
+        # 应用筛选逻辑
+        if status_filters:
+            query = query.filter(shop_status__in=status_filters)
+        if operator_filters:
+            query = query.filter(ops_id__in=[int(o) for o in operator_filters if o.isdigit()])
+        if ops_group_filters:
+            user_ids = OperationalAccount.objects.filter(ops_group__in=ops_group_filters).values_list('user_id', flat=True)
             query = query.filter(ops_id__in=user_ids)
-        if customer_filter:
-            query = query.filter(customer=customer_filter)
+        if customer_filters:
+            query = query.filter(customer__in=customer_filters)
+        if project_filters:
+            query = query.filter(project_id__in=[int(p) for p in project_filters if p.isdigit()])
+        
         if search_term:
             query = query.filter(
                 Q(shop_name__icontains=search_term) |
                 Q(amazon_shop_name__icontains=search_term)
             )
 
-        # 新增筛选逻辑
+        # 其他新增筛选逻辑
         if shop_date_start:
             query = query.filter(shop_date__gte=shop_date_start)
         if shop_date_end:
@@ -328,6 +340,7 @@ def get_amazon_shops_api(request):
             )
         if email_account:
             query = query.filter(email_account__icontains=email_account)
+
         total_count = query.count()
         offset = (page - 1) * page_size
         shops = query.order_by('id')[offset:offset + page_size]
@@ -341,14 +354,15 @@ def get_amazon_shops_api(request):
                     ops_group = shop.ops.operational_account.ops_group or '-'
                     ops_role = shop.ops.role or '-'
                 except OperationalAccount.DoesNotExist:
-                    ops_group = '-'
-                    ops_role = '-'
+                    pass
 
             shops_data.append({
                 'id': shop.id,
                 'shop_name': shop.shop_name or '-',
                 'amazon_shop_name': shop.amazon_shop_name or '-',
                 'customer': shop.customer or '-',
+                'project_id': shop.project_id,
+                'project_name': shop.project.name if shop.project else '-',
                 'ops_id': shop.ops.id if shop.ops else None,
                 'ops_first_name': shop.ops.first_name if shop.ops else '-',
                 'ops_role': ops_role,
@@ -418,6 +432,44 @@ from django.utils import timezone
 @require_POST
 @csrf_exempt
 @login_required
+def bulk_update_project_api(request):
+    """批量设置或移除店铺的项目归属"""
+    try:
+        data = json.loads(request.body)
+        shop_ids = data.get('shop_ids', [])
+        project_id = data.get('project_id')  # 为 None 表示移除项目
+
+        if not shop_ids:
+            return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
+
+        # 权限校验：简单起见，要求有 555 或 551
+        user_perm_codes = list(request.user.permission_configs.values_list('code', flat=True))
+        if 555 not in user_perm_codes and 551 not in user_perm_codes:
+            return JsonResponse({'success': False, 'error': '无批量修改权限'}, status=403)
+
+        with transaction.atomic():
+            if project_id:
+                # 检查项目是否存在
+                from general.models import Project
+                try:
+                    project = Project.objects.get(id=project_id)
+                    AmazonShop.objects.filter(id__in=shop_ids).update(project=project, updated_at=timezone.now())
+                except Project.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': '项目不存在'}, status=404)
+            else:
+                # 移除项目
+                AmazonShop.objects.filter(id__in=shop_ids).update(project=None, updated_at=timezone.now())
+
+        return JsonResponse({'success': True, 'message': '批量操作成功'})
+
+    except Exception as e:
+        print(f"批量更新项目错误: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
 def create_amazon_shop_api(request):
     """
     API接口：创建新Amazon店铺
@@ -480,6 +532,8 @@ def create_amazon_shop_api(request):
         with transaction.atomic():
             shop = AmazonShop.objects.create(
                 # 基本信息
+                company_id=request.user.company_id,
+                project_id=data.get('project') if data.get('project') else None,
                 shop_name=shop_name,
                 shop_number=shop_number,
                 amazon_shop_name=data.get('amazon_shop_name', '') or '',
@@ -599,6 +653,7 @@ def update_amazon_shop_api(request, shop_id):
 
         with transaction.atomic():
             # 基本信息
+            shop.project_id = data.get('project') or None
             shop.shop_name = shop_name
             shop.shop_number = data.get('shop_number') or None
             shop.amazon_shop_name = data.get('amazon_shop_name', '') or ''
