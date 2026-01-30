@@ -1255,3 +1255,153 @@
     padding: 0.75rem;
     min-height: 42px;
 }
+
+/* ============================================
+   15. 复选框列样式（表格批量操作）
+   ============================================ */
+
+.w-checkbox {
+    width: 45px !important;
+    min-width: 45px !important;
+    max-width: 45px !important;
+    text-align: center;
+    padding: 0.5rem !important;
+}
+
+.w-checkbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--accent-color);
+}
+
+/* ============================================
+   16. 批量操作栏
+   ============================================ */
+
+.bulk-action-bar {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin: 0 0 1rem 0;
+    animation: slideDown 0.3s ease;
+}
+
+.bulk-action-bar.visible {
+    display: flex;
+}
+
+.selected-count {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-right: auto;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 批量项目列表样式 */
+.project-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.project-item:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-color);
+}
+
+.project-item input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+}
+
+/* ============================================
+   17. 列选择器样式（导出/列显隐用）
+   ============================================ */
+
+.column-group {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-secondary);
+    margin-bottom: 1rem;
+}
+
+.column-group h3 {
+    background-color: var(--bg-tertiary);
+    padding: 0.5rem 1rem !important;
+    border-radius: 8px 8px 0 0;
+    font-size: 1rem;
+    color: var(--accent-color);
+    margin: 0;
+}
+
+.column-group > div {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem;
+}
+
+.column-group label {
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.column-group label:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* ============================================
+   18. 工具类
+   ============================================ */
+
+/* 禁用状态 */
+.field-disabled {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+    cursor: not-allowed;
+}
+
+/* 密码输入框等宽字体 */
+.password-input {
+    font-family: monospace;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    display: block;
+}
