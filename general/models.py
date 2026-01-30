@@ -312,18 +312,22 @@ class AmazonShop(models.Model):
     id = models.BigAutoField(primary_key=True, db_comment='主键')
     company = models.ForeignKey(
         'general.Company',
-        on_delete=models.PROTECT,  # 公司不能删，除非先处理店铺
+        on_delete=models.PROTECT,
         related_name='amazon_shops',
         verbose_name='所属公司',
-        db_comment='数据隔离边界，不可变更'
+        null=True,
+        blank=True,
+        db_comment='数据隔离边界'
     )
 
     project = models.ForeignKey(
         'general.Project',
-        on_delete=models.PROTECT,  # 项目删了店铺还在，只是没项目
+        on_delete=models.SET_NULL,
         related_name='amazon_shops',
         verbose_name='所属项目',
-        db_comment='业务分组标签，可自由迁移'
+        null=True,
+        blank=True,
+        db_comment='业务分组标签'
     )
     ops = models.ForeignKey(
         'general.User',

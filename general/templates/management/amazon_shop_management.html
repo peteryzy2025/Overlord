@@ -11,54 +11,6 @@
             min-width: 4200px;
         }
 
-        /* 设置固定列的宽度 */
-        .table-container td:nth-child(1),
-        .table-container th:nth-child(1) {
-            min-width: 80px;
-            max-width: 80px;
-            width: 80px;
-        }
-
-        .table-container td:nth-child(2),
-        .table-container th:nth-child(2) {
-            min-width: 200px;
-            max-width: 200px;
-            width: 200px;
-        }
-
-        /* 左侧固定列特殊处理 */
-        .table-container td:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container td:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container th:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 12;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container th:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 13;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
         .field-disabled {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-secondary) !important;
@@ -209,6 +161,34 @@
             height: 18px;
             accent-color: var(--accent-color);
         }
+
+        /* 统一按钮大小 */
+        .page-header .btn {
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        .bulk-action-bar .btn {
+            min-width: 140px;
+            justify-content: center;
+        }
+
+        .pagination-btn-new {
+            min-width: 40px;
+            padding: 0 10px;
+            height: 40px; /* 增加按钮高度 */
+        }
+        
+        #paginationNew {
+            height: 50px; /* 增加容器高度 */
+            display: flex;
+            align-items: center;
+        }
+        
+        .pagination-ellipsis {
+            color: var(--text-secondary);
+            padding: 0 5px;
+        }
     </style>
 {% endblock %}
 
@@ -253,6 +233,10 @@
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
                     <div id="amazonGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">项目</label>
+                    <div id="amazonProjectFilter" class="searchable-select single" data-placeholder="全部项目"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">搜索店铺</label>
@@ -334,8 +318,8 @@
                 <thead id="amazonShopsTableHead">
                     <tr>
                         <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                        <th>ID</th>
                         <th>店铺名称</th>
+                        <th>项目</th>
                         <th>客户</th>
                         <th>运营人员</th>
                         <th>角色</th>
@@ -498,15 +482,15 @@
     const IS_ADMIN = USER_PERMISSIONS.includes('ops_all') || USER_PERMISSIONS.includes('admin');
     
     const NON_ADMIN_VISIBLE_KEYS = [
-        'id', 'shop_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
+        'shop_name', 'project_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
         'shop_status', 'amazon_shop_name', 'shop_date', 'shop_number', 'seller_mark',
         'qu_dao', 'ip_address', 'browser', 'email_account', 'email_password'
     ];
 
     // 所有可导出的列定义
     const EXPORT_COLUMNS = [
-        { key: 'id', label: 'ID', group: '基本信息', tableVisible: false },
         { key: 'shop_name', label: '店铺名称', group: '基本信息', tableVisible: true },
+        { key: 'project_name', label: '项目', group: '基本信息', tableVisible: true },
         { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
         { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true },
@@ -589,7 +573,7 @@
     // ==========================================
     // 筛选器逻辑
     // ==========================================
-    let statusSelect, customerSelect, operatorSelect, groupSelect, lingXingSelect, browserSelect;
+    let statusSelect, customerSelect, operatorSelect, groupSelect, projectFilterSelect, lingXingSelect, browserSelect;
 
     function initSearchableSelects() {
         statusSelect = new SearchableSelect('#amazonShopStatusFilter', {
@@ -631,6 +615,14 @@
         });
         groupSelect.setValue(['']);
         groupSelect.onChange = () => filterAmazonShops();
+
+        projectFilterSelect = new SearchableSelect('#amazonProjectFilter', {
+            options: [{ value: '', label: '全部项目' }],
+            placeholder: '全部项目',
+            multiple: true
+        });
+        projectFilterSelect.setValue(['']);
+        projectFilterSelect.onChange = () => filterAmazonShops();
 
         lingXingSelect = new SearchableSelect('#lingXingIfFilter', {
             options: [
@@ -687,7 +679,9 @@
         
         tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:2rem;">加载中...</td></tr>`;
 
-        const { data, total } = await loadShopsFromAPI(currentPage, currentPageSize);
+        const result = await loadShopsFromAPI(currentPage, currentPageSize);
+        const data = result.data;
+        const total = result.total;
         tbody.innerHTML = '';
 
         if (!data || data.length === 0) {
@@ -721,6 +715,7 @@
                 operator: formatMultiSelect(operatorSelect.getValue()),
                 ops_group: formatMultiSelect(groupSelect.getValue()),
                 customer: formatMultiSelect(customerSelect.getValue()),
+                project: formatMultiSelect(projectFilterSelect.getValue()),
                 search: document.getElementById('amazonShopSearch').value,
                 shop_date_start: document.getElementById('shopDateStartFilter').value,
                 shop_date_end: document.getElementById('shopDateEndFilter').value,
@@ -828,6 +823,9 @@
         }
         if (groupSelect) {
             groupSelect.setOptions([{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))]);
+        }
+        if (projectFilterSelect) {
+            projectFilterSelect.setOptions([{ value: '', label: '全部项目' }, ...allProjects.map(p => ({ value: p.id, label: p.name }))]);
         }
     }
 
@@ -1170,27 +1168,89 @@
     });
 
     function updatePaginationInfo(total) {
-        document.querySelector('.pagination-info').dataset.total = total;
+        const info = document.querySelector('.pagination-info');
+        info.dataset.total = total;
+        
+        // 更新显示 当前/总计
+        const start = (currentPage - 1) * currentPageSize + 1;
+        const end = Math.min(currentPage * currentPageSize, total);
+        const displayTotal = total === 0 ? 0 : `${start}-${end} / 共 ${total} 条`;
+        
+        // 查找或创建显示统计的元素
+        let statsEl = info.querySelector('.pagination-stats');
+        if (!statsEl) {
+            statsEl = document.createElement('span');
+            statsEl.className = 'pagination-stats';
+            statsEl.style.marginLeft = '1rem';
+            statsEl.style.color = 'var(--text-secondary)';
+            info.appendChild(statsEl);
+        }
+        statsEl.textContent = displayTotal;
     }
 
     function renderPagination(total, page, size) {
         const totalPages = Math.ceil(total / size);
         const container = document.getElementById('paginationNew');
-        if (totalPages <= 1) return container.innerHTML = '';
-
-        let html = `<button class="pagination-btn-new" onclick="changePage(${page-1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
-        for (let i = Math.max(1, page-2); i <= Math.min(totalPages, page+2); i++) {
-            html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+        
+        // 即使只有一页也显示，方便切换每页条数
+        if (total === 0) {
+            container.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
+            return;
         }
-        html += `<button class="pagination-btn-new" onclick="changePage(${page+1})" ${page === totalPages ? 'disabled' : ''}>下一页</button>`;
+
+        let html = '';
+        // 首页
+        html += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+        // 上一页
+        html += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
+
+        // 页码
+        if (totalPages > 1) {
+            let startPage = Math.max(1, page - 2);
+            let endPage = Math.min(totalPages, page + 2);
+
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})">${totalPages}</button>`;
+            }
+        } else {
+            html += `<button class="pagination-btn-new active" disabled>1</button>`;
+        }
+
+        // 下一页
+        html += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页</button>`;
+        // 尾页
+        html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})" ${page >= totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
         container.innerHTML = html;
     }
 
     function changePage(page) {
         const total = parseInt(document.querySelector('.pagination-info').dataset.total);
-        if (page < 1 || page > Math.ceil(total / currentPageSize)) return;
+        const totalPages = Math.ceil(total / currentPageSize);
+        if (page < 1 || page > totalPages) return;
+        
+        // 记录当前表格顶部的偏移量
+        const tableContainer = document.querySelector('.table-container');
+        const scrollOffset = tableContainer.getBoundingClientRect().top + window.pageYOffset - 100;
+        
         currentPage = page;
-        loadShopsTable();
+        loadShopsTable().then(() => {
+            // 加载完成后滚动回之前的位置
+            window.scrollTo({
+                top: scrollOffset,
+                behavior: 'smooth'
+            });
+        });
     }
 
     function changePageSize(size) {
@@ -1203,6 +1263,22 @@
 
     function togglePageSizeDropdown() {
         document.getElementById('pageSizeDropdown').classList.toggle('open');
+    }
+
+    function handlePageJump(e) {
+        if (e.key === 'Enter') {
+            const input = document.getElementById('pageJumpInput');
+            const page = parseInt(input.value);
+            const total = parseInt(document.querySelector('.pagination-info').dataset.total);
+            const totalPages = Math.ceil(total / currentPageSize);
+            
+            if (isNaN(page) || page < 1 || page > totalPages) {
+                showNotification(`请输入 1 到 ${totalPages} 之间的有效页码`, 'warning');
+                return;
+            }
+            changePage(page);
+            input.value = '';
+        }
     }
 
     // ==========================================
@@ -1319,6 +1395,36 @@
             console.error('批量操作失败:', error);
             showNotification('操作失败，请检查网络连接', 'error');
         }
+    }
+
+    function filterAmazonShops() {
+        currentPage = 1;
+        loadShopsTable();
+    }
+
+    function resetAmazonShopFilters() {
+        // 重置所有的 SearchableSelect
+        statusSelect.setValue(['']);
+        customerSelect.setValue(['']);
+        operatorSelect.setValue(['']);
+        groupSelect.setValue(['']);
+        projectFilterSelect.setValue(['']);
+        lingXingSelect.setValue('');
+        browserSelect.setValue('');
+
+        // 重置普通输入框
+        document.getElementById('amazonShopSearch').value = '';
+        document.getElementById('quDaoFilter').value = '';
+        document.getElementById('backupContactFilter').value = '';
+        document.getElementById('additionalRemarkFilter').value = '';
+        document.getElementById('companyNameFilter').value = '';
+        document.getElementById('collectionAccountFilter').value = '';
+        document.getElementById('emailAccountFilter').value = '';
+        document.getElementById('shopDateStartFilter').value = '';
+        document.getElementById('shopDateEndFilter').value = '';
+
+        currentPage = 1;
+        loadShopsTable();
     }
 </script>
 {% endblock %}
