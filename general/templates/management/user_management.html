@@ -1,4 +1,4 @@
-{% extends 'base_management.html' %}
+{% extends 'management/base_management.html' %}
 {% load static %}
 
 {% block title %}人员管理 - Overlord{% endblock %}
@@ -115,7 +115,7 @@
         font-size: 0.875rem;
     }
 
-    /* 关键改动：表格容器允许横向滚动 */
+    /* 表格容器允许横向滚动 */
     .table-container {
         background-color: var(--bg-primary);
         border-radius: 12px;
@@ -127,7 +127,7 @@
         width: 100%;
     }
 
-    /* 核心修复：操作列固定定位 */
+    /* 操作列固定定位 */
     .table-container th:last-child,
     .table-container td:last-child {
         position: sticky;
@@ -209,7 +209,7 @@
         border: 1px solid var(--border-color);
     }
 
-    /* 模态框样式 - 与Amazon店铺管理完全一致 */
+    /* 模态框样式 */
     .modal-overlay {
         display: none;
         position: fixed;
@@ -222,7 +222,6 @@
         backdrop-filter: blur(4px);
     }
 
-    /* 模态框容器 - 改为flex布局以便底部固定 */
     .modal-content {
         position: absolute;
         top: 50%;
@@ -232,7 +231,7 @@
         border-radius: 16px;
         padding: 2rem;
         width: 90%;
-        max-width: 800px;
+        max-width: 900px;
         max-height: 90vh;
         overflow-y: auto;
         box-shadow: var(--shadow-heavy);
@@ -242,7 +241,6 @@
         box-sizing: border-box;
     }
 
-    /* 模态框头部 - 增加sticky定位 */
     .modal-header {
         position: sticky;
         top: 0;
@@ -277,14 +275,12 @@
         color: var(--text-primary);
     }
 
-    /* 模态框主体 - 修复：不设置display: grid，使用默认block */
     .modal-body {
         flex: 1;
         overflow-y: auto;
         padding-bottom: 1rem;
     }
 
-    /* 表单网格布局 - 在.modal-body内部使用wrapper */
     .modal-form-wrapper {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -303,6 +299,11 @@
         font-size: 0.875rem;
     }
 
+    .form-group label .required {
+        color: #ef4444;
+        margin-left: 2px;
+    }
+
     .form-group input,
     .form-group select,
     .form-group textarea {
@@ -312,6 +313,8 @@
         border-radius: 8px;
         padding: 0.75rem;
         transition: all 0.3s ease;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .form-group input:focus,
@@ -328,7 +331,130 @@
         color: var(--text-secondary);
     }
 
-    /* 模态框底部 - 固定定位 */
+    /* 多选下拉框样式 - 参与项目专用，完全隔离 */
+    .project-dropdown-check-list {
+        position: relative;
+        width: 100%;
+    }
+
+    .project-dropdown-check-list .anchor {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        min-height: 42px;
+        box-sizing: border-box;
+    }
+
+    .project-dropdown-check-list .anchor:after {
+        content: "\f078";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+    }
+
+    .project-dropdown-check-list.visible .anchor:after {
+        transform: rotate(180deg);
+    }
+
+    .project-dropdown-check-list .items {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 100;
+        display: none;
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .project-dropdown-check-list.visible .items {
+        display: block;
+    }
+
+    .project-dropdown-check-list .item {
+        padding: 0.5rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .project-dropdown-check-list .item:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .project-dropdown-check-list .item input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .project-dropdown-check-list .item label {
+        margin: 0;
+        cursor: pointer;
+        flex: 1;
+        font-weight: normal;
+    }
+
+    /* 权限配置区域样式 - 独立隔离 */
+    .permissions-container {
+        border: 1px solid var(--border-color);
+        padding: 1rem;
+        border-radius: 8px;
+        background-color: var(--bg-secondary);
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .permissions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .permission-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+
+    .permission-item:hover {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+
+    .permission-item input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .permission-item label {
+        margin: 0;
+        cursor: pointer;
+        flex: 1;
+        font-weight: normal;
+        font-size: 0.875rem;
+    }
+
     .modal-footer {
         position: sticky;
         bottom: 0;
@@ -381,7 +507,6 @@
         bottom: 2rem;
         left: 50%;
         transform: translateX(-50%) translateY(150%);
-        /* 默认隐藏 */
         background-color: var(--bg-primary);
         padding: 1rem 2rem;
         border-radius: 50px;
@@ -406,6 +531,21 @@
     .w-checkbox {
         width: 50px;
         text-align: center;
+    }
+
+    /* 项目显示标签 */
+    .project-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .project-tag {
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
     }
 </style>
 {% endblock %}
@@ -469,11 +609,10 @@
                     <th>名字</th>
                     <th>手机</th>
                     <th>部门</th>
-                    <th>角色</th>
                     <th>状态</th>
-                    <th>平台</th>
+                    <th>主属项目</th>
+                    <th>参与项目</th>
                     <th>分组</th>
-                    <th>备注</th>
                     <th>闪电云账号</th>
                     <th>闪电云用户名</th>
                     <th>闪电云密码</th>
@@ -496,9 +635,7 @@
     <div class="pagination-container">
         <div class="pagination-info" data-total="0">
             显示第 1 到 10 条，共 0 条记录
-            <select id="pageSizeSelect"
-                style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
-                onchange="changePageSize(this.value)">
+            <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
                 <option value="10">10条/页</option>
                 <option value="20">20条/页</option>
                 <option value="50">50条/页</option>
@@ -519,20 +656,20 @@
             </ul>
         </nav>
     </div>
+
     <!-- 批量操作栏 -->
     <div class="bulk-action-bar" id="bulkActionBar">
         <span class="selected-count" id="selectedCountText">已选择 0 位用户</span>
         <button class="btn btn-create" onclick="openBulkPermissionModal('add')">
             <i class="fas fa-plus-circle" style="margin-right: 0.5rem;"></i>批量添加权限
         </button>
-        <button class="btn btn-secondary" onclick="openBulkPermissionModal('remove')"
-            style="background-color: #ef4444; color: white;">
+        <button class="btn btn-secondary" onclick="openBulkPermissionModal('remove')" style="background-color: #ef4444; color: white;">
             <i class="fas fa-minus-circle" style="margin-right: 0.5rem;"></i>批量移除权限
         </button>
     </div>
 </div>
 
-<!-- 新增：模态框 -->
+<!-- 用户模态框 -->
 <div class="modal-overlay" id="userModalOverlay">
     <div class="modal-content">
         <div class="modal-header">
@@ -558,8 +695,7 @@
         </div>
         <div class="modal-body">
             <p id="bulkModalDescription" style="margin-bottom: 1rem; color: var(--text-secondary);">请选择要操作的权限：</p>
-            <div id="bulkPermissionList"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+            <div id="bulkPermissionList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
                 <!-- 动态生成 -->
             </div>
         </div>
@@ -574,32 +710,21 @@
 {% block extra_js %}
 <script>
     // 全局变量
-    let allRoles = [];          // 从数据库加载的角色列表 [{key: 'xxx', name: 'xxx'}]
-    let allPermissions = [];    // 从数据库加载的权限列表 [{id, code, name, description}]
-    let modalMode = null;       // 'create' | 'edit'
-    let currentUserId = null;   // 当前编辑的用户ID
-    let currentPage = 1;        // 当前页码
-    let currentPageSize = 10;   // 每页条数
+    let allRoles = [];
+    let allPermissions = [];
+    let allProjects = [];       // 公司项目列表
+    let modalMode = null;
+    let currentUserId = null;
+    let currentPage = 1;
+    let currentPageSize = 10;
 
     // ==========================================
     // API 数据获取
     // ==========================================
 
-    /**
-     * 从API加载用户列表数据（带分页和筛选）
-     * @param {number} page - 页码
-     * @param {number} pageSize - 每页条数
-     * @param {boolean} useFilters - 是否应用当前筛选条件
-     * @returns {Promise<{data: Array, total: number}>} 用户数据和总条数
-     */
     async function loadUsersFromAPI(page = 1, pageSize = 10, useFilters = true) {
-        // 构建参数对象
-        const params = new URLSearchParams({
-            page: page,
-            page_size: pageSize,
-        });
+        const params = new URLSearchParams({ page: page, page_size: pageSize });
 
-        // 如果使用筛选器，则添加筛选参数
         if (useFilters) {
             const role = document.getElementById('userRoleFilter')?.value;
             const status = document.getElementById('userStatusFilter')?.value;
@@ -627,7 +752,6 @@
                     pageSize: result.page_size
                 };
             }
-
             console.error('获取用户数据失败:', result.error);
             alert('加载用户数据失败: ' + result.error);
             return { data: [], total: 0 };
@@ -638,10 +762,6 @@
         }
     }
 
-    /**
-     * 从API加载角色列表（从数据库去重获取）
-     * @returns {Promise<Array>} 角色数据数组
-     */
     async function loadRolesFromAPI() {
         try {
             const response = await fetch('/api/roles/');
@@ -649,11 +769,9 @@
 
             const result = await response.json();
             if (result.success) {
-                allRoles = result.data; // 格式: [{key: 'role_name', name: 'role_name'}, ...]
+                allRoles = result.data;
                 return true;
             }
-
-            console.error('获取角色列表失败:', result.error);
             allRoles = [];
             return false;
         } catch (error) {
@@ -663,10 +781,6 @@
         }
     }
 
-    /**
-     * 从API加载权限配置列表
-     * @returns {Promise<boolean>}
-     */
     async function loadPermissionConfigsFromAPI() {
         try {
             const response = await fetch('/api/permissions/');
@@ -674,11 +788,9 @@
 
             const result = await response.json();
             if (result.success) {
-                allPermissions = result.data; // [{id, code, name, description}, ...]
-                console.log("权限配置加载成功:", allPermissions);
+                allPermissions = result.data;
                 return true;
             }
-            console.error('获取权限列表失败:', result.error);
             return false;
         } catch (error) {
             console.error('权限API请求错误:', error);
@@ -686,10 +798,26 @@
         }
     }
 
-    /**
-     * 从API加载运营小组列表
-     * @returns {Promise<boolean>}
-     */
+    // 加载公司项目列表
+    async function loadProjectsFromAPI() {
+        try {
+            const response = await fetch('/api/company/projects/');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const result = await response.json();
+            if (result.success) {
+                allProjects = result.data;
+                return true;
+            }
+            allProjects = [];
+            return false;
+        } catch (error) {
+            console.error('项目API请求错误:', error);
+            allProjects = [];
+            return false;
+        }
+    }
+
     async function loadOpsGroupsFromAPI() {
         try {
             const response = await fetch('/api/users/ops-groups/');
@@ -705,10 +833,8 @@
                     option.textContent = group.name;
                     opsGroupSelect.appendChild(option);
                 });
-                console.log("运营小组加载成功:", result.data);
                 return true;
             }
-            console.error('获取运营小组列表失败:', result.error);
             return false;
         } catch (error) {
             console.error('运营小组API请求错误:', error);
@@ -720,52 +846,39 @@
     // 分页控件渲染
     // ==========================================
 
-    /**
-     * 渲染分页控件
-     * @param {number} totalItems - 总条数
-     * @param {number} currentPage - 当前页
-     * @param {number} pageSize - 每页条数
-     */
     function renderPagination(totalItems, currentPage, pageSize) {
         const totalPages = Math.ceil(totalItems / pageSize);
         const paginationHtml = [];
 
-        // 上一页
         const prevDisabled = currentPage === 1 ? 'disabled' : '';
         paginationHtml.push(`
-        <li class="page-item ${prevDisabled}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
-        </li>
-    `);
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
+            </li>
+        `);
 
-        // 页码（显示最多5页）
         const startPage = Math.max(1, currentPage - 2);
         const endPage = Math.min(totalPages, startPage + 4);
 
         for (let i = startPage; i <= endPage; i++) {
             const active = i === currentPage ? 'active' : '';
             paginationHtml.push(`
-            <li class="page-item ${active}">
-                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
-            </li>
-        `);
+                <li class="page-item ${active}">
+                    <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                </li>
+            `);
         }
 
-        // 下一页
         const nextDisabled = currentPage === totalPages ? 'disabled' : '';
         paginationHtml.push(`
-        <li class="page-item ${nextDisabled}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
-        </li>
-    `);
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
+            </li>
+        `);
 
         document.querySelector('.pagination').innerHTML = paginationHtml.join('');
     }
 
-    /**
-     * 切换页码
-     * @param {number} page - 目标页码
-     */
     async function changePage(page) {
         const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
         const totalPages = Math.ceil(totalItems / currentPageSize);
@@ -776,13 +889,9 @@
         await loadUsersTable();
     }
 
-    /**
-     * 改变每页条数
-     * @param {number} pageSize - 新的每页条数
-     */
     async function changePageSize(pageSize) {
         currentPageSize = parseInt(pageSize);
-        currentPage = 1; // 重置到第一页
+        currentPage = 1;
         await loadUsersTable();
     }
 
@@ -790,12 +899,7 @@
     // 筛选器与表格渲染
     // ==========================================
 
-    /**
-     * 根据用户数据动态更新筛选器选项
-     * @param {Array} users - 用户数据数组
-     */
     function updateFilterOptions(users) {
-        // 角色筛选器：使用从数据库获取的所有角色
         const roleSelect = document.getElementById('userRoleFilter');
         roleSelect.innerHTML = '<option value="">全部角色</option>';
         allRoles.forEach(roleDef => {
@@ -805,10 +909,8 @@
             roleSelect.appendChild(option);
         });
 
-        // 状态筛选器：从现有数据中动态提取
-        const statusMap = { 'active': '正常', 'inactive': '停用' };
-        // 手动指定需要的状态选项，不再从数据动态生成，以确保只显示正常和停用
         const uniqueStatuses = ['active', 'inactive'];
+        const statusMap = { 'active': '正常', 'inactive': '停用' };
 
         const statusSelect = document.getElementById('userStatusFilter');
         statusSelect.innerHTML = '<option value="">全部状态</option>';
@@ -820,51 +922,41 @@
         });
     }
 
-    /**
-     * 加载并渲染用户表格（含分页）
- */
     async function loadUsersTable() {
         const tbody = document.getElementById('usersTableBody');
-        tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="21" style="text-align:center;padding:2rem;">加载中...</td></tr>';
 
         const { data, total, page, pageSize } = await loadUsersFromAPI(currentPage, currentPageSize);
         tbody.innerHTML = '';
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="22" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="21" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
             document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
             document.querySelector('.pagination').innerHTML = '';
             return;
         }
 
-        // 更新分页信息
         const start = (page - 1) * pageSize + 1;
         const end = start + data.length - 1;
         const pageInfoHtml = `
-        显示第 ${start} 到 ${end} 条，共 ${total} 条记录
-        <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
-            <option value="10" ${pageSize === 10 ? 'selected' : ''}>10条/页</option>
-            <option value="20" ${pageSize === 20 ? 'selected' : ''}>20条/页</option>
-            <option value="50" ${pageSize === 50 ? 'selected' : ''}>50条/页</option>
-            <option value="100" ${pageSize === 100 ? 'selected' : ''}>100条/页</option>
-        </select>
-    `;
+            显示第 ${start} 到 ${end} 条，共 ${total} 条记录
+            <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
+                <option value="10" ${pageSize === 10 ? 'selected' : ''}>10条/页</option>
+                <option value="20" ${pageSize === 20 ? 'selected' : ''}>20条/页</option>
+                <option value="50" ${pageSize === 50 ? 'selected' : ''}>50条/页</option>
+                <option value="100" ${pageSize === 100 ? 'selected' : ''}>100条/页</option>
+            </select>
+        `;
         document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
         document.querySelector('.pagination-info').dataset.total = total;
 
-        // 获取所有用户数据（不应用筛选条件）用于更新筛选器选项
         updateFilterOptions(await loadUsersFromAPI(1, 9999, false).then(r => r.data));
         renderUserRows(data);
         renderPagination(total, page, pageSize);
     }
 
-    /**
-     * 渲染用户表格行
-     * @param {Array} users - 用户数据数组
-     */
     function renderUserRows(users) {
         const tbody = document.getElementById('usersTableBody');
-        const roleMap = { 'admin': '管理员', 'operator': '运营', 'assistant': '运营助理', 'leader': '运营组长' };
         const statusNames = { 'active': '正常', 'inactive': '停用' };
         const statusClasses = {
             'active': 'status-active',
@@ -873,61 +965,64 @@
 
         tbody.innerHTML = users.map(user => {
             const account = user.operational_account || {};
+
+            // 项目显示
+            const defaultProjectDisplay = user.default_project_name || '-';
+            const projectsDisplay = user.project_names && user.project_names.length > 0
+                ? `<div class="project-tags">${user.project_names.map(name => `<span class="project-tag">${name}</span>`).join('')}</div>`
+                : '-';
+
             return `
-            <tr data-user-id="${user.id}" data-permissions='${JSON.stringify(user.permissions || [])}'>
-                <td class="w-checkbox">
-                    <input type="checkbox" class="user-select-checkbox" value="${user.id}" onchange="updateBulkActionBar()">
-                </td>
-                <td>${user.id}</td>
-                <td class="field-username">${user.username}</td>
-                <td class="field-first_name">${user.first_name || '-'}</td>
-                <td class="field-phone">${user.phone || '-'}</td>
-                <td class="field-department">${user.department || '-'}</td>
-                <td class="field-role">${roleMap[user.role] || user.role || '-'}</td>
-                <td class="field-status">
-                    <span class="status-badge ${statusClasses[user.status]}" data-status="${user.status}">
-                        ${statusNames[user.status] || '-'}
-                    </span>
-                </td>
-                <td class="field-platform">${user.platform || '-'}</td>
-                <td class="field-ops_group">${user.ops_group || '-'}</td>
-                <td class="field-remark">${user.remark || '-'}</td>
-                <td class="field-wx_url" style="display:none;">${user.wx_url || ''}</td>
-                <td class="field-shandianyun_account">${account.shandianyun_account || '-'}</td>
-                <td class="field-shandianyun_username">${account.shandianyun_username || '-'}</td>
-                <td class="field-shandianyun_password">${account.shandianyun_password || '-'}</td>
-                <td class="field-lingxing_username">${account.lingxing_username || '-'}</td>
-                <td class="field-lingxing_password">${account.lingxing_password || '-'}</td>
-                <td class="field-ziniao_company">${account.ziniao_company || '-'}</td>
-                <td class="field-ziniao_username">${account.ziniao_username || '-'}</td>
-                <td class="field-ziniao_password">${account.ziniao_password || '-'}</td>
-                <td class="field-diwei_account">${account.diwei_account || '-'}</td>
-                <td class="field-diwei_password">${account.diwei_password || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>
-                </td>
-            </tr>
-        `;
+                <tr data-user-id="${user.id}"
+                    data-default-project-id="${user.default_project_id || ''}"
+                    data-project-ids='${JSON.stringify(user.project_ids || [])}'
+                    data-permissions='${JSON.stringify(user.permissions || [])}'>
+                    <td class="w-checkbox">
+                        <input type="checkbox" class="user-select-checkbox" value="${user.id}" onchange="updateBulkActionBar()">
+                    </td>
+                    <td>${user.id}</td>
+                    <td class="field-username">${user.username}</td>
+                    <td class="field-first_name">${user.first_name || '-'}</td>
+                    <td class="field-phone">${user.phone || '-'}</td>
+                    <td class="field-department">${user.department || '-'}</td>
+                    <td class="field-status">
+                        <span class="status-badge ${statusClasses[user.status]}" data-status="${user.status}">
+                            ${statusNames[user.status] || '-'}
+                        </span>
+                    </td>
+                    <td class="field-default_project">${defaultProjectDisplay}</td>
+                    <td class="field-projects">${projectsDisplay}</td>
+                    <td class="field-ops_group">${user.ops_group || '-'}</td>
+                    <td class="field-shandianyun_account">${account.shandianyun_account || '-'}</td>
+                    <td class="field-shandianyun_username">${account.shandianyun_username || '-'}</td>
+                    <td class="field-shandianyun_password">${account.shandianyun_password || '-'}</td>
+                    <td class="field-lingxing_username">${account.lingxing_username || '-'}</td>
+                    <td class="field-lingxing_password">${account.lingxing_password || '-'}</td>
+                    <td class="field-ziniao_company">${account.ziniao_company || '-'}</td>
+                    <td class="field-ziniao_username">${account.ziniao_username || '-'}</td>
+                    <td class="field-ziniao_password">${account.ziniao_password || '-'}</td>
+                    <td class="field-diwei_account">${account.diwei_account || '-'}</td>
+                    <td class="field-diwei_password">${account.diwei_password || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>
+                    </td>
+                </tr>
+            `;
         }).join('');
     }
 
-    /**
-     * 执行用户筛选（带分页重置）
-     */
     async function filterUsers() {
-        currentPage = 1; // 筛选时重置到第一页
+        currentPage = 1;
         await loadUsersTable();
     }
 
-    /**
-     * 重置所有筛选条件（带分页重置）
-     */
     function resetUserFilters() {
         document.getElementById('userRoleFilter').value = '';
         document.getElementById('userStatusFilter').value = '';
         document.getElementById('userDepartmentFilter').value = '';
         document.getElementById('userSearch').value = '';
-        currentPage = 1; // 重置页码
+        document.getElementById('userOpsGroupFilter').value = '';
+        currentPage = 1;
         loadUsersTable();
     }
 
@@ -935,22 +1030,21 @@
     // 模态框操作
     // ==========================================
 
-    /**
-     * 打开新建用户模态框
-     */
-    function openCreateModal() {
+    async function openCreateModal() {
+        await loadProjectsFromAPI();
+
         modalMode = 'create';
         currentUserId = null;
         document.getElementById('modalTitle').textContent = '新建用户';
         document.getElementById('modalBody').innerHTML = generateModalForm();
         document.getElementById('userModalOverlay').style.display = 'block';
+
+        initProjectDropdown();
     }
 
-    /**
-     * 打开编辑用户模态框
-     * @param {number} userId - 用户ID
-     */
-    function openEditModal(userId) {
+    async function openEditModal(userId) {
+        await loadProjectsFromAPI();
+
         modalMode = 'edit';
         currentUserId = userId;
 
@@ -966,14 +1060,12 @@
             first_name: row.querySelector('.field-first_name').textContent,
             phone: row.querySelector('.field-phone').textContent,
             department: row.querySelector('.field-department').textContent,
-            role: row.querySelector('.field-role').textContent,
             status: row.querySelector('.field-status .status-badge').dataset.status || 'active',
-            platform: row.querySelector('.field-platform').textContent,
-            ops_group: row.querySelector('.field-ops_group').textContent,
-            remark: row.querySelector('.field-remark').textContent,
-            wx_url: row.querySelector('.field-wx_url').textContent,
+            default_project_id: row.dataset.defaultProjectId,
+            project_ids: JSON.parse(row.dataset.projectIds || '[]'),
             permissions: [],
             operational_account: {
+                ops_group: row.querySelector('.field-ops_group').textContent,
                 shandianyun_account: row.querySelector('.field-shandianyun_account').textContent,
                 shandianyun_username: row.querySelector('.field-shandianyun_username').textContent,
                 shandianyun_password: row.querySelector('.field-shandianyun_password').textContent,
@@ -990,142 +1082,262 @@
         // 从 data-permissions 属性解析权限列表
         try {
             const permissionsStr = row.dataset.permissions;
-            console.log("data-permissions 原始值:", permissionsStr); // 检查原始值
             if (permissionsStr) {
-                // 兼容处理：去除可能存在的方括号，支持 JSON 数组格式或纯逗号分隔
                 const cleanStr = permissionsStr.toString().replace(/[\[\]"]/g, '');
                 userData.permissions = cleanStr.split(',')
                     .filter(s => s.trim() !== '')
                     .map(s => parseInt(s))
-                    .filter(n => !isNaN(n)); // 过滤掉可能的 NaN
+                    .filter(n => !isNaN(n));
             }
         } catch (e) {
             console.error("解析权限失败", e);
             userData.permissions = [];
         }
 
-        console.log("用户权限数据:", userData.permissions); // 检查解析后的权限数据
         document.getElementById('modalBody').innerHTML = generateModalForm(userData);
         document.getElementById('userModalOverlay').style.display = 'block';
+
+        initProjectDropdown();
     }
 
-    /**
-     * 关闭模态框
-     */
     function closeModal() {
         document.getElementById('userModalOverlay').style.display = 'none';
         modalMode = null;
         currentUserId = null;
     }
 
-    /**
-     * 生成模态框表单HTML
-     * @param {Object} userData - 用户数据（编辑时传入）
-     * @returns {string} HTML字符串
-     */
     function generateModalForm(userData = null) {
         const isCreate = !userData;
         const data = userData || {};
         const account = data.operational_account || {};
 
-        // 动态生成角色选项（来自数据库）
+        // 动态生成角色选项
         const roleOptionsHtml = allRoles.map(roleDef => {
             const selected = data.role === roleDef.key ? 'selected' : '';
             return `<option value="${roleDef.key}" ${selected}>${roleDef.name}</option>`;
         }).join('');
 
-        // 动态生成权限复选框
+        // 动态生成权限复选框 - 使用独立的permissions-grid布局
         const currentPermissions = data.permissions || [];
         const permissionsHtml = allPermissions.map(perm => {
-            const checked = currentPermissions.includes(perm.code) ? 'checked' : '';
+            const checked = currentPermissions.includes(parseInt(perm.code)) ? 'checked' : '';
             return `
-                    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0;">
-                        <input type="checkbox" id="perm-${perm.code}" name="permissions" value="${perm.code}" ${checked}>
-                        <label for="perm-${perm.code}" style="margin:0; font-weight: normal;">
-                            <span style="font-weight:600;">[${perm.code}]</span> ${perm.name}
-                            <span style="color:var(--text-secondary); font-size:0.8rem;">- ${perm.description}</span>
-                        </label>
-                    </div>
-                `;
+                <div class="permission-item">
+                    <input type="checkbox" id="perm-${perm.code}" name="permissions" value="${perm.code}" ${checked}>
+                    <label for="perm-${perm.code}">
+                        <span style="font-weight:600;color:var(--accent-color);">[${perm.code}]</span> ${perm.name}
+                        <div style="color:var(--text-secondary);font-size:0.8rem;margin-top:2px;">${perm.description}</div>
+                    </label>
+                </div>
+            `;
         }).join('');
 
-        return `
-        <div class="modal-form-wrapper">
-            <div class="form-group">
-                <label>用户名 <span style="color:red;">*</span></label>
-                <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
-            </div>
-            <div class="form-group">
-                <label>密码 ${!isCreate ? '<span style="font-weight:normal; color:var(--text-secondary);">(留空则不修改)</span>' : ''}</label>
-                <input type="text" id="modal-password" class="password-input" placeholder="${isCreate ? '默认: default123' : '输入新密码以修改'}">
-            </div>
-            <div class="form-group">
-                <label>名字</label>
-                <input type="text" id="modal-first_name" value="${data.first_name === '-' ? '' : (data.first_name || '')}">
-            </div>
-            <div class="form-group">
-                <label>手机</label>
-                <input type="text" id="modal-phone" value="${data.phone === '-' ? '' : (data.phone || '')}">
-            </div>
-            <div class="form-group">
-                <label>部门</label>
-                <input type="text" id="modal-department" value="${data.department === '-' ? '' : (data.department || '')}">
-            </div>
-            <div class="form-group">
-                <label>角色</label>
-                <select id="modal-role">${roleOptionsHtml}</select>
-            </div>
+        // 生成主属项目选项（单选）
+        const defaultProjectId = data.default_project_id || '';
+        const defaultProjectOptions = allProjects.map(proj => {
+            const selected = parseInt(defaultProjectId) === proj.id ? 'selected' : '';
+            return `<option value="${proj.id}" ${selected}>${proj.name} (${proj.code})</option>`;
+        }).join('');
 
-            <div class="form-group" style="grid-column: 1 / -1;">
-                <label>业务权限配置</label>
-                <div style="border: 1px solid var(--border-color); padding: 1rem; border-radius: 8px; background-color: var(--bg-secondary); display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.5rem;">
-                    ${permissionsHtml || '<div style="color:var(--text-secondary);">暂无可用权限配置</div>'}
+        // 生成参与项目多选HTML - 使用独立的项目下拉样式
+        const selectedProjectIds = data.project_ids || [];
+        const projectItemsHtml = allProjects.map(proj => {
+            const checked = selectedProjectIds.includes(proj.id) ? 'checked' : '';
+            return `
+                <div class="item">
+                    <input type="checkbox" id="proj-${proj.id}" name="projects" value="${proj.id}" ${checked} onchange="updateProjectSelection()">
+                    <label for="proj-${proj.id}">${proj.name} (${proj.code})</label>
                 </div>
-            </div>
+            `;
+        }).join('');
 
-            <div class="form-group">
-                <label>状态</label>
-                <select id="modal-status">
-                    <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
-                    <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>平台</label>
-                <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
-            </div>
-            <div class="form-group">
-                <label>企业微信Webhook</label>
-                <input type="text" id="modal-wx_url" value="${data.wx_url || ''}">
-            </div>
-<div class="form-group">
-    <label>备注</label>
-    <textarea id="modal-remark" rows="3">${data.remark === '-' ? '' : (data.remark || '')}</textarea>
-</div>
+        // 计算已选项目显示文本
+        let selectedProjectsText = '请选择参与项目';
+        if (selectedProjectIds.length > 0) {
+            const selectedNames = allProjects
+                .filter(p => selectedProjectIds.includes(p.id))
+                .map(p => p.name);
+            selectedProjectsText = selectedNames.join(', ');
+        }
 
-            <div class="section-title">运营账号信息</div>
-            <div class="form-group">
-                <label>分组</label>
-                <input type="text" id="modal-ops_group" value="${data.ops_group === '-' ? '' : (data.ops_group || '')}">
+        return `
+            <div class="modal-form-wrapper">
+                <div class="form-group">
+                    <label>用户名 <span class="required">*</span></label>
+                    <input type="text" id="modal-username" value="${data.username || ''}" ${!isCreate ? 'disabled' : ''} required>
+                </div>
+                <div class="form-group">
+                    <label>密码 ${!isCreate ? '<span style="font-weight:normal; color:var(--text-secondary);">(留空则不修改)</span>' : ''}</label>
+                    <input type="text" id="modal-password" class="password-input" placeholder="${isCreate ? '默认: default123' : '输入新密码以修改'}">
+                </div>
+                <div class="form-group">
+                    <label>名字</label>
+                    <input type="text" id="modal-first_name" value="${data.first_name === '-' ? '' : (data.first_name || '')}">
+                </div>
+                <div class="form-group">
+                    <label>手机</label>
+                    <input type="text" id="modal-phone" value="${data.phone === '-' ? '' : (data.phone || '')}">
+                </div>
+                <div class="form-group">
+                    <label>部门</label>
+                    <select id="modal-department">
+                        <option value="">请选择部门</option>
+                        <option value="data" ${data.department === 'data' ? 'selected' : ''}>数据部</option>
+                        <option value="operation" ${data.department === 'operation' ? 'selected' : ''}>运营部</option>
+                        <option value="hr" ${data.department === 'hr' ? 'selected' : ''}>人事部</option>
+                        <option value="supply_chain" ${data.department === 'supply_chain' ? 'selected' : ''}>供应链部</option>
+                        <option value="assistant" ${data.department === 'assistant' ? 'selected' : ''}>助理部</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>角色（旧字段）</label>
+                    <input type="text" id="modal-role" value="${data.role || ''}">
+                </div>
+
+                <!-- 项目选择区域 -->
+                <div class="form-group">
+                    <label>主属项目 <span class="required">*</span> <span style="font-weight:normal; color:var(--text-secondary); font-size:0.8rem;">（默认进入的project）</span></label>
+                    <select id="modal-default-project" required onchange="syncDefaultProjectToMultiSelect()">
+                        <option value="">请选择主属项目</option>
+                        ${defaultProjectOptions}
+                    </select>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>参与项目 <span class="required">*</span> <span style="font-weight:normal; color:var(--text-secondary); font-size:0.8rem;">（可多选，必须包含主属项目）</span></label>
+                    <div class="project-dropdown-check-list" id="projectsDropdown">
+                        <div class="anchor" id="projectsAnchor" onclick="toggleProjectsDropdown()">
+                            <span id="selectedProjectsText">${selectedProjectsText}</span>
+                        </div>
+                        <div class="items" id="projectsItems" onclick="event.stopPropagation()">
+                            ${projectItemsHtml || '<div style="padding:0.5rem; color:var(--text-secondary);">暂无可选项目</div>'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>业务权限配置</label>
+                    <div class="permissions-container">
+                        <div class="permissions-grid">
+                            ${permissionsHtml || '<div style="color:var(--text-secondary);padding:1rem;">暂无可用权限配置</div>'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="modal-status">
+                        <option value="active" ${data.status === 'active' ? 'selected' : ''}>正常</option>
+                        <option value="inactive" ${data.status === 'inactive' ? 'selected' : ''}>停用</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>平台</label>
+                    <input type="text" id="modal-platform" value="${data.platform === '-' ? '' : (data.platform || '')}">
+                </div>
+                <div class="form-group">
+                    <label>企业微信Webhook</label>
+                    <input type="text" id="modal-wx_url" value="${data.wx_url || ''}">
+                </div>
+                <div class="form-group">
+                    <label>备注</label>
+                    <textarea id="modal-remark" rows="3">${data.remark === '-' ? '' : (data.remark || '')}</textarea>
+                </div>
+
+                <div class="section-title">运营账号信息</div>
+                <div class="form-group">
+                    <label>分组</label>
+                    <input type="text" id="modal-ops_group" value="${account.ops_group === '-' ? '' : (account.ops_group || '')}">
+                </div>
+                <div class="form-group">
+                    <label>运营角色</label>
+                    <select id="modal-ops-role">
+                        <option value="leader" ${account.role === 'leader' ? 'selected' : ''}>运营组长</option>
+                        <option value="staff" ${account.role === 'staff' || !account.role ? 'selected' : ''}>运营</option>
+                        <option value="assistant" ${account.role === 'assistant' ? 'selected' : ''}>运营助理</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
+                <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
+                <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
+                <div class="form-group"><label>领星用户名</label><input type="text" id="modal-lingxing_username" value="${account.lingxing_username === '-' ? '' : (account.lingxing_username || '')}"></div>
+                <div class="form-group"><label>领星密码</label><input type="text" id="modal-lingxing_password" class="password-input" value="${account.lingxing_password === '-' ? '' : (account.lingxing_password || '')}"></div>
+                <div class="form-group"><label>紫鸟公司</label><input type="text" id="modal-ziniao_company" value="${account.ziniao_company === '-' ? '' : (account.ziniao_company || '')}"></div>
+                <div class="form-group"><label>紫鸟用户名</label><input type="text" id="modal-ziniao_username" value="${account.ziniao_username === '-' ? '' : (account.ziniao_username || '')}"></div>
+                <div class="form-group"><label>紫鸟密码</label><input type="text" id="modal-ziniao_password" class="password-input" value="${account.ziniao_password === '-' ? '' : (account.ziniao_password || '')}"></div>
+                <div class="form-group"><label>迪唯账号</label><input type="text" id="modal-diwei_account" value="${account.diwei_account === '-' ? '' : (account.diwei_account || '')}"></div>
+                <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
             </div>
-            <div class="form-group"><label>闪电云账号</label><input type="text" id="modal-shandianyun_account" value="${account.shandianyun_account === '-' ? '' : (account.shandianyun_account || '')}"></div>
-            <div class="form-group"><label>闪电云用户名</label><input type="text" id="modal-shandianyun_username" value="${account.shandianyun_username === '-' ? '' : (account.shandianyun_username || '')}"></div>
-            <div class="form-group"><label>闪电云密码</label><input type="text" id="modal-shandianyun_password" class="password-input" value="${account.shandianyun_password === '-' ? '' : (account.shandianyun_password || '')}"></div>
-            <div class="form-group"><label>领星用户名</label><input type="text" id="modal-lingxing_username" value="${account.lingxing_username === '-' ? '' : (account.lingxing_username || '')}"></div>
-            <div class="form-group"><label>领星密码</label><input type="text" id="modal-lingxing_password" class="password-input" value="${account.lingxing_password === '-' ? '' : (account.lingxing_password || '')}"></div>
-            <div class="form-group"><label>紫鸟公司</label><input type="text" id="modal-ziniao_company" value="${account.ziniao_company === '-' ? '' : (account.ziniao_company || '')}"></div>
-            <div class="form-group"><label>紫鸟用户名</label><input type="text" id="modal-ziniao_username" value="${account.ziniao_username === '-' ? '' : (account.ziniao_username || '')}"></div>
-            <div class="form-group"><label>紫鸟密码</label><input type="text" id="modal-ziniao_password" class="password-input" value="${account.ziniao_password === '-' ? '' : (account.ziniao_password || '')}"></div>
-            <div class="form-group"><label>迪唯账号</label><input type="text" id="modal-diwei_account" value="${account.diwei_account === '-' ? '' : (account.diwei_account || '')}"></div>
-            <div class="form-group"><label>迪唯密码</label><input type="text" id="modal-diwei_password" class="password-input" value="${account.diwei_password === '-' ? '' : (account.diwei_password || '')}"></div>
-        </div>
-    `;
+        `;
     }
 
-    /**
-     * 保存模态框数据（新建或编辑）
-     */
+    // 多选下拉框控制
+    function toggleProjectsDropdown() {
+        const dropdown = document.getElementById('projectsDropdown');
+        dropdown.classList.toggle('visible');
+    }
+
+    function initProjectDropdown() {
+        // 点击外部关闭下拉框
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('projectsDropdown');
+            if (dropdown && !dropdown.contains(e.target)) {
+                dropdown.classList.remove('visible');
+            }
+        });
+    }
+
+    function updateProjectSelection() {
+        const checkboxes = document.querySelectorAll('#projectsItems input[name="projects"]:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        // 更新显示文本
+        const selectedProjects = allProjects.filter(p => selectedIds.includes(p.id));
+        const text = selectedProjects.length > 0
+            ? selectedProjects.map(p => p.name).join(', ')
+            : '请选择参与项目';
+
+        const textElement = document.getElementById('selectedProjectsText');
+        if (textElement) {
+            textElement.textContent = text;
+        }
+    }
+
+    // 主属项目变更时，自动勾选参与项目
+    function syncDefaultProjectToMultiSelect() {
+        const defaultProjectId = document.getElementById('modal-default-project')?.value;
+        if (!defaultProjectId) return;
+
+        // 确保主属项目在参与项目中被勾选
+        const projCheckbox = document.querySelector(`#projectsItems input[value="${defaultProjectId}"]`);
+        if (projCheckbox && !projCheckbox.checked) {
+            projCheckbox.checked = true;
+            updateProjectSelection();
+        }
+    }
+
     async function saveUserModal() {
+        const defaultProjectId = document.getElementById('modal-default-project')?.value;
+        const checkboxes = document.querySelectorAll('#projectsItems input[name="projects"]:checked');
+        const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+        // 验证项目选择
+        if (!defaultProjectId) {
+            showUserNotification('请选择主属项目', 'error');
+            return;
+        }
+
+        if (selectedIds.length === 0) {
+            showUserNotification('请至少选择一个参与项目', 'error');
+            return;
+        }
+
+        // 验证主属项目是否在参与项目中
+        if (!selectedIds.includes(parseInt(defaultProjectId))) {
+            showUserNotification('主属项目必须在参与项目列表中', 'error');
+            return;
+        }
+
         // 收集选中的权限
         const selectedPermissions = Array.from(document.querySelectorAll('input[name="permissions"]:checked'))
             .map(cb => parseInt(cb.value));
@@ -1136,8 +1348,10 @@
             password: document.getElementById('modal-password').value.trim(),
             first_name: document.getElementById('modal-first_name').value.trim(),
             phone: document.getElementById('modal-phone').value.trim(),
-            department: document.getElementById('modal-department').value.trim(),
-            role: document.getElementById('modal-role').value,
+            department: document.getElementById('modal-department').value,
+            role: document.getElementById('modal-role').value.trim(),
+            default_project_id: parseInt(defaultProjectId),
+            project_ids: selectedIds,
             permissions: selectedPermissions,
             status: document.getElementById('modal-status').value,
             platform: document.getElementById('modal-platform').value.trim(),
@@ -1145,6 +1359,7 @@
             wx_url: document.getElementById('modal-wx_url').value.trim(),
             operational_account: {
                 ops_group: document.getElementById('modal-ops_group').value.trim(),
+                role: document.getElementById('modal-ops-role').value,
                 shandianyun_account: document.getElementById('modal-shandianyun_account').value.trim(),
                 shandianyun_username: document.getElementById('modal-shandianyun_username').value.trim(),
                 shandianyun_password: document.getElementById('modal-shandianyun_password').value.trim(),
@@ -1160,7 +1375,7 @@
 
         // 验证必填项
         if (!formData.username) {
-            showNotification('用户名是必填项！', 'error');
+            showUserNotification('用户名是必填项！', 'error');
             return;
         }
 
@@ -1168,7 +1383,7 @@
         if (modalMode === 'create') {
             const allUsers = await loadUsersFromAPI(1, 9999, false).then(r => r.data);
             if (allUsers.some(user => user.username === formData.username)) {
-                showNotification('用户名已存在，请使用其他用户名！', 'error');
+                showUserNotification('用户名已存在，请使用其他用户名！', 'error');
                 return;
             }
         }
@@ -1186,22 +1401,18 @@
 
             const result = await response.json();
             if (result.success) {
-                showNotification(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！', 'success');
+                showUserNotification(modalMode === 'create' ? '用户创建成功！' : '用户更新成功！', 'success');
                 closeModal();
                 loadUsersTable();
             } else {
-                showNotification('操作失败：' + result.error, 'error');
+                showUserNotification('操作失败：' + result.error, 'error');
             }
         } catch (error) {
             console.error('保存失败:', error);
-            showNotification('保存失败，请检查网络连接并重试', 'error');
+            showUserNotification('保存失败，请检查网络连接并重试', 'error');
         }
     }
 
-    /**
-     * 获取CSRF Token
-     * @returns {string} CSRF Token值
-     */
     function getCSRFToken() {
         const cookieValue = document.cookie
             .split('; ')
@@ -1214,53 +1425,39 @@
     // 事件监听
     // ==========================================
 
-    // 页面初始化
     document.addEventListener('DOMContentLoaded', async function () {
         await Promise.all([
             loadRolesFromAPI(),
-            loadPermissionConfigsFromAPI()
+            loadPermissionConfigsFromAPI(),
+            loadOpsGroupsFromAPI()
         ]);
         loadUsersTable();
 
-        // 添加回车键快捷键：在筛选区域按回车触发筛选
+        // 筛选区域回车键支持
         const filterSection = document.querySelector('.filter-section');
         if (filterSection) {
             filterSection.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
-                    e.preventDefault(); // 阻止默认行为
-                    filterUsers(); // 执行筛选
+                    e.preventDefault();
+                    filterUsers();
                 }
             });
         }
-        // 页面动画效果
-        if (window.anime) {
-            anime({
-                targets: '.sidebar',
-                translateX: [-280, 0],
-                opacity: [0, 1],
-                duration: 600,
-                easing: 'easeOutQuart'
-            });
-            anime({
-                targets: '.content',
-                translateY: [30, 0],
-                opacity: [0, 1],
-                duration: 800,
-                delay: 200,
-                easing: 'easeOutQuart'
-            });
-        }
-    });
 
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+                closeBulkModal();
+            }
+        });
+    });
 
     // ==========================================
     // 批量操作逻辑
     // ==========================================
-    let bulkAction = null; // 'add' | 'remove'
+    let bulkAction = null;
 
-    /**
-     * 全选/反选所有用户
-     */
     function toggleSelectAll() {
         const selectAll = document.getElementById('selectAll');
         const checkboxes = document.querySelectorAll('.user-select-checkbox');
@@ -1268,17 +1465,13 @@
         updateBulkActionBar();
     }
 
-    /**
-     * 更新批量操作栏显示状态
-     */
     function updateBulkActionBar() {
         const checkedBoxes = document.querySelectorAll('.user-select-checkbox:checked');
         const count = checkedBoxes.length;
         const bar = document.getElementById('bulkActionBar');
 
-        // 更新全选框状态
-        const allCheckboxes = document.querySelectorAll('.user-select-checkbox');
         const selectAll = document.getElementById('selectAll');
+        const allCheckboxes = document.querySelectorAll('.user-select-checkbox');
         if (allCheckboxes.length > 0 && checkedBoxes.length === allCheckboxes.length) {
             selectAll.checked = true;
             selectAll.indeterminate = false;
@@ -1299,10 +1492,6 @@
         }
     }
 
-    /**
-     * 打开批量权限模态框
-     * @param {string} action - 'add' | 'remove'
-     */
     function openBulkPermissionModal(action) {
         bulkAction = action;
         const title = action === 'add' ? '批量添加权限' : '批量移除权限';
@@ -1313,41 +1502,34 @@
         document.getElementById('bulkModalTitle').textContent = title;
         document.getElementById('bulkModalDescription').innerHTML = desc;
 
-        // 生成权限列表
         const listContainer = document.getElementById('bulkPermissionList');
         listContainer.innerHTML = allPermissions.map(perm => `
-                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary);">
-                    <input type="checkbox" id="bulk-perm-${perm.code}" name="bulk-permissions" value="${perm.code}">
-                    <label for="bulk-perm-${perm.code}" style="margin:0; font-weight: normal; cursor: pointer; flex: 1;">
-                        <span style="font-weight:600;">[${perm.code}]</span> ${perm.name}
-                    </label>
-                </div>
-            `).join('');
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--bg-secondary);">
+                <input type="checkbox" id="bulk-perm-${perm.code}" name="bulk-permissions" value="${perm.code}">
+                <label for="bulk-perm-${perm.code}" style="margin:0; font-weight: normal; cursor: pointer; flex: 1;">
+                    <span style="font-weight:600;">[${perm.code}]</span> ${perm.name}
+                </label>
+            </div>
+        `).join('');
 
         document.getElementById('bulkPermissionModalOverlay').style.display = 'block';
     }
 
-    /**
-     * 关闭批量权限模态框
-     */
     function closeBulkModal() {
         document.getElementById('bulkPermissionModalOverlay').style.display = 'none';
         bulkAction = null;
     }
 
-    /**
-     * 提交批量权限修改
-     */
     async function submitBulkPermission() {
         const checkedUsers = Array.from(document.querySelectorAll('.user-select-checkbox:checked')).map(cb => parseInt(cb.value));
         const checkedPerms = Array.from(document.querySelectorAll('input[name="bulk-permissions"]:checked')).map(cb => parseInt(cb.value));
 
         if (checkedUsers.length === 0) {
-            showNotification('未选择任何用户', 'error');
+            showUserNotification('未选择任何用户', 'error');
             return;
         }
         if (checkedPerms.length === 0) {
-            showNotification('未选择任何权限', 'error');
+            showUserNotification('未选择任何权限', 'error');
             return;
         }
 
@@ -1371,23 +1553,50 @@
 
             const result = await response.json();
             if (result.success) {
-                showNotification(result.message, 'success');
+                showUserNotification(result.message, 'success');
                 closeBulkModal();
-                loadUsersTable(); // 刷新表格
-                document.getElementById('selectAll').checked = false; // 重置全选
-                updateBulkActionBar(); // 重置操作栏
+                loadUsersTable();
+                document.getElementById('selectAll').checked = false;
+                updateBulkActionBar();
             } else {
-                showNotification('操作失败：' + result.error, 'error');
+                showUserNotification('操作失败：' + result.error, 'error');
             }
         } catch (error) {
             console.error('批量操作失败:', error);
-            showNotification('操作失败，请检查网络连接', 'error');
+            showUserNotification('操作失败，请检查网络连接', 'error');
         }
     }
 
-    // ESC键关闭模态框
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeModal();
-    });
+    // 修复：使用独立函数名避免递归调用
+    function showUserNotification(message, type = 'info', duration = 3000) {
+        // 如果页面已有全局通知函数且不是我自己，直接使用
+        if (window.showNotification && window.showNotification !== showUserNotification) {
+            window.showNotification(message, type, duration);
+            return;
+        }
+
+        // 简单的 fallback 实现
+        const div = document.createElement('div');
+        div.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+        `;
+        div.textContent = message;
+        document.body.appendChild(div);
+
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transition = 'opacity 0.3s';
+            setTimeout(() => div.remove(), 300);
+        }, duration);
+    }
 </script>
 {% endblock %}

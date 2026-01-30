@@ -105,7 +105,7 @@ def main_page(request):
 def management_page(request):
     """管理中心"""
 
-    return render(request, 'management.html', {
+    return render(request, 'management/management.html', {
 
         'active_nav': 'management'
     })

@@ -1,155 +1,14 @@
-{% extends 'base_z.html' %}
+{% extends 'base/base_z.html' %}
 {% load static %}
 
 {% block title %}公告管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/management-common.css' %}">
     <style>
         :root {
             --accent-color: #667eea;
             --accent-hover: #5a67d8;
-        }
-
-        /* 模态框样式复用自 amazon_shop_management.html */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            backdrop-filter: blur(4px);
-        }
-
-        .modal-content {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: var(--bg-primary);
-            border-radius: 16px;
-            padding: 2rem;
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: var(--shadow-heavy);
-            border: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-        }
-
-        .modal-header {
-            position: sticky;
-            top: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .modal-close {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem;
-            border-radius: 4px;
-        }
-
-        .modal-close:hover {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .modal-body {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 1rem;
-        }
-
-        .modal-footer {
-            position: sticky;
-            bottom: 0;
-            background-color: var(--bg-primary);
-            z-index: 11;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-            margin-top: auto;
-            display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-        }
-
-        .btn-cancel-modal {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-
-        .btn-save-modal {
-            background-color: #22c55e;
-            color: white;
-        }
-
-        .btn-save-modal:hover {
-            background-color: #16a34a;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .form-group label {
-            font-weight: 500;
-            color: var(--text-primary);
-            font-size: 0.875rem;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 8px;
-            padding: 0.75rem;
-            transition: all 0.3s ease;
-            width: 100%;
-        }
-
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            text-transform: uppercase;
-        }
-
-        .status-active {
-            background-color: #C6F6D5;
-            color: #22543D;
-        }
-
-        .status-inactive {
-            background-color: #FED7D7;
-            color: #742A2A;
         }
 
         .priority-high {
@@ -165,23 +24,6 @@
         .priority-low {
             background-color: #BEE3F8;
             color: #2B6CB0;
-        }
-
-        .btn-create {
-            background-color: #22c55e;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            transition: background-color 0.3s;
-        }
-
-        .btn-create:hover {
-            background-color: #16a34a;
         }
 
         .btn-action {

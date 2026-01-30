@@ -16,7 +16,7 @@ import traceback
 @login_required
 def temu_management_view(request):
     """渲染Temu店铺管理页面"""
-    return render(request, 'temu_shop_management.html')
+    return render(request, 'management/temu_shop_management.html')
 
 
 # 获取运营人员列表API（复用Amazon的，支持platform参数）
