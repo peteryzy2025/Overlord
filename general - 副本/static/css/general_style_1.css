@@ -3,11 +3,11 @@
 }
 
 /* ============================================
-   From management-common.css
+   From general_style_1.css
    ============================================ */
 
 /**
- * management-common.css
+ * general_style_1.css
  * 管理后台页面公共样式
  * 适用于：店铺管理、人员管理、操作日志、公告管理等页面
  */
@@ -31,7 +31,7 @@
 }
 
 /* ============================================
-   2. 页面标题�?
+   2. 页面标题�?
    ============================================ */
 
 .page-header {
@@ -67,7 +67,7 @@
 }
 
 /* ============================================
-   3. 筛选面�?
+   3. 筛选面�?
    ============================================ */
 
 .filter-section {
@@ -211,7 +211,7 @@
     background-color: var(--border-color);
 }
 
-/* 新建店铺按钮 - 使用主题�?*/
+/* 新建店铺按钮 - 使用主题�?*/
 .btn-create {
     background-color: var(--accent-color);
     color: white;
@@ -385,7 +385,7 @@
     background-color: var(--bg-secondary);
 }
 
-/* 右侧操作列固�?*/
+/* 右侧操作列固�?*/
 .table-container th:last-child,
 .table-container td:last-child {
     position: sticky;
@@ -400,7 +400,7 @@
     background-color: var(--bg-secondary);
 }
 
-/* 可排序表�?*/
+/* 可排序表�?*/
 .table th.sortable {
     cursor: pointer;
     user-select: none;
@@ -411,24 +411,24 @@
 }
 
 .table th.sortable::after {
-    content: ' �?;
+    content: ' �?;
     color: var(--text-secondary);
     font-size: 0.75rem;
     margin-left: 0.25rem;
 }
 
 .table th.sort-asc::after {
-    content: ' �?;
+    content: ' �?;
     color: var(--accent-color);
 }
 
 .table th.sort-desc::after {
-    content: ' �?;
+    content: ' �?;
     color: var(--accent-color);
 }
 
 /* ============================================
-   7. 状态标�?
+   7. 状态标�?
    ============================================ */
 
 .status-badge {
@@ -541,7 +541,7 @@
     gap: 1rem;
 }
 
-/* 新分页样式（参�?amazon_order_management.html�?*/
+/* 新分页样式（参�?amazon_order_management.html�?*/
 .pagination-new {
     display: flex;
     gap: 0.5rem;
@@ -592,7 +592,7 @@
     color: var(--text-primary);
 }
 
-/* 每页条数选择 - 自定义样�?*/
+/* 每页条数选择 - 自定义样�?*/
 .page-size-wrapper {
     display: flex;
     align-items: center;
@@ -875,7 +875,7 @@
     font-family: monospace;
 }
 
-/* 日期范围选择�?*/
+/* 日期范围选择�?*/
 .date-range-group {
     display: flex;
     gap: 0.5rem;
@@ -891,7 +891,7 @@
     font-size: 0.875rem;
 }
 
-/* 空状�?*/
+/* 空状�?*/
 .empty-state {
     text-align: center;
     padding: 3rem;
@@ -1007,7 +1007,7 @@
     width: 100%;
 }
 
-/* 触发按钮/输入�?*/
+/* 触发按钮/输入�?*/
 .searchable-select .select-trigger {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -1048,7 +1048,7 @@
     transform: rotate(180deg);
 }
 
-/* 选中项显�?*/
+/* 选中项显�?*/
 .searchable-select .select-trigger .selected-text {
     flex: 1;
     overflow: hidden;
@@ -1087,7 +1087,7 @@
     display: block;
 }
 
-/* 搜索输入�?*/
+/* 搜索输入�?*/
 .searchable-select .search-input-wrapper {
     padding: 0.5rem;
     border-bottom: 1px solid var(--border-color);
@@ -1178,7 +1178,7 @@
     flex: 1;
 }
 
-/* 空状�?*/
+/* 空状�?*/
 .searchable-select .no-options {
     padding: 1rem;
     text-align: center;
@@ -1186,7 +1186,7 @@
     font-size: 0.875rem;
 }
 
-/* 标签样式（多选时显示�?*/
+/* 标签样式（多选时显示�?*/
 .searchable-select .select-trigger .tags {
     display: flex;
     flex-wrap: wrap;
@@ -1232,7 +1232,7 @@
     color: var(--accent-color);
 }
 
-/* 模式：单�?*/
+/* 模式：单�?*/
 .searchable-select.single .option.selected::before {
     content: "\f00c";
     font-family: "Font Awesome 5 Free";
@@ -1242,7 +1242,7 @@
     margin-right: 0.25rem;
 }
 
-/* 禁用状�?*/
+/* 禁用状�?*/
 .searchable-select.disabled .select-trigger {
     background-color: var(--bg-tertiary);
     cursor: not-allowed;
