@@ -1,0 +1,1258 @@
+{% extends 'management/base_management.html' %}
+{% load static %}
+
+{% block title %}绩效管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ========== 复用user_management.html的简洁样式 ========== */
+
+    /* 核心改动：限制内容宽度 */
+    .content {
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .tab-content {
+        display: block;
+        max-width: 100%;
+        width: 100%;
+        padding: 2rem;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    .page-header {
+        margin-bottom: 0.2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+    }
+
+    .btn-create {
+        background-color: #22c55e;
+        color: white;
+    }
+
+    .btn-create:hover {
+        background-color: #16a34a;
+    }
+
+    .filter-section {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 0.2rem;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 200px;
+    }
+
+    .filter-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        align-self: flex-end;
+        margin-top: auto;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-control, .form-select {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .btn {
+        background-color: var(--accent-color);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .btn-warning {
+        background-color: #f59e0b;
+        color: white;
+    }
+
+    .btn-warning:hover {
+        background-color: #d97706;
+    }
+
+    /* 关键改动：表格容器允许横向滚动 */
+    .table-container {
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        overflow-x: auto;
+        max-height: 700px;
+        overflow-y: auto;
+        width: 100%;
+    }
+
+    /* 核心修复：操作列固定定位 */
+    .table-container th:last-child,
+    .table-container td:last-child {
+        position: sticky;
+        right: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        box-shadow: -2px 0 4px rgba(0,0,0,0.1);
+    }
+
+    .table-container table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .table-container thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background-color: var(--bg-secondary);
+    }
+
+    .table {
+        width: 100%;
+        margin: 0;
+        color: var(--text-primary);
+    }
+
+    .table th {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        font-weight: 600;
+        border-bottom: 1px solid var(--border-color);
+        padding: 1rem;
+        white-space: nowrap;
+        position: sticky;
+        top: 0;
+        z-index: 11;
+    }
+
+    .table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        text-transform: uppercase;
+    }
+
+    .status-badge.success {
+        background-color: #C6F6D5;
+        color: #22543D;
+    }
+
+    .status-badge.error {
+        background-color: #FED7D7;
+        color: #742A2A;
+    }
+
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+    }
+
+    /* 模态框样式 - 与Amazon店铺管理完全一致 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+    }
+
+    .modal-close:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding-bottom: 1rem;
+    }
+
+    .modal-form-wrapper {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.875rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input:disabled {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        background-color: var(--bg-primary);
+        z-index: 11;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        margin-top: auto;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    .btn-cancel-modal {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-save-modal {
+        background-color: #22c55e;
+    }
+
+    .btn-save-modal:hover {
+        background-color: #16a34a;
+    }
+
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    /* ========== 新增：标签页导航样式 ========== */
+    .tab-nav {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .tab-nav-item {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.3s ease;
+        color: var(--text-secondary);
+    }
+
+    .tab-nav-item.active {
+        color: var(--accent-color);
+        border-bottom-color: var(--accent-color);
+        font-weight: 600;
+    }
+
+    .tab-pane {
+        display: none;
+    }
+
+    .tab-pane.active {
+        display: block;
+    }
+
+    /* ========== 新增：批量编辑表格样式 ========== */
+    .batch-table {
+        margin-top: 1rem;
+        font-size: 0.875rem;
+    }
+
+    .batch-table th,
+    .batch-table td {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .batch-table input[type="number"],
+    .batch-table input[type="text"] {
+        width: 100%;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* ========== 新增：平衡状态提示 ========== */
+    .balance-info {
+        grid-column: 1 / -1;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-weight: 500;
+    }
+
+    .balance-info.success {
+        background-color: #C6F6D5;
+        color: #22543D;
+        border: 1px solid #9AE6B4;
+    }
+
+    .balance-info.error {
+        background-color: #FED7D7;
+        color: #742A2A;
+        border: 1px solid #FC8181;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="performance-tab" class="tab-content">
+    <!-- 标签页导航 -->
+    <div class="tab-nav">
+        <div class="tab-nav-item active" onclick="switchTab('group')">组目标管理</div>
+        <div class="tab-nav-item" onclick="switchTab('personal')">个人目标管理</div>
+    </div>
+
+    <!-- 组目标标签页 -->
+    <div id="group-tab" class="tab-pane active">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">组绩效目标管理</h1>
+                <p class="page-subtitle">管理各运营组的月度绩效目标</p>
+            </div>
+            {% if can_manage_group %}
+            <button class="btn btn-create" onclick="openGroupCreateModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建组目标
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">月份筛选</label>
+                    <input type="month" class="form-control" id="groupMonthFilter">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <select class="form-select" id="groupOpsGroupFilter">
+                        <option value="">全部分组</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="groupSearch" placeholder="搜索分组/备注">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="filterGroupTargets()">筛选</button>
+                    <button class="btn btn-secondary" onclick="resetGroupFilters()">重置</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="groupTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>目标月份</th>
+                        <th>运营分组</th>
+                        <th>组目标业绩</th>
+                        <th>成员目标总和</th>
+                        <th>平衡状态</th>
+                        <th>备注</th>
+                        <th>创建人</th>
+                        <th>创建时间</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="groupTableBody">
+                    <!-- 动态生成 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container">
+            <div class="pagination-info" data-total="0">
+                显示第 1 到 10 条，共 0 条记录
+                <select id="groupPageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changeGroupPageSize(this.value)">
+                    <option value="10">10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                    <option value="100">100条/页</option>
+                </select>
+            </div>
+            <nav>
+                <ul class="pagination" id="groupPagination">
+                    <!-- 动态生成 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- 个人目标标签页 -->
+    <div id="personal-tab" class="tab-pane">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">个人绩效目标管理</h1>
+                <p class="page-subtitle">
+                    {% if is_group_leader %}
+                    为您的小组成员({{ user_ops_group }})设置月度目标（组员目标总和必须等于组目标）
+                    {% else %}
+                    查看个人绩效目标（运营组长可批量设置）
+                    {% endif %}
+                </p>
+            </div>
+            {% if is_group_leader %}
+            <button class="btn btn-create" onclick="openBatchPersonalModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>批量设置组员目标
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">月份筛选</label>
+                    <input type="month" class="form-control" id="personalMonthFilter">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <select class="form-select" id="personalUserFilter">
+                        <option value="">全部人员</option>
+                    </select>
+                </div>
+                {% if can_manage_group %}
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <select class="form-select" id="personalOpsGroupFilter">
+                        <option value="">全部分组</option>
+                    </select>
+                </div>
+                {% endif %}
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="personalSearch" placeholder="搜索用户名/月份">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="filterPersonalTargets()">筛选</button>
+                    <button class="btn btn-secondary" onclick="resetPersonalFilters()">重置</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="personalTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>运营分组</th>
+                        <th>运营人员</th>
+                        <th>目标月份</th>
+                        <th>个人目标业绩</th>
+                        <th>备注</th>
+                        <th>创建人</th>
+                        <th>创建时间</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="personalTableBody">
+                    <!-- 动态生成 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container">
+            <div class="pagination-info" data-total="0">
+                显示第 1 到 10 条，共 0 条记录
+                <select id="personalPageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePersonalPageSize(this.value)">
+                    <option value="10">10条/页</option>
+                    <option value="20">20条/页</option>
+                    <option value="50">50条/页</option>
+                    <option value="100">100条/页</option>
+                </select>
+            </div>
+            <nav>
+                <ul class="pagination" id="personalPagination">
+                    <!-- 动态生成 -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 组目标模态框 -->
+<div class="modal-overlay" id="groupModalOverlay">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title" id="groupModalTitle">新建组目标</h2>
+            <button class="modal-close" onclick="closeGroupModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="groupModalBody">
+            <!-- 动态生成表单 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeGroupModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveGroupModal()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 批量个人目标模态框 -->
+<div class="modal-overlay" id="batchPersonalModalOverlay">
+    <div class="modal-content" style="max-width: 1200px;">
+        <div class="modal-header">
+            <h2 class="modal-title" id="batchPersonalModalTitle">批量设置组员目标</h2>
+            <button class="modal-close" onclick="closeBatchPersonalModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="batchPersonalModalBody">
+            <!-- 动态生成表单 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary btn-cancel-modal" onclick="closeBatchPersonalModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveBatchPersonalModal()">保存</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========== 全局变量 ==========
+let currentTab = 'group';
+let groupCurrentPage = 1, groupPageSize = 10;
+let personalCurrentPage = 1, personalPageSize = 10;
+let allOpsGroups = [], allOperators = [];
+// 批量编辑时存储组目标值
+let batchGroupTarget = 0, batchGroupStretch = 0;
+
+// ========== 标签页切换 ==========
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-nav-item').forEach(item => item.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+
+    if (tab === 'group') {
+        document.querySelector('.tab-nav-item:nth-child(1)').classList.add('active');
+        document.getElementById('group-tab').classList.add('active');
+        loadGroupTargets();
+    } else {
+        document.querySelector('.tab-nav-item:nth-child(2)').classList.add('active');
+        document.getElementById('personal-tab').classList.add('active');
+        loadPersonalTargets();
+    }
+}
+
+// ========== 组目标管理 ==========
+async function loadGroupTargets() {
+    const tbody = document.getElementById('groupTableBody');
+    tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+
+    const params = new URLSearchParams({
+        page: groupCurrentPage,
+        page_size: groupPageSize,
+        month: document.getElementById('groupMonthFilter')?.value || '',
+        ops_group: document.getElementById('groupOpsGroupFilter')?.value || '',
+        search: document.getElementById('groupSearch')?.value || '',
+    });
+
+    try {
+        const response = await fetch(`/api/performance/group_targets/?${params}`);
+        const result = await response.json();
+
+        if (!result.success) throw new Error(result.error);
+
+        renderGroupRows(result.data);
+        renderGroupPagination(result.total, result.page, result.page_size);
+
+        const info = document.querySelector('#group-tab .pagination-info');
+        info.textContent = `显示第 ${(result.page-1)*result.page_size + 1} 到 ${(result.page-1)*result.page_size + result.data.length} 条，共 ${result.total} 条记录`;
+        info.dataset.total = result.total;
+
+    } catch (error) {
+        console.error('加载组目标失败:', error);
+        tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;padding:2rem;">加载失败</td></tr>';
+    }
+}
+
+function renderGroupRows(targets) {
+    const tbody = document.getElementById('groupTableBody');
+    tbody.innerHTML = targets.map(target => {
+        const statusClass = target.is_balanced ? 'success' : 'error';
+        const statusText = target.is_balanced ? '✓ 已平衡' : '✗ 不平衡';
+
+        return `
+            <tr data-target-id="${target.id}">
+                <td>${target.id}</td>
+                <td class="field-month">${target.month}</td>
+                <td class="field-ops_group">${target.ops_group}</td>
+                <td class="field-target">${target.target_performance}</td>
+                <td class="field-member-target">${target.member_target_total}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td class="field-note">${target.note}</td>
+                <td class="field-creator">${target.creator_name}</td>
+                <td class="field-created">${target.created_at}</td>
+                <td class="field-updated">${target.updated_at}</td>
+                <td>
+                    {% if can_manage_group %}
+                    <button class="btn btn-sm btn-edit" onclick="openGroupEditModal(${target.id})">编辑</button>
+                    {% endif %}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderGroupPagination(total, page, pageSize) {
+    const totalPages = Math.ceil(total / pageSize);
+    const html = [];
+
+    const prevDisabled = page === 1 ? 'disabled' : '';
+    html.push(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" onclick="changeGroupPage(${page - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a></li>`);
+
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) {
+        const active = i === page ? 'active' : '';
+        html.push(`<li class="page-item ${active}"><a class="page-link" href="#" onclick="changeGroupPage(${i})">${i}</a></li>`);
+    }
+
+    const nextDisabled = page === totalPages ? 'disabled' : '';
+    html.push(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" onclick="changeGroupPage(${page + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a></li>`);
+
+    document.getElementById('groupPagination').innerHTML = html.join('');
+}
+
+async function changeGroupPage(page) {
+    const total = parseInt(document.querySelector('#group-tab .pagination-info').dataset.total || '0');
+    const totalPages = Math.ceil(total / groupPageSize);
+    if (page < 1 || page > totalPages) return;
+    groupCurrentPage = page;
+    await loadGroupTargets();
+}
+
+function changeGroupPageSize(size) {
+    groupPageSize = parseInt(size);
+    groupCurrentPage = 1;
+    loadGroupTargets();
+}
+
+function filterGroupTargets() {
+    groupCurrentPage = 1;
+    loadGroupTargets();
+}
+
+function resetGroupFilters() {
+    document.getElementById('groupMonthFilter').value = '';
+    document.getElementById('groupOpsGroupFilter').value = '';
+    document.getElementById('groupSearch').value = '';
+    groupCurrentPage = 1;
+    loadGroupTargets();
+}
+
+// ========== 个人目标管理 ==========
+async function loadPersonalTargets() {
+    const tbody = document.getElementById('personalTableBody');
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+
+    const params = new URLSearchParams({
+        page: personalCurrentPage,
+        page_size: personalPageSize,
+        month: document.getElementById('personalMonthFilter')?.value || '',
+        user: document.getElementById('personalUserFilter')?.value || '',
+        ops_group: document.getElementById('personalOpsGroupFilter')?.value || '',
+        search: document.getElementById('personalSearch')?.value || '',
+    });
+
+    try {
+        const response = await fetch(`/api/performance/personal_targets/?${params}`);
+        const result = await response.json();
+
+        if (!result.success) throw new Error(result.error);
+
+        renderPersonalRows(result.data);
+        renderPersonalPagination(result.total, result.page, result.page_size);
+
+        const info = document.querySelector('#personal-tab .pagination-info');
+        info.textContent = `显示第 ${(result.page-1)*result.page_size + 1} 到 ${(result.page-1)*result.page_size + result.data.length} 条，共 ${result.total} 条记录`;
+        info.dataset.total = result.total;
+
+    } catch (error) {
+        console.error('加载个人目标失败:', error);
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:2rem;">加载失败</td></tr>';
+    }
+}
+
+function renderPersonalRows(targets) {
+    const tbody = document.getElementById('personalTableBody');
+    tbody.innerHTML = targets.map(target => `
+        <tr data-target-id="${target.id}">
+            <td>${target.id}</td>
+            <td class="field-ops_group">${target.ops_group}</td>
+            <td class="field-user_name">${target.user_name}</td>
+            <td class="field-month">${target.month}</td>
+            <td class="field-target">${target.target_performance}</td>
+            <td class="field-note">${target.note}</td>
+            <td class="field-creator">${target.creator_name}</td>
+            <td class="field-created">${target.created_at}</td>
+            <td class="field-updated">${target.updated_at}</td>
+            <td>
+                {% if is_group_leader %}
+                <button class="btn btn-sm btn-edit" onclick="openPersonalEditModal(${target.id})">编辑</button>
+                {% endif %}
+            </td>
+        </tr>
+    `).join('');
+}
+
+function renderPersonalPagination(total, page, pageSize) {
+    const totalPages = Math.ceil(total / pageSize);
+    const html = [];
+
+    const prevDisabled = page === 1 ? 'disabled' : '';
+    html.push(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" onclick="changePersonalPage(${page - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a></li>`);
+
+    const start = Math.max(1, page - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) {
+        const active = i === page ? 'active' : '';
+        html.push(`<li class="page-item ${active}"><a class="page-link" href="#" onclick="changePersonalPage(${i})">${i}</a></li>`);
+    }
+
+    const nextDisabled = page === totalPages ? 'disabled' : '';
+    html.push(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" onclick="changePersonalPage(${page + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a></li>`);
+
+    document.getElementById('personalPagination').innerHTML = html.join('');
+}
+
+async function changePersonalPage(page) {
+    const total = parseInt(document.querySelector('#personal-tab .pagination-info').dataset.total || '0');
+    const totalPages = Math.ceil(total / personalPageSize);
+    if (page < 1 || page > totalPages) return;
+    personalCurrentPage = page;
+    await loadPersonalTargets();
+}
+
+function changePersonalPageSize(size) {
+    personalPageSize = parseInt(size);
+    personalCurrentPage = 1;
+    loadPersonalTargets();
+}
+
+function filterPersonalTargets() {
+    personalCurrentPage = 1;
+    loadPersonalTargets();
+}
+
+function resetPersonalFilters() {
+    document.getElementById('personalMonthFilter').value = '';
+    document.getElementById('personalUserFilter').value = '';
+    document.getElementById('personalOpsGroupFilter').value = '';
+    document.getElementById('personalSearch').value = '';
+    personalCurrentPage = 1;
+    loadPersonalTargets();
+}
+
+// ========== 模态框操作 - 组目标 ==========
+function openGroupCreateModal() {
+    document.getElementById('groupModalTitle').textContent = '新建组目标';
+    document.getElementById('groupModalBody').innerHTML = generateGroupForm();
+    document.getElementById('groupModalOverlay').style.display = 'block';
+}
+
+function closeGroupModal() {
+    document.getElementById('groupModalOverlay').style.display = 'none';
+}
+
+function generateGroupForm(targetData = null) {
+    const data = targetData || {};
+    const isEdit = !!targetData;
+
+    const groupOptions = allOpsGroups.map(g => {
+        const selected = data.ops_group === g ? 'selected' : '';
+        return `<option value="${g}" ${selected}>${g}</option>`;
+    }).join('');
+
+    return `
+        <div class="modal-form-wrapper">
+            <div class="form-group">
+                <label>目标月份 <span style="color:red;">*</span></label>
+                <input type="month" id="group-month" value="${data.month || ''}" ${isEdit ? 'disabled' : ''} required>
+            </div>
+            <div class="form-group">
+                <label>运营分组 <span style="color:red;">*</span></label>
+                <select id="group-ops_group" ${isEdit ? 'disabled' : ''} required>
+                    <option value="">请选择分组</option>
+                    ${groupOptions}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>组目标业绩（单） <span style="color:red;">*</span></label>
+                <input type="number" id="group-target_performance" value="${data.target_performance || ''}" min="0" required>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>备注</label>
+                <textarea id="group-note" rows="3">${data.note || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+async function saveGroupModal() {
+    const month = document.getElementById('group-month').value;
+    const ops_group = document.getElementById('group-ops_group').value;
+    const target_performance = parseInt(document.getElementById('group-target_performance').value);
+    const note = document.getElementById('group-note').value;
+
+    if (!month || !ops_group || !target_performance) {
+        alert('请填写所有必填项！');
+        return;
+    }
+
+    try {
+        const url = '/api/performance/group_targets/create/';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({ month, ops_group, target_performance, note })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            closeGroupModal();
+            loadGroupTargets();
+        } else {
+            alert('操作失败：' + result.error);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败，请检查网络连接');
+    }
+}
+
+// ========== 模态框操作 - 批量个人目标 ==========
+async function openBatchPersonalModal() {
+    const month = document.getElementById('personalMonthFilter').value;
+    const ops_group = "{{ user_ops_group }}";
+
+    if (!month) {
+        alert('请先选择目标月份');
+        return;
+    }
+
+    if (!ops_group) {
+        alert('您不属于任何运营分组');
+        return;
+    }
+
+    // 获取组目标
+    const groupResponse = await fetch(`/api/performance/group_targets/?month=${month}&ops_group=${ops_group}`);
+    const groupResult = await groupResponse.json();
+
+    if (!groupResult.success || groupResult.total === 0) {
+        alert('请先创建该月份的组目标');
+        return;
+    }
+
+    const groupTarget = groupResult.data[0];
+
+    // 存储组目标值到全局变量
+    batchGroupTarget = groupTarget.target_performance;
+
+    // 获取组员
+    const membersResponse = await fetch(`/api/performance/operators_by_group/?ops_group=${ops_group}`);
+    const membersResult = await membersResponse.json();
+
+    if (!membersResult.success) {
+        alert('获取组员失败');
+        return;
+    }
+
+    document.getElementById('batchPersonalModalTitle').textContent = `批量设置${ops_group} - ${month}目标`;
+    document.getElementById('batchPersonalModalBody').innerHTML = generateBatchPersonalForm(groupTarget, membersResult.data);
+    document.getElementById('batchPersonalModalOverlay').style.display = 'block';
+
+    // 监听输入变化，实时计算总和
+    document.querySelectorAll('.batch-target-input').forEach(input => {
+        input.addEventListener('input', updateBalanceInfo);
+    });
+
+    updateBalanceInfo();
+}
+
+function closeBatchPersonalModal() {
+    document.getElementById('batchPersonalModalOverlay').style.display = 'none';
+}
+
+function generateBatchPersonalForm(groupTarget, members) {
+    const month = groupTarget.month;
+    const ops_group = groupTarget.ops_group;
+
+    // 获取现有个人目标作为默认值
+    return `
+        <div class="modal-form-wrapper">
+            <input type="hidden" id="batch-month" value="${month}">
+            <input type="hidden" id="batch-ops_group" value="${ops_group}">
+
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label>组目标基准：<span style="color:var(--accent-color);font-weight:700;">${batchGroupTarget}单</span></label>
+                <div id="balance-info" class="balance-info"></div>
+            </div>
+
+            <div style="grid-column: 1 / -1;">
+                <table class="table batch-table">
+                    <thead>
+                        <tr>
+                            <th>成员</th>
+                            <th>个人目标业绩</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${members.map(member => `
+                            <tr data-user-id="${member.id}">
+                                <td style="font-weight:500;">${member.first_name}</td>
+                                <td><input type="number" class="form-control batch-target-input" data-user-id="${member.id}" min="0" value="0" required></td>
+                                <td><input type="text" class="form-control batch-note-input" data-user-id="${member.id}" placeholder="备注"></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function updateBalanceInfo() {
+    // 使用全局变量获取组目标值
+    const groupTarget = batchGroupTarget;
+
+    let totalTarget = 0;
+
+    document.querySelectorAll('.batch-target-input').forEach(input => {
+        totalTarget += parseInt(input.value) || 0;
+    });
+
+    const info = document.getElementById('balance-info');
+    const targetMatch = totalTarget === groupTarget;
+
+    if (targetMatch) {
+        info.className = 'balance-info success';
+        info.textContent = `✓ 目标已平衡（成员总和 = 组目标：${totalTarget}）`;
+    } else {
+        info.className = 'balance-info error';
+        info.textContent = `✗ 目标不平衡：成员目标总和 ${totalTarget}，组目标 ${groupTarget}`;
+    }
+}
+
+async function saveBatchPersonalModal() {
+    const month = document.getElementById('batch-month').value;
+    const ops_group = document.getElementById('batch-ops_group').value;
+
+    // 收集所有成员的目标
+    const targets = [];
+    document.querySelectorAll('.batch-target-input').forEach(input => {
+        const user_id = parseInt(input.dataset.userId);
+        const target_performance = parseInt(input.value) || 0;
+        const note_input = document.querySelector(`.batch-note-input[data-user-id="${user_id}"]`);
+
+        targets.push({
+            user_id,
+            target_performance,
+            note: note_input.value
+        });
+    });
+
+    // 最终验证
+    const totalTarget = targets.reduce((sum, t) => sum + t.target_performance, 0);
+
+    if (totalTarget !== batchGroupTarget) {
+        alert(`目标不平衡，无法保存！成员总和(${totalTarget})必须等于组目标(${batchGroupTarget})`);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/performance/personal_targets/batch/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({ month, ops_group, targets })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert(result.message);
+            closeBatchPersonalModal();
+            loadPersonalTargets();
+        } else {
+            alert('操作失败：' + result.error);
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败，请检查网络连接');
+    }
+}
+
+// ========== 筛选选项加载 ==========
+async function loadFilterOptions() {
+    // 加载运营分组
+    try {
+        const groupResponse = await fetch('/api/performance/ops_groups/');
+        const groupResult = await groupResponse.json();
+        if (groupResult.success) {
+            allOpsGroups = groupResult.data;
+
+            // 更新组目标筛选器
+            const groupSelect = document.getElementById('groupOpsGroupFilter');
+            groupSelect.innerHTML = '<option value="">全部分组</option>';
+            allOpsGroups.forEach(g => {
+                const option = document.createElement('option');
+                option.value = g;
+                option.textContent = g;
+                groupSelect.appendChild(option);
+            });
+
+            // 更新个人目标筛选器（如果有权限）
+            const personalGroupSelect = document.getElementById('personalOpsGroupFilter');
+            if (personalGroupSelect) {
+                personalGroupSelect.innerHTML = '<option value="">全部分组</option>';
+                allOpsGroups.forEach(g => {
+                    const option = document.createElement('option');
+                    option.value = g;
+                    option.textContent = g;
+                    personalGroupSelect.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('加载分组失败:', error);
+    }
+
+    // 加载运营人员（仅运营部门）
+    try {
+        const userResponse = await fetch('/api/users/all/');
+        const userResult = await userResponse.json();
+        if (userResult.success) {
+            const isOperatorDepartment = (dept) => {
+                if (!dept) return false;
+                return String(dept).includes('运营');
+            };
+
+            allOperators = userResult.data
+                .filter(u => isOperatorDepartment(u.department))
+                .sort((a, b) => String(a.first_name || a.username || '').localeCompare(String(b.first_name || b.username || ''), 'zh-Hans-CN'));
+
+            // 更新个人目标筛选器
+            const userSelect = document.getElementById('personalUserFilter');
+            userSelect.innerHTML = '<option value="">全部人员</option>';
+            allOperators.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = user.first_name || user.username;
+                userSelect.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('加载运营人员失败:', error);
+    }
+}
+
+// ========== 工具函数 ==========
+function getCSRFToken() {
+    return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+// ========== 页面初始化 ==========
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadFilterOptions();
+    loadGroupTargets();
+
+    // 回车快捷键
+    document.querySelectorAll('.filter-section').forEach(section => {
+        section.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                e.preventDefault();
+                if (currentTab === 'group') filterGroupTargets();
+                else filterPersonalTargets();
+            }
+        });
+    });
+
+    // ESC关闭模态框
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeGroupModal();
+            closeBatchPersonalModal();
+        }
+    });
+
+    // 点击外部关闭
+    document.getElementById('groupModalOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeGroupModal();
+    });
+    document.getElementById('batchPersonalModalOverlay').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeBatchPersonalModal();
+    });
+
+    // 页面动画
+    if (window.anime) {
+        anime({
+            targets: '.sidebar',
+            translateX: [-280, 0],
+            opacity: [0, 1],
+            duration: 600,
+            easing: 'easeOutQuart'
+        });
+        anime({
+            targets: '.content',
+            translateY: [30, 0],
+            opacity: [0, 1],
+            duration: 800,
+            delay: 200,
+            easing: 'easeOutQuart'
+        });
+    }
+});
+</script>
+{% endblock %}

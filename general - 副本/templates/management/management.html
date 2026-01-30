@@ -1,0 +1,278 @@
+{% extends 'management/base_management.html' %}
+{% load static %}
+
+{% block title %}管理中心 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* 核心改动：限制内容宽度 */
+        .content {
+            max-width: 100vw;
+            overflow-x: hidden;
+        }
+
+        .dashboard-content {
+            max-width: 100%;
+            width: 100%;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        /* 欢迎区域样式 */
+        .welcome-section {
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            margin-bottom: 3rem;
+            color: white;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+        }
+
+        .welcome-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .welcome-subtitle {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .quick-action-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .quick-action-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+
+        /* 统计卡片样式 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* 最近活动样式 */
+        .recent-activity {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .activity-item {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .activity-desc {
+            color: var(--text-primary);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="dashboard-content">
+        <!-- 欢迎区域 -->
+        <div class="welcome-section">
+            <h1 class="welcome-title">欢迎来到管理中心</h1>
+            <p class="welcome-subtitle">在这里您可以管理团队、管理店铺，并监控所有运营活动</p>
+            <div class="quick-actions">
+                <a href="{% url 'general:user_management' %}" class="quick-action-btn">
+                    <i class="fas fa-users"></i> 人员管理
+                </a>
+                <a href="{% url 'general:performance_targets' %}" class="quick-action-btn">
+                    <i class="fas fa-chart-line"></i> 绩效管理
+                </a>
+                <a href="{% url 'general:amazon_management' %}" class="quick-action-btn">
+                    <i class="fab fa-amazon"></i> Amazon店铺
+                </a>
+                <a href="{% url 'general:temu_management' %}" class="quick-action-btn">
+                    <i class="fas fa-store"></i> Temu店铺
+                </a>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value" id="totalUsers">-</div>
+                <div class="stat-label">总用户数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🟢</div>
+                <div class="stat-value" id="activeUsers">-</div>
+                <div class="stat-label">活跃用户</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏪</div>
+                <div class="stat-value" id="totalShops">-</div>
+                <div class="stat-label">Amazon店铺</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-value" id="activeShops">-</div>
+                <div class="stat-label">运营中店铺</div>
+            </div>
+        </div>
+
+        <!-- 最近活动 -->
+        <div class="recent-activity">
+            <h2 class="section-title">
+                <i class="fas fa-clock"></i> 最近活动
+            </h2>
+            <div class="activity-item">
+                <div class="activity-time">2024-01-20 14:30</div>
+                <div class="activity-desc">张三 创建了新的Amazon店铺 TechStore-US</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-time">2024-01-20 13:15</div>
+                <div class="activity-desc">李四 更新了领星账号密码</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-time">2024-01-20 11:45</div>
+                <div class="activity-desc">王五 停用了用户 zhaoliu</div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-time">2024-01-20 10:20</div>
+                <div class="activity-desc">系统自动同步了店铺数据</div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // 页面加载完成后获取统计数据
+        document.addEventListener('DOMContentLoaded', async function () {
+            // 加载用户统计数据
+            try {
+                const response = await fetch('/api/users/');
+                const result = await response.json();
+
+                if (result.success) {
+                    const users = result.data;
+                    const totalUsers = users.length;
+                    const activeUsers = users.filter(u => u.status === 'active').length;
+
+                    document.getElementById('totalUsers').textContent = totalUsers;
+                    document.getElementById('activeUsers').textContent = activeUsers;
+                }
+            } catch (error) {
+                console.error('获取统计数据失败:', error);
+            }
+
+            // 模拟店铺数据（实际应从API获取）
+            document.getElementById('totalShops').textContent = '42';
+            document.getElementById('activeShops').textContent = '38';
+
+            // 页面进入动画
+            if (window.anime) {
+                anime({
+                    targets: '.sidebar',
+                    translateX: [-280, 0],
+                    opacity: [0, 1],
+                    duration: 600,
+                    easing: 'easeOutQuart'
+                });
+
+                anime({
+                    targets: '.content',
+                    translateY: [30, 0],
+                    opacity: [0, 1],
+                    duration: 800,
+                    delay: 200,
+                    easing: 'easeOutQuart'
+                });
+
+                // 统计卡片动画
+                anime({
+                    targets: '.stat-card',
+                    translateY: [20, 0],
+                    opacity: [0, 1],
+                    duration: 600,
+                    delay: anime.stagger(100, {start: 400}),
+                    easing: 'easeOutQuart'
+                });
+            }
+        });
+    </script>
+{% endblock %}
