@@ -15,6 +15,9 @@ class SearchableSelect {
             return;
         }
 
+        // 绑定实例到元素，方便通过 getInstance 获取
+        this.container._searchableSelect = this;
+
         this.config = {
             multiple: false,           // 是否多选
             searchable: true,          // 是否可搜索
@@ -375,3 +378,141 @@ function initAllSearchableSelects() {
 
 // DOM加载完成后自动初始化
 document.addEventListener('DOMContentLoaded', initAllSearchableSelects);
+
+
+/* ============================================
+   静态工具方法
+   ============================================ */
+
+/**
+ * 批量初始化所有带有 data-auto-init 属性的下拉框
+ * 用法: <div class="searchable-select" data-auto-init data-options='[{"value":"1","label":"选项1"}]'></div>
+ */
+SearchableSelect.initAll = function() {
+    document.querySelectorAll('.searchable-select[data-auto-init]').forEach(el => {
+        try {
+            const options = el.dataset.options ? JSON.parse(el.dataset.options) : [];
+            const multiple = el.dataset.multiple === 'true';
+            const searchable = el.dataset.searchable !== 'false';
+            
+            new SearchableSelect(el, {
+                options,
+                multiple,
+                searchable,
+                placeholder: el.dataset.placeholder || '请选择...'
+            });
+        } catch (e) {
+            console.error('SearchableSelect auto-init failed:', el, e);
+        }
+    });
+};
+
+/**
+ * 获取实例
+ * @param {HTMLElement|string} element - 元素或选择器
+ * @returns {SearchableSelect|null} 实例
+ */
+SearchableSelect.getInstance = function(element) {
+    const el = typeof element === 'string' ? document.querySelector(element) : element;
+    return el ? el._searchableSelect : null;
+};
+
+/**
+ * 销毁所有实例
+ */
+SearchableSelect.destroyAll = function() {
+    document.querySelectorAll('.searchable-select').forEach(el => {
+        if (el._searchableSelect) {
+            el._searchableSelect.destroy();
+        }
+    });
+};
+
+/**
+ * 显示通知
+ * @param {string} message - 消息内容
+ * @param {string} type - 类型: success|error|warning|info
+ * @param {number} duration - 显示时长(ms)
+ */
+SearchableSelect.notify = function(message, type = 'info', duration = 3000) {
+    // 查找或创建通知容器
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        document.body.appendChild(container);
+    }
+    
+    // 避免重复通知
+    const existing = Array.from(container.children).find(el => 
+        el.textContent.includes(message.substring(0, 20))
+    );
+    if (existing) return;
+    
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    
+    const colors = {
+        success: '#48bb78',
+        error: '#e53e3e',
+        warning: '#dd6b20',
+        info: '#3182ce'
+    };
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--bg-primary, #fff);
+        color: var(--text-primary, #333);
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        border-left: 4px solid ${colors[type]};
+        z-index: 10000;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        max-width: 400px;
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <i class="fas ${icons[type]}" style="color: ${colors[type]};"></i>
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: none;
+                border: none;
+                color: var(--text-secondary, #666);
+                cursor: pointer;
+                margin-left: auto;
+                padding: 0.25rem;
+                border-radius: 4px;
+            ">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(notification);
+    
+    // 显示动画
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // 自动关闭
+    setTimeout(() => {
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (notification.parentElement) notification.remove();
+        }, 300);
+    }, duration);
+};
+
+// DOM加载完成后自动初始化
+document.addEventListener('DOMContentLoaded', SearchableSelect.initAll);
