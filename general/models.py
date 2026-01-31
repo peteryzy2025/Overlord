@@ -159,6 +159,7 @@ class User(AbstractUser):
         HR = 'hr', '人事部'
         SUPPLY_CHAIN = 'supply_chain', '供应链部'
         ASSISTANT = 'assistant', '助理部'
+        FINANCE = 'finance', '财务部'
 
     department = models.CharField(
         '部门',
