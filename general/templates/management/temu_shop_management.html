@@ -9,6 +9,61 @@
         .table-container table {
             min-width: 3200px;
         }
+        
+        /* 覆盖通用样式中的固定列设置，适配复选框列 */
+        #temuShopsTable th:nth-child(1),
+        #temuShopsTable td:nth-child(1) {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: var(--bg-primary);
+            min-width: 45px !important;
+            max-width: 45px !important;
+            width: 45px !important;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #temuShopsTable th:nth-child(1) {
+            z-index: 12;
+            background-color: var(--bg-secondary);
+        }
+        
+        /* 第二列店铺名称固定 - 宽度增加到1.5倍 */
+        #temuShopsTable th:nth-child(2),
+        #temuShopsTable td:nth-child(2) {
+            position: sticky;
+            left: 45px;
+            z-index: 10;
+            background-color: var(--bg-primary);
+            min-width: 225px;
+            max-width: 225px;
+            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        #temuShopsTable th:nth-child(2) {
+            z-index: 13;
+            background-color: var(--bg-secondary);
+        }
+        
+        .pagination-btn-new {
+            min-width: 40px;
+            padding: 0 10px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #paginationNew {
+            height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .pagination-ellipsis {
+            color: var(--text-secondary);
+            padding: 0 5px;
+        }
     </style>
 {% endblock %}
 
@@ -23,7 +78,7 @@
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建店铺
                 </button>
-                <button class="btn btn-export" onclick="exportToExcel()">
+                <button class="btn btn-export" onclick="openExportModal()">
                     <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
                 </button>
             </div>
@@ -33,30 +88,19 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">店铺状态</label>
-                    <select class="form-select" id="temuShopStatusFilter">
-                        <option value="">全部状态</option>
-                        <option value="1">正常</option>
-                        <option value="2">停用</option>
-                        <option value="3">注销</option>
-                    </select>
+                    <div id="temuShopStatusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">客户</label>
-                    <select class="form-select" id="temuCustomerFilter">
-                        <option value="">全部客户</option>
-                    </select>
+                    <div id="temuCustomerFilter" class="searchable-select single" data-placeholder="全部客户"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <select class="form-select" id="temuOperatorFilter">
-                        <option value="">全部人员</option>
-                    </select>
+                    <div id="temuOperatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <select class="form-select" id="temuGroupFilter">
-                        <option value="">全部分组</option>
-                    </select>
+                    <div id="temuGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">搜索店铺</label>
@@ -69,12 +113,26 @@
             </div>
         </div>
 
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
+            <button class="btn btn-create" onclick="openBulkProjectModal('add')">
+                <i class="fas fa-plus-circle"></i>
+                <span>批量设置项目</span>
+            </button>
+            <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
+                <i class="fas fa-minus-circle"></i>
+                <span>移除出项目</span>
+            </button>
+        </div>
+
         <div class="table-container">
             <table class="table" id="temuShopsTable">
-                <thead>
+                <thead id="temuShopsTableHead">
                 <tr>
-                    <th>ID</th>
+                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                     <th>店铺名称</th>
+                    <th>项目</th>
                     <th>客户</th>
                     <th>运营人员</th>
                     <th>角色</th>
@@ -104,35 +162,75 @@
             </table>
         </div>
 
-        <div class="pagination-container">
+        <div class="pagination-container" id="paginationContainer">
             <div class="pagination-info" data-total="0">
-                显示第 1 到 10 条，共 0 条记录
-                <select id="pageSizeSelect"
-                        style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);"
-                        onchange="changePageSize(this.value)">
-                    <option value="10">10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                    <option value="100">100条/页</option>
-                </select>
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <nav>
-                <ul class="pagination" id="pagination">
-                    <li class="page-item disabled">
-                        <a class="page-link" href="#" tabindex="-1">上一页</a>
-                    </li>
-                    <li class="page-item active">
-                        <a class="page-link" href="#">1</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="#">下一页</a>
-                    </li>
-                </ul>
-            </nav>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
         </div>
     </div>
 
-    <!-- 模态框 -->
+    <!-- 批量项目操作模态框 -->
+    <div class="modal-overlay" id="bulkProjectModalOverlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="bulkProjectModalTitle">批量设置项目</h2>
+                <button class="modal-close" onclick="closeBulkProjectModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="bulkProjectDescription" style="margin-bottom: 1rem; color: var(--text-secondary);">请选择要设置的项目：</p>
+                <div id="bulkProjectList" style="max-height: 300px; overflow-y: auto;">
+                    <!-- 动态生成项目列表 -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-cancel-modal" onclick="closeBulkProjectModal()">取消</button>
+                <button class="btn btn-save-modal" onclick="submitBulkProject()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出模态框 -->
+    <div class="modal-overlay" id="exportModalOverlay">
+        <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
+            <div class="modal-header">
+                <h2 class="modal-title">选择要导出的列</h2>
+                <button class="modal-close" onclick="closeExportModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="exportModalBody" style="overflow-y: auto; max-height: 60vh;">
+                <!-- 动态生成列选择 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="selectAllExportColumns(false)">全不选</button>
+                <button class="btn btn-secondary" onclick="selectAllExportColumns(true)">全选</button>
+                <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
+                <button class="btn btn-save-modal" onclick="confirmExport()">确认导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 店铺编辑模态框 -->
     <div class="modal-overlay" id="shopModalOverlay">
         <div class="modal-content">
             <div class="modal-header">
@@ -151,6 +249,8 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/excel-exporter.js' %}"></script>
     <!-- 引入SheetJS库 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
@@ -158,24 +258,40 @@
         let allOperators = [];
         let allGroups = [];
         let allCustomers = [];
+        let allProjects = [];
         let modalMode = null;
         let currentShopId = null;
         let currentPage = 1;
-        let currentPageSize = 10;
+        let currentPageSize = 20;
+        
+        // 筛选器实例
+        let statusSelect, customerSelect, operatorSelect, groupSelect;
+        // 模态框实例
+        let modalOpsSelect, modalStatusSelect, modalProjectSelect;
 
         // ==========================================
         // API 数据获取
         // ==========================================
 
-        async function loadShopsFromAPI(page = 1, pageSize = 10) {
+        async function loadShopsFromAPI(page = 1, pageSize = 20) {
             try {
+                // 处理多选参数
+                const formatMultiSelect = (values) => {
+                    if (!values) return '';
+                    if (Array.isArray(values)) {
+                        const nonEmpty = values.filter(v => v !== '');
+                        return nonEmpty.length > 0 ? nonEmpty.join(',') : '';
+                    }
+                    return values;
+                };
+
                 const params = new URLSearchParams({
                     page: page,
                     page_size: pageSize,
-                    status: document.getElementById('temuShopStatusFilter').value,
-                    operator: document.getElementById('temuOperatorFilter').value,
-                    ops_group: document.getElementById('temuGroupFilter').value,
-                    customer: document.getElementById('temuCustomerFilter').value,
+                    status: formatMultiSelect(statusSelect ? statusSelect.getValue() : ''),
+                    operator: formatMultiSelect(operatorSelect ? operatorSelect.getValue() : ''),
+                    ops_group: formatMultiSelect(groupSelect ? groupSelect.getValue() : ''),
+                    customer: formatMultiSelect(customerSelect ? customerSelect.getValue() : ''),
                     search: document.getElementById('temuShopSearch').value
                 });
 
@@ -279,92 +395,134 @@
         // 分页控件渲染
         // ==========================================
 
-        function renderPagination(totalItems, currentPage, pageSize) {
-            const totalPages = Math.ceil(totalItems / pageSize);
-            const paginationHtml = [];
+        function updatePaginationInfo(total) {
+            const info = document.querySelector('.pagination-info');
+            info.dataset.total = total;
+            
+            // 更新显示 当前/总计
+            const start = (currentPage - 1) * currentPageSize + 1;
+            const end = Math.min(currentPage * currentPageSize, total);
+            const displayTotal = total === 0 ? 0 : `${start}-${end} / 共 ${total} 条`;
+            
+            // 查找或创建显示统计的元素 - 放在 pageSizeWrapper 内部以保持同行
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                statsEl.style.marginLeft = '1rem';
+                statsEl.style.color = 'var(--text-secondary)';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            statsEl.textContent = displayTotal;
+        }
 
-            if (totalPages <= 1) {
-                document.getElementById('pagination').innerHTML = '';
+        function renderPagination(total, page, size) {
+            const totalPages = Math.ceil(total / size);
+            const container = document.getElementById('paginationNew');
+            
+            if (total === 0) {
+                container.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
                 return;
             }
 
+            let html = '';
+            // 首页
+            html += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
             // 上一页
-            const prevDisabled = currentPage === 1 ? 'disabled' : '';
-            paginationHtml.push(`
-        <li class="page-item ${prevDisabled}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a>
-        </li>
-    `);
+            html += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
-            // 页码显示逻辑
-            let startPage = Math.max(1, currentPage - 2);
-            let endPage = Math.min(totalPages, startPage + 4);
+            // 页码
+            let startPage = Math.max(1, page - 2);
+            let endPage = Math.min(totalPages, page + 2);
 
-            // 调整起始页，确保显示5个页码（如果可能）
-            if (endPage - startPage < 4) {
-                startPage = Math.max(1, endPage - 4);
-            }
-
-            // 显示第一页和省略号
             if (startPage > 1) {
-                paginationHtml.push(`
-            <li class="page-item">
-                <a class="page-link" href="#" onclick="changePage(1)">1</a>
-            </li>
-        `);
-                if (startPage > 2) {
-                    paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                }
+                html += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
             }
 
-            // 中间页码
             for (let i = startPage; i <= endPage; i++) {
-                const active = i === currentPage ? 'active' : '';
-                paginationHtml.push(`
-            <li class="page-item ${active}">
-                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
-            </li>
-        `);
+                html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
             }
 
-            // 显示省略号和最后一页
             if (endPage < totalPages) {
-                if (endPage < totalPages - 1) {
-                    paginationHtml.push(`<li class="page-item disabled"><span class="page-link">...</span></li>`);
-                }
-                paginationHtml.push(`
-            <li class="page-item">
-                <a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>
-            </li>
-        `);
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})">${totalPages}</button>`;
             }
 
             // 下一页
-            const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-            paginationHtml.push(`
-        <li class="page-item ${nextDisabled}">
-            <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a>
-        </li>
-    `);
+            html += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>下一页</button>`;
+            // 尾页
+            html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})" ${page >= totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
 
-            document.getElementById('pagination').innerHTML = paginationHtml.join('');
+            container.innerHTML = html;
         }
 
         async function changePage(page) {
-            const totalItems = parseInt(document.querySelector('.pagination-info').dataset.total || '0');
-            const totalPages = Math.ceil(totalItems / currentPageSize);
-
+            const total = parseInt(document.querySelector('.pagination-info').dataset.total);
+            const totalPages = Math.ceil(total / currentPageSize);
             if (page < 1 || page > totalPages) return;
-
+            
+            // 记录当前位置
+            const tableContainer = document.querySelector('.table-container');
+            const scrollOffset = tableContainer.getBoundingClientRect().top + window.pageYOffset - 100;
+            
             currentPage = page;
             await loadShopsTable();
+            
+            // 滚动回之前的位置
+            window.scrollTo({
+                top: scrollOffset,
+                behavior: 'smooth'
+            });
         }
 
-        async function changePageSize(pageSize) {
-            currentPageSize = parseInt(pageSize);
+        function changePageSize(size) {
+            currentPageSize = size;
             currentPage = 1;
-            await loadShopsTable();
+            document.getElementById('pageSizeText').textContent = size + '条';
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            
+            // 更新下拉框选中状态
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            loadShopsTable();
         }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(e) {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('pageJumpInput');
+                const page = parseInt(input.value);
+                const total = parseInt(document.querySelector('.pagination-info').dataset.total);
+                const totalPages = Math.ceil(total / currentPageSize);
+                
+                if (isNaN(page) || page < 1 || page > totalPages) {
+                    SearchableSelect.notify(`请输入 1 到 ${totalPages} 之间的有效页码`, 'warning');
+                    return;
+                }
+                changePage(page);
+                input.value = '';
+            }
+        }
+
+        // 点击外部关闭下拉框
+        document.addEventListener('click', (e) => {
+            const wrapper = document.getElementById('pageSizeWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                const dropdown = document.getElementById('pageSizeDropdown');
+                if (dropdown) dropdown.classList.remove('open');
+            }
+        });
 
         // ==========================================
         // 筛选器与表格渲染
@@ -410,36 +568,257 @@
 
         async function loadShopsTable() {
             const tbody = document.getElementById('temuShopsTableBody');
-            tbody.innerHTML = '<tr><td colspan="23" style="text-align:center;padding:2rem;">加载中...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="24" style="text-align:center;padding:2rem;">加载中...</td></tr>';
 
             const {data, total, page, pageSize} = await loadShopsFromAPI(currentPage, currentPageSize);
             tbody.innerHTML = '';
 
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="23" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
-                document.querySelector('.pagination-info').innerHTML = '共 0 条记录';
-                document.getElementById('pagination').innerHTML = '';
+                tbody.innerHTML = '<tr><td colspan="24" style="text-align:center;padding:2rem;">暂无数据</td></tr>';
+                updatePaginationInfo(0);
+                document.getElementById('paginationNew').innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
                 return;
             }
 
             // 更新分页信息
-            const start = (currentPage - 1) * currentPageSize + 1;
-            const end = start + data.length - 1;
-            const pageInfoHtml = `
-        显示第 ${start} 到 ${end} 条，共 ${total} 条记录
-        <select id="pageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePageSize(this.value)">
-            <option value="10" ${currentPageSize === 10 ? 'selected' : ''}>10条/页</option>
-            <option value="20" ${currentPageSize === 20 ? 'selected' : ''}>20条/页</option>
-            <option value="50" ${currentPageSize === 50 ? 'selected' : ''}>50条/页</option>
-            <option value="100" ${currentPageSize === 100 ? 'selected' : ''}>100条/页</option>
-        </select>
-    `;
-            document.querySelector('.pagination-info').innerHTML = pageInfoHtml;
             document.querySelector('.pagination-info').dataset.total = total;
-
+            updatePaginationInfo(total);
             updateFilterOptions(data);
             renderShopRows(data);
             renderPagination(total, currentPage, currentPageSize);
+            
+            // 重置批量选择状态
+            document.getElementById('selectAll').checked = false;
+            document.getElementById('selectAll').indeterminate = false;
+            updateBulkActionBar();
+        }
+
+        // ==========================================
+        // 可搜索下拉框初始化
+        // ==========================================
+
+        function initSearchableSelects() {
+            // 店铺状态筛选器（多选）
+            statusSelect = new SearchableSelect('#temuShopStatusFilter', {
+                options: [
+                    { value: '', label: '全部状态' },
+                    { value: '1', label: '正常' },
+                    { value: '2', label: '停用' },
+                    { value: '3', label: '注销' }
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            statusSelect.setValue(['']);
+            statusSelect.onChange = () => filterTemuShops();
+
+            // 客户筛选器（多选）
+            customerSelect = new SearchableSelect('#temuCustomerFilter', {
+                options: [{ value: '', label: '全部客户' }, ...allCustomers.map(c => ({ value: c, label: c }))],
+                placeholder: '全部客户',
+                multiple: true
+            });
+            customerSelect.setValue(['']);
+            customerSelect.onChange = () => filterTemuShops();
+
+            // 运营人员筛选器（多选）
+            operatorSelect = new SearchableSelect('#temuOperatorFilter', {
+                options: [{ value: '', label: '全部人员' }, ...allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }))],
+                placeholder: '全部人员',
+                multiple: true
+            });
+            operatorSelect.setValue(['']);
+            operatorSelect.onChange = () => filterTemuShops();
+
+            // 运营分组筛选器（多选）
+            groupSelect = new SearchableSelect('#temuGroupFilter', {
+                options: [{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))],
+                placeholder: '全部分组',
+                multiple: true
+            });
+            groupSelect.setValue(['']);
+            groupSelect.onChange = () => filterTemuShops();
+        }
+
+        function updateFilterOptions() {
+            // 更新客户选项
+            if (customerSelect) {
+                const currentValue = customerSelect.getValue();
+                customerSelect.setOptions([{ value: '', label: '全部客户' }, ...allCustomers.map(c => ({ value: c, label: c }))]);
+                customerSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
+            }
+            
+            // 更新运营人员选项
+            if (operatorSelect) {
+                const currentValue = operatorSelect.getValue();
+                operatorSelect.setOptions([{ value: '', label: '全部人员' }, ...allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }))]);
+                operatorSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
+            }
+            
+            // 更新分组选项
+            if (groupSelect) {
+                const currentValue = groupSelect.getValue();
+                groupSelect.setOptions([{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))]);
+                groupSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
+            }
+        }
+
+        // ==========================================
+        // 批量操作功能
+        // ==========================================
+
+        function toggleSelectAll() {
+            const cb = document.getElementById('selectAll');
+            document.querySelectorAll('.shop-select-checkbox').forEach(el => el.checked = cb.checked);
+            updateBulkActionBar();
+        }
+
+        function updateBulkActionBar() {
+            const checked = document.querySelectorAll('.shop-select-checkbox:checked');
+            const count = checked.length;
+            const bar = document.getElementById('bulkActionBar');
+
+            const selectAll = document.getElementById('selectAll');
+            const allCheckboxes = document.querySelectorAll('.shop-select-checkbox');
+            if (allCheckboxes.length > 0 && count === allCheckboxes.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else if (count > 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            }
+
+            document.getElementById('selectedCountText').textContent = `已选择 ${count} 个店铺`;
+            if (count > 0) bar.classList.add('visible');
+            else bar.classList.remove('visible');
+        }
+
+        function clearSelection() {
+            document.getElementById('selectAll').checked = false;
+            document.getElementById('selectAll').indeterminate = false;
+            document.querySelectorAll('.shop-select-checkbox').forEach(el => el.checked = false);
+            updateBulkActionBar();
+        }
+
+        function getSelectedShopIds() {
+            return Array.from(document.querySelectorAll('.shop-select-checkbox:checked')).map(cb => parseInt(cb.value));
+        }
+
+        // ==========================================
+        // 批量项目操作
+        // ==========================================
+        let bulkActionType = null;
+
+        async function loadProjectsFromAPI() {
+            try {
+                const response = await fetch('/api/company/projects/');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const result = await response.json();
+                if (result.success) {
+                    allProjects = result.data;  // 保存到全局变量
+                    return result.data;
+                }
+                allProjects = [];
+                return [];
+            } catch (error) {
+                console.error('获取项目列表失败:', error);
+                allProjects = [];
+                return [];
+            }
+        }
+
+        async function openBulkProjectModal(action) {
+            bulkActionType = action;
+            const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                SearchableSelect.notify('请先选择要操作的店铺', 'warning');
+                return;
+            }
+
+            const title = action === 'add' ? '批量设置项目' : '批量移除项目';
+            const desc = action === 'add' 
+                ? `请选择要将 ${checkedBoxes.length} 个店铺设置到的项目：` 
+                : `确认将这 ${checkedBoxes.length} 个店铺移除出当前项目？`;
+
+            document.getElementById('bulkProjectModalTitle').textContent = title;
+            document.getElementById('bulkProjectDescription').textContent = desc;
+
+            // 生成项目列表
+            const listContainer = document.getElementById('bulkProjectList');
+            if (action === 'add') {
+                const projects = await loadProjectsFromAPI();
+                listContainer.innerHTML = projects.map(proj => `
+                    <label class="project-item">
+                        <input type="radio" name="bulk-project" value="${proj.id}">
+                        <span>${proj.name}</span>
+                    </label>
+                `).join('');
+            } else {
+                listContainer.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">点击确认后将移除选中店铺的项目归属</p>';
+            }
+
+            document.getElementById('bulkProjectModalOverlay').style.display = 'block';
+        }
+
+        function closeBulkProjectModal() {
+            document.getElementById('bulkProjectModalOverlay').style.display = 'none';
+            bulkActionType = null;
+        }
+
+        async function submitBulkProject() {
+            const currentActionType = bulkActionType;
+            const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+            const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+            let projectId = null;
+            if (currentActionType === 'add') {
+                const selectedProject = document.querySelector('input[name="bulk-project"]:checked');
+                if (!selectedProject) {
+                    SearchableSelect.notify('请选择一个项目', 'warning');
+                    return;
+                }
+                projectId = parseInt(selectedProject.value);
+            }
+
+            try {
+                const response = await fetch('/api/temu-shops/bulk-update-project/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        shop_ids: shopIds,
+                        project_id: projectId
+                    }),
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    closeBulkProjectModal();
+                    const successMsg = currentActionType === 'add' ? '批量设置项目成功！' : '批量移除项目成功！';
+                    SearchableSelect.notify(successMsg, 'success');
+                    loadShopsTable();
+                    clearSelection();
+                } else {
+                    SearchableSelect.notify('操作失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量操作失败:', error);
+                SearchableSelect.notify('操作失败，请检查网络连接', 'error');
+            }
+        }
+
+        function getCSRFToken() {
+            const cookieValue = document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
         }
 
         function renderShopRows(shops) {
@@ -454,8 +833,9 @@
             tbody.innerHTML = shops.map(shop => {
                 return `
             <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
-                <td class="field-id">${shop.id}</td>
-                <td class="field-shop_name">${shop.shop_name}</td>
+                <td class="w-checkbox"><input type="checkbox" class="shop-select-checkbox" value="${shop.id}" onchange="updateBulkActionBar()"></td>
+                <td class="field-shop_name" data-shop-id="${shop.id}">${shop.shop_name}</td>
+                <td class="field-project_name">${shop.project_name || '-'}</td>
                 <td class="field-customer">${shop.customer}</td>
                 <td class="field-ops_name">${shop.ops_first_name}</td>
                 <td class="field-ops_role">${shop.ops_role || '-'}</td>
@@ -492,10 +872,12 @@
         }
 
         function resetTemuShopFilters() {
-            document.getElementById('temuShopStatusFilter').value = '';
-            document.getElementById('temuCustomerFilter').value = '';
-            document.getElementById('temuOperatorFilter').value = '';
-            document.getElementById('temuGroupFilter').value = '';
+            // 重置 SearchableSelect 筛选器
+            if (statusSelect) statusSelect.setValue(['']);
+            if (customerSelect) customerSelect.setValue(['']);
+            if (operatorSelect) operatorSelect.setValue(['']);
+            if (groupSelect) groupSelect.setValue(['']);
+            
             document.getElementById('temuShopSearch').value = '';
             currentPage = 1;
             loadShopsTable();
@@ -510,6 +892,7 @@
             currentShopId = null;
             document.getElementById('modalTitle').textContent = '新建店铺';
             document.getElementById('modalBody').innerHTML = generateModalForm();
+            initModalSelects();
             document.getElementById('shopModalOverlay').style.display = 'block';
         }
 
@@ -528,6 +911,7 @@
                     if (result.success && result.data.length > 0) {
                         const fullData = result.data[0];
                         document.getElementById('modalBody').innerHTML = generateModalForm(fullData);
+                        initModalSelects();
                         document.getElementById('shopModalOverlay').style.display = 'block';
                     }
                 });
@@ -540,119 +924,164 @@
         }
 
         function generateModalForm(shopData = null) {
-            const isCreate = !shopData;
             const data = shopData || {};
-
-            const operatorOptionsHtml = allOperators.map(op => {
-                const selected = data.ops_id == op.id ? 'selected' : '';
-                return `<option value="${op.id}" ${selected}>${op.first_name} (${op.group})</option>`;
-            }).join('');
+            
+            // 保存数据到全局，供initModalSelects使用
+            window._modalData = data;
+            window._modalOperatorOptions = allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }));
+            window._modalStatusOptions = [
+                { value: '1', label: '正常' },
+                { value: '2', label: '停用' },
+                { value: '3', label: '注销' }
+            ];
+            window._modalProjectOptions = [{ value: '', label: '无项目' }, ...allProjects.map(p => ({ value: p.id, label: p.name }))];
 
             return `
-        <div class="section-title">🔍 基本信息</div>
-        <div class="form-group">
-            <label>店铺ID</label>
-            <input type="text" value="${data.id || '自动生成'}" disabled class="field-disabled">
-        </div>
-        <div class="form-group">
-            <label>店铺名称 <span style="color:red;">*</span></label>
-            <input type="text" id="modal-shop_name" value="${data.shop_name || ''}" required>
-        </div>
-        <div class="form-group">
-            <label>客户</label>
-            <input type="text" id="modal-customer" value="${data.customer || ''}">
-        </div>
-        <div class="form-group">
-            <label>运营人员</label>
-            <select id="modal-ops">${operatorOptionsHtml || '<option value="">无</option>'}</select>
-        </div>
-        <div class="form-group">
-            <label>运营分组</label>
-            <input type="text" id="modal-ops_group" value="${data.ops_group || ''}" disabled class="field-disabled">
-        </div>
-        <div class="form-group">
-            <label>状态</label>
-            <select id="modal-shop_status">
-                <option value="1" ${data.shop_status == 1 ? 'selected' : ''}>正常</option>
-                <option value="2" ${data.shop_status == 2 ? 'selected' : ''}>停用</option>
-                <option value="3" ${data.shop_status == 3 ? 'selected' : ''}>注销</option>
-            </select>
-        </div>
+            <div class="section-title">🔍 基本信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>店铺ID</label>
+                    <input type="text" value="${data.id || '自动生成'}" disabled class="field-disabled">
+                </div>
+                <div class="form-group">
+                    <label>店铺名称 <span style="color:red;">*</span></label>
+                    <input type="text" id="modal-shop_name" value="${data.shop_name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>项目</label>
+                    <div id="modal-project" class="searchable-select single"></div>
+                </div>
+                <div class="form-group">
+                    <label>客户</label>
+                    <input type="text" id="modal-customer" value="${data.customer || ''}">
+                </div>
+                <div class="form-group">
+                    <label>运营人员</label>
+                    <div id="modal-ops" class="searchable-select single"></div>
+                </div>
+                <div class="form-group">
+                    <label>运营分组</label>
+                    <input type="text" id="modal-ops_group" value="${data.ops_group || ''}" disabled class="field-disabled">
+                </div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <div id="modal-shop_status" class="searchable-select single"></div>
+                </div>
+                <div class="form-group">
+                    <label>登录账号</label>
+                    <input type="text" id="modal-shop_account" value="${data.shop_account || ''}">
+                </div>
+                <div class="form-group">
+                    <label>登录密码</label>
+                    <input type="text" id="modal-shop_password" class="password-input" value="${data.shop_password || ''}">
+                </div>
+            </div>
 
-        <div class="section-title">🔐 账号信息</div>
-        <div class="form-group">
-            <label>主体公司</label>
-            <input type="text" id="modal-shop_entity" value="${data.shop_entity || ''}">
-        </div>
-        <div class="form-group">
-            <label>登录账号</label>
-            <input type="text" id="modal-shop_account" value="${data.shop_account || ''}">
-        </div>
-        <div class="form-group">
-            <label>登录密码</label>
-            <input type="text" id="modal-shop_password" class="password-input" value="${data.shop_password || ''}">
-        </div>
-        <div class="form-group">
-            <label>邀请码</label>
-            <input type="text" id="modal-invitation_code" value="${data.invitation_code || ''}">
-        </div>
-        <div class="form-group">
-            <label>邮箱地址</label>
-            <input type="text" id="modal-verification_email" value="${data.verification_email || ''}">
-        </div>
-        <div class="form-group">
-            <label>邮箱密码</label>
-            <input type="text" id="modal-email_password" class="password-input" value="${data.email_password || ''}">
-        </div>
-        <div class="form-group">
-            <label>店铺TemuID</label>
-            <input type="text" id="modal-shop_temu_id" value="${data.shop_temu_id || ''}">
-        </div>
+            <div class="section-title">🔐 账号信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>主体公司</label>
+                    <input type="text" id="modal-shop_entity" value="${data.shop_entity || ''}">
+                </div>
+                <div class="form-group">
+                    <label>邀请码</label>
+                    <input type="text" id="modal-invitation_code" value="${data.invitation_code || ''}">
+                </div>
+                <div class="form-group">
+                    <label>邮箱地址</label>
+                    <input type="text" id="modal-verification_email" value="${data.verification_email || ''}">
+                </div>
+                <div class="form-group">
+                    <label>邮箱密码</label>
+                    <input type="text" id="modal-email_password" class="password-input" value="${data.email_password || ''}">
+                </div>
+                <div class="form-group">
+                    <label>店铺TemuID</label>
+                    <input type="text" id="modal-shop_temu_id" value="${data.shop_temu_id || ''}">
+                </div>
+            </div>
 
-        <div class="section-title">📋 合规信息</div>
-        <div class="form-group">
-            <label>合规中心</label>
-            <input type="text" id="modal-compliance_center" value="${data.compliance_center || ''}">
-        </div>
-        <div class="form-group">
-            <label>负责人信息申报</label>
-            <input type="text" id="modal-new_principal_info" value="${data.new_principal_info || ''}">
-        </div>
-        <div class="form-group">
-            <label>制造商信息申报</label>
-            <input type="text" id="modal-new_manufacturer_info" value="${data.new_manufacturer_info || ''}">
-        </div>
+            <div class="section-title">📋 合规信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>合规中心</label>
+                    <input type="text" id="modal-compliance_center" value="${data.compliance_center || ''}">
+                </div>
+                <div class="form-group">
+                    <label>负责人信息申报</label>
+                    <input type="text" id="modal-new_principal_info" value="${data.new_principal_info || ''}">
+                </div>
+                <div class="form-group">
+                    <label>制造商信息申报</label>
+                    <input type="text" id="modal-new_manufacturer_info" value="${data.new_manufacturer_info || ''}">
+                </div>
+            </div>
 
-        <div class="section-title">📱 联系信息</div>
-        <div class="form-group">
-            <label>手机号开户人</label>
-            <input type="text" id="modal-phone_account_holder" value="${data.phone_account_holder || ''}">
-        </div>
-        <div class="form-group">
-            <label>手机号现存放位置</label>
-            <input type="text" id="modal-phone_current_location" value="${data.phone_current_location || ''}">
-        </div>
+            <div class="section-title">📱 联系信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>手机号开户人</label>
+                    <input type="text" id="modal-phone_account_holder" value="${data.phone_account_holder || ''}">
+                </div>
+                <div class="form-group">
+                    <label>手机号现存放位置</label>
+                    <input type="text" id="modal-phone_current_location" value="${data.phone_current_location || ''}">
+                </div>
+            </div>
 
-        <div class="section-title">🏢 企业信息</div>
-        <div class="form-group">
-            <label>性质</label>
-            <input type="text" id="modal-shop_nature" value="${data.shop_nature || ''}">
-        </div>
-        <div class="form-group">
-            <label>归属地</label>
-            <input type="text" id="modal-place_of_origin" value="${data.place_of_origin || ''}">
-        </div>
-        <div class="form-group">
-            <label>法人</label>
-            <input type="text" id="modal-legal_person" value="${data.legal_person || ''}">
-        </div>
+            <div class="section-title">🏢 企业信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>性质</label>
+                    <input type="text" id="modal-shop_nature" value="${data.shop_nature || ''}">
+                </div>
+                <div class="form-group">
+                    <label>归属地</label>
+                    <input type="text" id="modal-place_of_origin" value="${data.place_of_origin || ''}">
+                </div>
+                <div class="form-group">
+                    <label>法人</label>
+                    <input type="text" id="modal-legal_person" value="${data.legal_person || ''}">
+                </div>
+            </div>
 
-        <div class="section-title">🔗 关联信息</div>
-        <div class="form-group">
-            <label>迪唯店铺ID</label>
-            <input type="number" id="modal-divi_shop_id" value="${data.divi_shop_id || ''}">
-        </div>
-    `;
+            <div class="section-title">🔗 关联信息</div>
+            <div class="form-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem;">
+                <div class="form-group">
+                    <label>迪唯店铺ID</label>
+                    <input type="number" id="modal-divi_shop_id" value="${data.divi_shop_id || ''}">
+                </div>
+            </div>
+        `;
+        }
+
+        function initModalSelects() {
+            const data = window._modalData || {};
+            
+            // 运营人员下拉框
+            modalOpsSelect = new SearchableSelect('#modal-ops', {
+                options: window._modalOperatorOptions || [],
+                placeholder: '请选择运营人员'
+            });
+            modalOpsSelect.onChange = (val) => {
+                const op = allOperators.find(o => o.id == val);
+                if (op) document.getElementById('modal-ops_group').value = op.group || '';
+            };
+            if (data.ops_id) modalOpsSelect.setValue(data.ops_id);
+
+            // 状态下拉框
+            modalStatusSelect = new SearchableSelect('#modal-shop_status', {
+                options: window._modalStatusOptions || [],
+                placeholder: '请选择状态'
+            });
+            modalStatusSelect.setValue(data.shop_status ? String(data.shop_status) : '1');
+
+            // 项目下拉框
+            modalProjectSelect = new SearchableSelect('#modal-project', {
+                options: window._modalProjectOptions || [],
+                placeholder: '请选择项目'
+            });
+            if (data.project_id) modalProjectSelect.setValue(String(data.project_id));
         }
 
         async function saveShopModal() {
@@ -661,8 +1090,9 @@
             const formData = {
                 shop_name: v('modal-shop_name'),
                 customer: v('modal-customer'),
-                ops: v('modal-ops'),
-                shop_status: parseInt(v('modal-shop_status') || '1'),
+                project_id: modalProjectSelect ? modalProjectSelect.getValue() : null,
+                ops: modalOpsSelect ? modalOpsSelect.getValue() : '',
+                shop_status: parseInt(modalStatusSelect ? modalStatusSelect.getValue() : '1'),
                 shop_entity: v('modal-shop_entity'),
                 shop_account: v('modal-shop_account'),
                 shop_password: v('modal-shop_password'),
@@ -682,7 +1112,7 @@
             };
 
             if (!formData.shop_name) {
-                alert('店铺名称是必填项！');
+                SearchableSelect.notify('店铺名称是必填项！', 'warning');
                 return;
             }
 
@@ -699,15 +1129,15 @@
 
                 const result = await response.json();
                 if (result.success) {
-                    alert(modalMode === 'create' ? '店铺创建成功！' : '店铺更新成功！');
+                    SearchableSelect.notify(modalMode === 'create' ? '店铺创建成功！' : '店铺更新成功！', 'success');
                     closeModal();
                     loadShopsTable();
                 } else {
-                    alert('操作失败：' + (result.error || '未知错误'));
+                    SearchableSelect.notify('操作失败：' + (result.error || '未知错误'), 'error');
                 }
             } catch (error) {
                 console.error('保存失败:', error);
-                alert('保存失败，请检查网络连接并重试');
+                SearchableSelect.notify('保存失败，请检查网络连接并重试', 'error');
             }
         }
 
@@ -720,70 +1150,162 @@
         }
 
         // ==========================================
-        // 新增：导出Excel功能
+        // 导出Excel功能
         // ==========================================
-        async function exportToExcel() {
+        
+        // 可导出的列定义
+        const EXPORT_COLUMNS = [
+            { key: 'id', label: 'ID', group: '基本信息', tableVisible: false },
+            { key: 'shop_name', label: '店铺名称', group: '基本信息', tableVisible: true },
+            { key: 'project_name', label: '所属项目', group: '基本信息', tableVisible: true },
+            { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
+            { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true },
+            { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true },
+            { key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true },
+            { key: 'shop_status', label: '状态', group: '基本信息', tableVisible: true },
+            { key: 'shop_account', label: '登录账号', group: '账号信息', tableVisible: true },
+            { key: 'shop_password', label: '店铺密码', group: '账号信息' },
+            { key: 'verification_email', label: '验证邮箱', group: '账号信息', tableVisible: true },
+            { key: 'email_password', label: '邮箱密码', group: '账号信息' },
+            { key: 'invitation_code', label: '邀请码', group: '账号信息' },
+            { key: 'shop_temu_id', label: 'Temu店铺ID', group: '账号信息', tableVisible: true },
+            { key: 'shop_entity', label: '主体公司', group: '公司信息', tableVisible: true },
+            { key: 'legal_person', label: '法人', group: '公司信息', tableVisible: true },
+            { key: 'place_of_origin', label: '归属地', group: '公司信息' },
+            { key: 'shop_nature', label: '店铺性质', group: '公司信息' },
+            { key: 'compliance_center', label: '合规中心', group: '其他' },
+            { key: 'phone_account_holder', label: '手机开户人', group: '其他' },
+            { key: 'phone_current_location', label: '手机存放地', group: '其他' },
+            { key: 'new_principal_info', label: '负责人信息', group: '其他' },
+            { key: 'new_manufacturer_info', label: '制造商信息', group: '其他' },
+            { key: 'divi_shop_id', label: '迪唯ID', group: '其他' }
+        ];
+
+        const EXPORT_STORAGE_KEY = 'temu_export_columns_selected';
+        let excelExporter = null;
+
+        // 初始化导出器
+        function initExcelExporter() {
+            excelExporter = new ExcelExporter({
+                storageKey: EXPORT_STORAGE_KEY,
+                columns: EXPORT_COLUMNS,
+                sheetName: 'Temu店铺列表',
+                fileNamePrefix: 'Temu店铺列表',
+                notify: showNotification,
+                fetchData: async () => {
+                    const formatMultiSelect = (values) => {
+                        if (!values) return '';
+                        if (Array.isArray(values)) {
+                            const nonEmpty = values.filter(v => v !== '');
+                            return nonEmpty.length > 0 ? nonEmpty.join(',') : '';
+                        }
+                        return values;
+                    };
+
+                    const params = new URLSearchParams({
+                        page: 1,
+                        page_size: 5000,
+                        status: formatMultiSelect(statusSelect ? statusSelect.getValue() : ''),
+                        operator: formatMultiSelect(operatorSelect ? operatorSelect.getValue() : ''),
+                        ops_group: formatMultiSelect(groupSelect ? groupSelect.getValue() : ''),
+                        customer: formatMultiSelect(customerSelect ? customerSelect.getValue() : ''),
+                        search: document.getElementById('temuShopSearch').value
+                    });
+
+                    const response = await fetch(`/api/temu-shops/?${params}`);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.json();
+                }
+            });
+        }
+
+        // 打开导出模态框
+        function openExportModal() {
+            const selectedKeys = excelExporter.getSavedSelectedColumns();
+            renderExportColumnSelectors(selectedKeys);
+            document.getElementById('exportModalOverlay').style.display = 'block';
+        }
+
+        // 关闭导出模态框
+        function closeExportModal() {
+            document.getElementById('exportModalOverlay').style.display = 'none';
+        }
+
+        // 渲染列选择器
+        function renderExportColumnSelectors(selectedKeys) {
+            const container = document.getElementById('exportModalBody');
+            
+            // 按分组组织列
+            const groups = {};
+            EXPORT_COLUMNS.forEach(col => {
+                const group = col.group || '其他';
+                if (!groups[group]) groups[group] = [];
+                groups[group].push(col);
+            });
+
+            let html = '';
+            Object.entries(groups).forEach(([groupName, groupColumns]) => {
+                html += `
+                <div class="export-group" style="margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: var(--text-primary); font-size: 0.95rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                        ${groupName}
+                    </h4>
+                    <div class="export-columns" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem;">
+                        ${groupColumns.map(col => `
+                            <label class="export-column-item" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.25rem;">
+                                <input type="checkbox" value="${col.key}" ${selectedKeys.includes(col.key) ? 'checked' : ''} 
+                                       style="width: 16px; height: 16px; cursor: pointer;">
+                                <span style="font-size: 0.9rem; color: var(--text-primary);">${col.label}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        // 全选/全不选
+        function selectAllExportColumns(select) {
+            const checkboxes = document.querySelectorAll('#exportModalBody input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = select);
+        }
+
+        // 确认导出
+        async function confirmExport() {
+            const checkboxes = document.querySelectorAll('#exportModalBody input[type="checkbox"]:checked');
+            const selectedKeys = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedKeys.length === 0) {
+                showNotification('请至少选择一列导出！', 'warning');
+                return;
+            }
+
+            // 保存选择
+            excelExporter.saveSelectedColumns(selectedKeys);
+            closeExportModal();
+
+            // 显示加载状态
+            const exportBtn = document.querySelector('.btn-export');
+            const originalText = exportBtn.innerHTML;
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 导出中...';
+            exportBtn.disabled = true;
+
             try {
-                // 使用当前筛选条件，拉取全部分页数据（不分页）
-                const params = new URLSearchParams({
-                    page: 1,
-                    page_size: 5000, // 一次性拉取全部
-                    status: document.getElementById('temuShopStatusFilter').value,
-                    operator: document.getElementById('temuOperatorFilter').value,
-                    ops_group: document.getElementById('temuGroupFilter').value,
-                    customer: document.getElementById('temuCustomerFilter').value,
-                    search: document.getElementById('temuShopSearch').value
-                });
+                await excelExporter.export(selectedKeys);
+            } finally {
+                exportBtn.innerHTML = originalText;
+                exportBtn.disabled = false;
+            }
+        }
 
-                const response = await fetch(`/api/temu-shops/?${params}`);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const result = await response.json();
-                if (!result.success) {
-                    alert('导出失败：' + result.error);
-                    return;
-                }
-
-                const shops = result.data || [];
-                if (shops.length === 0) {
-                    alert('当前没有可导出的数据');
-                    return;
-                }
-
-                const headers = ['店铺名称', '客户', '运营人员', '角色', '运营分组'];
-                const data = [headers];
-
-                shops.forEach(shop => {
-                    data.push([
-                        shop.shop_name || '-',
-                        shop.customer || '-',
-                        shop.ops_first_name || '-',
-                        shop.ops_role || '-',
-                        shop.ops_group || '-'
-                    ]);
-                });
-
-                const ws = XLSX.utils.aoa_to_sheet(data);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Temu店铺列表');
-
-                ws['!cols'] = [
-                    {wch: 25},
-                    {wch: 20},
-                    {wch: 15},
-                    {wch: 15},
-                    {wch: 15}
-                ];
-
-                const dateStr = new Date().toLocaleDateString('zh-CN').replace(/\//g, '-');
-                const fileName = `Temu店铺列表_${dateStr}.xlsx`;
-
-                XLSX.writeFile(wb, fileName);
-
-                console.log(`成功导出 ${shops.length} 条记录`);
-            } catch (error) {
-                console.error('导出失败:', error);
-                alert('导出失败，请重试：' + error.message);
+        // 通知函数
+        function showNotification(message, type = 'info', duration = 3000) {
+            // 复用SearchableSelect的通知方法
+            if (typeof SearchableSelect !== 'undefined' && SearchableSelect.notify) {
+                SearchableSelect.notify(message, type, duration);
+            } else {
+                alert(message);
             }
         }
 
@@ -792,14 +1314,26 @@
         // ==========================================
 
         document.addEventListener('DOMContentLoaded', async function () {
-            await Promise.all([loadOperatorsFromAPI("Temu"), loadGroupsFromAPI("Temu"), loadCustomersFromAPI()]);
+            await Promise.all([
+                loadOperatorsFromAPI("Temu"), 
+                loadGroupsFromAPI("Temu"), 
+                loadCustomersFromAPI(),
+                loadProjectsFromAPI()
+            ]);
+            
+            // 初始化筛选器
+            initSearchableSelects();
+            
+            // 初始化Excel导出器
+            initExcelExporter();
+            
             loadShopsTable();
 
             // 添加回车键快捷键
             const filterSection = document.querySelector('.filter-section');
             if (filterSection) {
                 filterSection.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                    if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.closest('.searchable-select'))) {
                         e.preventDefault();
                         filterTemuShops();
                     }
@@ -830,8 +1364,15 @@
             if (e.target === this) closeModal();
         });
 
+        document.getElementById('exportModalOverlay').addEventListener('click', function (e) {
+            if (e.target === this) closeExportModal();
+        });
+
         document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeModal();
+            if (e.key === 'Escape') {
+                closeModal();
+                closeExportModal();
+            }
         });
     </script>
 {% endblock %}
