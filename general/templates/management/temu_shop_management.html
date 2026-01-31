@@ -10,39 +10,11 @@
             min-width: 3200px;
         }
         
-        /* 覆盖通用样式中的固定列设置，适配复选框列 */
-        #temuShopsTable th:nth-child(1),
-        #temuShopsTable td:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            min-width: 45px !important;
-            max-width: 45px !important;
-            width: 45px !important;
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        #temuShopsTable th:nth-child(1) {
-            z-index: 12;
-            background-color: var(--bg-secondary);
-        }
-        
-        /* 第二列店铺名称固定 - 宽度增加到1.5倍 */
+        /* 第二列店铺名称宽度 */
         #temuShopsTable th:nth-child(2),
         #temuShopsTable td:nth-child(2) {
-            position: sticky;
-            left: 45px;
-            z-index: 10;
-            background-color: var(--bg-primary);
             min-width: 225px;
             max-width: 225px;
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        #temuShopsTable th:nth-child(2) {
-            z-index: 13;
-            background-color: var(--bg-secondary);
         }
         
         .pagination-btn-new {

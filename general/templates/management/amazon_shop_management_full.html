@@ -26,7 +26,7 @@
             min-width: 4200px;
         }
 
-        /* 设置固定列的宽度 */
+        /* 设置前两列宽度（通用样式已包含sticky定位，left=45px） */
         .table-container td:nth-child(1),
         .table-container th:nth-child(1) {
             min-width: 80px;
@@ -39,39 +39,6 @@
             min-width: 200px;
             max-width: 200px;
             width: 200px;
-        }
-
-        /* 左侧固定列特殊处理 */
-        .table-container td:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container td:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 10;
-            background-color: var(--bg-primary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container th:nth-child(1) {
-            position: sticky;
-            left: 0;
-            z-index: 12;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .table-container th:nth-child(2) {
-            position: sticky;
-            left: 80px;
-            z-index: 13;
-            background-color: var(--bg-secondary);
-            box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
         }
 
         .field-disabled {

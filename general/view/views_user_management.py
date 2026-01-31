@@ -43,6 +43,7 @@ def user_management_view(request):
 
     context = {
         'active_page': 'user_management',
+        'active_nav': 'management',
         'current_company': request.user.company.name if request.user.company else '未分配公司'
     }
     return render(request, 'management/user_management.html', context)
@@ -68,7 +69,7 @@ def get_users_api(request):
         page_size = int(request.GET.get('page_size', 10))
         if page < 1:
             page = 1
-        if page_size not in [10, 20, 50, 100]:
+        if page_size not in [10, 20, 50, 100, 200]:
             page_size = 10
 
         # 筛选参数
@@ -81,7 +82,7 @@ def get_users_api(request):
         # ===== 公司隔离：只查本公司人员 =====
         queryset = User.objects.filter(
             company=current_company
-        ).select_related('operational_account', 'company', 'default_project').prefetch_related('projects')
+        ).select_related('operational_account', 'company')
 
         # 应用筛选
         if role_filter:
@@ -124,12 +125,6 @@ def get_users_api(request):
             # 权限列表
             permissions = list(user.permission_configs.values_list('code', flat=True))
 
-            # 项目信息
-            default_project_id = user.default_project.id if user.default_project else None
-            default_project_name = user.default_project.name if user.default_project else '-'
-            project_ids = list(user.projects.values_list('id', flat=True))
-            project_names = list(user.projects.values_list('name', flat=True))
-
             user_dict = {
                 'id': user.id,
                 'username': user.username,
@@ -145,11 +140,6 @@ def get_users_api(request):
                 'role': user.role or '',
                 'platform': user.platform or '',
                 'remark': user.remark or '',
-                # 新增项目字段
-                'default_project_id': default_project_id,
-                'default_project_name': default_project_name,
-                'project_ids': project_ids,
-                'project_names': project_names,
             }
 
             if account:
@@ -219,40 +209,6 @@ def create_user_api(request):
         if not username:
             return JsonResponse({'success': False, 'error': '用户名不能为空'}, status=400)
 
-        # 验证项目选择（强制）
-        default_project_id = data.get('default_project_id')
-        project_ids = data.get('project_ids', [])
-
-        if not default_project_id:
-            return JsonResponse({'success': False, 'error': '必须选择主属项目'}, status=400)
-
-        if not project_ids or len(project_ids) == 0:
-            return JsonResponse({'success': False, 'error': '必须选择至少一个参与项目'}, status=400)
-
-        # 验证项目是否属于当前公司
-        try:
-            default_project = Project.objects.get(id=default_project_id, company=current_company)
-            projects = Project.objects.filter(id__in=project_ids, company=current_company)
-
-            if projects.count() != len(project_ids):
-                return JsonResponse({
-                    'success': False,
-                    'error': '所选项目不属于当前公司或不存在'
-                }, status=400)
-
-            # 验证主属项目是否在参与项目中
-            if int(default_project_id) not in [int(pid) for pid in project_ids]:
-                return JsonResponse({
-                    'success': False,
-                    'error': '主属项目必须在参与项目列表中'
-                }, status=400)
-
-        except Project.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '主属项目不存在或不属于当前公司'
-            }, status=400)
-
         # 本公司内用户名唯一检查
         if User.objects.filter(company=current_company, username=username).exists():
             return JsonResponse({
@@ -273,14 +229,10 @@ def create_user_api(request):
                     'inactive': User.Status.DISABLED,
                 }.get(data.get('status'), User.Status.NORMAL),
                 company=current_company,
-                default_project=default_project,
                 platform=data.get('platform', ''),
                 remark=data.get('remark', ''),
                 wx_url=data.get('wx_url', ''),
             )
-
-            # 设置多对多项目关系
-            user.projects.set(projects)
 
             # 设置密码
             password = data.get('password', '').strip()
@@ -367,46 +319,11 @@ def update_user_api(request, user_id):
                 'error': '用户不存在或不属于您的公司'
             }, status=404)
 
-        # 验证项目选择（强制）
-        default_project_id = data.get('default_project_id')
-        project_ids = data.get('project_ids', [])
-
-        if not default_project_id:
-            return JsonResponse({'success': False, 'error': '必须选择主属项目'}, status=400)
-
-        if not project_ids or len(project_ids) == 0:
-            return JsonResponse({'success': False, 'error': '必须选择至少一个参与项目'}, status=400)
-
-        # 验证项目归属
-        try:
-            default_project = Project.objects.get(id=default_project_id, company=current_company)
-            projects = Project.objects.filter(id__in=project_ids, company=current_company)
-
-            if projects.count() != len(project_ids):
-                return JsonResponse({
-                    'success': False,
-                    'error': '所选项目不属于当前公司'
-                }, status=400)
-
-            # 验证主属项目是否在参与项目中
-            if int(default_project_id) not in [int(pid) for pid in project_ids]:
-                return JsonResponse({
-                    'success': False,
-                    'error': '主属项目必须在参与项目列表中'
-                }, status=400)
-
-        except Project.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'error': '主属项目不存在'
-            }, status=400)
-
         with transaction.atomic():
             user.first_name = data.get('first_name', user.first_name)
             user.phone = data.get('phone', user.phone)
             user.department = data.get('department', user.department)
             user.role = data.get('role', user.role)
-            user.default_project = default_project
             user.platform = data.get('platform', user.platform)
             user.remark = data.get('remark', user.remark)
             user.wx_url = data.get('wx_url', user.wx_url)
@@ -424,9 +341,6 @@ def update_user_api(request, user_id):
             if password:
                 user.set_password(password)
             user.save()
-
-            # 更新项目多对多关系
-            user.projects.set(projects)
 
             # 权限更新
             if 'permissions' in data:
@@ -674,6 +588,43 @@ def get_ops_groups_api(request):
 
     except Exception as e:
         print(f"获取运营小组列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_GET
+@login_required
+def get_departments_api(request):
+    """
+    获取本公司内所有部门列表
+    """
+    try:
+        current_company = get_user_company(request.user)
+        if not current_company:
+            return JsonResponse({'success': False, 'error': '无公司归属'}, status=403)
+
+        departments = User.objects.filter(
+            company=current_company
+        ).exclude(
+            department__isnull=True
+        ).exclude(
+            department=''
+        ).values_list(
+            'department', flat=True
+        ).distinct().order_by('department')
+
+        depts_data = [{'key': dept, 'name': dept} for dept in departments]
+
+        return JsonResponse({
+            'success': True,
+            'data': depts_data
+        })
+
+    except Exception as e:
+        print(f"获取部门列表错误: {str(e)}")
         traceback.print_exc()
         return JsonResponse({
             'success': False,
