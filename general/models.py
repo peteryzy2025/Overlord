@@ -421,6 +421,8 @@ class TemuShop(models.Model):
         on_delete=models.PROTECT,  # 项目删了店铺还在，只是没项目
         related_name='temu_shops',
         verbose_name='所属项目',
+        null=True,
+        blank=True,
         db_comment='业务分组标签，可自由迁移'
     )
     shop_name = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺名称')

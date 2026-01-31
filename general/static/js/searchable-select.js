@@ -516,3 +516,58 @@ SearchableSelect.notify = function(message, type = 'info', duration = 3000) {
 
 // DOM加载完成后自动初始化
 document.addEventListener('DOMContentLoaded', SearchableSelect.initAll);
+
+/**
+ * 通用分页工具函数
+ * @param {Object} options - 配置选项
+ * @param {number} options.page - 目标页码
+ * @param {number} options.currentPage - 当前页码变量（会被修改）
+ * @param {number} options.total - 总记录数
+ * @param {number} options.pageSize - 每页条数
+ * @param {Function} options.loadData - 加载数据的函数（应返回 Promise）
+ * @param {string} [options.tableSelector='.table-container'] - 表格容器选择器
+ * @param {number} [options.offset=100] - 滚动偏移量
+ */
+function changePageWithScroll(options) {
+    const { page, currentPage, total, pageSize, loadData, tableSelector = '.table-container', offset = 100 } = options;
+    
+    const totalPages = Math.ceil(total / pageSize);
+    if (page < 1 || page > totalPages) return Promise.resolve();
+    
+    // 记录当前表格位置
+    const tableContainer = document.querySelector(tableSelector);
+    const scrollOffset = tableContainer 
+        ? tableContainer.getBoundingClientRect().top + window.pageYOffset - offset 
+        : window.pageYOffset;
+    
+    // 更新当前页（修改传入的引用）
+    options.currentPage.value = page;
+    
+    return loadData().then(() => {
+        // 滚动回之前的位置
+        window.scrollTo({
+            top: scrollOffset,
+            behavior: 'smooth'
+        });
+    });
+}
+
+/**
+ * 简化的页码跳转处理
+ * @param {number} page - 目标页码
+ * @param {Function} callback - 切换页码后的回调函数
+ * @param {string} [tableSelector='.table-container'] - 表格容器选择器
+ */
+function handlePageChange(page, callback, tableSelector = '.table-container') {
+    const tableContainer = document.querySelector(tableSelector);
+    const scrollOffset = tableContainer 
+        ? tableContainer.getBoundingClientRect().top + window.pageYOffset - 100 
+        : window.pageYOffset;
+    
+    Promise.resolve(callback(page)).then(() => {
+        window.scrollTo({
+            top: scrollOffset,
+            behavior: 'smooth'
+        });
+    });
+}

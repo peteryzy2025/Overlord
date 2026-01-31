@@ -80,6 +80,7 @@ urlpatterns = [
     path('api/temu-shops/', views_temu_management.get_temu_shops_api, name='get_temu_shops'),
     path('api/temu-shops/create/', views_temu_management.create_temu_shop_api, name='create_temu_shop'),
     path('api/temu-shops/<int:shop_id>/update/', views_temu_management.update_temu_shop_api, name='update_temu_shop'),
+    path('api/temu-shops/bulk-update-project/', views_temu_management.bulk_update_project_api, name='temu_bulk_update_project'),
 
     # ========== 绩效管理 ==========
     path('performance/', views_performance.performance_targets_view, name='performance_targets'),
