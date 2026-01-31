@@ -131,9 +131,20 @@ def get_users_api(request):
             # 构建部门角色（仅运营部显示）
             department_role = ''
             if user.department == 'operation' and account:
-                platform = account.platform or ''
+                # 平台中文映射
+                platform_map = {
+                    'amazon': 'Amazon',
+                    'temu': 'Temu',
+                }
+                # 角色中文映射
+                role_map = {
+                    'leader': '运营组长',
+                    'staff': '运营',
+                    'assistant': '运营助理',
+                }
+                platform = platform_map.get(account.platform, account.platform) if account.platform else ''
                 ops_group = account.ops_group or ''
-                role = account.role or ''
+                role = role_map.get(account.role, account.role) if account.role else ''
                 # 平台-运营分组-角色
                 parts = [p for p in [platform, ops_group, role] if p]
                 if parts:
