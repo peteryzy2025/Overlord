@@ -55,7 +55,14 @@
 
         .permission-checkbox:hover {
             border-color: var(--accent-color);
-            background-color: var(--accent-color-transparent, rgba(59, 130, 246, 0.1));
+            background-color: var(--accent-color-transparent, rgba(59, 130, 246, 0.05));
+        }
+
+        /* 已勾选的权限卡片 */
+        .permission-checkbox:has(input[type="checkbox"]:checked) {
+            border-color: #10b981;
+            background-color: rgba(16, 185, 129, 0.05);
+            box-shadow: 0 0 0 1px #10b981;
         }
 
         .permission-checkbox input[type="checkbox"] {
@@ -80,8 +87,7 @@
         .permission-code {
             font-size: 0.75rem;
             color: var(--accent-color);
-            font-family: monospace;
-            font-weight: 600;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--accent-color-transparent, rgba(59, 130, 246, 0.1));
             padding: 1px 6px;
             border-radius: 4px;
@@ -90,13 +96,14 @@
         .permission-name {
             font-size: 0.875rem;
             color: var(--text-primary);
-            font-weight: 600;
+            font-weight: 400;
         }
 
         .permission-desc {
             font-size: 0.75rem;
             color: var(--text-secondary);
             line-height: 1.4;
+            font-weight: 400;
         }
 
         .permission-checkbox.admin .permission-code {
@@ -252,10 +259,10 @@
                 <tr>
                     <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                     <th>姓名</th>
+                    <th>状态</th>
                     <th>用户名</th>
                     <th>部门</th>
                     <th>部门角色</th>
-                    <th>状态</th>
                     <th>权限</th>
                     <th>企业微信通知</th>
                     <th>操作</th>
@@ -692,15 +699,15 @@
                            ${selectedUserIds.has(user.id) ? 'checked' : ''}
                            onchange="toggleSelectUser(${user.id})"></td>
                     <td>${user.first_name}</td>
-                    <td>${user.username}</td>
-                    <td>${DEPARTMENT_MAP[user.department] || '-'}</td>
-                    <td>${user.department_role || '-'}</td>
                     <td>
                         <span class="status-badge status-${user.status}">
                             <span class="status-dot"></span>
                             ${user.status === 'active' ? '正常' : '停用'}
                         </span>
                     </td>
+                    <td>${user.username}</td>
+                    <td>${DEPARTMENT_MAP[user.department] || '-'}</td>
+                    <td>${user.department_role || '-'}</td>
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
                     <td>
