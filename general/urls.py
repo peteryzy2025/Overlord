@@ -28,6 +28,8 @@ urlpatterns = [
     path('api/users/<int:user_id>/update/', views_user_management.update_user_api, name='update_user_api'),
     path('api/users/bulk-permissions/', views_user_management.bulk_update_permissions_api,
          name='bulk_update_permissions_api'),
+    path('api/users/bulk-department/', views_user_management.bulk_update_department_api,
+         name='bulk_update_department_api'),
 
     # 辅助数据API
     path('api/roles/', views_user_management.get_roles_api, name='get_roles_api'),
