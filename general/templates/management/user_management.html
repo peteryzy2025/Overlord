@@ -711,6 +711,7 @@
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
                     <td>
+                        <button class="btn btn-sm" onclick="openViewModal(${user.id})" style="margin-right: 0.5rem;">查看</button>
                         <button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>
                     </td>
                 </tr>
@@ -939,7 +940,139 @@
         }
 
         // ==================== 模态框操作 ====================
+        function openViewModal(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            document.getElementById('userModalTitle').textContent = '查看人员';
+            document.getElementById('userId').value = user.id;
+            document.getElementById('username').value = user.username;
+            document.getElementById('username').disabled = true;
+            document.getElementById('username').style.backgroundColor = 'var(--bg-tertiary)';
+            document.getElementById('firstName').value = user.first_name === '-' ? '' : user.first_name;
+            document.getElementById('firstName').disabled = true;
+            document.getElementById('firstName').style.backgroundColor = 'var(--bg-tertiary)';
+            document.getElementById('password').value = '';
+            document.getElementById('password').disabled = true;
+            document.getElementById('password').style.backgroundColor = 'var(--bg-tertiary)';
+            document.getElementById('passwordRequired').style.display = 'none';
+            document.getElementById('phone').value = user.phone === '-' ? '' : user.phone;
+            document.getElementById('phone').disabled = true;
+            document.getElementById('phone').style.backgroundColor = 'var(--bg-tertiary)';
+            document.getElementById('wxUrl').value = user.wx_url || '';
+            document.getElementById('wxUrl').disabled = true;
+            document.getElementById('wxUrl').style.backgroundColor = 'var(--bg-tertiary)';
+            document.getElementById('remark').value = user.remark || '';
+            document.getElementById('remark').disabled = true;
+            document.getElementById('remark').style.backgroundColor = 'var(--bg-tertiary)';
+
+            // 初始化模态框中的下拉框（只读）
+            initModalSelects(user);
+            if (modalDepartmentSelect) modalDepartmentSelect.disable();
+            if (modalStatusSelect) modalStatusSelect.disable();
+            if (modalPlatformSelect) modalPlatformSelect.disable();
+            if (modalOpsRoleSelect) modalOpsRoleSelect.disable();
+
+            // 设置权限选择（只读）
+            const userPermissions = user.permissions.map(p => String(p));
+            document.querySelectorAll('input[name="permission"]').forEach(cb => {
+                cb.checked = userPermissions.includes(String(cb.value));
+                cb.disabled = true;
+            });
+
+            // 设置运营账号信息（只读）
+            if (user.operational_account && Object.keys(user.operational_account).length > 0) {
+                const ops = user.operational_account;
+                document.getElementById('opsGroup').value = ops.ops_group === '-' ? '' : ops.ops_group;
+                document.getElementById('opsGroup').disabled = true;
+                document.getElementById('opsGroup').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunAccount').value = ops.shandianyun_account === '-' ? '' : ops.shandianyun_account;
+                document.getElementById('shandianyunAccount').disabled = true;
+                document.getElementById('shandianyunAccount').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunUsername').value = ops.shandianyun_username === '-' ? '' : ops.shandianyun_username;
+                document.getElementById('shandianyunUsername').disabled = true;
+                document.getElementById('shandianyunUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunPassword').value = ops.shandianyun_password === '-' ? '' : ops.shandianyun_password;
+                document.getElementById('shandianyunPassword').disabled = true;
+                document.getElementById('shandianyunPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('lingxingUsername').value = ops.lingxing_username === '-' ? '' : ops.lingxing_username;
+                document.getElementById('lingxingUsername').disabled = true;
+                document.getElementById('lingxingUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('lingxingPassword').value = ops.lingxing_password === '-' ? '' : ops.lingxing_password;
+                document.getElementById('lingxingPassword').disabled = true;
+                document.getElementById('lingxingPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoCompany').value = ops.ziniao_company === '-' ? '' : ops.ziniao_company;
+                document.getElementById('ziniaoCompany').disabled = true;
+                document.getElementById('ziniaoCompany').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoUsername').value = ops.ziniao_username === '-' ? '' : ops.ziniao_username;
+                document.getElementById('ziniaoUsername').disabled = true;
+                document.getElementById('ziniaoUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoPassword').value = ops.ziniao_password === '-' ? '' : ops.ziniao_password;
+                document.getElementById('ziniaoPassword').disabled = true;
+                document.getElementById('ziniaoPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diweiAccount').value = ops.diwei_account === '-' ? '' : ops.diwei_account;
+                document.getElementById('diweiAccount').disabled = true;
+                document.getElementById('diweiAccount').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diweiPassword').value = ops.diwei_password === '-' ? '' : ops.diwei_password;
+                document.getElementById('diweiPassword').disabled = true;
+                document.getElementById('diweiPassword').style.backgroundColor = 'var(--bg-tertiary)';
+            } else {
+                // 清空并禁用运营账号表单
+                document.getElementById('opsGroup').value = '';
+                document.getElementById('opsGroup').disabled = true;
+                document.getElementById('opsGroup').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunAccount').value = '';
+                document.getElementById('shandianyunAccount').disabled = true;
+                document.getElementById('shandianyunAccount').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunUsername').value = '';
+                document.getElementById('shandianyunUsername').disabled = true;
+                document.getElementById('shandianyunUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('shandianyunPassword').value = '';
+                document.getElementById('shandianyunPassword').disabled = true;
+                document.getElementById('shandianyunPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('lingxingUsername').value = '';
+                document.getElementById('lingxingUsername').disabled = true;
+                document.getElementById('lingxingUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('lingxingPassword').value = '';
+                document.getElementById('lingxingPassword').disabled = true;
+                document.getElementById('lingxingPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoCompany').value = '';
+                document.getElementById('ziniaoCompany').disabled = true;
+                document.getElementById('ziniaoCompany').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoUsername').value = '';
+                document.getElementById('ziniaoUsername').disabled = true;
+                document.getElementById('ziniaoUsername').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('ziniaoPassword').value = '';
+                document.getElementById('ziniaoPassword').disabled = true;
+                document.getElementById('ziniaoPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diweiAccount').value = '';
+                document.getElementById('diweiAccount').disabled = true;
+                document.getElementById('diweiAccount').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diweiPassword').value = '';
+                document.getElementById('diweiPassword').disabled = true;
+                document.getElementById('diweiPassword').style.backgroundColor = 'var(--bg-tertiary)';
+            }
+
+            // 更新运营账号区域可见性
+            updateOperationalSectionVisibility();
+
+            // 隐藏保存按钮，只显示关闭按钮
+            const footer = document.querySelector('#userModalOverlay .modal-footer');
+            footer.innerHTML = '<button type="button" class="btn btn-secondary" onclick="closeUserModal()">关闭</button>';
+
+            document.getElementById('userModalOverlay').style.display = 'block';
+        }
+
         function openCreateModal() {
+            // 恢复footer
+            const footer = document.querySelector('#userModalOverlay .modal-footer');
+            if (footer) {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">取消</button>
+                    <button type="button" class="btn btn-save-modal" onclick="saveUser()">保存</button>
+                `;
+            }
+
             document.getElementById('userModalTitle').textContent = '新建人员';
             document.getElementById('userId').value = '';
             document.getElementById('userForm').reset();
@@ -951,11 +1084,50 @@
             usernameInput.style.backgroundColor = '';
             usernameInput.style.color = '';
             
+            // 启用所有输入框
+            document.getElementById('firstName').disabled = false;
+            document.getElementById('firstName').style.backgroundColor = '';
+            document.getElementById('password').disabled = false;
+            document.getElementById('password').style.backgroundColor = '';
+            document.getElementById('phone').disabled = false;
+            document.getElementById('phone').style.backgroundColor = '';
+            document.getElementById('wxUrl').disabled = false;
+            document.getElementById('wxUrl').style.backgroundColor = '';
+            document.getElementById('remark').disabled = false;
+            document.getElementById('remark').style.backgroundColor = '';
+            
+            // 启用所有运营账号输入框
+            document.getElementById('opsGroup').disabled = false;
+            document.getElementById('opsGroup').style.backgroundColor = '';
+            document.getElementById('shandianyunAccount').disabled = false;
+            document.getElementById('shandianyunAccount').style.backgroundColor = '';
+            document.getElementById('shandianyunUsername').disabled = false;
+            document.getElementById('shandianyunUsername').style.backgroundColor = '';
+            document.getElementById('shandianyunPassword').disabled = false;
+            document.getElementById('shandianyunPassword').style.backgroundColor = '';
+            document.getElementById('lingxingUsername').disabled = false;
+            document.getElementById('lingxingUsername').style.backgroundColor = '';
+            document.getElementById('lingxingPassword').disabled = false;
+            document.getElementById('lingxingPassword').style.backgroundColor = '';
+            document.getElementById('ziniaoCompany').disabled = false;
+            document.getElementById('ziniaoCompany').style.backgroundColor = '';
+            document.getElementById('ziniaoUsername').disabled = false;
+            document.getElementById('ziniaoUsername').style.backgroundColor = '';
+            document.getElementById('ziniaoPassword').disabled = false;
+            document.getElementById('ziniaoPassword').style.backgroundColor = '';
+            document.getElementById('diweiAccount').disabled = false;
+            document.getElementById('diweiAccount').style.backgroundColor = '';
+            document.getElementById('diweiPassword').disabled = false;
+            document.getElementById('diweiPassword').style.backgroundColor = '';
+            
             // 初始化模态框中的下拉框
             initModalSelects();
             
             // 清空权限选择
-            document.querySelectorAll('input[name="permission"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[name="permission"]').forEach(cb => {
+                cb.checked = false;
+                cb.disabled = false;
+            });
             
             // 显示运营账号表单
             updateOperationalSectionVisibility();
@@ -966,6 +1138,54 @@
         async function openEditModal(userId) {
             const user = allUsers.find(u => u.id === userId);
             if (!user) return;
+
+            // 恢复footer
+            const footer = document.querySelector('#userModalOverlay .modal-footer');
+            if (footer) {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">取消</button>
+                    <button type="button" class="btn btn-save-modal" onclick="saveUser()">保存</button>
+                `;
+            }
+
+            // 启用所有输入框（查看模式会禁用）
+            document.getElementById('firstName').disabled = false;
+            document.getElementById('firstName').style.backgroundColor = '';
+            document.getElementById('password').disabled = false;
+            document.getElementById('password').style.backgroundColor = '';
+            document.getElementById('phone').disabled = false;
+            document.getElementById('phone').style.backgroundColor = '';
+            document.getElementById('wxUrl').disabled = false;
+            document.getElementById('wxUrl').style.backgroundColor = '';
+            document.getElementById('remark').disabled = false;
+            document.getElementById('remark').style.backgroundColor = '';
+            document.getElementById('opsGroup').disabled = false;
+            document.getElementById('opsGroup').style.backgroundColor = '';
+            document.getElementById('shandianyunAccount').disabled = false;
+            document.getElementById('shandianyunAccount').style.backgroundColor = '';
+            document.getElementById('shandianyunUsername').disabled = false;
+            document.getElementById('shandianyunUsername').style.backgroundColor = '';
+            document.getElementById('shandianyunPassword').disabled = false;
+            document.getElementById('shandianyunPassword').style.backgroundColor = '';
+            document.getElementById('lingxingUsername').disabled = false;
+            document.getElementById('lingxingUsername').style.backgroundColor = '';
+            document.getElementById('lingxingPassword').disabled = false;
+            document.getElementById('lingxingPassword').style.backgroundColor = '';
+            document.getElementById('ziniaoCompany').disabled = false;
+            document.getElementById('ziniaoCompany').style.backgroundColor = '';
+            document.getElementById('ziniaoUsername').disabled = false;
+            document.getElementById('ziniaoUsername').style.backgroundColor = '';
+            document.getElementById('ziniaoPassword').disabled = false;
+            document.getElementById('ziniaoPassword').style.backgroundColor = '';
+            document.getElementById('diweiAccount').disabled = false;
+            document.getElementById('diweiAccount').style.backgroundColor = '';
+            document.getElementById('diweiPassword').disabled = false;
+            document.getElementById('diweiPassword').style.backgroundColor = '';
+            
+            // 启用所有权限checkbox
+            document.querySelectorAll('input[name="permission"]').forEach(cb => {
+                cb.disabled = false;
+            });
 
             document.getElementById('userModalTitle').textContent = '编辑人员';
             document.getElementById('userId').value = user.id;
@@ -1038,6 +1258,16 @@
 
         function closeUserModal() {
             document.getElementById('userModalOverlay').style.display = 'none';
+            // 恢复footer（查看模式会改变footer）
+            setTimeout(() => {
+                const footer = document.querySelector('#userModalOverlay .modal-footer');
+                if (footer) {
+                    footer.innerHTML = `
+                        <button type="button" class="btn btn-secondary" onclick="closeUserModal()">取消</button>
+                        <button type="button" class="btn btn-save-modal" onclick="saveUser()">保存</button>
+                    `;
+                }
+            }, 100);
         }
 
         function initModalSelects(userData = null) {
