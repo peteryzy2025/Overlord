@@ -107,7 +107,10 @@ def get_users_api(request):
             )
 
         if ops_group_filter:
-            queryset = queryset.filter(operational_account__ops_group=ops_group_filter)
+            # 支持多个运营分组（逗号分隔）
+            ops_groups = [g.strip() for g in ops_group_filter.split(',') if g.strip()]
+            if ops_groups:
+                queryset = queryset.filter(operational_account__ops_group__in=ops_groups)
 
         total_count = queryset.count()
         offset = (page - 1) * page_size
@@ -125,16 +128,28 @@ def get_users_api(request):
             # 权限列表
             permissions = list(user.permission_configs.values_list('code', flat=True))
 
+            # 构建部门角色（仅运营部显示）
+            department_role = ''
+            if user.department == 'operation' and account:
+                platform = account.platform or ''
+                ops_group = account.ops_group or ''
+                role = account.role or ''
+                # 平台-运营分组-角色
+                parts = [p for p in [platform, ops_group, role] if p]
+                if parts:
+                    department_role = '-'.join(parts)
+            
             user_dict = {
                 'id': user.id,
                 'username': user.username,
                 'first_name': user.first_name or '-',
                 'phone': user.phone or '-',
                 'department': user.department or '-',
+                'department_role': department_role,
                 'status': status_display_map.get(user.status, 'inactive'),
                 'company_name': user.company.name if user.company else '-',
                 'wx_url': user.wx_url or '',
-                'ops_group': account.ops_group or '-' if account else '-',
+                'ops_group': account.ops_group or '' if account else '',
                 'createdAt': user.date_joined.strftime('%Y-%m-%d') if user.date_joined else '-',
                 'permissions': permissions,
                 'role': user.role or '',
@@ -144,6 +159,9 @@ def get_users_api(request):
 
             if account:
                 user_dict['operational_account'] = {
+                    'platform': account.platform or '',
+                    'role': account.role or 'staff',
+                    'ops_group': account.ops_group or '',
                     'shandianyun_account': account.shandianyun_account or '-',
                     'shandianyun_username': account.shandianyun_username or '-',
                     'shandianyun_password': account.shandianyun_password or '-',
@@ -154,12 +172,20 @@ def get_users_api(request):
                     'ziniao_password': account.ziniao_password or '-',
                     'diwei_account': account.diwei_account or '-',
                     'diwei_password': account.diwei_password or '-',
-                    'role': account.role or 'staff',
                 }
             else:
                 user_dict['operational_account'] = {}
 
             users_data.append(user_dict)
+
+        # 获取所有运营分组（用于筛选项）
+        all_ops_groups = OperationalAccount.objects.filter(
+            user__company=current_company
+        ).exclude(
+            ops_group__isnull=True
+        ).exclude(
+            ops_group=''
+        ).values_list('ops_group', flat=True).distinct().order_by('ops_group')
 
         return JsonResponse({
             'success': True,
@@ -169,6 +195,7 @@ def get_users_api(request):
             'page_size': page_size,
             'company_id': current_company.id,
             'company_name': current_company.name,
+            'ops_groups': list(all_ops_groups),
         })
 
     except Exception as e:
@@ -258,6 +285,8 @@ def create_user_api(request):
                 OperationalAccount.objects.create(
                     user=user,
                     ops_group=account_data.get('ops_group', ''),
+                    platform=account_data.get('platform', ''),
+                    role=account_data.get('role', 'staff'),
                     shandianyun_account=account_data.get('shandianyun_account', ''),
                     shandianyun_username=account_data.get('shandianyun_username', ''),
                     shandianyun_password=account_data.get('shandianyun_password', ''),
@@ -268,7 +297,6 @@ def create_user_api(request):
                     ziniao_password=account_data.get('ziniao_password', ''),
                     diwei_account=account_data.get('diwei_account', ''),
                     diwei_password=account_data.get('diwei_password', ''),
-                    role=account_data.get('role', 'staff'),
                 )
 
         return JsonResponse({
@@ -371,6 +399,8 @@ def update_user_api(request, user_id):
                     user=user,
                     defaults={
                         'ops_group': account_data.get('ops_group', ''),
+                        'platform': account_data.get('platform', ''),
+                        'role': account_data.get('role', 'staff'),
                         'shandianyun_account': account_data.get('shandianyun_account', ''),
                         'shandianyun_username': account_data.get('shandianyun_username', ''),
                         'shandianyun_password': account_data.get('shandianyun_password', ''),
@@ -381,11 +411,12 @@ def update_user_api(request, user_id):
                         'ziniao_password': account_data.get('ziniao_password', ''),
                         'diwei_account': account_data.get('diwei_account', ''),
                         'diwei_password': account_data.get('diwei_password', ''),
-                        'role': account_data.get('role', 'staff'),
                     }
                 )
                 if not created:
                     account.ops_group = account_data.get('ops_group', account.ops_group)
+                    account.platform = account_data.get('platform', account.platform)
+                    account.role = account_data.get('role', account.role)
                     account.shandianyun_account = account_data.get('shandianyun_account', account.shandianyun_account)
                     account.shandianyun_username = account_data.get('shandianyun_username',
                                                                     account.shandianyun_username)
@@ -398,7 +429,6 @@ def update_user_api(request, user_id):
                     account.ziniao_password = account_data.get('ziniao_password', account.ziniao_password)
                     account.diwei_account = account_data.get('diwei_account', account.diwei_account)
                     account.diwei_password = account_data.get('diwei_password', account.diwei_password)
-                    account.role = account_data.get('role', account.role)
                     account.save()
 
         return JsonResponse({
@@ -551,6 +581,58 @@ def bulk_update_permissions_api(request):
 
     except Exception as e:
         print(f"批量权限操作错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def bulk_update_department_api(request):
+    """
+    批量设置用户部门
+    """
+    try:
+        current_company = get_user_company(request.user)
+        if not current_company:
+            return JsonResponse({
+                'success': False,
+                'error': '无公司归属'
+            }, status=403)
+
+        # 权限检查
+        if not can_access_user_management(request.user):
+            return JsonResponse({
+                'success': False,
+                'error': '无权操作'
+            }, status=403)
+
+        data = json.loads(request.body)
+        user_ids = data.get('user_ids', [])
+        department = data.get('department', '')
+
+        if not user_ids or not isinstance(user_ids, list):
+            return JsonResponse({'success': False, 'error': '未选择任何用户'}, status=400)
+
+        with transaction.atomic():
+            # 仅操作本公司用户
+            users = User.objects.filter(id__in=user_ids, company=current_company)
+            actual_count = users.count()
+
+            for user in users:
+                user.department = department
+                user.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'已成功更新 {actual_count} 位用户的部门'
+        })
+
+    except Exception as e:
+        print(f"批量部门操作错误: {str(e)}")
         traceback.print_exc()
         return JsonResponse({
             'success': False,
