@@ -1,7 +1,7 @@
 # sync_rangking_day.py
 """
 运营日/周排名报告 v4
-功能：从User模型出发，统计运营部门所有人员的亚马逊+Temu业绩
+功能：从User模型出发，统计运营部所有人员的亚马逊+Temu业绩
 发送：个人→自己，组长→组长，经理→user.id=1，均抄送自己一份
 """
 
@@ -36,6 +36,7 @@ from encouragement_bank import get_encouragement
 PERIOD = "day"  # "day" 或 "week"
 # PERIOD = "week"  # "day" 或 "week"
 TEST_MODE = False  # True=只发自己；False=发自己+目标用户
+# TEST_MODE = True  # True=只发自己；False=发自己+目标用户
 # TEST_MODE = False  # True=只发自己；False=发自己+目标用户
 
 # 企业微信Webhook配置
@@ -115,7 +116,7 @@ def send_markdown_with_backup(markdown_content: str, primary_url: Optional[str] 
 
 
 # ===== 核心统计函数：获取单个运营数据 =====
-def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]:
+def get_single_operator_stats(user_id: int, target_date: date, company_id: int = 1) -> Dict[str, Any]:
     """
     获取单个运营人员在指定日期的统计数据（亚马逊+Temu合并）
     返回: {
@@ -130,20 +131,27 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         'sales_quantity': 0,
         'idle_shops': {'amazon': [], 'temu': []},
         'month_sales': 0,
-        'has_amazon_shop': False,  # 新增：是否有亚马逊店铺
-        'has_temu_shop': False  # 新增：是否有Temu店铺
+        'has_amazon_shop': False,
+        'has_temu_shop': False
     }
 
-    # 获取用户和运营账号信息
+    # 获取用户和运营账号信息（修正department + 添加company过滤）
     try:
-        user = User.objects.get(id=user_id, status=1, department='运营部门')
-        ops_group = user.get_ops_group() if hasattr(user, 'operational_account') else None
+        user = User.objects.get(
+            id=user_id,
+            status=User.Status.NORMAL,  # 或写 1
+            department=User.Department.OPERATION,  # 修正：'operation'，不是'运营部'
+            company_id=company_id  # 关键：必须筛选公司
+        )
     except User.DoesNotExist:
         return result
 
-    # ===== 1. 亚马逊统计 =====
+    # ===== 1. 亚马逊统计（添加company过滤）=====
     # 获取所有状态的店铺（用于订单/销量统计）
-    all_amazon_shops = AmazonShop.objects.filter(ops=user_id)
+    all_amazon_shops = AmazonShop.objects.filter(
+        ops=user_id,
+        company_id=company_id  # 关键修正：只查该公司下的店铺
+    )
     all_amazon_shop_ids = list(all_amazon_shops.values_list('id', flat=True))
 
     if all_amazon_shop_ids:
@@ -171,10 +179,11 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
             )
             result['sales_quantity'] += int(quantity_agg['total_quantity'] or 0)
 
-    # 获取正常状态的店铺（仅用于闲置判断）
+    # 获取正常状态的店铺（仅用于闲置判断）- 也要加company过滤
     normal_amazon_shops = AmazonShop.objects.filter(
         ops=user_id,
-        shop_status='正常'
+        shop_status='正常',
+        company_id=company_id
     )
 
     # 闲置店铺判断：只检查正常状态的店铺
@@ -188,8 +197,11 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         if not has_orders:
             result['idle_shops']['amazon'].append(shop.shop_name)
 
-    # ===== 2. Temu统计 =====
-    temu_shops = TemuShop.objects.filter(ops_id=user_id)
+    # ===== 2. Temu统计（添加company过滤）=====
+    temu_shops = TemuShop.objects.filter(
+        ops_id=user_id,
+        company_id=company_id  # 关键修正：只查该公司下的店铺
+    )
     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
     if temu_shop_ids:
@@ -225,7 +237,6 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         result['sales_quantity'] += int(temu_quantity_agg['total_quantity'] or 0)
 
         # 闲置店铺判断：近7天是否有订单（Temu无店铺状态字段）
-        seven_days_ago = target_date - timedelta(days=6)
         for shop in temu_shops:
             has_orders = TemuOrder.objects.filter(
                 lingxing_shop__temu_shop_id=shop.id,
@@ -276,25 +287,27 @@ def get_single_operator_stats(user_id: int, target_date: date) -> Dict[str, Any]
         )
         result['month_sales'] += int(temu_month_qty['total'] or 0)
         result['has_temu_shop'] = True
+
     return result
 
-
-# ===== 获取运营部门所有用户 =====
+# ===== 获取运营部所有用户 =====
 def get_all_operators() -> List[User]:
-    """获取所有运营部门且状态正常的用户"""
+    """获取所有运营部门且状态正常的用户（默认公司1）"""
     return User.objects.filter(
-        status=1,
-        department='运营部门'
+        status=User.Status.NORMAL,
+        department=User.Department.OPERATION,  # 'operation'
+        company_id=1  # 硬编码公司1，或改为参数传入
     ).select_related('operational_account')
 
 
 # ===== 获取所有组长 =====
 def get_all_leaders() -> List[User]:
-    """获取所有运营组长且状态正常的用户"""
+    """获取所有运营组长且状态正常的用户（默认公司1）"""
     return User.objects.filter(
-        status=1,
-        department='运营部门',
-        role='运营组长'
+        status=User.Status.NORMAL,
+        department=User.Department.OPERATION,  # 'operation'
+        company_id=1,  # 硬编码公司1
+        operational_account__role=OperationalAccount.Role.LEADER  # 'leader'
     ).select_related('operational_account')
 
 
@@ -416,7 +429,7 @@ def render_personal_report(
     try:
         target = PersonalPerformanceTarget.objects.get(
             user=user,
-            month=month_start 
+            month=month_start
         ).target_performance
     except:
         target = None
@@ -558,7 +571,7 @@ def render_leader_report(
         try:
             target = PersonalPerformanceTarget.objects.get(
                 user=user,
-                month=month_start 
+                month=month_start
             ).target_performance
         except:
             target = None
@@ -808,7 +821,7 @@ def render_manager_report(
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=group_name,
-                month=month_start 
+                month=month_start
             ).target_performance
         except:
             group_target = None
@@ -940,7 +953,7 @@ def send_leader_report(target_date: date, period: str = "day"):
         try:
             group_target = GroupPerformanceTarget.objects.get(
                 ops_group=leader_group,
-                month=month_start 
+                month=month_start
             ).target_performance
         except:
             group_target = None
@@ -966,7 +979,7 @@ def send_manager_report(target_date: date, period: str = "day"):
     print(f"{'=' * 70}\n")
 
     try:
-        manager = User.objects.get(id=1, status=1)
+        manager = User.objects.get(id=1, status=User.Status.NORMAL)
     except User.DoesNotExist:
         print("❌ 找不到经理用户 (id=1)")
         return
