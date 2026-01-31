@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/roles/', views_user_management.get_roles_api, name='get_roles_api'),
     path('api/permissions/', views_user_management.get_permission_configs_api, name='get_permission_configs_api'),
     path('api/users/ops-groups/', views_user_management.get_ops_groups_api, name='get_users_ops_groups_api'),
+    path('api/users/departments/', views_user_management.get_departments_api, name='get_users_departments_api'),
     path('api/company/projects/', views_user_management.get_company_projects_api, name='get_company_projects_api'),
     # 新增：获取公司项目列表
 

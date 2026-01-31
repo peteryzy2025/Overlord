@@ -342,7 +342,15 @@
     background-color: var(--bg-secondary);
 }
 
-/* 左侧固定列（ID和名称） */
+/* ============================================
+   表格固定列样式（复选框/ID + 名称列）
+   适用于：店铺管理、人员管理等页面
+   使用方式：
+   - 第一列固定：自动识别 .w-checkbox (45px) 或默认 (80px)
+   - 第二列固定：页面需自行设置 left 值（45px 或 80px）
+   ============================================ */
+
+/* 第一列固定 */
 .table-container td:nth-child(1),
 .table-container th:nth-child(1) {
     position: sticky;
@@ -350,9 +358,6 @@
     z-index: 10;
     background-color: var(--bg-primary);
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-    min-width: 80px;
-    max-width: 80px;
-    width: 80px;
 }
 
 .table-container th:nth-child(1) {
@@ -360,16 +365,22 @@
     background-color: var(--bg-secondary);
 }
 
+/* 第一列是复选框时的特殊处理 */
+.table-container th.w-checkbox,
+.table-container td.w-checkbox {
+    min-width: 45px !important;
+    max-width: 45px !important;
+    width: 45px !important;
+}
+
+/* 第二列固定（默认left=45px，对应.w-checkbox宽度） */
 .table-container td:nth-child(2),
 .table-container th:nth-child(2) {
     position: sticky;
-    left: 80px;
+    left: 45px;
     z-index: 10;
     background-color: var(--bg-primary);
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
-    min-width: 200px;
-    max-width: 200px;
-    width: 200px;
 }
 
 .table-container th:nth-child(2) {
@@ -583,6 +594,95 @@
 .pagination-btn-new.ellipsis:hover {
     background-color: transparent;
     color: var(--text-primary);
+}
+
+/* ============================================
+   分页组件 - 简化版样式 (用于人员管理等页面)
+   ============================================ */
+
+.pagination-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.75rem 0;
+}
+
+.pagination-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pagination-info {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.pagination {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+}
+
+.page-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 0.625rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn:hover:not(:disabled) {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.page-btn.active {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.page-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-ellipsis {
+    color: var(--text-secondary);
+    padding: 0 0.5rem;
+}
+
+/* 每页条数选择下拉框 */
+.page-size-select {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.page-size-select:hover {
+    border-color: var(--accent-color);
+}
+
+.page-size-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 /* 每页条数选择 - 自定义样式 */
@@ -978,13 +1078,18 @@
         justify-content: flex-end;
     }
 
-    .pagination-container {
+    .pagination-container,
+    .pagination-wrapper {
         flex-direction: column;
         gap: 1rem;
         align-items: stretch;
     }
 
     .pagination {
+        justify-content: center;
+    }
+    
+    .pagination-left {
         justify-content: center;
     }
 

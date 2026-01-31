@@ -136,24 +136,6 @@ class User(AbstractUser):
         verbose_name='所属公司',
         help_text='用户所属的公司，多租户隔离用'
     )
-    default_project = models.ForeignKey(
-        Project,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='default_users',
-        verbose_name='主属项目',
-        db_comment='用户默认所属项目，用于页面默认筛选（如"店铺列表"默认展示该项目店铺）'
-    )
-
-    # 参与项目列表：用户可在多个项目协作，同一公司内数据互通
-    projects = models.ManyToManyField(
-        Project,
-        blank=True,
-        related_name='members',
-        verbose_name='参与项目',
-        help_text='用户参与的项目列表，仅用于分类标记，不做权限隔离'
-    )
     permission_configs = models.ManyToManyField(
         PermissionConfig,
         blank=True,
