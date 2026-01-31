@@ -207,6 +207,7 @@
                 <p class="page-subtitle">管理Amazon店铺信息和配置</p>
             </div>
             <div>
+                {% if is_admin %}
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus"></i>
                     <span>新建店铺</span>
@@ -215,6 +216,7 @@
                     <i class="fas fa-download"></i>
                     <span>导出</span>
                 </button>
+                {% endif %}
             </div>
         </div>
 
@@ -314,6 +316,10 @@
                 <i class="fas fa-minus-circle"></i>
                 <span>移除出项目</span>
             </button>
+            <button class="btn btn-create" onclick="openBulkOperatorModal()">
+                <i class="fas fa-user-edit"></i>
+                <span>批量设置运营人员</span>
+            </button>
         </div>
 
         <div class="table-container">
@@ -322,12 +328,12 @@
                     <tr>
                         <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                         <th>店铺名称</th>
+                        <th>状态</th>
                         <th>项目</th>
                         <th>客户</th>
                         <th>运营人员</th>
                         <th>角色</th>
                         <th>运营分组</th>
-                        <th>状态</th>
                         <th>亚马逊名称</th>
                         <th>下店日期</th>
                         <th>店铺序号</th>
@@ -464,6 +470,26 @@
         </div>
     </div>
 </div>
+
+<!-- 批量设置运营人员模态框 -->
+<div class="modal-overlay" id="bulkOperatorModalOverlay">
+    <div class="modal-content" style="max-width: 500px; min-height: 300px;">
+        <div class="modal-header">
+            <h2 class="modal-title">批量设置运营人员</h2>
+            <button class="modal-close" onclick="closeBulkOperatorModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>选择运营人员</label>
+                <div id="bulkOperatorSelect" class="searchable-select single"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeBulkOperatorModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitBulkOperator()">确认</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -482,23 +508,26 @@
     
     // 权限与配置
     const USER_PERMISSIONS = JSON.parse('{{ user_permissions_json|default:"[]"|escapejs }}');
-    const IS_ADMIN = USER_PERMISSIONS.includes('ops_all') || USER_PERMISSIONS.includes('admin');
+    // 将权限码统一转为字符串比较
+    const userPermsStr = USER_PERMISSIONS.map(p => String(p));
+    const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552');
     
+    // 普通用户只能看到邮箱密码及之前的列
     const NON_ADMIN_VISIBLE_KEYS = [
         'shop_name', 'project_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
         'shop_status', 'amazon_shop_name', 'shop_date', 'shop_number', 'seller_mark',
-        'qu_dao', 'ip_address', 'browser', 'email_account', 'email_password'
+        'qu_dao', 'ip_address', 'browser', 'whitelist', 'email_account', 'email_password'
     ];
 
     // 所有可导出的列定义
     const EXPORT_COLUMNS = [
         { key: 'shop_name', label: '店铺名称', group: '基本信息', tableVisible: true },
+        { key: 'shop_status', label: '状态', group: '基本信息', tableVisible: true },
         { key: 'project_name', label: '项目', group: '基本信息', tableVisible: true },
         { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
         { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true, isRelated: true },
-        { key: 'shop_status', label: '状态', group: '基本信息', tableVisible: true },
         { key: 'amazon_shop_name', label: '亚马逊名称', group: '基本信息', tableVisible: true },
         { key: 'shop_date', label: '下店日期', group: '基本信息', tableVisible: true },
         { key: 'shop_number', label: '店铺序号', group: '基本信息', tableVisible: true },
@@ -1362,6 +1391,72 @@
     function closeBulkProjectModal() {
         document.getElementById('bulkProjectModalOverlay').style.display = 'none';
         bulkActionType = null;
+    }
+
+    // ========== 批量设置运营人员 ==========
+    let bulkOperatorSelect = null;
+
+    function openBulkOperatorModal() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        // 初始化运营人员选择器
+        if (!bulkOperatorSelect) {
+            bulkOperatorSelect = new SearchableSelect('#bulkOperatorSelect', {
+                options: allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` })),
+                placeholder: '请选择运营人员'
+            });
+        }
+        bulkOperatorSelect.setValue('');
+        document.getElementById('bulkOperatorModalOverlay').style.display = 'block';
+    }
+
+    function closeBulkOperatorModal() {
+        document.getElementById('bulkOperatorModalOverlay').style.display = 'none';
+    }
+
+    async function submitBulkOperator() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        const operatorId = bulkOperatorSelect ? bulkOperatorSelect.getValue() : '';
+        if (!operatorId) {
+            showNotification('请选择运营人员', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/amazon-shops/bulk-update-operator/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    shop_ids: shopIds,
+                    operator_id: parseInt(operatorId)
+                }),
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                closeBulkOperatorModal();
+                showNotification('批量设置运营人员成功！', 'success');
+                loadShopsTable();
+                // 清空选择
+                document.getElementById('selectAll').checked = false;
+                document.querySelectorAll('.shop-select-checkbox').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('批量设置运营人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
     }
 
     async function submitBulkProject() {

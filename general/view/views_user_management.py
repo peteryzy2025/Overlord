@@ -19,12 +19,43 @@ def has_perm_code(user, code):
     # 兼容旧逻辑：如果用户 ID 是 555 且 code=555，也视为有权限（迁移期兼容）
     if str(user.id) == '555' and str(code) == '555':
         return True
-    return user.permission_configs.filter(code=str(code)).exists()
+    # code字段是IntegerField，尝试转为整数比较
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
 
 
 def can_access_user_management(user):
     """人员管理页面权限：555(超管) 或 551(人事管理员)"""
     return has_perm_code(user, '555') or has_perm_code(user, '551')
+
+
+def is_ops_leader(user):
+    """检查用户是否是运营组长"""
+    if not user or user.department != 'operation':
+        return False
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        return False
+    return account.role == 'leader'
+
+
+def get_ops_group_members(user):
+    """获取运营组长组内的所有成员ID列表"""
+    account = getattr(user, 'operational_account', None)
+    if not account or not account.ops_group:
+        return []
+    
+    # 查找同一运营分组的所有用户
+    members = User.objects.filter(
+        company=user.company,
+        department='operation',
+        operational_account__ops_group=account.ops_group
+    ).values_list('id', flat=True)
+    
+    return list(members)
 
 
 def get_user_company(user):
@@ -37,14 +68,18 @@ def get_user_company(user):
 # ============ 页面视图 ============
 @login_required
 def user_management_view(request):
-    """渲染人员管理页面（555或551权限可访问）"""
-    if not can_access_user_management(request.user):
-        return redirect('general:main')
-
+    """渲染人员管理页面（所有登录用户可访问）"""
+    import json
+    user_perms = list(request.user.permission_configs.values_list('code', flat=True))
+    # 将权限码转为字符串用于模板比较
+    user_perms_str = [str(p) for p in user_perms]
     context = {
         'active_page': 'user_management',
         'active_nav': 'management',
-        'current_company': request.user.company.name if request.user.company else '未分配公司'
+        'current_company': request.user.company.name if request.user.company else '未分配公司',
+        'user_permissions': user_perms_str,  # 用于Django模板条件判断
+        'user_permissions_json': json.dumps(user_perms),  # 用于JS
+        'is_ops_leader': is_ops_leader(request.user),
     }
     return render(request, 'management/user_management.html', context)
 
@@ -54,7 +89,11 @@ def user_management_view(request):
 @login_required
 def get_users_api(request):
     """
-    API接口：获取用户列表（已改造：公司隔离）
+    API接口：获取用户列表（已改造：公司隔离 + 权限控制）
+    权限规则：
+    1. 555管理员/551人事管理：可看所有人
+    2. 运营组长：可看自己和组员
+    3. 普通用户：只能看自己
     """
     try:
         # 公司隔离检查
@@ -83,6 +122,28 @@ def get_users_api(request):
         queryset = User.objects.filter(
             company=current_company
         ).select_related('operational_account', 'company')
+
+        # ===== 权限过滤 =====
+        current_user = request.user
+        can_manage = can_access_user_management(current_user)
+        
+        if not can_manage:
+            # 普通用户或运营组长，只能看特定人员
+            if is_ops_leader(current_user):
+                # 运营组长：看自己和组员
+                leader_account = getattr(current_user, 'operational_account', None)
+                if leader_account and leader_account.ops_group:
+                    queryset = queryset.filter(
+                        Q(id=current_user.id) |  # 自己
+                        Q(department='operation', 
+                          operational_account__ops_group=leader_account.ops_group)  # 同组组员
+                    )
+                else:
+                    # 没有运营分组信息，只能看自己
+                    queryset = queryset.filter(id=current_user.id)
+            else:
+                # 普通用户：只能看自己
+                queryset = queryset.filter(id=current_user.id)
 
         # 应用筛选
         if role_filter:

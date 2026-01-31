@@ -1,7 +1,7 @@
 # General/views_amazon_management.py
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from general.models import User, AmazonShop, OperationalAccount
@@ -13,14 +13,81 @@ import traceback
 from amazon.amazon_views import parse_permissions
 
 
+# ============ 权限辅助函数 ============
+def has_perm_code(user, code):
+    """检查用户是否有特定权限码"""
+    if not user or not user.is_authenticated:
+        return False
+    # code字段是IntegerField，尝试转为整数比较
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
+
+
+def can_access_shop_management(user):
+    """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
+    return has_perm_code(user, '555') or has_perm_code(user, '552')
+
+
+def is_ops_leader(user):
+    """检查用户是否是运营组长"""
+    if not user or user.department != 'operation':
+        return False
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        return False
+    return account.role == 'leader'
+
+
+def get_visible_ops_ids(user):
+    """获取用户可以看到的运营人员ID列表"""
+    # 管理员可以看到所有人
+    if can_access_shop_management(user):
+        return None  # None表示不限制
+    
+    # 非运营部人员看不到任何店铺
+    if user.department != 'operation':
+        return []
+    
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        return [user.id]
+    
+    # 运营组长可以看自己和组员
+    if account.role == 'leader' and account.ops_group:
+        members = User.objects.filter(
+            company=user.company,
+            department='operation',
+            operational_account__ops_group=account.ops_group
+        ).values_list('id', flat=True)
+        return list(members)
+    
+    # 普通运营只能看自己
+    return [user.id]
+
+
 # Amazon店铺管理页面视图
 @login_required
 def amazon_management_view(request):
-    """渲染Amazon店铺管理页面"""
+    """渲染Amazon店铺管理页面（仅运营部或管理员可访问）"""
+    user = request.user
+    
+    # 检查权限：管理员或运营部人员可以访问
+    if not can_access_shop_management(user) and user.department != 'operation':
+        return redirect('general:main')
+    
+    import json
+    user_perms = list(user.permission_configs.values_list('code', flat=True))
+    user_perms_str = [str(p) for p in user_perms]
     context = {
         'active_page': 'amazon_management',
         'user_ops_group': getattr(request.user, 'get_ops_group', lambda: None)(),
-        'user_permissions_json': json.dumps(parse_permissions(getattr(request.user, 'permission', '')))
+        'user_permissions': user_perms_str,  # 用于Django模板条件判断
+        'user_permissions_json': json.dumps(user_perms),  # 用于JS
+        'is_admin': can_access_shop_management(user),
+        'is_ops_leader': is_ops_leader(user),
     }
     return render(request, 'management/amazon_shop_management.html', context)
 
@@ -41,14 +108,18 @@ def get_all_operators_api(request):
         platform = request.GET.get('platform', '').strip()
         ops_group_param = request.GET.get('ops_group', '').strip()
 
-        # 基础查询：查询department包含"运营部门"的用户，并关联OperationalAccount
+        # 基础查询：查询运营部(operation)的用户，并关联OperationalAccount
         queryset = User.objects.filter(
-            department__icontains='运营部门'
+            department='operation'
         ).select_related('operational_account')
 
-        # 应用平台筛选
+        # 应用平台筛选（兼容旧数据的中文平台字段）
         if platform in ['亚马逊', 'Temu']:
             queryset = queryset.filter(platform=platform)
+        elif platform == 'amazon':
+            queryset = queryset.filter(Q(platform='amazon') | Q(platform='亚马逊'))
+        elif platform == 'temu':
+            queryset = queryset.filter(Q(platform='temu') | Q(platform='Temu'))
 
         # 应用分组筛选（如果提供了ops_group参数）
         if ops_group_param:
@@ -288,14 +359,10 @@ def get_amazon_shops_api(request):
 
         query = AmazonShop.objects.select_related('ops', 'project').prefetch_related('ops__operational_account')
 
-        # 权限范围过滤：ops_all 查看全部；ops_group 查看本组；ops 查看本人
-        if 'ops_all' not in permissions:
-            if 'ops_group' in permissions and hasattr(request.user, 'operational_account') and request.user.operational_account.ops_group:
-                group_name = request.user.operational_account.ops_group
-                user_ids = OperationalAccount.objects.filter(ops_group=group_name).values_list('user_id', flat=True)
-                query = query.filter(ops_id__in=user_ids)
-            else:
-                query = query.filter(ops_id=request.user.id)
+        # 权限范围过滤：555/552查看全部；运营组长查看本组；普通运营查看本人
+        visible_ops_ids = get_visible_ops_ids(request.user)
+        if visible_ops_ids is not None:  # None表示管理员，不限制
+            query = query.filter(ops_id__in=visible_ops_ids)
 
         # 应用筛选逻辑
         if status_filters:
@@ -442,10 +509,24 @@ def bulk_update_project_api(request):
         if not shop_ids:
             return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
 
-        # 权限校验：简单起见，要求有 555 或 551
-        user_perm_codes = list(request.user.permission_configs.values_list('code', flat=True))
-        if 555 not in user_perm_codes and 551 not in user_perm_codes:
-            return JsonResponse({'success': False, 'error': '无批量修改权限'}, status=403)
+        # 权限校验：管理员或运营组长
+        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
+
+        # 运营组长只能操作本组店铺
+        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
+            leader_account = getattr(request.user, 'operational_account', None)
+            if leader_account and leader_account.ops_group:
+                # 获取本组所有成员ID
+                member_ids = OperationalAccount.objects.filter(
+                    ops_group=leader_account.ops_group
+                ).values_list('user_id', flat=True)
+                # 检查所选店铺是否都在本组
+                shops_not_in_group = AmazonShop.objects.filter(
+                    id__in=shop_ids
+                ).exclude(ops_id__in=list(member_ids))
+                if shops_not_in_group.exists():
+                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
 
         with transaction.atomic():
             if project_id:
@@ -470,6 +551,68 @@ def bulk_update_project_api(request):
 @require_POST
 @csrf_exempt
 @login_required
+def bulk_update_operator_api(request):
+    """批量设置店铺的运营人员"""
+    try:
+        # 权限检查：管理员或运营组长
+        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
+
+        data = json.loads(request.body)
+        shop_ids = data.get('shop_ids', [])
+        operator_id = data.get('operator_id')
+
+        if not shop_ids:
+            return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
+
+        if not operator_id:
+            return JsonResponse({'success': False, 'error': '未选择运营人员'}, status=400)
+
+        # 检查运营人员是否存在
+        try:
+            operator = User.objects.get(id=operator_id)
+        except User.DoesNotExist:
+            return JsonResponse({'success': False, 'error': '运营人员不存在'}, status=404)
+
+        # 运营组长只能操作本组店铺，且只能分配给本组人员
+        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
+            leader_account = getattr(request.user, 'operational_account', None)
+            if leader_account and leader_account.ops_group:
+                # 检查运营人员是否在本组
+                operator_account = getattr(operator, 'operational_account', None)
+                if not operator_account or operator_account.ops_group != leader_account.ops_group:
+                    return JsonResponse({'success': False, 'error': '只能分配给本组人员'}, status=403)
+                
+                # 获取本组所有成员ID
+                member_ids = OperationalAccount.objects.filter(
+                    ops_group=leader_account.ops_group
+                ).values_list('user_id', flat=True)
+                # 检查所选店铺是否都在本组
+                shops_not_in_group = AmazonShop.objects.filter(
+                    id__in=shop_ids
+                ).exclude(ops_id__in=list(member_ids))
+                if shops_not_in_group.exists():
+                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
+
+        with transaction.atomic():
+            AmazonShop.objects.filter(id__in=shop_ids).update(
+                ops_id=operator_id,
+                updated_at=timezone.now()
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'已成功将 {len(shop_ids)} 个店铺分配给 {operator.first_name}'
+        })
+
+    except Exception as e:
+        print(f"批量设置运营人员错误: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
 def create_amazon_shop_api(request):
     """
     API接口：创建新Amazon店铺
@@ -478,12 +621,11 @@ def create_amazon_shop_api(request):
     try:
         data = json.loads(request.body)
 
-        # 检查权限：必须有 555 或 551
-        user_perm_codes = list(request.user.permission_configs.values_list('code', flat=True))
-        if 555 not in user_perm_codes and 551 not in user_perm_codes:
+        # 检查权限：必须有 555 或 552
+        if not can_access_shop_management(request.user):
             return JsonResponse({
                 'success': False,
-                'error': '无创建权限，需要店铺管理员权限（551）或超管权限（555）'
+                'error': '无创建权限，需要店铺管理员权限（552）或超管权限（555）'
             }, status=403)
 
         # 验证必填项
@@ -620,7 +762,6 @@ def update_amazon_shop_api(request, shop_id):
 
     try:
         data = json.loads(request.body or '{}')
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
 
         # 简单校验
         shop_name = (data.get('shop_name') or '').strip()
@@ -631,25 +772,27 @@ def update_amazon_shop_api(request, shop_id):
         if AmazonShop.objects.filter(shop_name=shop_name).exclude(id=shop_id).exists():
             return JsonResponse({'success': False, 'error': '店铺名称已存在'}, status=400)
 
-        # 权限校验：ops_all/555 可更新任何；ops_group 仅能更新本组；ops 仅能更新本人店铺
-        if 'ops_all' in permissions or '555' in permissions:
-            pass
-        elif 'ops_group' in permissions and hasattr(request.user,
-                                                    'operational_account') and request.user.operational_account.ops_group:
-            group_name = request.user.operational_account.ops_group
-            if not OperationalAccount.objects.filter(user_id=shop.ops_id, ops_group=group_name).exists():
+        # 权限校验：管理员可更新任何；运营组长仅能更新本组；普通运营仅能更新本人店铺
+        if can_access_shop_management(request.user):
+            pass  # 管理员有全部权限
+        elif is_ops_leader(request.user):
+            # 运营组长只能更新本组店铺
+            leader_account = getattr(request.user, 'operational_account', None)
+            if leader_account and leader_account.ops_group:
+                if not OperationalAccount.objects.filter(user_id=shop.ops_id, ops_group=leader_account.ops_group).exists():
+                    return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)
+                new_ops_id = data.get('ops')
+                if new_ops_id and not OperationalAccount.objects.filter(user_id=new_ops_id, ops_group=leader_account.ops_group).exists():
+                    return JsonResponse({'success': False, 'error': '不可将店铺分配到其他分组'}, status=403)
+            else:
                 return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)
-            new_ops_id = data.get('ops')
-            if new_ops_id and not OperationalAccount.objects.filter(user_id=new_ops_id, ops_group=group_name).exists():
-                return JsonResponse({'success': False, 'error': '不可将店铺分配到其他分组'}, status=403)
-        elif 'ops' in permissions:
+        else:
+            # 普通运营只能更新自己的店铺
             if shop.ops_id != request.user.id:
                 return JsonResponse({'success': False, 'error': '仅允许更新本人店铺'}, status=403)
             new_ops_id = data.get('ops')
             if new_ops_id and int(new_ops_id) != request.user.id:
                 return JsonResponse({'success': False, 'error': '不可将店铺分配给其他人'}, status=403)
-        else:
-            return JsonResponse({'success': False, 'error': '无更新权限'}, status=403)
 
         with transaction.atomic():
             # 基本信息
