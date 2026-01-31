@@ -204,11 +204,13 @@
                 </h1>
                 <p class="page-subtitle">管理公司成员、权限和部门归属</p>
             </div>
+            {% if '555' in user_permissions or '551' in user_permissions %}
             <div>
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建人员
                 </button>
             </div>
+            {% endif %}
         </div>
 
         <div class="filter-section">
@@ -236,6 +238,7 @@
             </div>
         </div>
 
+        {% if '555' in user_permissions or '551' in user_permissions %}
         <!-- 批量操作栏 -->
         <div class="bulk-action-bar" id="bulkActionBar">
             <span class="selected-count" id="selectedCountText">已选择 0 人</span>
@@ -252,6 +255,7 @@
                 <span>批量设置权限</span>
             </button>
         </div>
+        {% endif %}
 
         <div class="table-container">
             <table class="table" id="usersTable">
@@ -508,6 +512,13 @@
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
     <script>
+        // ==================== 权限配置 ====================
+        const USER_PERMISSIONS = JSON.parse('{{ user_permissions_json|default:"[]"|escapejs }}');
+        // 将权限码统一转为字符串比较
+        const userPermsStr = USER_PERMISSIONS.map(p => String(p));
+        const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('551');
+        const IS_SUPER_ADMIN = userPermsStr.includes('555');
+        
         // ==================== 全局变量 ====================
         let currentPage = 1;
         let pageSize = 20;
@@ -711,8 +722,7 @@
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
                     <td>
-                        <button class="btn btn-sm" onclick="openViewModal(${user.id})" style="margin-right: 0.5rem;">查看</button>
-                        <button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>
+                        ${IS_ADMIN ? `<button class="btn btn-sm" onclick="openViewModal(${user.id})" style="margin-right: 0.5rem;">查看</button><button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>` : `<button class="btn btn-sm" onclick="openViewModal(${user.id})">查看</button>`}
                     </td>
                 </tr>
             `}).join('');
@@ -726,6 +736,10 @@
             if (grid) {
                 grid.innerHTML = allPermissions.map(perm => {
                     const isAdmin = perm.code === '555' || perm.code === '5555';
+                    // 非555管理员不能设置管理员权限
+                    if (isAdmin && !IS_SUPER_ADMIN) {
+                        return '';
+                    }
                     const desc = perm.description || '暂无说明';
                     return `
                         <label class="permission-checkbox ${isAdmin ? 'admin' : ''}" title="${desc}">
@@ -746,6 +760,10 @@
             if (bulkGrid) {
                 bulkGrid.innerHTML = allPermissions.map(perm => {
                     const isAdmin = perm.code === '555' || perm.code === '5555';
+                    // 非555管理员不能设置管理员权限
+                    if (isAdmin && !IS_SUPER_ADMIN) {
+                        return '';
+                    }
                     const desc = perm.description || '暂无说明';
                     return `
                         <label class="permission-checkbox ${isAdmin ? 'admin' : ''}" title="${desc}">
@@ -869,6 +887,9 @@
             const bar = document.getElementById('bulkActionBar');
             const countText = document.getElementById('selectedCountText');
             
+            // 非管理员没有批量操作栏
+            if (!bar || !countText) return;
+            
             countText.textContent = `已选择 ${selectedUserIds.size} 人`;
             
             if (selectedUserIds.size > 0) {
@@ -968,10 +989,13 @@
 
             // 初始化模态框中的下拉框（只读）
             initModalSelects(user);
-            if (modalDepartmentSelect) modalDepartmentSelect.disable();
-            if (modalStatusSelect) modalStatusSelect.disable();
-            if (modalPlatformSelect) modalPlatformSelect.disable();
-            if (modalOpsRoleSelect) modalOpsRoleSelect.disable();
+            // 禁用下拉框交互（通过CSS）
+            setTimeout(() => {
+                document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+                    el.style.pointerEvents = 'none';
+                    el.style.opacity = '0.7';
+                });
+            }, 100);
 
             // 设置权限选择（只读）
             const userPermissions = user.permissions.map(p => String(p));
@@ -1123,6 +1147,12 @@
             // 初始化模态框中的下拉框
             initModalSelects();
             
+            // 恢复下拉框交互
+            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+                el.style.pointerEvents = '';
+                el.style.opacity = '';
+            });
+            
             // 清空权限选择
             document.querySelectorAll('input[name="permission"]').forEach(cb => {
                 cb.checked = false;
@@ -1185,6 +1215,12 @@
             // 启用所有权限checkbox
             document.querySelectorAll('input[name="permission"]').forEach(cb => {
                 cb.disabled = false;
+            });
+
+            // 恢复下拉框交互
+            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+                el.style.pointerEvents = '';
+                el.style.opacity = '';
             });
 
             document.getElementById('userModalTitle').textContent = '编辑人员';
@@ -1268,6 +1304,11 @@
                     `;
                 }
             }, 100);
+            // 恢复下拉框交互
+            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+                el.style.pointerEvents = '';
+                el.style.opacity = '';
+            });
         }
 
         function initModalSelects(userData = null) {

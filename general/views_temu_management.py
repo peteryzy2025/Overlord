@@ -1,7 +1,7 @@
 # General/views_temu_management.py
 
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
 from general.models import User, OperationalAccount, TemuShop
@@ -12,11 +12,78 @@ import json
 import traceback
 
 
+# ============ 权限辅助函数（复用Amazon的） ============
+def has_perm_code(user, code):
+    """检查用户是否有特定权限码"""
+    if not user or not user.is_authenticated:
+        return False
+    # code字段是IntegerField，尝试转为整数比较
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
+
+
+def can_access_shop_management(user):
+    """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
+    return has_perm_code(user, '555') or has_perm_code(user, '552')
+
+
+def is_ops_leader(user):
+    """检查用户是否是运营组长"""
+    if not user or user.department != 'operation':
+        return False
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        return False
+    return account.role == 'leader'
+
+
+def get_visible_ops_ids(user):
+    """获取用户可以看到的运营人员ID列表"""
+    if can_access_shop_management(user):
+        return None
+    
+    if user.department != 'operation':
+        return []
+    
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        return [user.id]
+    
+    if account.role == 'leader' and account.ops_group:
+        members = User.objects.filter(
+            company=user.company,
+            department='operation',
+            operational_account__ops_group=account.ops_group
+        ).values_list('id', flat=True)
+        return list(members)
+    
+    return [user.id]
+
+
 # Temu店铺管理页面视图
 @login_required
 def temu_management_view(request):
-    """渲染Temu店铺管理页面"""
-    return render(request, 'management/temu_shop_management.html')
+    """渲染Temu店铺管理页面（仅运营部或管理员可访问）"""
+    user = request.user
+    
+    # 检查权限：管理员或运营部人员可以访问
+    if not can_access_shop_management(user) and user.department != 'operation':
+        return redirect('general:main')
+    
+    import json
+    user_perms = list(user.permission_configs.values_list('code', flat=True))
+    user_perms_str = [str(p) for p in user_perms]
+    context = {
+        'active_page': 'temu_management',
+        'user_permissions': user_perms_str,  # 用于Django模板条件判断
+        'user_permissions_json': json.dumps(user_perms),  # 用于JS
+        'is_admin': can_access_shop_management(user),
+        'is_ops_leader': is_ops_leader(user),
+    }
+    return render(request, 'management/temu_shop_management.html', context)
 
 
 # 获取运营人员列表API（复用Amazon的，支持platform参数）
@@ -32,12 +99,16 @@ def get_all_operators_api(request):
     try:
         platform = request.GET.get('platform', '').strip()
 
+        # 基础查询：查询运营部(operation)的用户
         queryset = User.objects.filter(
-            department__icontains='运营部门'
+            department='operation'
         ).select_related('operational_account')
 
+        # 应用平台筛选（兼容新旧数据）
         if platform == 'Temu':
-            queryset = queryset.filter(platform=platform)
+            queryset = queryset.filter(Q(platform='temu') | Q(platform='Temu'))
+        elif platform == 'temu':
+            queryset = queryset.filter(Q(platform='temu') | Q(platform='Temu'))
 
         operators = queryset.values(
             'id', 'first_name', 'operational_account__ops_group'
@@ -224,6 +295,11 @@ def get_temu_shops_api(request):
 
         query = TemuShop.objects.all()
 
+        # 权限范围过滤：555/552查看全部；运营组长查看本组；普通运营查看本人
+        visible_ops_ids = get_visible_ops_ids(request.user)
+        if visible_ops_ids is not None:
+            query = query.filter(ops_id__in=visible_ops_ids)
+
         # 处理店铺状态多选（逗号分隔）
         if status_filter:
             try:
@@ -336,8 +412,16 @@ def get_temu_shops_api(request):
 def create_temu_shop_api(request):
     """
     API接口：创建新Temu店铺
+    权限要求：555（超管）或 552（店铺管理）
     """
     try:
+        # 权限检查：必须有 555 或 552
+        if not can_access_shop_management(request.user):
+            return JsonResponse({
+                'success': False,
+                'error': '无创建权限，需要店铺管理员权限（552）或超管权限（555）'
+            }, status=403)
+
         data = json.loads(request.body)
 
         # 验证必填项
@@ -414,6 +498,7 @@ def create_temu_shop_api(request):
 def update_temu_shop_api(request, shop_id):
     """
     通过店铺ID更新Temu店铺信息
+    权限要求：管理员可更新任何；运营组长仅能更新本组；普通运营仅能更新本人店铺
     """
     try:
         shop = TemuShop.objects.get(id=shop_id)
@@ -422,6 +507,28 @@ def update_temu_shop_api(request, shop_id):
 
     try:
         data = json.loads(request.body or '{}')
+
+        # 权限校验
+        if can_access_shop_management(request.user):
+            pass  # 管理员有全部权限
+        elif is_ops_leader(request.user):
+            # 运营组长只能更新本组店铺
+            leader_account = getattr(request.user, 'operational_account', None)
+            if leader_account and leader_account.ops_group:
+                if not OperationalAccount.objects.filter(user_id=shop.ops_id, ops_group=leader_account.ops_group).exists():
+                    return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)
+                new_ops_id = data.get('ops')
+                if new_ops_id and not OperationalAccount.objects.filter(user_id=new_ops_id, ops_group=leader_account.ops_group).exists():
+                    return JsonResponse({'success': False, 'error': '不可将店铺分配到其他分组'}, status=403)
+            else:
+                return JsonResponse({'success': False, 'error': '无权限更新该店铺'}, status=403)
+        else:
+            # 普通运营只能更新自己的店铺
+            if shop.ops_id != request.user.id:
+                return JsonResponse({'success': False, 'error': '仅允许更新本人店铺'}, status=403)
+            new_ops_id = data.get('ops')
+            if new_ops_id and int(new_ops_id) != request.user.id:
+                return JsonResponse({'success': False, 'error': '不可将店铺分配给其他人'}, status=403)
 
         # 简单校验
         shop_name = (data.get('shop_name') or '').strip()
@@ -484,14 +591,34 @@ def update_temu_shop_api(request, shop_id):
 def bulk_update_project_api(request):
     """
     批量设置或移除Temu店铺的项目归属
+    权限要求：管理员（555/552）或运营组长（只能操作本组店铺）
     """
     try:
+        # 权限检查：管理员或运营组长
+        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
+
         data = json.loads(request.body)
         shop_ids = data.get('shop_ids', [])
         project_id = data.get('project_id')
 
         if not shop_ids:
             return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
+
+        # 运营组长只能操作本组店铺
+        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
+            leader_account = getattr(request.user, 'operational_account', None)
+            if leader_account and leader_account.ops_group:
+                # 获取本组所有成员ID
+                member_ids = OperationalAccount.objects.filter(
+                    ops_group=leader_account.ops_group
+                ).values_list('user_id', flat=True)
+                # 检查所选店铺是否都在本组
+                shops_not_in_group = TemuShop.objects.filter(
+                    id__in=shop_ids
+                ).exclude(ops_id__in=list(member_ids))
+                if shops_not_in_group.exists():
+                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
 
         with transaction.atomic():
             if project_id:

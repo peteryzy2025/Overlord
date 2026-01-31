@@ -69,6 +69,7 @@ urlpatterns = [
     path('api/amazon-shops/', views_amazon_management.get_amazon_shops_api, name='get_amazon_shops_api'),
     path('api/amazon-shops/create/', views_amazon_management.create_amazon_shop_api, name='create_amazon_shop_api'),
     path('api/amazon-shops/bulk-update-project/', views_amazon_management.bulk_update_project_api, name='bulk_update_project_api'),
+    path('api/amazon-shops/bulk-update-operator/', views_amazon_management.bulk_update_operator_api, name='bulk_update_operator_api'),
     path('api/amazon-shops/<int:shop_id>/update/', views_amazon_management.update_amazon_shop_api,
          name='update_amazon_shop_api'),
     path('api/operators/', views_amazon_management.get_all_operators_api, name='get_operators_api'),
