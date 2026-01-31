@@ -19,8 +19,138 @@
     top: 80px;
     height: calc(100vh - 80px);
     overflow-y: auto;
+    overflow-x: hidden;
     transition: all 0.3s ease;
     flex-shrink: 0;
+    }
+
+    /* 侧边栏收缩状态 */
+    .sidebar.collapsed {
+    width: 70px;
+    padding: 2rem 0;
+    }
+
+    /* 侧边栏切换按钮 - 固定在视口垂直中间 */
+    .sidebar-toggle {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 64px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 100;
+    }
+
+    /* 展开状态：按钮在sidebar内部，右侧贴紧边缘 */
+    .sidebar-toggle {
+    left: 256px; /* 280px - 24px 按钮完全在内部 */
+    border-radius: 12px 0 0 12px; /* 朝向左 */
+    border-left: 1px solid var(--border-color);
+    border-right: none;
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .sidebar-toggle:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    box-shadow: -2px 0 12px rgba(102, 126, 234, 0.25);
+    }
+
+    /* 收缩状态：按钮在sidebar外部，左侧贴紧边缘 */
+    body:has(.sidebar.collapsed) .sidebar-toggle {
+    left: 70px; /* 贴着sidebar右侧 */
+    border-radius: 0 12px 12px 0; /* 朝向右 */
+    border-left: none;
+    border-right: 1px solid var(--border-color);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+    }
+
+    body:has(.sidebar.collapsed) .sidebar-toggle:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    box-shadow: 2px 0 12px rgba(102, 126, 234, 0.25);
+    }
+
+    .sidebar-toggle:hover .toggle-dots::before,
+    .sidebar-toggle:hover .toggle-dots::after {
+    background: white;
+    }
+
+    /* 两个点的样式 */
+    .toggle-dots {
+    position: relative;
+    display: block;
+    width: 4px;
+    height: 4px;
+    }
+
+    .toggle-dots::before,
+    .toggle-dots::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: var(--text-secondary);
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    left: 50%;
+    transform: translateX(-50%);
+    }
+
+    .toggle-dots::before {
+    top: -5px;
+    }
+
+    .toggle-dots::after {
+    top: 5px;
+    }
+
+    /* 侧边栏内容过渡 */
+    .sidebar-link span {
+    transition: opacity 0.2s ease, width 0.2s ease;
+    white-space: nowrap;
+    }
+
+    .sidebar.collapsed .sidebar-link span {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    }
+
+    .sidebar.collapsed .sidebar-link {
+    padding: 1rem;
+    justify-content: center;
+    gap: 0;
+    }
+
+    .sidebar.collapsed .sidebar-icon {
+    width: 24px;
+    font-size: 1.25rem;
+    }
+
+    /* 子菜单在收缩状态下隐藏 */
+    .sidebar.collapsed .submenu {
+    display: none !important;
+    }
+
+    .sidebar.collapsed .dropdown-arrow {
+    display: none;
+    }
+
+    /* 主内容区域过渡 */
+    .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    transition: all 0.3s ease;
+    overflow-y: auto;
     }
 
     .sidebar-menu {
@@ -137,7 +267,15 @@
 {% block main_container %}
     <!-- 主容器 -->
     <div class="main-container">
-        {% block sidebar %}{% endblock %}
+        {% block sidebar_wrapper %}
+            <div class="sidebar" id="sidebar">
+                {% block sidebar %}{% endblock %}
+            </div>
+            <!-- 侧边栏切换按钮 - 放在外面保持可见 -->
+            <button class="sidebar-toggle" id="sidebarToggle" title="收展侧边栏">
+                <span class="toggle-dots"></span>
+            </button>
+        {% endblock %}
         {% block content %}{% endblock %}
     </div>
 {% endblock %}
@@ -155,6 +293,46 @@
             dropdownItem.classList.toggle('active');
         });
     });
+
+    // 侧边栏收缩/展开功能
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    
+    if (sidebar && sidebarToggle) {
+        // 从 localStorage 读取状态
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        if (sidebarCollapsed) {
+            sidebar.classList.add('collapsed');
+            updateTogglePosition(true);
+        }
+        
+        // 点击切换
+        sidebarToggle.addEventListener('click', function() {
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            updateTogglePosition(isCollapsed);
+            // 保存状态到 localStorage
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        });
+        
+        // 更新按钮位置和样式
+        function updateTogglePosition(isCollapsed) {
+            if (isCollapsed) {
+                // 收缩状态：按钮在外部，左侧贴紧sidebar右侧
+                sidebarToggle.style.left = '70px';
+                sidebarToggle.style.borderRadius = '0 12px 12px 0';
+                sidebarToggle.style.borderLeft = 'none';
+                sidebarToggle.style.borderRight = '1px solid var(--border-color)';
+                sidebarToggle.style.boxShadow = '2px 0 8px rgba(0, 0, 0, 0.08)';
+            } else {
+                // 展开状态：按钮在内部，右侧贴紧sidebar右侧
+                sidebarToggle.style.left = '256px';
+                sidebarToggle.style.borderRadius = '12px 0 0 12px';
+                sidebarToggle.style.borderLeft = '1px solid var(--border-color)';
+                sidebarToggle.style.borderRight = 'none';
+                sidebarToggle.style.boxShadow = '-2px 0 8px rgba(0, 0, 0, 0.08)';
+            }
+        }
+    }
 });
     document.addEventListener('DOMContentLoaded', function() {
     if (window.anime) {

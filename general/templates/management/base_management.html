@@ -1,61 +1,59 @@
 {% extends 'base/base_r.html' %}
 
 {% block sidebar %}
-    <div class="sidebar">
-        <ul class="sidebar-menu">
-            <li class="sidebar-item">
-                <a href="{% url 'general:user_management' %}"
-                   class="sidebar-link {% if active_page == 'user_management' %}active{% endif %}">
-                    <i class="fas fa-users sidebar-icon"></i>
-                    <span>人员管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item dropdown">
-                <a href="#"
-                   class="sidebar-link dropdown-toggle {% if active_page == 'performance_targets' or active_page == 'assessment_list' or active_page == 'assessment_summary' %}active{% endif %}">
-                    <i class="fas fa-chart-line"></i>
-                    <span>绩效管理</span>
-                    <i class="fas fa-chevron-right dropdown-arrow"></i>
-                </a>
-                <ul class="submenu"
-                    {% if active_page == 'performance_targets' or active_page == 'assessment_list' or active_page == 'assessment_summary' %}style="display:block"{% endif %}>
-                    <li class="sidebar-item">
-                        <a href="{% url 'general:performance_targets' %}"
-                           class="sidebar-link {% if active_page == 'performance_targets' %}active{% endif %}">
-                            <i class="fas fa-bullseye sidebar-icon"></i>
-                            <span>绩效目标管理</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="{% url 'yuser:assessment_list' %}"
-                           class="sidebar-link {% if active_page == 'assessment_list' %}active{% endif %}">
-                            <i class="fas fa-clipboard-check sidebar-icon"></i>
-                            <span>绩效考核管理</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="{% url 'yuser:assessment_summary' %}"
-                           class="sidebar-link {% if active_page == 'assessment_summary' %}active{% endif %}">
-                            <i class="fas fa-chart-bar sidebar-icon"></i>
-                            <span>考核成绩汇总</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'general:amazon_management' %}"
-                   class="sidebar-link {% if active_page == 'amazon_management' %}active{% endif %}">
-                    <i class="fab fa-amazon sidebar-icon"></i>
-                    <span>Amazon店铺管理</span>
-                </a>
-            </li>
-            <li class="sidebar-item">
-                <a href="{% url 'general:temu_management' %}"
-                   class="sidebar-link {% if active_page == 'temu_management' %}active{% endif %}">
-                    <i class="fas fa-store sidebar-icon"></i>
-                    <span>Temu店铺管理</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'general:user_management' %}"
+               class="sidebar-link {% if active_page == 'user_management' %}active{% endif %}">
+                <i class="fas fa-users sidebar-icon"></i>
+                <span>人员管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item dropdown">
+            <a href="#"
+               class="sidebar-link dropdown-toggle {% if active_page == 'performance_targets' or active_page == 'assessment_list' or active_page == 'assessment_summary' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>
+                <span>绩效管理</span>
+                <i class="fas fa-chevron-right dropdown-arrow"></i>
+            </a>
+            <ul class="submenu"
+                {% if active_page == 'performance_targets' or active_page == 'assessment_list' or active_page == 'assessment_summary' %}style="display:block"{% endif %}>
+                <li class="sidebar-item">
+                    <a href="{% url 'general:performance_targets' %}"
+                       class="sidebar-link {% if active_page == 'performance_targets' %}active{% endif %}">
+                        <i class="fas fa-bullseye sidebar-icon"></i>
+                        <span>绩效目标管理</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="{% url 'yuser:assessment_list' %}"
+                       class="sidebar-link {% if active_page == 'assessment_list' %}active{% endif %}">
+                        <i class="fas fa-clipboard-check sidebar-icon"></i>
+                        <span>绩效考核管理</span>
+                    </a>
+                </li>
+                <li class="sidebar-item">
+                    <a href="{% url 'yuser:assessment_summary' %}"
+                       class="sidebar-link {% if active_page == 'assessment_summary' %}active{% endif %}">
+                        <i class="fas fa-chart-bar sidebar-icon"></i>
+                        <span>考核成绩汇总</span>
+                    </a>
+                </li>
+            </ul>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'general:amazon_management' %}"
+               class="sidebar-link {% if active_page == 'amazon_management' %}active{% endif %}">
+                <i class="fab fa-amazon sidebar-icon"></i>
+                <span>Amazon店铺管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'general:temu_management' %}"
+               class="sidebar-link {% if active_page == 'temu_management' %}active{% endif %}">
+                <i class="fas fa-store sidebar-icon"></i>
+                <span>Temu店铺管理</span>
+            </a>
+        </li>
+    </ul>
 {% endblock %}
