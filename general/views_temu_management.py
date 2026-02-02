@@ -597,13 +597,12 @@ def update_temu_shop_api(request, shop_id):
 @login_required
 def bulk_update_project_api(request):
     """
-    批量设置或移除Temu店铺的项目归属
-    权限要求：管理员（555/552）或运营组长（只能操作本组店铺）
+    批量设置或移除Temu店铺的项目归属（仅管理员）
     """
     try:
-        # 权限检查：管理员或运营组长
-        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
-            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
+        # 权限检查：仅管理员（555/552）
+        if not can_access_shop_management(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作，仅管理员可用'}, status=403)
 
         data = json.loads(request.body)
         shop_ids = data.get('shop_ids', [])
@@ -612,37 +611,21 @@ def bulk_update_project_api(request):
         if not shop_ids:
             return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
 
-        # 运营组长只能操作本组店铺
-        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
-            leader_account = getattr(request.user, 'operational_account', None)
-            if leader_account and leader_account.ops_group:
-                # 获取本组所有成员ID
-                member_ids = OperationalAccount.objects.filter(
-                    user__company=request.user.company,
-                    ops_group=leader_account.ops_group
-                ).values_list('user_id', flat=True)
-                # 检查所选店铺是否都在本组（同时确保是本公司店铺）
-                shops_not_in_group = TemuShop.objects.filter(
-                    id__in=shop_ids,
-                    company=request.user.company
-                ).exclude(ops_id__in=list(member_ids))
-                if shops_not_in_group.exists():
-                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
-
         with transaction.atomic():
             if project_id:
-                # 设置项目
+                # 设置项目（检查项目是否属于本公司）
                 from general.models import Project
                 try:
-                    project = Project.objects.get(id=int(project_id))
-                    TemuShop.objects.filter(id__in=shop_ids).update(project=project)
+                    project = Project.objects.get(id=int(project_id), company=request.user.company)
+                    # 只更新本公司店铺
+                    TemuShop.objects.filter(id__in=shop_ids, company=request.user.company).update(project=project)
                 except Project.DoesNotExist:
-                    return JsonResponse({'success': False, 'error': '项目不存在'}, status=404)
+                    return JsonResponse({'success': False, 'error': '项目不存在或不属于本公司'}, status=404)
                 except ValueError:
                     return JsonResponse({'success': False, 'error': '项目ID格式错误'}, status=400)
             else:
-                # 移除项目
-                TemuShop.objects.filter(id__in=shop_ids).update(project=None)
+                # 移除项目（只更新本公司店铺）
+                TemuShop.objects.filter(id__in=shop_ids, company=request.user.company).update(project=None)
 
         return JsonResponse({
             'success': True,

@@ -508,7 +508,7 @@ from django.utils import timezone
 @csrf_exempt
 @login_required
 def bulk_update_project_api(request):
-    """批量设置或移除店铺的项目归属"""
+    """批量设置或移除店铺的项目归属（仅管理员）"""
     try:
         data = json.loads(request.body)
         shop_ids = data.get('shop_ids', [])
@@ -517,39 +517,23 @@ def bulk_update_project_api(request):
         if not shop_ids:
             return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
 
-        # 权限校验：管理员或运营组长
-        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
-            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
-
-        # 运营组长只能操作本组店铺
-        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
-            leader_account = getattr(request.user, 'operational_account', None)
-            if leader_account and leader_account.ops_group:
-                # 获取本组所有成员ID
-                member_ids = OperationalAccount.objects.filter(
-                    user__company=request.user.company,
-                    ops_group=leader_account.ops_group
-                ).values_list('user_id', flat=True)
-                # 检查所选店铺是否都在本组（同时确保是本公司店铺）
-                shops_not_in_group = AmazonShop.objects.filter(
-                    id__in=shop_ids,
-                    company=request.user.company
-                ).exclude(ops_id__in=list(member_ids))
-                if shops_not_in_group.exists():
-                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
+        # 权限校验：仅管理员（555/552）
+        if not can_access_shop_management(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作，仅管理员可用'}, status=403)
 
         with transaction.atomic():
             if project_id:
-                # 检查项目是否存在
+                # 检查项目是否存在且属于本公司
                 from general.models import Project
                 try:
-                    project = Project.objects.get(id=project_id)
-                    AmazonShop.objects.filter(id__in=shop_ids).update(project=project, updated_at=timezone.now())
+                    project = Project.objects.get(id=project_id, company=request.user.company)
+                    # 只更新本公司店铺
+                    AmazonShop.objects.filter(id__in=shop_ids, company=request.user.company).update(project=project, updated_at=timezone.now())
                 except Project.DoesNotExist:
-                    return JsonResponse({'success': False, 'error': '项目不存在'}, status=404)
+                    return JsonResponse({'success': False, 'error': '项目不存在或不属于本公司'}, status=404)
             else:
-                # 移除项目
-                AmazonShop.objects.filter(id__in=shop_ids).update(project=None, updated_at=timezone.now())
+                # 移除项目（只更新本公司店铺）
+                AmazonShop.objects.filter(id__in=shop_ids, company=request.user.company).update(project=None, updated_at=timezone.now())
 
         return JsonResponse({'success': True, 'message': '批量操作成功'})
 
@@ -564,9 +548,9 @@ def bulk_update_project_api(request):
 def bulk_update_operator_api(request):
     """批量设置店铺的运营人员"""
     try:
-        # 权限检查：管理员或运营组长
-        if not can_access_shop_management(request.user) and not is_ops_leader(request.user):
-            return JsonResponse({'success': False, 'error': '无权限进行批量操作'}, status=403)
+        # 权限检查：仅管理员（555/552）
+        if not can_access_shop_management(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作，仅管理员可用'}, status=403)
 
         data = json.loads(request.body)
         shop_ids = data.get('shop_ids', [])
@@ -578,36 +562,15 @@ def bulk_update_operator_api(request):
         if not operator_id:
             return JsonResponse({'success': False, 'error': '未选择运营人员'}, status=400)
 
-        # 检查运营人员是否存在
+        # 检查运营人员是否存在且属于本公司
         try:
-            operator = User.objects.get(id=operator_id)
+            operator = User.objects.get(id=operator_id, company=request.user.company)
         except User.DoesNotExist:
-            return JsonResponse({'success': False, 'error': '运营人员不存在'}, status=404)
-
-        # 运营组长只能操作本组店铺，且只能分配给本组人员
-        if is_ops_leader(request.user) and not can_access_shop_management(request.user):
-            leader_account = getattr(request.user, 'operational_account', None)
-            if leader_account and leader_account.ops_group:
-                # 检查运营人员是否在本组（同时确保是本公司人员）
-                operator_account = getattr(operator, 'operational_account', None)
-                if not operator_account or operator.ops_group != leader_account.ops_group:
-                    return JsonResponse({'success': False, 'error': '只能分配给本组人员'}, status=403)
-                
-                # 获取本组所有成员ID
-                member_ids = OperationalAccount.objects.filter(
-                    user__company=request.user.company,
-                    ops_group=leader_account.ops_group
-                ).values_list('user_id', flat=True)
-                # 检查所选店铺是否都在本组（同时确保是本公司店铺）
-                shops_not_in_group = AmazonShop.objects.filter(
-                    id__in=shop_ids,
-                    company=request.user.company
-                ).exclude(ops_id__in=list(member_ids))
-                if shops_not_in_group.exists():
-                    return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
+            return JsonResponse({'success': False, 'error': '运营人员不存在或不属于本公司'}, status=404)
 
         with transaction.atomic():
-            AmazonShop.objects.filter(id__in=shop_ids).update(
+            # 只更新本公司店铺
+            AmazonShop.objects.filter(id__in=shop_ids, company=request.user.company).update(
                 ops_id=operator_id,
                 updated_at=timezone.now()
             )
