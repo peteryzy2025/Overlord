@@ -293,6 +293,38 @@
         .chart-container {
             width: 100%;
             height: 300px;
+            position: relative;
+        }
+
+        /* 图表骨架屏/加载状态 */
+        .chart-loading {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .chart-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        .chart-loading p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         /* ========== 运营人员业绩区域样式 ========== */
@@ -629,13 +661,6 @@
 {% endblock %}
 
 {% block page_content %}
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <p>数据加载中...</p>
-        </div>
-    </div>
-
     <div class="amazon-main">
         <!-- 页面标题 -->
         <div class="page-header">
@@ -779,7 +804,12 @@
             <!-- 销量趋势 - 占100%宽度 -->
             <div class="chart-card">
                 <h3 class="chart-title">销量趋势</h3>
-                <div id="ordersChart" class="chart-container"></div>
+                <div id="ordersChart" class="chart-container">
+                    <div class="chart-loading" id="ordersChartLoading">
+                        <div class="spinner"></div>
+                        <p>数据加载中...</p>
+                    </div>
+                </div>
             </div>
 
             <!-- 运营人员业绩 - 占100%宽度 -->
@@ -789,12 +819,22 @@
                     <!-- 订单量饼图 -->
                     <div class="pie-section">
                         <h4>订单量分布</h4>
-                        <div id="operatorChart" class="chart-container"></div>
+                        <div id="operatorChart" class="chart-container">
+                            <div class="chart-loading" id="operatorChartLoading">
+                                <div class="spinner"></div>
+                                <p>数据加载中...</p>
+                            </div>
+                        </div>
                     </div>
                     <!-- 销量饼图 -->
                     <div class="pie-section">
                         <h4>销量分布</h4>
-                        <div id="operatorSalesChart" class="chart-container"></div>
+                        <div id="operatorSalesChart" class="chart-container">
+                            <div class="chart-loading" id="operatorSalesChartLoading">
+                                <div class="spinner"></div>
+                                <p>数据加载中...</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -834,11 +874,20 @@
             group: ''
         };
 
-        function showLoading(show = true) {
-            const overlay = document.getElementById('loadingOverlay');
-            overlay.style.display = show ? 'flex' : 'none';
-            overlay.style.visibility = show ? 'visible' : 'hidden';
-            overlay.style.opacity = show ? '1' : '0';
+        // 显示/隐藏图表加载状态
+        function showChartLoading(chartId, show = true) {
+            const loadingId = chartId + 'Loading';
+            const loadingDiv = document.getElementById(loadingId);
+            if (loadingDiv) {
+                loadingDiv.style.display = show ? 'flex' : 'none';
+            }
+        }
+
+        // 隐藏所有图表加载状态
+        function hideAllChartLoadings() {
+            ['ordersChart', 'operatorChart', 'operatorSalesChart'].forEach(id => {
+                showChartLoading(id, false);
+            });
         }
 
         async function loadOperatorsFromAPI() {
@@ -1104,7 +1153,6 @@
 
         /* ========== 修改：主筛选函数 ========== */
         async function applyFilters() {
-            showLoading(true);
             currentFilters = getCurrentFilters();
 
             try {
@@ -1157,7 +1205,7 @@
             } catch (error) {
                 showNotification && showNotification('数据请求失败: ' + error.message, 'error');
             } finally {
-                showLoading(false);
+                hideAllChartLoadings();
             }
         }
 
@@ -1478,30 +1526,22 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', async function () {
-            showLoading(true);
-
-            // 销毁所有旧图表实例
-            const ordersChartDom = document.getElementById('ordersChart');
-            const operatorChartDom = document.getElementById('operatorChart');
-            const operatorSalesChartDom = document.getElementById('operatorSalesChart');
-
-            [ordersChartDom, operatorChartDom, operatorSalesChartDom].forEach(dom => {
-                const oldChart = echarts.getInstanceByDom(dom);
-                if (oldChart) oldChart.dispose();
-            });
-
-            try {
-                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
-                setDefaultFilters();
-                initializeSmartClearButtons();
-                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-                await applyFilters();
-            } catch (error) {
-                showNotification('初始化失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
+        // 页面快速加载，数据异步获取
+        document.addEventListener('DOMContentLoaded', function () {
+            // 先加载筛选器数据（不阻塞页面渲染）
+            Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()])
+                .then(() => {
+                    setDefaultFilters();
+                    initializeSmartClearButtons();
+                    document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
+                    // 异步加载图表数据
+                    return applyFilters();
+                })
+                .catch(error => {
+                    console.error('初始化失败:', error);
+                    showNotification('初始化失败: ' + error.message, 'error');
+                    hideAllChartLoadings();
+                });
         });
 
         window.addEventListener('resize', function () {
