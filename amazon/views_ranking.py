@@ -12,11 +12,18 @@ from general.models import User, AmazonShop, TemuShop, OperationalAccount
 from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 
+# 导入权限函数
+from amazon.amazon_views_jc import (
+    can_access_operation_management,
+    is_ops_leader,
+    get_visible_operator_ids
+)
+
 
 @login_required
 def get_ranking_data_api(request):
     """
-    获取运营排名数据 API
+    获取运营排名数据 API（带公司隔离和权限控制）
     GET参数:
       - start_date: 开始日期
       - end_date: 结束日期
@@ -26,6 +33,13 @@ def get_ranking_data_api(request):
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
 
     try:
+        user = request.user
+
+        # 获取可见的运营人员ID列表
+        visible_ids = get_visible_operator_ids(user)
+        if visible_ids == []:  # 无权限
+            return JsonResponse({'success': True, 'data': [], 'message': '无权限查看排名'})
+
         # 解析日期参数
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
@@ -42,17 +56,23 @@ def get_ranking_data_api(request):
         print(f"📊 计算运营排名: {start_date} 至 {end_date}")
         print(f"{'=' * 60}\n")
 
-        # ========== 查询所有运营人员 ==========
-        # 获取所有有店铺的 ops_id
+        # ========== 查询本公司有店铺的运营人员 ==========
+        # 获取所有有店铺的 ops_id（限定本公司）
         amazon_ops = set(AmazonShop.objects.filter(
+            company=user.company,
             ops_id__isnull=False
         ).values_list('ops_id', flat=True))
 
         temu_ops = set(TemuShop.objects.filter(
+            company=user.company,
             ops_id__isnull=False
         ).values_list('ops_id', flat=True))
 
         all_ops_ids = amazon_ops.union(temu_ops)
+
+        # 应用权限过滤
+        if visible_ids is not None:
+            all_ops_ids = all_ops_ids.intersection(set(visible_ids))
 
         if not all_ops_ids:
             return JsonResponse({
@@ -78,7 +98,10 @@ def get_ranking_data_api(request):
                 continue
 
             # ===== Amazon 统计 =====
-            amazon_shops = AmazonShop.objects.filter(ops_id=ops_id)
+            amazon_shops = AmazonShop.objects.filter(
+                company=user.company,
+                ops_id=ops_id
+            )
             amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
 
             amazon_order_count = 0
@@ -113,7 +136,10 @@ def get_ranking_data_api(request):
                     amazon_sales_quantity = quantity_agg['total_quantity'] or 0
 
             # ===== Temu 统计 =====
-            temu_shops = TemuShop.objects.filter(ops_id=ops_id)
+            temu_shops = TemuShop.objects.filter(
+                company=user.company,
+                ops_id=ops_id
+            )
             temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
             temu_order_count = 0
