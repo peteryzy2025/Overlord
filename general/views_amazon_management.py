@@ -97,7 +97,7 @@ def amazon_management_view(request):
 @login_required
 def get_all_operators_api(request):
     """
-    API接口：获取所有运营人员列表（无权限限制）
+    API接口：获取所有运营人员列表（本公司内）
     参数:
       - platform: 平台筛选，可选值: '亚马逊' 或 'Temu'
       - ops_group: 运营分组名称，可选筛选
@@ -108,8 +108,9 @@ def get_all_operators_api(request):
         platform = request.GET.get('platform', '').strip()
         ops_group_param = request.GET.get('ops_group', '').strip()
 
-        # 基础查询：查询运营部(operation)的用户，并关联OperationalAccount
+        # 基础查询：查询本公司运营部(operation)的用户
         queryset = User.objects.filter(
+            company=request.user.company,
             department='operation'
         ).select_related('operational_account')
 
@@ -160,7 +161,7 @@ def get_all_operators_api(request):
 @login_required
 def get_all_ops_groups_api(request):
     """
-    API接口：获取所有运营分组列表（支持按平台筛选）
+    API接口：获取所有运营分组列表（支持按平台筛选，本公司内）
     参数:
         - platform: 可选，平台名称 ('亚马逊' 或 'Temu')
     返回: ['A组', 'B组', 'C组', ...]
@@ -168,8 +169,10 @@ def get_all_ops_groups_api(request):
     try:
         platform = request.GET.get('platform', '').strip()
 
-        # 基础查询：排除空值
-        queryset = OperationalAccount.objects.exclude(
+        # 基础查询：本公司内排除空值
+        queryset = OperationalAccount.objects.filter(
+            user__company=request.user.company
+        ).exclude(
             ops_group__isnull=True
         ).exclude(
             ops_group=''
@@ -201,12 +204,14 @@ def get_all_ops_groups_api(request):
 @login_required
 def get_customers_api(request):
     """
-    API接口：获取所有客户列表（从AmazonShop.customer去重）
+    API接口：获取所有客户列表（从AmazonShop.customer去重，本公司内）
     返回: ['客户A', '客户B', ...]
     """
     try:
-        # 从AmazonShop查询customer，去重并排除空值
-        customers = AmazonShop.objects.exclude(
+        # 从AmazonShop查询customer，本公司内去重并排除空值
+        customers = AmazonShop.objects.filter(
+            company=request.user.company
+        ).exclude(
             customer__isnull=True
         ).exclude(
             customer=''
@@ -357,7 +362,10 @@ def get_amazon_shops_api(request):
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100, 200, 5000]: page_size = 20
 
-        query = AmazonShop.objects.select_related('ops', 'project').prefetch_related('ops__operational_account')
+        # 公司隔离：只查本公司店铺
+        query = AmazonShop.objects.filter(
+            company=request.user.company
+        ).select_related('ops', 'project').prefetch_related('ops__operational_account')
 
         # 权限范围过滤：555/552查看全部；运营组长查看本组；普通运营查看本人
         visible_ops_ids = get_visible_ops_ids(request.user)
@@ -519,11 +527,13 @@ def bulk_update_project_api(request):
             if leader_account and leader_account.ops_group:
                 # 获取本组所有成员ID
                 member_ids = OperationalAccount.objects.filter(
+                    user__company=request.user.company,
                     ops_group=leader_account.ops_group
                 ).values_list('user_id', flat=True)
-                # 检查所选店铺是否都在本组
+                # 检查所选店铺是否都在本组（同时确保是本公司店铺）
                 shops_not_in_group = AmazonShop.objects.filter(
-                    id__in=shop_ids
+                    id__in=shop_ids,
+                    company=request.user.company
                 ).exclude(ops_id__in=list(member_ids))
                 if shops_not_in_group.exists():
                     return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)
@@ -578,18 +588,20 @@ def bulk_update_operator_api(request):
         if is_ops_leader(request.user) and not can_access_shop_management(request.user):
             leader_account = getattr(request.user, 'operational_account', None)
             if leader_account and leader_account.ops_group:
-                # 检查运营人员是否在本组
+                # 检查运营人员是否在本组（同时确保是本公司人员）
                 operator_account = getattr(operator, 'operational_account', None)
-                if not operator_account or operator_account.ops_group != leader_account.ops_group:
+                if not operator_account or operator.ops_group != leader_account.ops_group:
                     return JsonResponse({'success': False, 'error': '只能分配给本组人员'}, status=403)
                 
                 # 获取本组所有成员ID
                 member_ids = OperationalAccount.objects.filter(
+                    user__company=request.user.company,
                     ops_group=leader_account.ops_group
                 ).values_list('user_id', flat=True)
-                # 检查所选店铺是否都在本组
+                # 检查所选店铺是否都在本组（同时确保是本公司店铺）
                 shops_not_in_group = AmazonShop.objects.filter(
-                    id__in=shop_ids
+                    id__in=shop_ids,
+                    company=request.user.company
                 ).exclude(ops_id__in=list(member_ids))
                 if shops_not_in_group.exists():
                     return JsonResponse({'success': False, 'error': '无权限操作其他分组的店铺'}, status=403)

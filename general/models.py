@@ -91,7 +91,52 @@ class Project(models.Model):
                                      help_text='数字越小越靠前，用于前端展示')
     is_active = models.BooleanField('是否启用', default=True,
                                     db_comment='停用后不允许店铺挂靠，但已有数据保留')
+    lingxing_app_id = models.CharField(
+        '领星AppID',
+        max_length=100,
+        blank=True,
+        null=True,
+        db_comment='领星开放平台的应用ID，如 ak_P211HcxRxAZ8x',
+        help_text='对应领星开发者后台的 appId 字段'
+    )
 
+    lingxing_app_secret = models.CharField(
+        '领星AppSecret',
+        max_length=255,
+        blank=True,
+        null=True,
+        db_comment='领星开放平台密钥，用于生成请求签名',
+        help_text='对应领星开发者后台的 appSecret，用于接口签名'
+    )
+
+    divi_partner_code = models.CharField(
+        'Divi合作方编码 (PARTNER_CODE)',
+        max_length=100,
+        blank=True, null=True,
+        db_comment='固定分配的应用标识，如 7607f3480484b48235',
+        help_text='对应 DIVI 的 PARTNER_CODE'
+    )
+
+    divi_secret = models.CharField(
+        'Divi密钥 (SECRET)',
+        max_length=255,
+        blank=True, null=True,
+        db_comment='用于生成请求签名，切勿泄露',
+        help_text='对应 DIVI 的 SECRET，用于接口签名验证'
+    )
+
+    # 可选：是否启用自动同步（开关控制，避免频繁调用）
+    lingxing_sync_enabled = models.BooleanField(
+        '启用领星自动同步',
+        default=False,
+        db_comment='控制是否允许定时任务拉取领星数据'
+    )
+
+    divi_sync_enabled = models.BooleanField(
+        '启用Divi自动同步',
+        default=False,
+        db_comment='控制是否允许调用Divi接口查侵权词'
+    )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
@@ -221,6 +266,16 @@ class User(AbstractUser):
         if hasattr(self, 'operational_account') and self.operational_account.ops_group:
             return self.operational_account.ops_group
         return None
+
+    def can_manage_group_targets(self):
+        """检查用户是否可以管理组绩效目标（permission包含555）"""
+        return self.permission_configs.filter(code=555).exists()
+
+    def is_group_leader(self):
+        """检查用户是否为运营组长"""
+        if hasattr(self, 'operational_account') and self.operational_account.role:
+            return self.operational_account.role == OperationalAccount.Role.LEADER
+        return False
 
 
 class OperationalAccount(models.Model):

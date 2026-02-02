@@ -218,8 +218,8 @@ class AssessmentManagementView(LoginRequiredMixin, View):
         user = assessment.employee
 
         # 1. 获取该员工负责的所有店铺（分平台）
-        amazon_shops = AmazonShop.objects.filter(ops=user).values_list('id', flat=True)
-        temu_shops = TemuShop.objects.filter(ops_id=user.id).values_list('id', flat=True)
+        amazon_shops = AmazonShop.objects.filter(company=user.company, ops=user).values_list('id', flat=True)
+        temu_shops = TemuShop.objects.filter(company=user.company, ops_id=user.id).values_list('id', flat=True)
 
         if not amazon_shops and not temu_shops:
             return
@@ -404,7 +404,7 @@ class AssessmentListView(AssessmentManagementView, ListView):
 
         queryset = PerformanceAssessment.objects.select_related(
             'employee', 'leader', 'performance_target'
-        ).prefetch_related('score_details')
+        ).prefetch_related('score_details').filter(employee__company=user.company)
 
         # 筛选参数
         month = self.request.GET.get('month')
@@ -442,6 +442,7 @@ class AssessmentListView(AssessmentManagementView, ListView):
 
         # 下面的代码你模板里需要用到，所以也加上
         context['employees'] = User.objects.filter(
+            company=self.request.user.company,
             assessments__isnull=False
         ).distinct().order_by('first_name')
         context['type_choices'] = PerformanceAssessment.ASSESSMENT_TYPES
@@ -487,8 +488,9 @@ class CreateBatchAssessmentView(AssessmentManagementView):
 
         # Temu运营
         temu_users = User.objects.filter(
-            platform='Temu',
-            role='运营',
+            company=request.user.company,
+            department='operation',
+            operational_account__platform='temu',
             operational_account__isnull=False
         ).select_related('operational_account')
         users_to_assess.extend([
@@ -498,8 +500,9 @@ class CreateBatchAssessmentView(AssessmentManagementView):
 
         # 亚马逊运营
         amazon_users = User.objects.filter(
-            platform='亚马逊',
-            role='运营',
+            company=request.user.company,
+            department='operation',
+            operational_account__platform='amazon',
             operational_account__isnull=False
         ).select_related('operational_account')
         users_to_assess.extend([
@@ -509,8 +512,9 @@ class CreateBatchAssessmentView(AssessmentManagementView):
 
         # 亚马逊运营助理
         assistant_users = User.objects.filter(
-            platform='亚马逊',
-            role='运营助理',
+            company=request.user.company,
+            department='assistant',
+            operational_account__platform='amazon',
             operational_account__isnull=False
         ).select_related('operational_account')
         users_to_assess.extend([
@@ -534,7 +538,8 @@ class CreateBatchAssessmentView(AssessmentManagementView):
                 continue
 
             leader = User.objects.filter(
-                role='运营组长',
+                company=request.user.company,
+                operational_account__role='leader',
                 operational_account__ops_group=ops_group
             ).first()
 
