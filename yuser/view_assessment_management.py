@@ -448,6 +448,7 @@ class AssessmentListView(AssessmentManagementView, ListView):
         context['type_choices'] = PerformanceAssessment.ASSESSMENT_TYPES
         context['status_choices'] = PerformanceAssessment.STATUS_CHOICES
         context['active_page'] = 'assessment_list'
+        context['active_nav'] = 'management'
 
         try:
             current_user = self.request.user

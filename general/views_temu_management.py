@@ -78,6 +78,7 @@ def temu_management_view(request):
     user_perms_str = [str(p) for p in user_perms]
     context = {
         'active_page': 'temu_management',
+        'active_nav': 'management',
         'user_permissions': user_perms_str,  # 用于Django模板条件判断
         'user_permissions_json': json.dumps(user_perms),  # 用于JS
         'is_admin': can_access_shop_management(user),

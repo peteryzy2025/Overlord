@@ -180,6 +180,7 @@ class AssessmentSummaryView(View):
 
         context = {
             'active_page': 'assessment_summary',
+            'active_nav': 'management',
             'month': month,
             'data_list': data_list,
             'is_admin': True,
