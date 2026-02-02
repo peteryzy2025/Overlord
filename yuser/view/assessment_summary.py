@@ -59,7 +59,8 @@ class AssessmentSummaryView(View):
 
     def get(self, request):
         """渲染汇总页面"""
-        if not request.user.permission or '555' not in request.user.permission.split(','):
+        # 权限检查：只有555管理员可以访问
+        if not request.user.permission_configs.filter(code=555).exists():
             return JsonResponse({'success': False, 'message': '无权限访问'}, status=403)
 
         month = request.GET.get('month', '')
@@ -69,6 +70,7 @@ class AssessmentSummaryView(View):
         ).prefetch_related(
             Prefetch('score_details', to_attr='score_details_list')
         ).filter(
+            employee__company=request.user.company,
             status=PerformanceAssessment.STATUS_CONFIRMED
         )
 
@@ -189,7 +191,8 @@ class AssessmentSummaryView(View):
         """处理Excel导出"""
         from decimal import Decimal  # 放这里或文件顶部都行
 
-        if not request.user.permission or '555' not in request.user.permission.split(','):
+        # 权限检查：只有555管理员可以导出
+        if not request.user.permission_configs.filter(code=555).exists():
             return JsonResponse({'success': False, 'message': '无权限导出'}, status=403)
 
         month = request.POST.get('month', '')
@@ -204,6 +207,7 @@ class AssessmentSummaryView(View):
         assessments = PerformanceAssessment.objects.select_related(
             'employee', 'employee__operational_account'
         ).prefetch_related('score_details').filter(
+            employee__company=request.user.company,
             status=PerformanceAssessment.STATUS_CONFIRMED,
             month=month
         ).order_by(

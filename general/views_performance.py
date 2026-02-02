@@ -49,7 +49,7 @@ def get_group_targets_api(request):
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100]: page_size = 10
 
-        query = GroupPerformanceTarget.objects.select_related('created_by').all()
+        query = GroupPerformanceTarget.objects.select_related('created_by').filter(company=request.user.company)
 
         # 筛选条件
         month_filter = request.GET.get('month', '').strip()
@@ -138,11 +138,12 @@ def create_group_target_api(request):
             return JsonResponse({'success': False, 'error': '月份格式错误，应为YYYY-MM'}, status=400)
 
         # 检查重复
-        if GroupPerformanceTarget.objects.filter(month=month, ops_group=ops_group).exists():
+        if GroupPerformanceTarget.objects.filter(company=request.user.company, month=month, ops_group=ops_group).exists():
             return JsonResponse({'success': False, 'error': '该组该月份已存在目标'}, status=400)
 
         with transaction.atomic():
             target = GroupPerformanceTarget.objects.create(
+                company=request.user.company,
                 month=month,
                 ops_group=ops_group,
                 target_performance=target_performance,
@@ -152,6 +153,7 @@ def create_group_target_api(request):
 
         try:
             recipients = User.objects.filter(
+                company=request.user.company,
                 operational_account__ops_group=ops_group,
                 status=User.STATUS_NORMAL
             ).exclude(wx_url__isnull=True).exclude(wx_url='')
@@ -196,7 +198,7 @@ def update_group_target_api(request, target_id):
             return JsonResponse({'success': False, 'error': '无权限修改组目标'}, status=403)
 
         try:
-            target = GroupPerformanceTarget.objects.get(id=target_id)
+            target = GroupPerformanceTarget.objects.get(id=target_id, company=request.user.company)
         except GroupPerformanceTarget.DoesNotExist:
             return JsonResponse({'success': False, 'error': '组目标不存在'}, status=404)
 
@@ -244,7 +246,7 @@ def get_personal_targets_api(request):
         if page < 1: page = 1
         if page_size not in [10, 20, 50, 100]: page_size = 10
 
-        query = PersonalPerformanceTarget.objects.select_related('user', 'created_by').all()
+        query = PersonalPerformanceTarget.objects.select_related('user', 'created_by').filter(company=request.user.company)
 
         # 如果是运营组长，只能看自己组的目标
         if request.user.is_group_leader():
@@ -356,7 +358,7 @@ def batch_create_personal_targets_api(request):
 
         # 验证组目标是否存在
         group_target = GroupPerformanceTarget.objects.filter(
-            month=month, ops_group=ops_group
+            company=request.user.company, month=month, ops_group=ops_group
         ).first()
 
         if not group_target:
@@ -374,6 +376,7 @@ def batch_create_personal_targets_api(request):
         # 验证所有成员都属于该组
         user_ids = [t['user_id'] for t in targets_data]
         group_members = User.objects.filter(
+            company=request.user.company,
             id__in=user_ids,
             operational_account__ops_group=ops_group
         )
@@ -464,7 +467,9 @@ def get_ops_groups_for_filter_api(request):
     返回: ['李湘杰组', '王五组', ...]
     """
     try:
-        groups = OperationalAccount.objects.exclude(
+        groups = OperationalAccount.objects.filter(
+            user__company=request.user.company
+        ).exclude(
             ops_group__isnull=True
         ).exclude(
             ops_group=''
@@ -495,7 +500,8 @@ def get_operators_by_group_api(request):
             return JsonResponse({'success': False, 'error': '需要提供ops_group参数'}, status=400)
 
         users = User.objects.filter(
-            department='运营部门',
+            company=request.user.company,
+            department='operation',
             operational_account__ops_group=ops_group
         ).order_by('first_name')
 
