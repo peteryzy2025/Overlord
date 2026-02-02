@@ -12,18 +12,14 @@ from general.models import User, AmazonShop, TemuShop, OperationalAccount
 from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 
-# 导入权限函数
-from amazon.amazon_views_jc import (
-    can_access_operation_management,
-    is_ops_leader,
-    get_visible_operator_ids
-)
+# 登神长阶：不需要权限限制，所有运营人员均可查看全公司排名
 
 
 @login_required
 def get_ranking_data_api(request):
     """
-    获取运营排名数据 API（带公司隔离和权限控制）
+    获取运营排名数据 API（带公司隔离）
+    登神长阶 - 所有运营人员均可查看全公司排名
     GET参数:
       - start_date: 开始日期
       - end_date: 结束日期
@@ -35,10 +31,8 @@ def get_ranking_data_api(request):
     try:
         user = request.user
 
-        # 获取可见的运营人员ID列表
-        visible_ids = get_visible_operator_ids(user)
-        if visible_ids == []:  # 无权限
-            return JsonResponse({'success': True, 'data': [], 'message': '无权限查看排名'})
+        # 登神长阶：所有运营人员均可查看全公司排名，不限制权限
+        # 只要是本公司运营人员都可以看全公司排名
 
         # 解析日期参数
         start_date_str = request.GET.get('start_date', '')
@@ -57,7 +51,7 @@ def get_ranking_data_api(request):
         print(f"{'=' * 60}\n")
 
         # ========== 查询本公司有店铺的运营人员 ==========
-        # 获取所有有店铺的 ops_id（限定本公司）
+        # 登神长阶：所有运营人员均可查看全公司排名
         amazon_ops = set(AmazonShop.objects.filter(
             company=user.company,
             ops_id__isnull=False
@@ -70,9 +64,7 @@ def get_ranking_data_api(request):
 
         all_ops_ids = amazon_ops.union(temu_ops)
 
-        # 应用权限过滤
-        if visible_ids is not None:
-            all_ops_ids = all_ops_ids.intersection(set(visible_ids))
+        # 不做权限过滤，所有本公司运营人员都可以看全公司排名
 
         if not all_ops_ids:
             return JsonResponse({
