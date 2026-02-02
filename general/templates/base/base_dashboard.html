@@ -1,16 +1,22 @@
 {% extends 'base/base_r.html' %}
 
+{% block content %}
+    <div class="content">
+        {% block page_content %}{% endblock %}
+    </div>
+{% endblock %}
+
 {% block sidebar %}
     <ul class="sidebar-menu">
         <li class="sidebar-item">
-            <a href="{% url 'shop_guard:dashboard' %}"
+            <a href="{% url 'amazon:dashboard' %}"
                class="sidebar-link {% if active_page == 'dashboard' %}active{% endif %}">
                 <i class="fas fa-tachometer-alt sidebar-icon"></i>
                 <span>驾驶舱</span>
             </a>
         </li>
         <li class="sidebar-item">
-            <a href="{% url 'shop_guard:ranking' %}"
+            <a href="{% url 'amazon:ranking_page' %}"
                class="sidebar-link {% if active_page == 'ranking' %}active{% endif %}">
                 <i class="fas fa-trophy sidebar-icon"></i>
                 <span>登神长阶</span>

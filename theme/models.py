@@ -342,3 +342,94 @@ class ThemeReport(models.Model):
 
     def __str__(self):
         return f"{self.product.asin} - {self.reporter.first_name if self.reporter else 'Unknown'}"
+
+
+class AmazonListing(models.Model):
+    """
+    Listing 数据库
+    唯一约束：同一个领星店铺（站点）内，ASIN 不能重复
+    """
+
+    id = models.BigAutoField(
+        primary_key=True,
+        verbose_name='ID',
+        db_comment='自增主键'
+    )
+
+    asin = models.CharField(
+        max_length=10,
+        db_index=True,  # 仍为查询热点，加索引
+        verbose_name='ASIN',
+        db_comment='亚马逊商品编码'
+    )
+
+    title = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='标题',
+        db_comment='Listing标题'
+    )
+
+    # 外键：一个 Listing 属于一个店铺（多对一）
+    lingxing_shop = models.ForeignKey(
+        'amazon.LingXingAmazonShop',
+        on_delete=models.CASCADE,  # 店铺删除则 Listing 删除
+        related_name='listings',
+        verbose_name='所属领星店铺',
+        db_comment='绑定的领星站点店铺'
+    )
+
+    # 多对多：侵权词库（一个 ASIN 可能命中多个词，一个词可能关联多个 ASIN）
+    tro_words = models.ManyToManyField(
+        'TroTable',
+        related_name='listings',
+        verbose_name='命中侵权词',
+        blank=True,
+        db_comment='关联的侵权词记录'
+    )
+
+    # 多对多：美标网
+    trademarks = models.ManyToManyField(
+        'TrademarkInfo',
+        related_name='listings',
+        verbose_name='命中商标',
+        blank=True,
+        db_comment='关联的美标网商标记录'
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='是否在售',
+        db_comment='Listing是否处于在售状态'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'amazon_listing'
+        db_table_comment = 'Listing主表（店铺+ASIN唯一）'
+        verbose_name = 'Amazon Listing'
+        verbose_name_plural = 'Amazon Listings'
+
+        # 核心约束：同一个店铺内 ASIN 唯一
+        constraints = [
+            models.UniqueConstraint(
+                fields=['lingxing_shop', 'asin'],
+                name='uniq_lingxing_shop_asin'
+            )
+        ]
+
+        # 常用查询索引
+        indexes = [
+            models.Index(fields=['asin'], name='idx_listing_asin'),
+            models.Index(fields=['is_active'], name='idx_listing_active'),
+            models.Index(fields=['created_at'], name='idx_listing_created'),
+        ]
+
+    def __str__(self):
+        shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
+        return f"{shop_name} - {self.asin}"
+
+    

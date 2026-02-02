@@ -5,12 +5,13 @@ from amazon import (
     amazon_views_jc,
     views_ranking,
 )
+from amazon.view import views_dashboard
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 app_name = 'amazon'
 
 urlpatterns = [
     # ========== 驾驶舱/仪表板 ==========
-    path('dashboard/', amazon_views.amazon_dashboard_page, name='dashboard'),
+    path('dashboard/', views_dashboard.dashboard_page, name='dashboard'),
     path('api/amazon/operator-pie-chart/', amazon_views.get_operator_pie_chart_api, name='amazon_operator_pie_chart'),
     path('api/amazon/operator-sales-pie-chart/', amazon_views.get_operator_sales_pie_chart_api,
          name='amazon_operator_sales_pie_chart'),
@@ -29,7 +30,7 @@ urlpatterns = [
     path('api/export-amazon-orders-excel/', views_amazon_order.export_amazon_orders_excel,
          name='api_export_amazon_orders_excel'),
     # ========== 排名 ==========
-    path('ranking/', views_ranking.ranking_page, name='ranking_page'),
+    path('ranking/', views_dashboard.ranking_page, name='ranking_page'),
     path('api/ranking-data/', views_ranking.get_ranking_data_api, name='ranking_data_api'),
 
     # ========== Amazon绩效通知 ==========

@@ -14,14 +14,6 @@ from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 
 
 @login_required
-def ranking_page(request):
-    """运营排名页面渲染"""
-    return render(request, 'ranking.html', {
-        'active_nav': 'ranking'
-    })
-
-
-@login_required
 def get_ranking_data_api(request):
     """
     获取运营排名数据 API
