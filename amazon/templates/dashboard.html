@@ -4,6 +4,7 @@
 {% block title %}驾驶舱 - Overlord{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         [data-theme="dark"] {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -705,26 +706,12 @@
 
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <div class="select-wrapper" id="groupWrapper">
-                        <select class="form-select" id="groupFilter"></select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('group')"
-                                title="清除选择">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    </div>
+                    <div id="groupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <div class="select-wrapper" id="operatorWrapper">
-                        <select class="form-select" id="operatorFilter"></select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('operator')"
-                                title="清除选择">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    </div>
+                    <div id="operatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
 
                 <div class="filter-group" style="align-self: flex-end;">
@@ -863,9 +850,12 @@
 
 {% block extra_js %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script>
-        let allOperators = [];
-        let allGroups = [];
+        // SearchableSelect 实例
+        let groupSelect = null;
+        let operatorSelect = null;
+        
         let currentFilters = {
             date_range: 'yesterday',
             start_date: '',
@@ -890,78 +880,71 @@
             });
         }
 
-        async function loadOperatorsFromAPI() {
+        // ==================== 新版 SearchableSelect 初始化 ====================
+        async function initSearchableSelects() {
+            // 初始化分组下拉框
+            groupSelect = new SearchableSelect('#groupFilter', {
+                options: [],
+                placeholder: '全部分组'
+            });
+            
+            // 初始化人员下拉框
+            operatorSelect = new SearchableSelect('#operatorFilter', {
+                options: [],
+                placeholder: '全部人员'
+            });
+            
+            // 加载分组数据（平台不传值，表示全部平台）
+            await loadGroups();
+            
+            // 加载人员数据（平台不传值，表示全部平台）
+            await loadOperators();
+            
+            // 绑定联动事件：分组变化时刷新人员列表
+            groupSelect.onChange = (value) => {
+                loadOperators(value);
+            };
+        }
+        
+        async function loadGroups() {
             try {
-                const url = new URL('/api/amazon/operators/', window.location.origin);
+                // 驾驶舱平台不筛选（两个平台都要）
+                const response = await fetch('/api/general/ops-groups/');
+                const result = await response.json();
+                
+                if (result.success && groupSelect) {
+                    groupSelect.setOptions(result.data);
+                    // 默认选中第一项（通常是"全部分组"）
+                    if (result.data.length > 0) {
+                        groupSelect.setValue(result.data[0].value);
+                    }
+                }
+            } catch (error) {
+                console.error('加载运营分组失败:', error);
+            }
+        }
+        
+        async function loadOperators(opsGroup) {
+            try {
+                const params = new URLSearchParams();
+                // 驾驶舱平台不筛选（两个平台都要）
+                if (opsGroup) {
+                    params.set('ops_group', opsGroup);
+                }
+                
+                const url = `/api/general/operators/?${params}`;
                 const response = await fetch(url);
                 const result = await response.json();
-                if (result.success) {
-                    allOperators = result.data;
-                    populateOperatorDropdown();
-                    return true;
+                
+                if (result.success && operatorSelect) {
+                    operatorSelect.setOptions(result.data);
+                    // 默认选中第一项（通常是"全部人员"）
+                    if (result.data.length > 0) {
+                        operatorSelect.setValue(result.data[0].value);
+                    }
                 }
-                return false;
             } catch (error) {
-                console.error('运营人员API请求错误:', error);
-                return false;
-            }
-        }
-
-        async function loadGroupsFromAPI() {
-            try {
-                const response = await fetch('/api/amazon/ops-groups/');
-                const result = await response.json();
-                if (result.success) {
-                    allGroups = result.data;
-                    populateGroupDropdown();
-                    return true;
-                }
-                return false;
-            } catch (error) {
-                console.error('分组API请求错误:', error);
-                return false;
-            }
-        }
-
-        function populateGroupDropdown() {
-            const groupSelect = document.getElementById('groupFilter');
-            groupSelect.innerHTML = '';
-            const emptyOption = document.createElement('option');
-            emptyOption.value = '';
-            emptyOption.textContent = '';
-            groupSelect.appendChild(emptyOption);
-
-            allGroups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group;
-                option.textContent = group;
-                groupSelect.appendChild(option);
-            });
-
-            if (allGroups.length === 0) {
-                emptyOption.textContent = '无可用选项';
-            }
-        }
-
-        function populateOperatorDropdown() {
-            const operatorSelect = document.getElementById('operatorFilter');
-            operatorSelect.innerHTML = '';
-            const emptyOption = document.createElement('option');
-            emptyOption.value = '';
-            emptyOption.textContent = '';
-            operatorSelect.appendChild(emptyOption);
-
-            allOperators.forEach(op => {
-                const option = document.createElement('option');
-                option.value = op.id;
-                option.textContent = op.id === 'all'
-                    ? op.first_name
-                    : `${op.first_name} (${op.group})`;
-                operatorSelect.appendChild(option);
-            });
-
-            if (allOperators.length === 0) {
-                emptyOption.textContent = '无可用选项';
+                console.error('加载运营人员失败:', error);
             }
         }
 
@@ -983,68 +966,30 @@
                 date_range: document.getElementById('dateRange').value,
                 start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
                 end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
-                operator_id: document.getElementById('operatorFilter').value,
-                group: document.getElementById('groupFilter').value
+                operator_id: operatorSelect ? operatorSelect.getValue() : '',
+                group: groupSelect ? groupSelect.getValue() : ''
             };
         }
 
         function setDefaultFilters() {
-            const groupSelect = document.getElementById('groupFilter');
-            const operatorSelect = document.getElementById('operatorFilter');
-
             document.getElementById('dateRange').value = 'yesterday';
             handleDateRangeChange();
-
-            if (groupSelect.options.length > 0) {
-                const allGroup = Array.from(groupSelect.options).find(opt => opt.textContent === '全部分组');
-                groupSelect.value = allGroup ? allGroup.value : groupSelect.options[0].value;
-            }
-
-            if (operatorSelect.options.length > 0) {
-                const allOp = Array.from(operatorSelect.options).find(opt => opt.value === 'all');
-                operatorSelect.value = allOp ? 'all' : operatorSelect.options[0].value;
-            }
-
+            
+            // SearchableSelect 默认值在加载数据时已设置
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
         }
 
-        function initializeSmartClearButtons() {
-            document.getElementById('groupFilter').addEventListener('change', () => toggleClearIcon('group'));
-            document.getElementById('operatorFilter').addEventListener('change', () => toggleClearIcon('operator'));
-            toggleClearIcon('group');
-            toggleClearIcon('operator');
-        }
-
-        function toggleClearIcon(filterType) {
-            const select = document.getElementById(filterType + 'Filter');
-            const wrapper = document.getElementById(filterType + 'Wrapper');
-            const currentValue = select.value;
-            const hasValidValue = currentValue &&
-                currentValue !== 'all' &&
-                currentValue !== '全部分组' &&
-                currentValue !== '全部人员';
-
-            if (hasValidValue) {
-                wrapper.classList.add('has-value');
-            } else {
-                wrapper.classList.remove('has-value');
-            }
-        }
-
-        function clearAndToggle(filterType) {
-            const select = document.getElementById(filterType + 'Filter');
-            select.value = '';
-            const event = new Event('change', {bubbles: true});
-            select.dispatchEvent(event);
-            applyFilters();
-        }
-
         function resetFilters() {
-            document.getElementById('groupFilter').value = '';
-            document.getElementById('operatorFilter').value = '';
-            document.getElementById('groupFilter').dispatchEvent(new Event('change'));
-            document.getElementById('operatorFilter').dispatchEvent(new Event('change'));
+            // 重置 SearchableSelect
+            if (groupSelect) {
+                const firstOption = groupSelect.options[0];
+                if (firstOption) groupSelect.setValue(firstOption.value);
+            }
+            if (operatorSelect) {
+                const firstOption = operatorSelect.options[0];
+                if (firstOption) operatorSelect.setValue(firstOption.value);
+            }
             document.getElementById('dateRange').value = 'yesterday';
             handleDateRangeChange();
             applyFilters();
@@ -1528,11 +1473,10 @@
 
         // 页面快速加载，数据异步获取
         document.addEventListener('DOMContentLoaded', function () {
-            // 先加载筛选器数据（不阻塞页面渲染）
-            Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()])
+            // 初始化 SearchableSelect 组件并加载数据
+            initSearchableSelects()
                 .then(() => {
                     setDefaultFilters();
-                    initializeSmartClearButtons();
                     document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
                     // 异步加载图表数据
                     return applyFilters();

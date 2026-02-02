@@ -9,6 +9,7 @@ from general import (
     views_announcement_management
 )
 from general.view import view_operation_log, views_general, views_user_management
+from api.general import group_and_ops
 
 app_name = 'general'
 
@@ -17,6 +18,10 @@ urlpatterns = [
     # ========== 重构 ==============
     path('api/ops/list', views_general.get_ops_list, name='get_ops_list_api'),
     path('api/ops-groups/list', views_general.get_ops_groups_api, name='get_ops_groups_list_api'),
+
+    # ========== 通用运营分组和人员查询接口（新） ==========
+    path('api/general/ops-groups/', group_and_ops.get_ops_groups_api, name='api_general_ops_groups'),
+    path('api/general/operators/', group_and_ops.get_operators_api, name='api_general_operators'),
 
     # ========== 人员管理（新增/改造） ==========
     # 页面视图

@@ -24,13 +24,31 @@
         color: var(--text-primary);
     }
 
-    .filter-panel {
+    .filter-section {
         background-color: var(--bg-primary);
         border-radius: 12px;
         padding: 1.5rem;
         margin-bottom: 2rem;
         box-shadow: var(--shadow-light);
         border: 1px solid var(--border-color);
+    }
+
+    .filter-row {
+        display: flex;
+        gap: 1.5rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .filter-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: flex-end;
     }
 
     .quick-date-buttons {
@@ -73,7 +91,6 @@
     }
 
     /* 其余样式保持不变... */
-    .filter-row {
         display: flex;
         gap: 1.5rem;
         align-items: flex-end;
@@ -233,6 +250,11 @@
             align-items: stretch;
         }
 
+        .filter-row {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
         .filter-group {
             width: 100%;
         }
@@ -249,13 +271,15 @@
     <!-- 页面标题 -->
     <div class="page-header">
         <div>
-            <h1 class="page-title">运营排名</h1>
+            <h1 class="page-title">登神长阶</h1>
             <p class="page-subtitle">按订单量统计所有运营人员业绩排名</p>
         </div>
     </div>
 
     <!-- 统计概览 -->
     <div class="stats-summary" id="statsSummary">
+        {% if is_admin %}
+        <!-- 管理员视图：显示全局统计 -->
         <div class="summary-card">
             <div class="summary-value" id="totalOperators">—</div>
             <div class="summary-label">参与排名</div>
@@ -272,24 +296,49 @@
             <div class="summary-value" id="avgOrders">—</div>
             <div class="summary-label">平均订单量</div>
         </div>
+        {% else %}
+        <!-- 非管理员视图：显示个人统计 -->
+        <div class="summary-card">
+            <div class="summary-value" id="groupRank">—</div>
+            <div class="summary-label">当前小组排名</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="overallRank">—</div>
+            <div class="summary-label">总排名</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="myTotalOrders">—</div>
+            <div class="summary-label">总订单量</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-value" id="myTotalSales">—</div>
+            <div class="summary-label">总销售额</div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- 筛选面板 -->
-    <div class="filter-panel">
-        <!-- ========== 新增：快捷日期按钮 ========== -->
-        <div class="quick-date-buttons" id="quickDateButtons">
-            <button class="quick-date-btn" data-range="today">今日</button>
-            <button class="quick-date-btn" data-range="yesterday">昨日</button>
-            <button class="quick-date-btn" data-range="last3days">近3日</button>
-            <button class="quick-date-btn" data-range="last7days">近7日</button>
-            <button class="quick-date-btn active" data-range="last30days">近30日</button>
-            <button class="quick-date-btn" data-range="thisweek">本周</button>
-            <button class="quick-date-btn" data-range="lastweek">上周</button>
-            <button class="quick-date-btn" data-range="thismonth">本月</button>
-            <button class="quick-date-btn" data-range="lastmonth">上月</button>
+    <div class="filter-section">
+        <!-- 第一行：快捷日期按钮 -->
+        <div class="filter-row">
+            <div class="filter-group" style="flex: 1;">
+                <label class="filter-label">快捷日期</label>
+                <div class="quick-date-buttons" id="quickDateButtons">
+                    <button class="quick-date-btn" data-range="today">今日</button>
+                    <button class="quick-date-btn" data-range="yesterday">昨日</button>
+                    <button class="quick-date-btn" data-range="last3days">近3日</button>
+                    <button class="quick-date-btn" data-range="last7days">近7日</button>
+                    <button class="quick-date-btn active" data-range="last30days">近30日</button>
+                    <button class="quick-date-btn" data-range="thisweek">本周</button>
+                    <button class="quick-date-btn" data-range="lastweek">上周</button>
+                    <button class="quick-date-btn" data-range="thismonth">本月</button>
+                    <button class="quick-date-btn" data-range="lastmonth">上月</button>
+                </div>
+            </div>
         </div>
 
-        <div class="date-inputs-row">
+        <!-- 第二行：日期选择 + 按钮 -->
+        <div class="filter-row">
             <div class="filter-group">
                 <label class="filter-label">开始日期</label>
                 <input type="date" class="form-control" id="startDate">
@@ -298,8 +347,8 @@
                 <label class="filter-label">结束日期</label>
                 <input type="date" class="form-control" id="endDate">
             </div>
-            <div class="filter-group" style="align-self: flex-end;">
-                <button class="btn" onclick="loadRankingData()">查询排名</button>
+            <div class="filter-actions">
+                <button class="btn" onclick="loadRankingData()">查询</button>
             </div>
         </div>
     </div>
@@ -481,25 +530,61 @@ function handleQuickDateClick(rangeType) {
         }
     }
 
+    // 权限标识
+    const IS_ADMIN = {{ is_admin|yesno:"true,false" }};
+    const CURRENT_USER_ID = {{ current_user_id }};
+
     // 更新统计概览
     function updateStatsSummary(data) {
         if (!data || data.length === 0) {
-            document.getElementById('totalOperators').textContent = '0';
-            document.getElementById('totalOrders').textContent = '0';
-            document.getElementById('totalSalesQuantity').textContent = '0';
-            document.getElementById('avgOrders').textContent = '0';
+            // 管理员视图
+            if (IS_ADMIN) {
+                document.getElementById('totalOperators').textContent = '0';
+                document.getElementById('totalOrders').textContent = '0';
+                document.getElementById('totalSalesQuantity').textContent = '0';
+                document.getElementById('avgOrders').textContent = '0';
+            } else {
+                // 非管理员视图
+                document.getElementById('groupRank').textContent = '-';
+                document.getElementById('overallRank').textContent = '-';
+                document.getElementById('myTotalOrders').textContent = '0';
+                document.getElementById('myTotalSales').textContent = '0';
+            }
             return;
         }
 
-        const totalOps = data.length;
-        const totalOrders = data.reduce((sum, item) => sum + item.total_orders, 0);
-        const totalSalesQuantity = data.reduce((sum, item) => sum + item.total_sales_quantity, 0);
-        const avgOrders = Math.round(totalOrders / totalOps);
+        if (IS_ADMIN) {
+            // 管理员：显示全局统计
+            const totalOps = data.length;
+            const totalOrders = data.reduce((sum, item) => sum + item.total_orders, 0);
+            const totalSalesQuantity = data.reduce((sum, item) => sum + item.total_sales_quantity, 0);
+            const avgOrders = Math.round(totalOrders / totalOps);
 
-        document.getElementById('totalOperators').textContent = formatNumber(totalOps);
-        document.getElementById('totalOrders').textContent = formatNumber(totalOrders);
-        document.getElementById('totalSalesQuantity').textContent = formatNumber(totalSalesQuantity);
-        document.getElementById('avgOrders').textContent = formatNumber(avgOrders);
+            document.getElementById('totalOperators').textContent = formatNumber(totalOps);
+            document.getElementById('totalOrders').textContent = formatNumber(totalOrders);
+            document.getElementById('totalSalesQuantity').textContent = formatNumber(totalSalesQuantity);
+            document.getElementById('avgOrders').textContent = formatNumber(avgOrders);
+        } else {
+            // 非管理员：显示个人统计
+            const myData = data.find(item => item.operator_id === CURRENT_USER_ID);
+            
+            if (myData) {
+                // 计算小组排名
+                const myGroup = myData.group;
+                const groupMembers = data.filter(item => item.group === myGroup);
+                const groupRank = groupMembers.findIndex(item => item.operator_id === CURRENT_USER_ID) + 1;
+                
+                document.getElementById('groupRank').textContent = groupRank > 0 ? '第' + groupRank + '名' : '-';
+                document.getElementById('overallRank').textContent = '第' + myData.rank + '名';
+                document.getElementById('myTotalOrders').textContent = formatNumber(myData.total_orders);
+                document.getElementById('myTotalSales').textContent = formatNumber(myData.total_sales_quantity) + '件';
+            } else {
+                document.getElementById('groupRank').textContent = '-';
+                document.getElementById('overallRank').textContent = '-';
+                document.getElementById('myTotalOrders').textContent = '0';
+                document.getElementById('myTotalSales').textContent = '0';
+            }
+        }
     }
 
     // 更新排名图表
