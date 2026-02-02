@@ -158,6 +158,38 @@
     #rankingChart {
         width: 100%;
         height: 600px;
+        position: relative;
+    }
+
+    /* 图表加载状态 */
+    .chart-loading {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-primary);
+        border-radius: 8px;
+    }
+
+    .chart-loading .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--accent-color);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 1rem;
+    }
+
+    .chart-loading p {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 
     .stats-summary {
@@ -290,15 +322,12 @@
                 </div>
             </div>
         </div>
-        <div id="rankingChart"></div>
-    </div>
-</div>
-
-<!-- 加载动画 -->
-<div class="loading-overlay" id="loadingOverlay" style="display: none;">
-    <div class="loading-content">
-        <div class="spinner"></div>
-        <p>数据加载中...</p>
+        <div id="rankingChart">
+            <div class="chart-loading" id="rankingChartLoading">
+                <div class="spinner"></div>
+                <p>数据加载中...</p>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -320,12 +349,12 @@
         document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
     }
 
-    // 显示/隐藏加载动画
-    function showLoading(show = true) {
-        const overlay = document.getElementById('loadingOverlay');
-        overlay.style.display = show ? 'flex' : 'none';
-        overlay.style.visibility = show ? 'visible' : 'hidden';
-        overlay.style.opacity = show ? '1' : '0';
+    // 显示/隐藏图表加载状态
+    function showChartLoading(show = true) {
+        const loadingDiv = document.getElementById('rankingChartLoading');
+        if (loadingDiv) {
+            loadingDiv.style.display = show ? 'flex' : 'none';
+        }
     }
 
     // 格式化数字
@@ -411,20 +440,20 @@ function handleQuickDateClick(rangeType) {
 }
     // 加载排名数据
     async function loadRankingData() {
-        showLoading(true);
+        showChartLoading(true);
 
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
 
         if (!startDate || !endDate) {
             showNotification && showNotification('请选择开始和结束日期', 'warning');
-            showLoading(false);
+            showChartLoading(false);
             return;
         }
 
         if (new Date(startDate) > new Date(endDate)) {
             showNotification && showNotification('开始日期不能晚于结束日期', 'warning');
-            showLoading(false);
+            showChartLoading(false);
             return;
         }
 
@@ -448,7 +477,7 @@ function handleQuickDateClick(rangeType) {
         } catch (error) {
             showNotification && showNotification('请求失败: ' + error.message, 'error');
         } finally {
-            showLoading(false);
+            showChartLoading(false);
         }
     }
 
@@ -692,7 +721,7 @@ function handleQuickDateClick(rangeType) {
         });
     }
 
-    // 页面初始化
+    // 页面初始化 - 延迟加载数据
     document.addEventListener('DOMContentLoaded', function () {
         initializeDates();
 
@@ -710,8 +739,10 @@ function handleQuickDateClick(rangeType) {
             }
         });
 
-        // 自动加载数据（使用默认选中的快捷按钮范围）
-        handleQuickDateClick(currentQuickRange);
+        // 异步加载数据（使用默认选中的快捷按钮范围）
+        setTimeout(() => {
+            handleQuickDateClick(currentQuickRange);
+        }, 100);
     });
 </script>
 {% endblock %}
