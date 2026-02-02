@@ -83,6 +83,7 @@ def amazon_management_view(request):
     user_perms_str = [str(p) for p in user_perms]
     context = {
         'active_page': 'amazon_management',
+        'active_nav': 'management',
         'user_ops_group': getattr(request.user, 'get_ops_group', lambda: None)(),
         'user_permissions': user_perms_str,  # 用于Django模板条件判断
         'user_permissions_json': json.dumps(user_perms),  # 用于JS

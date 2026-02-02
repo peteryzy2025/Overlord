@@ -1,0 +1,174 @@
+{% extends 'base/base_dashboard.html' %}
+{% load static %}
+
+{% block title %}登神长阶{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ranking-container {
+        padding: 2rem;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .ranking-header {
+        text-align: center;
+        margin-bottom: 3rem;
+    }
+    
+    .ranking-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--color-primary, #00b8ff);
+        margin-bottom: 0.5rem;
+    }
+    
+    .ranking-header p {
+        color: var(--text-dim, #a0a0a0);
+    }
+    
+    .ranking-list {
+        background: var(--bg-card, rgba(15, 20, 30, 0.7));
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid rgba(0, 184, 255, 0.2);
+    }
+    
+    .ranking-item {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid rgba(0, 184, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .ranking-item:hover {
+        background: rgba(0, 184, 255, 0.05);
+        border-radius: 10px;
+    }
+    
+    .ranking-item:last-child {
+        border-bottom: none;
+    }
+    
+    .rank-number {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.25rem;
+        margin-right: 1.5rem;
+        flex-shrink: 0;
+    }
+    
+    .rank-number.gold {
+        background: linear-gradient(135deg, #ffd700, #ffaa00);
+        color: #000;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+    
+    .rank-number.silver {
+        background: linear-gradient(135deg, #c0c0c0, #a0a0a0);
+        color: #000;
+        box-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
+    }
+    
+    .rank-number.bronze {
+        background: linear-gradient(135deg, #cd7f32, #b87333);
+        color: #fff;
+        box-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
+    }
+    
+    .rank-number.normal {
+        background: rgba(0, 184, 255, 0.2);
+        color: var(--color-primary, #00b8ff);
+        border: 2px solid var(--color-primary, #00b8ff);
+    }
+    
+    .rank-info {
+        flex: 1;
+    }
+    
+    .rank-name {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-main, #ffffff);
+        margin-bottom: 0.25rem;
+    }
+    
+    .rank-score {
+        font-size: 0.875rem;
+        color: var(--color-ecg, #00ff9d);
+    }
+    
+    .rank-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        background: rgba(0, 255, 157, 0.1);
+        color: var(--color-ecg, #00ff9d);
+        border: 1px solid var(--color-ecg, #00ff9d);
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="ranking-container">
+    <div class="ranking-header">
+        <h1><i class="fas fa-trophy"></i> 登神长阶</h1>
+        <p>店铺业绩排行榜 - 强者登顶</p>
+    </div>
+    
+    <div class="ranking-list">
+        <!-- 示例数据，后续从后端获取 -->
+        <div class="ranking-item">
+            <div class="rank-number gold">1</div>
+            <div class="rank-info">
+                <div class="rank-name">冠军店铺 A</div>
+                <div class="rank-score">综合评分: 98.5</div>
+            </div>
+            <div class="rank-badge">神话</div>
+        </div>
+        
+        <div class="ranking-item">
+            <div class="rank-number silver">2</div>
+            <div class="rank-info">
+                <div class="rank-name">亚军店铺 B</div>
+                <div class="rank-score">综合评分: 95.2</div>
+            </div>
+            <div class="rank-badge">传说</div>
+        </div>
+        
+        <div class="ranking-item">
+            <div class="rank-number bronze">3</div>
+            <div class="rank-info">
+                <div class="rank-name">季军店铺 C</div>
+                <div class="rank-score">综合评分: 92.8</div>
+            </div>
+            <div class="rank-badge">王者</div>
+        </div>
+        
+        <div class="ranking-item">
+            <div class="rank-number normal">4</div>
+            <div class="rank-info">
+                <div class="rank-name">进取店铺 D</div>
+                <div class="rank-score">综合评分: 88.6</div>
+            </div>
+            <div class="rank-badge">钻石</div>
+        </div>
+        
+        <div class="ranking-item">
+            <div class="rank-number normal">5</div>
+            <div class="rank-info">
+                <div class="rank-name">新星店铺 E</div>
+                <div class="rank-score">综合评分: 85.3</div>
+            </div>
+            <div class="rank-badge">铂金</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
