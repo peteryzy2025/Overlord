@@ -527,14 +527,6 @@ def determine_filter_type_and_value(request, data, permissions):
         return 'none', None
 
 
-@login_required(login_url='/login/')
-def amazon_dashboard_page(request):
-    """Amazon驾驶舱页面渲染"""
-    return render(request, 'dashboard.html', {
-        'active_nav': 'dashboard'
-    })
-
-
 def get_date_range_from_option(date_range_option):
     """
     根据快捷选项获取日期范围
