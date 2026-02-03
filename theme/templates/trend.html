@@ -356,6 +356,50 @@
             padding: 2rem 1rem;
         }
 
+        /* 搜索模式标签样式（放在输入框内） */
+        .search-mode-tag {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+            user-select: none;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-color: var(--border-color);
+        }
+
+        .search-mode-tag:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .search-mode-tag.mode-1 {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-color: #93c5fd;
+        }
+
+        .search-mode-tag.mode-2 {
+            background: #dcfce7;
+            color: #15803d;
+            border-color: #86efac;
+        }
+
+        /* mode-3 已废弃 - 语义查询已注释 */
+        .search-mode-tag.mode-3 {
+            background: #fef3c7;
+            color: #b45309;
+            border-color: #fcd34d;
+        }
+
         @media (max-width: 480px) {
             .trend-title {
                 font-size: 1.25rem;
@@ -381,12 +425,17 @@
         <div class="trend-search" role="search">
             <form class="trend-searchbar" method="POST" action="{% url 'theme:trend_search' %}" onsubmit="handleTrendSearch(event)">
                 {% csrf_token %}
-                <input id="trendQueryInput"
-                       class="trend-input"
-                       name="trendQueryInput"
-                       type="text"
-                       placeholder="请输入关键词（例如：brand / 标题关键词）"
-                       autocomplete="off">
+                <div style="position: relative; flex: 1; display: flex;">
+                    <input id="trendQueryInput"
+                           class="trend-input"
+                           name="trendQueryInput"
+                           type="text"
+                           placeholder="请输入关键词（例如：brand / 标题关键词）"
+                           autocomplete="off"
+                           style="padding-right: 50px;">
+                    <span class="search-mode-tag mode-2" id="searchModeTag" title="点击切换分词模式">组词</span>
+                    <input type="hidden" id="searchModeInput" name="searchMode" value="2">
+                </div>
                 <button class="btn trend-search-btn" type="submit">搜索</button>
             </form>
         </div>
@@ -445,6 +494,46 @@
 
 {% block extra_js %}
     <script>
+        // ===== 搜索模式切换 =====
+        const SEARCH_MODES = {
+            1: { text: '切词', desc: 'words_split + 整体查询', className: 'mode-1' },
+            2: { text: '组词', desc: 'N-gram全组合', className: 'mode-2' }
+            // 3: { text: '语义', desc: 'spacy语义分词', className: 'mode-3' }  // 已废弃
+        };
+
+        let currentSearchMode = 2;  // 默认使用全组合查询
+
+        function updateSearchModeDisplay() {
+            const tag = document.getElementById('searchModeTag');
+            const hiddenInput = document.getElementById('searchModeInput');
+            const mode = SEARCH_MODES[currentSearchMode];
+
+            if (tag) {
+                tag.textContent = mode.text;
+                tag.className = `search-mode-tag ${mode.className}`;
+                tag.title = `当前模式：${mode.desc}（点击切换）`;
+            }
+            if (hiddenInput) {
+                hiddenInput.value = currentSearchMode;
+            }
+        }
+
+        function cycleSearchMode() {
+            // 在 mode 1 和 2 之间循环切换（mode 3 已废弃）
+            currentSearchMode = currentSearchMode === 2 ? 1 : 2;
+            updateSearchModeDisplay();
+            const mode = SEARCH_MODES[currentSearchMode];
+            console.log(`搜索模式已切换为：${currentSearchMode} - ${mode.desc}`);
+        }
+
+        // 绑定搜索模式标签点击事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const modeTag = document.getElementById('searchModeTag');
+            if (modeTag) {
+                modeTag.addEventListener('click', cycleSearchMode);
+            }
+        });
+
         // 风险类型映射表
         const NAME_TYPE_MAPPING = {
             1: '系统白名单',
@@ -529,6 +618,8 @@
             const csrfToken = form?.querySelector('input[name=csrfmiddlewaretoken]')?.value;
 
             try {
+                const searchMode = document.getElementById('searchModeInput')?.value || '1';
+
                 const resp = await fetch(form.action, {
                     method: 'POST',
                     headers: {
@@ -537,6 +628,7 @@
                     },
                     body: new URLSearchParams({
                         trendQueryInput: query,
+                        searchMode: searchMode,
                     }),
                 });
 
