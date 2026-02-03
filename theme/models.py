@@ -386,7 +386,6 @@ class AmazonListing(models.Model):
         related_name='listings',
         verbose_name='命中侵权词',
         blank=True,
-        db_comment='关联的侵权词记录'
     )
 
     # 多对多：美标网
@@ -395,7 +394,6 @@ class AmazonListing(models.Model):
         related_name='listings',
         verbose_name='命中商标',
         blank=True,
-        db_comment='关联的美标网商标记录'
     )
 
     is_active = models.BooleanField(
@@ -432,4 +430,3 @@ class AmazonListing(models.Model):
         shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
         return f"{shop_name} - {self.asin}"
 
-    

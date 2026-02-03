@@ -30,7 +30,16 @@ class LoginRequiredMiddleware:
         # 检查静态文件和 media 文件
         if request.path_info.startswith(('/static/', '/media/')):
             return self.get_response(request)
-
+        # ===== 新增：影刀请求特殊放行 =====
+        if request.path_info.startswith('/api/rpa/'):
+            # 如果是影刀接口，检查 X-RPA-Secret header，有就放行
+            if request.headers.get('X-RPA-Secret'):
+                return self.get_response(request)
+            # 如果没有 secret，还是返回 401（防止外部直接访问）
+            return JsonResponse({
+                'success': False,
+                'error': 'RPA接口需要 X-RPA-Secret 认证'
+            }, status=401)
         # 检查用户是否已认证
         if not request.user.is_authenticated:
             # AJAX 请求返回 JSON

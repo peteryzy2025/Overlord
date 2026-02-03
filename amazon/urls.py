@@ -7,6 +7,7 @@ from amazon import (
 )
 from amazon.view import views_dashboard
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
+from amazon.view import views_rpa_sync
 app_name = 'amazon'
 
 urlpatterns = [
@@ -67,4 +68,9 @@ urlpatterns = [
     path('api/amazon-daily-check/', views_amazon_daily_check.get_amazon_daily_check_list_api, name='amazon_daily_check_list_api'),
     path('api/amazon-daily-check/operators/', views_amazon_daily_check.get_daily_check_operators_api, name='daily_check_operators_api'),
     path('api/amazon-daily-check/reset-today/', views_amazon_daily_check.reset_today_daily_check_api, name='reset_today_daily_check_api'),
+
+    # ========== 影刀 RPA 同步接口 ==========
+    path('api/rpa/amazon-emails/sync/', views_rpa_sync.sync_email_api, name='rpa_sync_email'),
+    path('api/rpa/amazon-performance/sync/', views_rpa_sync.sync_performance_api, name='rpa_sync_performance'),
+
 ]
