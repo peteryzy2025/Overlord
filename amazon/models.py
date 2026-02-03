@@ -445,6 +445,96 @@ class AmazonShopDailyCheck(models.Model):
         return f"{shop_name} - {self.check_date} 巡检记录"
 
 
+
+class RiskKeyword(models.Model):
+    """
+    平台风险关键词库
+    适用于：店铺邮件(AmazonShopEmail)、绩效通知(AmazonPerformanceNotification) 等
+    """
+
+    MATCH_TYPE_CHOICES = [
+        ('whole', '整词匹配'),  # \bkeyword\b，防止误触发
+        ('contains', '包含匹配'),  # 简单 in 判断，性能最好
+        ('regex', '正则表达式'),  # 复杂规则，如 .*suspended.*
+        ('start', '开头匹配'),  # 标题以关键词开头
+    ]
+
+    # 风险大类（覆盖邮件+绩效通知场景）
+    CATEGORY_CHOICES = [
+        ('account_ban', '账户停用/冻结'),  # 如：Your account has been deactivated
+        ('performance', '绩效/政策警告'),  # 如：Policy Warning, Order defect rate
+        ('funds', '资金/提现异常'),  # 如：Funds Status, Payment hold
+        ('listing', 'Listing下架/违规'),  # 如：Listings at risk, Intellectual property
+        ('verification', '审核/验证通知'),  # 如：Account verification required
+        ('tro', 'TRO/法律诉讼'),  # 如：Temporary Restraining Order
+        ('inventory', '库存/物流异常'),  # 如：Stranded inventory, Removal required
+        ('other', '其他'),
+    ]
+
+    keyword = models.CharField('关键词/短语', max_length=255, db_index=True)
+    category = models.CharField('风险分类', max_length=50, choices=CATEGORY_CHOICES, default='other')
+    match_type = models.CharField('匹配方式', max_length=20, choices=MATCH_TYPE_CHOICES, default='whole')
+
+    # 控制字段
+    is_active = models.BooleanField('是否启用', default=True, db_index=True)
+    priority = models.IntegerField('优先级', default=0, help_text='数值越大越优先，用于排序和显示')
+
+    # 描述与示例
+    description = models.CharField('规则说明', max_length=255, blank=True)
+    example_text = models.CharField('示例文本', max_length=500, blank=True,
+                                    help_text='该关键词通常出现的标题/内容示例，供参考')
+
+    # 作用范围（可选，如果某些词只适用于邮件或只适用于绩效通知）
+    APPLY_TO_CHOICES = [
+        ('all', '全部'),
+        ('email', '仅邮件'),
+        ('performance', '仅绩效通知'),
+    ]
+    apply_to = models.CharField('适用范围', max_length=20, choices=APPLY_TO_CHOICES, default='all')
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'amazon_risk_keywords'
+        verbose_name = '风险关键词'
+        verbose_name_plural = '风险关键词'
+        ordering = ['-priority', 'id']
+
+    def __str__(self):
+        return f"[{self.get_category_display()}] {self.keyword}"
+
+
+class AmazonShopEmail(models.Model):
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    shop = models.ForeignKey(
+        'general.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='shop_emails',
+        db_comment='关联的亚马逊店铺'
+    )
+    subject = models.CharField('邮件标题', max_length=500)
+    sender = models.CharField('发件人', max_length=255)
+    email_body = models.TextField('邮件内容', blank=True, null=True)
+    html_body = models.TextField('HTML邮件内容', blank=True, null=True)
+    receive_time = models.DateTimeField('接收时间')
+    is_attention_needed = models.BooleanField('是否需要注意', default=False)
+    is_processed = models.BooleanField('是否已处理', default=False)
+    remark = models.TextField('处理备注', blank=True, null=True)
+    matched_keywords = models.ManyToManyField(
+        RiskKeyword,
+        blank=True,
+        verbose_name='命中的风险关键词',
+        db_table='amazon_email_risk_matches'
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'amazon_shop_emails'
+        verbose_name = '店铺邮件'
+        verbose_name_plural = verbose_name
+
 class AmazonPerformanceNotification(models.Model):
     """
     亚马逊绩效通知模型
@@ -495,6 +585,12 @@ class AmazonPerformanceNotification(models.Model):
         auto_now=True,
         db_comment='更新时间'
     )
+    matched_keywords = models.ManyToManyField(
+        RiskKeyword,
+        blank=True,
+        verbose_name='命中的风险关键词',
+        db_table='amazon_performance_risk_matches'
+    )
 
     class Meta:
         db_table = 'amazon_performance_notification'
@@ -516,31 +612,6 @@ class AmazonPerformanceNotification(models.Model):
 
     def __str__(self):
         return f"{self.shop.shop_name} - {self.subject[:50]} ({self.date})"
-
-
-class AmazonShopEmail(models.Model):
-    id = models.BigAutoField(primary_key=True, verbose_name='主键')
-    shop = models.ForeignKey(
-        'general.AmazonShop',
-        on_delete=models.CASCADE,
-        related_name='shop_emails',
-        db_comment='关联的亚马逊店铺'
-    )
-    subject = models.CharField('邮件标题', max_length=500)
-    sender = models.CharField('发件人', max_length=255)
-    email_body = models.TextField('邮件内容', blank=True, null=True)
-    html_body = models.TextField('HTML邮件内容', blank=True, null=True)
-    receive_time = models.DateTimeField('接收时间')
-    is_attention_needed = models.BooleanField('是否需要注意', default=False)
-    is_processed = models.BooleanField('是否已处理', default=False)
-    remark = models.TextField('处理备注', blank=True, null=True)
-    created_at = models.DateTimeField('创建时间', auto_now_add=True)
-    updated_at = models.DateTimeField('更新时间', auto_now=True)
-
-    class Meta:
-        db_table = 'amazon_shop_emails'
-        verbose_name = '店铺邮件'
-        verbose_name_plural = verbose_name
 
 
 # amazon/models.py
