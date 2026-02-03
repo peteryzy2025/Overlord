@@ -231,14 +231,15 @@
                     <label class="filter-label">客户</label>
                     <div id="amazonCustomerFilter" class="searchable-select single" data-placeholder="全部客户"></div>
                 </div>
+                                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div id="amazonGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
+                </div>
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
                     <div id="amazonOperatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">运营分组</label>
-                    <div id="amazonGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
-                </div>
+
                 <div class="filter-group">
                     <label class="filter-label">项目</label>
                     <div id="amazonProjectFilter" class="searchable-select single" data-placeholder="全部项目"></div>
@@ -577,11 +578,14 @@
         
         // 加载必要数据
         await Promise.all([
-            loadOperatorsFromAPI("亚马逊"),
-            loadGroupsFromAPI("亚马逊"),
+            loadGroupsFromAPI(),  // 先加载分组（不传参数）
             loadCustomersFromAPI(),
             loadProjectsFromAPI()
         ]);
+        
+        // 分组加载完成后，根据当前选中的分组加载人员
+        const selectedGroups = groupSelect ? groupSelect.getValue() : [''];
+        await loadOperatorsFromAPI(selectedGroups);
 
         if (!IS_ADMIN) {
             const createBtn = document.querySelector('.btn-create');
@@ -646,7 +650,18 @@
             multiple: true
         });
         groupSelect.setValue(['']);
-        groupSelect.onChange = () => filterAmazonShops();
+        groupSelect.onChange = () => {
+            // 联动逻辑：分组变化时刷新人员列表
+            const selectedGroups = groupSelect.getValue();
+            loadOperatorsFromAPI(selectedGroups).then(() => {
+                updateOperatorFilterOptions();
+                // 清空已选的人员（因为人员列表变了）
+                if (operatorSelect) {
+                    operatorSelect.setValue(['']);
+                }
+                filterAmazonShops();
+            });
+        };
 
         projectFilterSelect = new SearchableSelect('#amazonProjectFilter', {
             options: [{ value: '', label: '全部项目' }],
@@ -822,14 +837,21 @@
     // ==========================================
     // 下拉框数据更新
     // ==========================================
-    async function loadOperatorsFromAPI(platform) {
-        const response = await fetch(`/api/operators/?platform=${platform}`);
+    async function loadOperatorsFromAPI(opsGroups) {
+        // 使用新API，platform=amazon
+        const params = new URLSearchParams({ platform: 'amazon' });
+        // 如果有选中分组，传入分组参数（多选用逗号分隔）
+        if (opsGroups && opsGroups.length > 0 && !(opsGroups.length === 1 && opsGroups[0] === '')) {
+            params.set('ops_group', opsGroups.join(','));
+        }
+        const response = await fetch(`/api/general/operators/?${params}`);
         const result = await response.json();
         if (result.success) allOperators = result.data;
     }
 
-    async function loadGroupsFromAPI(platform) {
-        const response = await fetch(`/api/ops-groups/?platform=${platform}`);
+    async function loadGroupsFromAPI() {
+        // 使用新API，platform=amazon
+        const response = await fetch('/api/general/ops-groups/?platform=amazon');
         const result = await response.json();
         if (result.success) allGroups = result.data;
     }
@@ -851,13 +873,22 @@
             customerSelect.setOptions([{ value: '', label: '全部客户' }, ...allCustomers.map(c => ({ value: c, label: c }))]);
         }
         if (operatorSelect) {
-            operatorSelect.setOptions([{ value: '', label: '全部人员' }, ...allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }))]);
+            // 新API返回格式: [{value, label, group}, ...]
+            operatorSelect.setOptions(allOperators);
         }
         if (groupSelect) {
-            groupSelect.setOptions([{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))]);
+            // 新API返回格式: [{value, label}, ...]
+            groupSelect.setOptions(allGroups);
         }
         if (projectFilterSelect) {
             projectFilterSelect.setOptions([{ value: '', label: '全部项目' }, ...allProjects.map(p => ({ value: p.id, label: p.name }))]);
+        }
+    }
+
+    // 单独更新人员筛选选项（用于联动）
+    function updateOperatorFilterOptions() {
+        if (operatorSelect) {
+            operatorSelect.setOptions(allOperators);
         }
     }
 

@@ -303,14 +303,16 @@
             }
         }
 
-        async function loadOperatorsFromAPI(platform = '') {
+        async function loadOperatorsFromAPI(opsGroups) {
+            // 使用新API，platform=temu
             try {
-                const url = new URL('/api/operators/', window.location.origin);
-                if (platform) {
-                    url.searchParams.set('platform', platform);
+                const params = new URLSearchParams({ platform: 'temu' });
+                // 如果有选中分组，传入分组参数（多选用逗号分隔）
+                if (opsGroups && opsGroups.length > 0 && !(opsGroups.length === 1 && opsGroups[0] === '')) {
+                    params.set('ops_group', opsGroups.join(','));
                 }
-
-                const response = await fetch(url);
+                
+                const response = await fetch(`/api/general/operators/?${params}`);
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const result = await response.json();
@@ -329,14 +331,10 @@
             }
         }
 
-        async function loadGroupsFromAPI(platform = '') {
+        async function loadGroupsFromAPI() {
+            // 使用新API，platform=temu
             try {
-                const url = new URL('/api/ops-groups/', window.location.origin);
-                if (platform) {
-                    url.searchParams.set('platform', platform);
-                }
-
-                const response = await fetch(url);
+                const response = await fetch('/api/general/ops-groups/?platform=temu');
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const result = await response.json();
@@ -513,44 +511,6 @@
         // 筛选器与表格渲染
         // ==========================================
 
-        function updateFilterOptions(shops) {
-            // 客户筛选器
-            const customerSelect = document.getElementById('temuCustomerFilter');
-            const currentCustomer = customerSelect.value;
-            customerSelect.innerHTML = '<option value="">全部客户</option>';
-            allCustomers.forEach(customer => {
-                const option = document.createElement('option');
-                option.value = customer;
-                option.textContent = customer;
-                if (customer === currentCustomer) option.selected = true;
-                customerSelect.appendChild(option);
-            });
-
-            // 运营人员筛选器
-            const operatorSelect = document.getElementById('temuOperatorFilter');
-            const currentOperator = operatorSelect.value;
-            operatorSelect.innerHTML = '<option value="">全部人员</option>';
-            allOperators.forEach(op => {
-                const option = document.createElement('option');
-                option.value = op.id;
-                option.textContent = `${op.first_name} (${op.group})`;
-                if (op.id == currentOperator) option.selected = true;
-                operatorSelect.appendChild(option);
-            });
-
-            // 分组筛选器
-            const groupSelect = document.getElementById('temuGroupFilter');
-            const currentGroup = groupSelect.value;
-            groupSelect.innerHTML = '<option value="">全部分组</option>';
-            allGroups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group;
-                option.textContent = group;
-                if (group === currentGroup) option.selected = true;
-                groupSelect.appendChild(option);
-            });
-        }
-
         async function loadShopsTable() {
             const tbody = document.getElementById('temuShopsTableBody');
             tbody.innerHTML = '<tr><td colspan="24" style="text-align:center;padding:2rem;">加载中...</td></tr>';
@@ -568,7 +528,7 @@
             // 更新分页信息
             document.querySelector('.pagination-info').dataset.total = total;
             updatePaginationInfo(total);
-            updateFilterOptions(data);
+            updateFilterOptions();
             renderShopRows(data);
             renderPagination(total, currentPage, currentPageSize);
             
@@ -607,8 +567,9 @@
             customerSelect.onChange = () => filterTemuShops();
 
             // 运营人员筛选器（多选）
+            // 新API返回格式: [{value, label, group}, ...]
             operatorSelect = new SearchableSelect('#temuOperatorFilter', {
-                options: [{ value: '', label: '全部人员' }, ...allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }))],
+                options: allOperators,
                 placeholder: '全部人员',
                 multiple: true
             });
@@ -616,13 +577,24 @@
             operatorSelect.onChange = () => filterTemuShops();
 
             // 运营分组筛选器（多选）
+            // 新API返回格式: [{value, label}, ...]
             groupSelect = new SearchableSelect('#temuGroupFilter', {
-                options: [{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))],
+                options: allGroups,
                 placeholder: '全部分组',
                 multiple: true
             });
             groupSelect.setValue(['']);
-            groupSelect.onChange = () => filterTemuShops();
+            groupSelect.onChange = () => {
+                // 联动逻辑：分组变化时刷新人员列表
+                const selectedGroups = groupSelect.getValue();
+                loadOperatorsFromAPI(selectedGroups).then(() => {
+                    // 更新人员筛选器选项
+                    operatorSelect.setOptions(allOperators);
+                    // 清空已选的人员（因为人员列表变了）
+                    operatorSelect.setValue(['']);
+                    filterTemuShops();
+                });
+            };
         }
 
         function updateFilterOptions() {
@@ -633,17 +605,17 @@
                 customerSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
             }
             
-            // 更新运营人员选项
+            // 更新运营人员选项（新API格式）
             if (operatorSelect) {
                 const currentValue = operatorSelect.getValue();
-                operatorSelect.setOptions([{ value: '', label: '全部人员' }, ...allOperators.map(op => ({ value: op.id, label: `${op.first_name} (${op.group})` }))]);
+                operatorSelect.setOptions(allOperators);
                 operatorSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
             }
             
-            // 更新分组选项
+            // 更新分组选项（新API格式）
             if (groupSelect) {
                 const currentValue = groupSelect.getValue();
-                groupSelect.setOptions([{ value: '', label: '全部分组' }, ...allGroups.map(g => ({ value: g, label: g }))]);
+                groupSelect.setOptions(allGroups);
                 groupSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
             }
         }
@@ -1304,11 +1276,13 @@
 
         document.addEventListener('DOMContentLoaded', async function () {
             await Promise.all([
-                loadOperatorsFromAPI("Temu"), 
-                loadGroupsFromAPI("Temu"), 
+                loadGroupsFromAPI(),  // 先加载分组（新API）
                 loadCustomersFromAPI(),
                 loadProjectsFromAPI()
             ]);
+            
+            // 分组加载完成后，根据当前选中的分组加载人员
+            await loadOperatorsFromAPI(['']);
             
             // 初始化筛选器
             initSearchableSelects();
