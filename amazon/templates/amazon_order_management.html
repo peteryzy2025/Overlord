@@ -653,10 +653,26 @@
                 </div>
             </div>
 
+            <!-- 批量操作栏 -->
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
+                <div class="bulk-actions">
+                    <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
+                        <i class="fas fa-file-export"></i> 批量导单
+                    </button>
+                    <button class="bulk-btn" onclick="clearSelection()">
+                        <i class="fas fa-times"></i> 取消选择
+                    </button>
+                </div>
+            </div>
+
             <div class="table-container" id="ordersTableContainer">
                 <table class="table">
                     <thead>
                     <tr>
+                        <th class="w-checkbox">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
+                        </th>
                         <th>订单ID</th>
                         <th>店铺名称</th>
                         <th>店铺状态</th>
@@ -669,12 +685,12 @@
                         <th>发货时限</th>
                         <th>DIVI导单</th>
                         <th>DIVI详情</th>
-                        <th>操作</th>
+                        <th class="w-actions">操作</th>
                     </tr>
                     </thead>
                     <tbody id="ordersTableBody">
                     <tr>
-                        <td colspan="14" class="empty-state">
+                        <td colspan="15" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>请选择筛选条件并点击"应用筛选"</p>
                             <p>订单数据将在此处显示</p>
@@ -1204,7 +1220,7 @@
                 } else {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="14" class="empty-state">
+                            <td colspan="15" class="empty-state">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <p>加载失败: ${result.message || '未知错误'}</p>
                             </td>
@@ -1215,7 +1231,7 @@
             } catch (error) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="14" class="empty-state">
+                        <td colspan="15" class="empty-state">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>数据请求失败</p>
                             <p>${error.message}</p>
@@ -1259,7 +1275,7 @@
             if (!orders || orders.length === 0) {
                 tbody.innerHTML = `
             <tr>
-                <td colspan="13" class="empty-state">
+                <td colspan="15" class="empty-state">
                     <i class="fas fa-inbox"></i>
                     <p>暂无订单数据</p>
                 </td>
@@ -1386,6 +1402,9 @@
                 // 返回HTML
                 return `
             <tr>
+                <td class="w-checkbox">
+                    <input type="checkbox" class="row-checkbox" data-order-id="${order.amazon_order_id}" onchange="updateSelectAllState()">
+                </td>
                 <td>${order.amazon_order_id || '-'}</td>
                 <td>${order.shop_name || '-'}</td>
                 <td>${renderShopStatusBadge(order.shop_status)}</td>
@@ -1403,7 +1422,7 @@
                     <div>跟踪号：${order.divi_tracking_number || '-'}</div>
                     ${order.masked_single ? '<div style="color:#EF4444;">假面单发货</div>' : ''}
                 </td>
-                <td>
+                <td class="w-actions">
                     <div class="action-buttons">
                         <button class="btn-action btn-divi"
                                 onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
@@ -1860,6 +1879,82 @@
                 showLoading(false);
             }
         });
+
+        // ========== 批量选择功能 ==========
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            const isChecked = selectAllCheckbox.checked;
+
+            rowCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+
+            updateBulkActionBar();
+        }
+
+        function updateSelectAllState() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+
+            if (rowCheckboxes.length === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === rowCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+
+            updateBulkActionBar();
+        }
+
+        function getSelectedOrderIds() {
+            return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.orderId);
+        }
+
+        function updateBulkActionBar() {
+            const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            const bulkBar = document.getElementById('bulkActionBar');
+
+            if (selectedCount > 0) {
+                bulkBar.classList.add('visible');
+                document.getElementById('selectedCount').textContent = selectedCount;
+            } else {
+                bulkBar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            document.getElementById('selectAllCheckbox').checked = false;
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActionBar();
+        }
+
+        async function batchExportToDivi() {
+            const selectedIds = getSelectedOrderIds();
+            if (selectedIds.length === 0) return;
+
+            showLoading(true);
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                // 这里可以添加批量导单的 API 调用
+                showNotification(`已选择 ${selectedIds.length} 个订单，批量导单功能开发中...`, 'info');
+
+            } catch (error) {
+                showNotification('批量导单失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
 
         async function exportOrdersToExcel(event) {
     const button = event.currentTarget;
