@@ -4,6 +4,7 @@
 {% block title %}亚马逊订单管理 - Overlord{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         :root {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -60,6 +61,7 @@
             flex-direction: column;
             gap: 0.5rem;
             min-width: 200px;
+            flex: 1;
         }
 
         .filter-label {
@@ -122,9 +124,8 @@
             width: 100%;
         }
 
-        #groupFilter, #operatorFilter, #orderStatusFilter, #fulfillmentChannelFilter,
-        #diviExportFilter, #diviOrderStatusFilter, #diviTrackingFilter,
-        #maskedSingleFilter, #shippingDeadlineFilter {
+        /* 以下样式针对原生 select 元素，SearchableSelect 使用 general_style_1.css 中的样式 */
+        select.form-select {
             padding-right: 40px;
             width: 100%;
         }
@@ -628,13 +629,7 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">日期范围</label>
-                    <select class="form-select" id="dateRange">
-                        <option value="yesterday">昨日</option>
-                        <option value="today">今日</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
                 </div>
 
                 <div class="filter-group" id="customDateGroup" style="display: none;">
@@ -649,26 +644,12 @@
 
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <div class="select-wrapper" id="groupWrapper">
-                        <select class="form-select" id="groupFilter"></select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('group')"
-                                title="清除选择">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    </div>
+                    <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <div class="select-wrapper" id="operatorWrapper">
-                        <select class="form-select" id="operatorFilter"></select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                        <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('operator')"
-                                title="清除选择">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    </div>
+                    <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
                 </div>
 
                 <div class="filter-group">
@@ -687,93 +668,49 @@
 
                 <div class="filter-group">
                     <label class="filter-label">店铺状态</label>
-                    <select class="form-select" id="shopStatusFilter">
-                        <option value="">全部</option>
-                        <option value="正常">正常</option>
-                        <option value="停用">停用</option>
-                        <option value="注销">注销</option>
-                    </select>
+                    <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
                 </div>
 
                 <!-- 订单状态筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">订单状态</label>
-                    <select class="form-select" id="orderStatusFilter">
-                        <option value="">全部状态</option>
-                        <option value="PendingAvailability">待付款-预售</option>
-                        <option value="Pending">待付款</option>
-                        <option value="Unshipped">待发货</option>
-                        <option value="PartiallyShipped">部分发货</option>
-                        <option value="Shipped">已发货</option>
-                        <option value="InvoiceUnconfirmed">发票未确认</option>
-                        <option value="Canceled">已取消</option>
-                        <option value="Unfulfillable">无法履行</option>
-                    </select>
+                    <div id="orderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
                 </div>
 
                 <!-- 订单类型筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">订单类型</label>
-                    <select class="form-select" id="fulfillmentChannelFilter">
-                        <option value="">全部类型</option>
-                        <option value="AFN">FBA订单</option>
-                        <option value="MFN">FBM订单</option>
-                    </select>
+                    <div id="fulfillmentChannelFilter" class="searchable-select multiple" data-placeholder="全部类型"></div>
                 </div>
 
                 <!-- DIVI导单情况筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">DIVI导单情况</label>
-                    <select class="form-select" id="diviExportFilter">
-                        <option value="">全部</option>
-                        <option value="true">已导单</option>
-                        <option value="false">未导单</option>
-                    </select>
+                    <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
                 </div>
 
                 <!-- DIVI订单状态筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">DIVI订单状态</label>
-                    <select class="form-select" id="diviOrderStatusFilter">
-                        <option value="">全部状态</option>
-                        <option value="0">取消订单</option>
-                        <option value="1">未付货款</option>
-                        <option value="2">未审核</option>
-                        <option value="3">排单中</option>
-                        <option value="4">生产中</option>
-                        <option value="5">已发货</option>
-                    </select>
+                    <div id="diviOrderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
                 </div>
 
                 <!-- DIVI是否有面单筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">DIVI是否有面单</label>
-                    <select class="form-select" id="diviTrackingFilter">
-                        <option value="">全部</option>
-                        <option value="has">有面单</option>
-                        <option value="none">无面单</option>
-                    </select>
+                    <div id="diviTrackingFilter" class="searchable-select multiple" data-placeholder="全部"></div>
                 </div>
 
                 <!-- 假面单发货筛选 -->
                 <div class="filter-group">
                     <label class="filter-label">假面单发货</label>
-                    <select class="form-select" id="maskedSingleFilter">
-                        <option value="">全部</option>
-                        <option value="true">是</option>
-                        <option value="false">否</option>
-                    </select>
+                    <div id="maskedSingleFilter" class="searchable-select multiple" data-placeholder="全部"></div>
                 </div>
 
                 <!-- 发货时限预警筛选（新增） -->
                 <div class="filter-group">
                     <label class="filter-label">发货时限预警</label>
-                    <select class="form-select" id="shippingDeadlineFilter">
-                        <option value="">全部</option>
-                        <option value="red">红色预警</option>
-                        <option value="yellow">黄色预警</option>
-                        <option value="all_deadline">全部预警</option>
-                    </select>
+                    <div id="shippingDeadlineFilter" class="searchable-select multiple" data-placeholder="全部"></div>
                 </div>
 
                 <div class="filter-group" style="align-self: flex-end;">
@@ -855,6 +792,7 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script>
         let allOperators = [];
         let allGroups = [];
@@ -911,15 +849,29 @@
             return `<span class="status-badge ${mapped.class}">${mapped.text}</span>`;
         }
 
-        async function loadOperatorsFromAPI() {
+        // SearchableSelect 实例
+        let dateRangeSelect, groupSelect, operatorSelect, shopStatusSelect, orderStatusSelect;
+        let fulfillmentChannelSelect, diviExportSelect, diviOrderStatusSelect, diviTrackingSelect;
+        let maskedSingleSelect, shippingDeadlineSelect;
+
+        async function loadOperatorsFromAPI(opsGroups) {
+            // 使用新API，platform=amazon
             try {
-                const url = new URL('/api/amazon/operators/', window.location.origin);
-                url.searchParams.set('platform', '亚马逊');
-                const response = await fetch(url);
+                const params = new URLSearchParams({ platform: 'amazon' });
+                // 如果有选中分组，传入分组参数（多选用逗号分隔）
+                if (opsGroups && opsGroups.length > 0 && !(opsGroups.length === 1 && opsGroups[0] === '')) {
+                    params.set('ops_group', opsGroups.join(','));
+                }
+                
+                const response = await fetch(`/api/general/operators/?${params}`);
                 const result = await response.json();
                 if (result.success) {
-                    allOperators = result.data;
-                    populateOperatorDropdown();
+                    // API 已经返回了包含"全部人员"的数据，直接使用
+                    allOperators = result.data || [{ value: '', label: '全部人员' }];
+                    // 更新 SearchableSelect 选项
+                    if (operatorSelect) {
+                        operatorSelect.setOptions(allOperators);
+                    }
                     return true;
                 }
                 return false;
@@ -930,12 +882,17 @@
         }
 
         async function loadGroupsFromAPI() {
+            // 使用新API，platform=amazon
             try {
-                const response = await fetch('/api/amazon/ops-groups/');
+                const response = await fetch('/api/general/ops-groups/?platform=amazon');
                 const result = await response.json();
                 if (result.success) {
-                    allGroups = result.data;
-                    populateGroupDropdown();
+                    // API 已经返回了包含"全部分组"的数据，直接使用
+                    allGroups = result.data || [{ value: '', label: '全部分组' }];
+                    // 更新 SearchableSelect 选项
+                    if (groupSelect) {
+                        groupSelect.setOptions(allGroups);
+                    }
                     return true;
                 }
                 return false;
@@ -945,50 +902,8 @@
             }
         }
 
-        function populateGroupDropdown() {
-            const groupSelect = document.getElementById('groupFilter');
-            groupSelect.innerHTML = '';
-            const emptyOption = document.createElement('option');
-            emptyOption.value = '';
-            emptyOption.textContent = '';
-            groupSelect.appendChild(emptyOption);
-
-            allGroups.forEach(group => {
-                const option = document.createElement('option');
-                option.value = group;
-                option.textContent = group;
-                groupSelect.appendChild(option);
-            });
-
-            if (allGroups.length === 0) {
-                emptyOption.textContent = '无可用选项';
-            }
-        }
-
-        function populateOperatorDropdown() {
-            const operatorSelect = document.getElementById('operatorFilter');
-            operatorSelect.innerHTML = '';
-            const emptyOption = document.createElement('option');
-            emptyOption.value = '';
-            emptyOption.textContent = '';
-            operatorSelect.appendChild(emptyOption);
-
-            allOperators.forEach(op => {
-                const option = document.createElement('option');
-                option.value = op.id;
-                option.textContent = op.id === 'all'
-                    ? op.first_name
-                    : `${op.first_name} (${op.group})`;
-                operatorSelect.appendChild(option);
-            });
-
-            if (allOperators.length === 0) {
-                emptyOption.textContent = '无可用选项';
-            }
-        }
-
         function handleDateRangeChange() {
-            const dateRange = document.getElementById('dateRange').value;
+            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'last30days';
             const customDateGroup = document.getElementById('customDateGroup');
             const customDateGroup2 = document.getElementById('customDateGroup2');
             if (dateRange === 'custom') {
@@ -1001,95 +916,239 @@
         }
 
         function getCurrentFilters() {
+            // 辅助函数：将多选值转为字符串
+            const formatMultiSelect = (select) => {
+                if (!select) return '';
+                const value = select.getValue();
+                if (!value || value.length === 0) return '';
+                if (value.length === 1 && value[0] === '') return '';
+                return value.join(',');
+            };
+
             return {
-                date_range: document.getElementById('dateRange').value,
-                start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
-                operator_id: document.getElementById('operatorFilter').value,
-                group: document.getElementById('groupFilter').value,
+                date_range: dateRangeSelect ? dateRangeSelect.getValue() : 'last30days',
+                start_date: dateRangeSelect && dateRangeSelect.getValue() === 'custom' ? document.getElementById('startDate').value : '',
+                end_date: dateRangeSelect && dateRangeSelect.getValue() === 'custom' ? document.getElementById('endDate').value : '',
+                operator_id: formatMultiSelect(operatorSelect),
+                group: formatMultiSelect(groupSelect),
                 order_id: document.getElementById('orderIdFilter').value.trim(),
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
-                shop_status: document.getElementById('shopStatusFilter').value,
-                order_status: document.getElementById('orderStatusFilter').value,
-                fulfillment_channel: document.getElementById('fulfillmentChannelFilter').value,
-                divi_export: document.getElementById('diviExportFilter').value,
-                divi_order_status: document.getElementById('diviOrderStatusFilter').value,
-                divi_tracking: document.getElementById('diviTrackingFilter').value,
-                masked_single: document.getElementById('maskedSingleFilter').value,
-                shipping_deadline: document.getElementById('shippingDeadlineFilter').value  // 新增
+                shop_status: formatMultiSelect(shopStatusSelect),
+                order_status: formatMultiSelect(orderStatusSelect),
+                fulfillment_channel: formatMultiSelect(fulfillmentChannelSelect),
+                divi_export: formatMultiSelect(diviExportSelect),
+                divi_order_status: formatMultiSelect(diviOrderStatusSelect),
+                divi_tracking: formatMultiSelect(diviTrackingSelect),
+                masked_single: formatMultiSelect(maskedSingleSelect),
+                shipping_deadline: formatMultiSelect(shippingDeadlineSelect)
+            };
+        }
+
+        // 初始化所有 SearchableSelect
+        function initSearchableSelects() {
+            // 日期范围
+            dateRangeSelect = new SearchableSelect('#dateRange', {
+                options: [
+                    { value: 'yesterday', label: '昨日' },
+                    { value: 'today', label: '今日' },
+                    { value: 'last7days', label: '最近7天' },
+                    { value: 'last30days', label: '最近30天' },
+                    { value: 'custom', label: '自定义范围' }
+                ],
+                placeholder: '日期范围',
+                multiple: false
+            });
+            dateRangeSelect.setValue('last30days');
+            dateRangeSelect.onChange = (value) => {
+                handleDateRangeChange();
+                ordersPagination.page = 1;
+            };
+
+            // 店铺状态
+            shopStatusSelect = new SearchableSelect('#shopStatusFilter', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: '正常', label: '正常' },
+                    { value: '停用', label: '停用' },
+                    { value: '注销', label: '注销' }
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            shopStatusSelect.setValue(['']);
+            shopStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // 订单状态
+            orderStatusSelect = new SearchableSelect('#orderStatusFilter', {
+                options: [
+                    { value: '', label: '全部状态' },
+                    { value: 'PendingAvailability', label: '待付款-预售' },
+                    { value: 'Pending', label: '待付款' },
+                    { value: 'Unshipped', label: '待发货' },
+                    { value: 'PartiallyShipped', label: '部分发货' },
+                    { value: 'Shipped', label: '已发货' },
+                    { value: 'InvoiceUnconfirmed', label: '发票未确认' },
+                    { value: 'Canceled', label: '已取消' },
+                    { value: 'Unfulfillable', label: '无法履行' }
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            orderStatusSelect.setValue(['']);
+            orderStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // 订单类型
+            fulfillmentChannelSelect = new SearchableSelect('#fulfillmentChannelFilter', {
+                options: [
+                    { value: '', label: '全部类型' },
+                    { value: 'AFN', label: 'FBA订单' },
+                    { value: 'MFN', label: 'FBM订单' }
+                ],
+                placeholder: '全部类型',
+                multiple: true
+            });
+            fulfillmentChannelSelect.setValue(['']);
+            fulfillmentChannelSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // DIVI导单情况
+            diviExportSelect = new SearchableSelect('#diviExportFilter', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'true', label: '已导单' },
+                    { value: 'false', label: '未导单' }
+                ],
+                placeholder: '全部',
+                multiple: true
+            });
+            diviExportSelect.setValue(['']);
+            diviExportSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // DIVI订单状态
+            diviOrderStatusSelect = new SearchableSelect('#diviOrderStatusFilter', {
+                options: [
+                    { value: '', label: '全部状态' },
+                    { value: '0', label: '取消订单' },
+                    { value: '1', label: '未付货款' },
+                    { value: '2', label: '未审核' },
+                    { value: '3', label: '排单中' },
+                    { value: '4', label: '生产中' },
+                    { value: '5', label: '已发货' }
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            diviOrderStatusSelect.setValue(['']);
+            diviOrderStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // DIVI是否有面单
+            diviTrackingSelect = new SearchableSelect('#diviTrackingFilter', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'has', label: '有面单' },
+                    { value: 'none', label: '无面单' }
+                ],
+                placeholder: '全部',
+                multiple: true
+            });
+            diviTrackingSelect.setValue(['']);
+            diviTrackingSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // 假面单发货
+            maskedSingleSelect = new SearchableSelect('#maskedSingleFilter', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'true', label: '是' },
+                    { value: 'false', label: '否' }
+                ],
+                placeholder: '全部',
+                multiple: true
+            });
+            maskedSingleSelect.setValue(['']);
+            maskedSingleSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // 发货时限预警
+            shippingDeadlineSelect = new SearchableSelect('#shippingDeadlineFilter', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'red', label: '红色预警' },
+                    { value: 'yellow', label: '黄色预警' },
+                    { value: 'all_deadline', label: '全部预警' }
+                ],
+                placeholder: '全部',
+                multiple: true
+            });
+            shippingDeadlineSelect.setValue(['']);
+            shippingDeadlineSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            // 运营分组（动态加载）
+            groupSelect = new SearchableSelect('#groupFilter', {
+                options: [],
+                placeholder: '全部分组',
+                multiple: true
+            });
+            groupSelect.setValue(['']);
+            groupSelect.onChange = () => {
+                // 联动逻辑：分组变化时刷新人员列表
+                const selectedGroups = groupSelect.getValue();
+                loadOperatorsFromAPI(selectedGroups).then(() => {
+                    if (operatorSelect) {
+                        operatorSelect.setOptions(allOperators);
+                        operatorSelect.setValue(['']);
+                    }
+                });
+                ordersPagination.page = 1;
+            };
+
+            // 运营人员（动态加载）
+            operatorSelect = new SearchableSelect('#operatorFilter', {
+                options: [],
+                placeholder: '全部人员',
+                multiple: true
+            });
+            operatorSelect.setValue(['']);
+            operatorSelect.onChange = () => {
+                ordersPagination.page = 1;
             };
         }
 
         function setDefaultFilters() {
-            const groupSelect = document.getElementById('groupFilter');
-            const operatorSelect = document.getElementById('operatorFilter');
-
-            document.getElementById('dateRange').value = 'last30days';
+            // SearchableSelect 的默认值已在 initSearchableSelects 中设置
             handleDateRangeChange();
-
-            if (groupSelect.options.length > 0) {
-                const allGroup = Array.from(groupSelect.options).find(opt => opt.textContent === '全部分组');
-                groupSelect.value = allGroup ? allGroup.value : groupSelect.options[0].value;
-            }
-
-            if (operatorSelect.options.length > 0) {
-                const allOp = Array.from(operatorSelect.options).find(opt => opt.value === 'all');
-                operatorSelect.value = allOp ? 'all' : operatorSelect.options[0].value;
-            }
 
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('orderIdFilter').value = '';
             document.getElementById('shopNameFilter').value = '';
-            document.getElementById('shopStatusFilter').value = '';
-            document.getElementById('orderStatusFilter').value = '';
-            document.getElementById('fulfillmentChannelFilter').value = '';
-            document.getElementById('diviExportFilter').value = '';
-            document.getElementById('diviOrderStatusFilter').value = '';
-            document.getElementById('diviTrackingFilter').value = '';
-            document.getElementById('maskedSingleFilter').value = '';
-            document.getElementById('shippingDeadlineFilter').value = '';
         }
 
         function initializeSmartClearButtons() {
-            ['group', 'operator', 'shopStatus', 'orderStatus', 'fulfillmentChannel',
-                'diviExport', 'diviOrderStatus', 'diviTracking', 'maskedSingle',
-                'shippingDeadline'].forEach(filterType => {  // 新增
-                const element = document.getElementById(filterType + 'Filter');
-                const wrapper = document.getElementById(filterType + 'Wrapper');
-
-                if (element && wrapper) {
-                    element.addEventListener('change', () => toggleClearIcon(filterType));
-                    toggleClearIcon(filterType);
-                }
-            });
+            // SearchableSelect 自带清除功能，无需初始化传统的清除按钮
+            // 保留函数以兼容原有代码，但不执行任何操作
         }
 
         function toggleClearIcon(filterType) {
-            const select = document.getElementById(filterType + 'Filter');
-            const wrapper = document.getElementById(filterType + 'Wrapper');
-
-            if (!select || !wrapper) return;
-
-            const currentValue = select.value;
-            const hasValidValue = currentValue &&
-                currentValue !== 'all' &&
-                currentValue !== '全部分组' &&
-                currentValue !== '全部人员' &&
-                currentValue !== '';
-
-            if (hasValidValue) {
-                wrapper.classList.add('has-value');
-            } else {
-                wrapper.classList.remove('has-value');
-            }
+            // SearchableSelect 不需要使用原生的清除按钮，因为 SearchableSelect 自带清除功能
+            // 此函数保留以兼容原有代码，但实际不做任何操作
         }
 
         function clearAndToggle(filterType) {
-            const select = document.getElementById(filterType + 'Filter');
-            select.value = '';
-            const event = new Event('change', {bubbles: true});
-            select.dispatchEvent(event);
+            // SearchableSelect 自带清除功能，此函数保留但无需操作
             applyFilters();
         }
 
@@ -1106,14 +1165,29 @@
                     await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
                 }
 
-                setDefaultFilters();
+                // 重置所有 SearchableSelect 为默认值
+                dateRangeSelect.setValue('last30days');
+                handleDateRangeChange();
 
-                ['group', 'operator', 'shopStatus', 'orderStatus', 'fulfillmentChannel',
-                    'diviExport', 'diviOrderStatus', 'diviTracking', 'maskedSingle',
-                    'shippingDeadline'].forEach(type => {
-                    const element = document.getElementById(type + 'Filter');
-                    if (element) element.dispatchEvent(new Event('change'));
-                });
+                shopStatusSelect.setValue(['']);
+                orderStatusSelect.setValue(['']);
+                fulfillmentChannelSelect.setValue(['']);
+                diviExportSelect.setValue(['']);
+                diviOrderStatusSelect.setValue(['']);
+                diviTrackingSelect.setValue(['']);
+                maskedSingleSelect.setValue(['']);
+                shippingDeadlineSelect.setValue(['']);
+                groupSelect.setValue(['']);
+                operatorSelect.setValue(['']);
+
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                document.getElementById('orderIdFilter').value = '';
+                document.getElementById('shopNameFilter').value = '';
+
+                // 刷新运营人员列表（因为分组已重置）
+                await loadOperatorsFromAPI([]);
+                operatorSelect.setOptions(allOperators);
 
                 ordersPagination.page = 1;
                 ordersPagination.page_size = 20;
@@ -1144,11 +1218,6 @@
             currentFilters = getCurrentFilters();
 
             try {
-                if (!currentFilters.operator_id && !currentFilters.group) {
-                    showNotification('无可用筛选条件，请检查权限', 'warning');
-                    return;
-                }
-
                 await loadOrdersTable();
                 showNotification('订单数据已更新', 'success');
             } catch (error) {
@@ -1771,26 +1840,16 @@
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
             try {
-                await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                // 首先初始化所有 SearchableSelect
+                initSearchableSelects();
+
+                // 然后加载分组和运营人员数据
+                await Promise.all([loadGroupsFromAPI(), loadOperatorsFromAPI()]);
+
+                // 设置默认值
                 setDefaultFilters();
+
                 initializeSmartClearButtons();
-                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-
-                // 为所有筛选项添加事件监听
-                ['group', 'operator', 'shopStatus', 'orderStatus', 'fulfillmentChannel',
-                    'diviExport', 'diviOrderStatus', 'diviTracking', 'maskedSingle',
-                    'shippingDeadline'].forEach(filterType => {
-                    const element = document.getElementById(filterType + 'Filter');
-                    if (element) {
-                        element.addEventListener('change', () => {
-                            ordersPagination.page = 1;
-                        });
-                    }
-                });
-
-                // 初始化清除按钮状态
-                toggleClearIcon('shopStatus');
-                toggleClearIcon('shippingDeadline');
             } catch (error) {
                 showNotification('初始化失败: ' + error.message, 'error');
             } finally {

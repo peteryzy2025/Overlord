@@ -80,14 +80,31 @@ def get_amazon_orders_list_api(request):
         # 其他筛选条件
         order_id_filter = data.get('order_id', '').strip()
         shop_name_filter = data.get('shop_name', '').strip()
+
+        # 多选筛选条件（逗号分隔）
         shop_status_filter = data.get('shop_status', '').strip()
+        shop_status_list = [s.strip() for s in shop_status_filter.split(',') if s.strip()] if shop_status_filter else []
+
         order_status_filter = data.get('order_status', '').strip()
+        order_status_list = [s.strip() for s in order_status_filter.split(',') if s.strip()] if order_status_filter else []
+
         fulfillment_channel_filter = data.get('fulfillment_channel', '').strip()
+        fulfillment_channel_list = [s.strip() for s in fulfillment_channel_filter.split(',') if s.strip()] if fulfillment_channel_filter else []
+
         divi_export_filter = data.get('divi_export', '').strip()
+        divi_export_list = [s.strip() for s in divi_export_filter.split(',') if s.strip()] if divi_export_filter else []
+
         divi_order_status_filter = data.get('divi_order_status', '').strip()
+        divi_order_status_list = [s.strip() for s in divi_order_status_filter.split(',') if s.strip()] if divi_order_status_filter else []
+
         divi_tracking_filter = data.get('divi_tracking', '').strip()
+        divi_tracking_list = [s.strip() for s in divi_tracking_filter.split(',') if s.strip()] if divi_tracking_filter else []
+
         masked_single_filter = data.get('masked_single', '').strip()
+        masked_single_list = [s.strip() for s in masked_single_filter.split(',') if s.strip()] if masked_single_filter else []
+
         shipping_deadline_filter = data.get('shipping_deadline', '').strip()  # red / yellow / all_deadline
+        shipping_deadline_list = [s.strip() for s in shipping_deadline_filter.split(',') if s.strip()] if shipping_deadline_filter else []
 
         # 解析日期范围
         current_start, current_end = None, None
@@ -129,25 +146,66 @@ def get_amazon_orders_list_api(request):
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
 
-        # 其他普通筛选条件
-        if order_status_filter:
-            order_filter &= Q(order_status=order_status_filter)
-        if fulfillment_channel_filter:
-            order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
-        if divi_export_filter:
-            divi_export_bool = divi_export_filter.lower() == 'true'
-            order_filter &= Q(is_exported_to_divi=divi_export_bool)
-        if divi_order_status_filter:
-            order_filter &= Q(divi_order_status=int(divi_order_status_filter))
-        if divi_tracking_filter:
-            if divi_tracking_filter == 'has':
-                order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
-            elif divi_tracking_filter == 'none':
-                order_filter &= (Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number=''))
-        if shop_status_filter:
-            order_filter &= Q(amazon_shop__shop_status=shop_status_filter)
-        if masked_single_filter:
-            order_filter &= Q(masked_single=(masked_single_filter == 'true'))
+        # 其他普通筛选条件（支持多选）
+        if order_status_list:
+            if len(order_status_list) == 1:
+                order_filter &= Q(order_status=order_status_list[0])
+            else:
+                order_filter &= Q(order_status__in=order_status_list)
+
+        if fulfillment_channel_list:
+            if len(fulfillment_channel_list) == 1:
+                order_filter &= Q(fulfillment_channel=fulfillment_channel_list[0])
+            else:
+                order_filter &= Q(fulfillment_channel__in=fulfillment_channel_list)
+
+        if divi_export_list:
+            # 处理多选布尔值
+            bool_values = []
+            for v in divi_export_list:
+                if v.lower() == 'true':
+                    bool_values.append(True)
+                elif v.lower() == 'false':
+                    bool_values.append(False)
+            if bool_values:
+                if len(bool_values) == 1:
+                    order_filter &= Q(is_exported_to_divi=bool_values[0])
+                else:
+                    order_filter &= Q(is_exported_to_divi__in=bool_values)
+
+        if divi_order_status_list:
+            status_ints = [int(s) for s in divi_order_status_list if s.isdigit()]
+            if status_ints:
+                if len(status_ints) == 1:
+                    order_filter &= Q(divi_order_status=status_ints[0])
+                else:
+                    order_filter &= Q(divi_order_status__in=status_ints)
+
+        if divi_tracking_list:
+            # 面单筛选不支持简单的 __in，需要特殊处理
+            if len(divi_tracking_list) == 1:
+                if divi_tracking_list[0] == 'has':
+                    order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
+                elif divi_tracking_list[0] == 'none':
+                    order_filter &= (Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number=''))
+            else:
+                # 同时选了 has 和 none 表示不筛选
+                pass
+
+        if shop_status_list:
+            if len(shop_status_list) == 1:
+                order_filter &= Q(amazon_shop__shop_status=shop_status_list[0])
+            else:
+                order_filter &= Q(amazon_shop__shop_status__in=shop_status_list)
+
+        if masked_single_list:
+            bool_values = [(v.lower() == 'true') for v in masked_single_list if v.lower() in ['true', 'false']]
+            if bool_values:
+                if len(bool_values) == 1:
+                    order_filter &= Q(masked_single=bool_values[0])
+                else:
+                    order_filter &= Q(masked_single__in=bool_values)
+
         if order_id_filter:
             order_filter &= Q(amazon_order_id__icontains=order_id_filter)
         if shop_name_filter:
@@ -157,25 +215,29 @@ def get_amazon_orders_list_api(request):
         now_utc = timezone.now()
         EXCLUDE_STATUS = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped']
 
-        if shipping_deadline_filter:
+        if shipping_deadline_list:
             base_q = (
                     Q(latest_ship_date__isnull=False) &
                     ~Q(order_status__in=EXCLUDE_STATUS)
             )
 
-            if shipping_deadline_filter == 'red':
+            # 处理多选发货预警类型
+            has_red = 'red' in shipping_deadline_list
+            has_yellow = 'yellow' in shipping_deadline_list
+            has_all = 'all_deadline' in shipping_deadline_list
+
+            if has_red and has_yellow or has_all:
+                # 红色+黄色或全部预警 = 全部预警范围
+                yellow_max = now_utc + timedelta(hours=32)
+                order_filter &= base_q & Q(latest_ship_date__lte=yellow_max)
+            elif has_red:
                 red_threshold = now_utc + timedelta(hours=8)
                 order_filter &= base_q & Q(latest_ship_date__lte=red_threshold)
-
-            elif shipping_deadline_filter == 'yellow':
+            elif has_yellow:
                 yellow_min = now_utc + timedelta(hours=8, seconds=1)
                 yellow_max = now_utc + timedelta(hours=32)
                 order_filter &= base_q & Q(latest_ship_date__gt=yellow_min) & Q(
                     latest_ship_date__lte=yellow_max)
-
-            elif shipping_deadline_filter == 'all_deadline':
-                yellow_max = now_utc + timedelta(hours=32)
-                order_filter &= base_q & Q(latest_ship_date__lte=yellow_max)
 
         # ========== 构建最终 queryset（带预加载，无.only()）==========
         orders_queryset = AmazonOrders.objects.filter(order_filter) \
@@ -1138,14 +1200,31 @@ def export_amazon_orders_excel(request):
         # 筛选项
         order_id_filter = data.get('order_id', '').strip()
         shop_name_filter = data.get('shop_name', '').strip()
+
+        # 多选筛选条件（逗号分隔）
         shop_status_filter = data.get('shop_status', '').strip()
+        shop_status_list = [s.strip() for s in shop_status_filter.split(',') if s.strip()] if shop_status_filter else []
+
         order_status_filter = data.get('order_status', '').strip()
+        order_status_list = [s.strip() for s in order_status_filter.split(',') if s.strip()] if order_status_filter else []
+
         fulfillment_channel_filter = data.get('fulfillment_channel', '').strip()
+        fulfillment_channel_list = [s.strip() for s in fulfillment_channel_filter.split(',') if s.strip()] if fulfillment_channel_filter else []
+
         divi_export_filter = data.get('divi_export', '').strip()
+        divi_export_list = [s.strip() for s in divi_export_filter.split(',') if s.strip()] if divi_export_filter else []
+
         divi_order_status_filter = data.get('divi_order_status', '').strip()
+        divi_order_status_list = [s.strip() for s in divi_order_status_filter.split(',') if s.strip()] if divi_order_status_filter else []
+
         divi_tracking_filter = data.get('divi_tracking', '').strip()
+        divi_tracking_list = [s.strip() for s in divi_tracking_filter.split(',') if s.strip()] if divi_tracking_filter else []
+
         masked_single_filter = data.get('masked_single', '').strip()
+        masked_single_list = [s.strip() for s in masked_single_filter.split(',') if s.strip()] if masked_single_filter else []
+
         shipping_deadline_filter = data.get('shipping_deadline', '').strip()
+        shipping_deadline_list = [s.strip() for s in shipping_deadline_filter.split(',') if s.strip()] if shipping_deadline_filter else []
 
         # 解析日期范围
         current_start, current_end = None, None
@@ -1206,28 +1285,61 @@ def export_amazon_orders_excel(request):
         order_filter &= Q(purchase_date_local__date__gte=current_start)
         order_filter &= Q(purchase_date_local__date__lte=current_end)
 
-        # 应用筛选项
-        if order_status_filter:
-            order_filter &= Q(order_status=order_status_filter)
-        if fulfillment_channel_filter:
-            order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
-        if divi_export_filter:
-            divi_export_bool = divi_export_filter.lower() == 'true'
-            order_filter &= Q(is_exported_to_divi=divi_export_bool)
-        if divi_order_status_filter:
-            order_filter &= Q(divi_order_status=int(divi_order_status_filter))
-        if divi_tracking_filter:
-            if divi_tracking_filter == 'has':
-                order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
-            elif divi_tracking_filter == 'none':
-                order_filter &= Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number='')
-        if shop_status_filter:
-            order_filter &= Q(amazon_shop__shop_status=shop_status_filter)
-        if masked_single_filter:
-            if masked_single_filter == 'true':
-                order_filter &= Q(masked_single=True)
-            elif masked_single_filter == 'false':
-                order_filter &= Q(masked_single=False)
+        # 应用筛选项（支持多选）
+        if order_status_list:
+            if len(order_status_list) == 1:
+                order_filter &= Q(order_status=order_status_list[0])
+            else:
+                order_filter &= Q(order_status__in=order_status_list)
+
+        if fulfillment_channel_list:
+            if len(fulfillment_channel_list) == 1:
+                order_filter &= Q(fulfillment_channel=fulfillment_channel_list[0])
+            else:
+                order_filter &= Q(fulfillment_channel__in=fulfillment_channel_list)
+
+        if divi_export_list:
+            bool_values = []
+            for v in divi_export_list:
+                if v.lower() == 'true':
+                    bool_values.append(True)
+                elif v.lower() == 'false':
+                    bool_values.append(False)
+            if bool_values:
+                if len(bool_values) == 1:
+                    order_filter &= Q(is_exported_to_divi=bool_values[0])
+                else:
+                    order_filter &= Q(is_exported_to_divi__in=bool_values)
+
+        if divi_order_status_list:
+            status_ints = [int(s) for s in divi_order_status_list if s.isdigit()]
+            if status_ints:
+                if len(status_ints) == 1:
+                    order_filter &= Q(divi_order_status=status_ints[0])
+                else:
+                    order_filter &= Q(divi_order_status__in=status_ints)
+
+        if divi_tracking_list:
+            if len(divi_tracking_list) == 1:
+                if divi_tracking_list[0] == 'has':
+                    order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
+                elif divi_tracking_list[0] == 'none':
+                    order_filter &= (Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number=''))
+
+        if shop_status_list:
+            if len(shop_status_list) == 1:
+                order_filter &= Q(amazon_shop__shop_status=shop_status_list[0])
+            else:
+                order_filter &= Q(amazon_shop__shop_status__in=shop_status_list)
+
+        if masked_single_list:
+            bool_values = [(v.lower() == 'true') for v in masked_single_list if v.lower() in ['true', 'false']]
+            if bool_values:
+                if len(bool_values) == 1:
+                    order_filter &= Q(masked_single=bool_values[0])
+                else:
+                    order_filter &= Q(masked_single__in=bool_values)
+
         if order_id_filter:
             order_filter &= Q(amazon_order_id__icontains=order_id_filter)
         if shop_name_filter:
@@ -1274,14 +1386,21 @@ def export_amazon_orders_excel(request):
                     deadline_status = 'yellow'
                     deadline_text = f'[黄色预警：剩余{int(hours_remaining)}小时]'
 
-            # 应用发货时限筛选
-            if shipping_deadline_filter:
-                if shipping_deadline_filter == 'red' and deadline_status != 'red':
-                    continue
-                elif shipping_deadline_filter == 'yellow' and deadline_status != 'yellow':
-                    continue
-                elif shipping_deadline_filter == 'all_deadline' and deadline_status not in ['red', 'yellow']:
-                    continue
+            # 应用发货时限筛选（支持多选）
+            if shipping_deadline_list:
+                has_red = 'red' in shipping_deadline_list
+                has_yellow = 'yellow' in shipping_deadline_list
+                has_all = 'all_deadline' in shipping_deadline_list
+
+                if has_red and has_yellow or has_all:
+                    if deadline_status not in ['red', 'yellow']:
+                        continue
+                elif has_red:
+                    if deadline_status != 'red':
+                        continue
+                elif has_yellow:
+                    if deadline_status != 'yellow':
+                        continue
 
             orders_with_deadline.append({
                 'order': order,
