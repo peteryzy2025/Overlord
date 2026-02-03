@@ -589,7 +589,7 @@ class CreateBatchAssessmentView(AssessmentManagementView):
 
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_CREATE,
+            operation_type=UserOperationLog.OperationType.ASSESSMENT_CREATE,
             operation_record=f'批量创建{month}月份考核，成功{created_count}条，跳过{skipped_count}条'
         )
 
@@ -741,7 +741,7 @@ class SubmitToMemberView(AssessmentManagementView):
             print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_SUBMIT,
+            operation_type=UserOperationLog.OperationType.ASSESSMENT_SUBMIT,
             operation_record=f'提交考核(ID:{assessment.id})给组员{assessment.employee.first_name}确认'
         )
 
@@ -782,7 +782,7 @@ class MemberConfirmView(AssessmentManagementView):
             print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_MEMBER_CONFIRM,
+            operation_type=UserOperationLog.OperationType.ASSESSMENT_MEMBER_CONFIRM,
             operation_record=f'确认组长{assessment.leader.first_name}的考核'
         )
 
@@ -828,7 +828,7 @@ class MemberRejectView(AssessmentManagementView):
             print(f"通知发送失败(静默): {str(e)}")
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_MEMBER_REJECT,
+            operation_type=UserOperationLog.OperationType.ASSESSMENT_MEMBER_REJECT,
             operation_record=f'驳回组长{assessment.leader.first_name}的考核，原因：{comment}'
         )
 
@@ -891,7 +891,7 @@ class LeaderFinalConfirmView(AssessmentManagementView):
                 print(f"通知发送失败(静默): {str(e)}")
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ASSESSMENT_LEADER_CONFIRM,
+                operation_type=UserOperationLog.OperationType.ASSESSMENT_LEADER_CONFIRM,
                 operation_record=f'最终确认并锁定{assessment.employee.first_name}的考核，得分：{final_score}'
             )
 
@@ -1151,7 +1151,7 @@ class BatchRefreshOrdersView(AssessmentManagementView):
 
         UserOperationLog.objects.create(
             user=request.user,
-            operation_type=UserOperationLog.ASSESSMENT_BATCH_REFRESH,
+            operation_type=UserOperationLog.OperationType.ASSESSMENT_BATCH_REFRESH,
             operation_record=f'批量刷新{total_count}条考核订单数据，成功{success_count}条，失败{failed_count}条'
         )
 
