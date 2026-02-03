@@ -172,7 +172,7 @@
         font-size: 0.875rem;
     }
 
-    #rankingChart {
+    #rankingChart, #groupRankingChart {
         width: 100%;
         height: 600px;
         position: relative;
@@ -207,6 +207,68 @@
 
     @keyframes spin {
         to { transform: rotate(360deg); }
+    }
+
+    /* 小组成员表格样式 */
+    .group-members-table {
+        font-size: 0.875rem;
+    }
+
+    .group-members-table th {
+        font-weight: 600;
+        color: var(--text-primary);
+        white-space: nowrap;
+    }
+
+    .group-members-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .group-members-table tbody tr:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .group-rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .group-rank-badge.rank-1 {
+        background-color: #FFD700;
+        color: #333;
+    }
+
+    .group-rank-badge.rank-2 {
+        background-color: #C0C0C0;
+        color: #333;
+    }
+
+    .group-rank-badge.rank-3 {
+        background-color: #CD7F32;
+        color: white;
+    }
+
+    .group-rank-badge.rank-other {
+        background-color: var(--bg-tertiary);
+        color: var(--text-secondary);
+    }
+
+    .overall-rank {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background-color: var(--accent-color);
+        color: white;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
     }
 
     .stats-summary {
@@ -259,7 +321,7 @@
             width: 100%;
         }
 
-        #rankingChart {
+        #rankingChart, #groupRankingChart {
             height: 400px;
         }
     }
@@ -353,7 +415,7 @@
         </div>
     </div>
 
-    <!-- 排名图表 -->
+    <!-- 个人排名图表 -->
     <div class="chart-card">
         <div class="chart-header">
             <div>
@@ -375,6 +437,47 @@
             <div class="chart-loading" id="rankingChartLoading">
                 <div class="spinner"></div>
                 <p>数据加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 小组排名模块 -->
+    <div class="chart-card" style="margin-top: 2rem;">
+        <div class="chart-header">
+            <div>
+                <h3 class="chart-title">小组排名</h3>
+                <p class="chart-subtitle">点击小组查看组员详情</p>
+            </div>
+        </div>
+        <div id="groupRankingChart">
+            <div class="chart-loading" id="groupRankingChartLoading">
+                <div class="spinner"></div>
+                <p>数据加载中...</p>
+            </div>
+        </div>
+        <!-- 小组成员展开区域 -->
+        <div id="groupMembersSection" style="display: none; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h4 id="selectedGroupTitle" style="margin: 0; color: var(--text-primary); font-size: 1.1rem;"></h4>
+                <button class="btn btn-secondary" onclick="closeGroupMembers()" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">
+                    <i class="fas fa-times"></i> 关闭
+                </button>
+            </div>
+            <div class="group-members-table-container" style="overflow-x: auto;">
+                <table class="group-members-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: var(--bg-secondary);">
+                            <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">组内排名</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">姓名</th>
+                            <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid var(--border-color);">订单量</th>
+                            <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid var(--border-color);">销售量</th>
+                            <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">全局排名</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupMembersTableBody">
+                        <!-- 动态填充 -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -490,6 +593,7 @@ function handleQuickDateClick(rangeType) {
     // 加载排名数据
     async function loadRankingData() {
         showChartLoading(true);
+        showGroupRankingLoading(true);
 
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
@@ -497,12 +601,14 @@ function handleQuickDateClick(rangeType) {
         if (!startDate || !endDate) {
             showNotification && showNotification('请选择开始和结束日期', 'warning');
             showChartLoading(false);
+            showGroupRankingLoading(false);
             return;
         }
 
         if (new Date(startDate) > new Date(endDate)) {
             showNotification && showNotification('开始日期不能晚于结束日期', 'warning');
             showChartLoading(false);
+            showGroupRankingLoading(false);
             return;
         }
 
@@ -517,8 +623,15 @@ function handleQuickDateClick(rangeType) {
             const result = await response.json();
 
             if (result.success) {
-                updateStatsSummary(result.data);
-                updateRankingChart(result.data);
+                const personalData = result.data.personal_ranking;
+                const groupData = result.data.group_ranking;
+                
+                // 更新个人排名
+                updateStatsSummary(personalData);
+                updateRankingChart(personalData);
+                
+                // 更新小组排名
+                updateGroupRankingChart(groupData);
                 showNotification && showNotification('排名数据已更新', 'success');
             } else {
                 showNotification && showNotification('加载失败: ' + result.message, 'error');
@@ -527,6 +640,7 @@ function handleQuickDateClick(rangeType) {
             showNotification && showNotification('请求失败: ' + error.message, 'error');
         } finally {
             showChartLoading(false);
+            showGroupRankingLoading(false);
         }
     }
 
@@ -804,6 +918,198 @@ function handleQuickDateClick(rangeType) {
                 rankingChart.resize();
             }
         });
+    }
+
+    // ==================== 小组排名相关函数 ====================
+    let groupRankingChart = null;
+    let currentGroupData = [];
+
+    // 显示/隐藏小组排名加载状态
+    function showGroupRankingLoading(show = true) {
+        const loadingDiv = document.getElementById('groupRankingChartLoading');
+        if (loadingDiv) {
+            loadingDiv.style.display = show ? 'flex' : 'none';
+        }
+    }
+
+    // 更新小组排名图表
+    function updateGroupRankingChart(groupData) {
+        currentGroupData = groupData;
+        const chartDom = document.getElementById('groupRankingChart');
+
+        // 销毁旧图表
+        if (groupRankingChart) {
+            groupRankingChart.dispose();
+        }
+
+        if (!groupData || groupData.length === 0) {
+            chartDom.innerHTML = '<div style="text-align: center; padding: 3rem; color: var(--text-secondary);">暂无小组数据</div>';
+            return;
+        }
+
+        groupRankingChart = echarts.init(chartDom);
+
+        // 准备数据
+        const groupNames = groupData.map(item => item.group_name);
+        const orderCounts = groupData.map(item => item.total_orders);
+        const changePercents = groupData.map(item => item.change_percent);
+
+        const rootStyle = getComputedStyle(document.documentElement);
+
+        const option = {
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' },
+                backgroundColor: rootStyle.getPropertyValue('--bg-primary').trim(),
+                borderColor: rootStyle.getPropertyValue('--border-color').trim(),
+                textStyle: {
+                    color: rootStyle.getPropertyValue('--text-primary').trim()
+                },
+                formatter: function (params) {
+                    const item = groupData[params[0].dataIndex];
+                    const changeText = item.change_percent > 0 
+                        ? `<span style="color: #48bb78;">+↑${item.change_percent}%</span>`
+                        : item.change_percent < 0
+                            ? `<span style="color: #f56565;">-↓${Math.abs(item.change_percent)}%</span>`
+                            : '<span style="color: var(--text-secondary);">持平</span>';
+                    return `<strong>${item.group_name}</strong><br/>
+                        🏆 小组排名: 第${item.group_rank}名<br/>
+                        📊 订单量: ${formatNumber(item.total_orders)}<br/>
+                        📈 环比: ${changeText}<br/>
+                        👥 成员数: ${item.member_count}人`;
+                }
+            },
+            grid: {
+                left: '3%',
+                right: '4%',
+                bottom: '3%',
+                top: '10%',
+                containLabel: true
+            },
+            xAxis: {
+                type: 'category',
+                data: groupNames,
+                axisLabel: {
+                    interval: 0,
+                    color: rootStyle.getPropertyValue('--text-secondary').trim(),
+                    fontSize: 12
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: rootStyle.getPropertyValue('--border-color').trim()
+                    }
+                }
+            },
+            yAxis: {
+                type: 'value',
+                name: '订单量',
+                axisLabel: {
+                    color: rootStyle.getPropertyValue('--text-secondary').trim(),
+                    formatter: function (value) {
+                        return formatNumber(value);
+                    }
+                },
+                axisLine: {
+                    lineStyle: {
+                        color: rootStyle.getPropertyValue('--border-color').trim()
+                    }
+                },
+                splitLine: {
+                    lineStyle: {
+                        color: rootStyle.getPropertyValue('--border-color').trim()
+                    }
+                }
+            },
+            series: [{
+                name: '订单量',
+                type: 'bar',
+                data: orderCounts.map((val, idx) => ({
+                    value: val,
+                    itemStyle: {
+                        color: function() {
+                            // 前三名特殊颜色
+                            if (idx === 0) return '#FFD700'; // 金色
+                            if (idx === 1) return '#C0C0C0'; // 银色
+                            if (idx === 2) return '#CD7F32'; // 铜色
+                            return '#667eea';
+                        }()
+                    }
+                })),
+                barWidth: '50%',
+                label: {
+                    show: true,
+                    position: 'top',
+                    formatter: function(params) {
+                        const item = groupData[params.dataIndex];
+                        const changeSymbol = item.change_percent > 0 ? '↑' : item.change_percent < 0 ? '↓' : '';
+                        return `{val|${formatNumber(params.value)}}\n{change|${changeSymbol}${Math.abs(item.change_percent)}%}`;
+                    },
+                    rich: {
+                        val: {
+                            fontWeight: 'bold',
+                            fontSize: 13,
+                            color: rootStyle.getPropertyValue('--text-primary').trim()
+                        },
+                        change: {
+                            fontSize: 11,
+                            color: '#48bb78',
+                            lineHeight: 16
+                        }
+                    }
+                }
+            }]
+        };
+
+        groupRankingChart.setOption(option);
+
+        // 点击事件 - 展开小组成员
+        groupRankingChart.on('click', function (params) {
+            const item = groupData[params.dataIndex];
+            showGroupMembers(item);
+        });
+
+        // 响应式
+        window.addEventListener('resize', function () {
+            if (groupRankingChart) {
+                groupRankingChart.resize();
+            }
+        });
+    }
+
+    // 显示小组成员列表
+    function showGroupMembers(groupItem) {
+        const section = document.getElementById('groupMembersSection');
+        const title = document.getElementById('selectedGroupTitle');
+        const tbody = document.getElementById('groupMembersTableBody');
+
+        title.textContent = `${groupItem.group_name} - 组员排名 (总订单: ${formatNumber(groupItem.total_orders)})`;
+
+        // 填充表格
+        tbody.innerHTML = groupItem.members.map((member, index) => {
+            const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'rank-other';
+            return `
+                <tr>
+                    <td style="text-align: center;">
+                        <span class="group-rank-badge ${rankClass}">${member.group_rank}</span>
+                    </td>
+                    <td style="text-align: left; font-weight: 500;">${member.operator_name}</td>
+                    <td style="text-align: right;">${formatNumber(member.total_orders)}</td>
+                    <td style="text-align: right;">${formatNumber(member.total_sales_quantity)}件</td>
+                    <td style="text-align: center;">
+                        <span class="overall-rank">全局第${member.rank}名</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        section.style.display = 'block';
+        section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    // 关闭小组成员列表
+    function closeGroupMembers() {
+        const section = document.getElementById('groupMembersSection');
+        section.style.display = 'none';
     }
 
     // 页面初始化 - 延迟加载数据
