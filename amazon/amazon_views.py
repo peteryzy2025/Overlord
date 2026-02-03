@@ -445,72 +445,96 @@ def parse_permissions(user_permission):
     return []
 
 
+def parse_multi_select(value_str):
+    """
+    解析前端传递的多选值（逗号分隔）
+    返嚾: list 或 None
+    """
+    if not value_str or value_str in ['all', '全部人员', '全部分组', '']:
+        return None
+    # 按逗号分割并去除空白
+    values = [v.strip() for v in str(value_str).split(',') if v.strip()]
+    return values if values else None
+
+
 def determine_filter_type_and_value(request, data, permissions):
     """
-    统一权限控制逻辑
+    统一权限控制逻辑（支持多选）
     返回: (filter_type, filter_value)
+    filter_type: 'ops_id', 'ops_id_list', 'ops_group', 'ops_group_list', 'all', 'none'
     """
     user = request.user
 
     # 权限1: ops_all - 信任并使用前端传递的筛选参数
     if 'ops_all' in permissions:
-        # print("✅ 权限校验通过: ops_all，使用前端传递的筛选参数")
         ops_id_raw = data.get('operator_id') or data.get('ops_id')
         ops_group_raw = data.get('group') or data.get('ops_group')
 
-        if ops_group_raw and ops_group_raw not in ['all', '全部分组']:
-            return 'ops_group', ops_group_raw.strip()
-        elif ops_id_raw and ops_id_raw not in ['all', '全部人员']:
-            return 'ops_id', int(ops_id_raw)
-        else:
-            return 'all', None
+        # 处理多选分组
+        group_list = parse_multi_select(ops_group_raw)
+        if group_list:
+            if len(group_list) == 1:
+                return 'ops_group', group_list[0]
+            return 'ops_group_list', group_list
+
+        # 处理多选运营人员
+        id_list = parse_multi_select(ops_id_raw)
+        if id_list:
+            try:
+                id_int_list = [int(v) for v in id_list]
+                if len(id_int_list) == 1:
+                    return 'ops_id', id_int_list[0]
+                return 'ops_id_list', id_int_list
+            except (ValueError, TypeError):
+                pass
+
+        return 'all', None
 
     # 权限2: ops_group - 可查询自己分组，支持组内筛选具体人员
     elif 'ops_group' in permissions:
-        # print("✅ 权限校验通过: ops_group")
         try:
             ops_account = user.operational_account
             user_group = ops_account.ops_group if ops_account else None
 
             if not user_group:
-                # print("⚠️ 用户未配置运营分组，返回空数据")
                 return 'none', None
 
             ops_id_raw = data.get('operator_id') or data.get('ops_id')
             ops_group_raw = data.get('group') or data.get('ops_group')
 
-            # 情况1：组内筛选具体人员（带权限验证）
-            if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
+            # 处理多选运营人员（组内筛选，带权限验证）
+            id_list = parse_multi_select(ops_id_raw)
+            if id_list:
                 try:
-                    target_user_id = int(ops_id_raw)
-                    # 验证目标用户是否在用户所在分组内
-                    target_user = User.objects.filter(
-                        id=target_user_id,
+                    id_int_list = [int(v) for v in id_list]
+                    # 验证所有目标用户是否在用户所在分组内
+                    valid_user_ids = list(User.objects.filter(
+                        id__in=id_int_list,
                         operational_account__ops_group=user_group
-                    ).first()
+                    ).values_list('id', flat=True))
 
-                    if target_user:
-                        print(f"  组内筛选具体人员: {target_user.first_name} (ID: {target_user_id})")
-                        return 'ops_id', target_user_id
+                    if valid_user_ids:
+                        print(f"  组内筛选人员: {valid_user_ids}")
+                        if len(valid_user_ids) == 1:
+                            return 'ops_id', valid_user_ids[0]
+                        return 'ops_id_list', valid_user_ids
                     else:
-                        print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组成员 {target_user_id}")
+                        print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组成员")
                         return 'none', None
                 except (ValueError, TypeError):
                     return 'none', None
 
-            # 情况2：筛选具体分组（验证是否是自己的组）
-            elif ops_group_raw and ops_group_raw not in ['all', '全部分组']:
-                if ops_group_raw.strip() == user_group:
-                    # print(f"  筛选自己分组: {user_group}")
+            # 处理多选分组（验证是否是自己的组）
+            group_list = parse_multi_select(ops_group_raw)
+            if group_list:
+                if all(g.strip() == user_group for g in group_list):
                     return 'ops_group', user_group
                 else:
-                    print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组 '{ops_group_raw}'")
+                    print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组")
                     return 'none', None
 
-            # 情况3：默认查询全组
-            else:
-                # print(f"  默认查询全组: {user_group}")
-                return 'ops_group', user_group
+            # 默认查询全组
+            return 'ops_group', user_group
 
         except Exception as e:
             print(f"  获取用户信息异常: {e}")
@@ -518,7 +542,6 @@ def determine_filter_type_and_value(request, data, permissions):
 
     # 权限3: ops - 强制查询自己
     elif 'ops' in permissions:
-        # print("✅ 权限校验通过: ops，强制查询自己")
         return 'ops_id', user.id
 
     # 无权限
@@ -781,6 +804,10 @@ def get_shop_ids_by_filter(filter_type, filter_value):
         print(f"按运营ID筛选: ops_id={filter_value}")
         return AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
 
+    elif filter_type == 'ops_id_list':
+        print(f"按运营ID列表筛选: ops_ids={filter_value}")
+        return AmazonShop.objects.filter(ops_id__in=filter_value).values_list('id', flat=True)
+
     elif filter_type == 'ops_group':
         # print(f"查询分组 '{filter_value}' 的成员...")
         user_ids = OperationalAccount.objects.filter(
@@ -798,6 +825,25 @@ def get_shop_ids_by_filter(filter_type, filter_value):
             return shop_ids
         else:
             print(f"⚠️ 分组 '{filter_value}' 没有成员")
+            return AmazonShop.objects.none().values_list('id', flat=True)
+
+    elif filter_type == 'ops_group_list':
+        print(f"按分组列表筛选: groups={filter_value}")
+        user_ids = OperationalAccount.objects.filter(
+            ops_group__in=filter_value
+        ).values_list('user_id', flat=True)
+
+        user_ids_list = list(user_ids)
+        print(f"✅ 找到用户ID: {user_ids_list}")
+
+        if user_ids_list:
+            shop_ids = AmazonShop.objects.filter(
+                ops_id__in=user_ids_list
+            ).values_list('id', flat=True)
+            print(f"✅ 找到店铺ID: {list(shop_ids)}")
+            return shop_ids
+        else:
+            print(f"⚠️ 分组列表没有成员")
             return AmazonShop.objects.none().values_list('id', flat=True)
 
     elif filter_type == 'all':
@@ -834,6 +880,13 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             shops = AmazonShop.objects.filter(ops_id=int(filter_value))
             result['amazon'] = list(shops.values_list('id', flat=True))
             print(f"✅ Amazon查询: ops_id={filter_value} → 找到 {len(result['amazon'])} 个店铺")
+        elif filter_type == 'ops_id_list':
+            # 多选运营人员
+            ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
+            result['amazon'] = list(AmazonShop.objects.filter(
+                ops_id__in=ops_ids
+            ).values_list('id', flat=True))
+            print(f"✅ Amazon多选人员查询: ops_ids={ops_ids} → 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
@@ -842,6 +895,16 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Amazon组查询: {filter_value} → 找到 {len(result['amazon'])} 个店铺")
+        elif filter_type == 'ops_group_list':
+            # 多选分组
+            groups = filter_value if isinstance(filter_value, list) else [filter_value]
+            user_ids = OperationalAccount.objects.filter(
+                ops_group__in=groups
+            ).values_list('user_id', flat=True)
+            result['amazon'] = list(AmazonShop.objects.filter(
+                ops_id__in=list(user_ids)
+            ).values_list('id', flat=True))
+            print(f"✅ Amazon多选组查询: groups={groups} → 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'all':
             result['amazon'] = list(AmazonShop.objects.all().values_list('id', flat=True))
             print(f"⚠️ Amazon全量查询: 找到 {len(result['amazon'])} 个店铺")
@@ -852,6 +915,13 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             shops = TemuShop.objects.filter(ops_id=int(filter_value))
             result['temu'] = list(shops.values_list('id', flat=True))
             print(f"✅ Temu查询: ops_id={filter_value} → 找到 {len(result['temu'])} 个店铺")
+        elif filter_type == 'ops_id_list':
+            # 多选运营人员
+            ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
+            result['temu'] = list(TemuShop.objects.filter(
+                ops_id__in=ops_ids
+            ).values_list('id', flat=True))
+            print(f"✅ Temu多选人员查询: ops_ids={ops_ids} → 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
@@ -860,6 +930,16 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Temu组查询: {filter_value} → 找到 {len(result['temu'])} 个店铺")
+        elif filter_type == 'ops_group_list':
+            # 多选分组
+            groups = filter_value if isinstance(filter_value, list) else [filter_value]
+            user_ids = OperationalAccount.objects.filter(
+                ops_group__in=groups
+            ).values_list('user_id', flat=True)
+            result['temu'] = list(TemuShop.objects.filter(
+                ops_id__in=list(user_ids)
+            ).values_list('id', flat=True))
+            print(f"✅ Temu多选组查询: groups={groups} → 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'all':
             result['temu'] = list(TemuShop.objects.all().values_list('id', flat=True))
             print(f"⚠️ Temu全量查询: 找到 {len(result['temu'])} 个店铺")
