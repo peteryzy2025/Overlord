@@ -109,6 +109,12 @@
     flex: 1;
 }
 
+/* 筛选区域的 input 高度与 searchable-select 保持一致 */
+.filter-group .form-control {
+    height: 42px;
+    box-sizing: border-box;
+}
+
 .filter-actions {
     display: flex;
     flex-direction: row;
