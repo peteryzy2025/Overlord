@@ -1445,10 +1445,68 @@
     display: flex;
 }
 
-.selected-count {
+/* 已选择信息 - 居左 */
+.bulk-info {
     color: var(--text-secondary);
     font-size: 0.875rem;
     margin-right: auto;
+}
+
+.bulk-info strong,
+.bulk-info span {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* 批量操作按钮组 - 居右 */
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* 批量操作按钮 */
+.bulk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.bulk-btn:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-color);
+}
+
+/* 主要批量按钮 */
+.bulk-btn-primary {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.bulk-btn-primary:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+/* 危险批量按钮 */
+.bulk-btn-danger {
+    background-color: #EF4444;
+    border-color: #EF4444;
+    color: white;
+}
+
+.bulk-btn-danger:hover {
+    background-color: #DC2626;
+    border-color: #DC2626;
 }
 
 @keyframes slideDown {
