@@ -14,6 +14,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 from amazon.models import AmazonOrders
+from general.models import Project
 from api.lingxing.Y_OpenApi import get_api_resp
 from api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
 
@@ -25,6 +26,37 @@ from asgiref.sync import async_to_sync
 class LingxingAPIException(Exception):
     """领星API调用异常"""
     pass
+
+
+def _get_lingxing_credentials(order) -> tuple[str, str]:
+    """
+    根据订单获取对应项目的领星API凭证
+    
+    Args:
+        order: AmazonOrders 订单对象
+        
+    Returns:
+        (app_id, app_secret) 元组
+        
+    Raises:
+        ValueError: 如果项目未配置领星凭证
+    """
+    # 获取订单对应的项目
+    project = None
+    if order.amazon_shop and order.amazon_shop.project:
+        project = order.amazon_shop.project
+    
+    # 检查项目是否配置了领星凭证
+    if project:
+        if project.lingxing_app_id and project.lingxing_app_secret:
+            return project.lingxing_app_id, project.lingxing_app_secret
+        else:
+            raise ValueError(
+                f"项目 '{project.name}' (ID: {project.id}) 未配置领星API凭证，"
+                f"请先填写 lingxing_app_id 和 lingxing_app_secret"
+            )
+    else:
+        raise ValueError("订单未关联项目，无法获取领星API凭证")
 
 
 def get_divi_logistics_code(divi_logistics_method: str,
@@ -113,7 +145,7 @@ def get_divi_logistics_code(divi_logistics_method: str,
     return ""
 
 # ==================== 新增：订单号同步函数 ====================
-async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple[bool, str]:
+async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str, app_id: str = None, app_secret: str = None) -> tuple[bool, str]:
     """
     如果订单 order_no 为空，则从领星API同步并更新数据库
     返回: (是否成功, 订单号或错误信息)
@@ -125,7 +157,7 @@ async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple
 
     try:
         # 调用API获取最近10天的自发货订单
-        zifa_data = await get_lingxing_zifa_order(sid=str(sid), days=10)
+        zifa_data = await get_lingxing_zifa_order(sid=str(sid), days=10, app_id=app_id, app_secret=app_secret)
 
         if not zifa_data:
             return False, "领星API返回空数据"
@@ -164,7 +196,7 @@ async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str) -> tuple
 
 
 # ==================== 核心函数（仅打印传参 + 可选执行）===================
-async def step1_set_sku(sku: str, cg_price: str, execute: bool = True):
+async def step1_set_sku(sku: str, cg_price: str, execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤1】set_sku 传参：")
     print(f"   → sku        = {sku}")
     print(f"   → cg_price   = {cg_price}")
@@ -172,12 +204,12 @@ async def step1_set_sku(sku: str, cg_price: str, execute: bool = True):
         print("   → [预览模式] 不执行")
         return
     req_body = {"sku": sku, "product_name": sku, "sku_identifier":sku,"cg_price": cg_price}
-    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/product/set")
+    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/product/set", app_id=app_id, app_secret=app_secret)
     print(f"   → 新建产品结果 = {resp}")
     # print(f"   → 返回结果   = {resp.dict().get('msg', 'OK')}")
 
 
-async def step2_update_order_binding(global_order_no: str, items: list, execute: bool = True):
+async def step2_update_order_binding(global_order_no: str, items: list, execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤2】批量绑定商品 updateOrder 传参：")
     print(f"   → global_order_no = {global_order_no}")
     print(f"   → order_item_list = [")
@@ -189,12 +221,12 @@ async def step2_update_order_binding(global_order_no: str, items: list, execute:
         return
     order_item_list = [{"sku": it['sku'], "msku": it['sku'], "type": 3} for it in items]
     req_body = {"order_list": [{"global_order_no": global_order_no, "order_item_list": order_item_list}]}
-    resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder")
+    resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder", app_id=app_id, app_secret=app_secret)
     # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
     print(f"   → 绑定结果 = {resp}")
 
 
-async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True):
+async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤3】批量入库 add_warehousing 传参：")
     print(f"   → sys_wid = 509522, type = 1")
     print(f"   → product_list = [")
@@ -209,14 +241,14 @@ async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True
         for it in items_with_qty_price
     ]
     req_body = {"sys_wid": 509522, "type": 1, "product_list": product_list}
-    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd")
+    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd", app_id=app_id, app_secret=app_secret)
     # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
     print(f"   → 入库结果 = {resp}")
 
 
 
 async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, waybill_no: str, freight: str,
-                              execute: bool = True):
+                              execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤4】快速出库 fastOutbound 传参：")
     print(f"   → global_order_no    = {global_order_no}")
     print(f"   → wid                = 509522")
@@ -235,7 +267,7 @@ async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, wayb
             "logistics_freight": freight,
         }]
     }
-    resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/fastOutbound")
+    resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/fastOutbound", app_id=app_id, app_secret=app_secret)
     # print(f"   → 出库结果 = {resp.dict().get('msg', 'OK')}")
     print(f"   → 出库结果 = {resp}")
     if resp.code != 0:
@@ -245,17 +277,17 @@ async def step4_fast_outbound(global_order_no: str, logistics_type_id: str, wayb
     print("   → 快速出库成功 ✓")
 
 
-async def step5_delivery_goods(order_no: str, execute: bool = True):
+async def step5_delivery_goods(order_no: str, execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤5】标发确认 deliveryGoods 传参：")
     print(f"   → order_number_list = {order_no}")
     if not execute:
         print("   → [预览模式] 不执行（会发两次）")
         return
     req_body = {"order_number_list": order_no}
-    resp1 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
+    resp1 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods", app_id=app_id, app_secret=app_secret)
     print(f"   → 第一次标发 = {resp1}")
     await asyncio.sleep(2.5)
-    resp2 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
+    resp2 = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods", app_id=app_id, app_secret=app_secret)
     print(f"   → 第二次标发 = {resp2}")
 
 
@@ -277,8 +309,16 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
     try:
         order = await get_full_order(sid, amazon_order_id)
 
+        # 获取项目的领星API凭证（尽早获取，用于后续所有API调用）
+        try:
+            app_id, app_secret = _get_lingxing_credentials(order)
+            print(f"\n【项目配置】使用项目领星API凭证")
+        except ValueError as e:
+            print(f"\n【致命错误】{str(e)}，终止处理")
+            raise
+
         # ==================== 关键修复：自动同步订单号 ====================
-        success, result = await sync_order_no_if_empty(order, sid, amazon_order_id)
+        success, result = await sync_order_no_if_empty(order, sid, amazon_order_id, app_id=app_id, app_secret=app_secret)
         if not success:
             print(f"\n【致命错误】{result}，终止处理")
             return
@@ -327,15 +367,15 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
         elif mode == "full_shipment":
             print(f"\n{'*' * 40} 完整发货模式（5步全执行） {'*' * 40}")
 
-        await step1_set_sku(items[0]['sku'], items[0]['price_per_unit'], execute=execute_step1)
+        await step1_set_sku(items[0]['sku'], items[0]['price_per_unit'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
         if len(items) > 1:
             for it in items[1:]:
-                await step1_set_sku(it['sku'], it['price_per_unit'], execute=execute_step1)
+                await step1_set_sku(it['sku'], it['price_per_unit'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
 
-        await step2_update_order_binding(order_no, items, execute=execute_step2)
-        await step3_add_warehousing(items, execute=execute_step3)
-        await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4)
-        await step5_delivery_goods(order_no, execute=execute_step5)
+        await step2_update_order_binding(order_no, items, execute=execute_step2, app_id=app_id, app_secret=app_secret)
+        await step3_add_warehousing(items, execute=execute_step3, app_id=app_id, app_secret=app_secret)
+        await step4_fast_outbound(order_no, logistics_type_id, waybill_no, freight, execute=execute_step4, app_id=app_id, app_secret=app_secret)
+        await step5_delivery_goods(order_no, execute=execute_step5, app_id=app_id, app_secret=app_secret)
 
         print(f"\n{'=' * 100}")
         print(f"订单 {order_no} 处理完成！模式: {mode}")
