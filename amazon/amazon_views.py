@@ -791,22 +791,29 @@ def merge_trend_data(amazon_trend, temu_trend, shop_ids_by_platform):
     return result
 
 
-def get_shop_ids_by_filter(filter_type, filter_value):
+def get_shop_ids_by_filter(filter_type, filter_value, user=None):
     """
     根据筛选类型获取AmazonShop的ID列表（支持权限控制）
     Args:
         filter_type: 'ops_id', 'ops_group', 'all', 'none'
         filter_value: 对应的值
+        user: 当前请求的用户对象（可选），用于公司过滤
     Returns:
         QuerySet: AmazonShop的ID列表
     """
+    # 构建基础查询集（处理公司隔离）
+    base_qs = AmazonShop.objects.all()
+    if user and hasattr(user, 'company') and user.company:
+        base_qs = base_qs.filter(company=user.company)
+        # print(f"🏢 已应用公司过滤: {user.company.name}")
+
     if filter_type == 'ops_id':
         print(f"按运营ID筛选: ops_id={filter_value}")
-        return AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+        return base_qs.filter(ops_id=filter_value).values_list('id', flat=True)
 
     elif filter_type == 'ops_id_list':
         print(f"按运营ID列表筛选: ops_ids={filter_value}")
-        return AmazonShop.objects.filter(ops_id__in=filter_value).values_list('id', flat=True)
+        return base_qs.filter(ops_id__in=filter_value).values_list('id', flat=True)
 
     elif filter_type == 'ops_group':
         # print(f"查询分组 '{filter_value}' 的成员...")
@@ -818,7 +825,7 @@ def get_shop_ids_by_filter(filter_type, filter_value):
         print(f"✅ 找到用户ID: {user_ids_list}")
 
         if user_ids_list:
-            shop_ids = AmazonShop.objects.filter(
+            shop_ids = base_qs.filter(
                 ops_id__in=user_ids_list
             ).values_list('id', flat=True)
             print(f"✅ 找到店铺ID: {list(shop_ids)}")
@@ -837,7 +844,7 @@ def get_shop_ids_by_filter(filter_type, filter_value):
         print(f"✅ 找到用户ID: {user_ids_list}")
 
         if user_ids_list:
-            shop_ids = AmazonShop.objects.filter(
+            shop_ids = base_qs.filter(
                 ops_id__in=user_ids_list
             ).values_list('id', flat=True)
             print(f"✅ 找到店铺ID: {list(shop_ids)}")
@@ -848,7 +855,7 @@ def get_shop_ids_by_filter(filter_type, filter_value):
 
     elif filter_type == 'all':
         # print("查询所有AmazonShop")
-        return AmazonShop.objects.all().values_list('id', flat=True)
+        return base_qs.values_list('id', flat=True)
 
     elif filter_type == 'none':
         print("⚠️ 权限不足，返回空QuerySet")
@@ -859,7 +866,7 @@ def get_shop_ids_by_filter(filter_type, filter_value):
         return AmazonShop.objects.none().values_list('id', flat=True)
 
 
-def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_info):
+def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_info, user=None):
     """
     重构版：返回平台区分的店铺ID
     """
@@ -871,19 +878,30 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
     print(f"   filter_type: {filter_type}")
     print(f"   filter_value: {filter_value} (type: {type(filter_value)})")
     print(f"   platform_info: {platform_info}")
+    if user:
+        print(f"   user: {user} (company: {getattr(user, 'company', 'None')})")
     print(f"{'=' * 60}\n")
+
+    # 构建基础查询集（处理公司隔离）
+    amazon_base_qs = AmazonShop.objects.all()
+    temu_base_qs = TemuShop.objects.all()
+
+    if user and hasattr(user, 'company') and user.company:
+        amazon_base_qs = amazon_base_qs.filter(company=user.company)
+        temu_base_qs = temu_base_qs.filter(company=user.company)
+        print(f"🏢 已应用公司过滤: {user.company.name}")
 
     # ========== 亚马逊店铺 ==========
     if platform_info['source'] in ['amazon_only', 'mixed']:
         if filter_type == 'ops_id':
             # 强制转换为int，避免类型不匹配
-            shops = AmazonShop.objects.filter(ops_id=int(filter_value))
+            shops = amazon_base_qs.filter(ops_id=int(filter_value))
             result['amazon'] = list(shops.values_list('id', flat=True))
             print(f"✅ Amazon查询: ops_id={filter_value} → 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_id_list':
             # 多选运营人员
             ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
-            result['amazon'] = list(AmazonShop.objects.filter(
+            result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=ops_ids
             ).values_list('id', flat=True))
             print(f"✅ Amazon多选人员查询: ops_ids={ops_ids} → 找到 {len(result['amazon'])} 个店铺")
@@ -891,7 +909,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
             ).values_list('user_id', flat=True)
-            result['amazon'] = list(AmazonShop.objects.filter(
+            result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Amazon组查询: {filter_value} → 找到 {len(result['amazon'])} 个店铺")
@@ -901,24 +919,24 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             user_ids = OperationalAccount.objects.filter(
                 ops_group__in=groups
             ).values_list('user_id', flat=True)
-            result['amazon'] = list(AmazonShop.objects.filter(
+            result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Amazon多选组查询: groups={groups} → 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'all':
-            result['amazon'] = list(AmazonShop.objects.all().values_list('id', flat=True))
+            result['amazon'] = list(amazon_base_qs.values_list('id', flat=True))
             print(f"⚠️ Amazon全量查询: 找到 {len(result['amazon'])} 个店铺")
 
     # ========== Temu店铺 ==========
     if platform_info['source'] in ['temu_only', 'mixed']:
         if filter_type == 'ops_id':
-            shops = TemuShop.objects.filter(ops_id=int(filter_value))
+            shops = temu_base_qs.filter(ops_id=int(filter_value))
             result['temu'] = list(shops.values_list('id', flat=True))
             print(f"✅ Temu查询: ops_id={filter_value} → 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_id_list':
             # 多选运营人员
             ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
-            result['temu'] = list(TemuShop.objects.filter(
+            result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=ops_ids
             ).values_list('id', flat=True))
             print(f"✅ Temu多选人员查询: ops_ids={ops_ids} → 找到 {len(result['temu'])} 个店铺")
@@ -926,7 +944,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
             ).values_list('user_id', flat=True)
-            result['temu'] = list(TemuShop.objects.filter(
+            result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Temu组查询: {filter_value} → 找到 {len(result['temu'])} 个店铺")
@@ -936,12 +954,12 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             user_ids = OperationalAccount.objects.filter(
                 ops_group__in=groups
             ).values_list('user_id', flat=True)
-            result['temu'] = list(TemuShop.objects.filter(
+            result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
             print(f"✅ Temu多选组查询: groups={groups} → 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'all':
-            result['temu'] = list(TemuShop.objects.all().values_list('id', flat=True))
+            result['temu'] = list(temu_base_qs.values_list('id', flat=True))
             print(f"⚠️ Temu全量查询: 找到 {len(result['temu'])} 个店铺")
 
     # 最终日志
@@ -1055,7 +1073,7 @@ def filter_amazon_data_api(request):
             shop_ids_by_platform = {'amazon': [], 'temu': []}
         else:
             shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
-                filter_type, filter_value, platform_info
+                filter_type, filter_value, platform_info, user=user
             )
 
         # ========== 调试日志：输出实际查询的店铺明细 ==========

@@ -123,6 +123,17 @@
     margin-top: auto;
 }
 
+/* 修复筛选按钮高度与输入框一致 */
+.filter-actions .btn,
+.filter-actions-secondary .btn {
+    height: 42px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
 .filter-actions-main {
     position: absolute;
     right: 0;
@@ -1087,8 +1098,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ============================================
@@ -1135,7 +1151,7 @@
     .pagination-new {
         justify-content: center;
     }
-    
+
     .pagination-left {
         justify-content: center;
     }
@@ -1520,6 +1536,7 @@
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1570,7 +1587,7 @@
     margin: 0;
 }
 
-.column-group > div {
+.column-group>div {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
