@@ -193,7 +193,7 @@ def process_auto_ship():
                 # 记录失败日志
                 UserOperationLog.objects.create(
                     user=system_user,
-                    operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                    operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                     operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]失败 | 原因[{error_msg}] | DIVI状态[{divi_status}]"
                 )
                 red_error += 1
@@ -215,7 +215,7 @@ def process_auto_ship():
                     # 记录成功日志（假物流）
                     UserOperationLog.objects.create(
                         user=system_user,
-                        operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                        operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                         operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]成功 | DIVI状态[{divi_status}] | 跟踪号[{tracking_number}] | 假物流[是]"
                     )
                 else:
@@ -223,7 +223,7 @@ def process_auto_ship():
                     # 记录成功日志（真物流）
                     UserOperationLog.objects.create(
                         user=system_user,
-                        operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                        operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                         operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]成功 | DIVI状态[{divi_status}] | 跟踪号[{tracking_number}] | 假物流[否]"
                     )
 
@@ -235,7 +235,7 @@ def process_auto_ship():
                 # 记录失败日志
                 UserOperationLog.objects.create(
                     user=system_user,
-                    operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                    operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                     operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]失败 | 原因[{error_msg}] | DIVI状态[{divi_status}] | 跟踪号[{tracking_number}]"
                 )
                 red_error += 1
@@ -268,7 +268,7 @@ def process_auto_ship():
                 # 记录失败日志
                 UserOperationLog.objects.create(
                     user=system_user,
-                    operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                    operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                     operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]失败 | 原因[{error_msg}] | DIVI状态[{divi_status}]"
                 )
                 normal_error += 1
@@ -283,7 +283,7 @@ def process_auto_ship():
                 # 记录成功日志
                 UserOperationLog.objects.create(
                     user=system_user,
-                    operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                    operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                     operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]成功 | DIVI状态[{divi_status}]"
                 )
                 normal_success += 1
@@ -294,7 +294,7 @@ def process_auto_ship():
                 # 记录失败日志
                 UserOperationLog.objects.create(
                     user=system_user,
-                    operation_type=UserOperationLog.ORDER_AUTO_SHIP,
+                    operation_type=UserOperationLog.OperationType.ORDER_AUTO_SHIP,
                     operation_record=f"店铺[{shop_name}]自动发货 | 订单[{amazon_order_id}]失败 | 原因[{error_msg}] | DIVI状态[{divi_status}]"
                 )
                 normal_error += 1

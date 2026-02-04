@@ -28,7 +28,7 @@ class LingxingAPIException(Exception):
     pass
 
 
-def _get_lingxing_credentials(order) -> tuple[str, str]:
+async def _get_lingxing_credentials(order) -> tuple[str, str]:
     """
     根据订单获取对应项目的领星API凭证
     
@@ -41,10 +41,16 @@ def _get_lingxing_credentials(order) -> tuple[str, str]:
     Raises:
         ValueError: 如果项目未配置领星凭证
     """
-    # 获取订单对应的项目
+    # 获取订单对应的项目（使用 sync_to_async 包装同步数据库操作）
     project = None
-    if order.amazon_shop and order.amazon_shop.project:
-        project = order.amazon_shop.project
+    
+    # 异步获取 amazon_shop 和 project
+    get_amazon_shop = sync_to_async(lambda: order.amazon_shop, thread_sensitive=True)
+    amazon_shop = await get_amazon_shop()
+    
+    if amazon_shop:
+        get_project = sync_to_async(lambda: amazon_shop.project, thread_sensitive=True)
+        project = await get_project()
     
     # 检查项目是否配置了领星凭证
     if project:
@@ -311,7 +317,7 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
 
         # 获取项目的领星API凭证（尽早获取，用于后续所有API调用）
         try:
-            app_id, app_secret = _get_lingxing_credentials(order)
+            app_id, app_secret = await _get_lingxing_credentials(order)
             print(f"\n【项目配置】使用项目领星API凭证")
         except ValueError as e:
             print(f"\n【致命错误】{str(e)}，终止处理")
