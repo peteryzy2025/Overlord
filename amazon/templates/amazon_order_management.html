@@ -203,22 +203,18 @@
         .table-container table {
             min-width: 1500px;
         }
-
         #ordersTable td {
             white-space: nowrap;
         }
-
         /* 固定列宽 */
         #ordersTable th:nth-child(2), #ordersTable td:nth-child(2) {
             width: 200px;
             min-width: 200px;
         }
-
         #ordersTable th:nth-child(3), #ordersTable td:nth-child(3) {
             width: 200px;
             min-width: 200px;
         }
-
         #ordersTable th:nth-child(9), #ordersTable td:nth-child(9) {
             width: 150px;
             min-width: 150px;
@@ -259,17 +255,14 @@
             flex-direction: column;
             gap: 4px;
         }
-
-        .primary-text {
-            color: var(--text-primary);
-        }
+        
 
         .sub-tags {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
             align-items: center;
-            justify-content: center; /* 添加居中 */
+            justify-content: center;
         }
 
         /* 订单状态标签样式 */
@@ -280,7 +273,7 @@
             font-weight: 500;
         }
 
-        .tag-order-status.status-pending {
+        .tag-order-status.status-processing {
             background-color: #E9D8FD;
             color: #553C9A;
         }
@@ -364,9 +357,8 @@
             align-items: center;
             gap: 4px;
         }
-
         .deadline-cell .deadline-warning-inline {
-            margin-left: 0; /* 原来是8px，现在去掉因为单独一行 */
+            margin-left: 0;
         }
 
         .product-info-cell div:first-child {
@@ -514,19 +506,12 @@
             display: block;
         }
 
-        /* DIVI详情单元格 */
-        .divi-details-cell {
-            line-height: 1.4;
-        }
 
         .divi-details-cell div {
             margin-bottom: 2px;
         }
 
-        .divi-details-cell .masked-tag {
-            color: #EF4444;
-            font-size: 0.75rem;
-        }
+
 
         /* 分页样式 */
         .pagination-container {
@@ -814,7 +799,6 @@
 
             .table th, .table td {
                 padding: 0.75rem 0.5rem;
-                font-size: 0.8125rem;
             }
         }
     </style>
@@ -829,202 +813,194 @@
     </div>
 
     <div class="tab-content">
-        <div class="amazon-order-main">
-            <div class="page-header">
-                <div>
-                    <h1 class="page-title">亚马逊订单管理</h1>
-                    <p class="page-subtitle">查看和管理亚马逊订单，支持DIVI导单和状态更新</p>
+        <!-- 页面标题区 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-shopping-cart" style="color: var(--accent-color);"></i>
+                    亚马逊订单管理
+                </h1>
+                <p class="page-subtitle">查看和管理亚马逊订单，支持DIVI导单和状态更新</p>
+            </div>
+            <div>
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="control-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">日期范围</label>
+                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
                 </div>
-                <div>
-                    <button class="btn" onclick="refreshData(event)">
-                        <i class="fas fa-sync-alt"></i> 刷新数据
+
+                <div class="filter-group" id="customDateGroup" style="display: none;">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group" id="customDateGroup2" style="display: none;">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">订单号</label>
+                    <input type="text" class="form-control" id="orderIdFilter"
+                           placeholder="输入订单号（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺名称</label>
+                    <input type="text" class="form-control" id="shopNameFilter"
+                           placeholder="输入店铺名称（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺状态</label>
+                    <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">订单状态</label>
+                    <div id="orderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">订单类型</label>
+                    <div id="fulfillmentChannelFilter" class="searchable-select multiple" data-placeholder="全部类型"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">DIVI导单情况</label>
+                    <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">DIVI订单状态</label>
+                    <div id="diviOrderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">DIVI是否有面单</label>
+                    <div id="diviTrackingFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">假面单发货</label>
+                    <div id="maskedSingleFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">发货时限预警</label>
+                    <div id="shippingDeadlineFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetFilters(event)" title="重置"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
+            <div class="bulk-actions">
+                <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
+                    <i class="fas fa-file-export"></i> 批量导单
+                </button>
+                <button class="bulk-btn" onclick="clearSelection()">
+                    <i class="fas fa-times"></i> 取消选择
+                </button>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title">订单详情</h3>
+                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                    <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
+                        <i class="fas fa-download"></i> 导出Excel
+                    </button>
+                    <button class="btn" onclick="updateDiviExportStatus()">
+                        <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
                     </button>
                 </div>
             </div>
 
-            <div class="control-panel">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label class="filter-label">日期范围</label>
-                        <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
-                    </div>
-
-                    <div class="filter-group" id="customDateGroup" style="display: none;">
-                        <label class="filter-label">开始日期</label>
-                        <input type="date" class="form-control" id="startDate">
-                    </div>
-
-                    <div class="filter-group" id="customDateGroup2" style="display: none;">
-                        <label class="filter-label">结束日期</label>
-                        <input type="date" class="form-control" id="endDate">
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">运营分组</label>
-                        <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">运营人员</label>
-                        <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">订单号</label>
-                        <input type="text" class="form-control" id="orderIdFilter"
-                               placeholder="输入订单号（模糊查询）"
-                               onkeyup="if(event.key==='Enter') applyFilters()">
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">店铺名称</label>
-                        <input type="text" class="form-control" id="shopNameFilter"
-                               placeholder="输入店铺名称（模糊查询）"
-                               onkeyup="if(event.key==='Enter') applyFilters()">
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">店铺状态</label>
-                        <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">订单状态</label>
-                        <div id="orderStatusFilter" class="searchable-select multiple"
-                             data-placeholder="全部状态"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">订单类型</label>
-                        <div id="fulfillmentChannelFilter" class="searchable-select multiple"
-                             data-placeholder="全部类型"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">DIVI导单情况</label>
-                        <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">DIVI订单状态</label>
-                        <div id="diviOrderStatusFilter" class="searchable-select multiple"
-                             data-placeholder="全部状态"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">DIVI是否有面单</label>
-                        <div id="diviTrackingFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">假面单发货</label>
-                        <div id="maskedSingleFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                    </div>
-
-                    <div class="filter-group">
-                        <label class="filter-label">发货时限预警</label>
-                        <div id="shippingDeadlineFilter" class="searchable-select multiple"
-                             data-placeholder="全部"></div>
-                    </div>
-
-                    <div class="filter-actions">
-                        <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
-                        <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i
-                                class="fas fa-redo"></i></button>
-                    </div>
-                </div>
+            <div class="table-container" id="ordersTableContainer">
+                <table class="table" id="ordersTable">
+                    <thead>
+                    <tr>
+                        <th class="w-checkbox">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
+                        </th>
+                        <th>订单ID</th>
+                        <th>店铺名称</th>
+                        <th>运营分组/人员</th>
+                        <th>DIVI详情</th>
+                        <th>商品详情</th>
+                        <th>下单时间</th>
+                        <th>发货时限</th>
+                        <th class="w-actions">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"应用筛选"</p>
+                            <p>订单数据将在此处显示</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
             </div>
 
-            <div class="data-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 class="section-title">订单详情</h3>
-                    <div style="display: flex; gap: 0.5rem; margin-left: auto;">
-                        <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
-                            <i class="fas fa-download"></i> 导出Excel
-                        </button>
-                        <button class="btn" onclick="updateDiviExportStatus()">
-                            <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 批量操作栏 -->
-                <div class="bulk-action-bar" id="bulkActionBar">
-                    <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
-                    <div class="bulk-actions">
-                        <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
-                            <i class="fas fa-file-export"></i> 批量导单
-                        </button>
-                        <button class="bulk-btn" onclick="clearSelection()">
-                            <i class="fas fa-times"></i> 取消选择
-                        </button>
-                    </div>
-                </div>
-
-                <div class="table-container" id="ordersTableContainer">
-                    <table class="table" id="ordersTable">
-                        <thead>
-                        <tr>
-                            <th class="w-checkbox">
-                                <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
-                            </th>
-                            <th>订单ID</th>
-                            <th>店铺名称</th>
-                            <th>运营分组/人员</th>
-                            <th>DIVI详情</th>
-                            <th>商品详情</th>
-                            <th>下单时间</th>
-                            <th>发货时限</th>
-                            <th class="w-actions">操作</th>
-                        </tr>
-                        </thead>
-                        <tbody id="ordersTableBody">
-                        <tr>
-                            <td colspan="9" class="empty-state">
-                                <i class="fas fa-info-circle"></i>
-                                <p>请选择筛选条件并点击"应用筛选"</p>
-                                <p>订单数据将在此处显示</p>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- 分页控件 -->
-                <div class="pagination-container" id="paginationControls" style="display: none;">
-                    <div class="pagination-info" id="paginationInfo">
-                        <div class="page-size-wrapper" id="pageSizeWrapper">
-                            <span class="page-size-label">每页显示：</span>
-                            <div class="page-size-dropdown-wrapper" style="position: relative;">
-                                <button class="page-size-trigger" id="pageSizeTrigger"
-                                        onclick="togglePageSizeDropdown()">
-                                    <span id="pageSizeText">20条</span>
-                                    <i class="fas fa-chevron-down"></i>
-                                </button>
-                                <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                                    <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条
-                                    </div>
-                                    <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">
-                                        20条
-                                    </div>
-                                    <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条
-                                    </div>
-                                    <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条
-                                    </div>
-                                </div>
+            <!-- 分页控件 -->
+            <div class="pagination-container" id="paginationControls" style="display: none;">
+                <div class="pagination-info" id="paginationInfo">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper" style="position: relative;">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                                <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
+                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
                             </div>
-                            <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
                         </div>
+                        <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
                     </div>
-                    <div class="pagination-new" id="paginationButtons">
-                        <!-- 动态生成 -->
-                    </div>
-                    <div class="pagination-jump" id="paginationJump" style="display: none;">
-                        <span>跳至</span>
-                        <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码"
-                               onkeypress="handlePageJump(event)">
-                        <span>页</span>
-                    </div>
+                </div>
+                <div class="pagination-new" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+                <div class="pagination-jump" id="paginationJump" style="display: none;">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
                 </div>
             </div>
         </div>
@@ -1619,11 +1595,11 @@
                     }
 
                     deadlineHtml = `
-    <div class="deadline-cell">
-        <div>${order.latest_ship_date}</div>
-        ${warningHtml ? `<div>${warningHtml}</div>` : ''}
-    </div>
-`;
+                        <div class="deadline-cell">
+                            <div>${order.latest_ship_date}</div>
+                            ${warningHtml ? `<div>${warningHtml}</div>` : ''}
+                        </div>
+                    `;
                 }
 
                 // 8. 操作按钮逻辑
