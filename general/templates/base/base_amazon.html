@@ -1,0 +1,35 @@
+{% extends 'base/base_r.html' %}
+
+{% block sidebar %}
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_order_management' %}"
+               class="sidebar-link {% if active_page == 'amazon_orders' %}active{% endif %}">
+                <i class="fas fa-shopping-cart sidebar-icon"></i>
+                <span>订单管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_performance_notifications' %}"
+               class="sidebar-link {% if active_page == 'amazon_performance_notifications' %}active{% endif %}">
+                <i class="fas fa-bell sidebar-icon"></i>
+                <span>绩效通知</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_shop_emails' %}"
+               class="sidebar-link {% if active_page == 'amazon_shop_emails' %}active{% endif %}">
+                <i class="fas fa-envelope sidebar-icon"></i>
+                <span>店铺邮件</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_daily_check_report_page' %}"
+               class="sidebar-link {% if active_page == 'amazon_daily_check_report_page' %}active{% endif %}"
+               onclick="showComingSoon()">
+                <i class="fas fa-clipboard-check sidebar-icon"></i>
+                <span>巡店报告</span>
+            </a>
+        </li>
+    </ul>
+{% endblock %}

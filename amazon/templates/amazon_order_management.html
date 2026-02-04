@@ -1,4 +1,4 @@
-{% extends 'base/base_z.html' %}
+{% extends 'base/base_amazon.html' %}
 {% load static %}
 
 {% block title %}亚马逊订单管理 - Overlord{% endblock %}
@@ -124,7 +124,6 @@
             width: 100%;
         }
 
-        /* 以下样式针对原生 select 元素，SearchableSelect 使用 general_style_1.css 中的样式 */
         select.form-select {
             padding-right: 40px;
             width: 100%;
@@ -200,6 +199,31 @@
             position: relative;
         }
 
+        /* 横向滚动控制 - 与Temu一致 */
+        .table-container table {
+            min-width: 1500px;
+        }
+
+        #ordersTable td {
+            white-space: nowrap;
+        }
+
+        /* 固定列宽 */
+        #ordersTable th:nth-child(2), #ordersTable td:nth-child(2) {
+            width: 200px;
+            min-width: 200px;
+        }
+
+        #ordersTable th:nth-child(3), #ordersTable td:nth-child(3) {
+            width: 200px;
+            min-width: 200px;
+        }
+
+        #ordersTable th:nth-child(9), #ordersTable td:nth-child(9) {
+            width: 150px;
+            min-width: 150px;
+        }
+
         .table {
             width: 100%;
             margin: 0;
@@ -229,6 +253,127 @@
             background-color: var(--bg-secondary);
         }
 
+        /* 单元格内部布局样式 */
+        .order-id-cell, .shop-name-cell, .product-info-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .primary-text {
+            color: var(--text-primary);
+        }
+
+        .sub-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center; /* 添加居中 */
+        }
+
+        /* 订单状态标签样式 */
+        .tag-order-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tag-order-status.status-pending {
+            background-color: #E9D8FD;
+            color: #553C9A;
+        }
+
+        .tag-order-status.status-shipping {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        .tag-order-status.status-shipped {
+            background-color: #FEEBC8;
+            color: #744210;
+        }
+
+        .tag-order-status.status-completed {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        /* 订单类型标签样式 */
+        .tag-channel {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tag-channel.fba {
+            background-color: #E9D8FD;
+            color: #553C9A;
+        }
+
+        .tag-channel.mfn {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+
+        /* 店铺状态标签样式 */
+        .tag-shop-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tag-shop-status.status-normal {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .tag-shop-status.status-suspended {
+            background-color: #FEEBC8;
+            color: #744210;
+        }
+
+        .tag-shop-status.status-cancelled {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        /* DIVI导单状态图标 */
+        .tag-divi-status {
+            font-size: 0.875rem;
+        }
+
+        .tag-divi-status.exported {
+            color: #10B981;
+        }
+
+        .tag-divi-status.not-exported {
+            color: #EF4444;
+        }
+
+        .tag-divi-status.disabled {
+            color: #9CA3AF;
+        }
+
+        .deadline-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .deadline-cell .deadline-warning-inline {
+            margin-left: 0; /* 原来是8px，现在去掉因为单独一行 */
+        }
+
+        .product-info-cell div:first-child {
+            color: var(--text-primary);
+        }
+
+        /* 状态badge（保留用于其他用途） */
         .status-badge {
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
@@ -257,15 +402,35 @@
             color: #553C9A;
         }
 
-        .btn-divi {
-            background-color: var(--accent-color);
-            color: white;
+        .status-badge.status-normal {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .status-badge.status-suspended {
+            background-color: #FEEBC8;
+            color: #744210;
+        }
+
+        .status-badge.status-cancelled {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        /* 操作按钮样式 */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-action {
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
-            border: none;
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s ease;
+            border: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -273,23 +438,285 @@
             height: 32px;
         }
 
+        .btn-divi {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
         .btn-divi:hover:not(:disabled) {
             background-color: var(--accent-hover);
-            transform: translateY(-1px);
         }
 
         .btn-divi:disabled {
-            cursor: not-allowed;
             background-color: var(--bg-tertiary);
+        }
+
+        .btn-ship {
+            background-color: #10B981;
+            color: white;
+        }
+
+        .btn-ship:hover:not(:disabled) {
+            background-color: #059669;
+        }
+
+        .btn-ship:disabled {
+            background-color: var(--bg-tertiary);
+        }
+
+        .btn-mark-real {
+            background-color: #3B82F6;
+            color: white;
+        }
+
+        .btn-mark-real:hover:not(:disabled) {
+            background-color: #2563EB;
+        }
+
+        /* 发货时限预警样式 */
+        .deadline-warning-inline {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .deadline-red {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+
+        .deadline-yellow {
+            background-color: #fef3c7;
+            color: #d97706;
+        }
+
+        .deadline-red i, .deadline-yellow i {
+            margin-right: 2px;
+        }
+
+        /* 运营分组/人员合并显示样式 */
+        .ops-info-cell {
+            line-height: 1.4;
+        }
+
+        .ops-group-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+        }
+
+        .ops-operator-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            display: block;
+        }
+
+        /* DIVI详情单元格 */
+        .divi-details-cell {
+            line-height: 1.4;
+        }
+
+        .divi-details-cell div {
+            margin-bottom: 2px;
+        }
+
+        .divi-details-cell .masked-tag {
+            color: #EF4444;
+            font-size: 0.75rem;
+        }
+
+        /* 分页样式 */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pagination-new {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .pagination-btn-new {
+            min-width: 40px;
+            padding: 0 10px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn-new:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-btn-new.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-btn-new:disabled {
             opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        .btn-divi:disabled i {
-            color: var(--text-secondary) !important;
+        .pagination-ellipsis {
+            color: var(--text-secondary);
+            padding: 0 5px;
         }
 
-        /* 分页样式已移至 general_style_1.css */
+        .page-size-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
 
+        .page-size-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .page-size-dropdown-wrapper {
+            position: relative;
+        }
+
+        .page-size-trigger {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-size-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: var(--shadow-medium);
+            display: none;
+            z-index: 100;
+            min-width: 100%;
+        }
+
+        .page-size-dropdown.open {
+            display: block;
+        }
+
+        .page-size-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .page-size-option:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .page-size-option.selected {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-jump {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-jump-input {
+            width: 60px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .pagination-stats {
+            margin-left: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* 批量操作栏 */
+        .bulk-action-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--bg-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .bulk-action-bar.visible {
+            display: flex;
+        }
+
+        .bulk-info {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .bulk-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .bulk-btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .bulk-btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .bulk-btn:not(.bulk-btn-primary) {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .bulk-btn:not(.bulk-btn-primary):hover {
+            background-color: var(--border-color);
+        }
+
+        /* 空状态 */
         .empty-state {
             text-align: center;
             padding: 3rem;
@@ -311,6 +738,7 @@
             opacity: 0.8;
         }
 
+        /* 加载遮罩 */
         .loading-overlay {
             position: fixed;
             top: 0;
@@ -373,8 +801,6 @@
                 width: 100%;
                 min-width: auto;
             }
-
-            /* 分页响应式样式已移至 general_style_1.css */
         }
 
         @media (max-width: 576px) {
@@ -391,136 +817,10 @@
                 font-size: 0.8125rem;
             }
         }
-
-        /* 发货按钮样式 */
-        .action-buttons {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-        }
-
-        .btn-action {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 32px;
-            height: 32px;
-        }
-
-        .btn-divi {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .btn-divi:hover:not(:disabled) {
-            background-color: var(--accent-hover);
-        }
-
-        .btn-divi:disabled {
-            background-color: var(--bg-tertiary);
-        }
-
-        .btn-ship {
-            background-color: #10B981;
-            color: white;
-        }
-
-        .btn-ship:hover:not(:disabled) {
-            background-color: #059669;
-        }
-
-        .btn-ship:disabled {
-            background-color: var(--bg-tertiary);
-        }
-
-        /* 店铺状态标签样式 */
-        .status-badge.status-normal {
-            background-color: #C6F6D5;
-            color: #22543D;
-        }
-
-        .status-badge.status-suspended {
-            background-color: #FEEBC8;
-            color: #744210;
-        }
-
-        .status-badge.status-cancelled {
-            background-color: #FED7D7;
-            color: #742A2A;
-        }
-
-        /* 发货时限预警样式 */
-        .deadline-cell {
-            position: relative;
-            padding-right: 1.5rem !important;
-        }
-
-        .deadline-warning {
-            position: absolute;
-            right: 0.5rem;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1rem;
-        }
-
-        .deadline-red {
-            color: #EF4444;
-        }
-
-        .deadline-yellow {
-            color: #F59E0B;
-        }
-
-        /* 发货时限预警样式 */
-        .deadline-warning-inline {
-            display: inline-block;
-            margin-left: 8px;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 500;
-        }
-
-        .deadline-red {
-            background-color: #fee2e2;
-            color: #dc2626;
-        }
-
-        .deadline-yellow {
-            background-color: #fef3c7;
-            color: #d97706;
-        }
-
-        .deadline-red i, .deadline-yellow i {
-            margin-right: 2px;
-        }
-
-        /* 运营分组/人员合并显示样式 */
-        .ops-info-cell {
-            line-height: 1.4;
-        }
-
-        .ops-group-text {
-            font-weight: 600;
-            color: var(--text-primary);
-            display: block;
-        }
-
-        .ops-operator-text {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-            display: block;
-        }
     </style>
 {% endblock %}
 
-{% block page_content %}
+{% block content %}
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
         <div class="loading-content">
             <div class="spinner"></div>
@@ -528,203 +828,203 @@
         </div>
     </div>
 
-    <div class="amazon-order-main">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">亚马逊订单管理</h1>
-                <p class="page-subtitle">查看和管理亚马逊订单，支持DIVI导单和状态更新</p>
-            </div>
-            <div>
-                <button class="btn" onclick="refreshData(event)">
-                    <i class="fas fa-sync-alt"></i> 刷新数据
-                </button>
-            </div>
-        </div>
-
-        <div class="control-panel">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">日期范围</label>
-                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
+    <div class="tab-content">
+        <div class="amazon-order-main">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">亚马逊订单管理</h1>
+                    <p class="page-subtitle">查看和管理亚马逊订单，支持DIVI导单和状态更新</p>
                 </div>
-
-                <div class="filter-group" id="customDateGroup" style="display: none;">
-                    <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="startDate">
-                </div>
-
-                <div class="filter-group" id="customDateGroup2" style="display: none;">
-                    <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="endDate">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">运营分组</label>
-                    <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">运营人员</label>
-                    <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">订单号</label>
-                    <input type="text" class="form-control" id="orderIdFilter"
-                           placeholder="输入订单号（模糊查询）"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">店铺名称</label>
-                    <input type="text" class="form-control" id="shopNameFilter"
-                           placeholder="输入店铺名称（模糊查询）"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">店铺状态</label>
-                    <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
-                </div>
-
-                <!-- 订单状态筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">订单状态</label>
-                    <div id="orderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
-                </div>
-
-                <!-- 订单类型筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">订单类型</label>
-                    <div id="fulfillmentChannelFilter" class="searchable-select multiple" data-placeholder="全部类型"></div>
-                </div>
-
-                <!-- DIVI导单情况筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">DIVI导单情况</label>
-                    <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                </div>
-
-                <!-- DIVI订单状态筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">DIVI订单状态</label>
-                    <div id="diviOrderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
-                </div>
-
-                <!-- DIVI是否有面单筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">DIVI是否有面单</label>
-                    <div id="diviTrackingFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                </div>
-
-                <!-- 假面单发货筛选 -->
-                <div class="filter-group">
-                    <label class="filter-label">假面单发货</label>
-                    <div id="maskedSingleFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                </div>
-
-                <!-- 发货时限预警筛选（新增） -->
-                <div class="filter-group">
-                    <label class="filter-label">发货时限预警</label>
-                    <div id="shippingDeadlineFilter" class="searchable-select multiple" data-placeholder="全部"></div>
-                </div>
-
-                <div class="filter-actions">
-                    <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
-                    <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i class="fas fa-redo"></i></button>
-                </div>
-            </div>
-        </div>
-
-        <div class="data-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 class="section-title">订单详情</h3>
-                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
-                    <!-- 导出按钮（在左） -->
-                    <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
-                        <i class="fas fa-download"></i> 导出Excel
-                    </button>
-                    <!-- 更新按钮（在右） -->
-                    <button class="btn" onclick="updateDiviExportStatus()">
-                        <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
+                <div>
+                    <button class="btn" onclick="refreshData(event)">
+                        <i class="fas fa-sync-alt"></i> 刷新数据
                     </button>
                 </div>
             </div>
 
-            <!-- 批量操作栏 -->
-            <div class="bulk-action-bar" id="bulkActionBar">
-                <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
-                <div class="bulk-actions">
-                    <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
-                        <i class="fas fa-file-export"></i> 批量导单
-                    </button>
-                    <button class="bulk-btn" onclick="clearSelection()">
-                        <i class="fas fa-times"></i> 取消选择
-                    </button>
-                </div>
-            </div>
+            <div class="control-panel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">日期范围</label>
+                        <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
+                    </div>
 
-            <div class="table-container" id="ordersTableContainer">
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th class="w-checkbox">
-                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
-                        </th>
-                        <th>订单ID</th>
-                        <th>店铺名称</th>
-                        <th>店铺状态</th>
-                        <th>运营分组/人员</th>
-                        <th>订单状态</th>
-                        <th>订单类型</th>
-                        <th>商品数量</th>
-                        <th>订单金额</th>
-                        <th>下单时间</th>
-                        <th>发货时限</th>
-                        <th>DIVI导单</th>
-                        <th>DIVI详情</th>
-                        <th class="w-actions">操作</th>
-                    </tr>
-                    </thead>
-                    <tbody id="ordersTableBody">
-                    <tr>
-                        <td colspan="15" class="empty-state">
-                            <i class="fas fa-info-circle"></i>
-                            <p>请选择筛选条件并点击"应用筛选"</p>
-                            <p>订单数据将在此处显示</p>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+                    <div class="filter-group" id="customDateGroup" style="display: none;">
+                        <label class="filter-label">开始日期</label>
+                        <input type="date" class="form-control" id="startDate">
+                    </div>
 
-            <!-- 分页控件 - 参考 amazon-management 样式 -->
-            <div class="pagination-container" id="paginationControls" style="display: none;">
-                <div class="pagination-info" id="paginationInfo">
-                    <div class="page-size-wrapper" id="pageSizeWrapper">
-                        <span class="page-size-label">每页显示：</span>
-                        <div class="page-size-dropdown-wrapper" style="position: relative;">
-                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                                <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
-                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
-                                <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
-                            </div>
-                        </div>
-                        <span class="pagination-stats" id="paginationStats" style="margin-left: 1rem; color: var(--text-secondary);">0-0 / 共 0 条</span>
+                    <div class="filter-group" id="customDateGroup2" style="display: none;">
+                        <label class="filter-label">结束日期</label>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">运营分组</label>
+                        <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">运营人员</label>
+                        <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">订单号</label>
+                        <input type="text" class="form-control" id="orderIdFilter"
+                               placeholder="输入订单号（模糊查询）"
+                               onkeyup="if(event.key==='Enter') applyFilters()">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">店铺名称</label>
+                        <input type="text" class="form-control" id="shopNameFilter"
+                               placeholder="输入店铺名称（模糊查询）"
+                               onkeyup="if(event.key==='Enter') applyFilters()">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">店铺状态</label>
+                        <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">订单状态</label>
+                        <div id="orderStatusFilter" class="searchable-select multiple"
+                             data-placeholder="全部状态"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">订单类型</label>
+                        <div id="fulfillmentChannelFilter" class="searchable-select multiple"
+                             data-placeholder="全部类型"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">DIVI导单情况</label>
+                        <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">DIVI订单状态</label>
+                        <div id="diviOrderStatusFilter" class="searchable-select multiple"
+                             data-placeholder="全部状态"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">DIVI是否有面单</label>
+                        <div id="diviTrackingFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">假面单发货</label>
+                        <div id="maskedSingleFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">发货时限预警</label>
+                        <div id="shippingDeadlineFilter" class="searchable-select multiple"
+                             data-placeholder="全部"></div>
+                    </div>
+
+                    <div class="filter-actions">
+                        <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
+                        <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i
+                                class="fas fa-redo"></i></button>
                     </div>
                 </div>
-                <div class="pagination-new" id="paginationButtons">
-                    <!-- 动态生成 -->
+            </div>
+
+            <div class="data-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 class="section-title">订单详情</h3>
+                    <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                        <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
+                            <i class="fas fa-download"></i> 导出Excel
+                        </button>
+                        <button class="btn" onclick="updateDiviExportStatus()">
+                            <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
+                        </button>
+                    </div>
                 </div>
-                <div class="pagination-jump" id="paginationJump" style="display: none;">
-                    <span>跳至</span>
-                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-                    <span>页</span>
+
+                <!-- 批量操作栏 -->
+                <div class="bulk-action-bar" id="bulkActionBar">
+                    <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
+                    <div class="bulk-actions">
+                        <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
+                            <i class="fas fa-file-export"></i> 批量导单
+                        </button>
+                        <button class="bulk-btn" onclick="clearSelection()">
+                            <i class="fas fa-times"></i> 取消选择
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container" id="ordersTableContainer">
+                    <table class="table" id="ordersTable">
+                        <thead>
+                        <tr>
+                            <th class="w-checkbox">
+                                <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
+                            </th>
+                            <th>订单ID</th>
+                            <th>店铺名称</th>
+                            <th>运营分组/人员</th>
+                            <th>DIVI详情</th>
+                            <th>商品详情</th>
+                            <th>下单时间</th>
+                            <th>发货时限</th>
+                            <th class="w-actions">操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="ordersTableBody">
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>请选择筛选条件并点击"应用筛选"</p>
+                                <p>订单数据将在此处显示</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- 分页控件 -->
+                <div class="pagination-container" id="paginationControls" style="display: none;">
+                    <div class="pagination-info" id="paginationInfo">
+                        <div class="page-size-wrapper" id="pageSizeWrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div class="page-size-dropdown-wrapper" style="position: relative;">
+                                <button class="page-size-trigger" id="pageSizeTrigger"
+                                        onclick="togglePageSizeDropdown()">
+                                    <span id="pageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                                    <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条
+                                    </div>
+                                    <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">
+                                        20条
+                                    </div>
+                                    <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条
+                                    </div>
+                                    <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                        </div>
+                    </div>
+                    <div class="pagination-new" id="paginationButtons">
+                        <!-- 动态生成 -->
+                    </div>
+                    <div class="pagination-jump" id="paginationJump" style="display: none;">
+                        <span>跳至</span>
+                        <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码"
+                               onkeypress="handlePageJump(event)">
+                        <span>页</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -751,7 +1051,7 @@
             divi_order_status: '',
             divi_tracking: '',
             masked_single: '',
-            shipping_deadline: ''  // 新增
+            shipping_deadline: ''
         };
         let ordersPagination = {
             page: 1,
@@ -760,10 +1060,7 @@
             total_pages: 0
         };
 
-        // 不可导单的订单状态
         const NON_EXPORTABLE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled'];
-
-        // 发货按钮启用条件
         const CAN_SHIP_STATUS = 'Unshipped';
         const CAN_SHIP_CHANNEL = 'MFN';
         const CAN_SHIP_DIVI_STATUSES = [3, 4, 5];
@@ -775,40 +1072,53 @@
             overlay.style.opacity = show ? '1' : '0';
         }
 
-        // 渲染店铺状态标签
-        function renderShopStatusBadge(status) {
-            if (!status) return '<span class="status-badge status-processing">未知</span>';
+        // 订单状态映射
+        const orderStatusMap = {
+            'PendingAvailability': {text: '待付款-预售', class: 'status-processing'},
+            'Pending': {text: '待付款', class: 'status-processing'},
+            'Unshipped': {text: '待发货', class: 'status-shipping'},
+            'PartiallyShipped': {text: '部分发货', class: 'status-shipped'},
+            'Shipped': {text: '已发货', class: 'status-shipped'},
+            'InvoiceUnconfirmed': {text: '发票未确认', class: 'status-processing'},
+            'Canceled': {text: '已取消', class: 'status-completed'},
+            'Unfulfillable': {text: '无法履行', class: 'status-completed'}
+        };
 
-            const statusMap = {
-                '正常': {text: '正常', class: 'status-normal'},
-                '停用': {text: '停用', class: 'status-suspended'},
-                '注销': {text: '注销', class: 'status-cancelled'}
-            };
+        // 店铺状态映射
+        const shopStatusMap = {
+            '正常': {text: '正常', class: 'status-normal'},
+            '停用': {text: '停用', class: 'status-suspended'},
+            '注销': {text: '注销', class: 'status-cancelled'}
+        };
 
-            const mapped = statusMap[status] || {text: status, class: 'status-processing'};
-            return `<span class="status-badge ${mapped.class}">${mapped.text}</span>`;
-        }
+        // DIVI状态映射
+        const diviStatusMap = {
+            0: '取消订单',
+            1: '未付货款',
+            2: '未审核',
+            3: '排单中',
+            4: '生产中',
+            5: '已发货'
+        };
 
-        // SearchableSelect 实例
+        // 不计算预警的订单状态
+        const NON_DEADLINE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped'];
+
         let dateRangeSelect, groupSelect, operatorSelect, shopStatusSelect, orderStatusSelect;
         let fulfillmentChannelSelect, diviExportSelect, diviOrderStatusSelect, diviTrackingSelect;
         let maskedSingleSelect, shippingDeadlineSelect;
 
         async function loadOperatorsFromAPI(opsGroups) {
-            // 使用新API，platform=amazon
             try {
-                const params = new URLSearchParams({ platform: 'amazon' });
-                // 如果有选中分组，传入分组参数（多选用逗号分隔）
+                const params = new URLSearchParams({platform: 'amazon'});
                 if (opsGroups && opsGroups.length > 0 && !(opsGroups.length === 1 && opsGroups[0] === '')) {
                     params.set('ops_group', opsGroups.join(','));
                 }
-                
+
                 const response = await fetch(`/api/general/operators/?${params}`);
                 const result = await response.json();
                 if (result.success) {
-                    // API 已经返回了包含"全部人员"的数据，直接使用
-                    allOperators = result.data || [{ value: '', label: '全部人员' }];
-                    // 更新 SearchableSelect 选项
+                    allOperators = result.data || [{value: '', label: '全部人员'}];
                     if (operatorSelect) {
                         operatorSelect.setOptions(allOperators);
                     }
@@ -822,14 +1132,11 @@
         }
 
         async function loadGroupsFromAPI() {
-            // 使用新API，platform=amazon
             try {
                 const response = await fetch('/api/general/ops-groups/?platform=amazon');
                 const result = await response.json();
                 if (result.success) {
-                    // API 已经返回了包含"全部分组"的数据，直接使用
-                    allGroups = result.data || [{ value: '', label: '全部分组' }];
-                    // 更新 SearchableSelect 选项
+                    allGroups = result.data || [{value: '', label: '全部分组'}];
                     if (groupSelect) {
                         groupSelect.setOptions(allGroups);
                     }
@@ -856,7 +1163,6 @@
         }
 
         function getCurrentFilters() {
-            // 辅助函数：将多选值转为字符串
             const formatMultiSelect = (select) => {
                 if (!select) return '';
                 const value = select.getValue();
@@ -884,16 +1190,14 @@
             };
         }
 
-        // 初始化所有 SearchableSelect
         function initSearchableSelects() {
-            // 日期范围
             dateRangeSelect = new SearchableSelect('#dateRange', {
                 options: [
-                    { value: 'yesterday', label: '昨日' },
-                    { value: 'today', label: '今日' },
-                    { value: 'last7days', label: '最近7天' },
-                    { value: 'last30days', label: '最近30天' },
-                    { value: 'custom', label: '自定义范围' }
+                    {value: 'yesterday', label: '昨日'},
+                    {value: 'today', label: '今日'},
+                    {value: 'last7days', label: '最近7天'},
+                    {value: 'last30days', label: '最近30天'},
+                    {value: 'custom', label: '自定义范围'}
                 ],
                 placeholder: '日期范围',
                 multiple: false
@@ -904,13 +1208,12 @@
                 ordersPagination.page = 1;
             };
 
-            // 店铺状态
             shopStatusSelect = new SearchableSelect('#shopStatusFilter', {
                 options: [
-                    { value: '', label: '全部' },
-                    { value: '正常', label: '正常' },
-                    { value: '停用', label: '停用' },
-                    { value: '注销', label: '注销' }
+                    {value: '', label: '全部'},
+                    {value: '正常', label: '正常'},
+                    {value: '停用', label: '停用'},
+                    {value: '注销', label: '注销'}
                 ],
                 placeholder: '全部状态',
                 multiple: true
@@ -920,18 +1223,17 @@
                 ordersPagination.page = 1;
             };
 
-            // 订单状态
             orderStatusSelect = new SearchableSelect('#orderStatusFilter', {
                 options: [
-                    { value: '', label: '全部状态' },
-                    { value: 'PendingAvailability', label: '待付款-预售' },
-                    { value: 'Pending', label: '待付款' },
-                    { value: 'Unshipped', label: '待发货' },
-                    { value: 'PartiallyShipped', label: '部分发货' },
-                    { value: 'Shipped', label: '已发货' },
-                    { value: 'InvoiceUnconfirmed', label: '发票未确认' },
-                    { value: 'Canceled', label: '已取消' },
-                    { value: 'Unfulfillable', label: '无法履行' }
+                    {value: '', label: '全部状态'},
+                    {value: 'PendingAvailability', label: '待付款-预售'},
+                    {value: 'Pending', label: '待付款'},
+                    {value: 'Unshipped', label: '待发货'},
+                    {value: 'PartiallyShipped', label: '部分发货'},
+                    {value: 'Shipped', label: '已发货'},
+                    {value: 'InvoiceUnconfirmed', label: '发票未确认'},
+                    {value: 'Canceled', label: '已取消'},
+                    {value: 'Unfulfillable', label: '无法履行'}
                 ],
                 placeholder: '全部状态',
                 multiple: true
@@ -941,12 +1243,11 @@
                 ordersPagination.page = 1;
             };
 
-            // 订单类型
             fulfillmentChannelSelect = new SearchableSelect('#fulfillmentChannelFilter', {
                 options: [
-                    { value: '', label: '全部类型' },
-                    { value: 'AFN', label: 'FBA订单' },
-                    { value: 'MFN', label: 'FBM订单' }
+                    {value: '', label: '全部类型'},
+                    {value: 'AFN', label: 'FBA订单'},
+                    {value: 'MFN', label: 'FBM订单'}
                 ],
                 placeholder: '全部类型',
                 multiple: true
@@ -956,12 +1257,11 @@
                 ordersPagination.page = 1;
             };
 
-            // DIVI导单情况
             diviExportSelect = new SearchableSelect('#diviExportFilter', {
                 options: [
-                    { value: '', label: '全部' },
-                    { value: 'true', label: '已导单' },
-                    { value: 'false', label: '未导单' }
+                    {value: '', label: '全部'},
+                    {value: 'true', label: '已导单'},
+                    {value: 'false', label: '未导单'}
                 ],
                 placeholder: '全部',
                 multiple: true
@@ -971,16 +1271,15 @@
                 ordersPagination.page = 1;
             };
 
-            // DIVI订单状态
             diviOrderStatusSelect = new SearchableSelect('#diviOrderStatusFilter', {
                 options: [
-                    { value: '', label: '全部状态' },
-                    { value: '0', label: '取消订单' },
-                    { value: '1', label: '未付货款' },
-                    { value: '2', label: '未审核' },
-                    { value: '3', label: '排单中' },
-                    { value: '4', label: '生产中' },
-                    { value: '5', label: '已发货' }
+                    {value: '', label: '全部状态'},
+                    {value: '0', label: '取消订单'},
+                    {value: '1', label: '未付货款'},
+                    {value: '2', label: '未审核'},
+                    {value: '3', label: '排单中'},
+                    {value: '4', label: '生产中'},
+                    {value: '5', label: '已发货'}
                 ],
                 placeholder: '全部状态',
                 multiple: true
@@ -990,12 +1289,11 @@
                 ordersPagination.page = 1;
             };
 
-            // DIVI是否有面单
             diviTrackingSelect = new SearchableSelect('#diviTrackingFilter', {
                 options: [
-                    { value: '', label: '全部' },
-                    { value: 'has', label: '有面单' },
-                    { value: 'none', label: '无面单' }
+                    {value: '', label: '全部'},
+                    {value: 'has', label: '有面单'},
+                    {value: 'none', label: '无面单'}
                 ],
                 placeholder: '全部',
                 multiple: true
@@ -1005,12 +1303,11 @@
                 ordersPagination.page = 1;
             };
 
-            // 假面单发货
             maskedSingleSelect = new SearchableSelect('#maskedSingleFilter', {
                 options: [
-                    { value: '', label: '全部' },
-                    { value: 'true', label: '是' },
-                    { value: 'false', label: '否' }
+                    {value: '', label: '全部'},
+                    {value: 'true', label: '是'},
+                    {value: 'false', label: '否'}
                 ],
                 placeholder: '全部',
                 multiple: true
@@ -1020,13 +1317,12 @@
                 ordersPagination.page = 1;
             };
 
-            // 发货时限预警
             shippingDeadlineSelect = new SearchableSelect('#shippingDeadlineFilter', {
                 options: [
-                    { value: '', label: '全部' },
-                    { value: 'red', label: '红色预警' },
-                    { value: 'yellow', label: '黄色预警' },
-                    { value: 'all_deadline', label: '全部预警' }
+                    {value: '', label: '全部'},
+                    {value: 'red', label: '红色预警'},
+                    {value: 'yellow', label: '黄色预警'},
+                    {value: 'all_deadline', label: '全部预警'}
                 ],
                 placeholder: '全部',
                 multiple: true
@@ -1036,7 +1332,6 @@
                 ordersPagination.page = 1;
             };
 
-            // 运营分组（动态加载）
             groupSelect = new SearchableSelect('#groupFilter', {
                 options: [],
                 placeholder: '全部分组',
@@ -1044,7 +1339,6 @@
             });
             groupSelect.setValue(['']);
             groupSelect.onChange = () => {
-                // 联动逻辑：分组变化时刷新人员列表
                 const selectedGroups = groupSelect.getValue();
                 loadOperatorsFromAPI(selectedGroups).then(() => {
                     if (operatorSelect) {
@@ -1055,7 +1349,6 @@
                 ordersPagination.page = 1;
             };
 
-            // 运营人员（动态加载）
             operatorSelect = new SearchableSelect('#operatorFilter', {
                 options: [],
                 placeholder: '全部人员',
@@ -1068,28 +1361,11 @@
         }
 
         function setDefaultFilters() {
-            // SearchableSelect 的默认值已在 initSearchableSelects 中设置
             handleDateRangeChange();
-
             document.getElementById('startDate').value = '';
             document.getElementById('endDate').value = '';
             document.getElementById('orderIdFilter').value = '';
             document.getElementById('shopNameFilter').value = '';
-        }
-
-        function initializeSmartClearButtons() {
-            // SearchableSelect 自带清除功能，无需初始化传统的清除按钮
-            // 保留函数以兼容原有代码，但不执行任何操作
-        }
-
-        function toggleClearIcon(filterType) {
-            // SearchableSelect 不需要使用原生的清除按钮，因为 SearchableSelect 自带清除功能
-            // 此函数保留以兼容原有代码，但实际不做任何操作
-        }
-
-        function clearAndToggle(filterType) {
-            // SearchableSelect 自带清除功能，此函数保留但无需操作
-            applyFilters();
         }
 
         async function resetFilters(event) {
@@ -1105,7 +1381,6 @@
                     await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
                 }
 
-                // 重置所有 SearchableSelect 为默认值
                 dateRangeSelect.setValue('last30days');
                 handleDateRangeChange();
 
@@ -1125,14 +1400,12 @@
                 document.getElementById('orderIdFilter').value = '';
                 document.getElementById('shopNameFilter').value = '';
 
-                // 刷新运营人员列表（因为分组已重置）
                 await loadOperatorsFromAPI([]);
                 operatorSelect.setOptions(allOperators);
 
                 ordersPagination.page = 1;
                 ordersPagination.page_size = 20;
 
-                // 重置每页显示下拉
                 document.getElementById('pageSizeText').textContent = '20条';
                 document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
                     opt.classList.remove('selected');
@@ -1218,7 +1491,7 @@
                 } else {
                     tbody.innerHTML = `
                         <tr>
-                            <td colspan="15" class="empty-state">
+                            <td colspan="9" class="empty-state">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 <p>加载失败: ${result.message || '未知错误'}</p>
                             </td>
@@ -1229,7 +1502,7 @@
             } catch (error) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="15" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>数据请求失败</p>
                             <p>${error.message}</p>
@@ -1242,27 +1515,22 @@
             }
         }
 
-        function renderDiviExportStatus(isExported, fulfillmentChannel, orderStatus) {
+        // 渲染DIVI导单状态（行内标签形式）
+        function renderDiviExportStatusInline(isExported, fulfillmentChannel, orderStatus) {
             const isNonExportableStatus = NON_EXPORTABLE_STATUSES.includes(orderStatus);
 
             if (isNonExportableStatus) {
-                const statusText = {
-                    'PendingAvailability': '预售订单不可导单',
-                    'Pending': '待付款订单不可导单',
-                    'Canceled': '已取消订单不可导单'
-                }[orderStatus];
-
-                return `<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="${statusText}"></i>`;
+                return `<span class="tag-divi-status disabled" title="不可导单"><i class="fas fa-ban"></i></span>`;
             }
 
             if (fulfillmentChannel === 'AFN') {
-                return '<i class="fas fa-ban" style="color: #9CA3AF; font-size: 1.2rem;" title="FBA订单无需导单"></i>';
+                return `<span class="tag-divi-status disabled" title="FBA订单无需导单"><i class="fas fa-ban"></i></span>`;
             }
 
             if (isExported) {
-                return '<i class="fas fa-check-circle" style="color: #10B981; font-size: 1.2rem;" title="已导单"></i>';
+                return `<span class="tag-divi-status exported" title="已导单"><i class="fas fa-check-circle"></i></span>`;
             } else {
-                return '<i class="fas fa-times-circle" style="color: #EF4444; font-size: 1.2rem;" title="未导单"></i>';
+                return `<span class="tag-divi-status not-exported" title="未导单"><i class="fas fa-times-circle"></i></span>`;
             }
         }
 
@@ -1272,114 +1540,73 @@
 
             if (!orders || orders.length === 0) {
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="15" class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>暂无订单数据</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无订单数据</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
-            // DIVI 状态映射
-            const diviStatusMap = {
-                0: '取消订单',
-                1: '未付货款',
-                2: '未审核',
-                3: '排单中',
-                4: '生产中',
-                5: '已发货'
-            };
-
-            // 不计算预警的订单状态
-            const NON_DEADLINE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped'];
-
             tbody.innerHTML = orders.map(order => {
-                // 1. DIVI 状态文字
-                const rawStatus = order.divi_order_status;
-                const diviStatusText =
-                    rawStatus === null || rawStatus === undefined
-                        ? '-'
-                        : (diviStatusMap[rawStatus] || rawStatus);
+                // 1. 订单状态和类型
+                const statusInfo = orderStatusMap[order.order_status] || {
+                    text: order.order_status,
+                    class: 'status-processing'
+                };
+                const channelClass = order.fulfillment_channel === 'AFN' ? 'fba' : 'mfn';
+                const channelText = order.fulfillment_channel === 'AFN' ? 'FBA' : 'FBM';
 
-                // 2. 物流信息有效性检查
-                const hasValidLogistics =
-                    order.divi_logistics_method &&
-                    order.divi_tracking_number &&
-                    order.divi_logistics_method.trim() !== '' &&
-                    order.divi_tracking_number.trim() !== '';
+                // 2. DIVI导单状态
+                const diviStatusHtml = renderDiviExportStatusInline(
+                    order.is_exported_to_divi,
+                    order.fulfillment_channel,
+                    order.order_status
+                );
 
-                // 3. 发货按钮可用性判断
-                const canShip =
-                    order.order_status === 'Unshipped' &&
-                    order.fulfillment_channel === 'MFN' &&
-                    hasValidLogistics &&
-                    [3, 4, 5].includes(order.divi_order_status) &&
-                    order.shop_status === '正常';
+                // 3. 店铺状态
+                const shopStatusInfo = shopStatusMap[order.shop_status] || {
+                    text: order.shop_status || '-',
+                    class: 'status-normal'
+                };
 
-                // 4. Tooltip 提示
-                let shipButtonTooltip = '';
-                if (!canShip) {
-                    if (order.order_status !== 'Unshipped') {
-                        shipButtonTooltip = '订单不是待发货状态';
-                    } else if (order.fulfillment_channel !== 'MFN') {
-                        shipButtonTooltip = '订单不是FBM订单';
-                    } else if (!order.divi_logistics_method || order.divi_logistics_method.trim() === '') {
-                        shipButtonTooltip = 'DIVI物流方式不能为空';
-                    } else if (!order.divi_tracking_number || order.divi_tracking_number.trim() === '') {
-                        shipButtonTooltip = 'DIVI跟踪号不能为空';
-                    } else if (![3, 4, 5].includes(order.divi_order_status)) {
-                        shipButtonTooltip = 'DIVI订单状态未达标（需排单中或更高）';
-                    } else if (order.shop_status !== '正常') {
-                        shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
-                    }
-                } else {
-                    if (order.divi_order_status === 3) {
-                        shipButtonTooltip = 'DIVI状态：排单中（点击发货将二次确认）';
-                    } else if (order.divi_order_status === 4) {
-                        shipButtonTooltip = 'DIVI状态：生产中（点击发货将二次确认）';
-                    } else {
-                        shipButtonTooltip = '点击执行发货操作';
-                    }
-                }
-
-                // 5. 导单按钮可用性
-                let canExportToDivi = true;
-                let exportTooltip = '导单到 DIVI';
-                if (order.fulfillment_channel === 'AFN') {
-                    canExportToDivi = false;
-                    exportTooltip = 'FBA订单不可导单';
-                } else if (order.is_exported_to_divi) {
-                    canExportToDivi = false;
-                    exportTooltip = '已导单';
-                } else if (['Pending', 'PendingAvailability', 'Canceled'].includes(order.order_status)) {
-                    canExportToDivi = false;
-                    exportTooltip = '该订单类型不支持导单';
-                } else if (order.shop_status !== '正常') {
-                    canExportToDivi = false;
-                    exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
-                }
-
-                // 6. 假面单按钮
-                const markRealBtn = order.masked_single ? `
-            <button class="btn-action btn-mark-real"
-                    onclick="markRealShipment('${order.amazon_order_id}', event)"
-                    data-sid="${order.sid || ''}"
-                    title="标注真发：该订单已经使用真实面单发货">
-                <i class="fas fa-check-circle"></i>
-            </button>
-        ` : '';
-
-                // 7. 运营分组/人员合并显示
+                // 4. 运营信息
                 const opsInfoHtml = `
-            <div class="ops-info-cell">
-                <span class="ops-group-text">${order.group || '-'}</span>
-                <span class="ops-operator-text">${order.operator_name || '-'}</span>
-            </div>
-        `;
+                    <div class="ops-info-cell">
+                        <span class="ops-group-text">${order.group || '-'}</span>
+                        <span class="ops-operator-text">${order.operator_name || '-'}</span>
+                    </div>
+                `;
 
-                // 8. 发货时限预警显示（排除特定状态）
+                // 5. DIVI详情
+                const diviStatusText = order.divi_order_status === null || order.divi_order_status === undefined
+                    ? '-'
+                    : (diviStatusMap[order.divi_order_status] || order.divi_order_status);
+
+                const maskedHtml = order.masked_single ? '<div class="masked-tag">假面单发货</div>' : '';
+
+                const diviDetailsHtml = `
+                    <div class="divi-details-cell">
+                        <div>状态：${diviStatusText}</div>
+                        <div>物流：${order.divi_logistics_method || '-'}</div>
+                        <div>跟踪号：${order.divi_tracking_number || '-'}</div>
+                        ${maskedHtml}
+                    </div>
+                `;
+
+                // 6. 商品详情（两行显示）
+                const quantity = order.quantity || 0;
+                const amount = parseFloat(order.order_total_amount || 0).toFixed(2);
+                const productInfoHtml = `
+                    <div class="product-info-cell">
+                        <div>数量：${quantity}</div>
+                        <div>金额：$${amount}</div>
+                    </div>
+                `;
+
+                // 7. 发货时限
                 let deadlineHtml = '-';
                 if (order.latest_ship_date && !NON_DEADLINE_STATUSES.includes(order.order_status)) {
                     const status = order.deadline_status;
@@ -1392,80 +1619,126 @@
                     }
 
                     deadlineHtml = `
-                <span>${order.latest_ship_date}</span>
-                ${warningHtml}
-            `;
+    <div class="deadline-cell">
+        <div>${order.latest_ship_date}</div>
+        ${warningHtml ? `<div>${warningHtml}</div>` : ''}
+    </div>
+`;
                 }
 
-                // 返回HTML
+                // 8. 操作按钮逻辑
+                const hasValidLogistics =
+                    order.divi_logistics_method &&
+                    order.divi_tracking_number &&
+                    order.divi_logistics_method.trim() !== '' &&
+                    order.divi_tracking_number.trim() !== '';
+
+                const canShip =
+                    order.order_status === 'Unshipped' &&
+                    order.fulfillment_channel === 'MFN' &&
+                    hasValidLogistics &&
+                    [3, 4, 5].includes(order.divi_order_status) &&
+                    order.shop_status === '正常';
+
+                let shipButtonTooltip = '';
+                if (!canShip) {
+                    if (order.order_status !== 'Unshipped') {
+                        shipButtonTooltip = '订单不是待发货状态';
+                    } else if (order.fulfillment_channel !== 'MFN') {
+                        shipButtonTooltip = '订单不是FBM订单';
+                    } else if (!hasValidLogistics) {
+                        shipButtonTooltip = '物流信息不完整';
+                    } else if (![3, 4, 5].includes(order.divi_order_status)) {
+                        shipButtonTooltip = 'DIVI订单状态未达标';
+                    } else if (order.shop_status !== '正常') {
+                        shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
+                    }
+                } else {
+                    shipButtonTooltip = '点击执行发货操作';
+                }
+
+                let canExportToDivi = true;
+                let exportTooltip = '导单到 DIVI';
+                if (order.fulfillment_channel === 'AFN') {
+                    canExportToDivi = false;
+                    exportTooltip = 'FBA订单不可导单';
+                } else if (order.is_exported_to_divi) {
+                    canExportToDivi = false;
+                    exportTooltip = '已导单';
+                } else if (NON_EXPORTABLE_STATUSES.includes(order.order_status)) {
+                    canExportToDivi = false;
+                    exportTooltip = '该订单类型不支持导单';
+                } else if (order.shop_status !== '正常') {
+                    canExportToDivi = false;
+                    exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
+                }
+
+                const markRealBtn = order.masked_single ? `
+                    <button class="btn-action btn-mark-real"
+                            onclick="markRealShipment('${order.amazon_order_id}', event)"
+                            data-sid="${order.sid || ''}"
+                            title="标注真发：该订单已使用真实面单发货">
+                        <i class="fas fa-check-circle"></i>
+                    </button>
+                ` : '';
+
+                // 9. 组装行HTML（9列）
                 return `
-            <tr>
-                <td class="w-checkbox">
-                    <input type="checkbox" class="row-checkbox" data-order-id="${order.amazon_order_id}" onchange="updateSelectAllState()">
-                </td>
-                <td>${order.amazon_order_id || '-'}</td>
-                <td>${order.shop_name || '-'}</td>
-                <td>${renderShopStatusBadge(order.shop_status)}</td>
-                <td>${opsInfoHtml}</td>
-                <td>${renderStatusBadge(order.order_status)}</td>
-                <td>${order.fulfillment_channel || '-'}</td>
-                <td>${order.quantity || 0}</td>
-                <td>${parseFloat(order.order_total_amount || 0).toFixed(2)}</td>
-                <td>${order.purchase_date_local || '-'}</td>
-                <td>${deadlineHtml}</td>
-                <td>${renderDiviExportStatus(order.is_exported_to_divi, order.fulfillment_channel, order.order_status)}</td>
-                <td>
-                    <div>状态：${diviStatusText}</div>
-                    <div>物流：${order.divi_logistics_method || '-'}</div>
-                    <div>跟踪号：${order.divi_tracking_number || '-'}</div>
-                    ${order.masked_single ? '<div style="color:#EF4444;">假面单发货</div>' : ''}
-                </td>
-                <td class="w-actions">
-                    <div class="action-buttons">
-                        <button class="btn-action btn-divi"
-                                onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
-                                data-sid="${order.sid || ''}"
-                                data-divi-shop-id="${order.divi_shop_id || ''}"
-                                data-order-status="${order.order_status}"
-                                data-fulfillment-channel="${order.fulfillment_channel}"
-                                title="${exportTooltip}"
-                                ${!canExportToDivi ? 'disabled' : ''}>
-                            <i class="fas fa-file-export"></i>
-                        </button>
-                        <button class="btn-action btn-ship"
-                                onclick="shipOrder('${order.amazon_order_id}', event)"
-                                data-sid="${order.sid || ''}"
-                                data-order-status="${order.order_status}"
-                                data-fulfillment-channel="${order.fulfillment_channel}"
-                                data-divi-status="${order.divi_order_status || ''}"
-                                title="${shipButtonTooltip}"
-                                ${!canShip ? 'disabled' : ''}>
-                            <i class="fas fa-truck"></i>
-                        </button>
-                        ${markRealBtn}
-                    </div>
-                </td>
-            </tr>
-        `;
+                    <tr data-order-id="${order.amazon_order_id}">
+                        <td class="w-checkbox">
+                            <input type="checkbox" class="row-checkbox" data-order-id="${order.amazon_order_id}" onchange="updateSelectAllState()">
+                        </td>
+                        <td>
+                            <div class="order-id-cell">
+                                <div class="primary-text">${order.amazon_order_id || '-'}</div>
+                                <div class="sub-tags">
+                                    <span class="tag-order-status ${statusInfo.class}">${statusInfo.text}</span>
+                                    <span class="tag-channel ${channelClass}">${channelText}</span>
+                                    ${diviStatusHtml}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="shop-name-cell">
+                                <div class="primary-text">${order.shop_name || '-'}</div>
+                                <div class="sub-tags">
+                                    <span class="tag-shop-status ${shopStatusInfo.class}">${shopStatusInfo.text}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${opsInfoHtml}</td>
+                        <td>${diviDetailsHtml}</td>
+                        <td>${productInfoHtml}</td>
+                        <td>${order.purchase_date_local || '-'}</td>
+                        <td>${deadlineHtml}</td>
+                        <td class="w-actions">
+                            <div class="action-buttons">
+                                <button class="btn-action btn-divi"
+                                        onclick="exportOrderToDivi('${order.amazon_order_id}', event)"
+                                        data-sid="${order.sid || ''}"
+                                        data-divi-shop-id="${order.divi_shop_id || ''}"
+                                        data-order-status="${order.order_status}"
+                                        data-fulfillment-channel="${order.fulfillment_channel}"
+                                        title="${exportTooltip}"
+                                        ${!canExportToDivi ? 'disabled' : ''}>
+                                    <i class="fas fa-file-export"></i>
+                                </button>
+                                <button class="btn-action btn-ship"
+                                        onclick="shipOrder('${order.amazon_order_id}', event)"
+                                        data-sid="${order.sid || ''}"
+                                        data-order-status="${order.order_status}"
+                                        data-fulfillment-channel="${order.fulfillment_channel}"
+                                        data-divi-status="${order.divi_order_status || ''}"
+                                        title="${shipButtonTooltip}"
+                                        ${!canShip ? 'disabled' : ''}>
+                                    <i class="fas fa-truck"></i>
+                                </button>
+                                ${markRealBtn}
+                            </div>
+                        </td>
+                    </tr>
+                `;
             }).join('');
-        }
-
-        function renderStatusBadge(status) {
-            if (!status) return '<span class="status-badge status-processing">未知</span>';
-
-            const statusMap = {
-                'PendingAvailability': {text: '待付款-预售', class: 'status-processing'},
-                'Pending': {text: '待付款', class: 'status-processing'},
-                'Unshipped': {text: '待发货', class: 'status-shipping'},
-                'PartiallyShipped': {text: '部分发货', class: 'status-shipped'},
-                'Shipped': {text: '已发货', class: 'status-shipped'},
-                'InvoiceUnconfirmed': {text: '发票未确认', class: 'status-processing'},
-                'Canceled': {text: '已取消', class: 'status-completed'},
-                'Unfulfillable': {text: '无法履行', class: 'status-completed'}
-            };
-
-            const mapped = statusMap[status] || {text: status, class: 'status-processing'};
-            return `<span class="status-badge ${mapped.class}">${mapped.text}</span>`;
         }
 
         function renderPagination() {
@@ -1475,18 +1748,12 @@
 
             const {page, page_size, total, total_pages} = ordersPagination;
 
-            // 计算当前显示范围
             const start = total > 0 ? (page - 1) * page_size + 1 : 0;
             const end = Math.min(page * page_size, total);
             statsContainer.textContent = `${start}-${end} / 共 ${total} 条`;
 
-            // 使用 pagination-new 样式的分页按钮
             let buttonsHTML = '';
-
-            // 首页
             buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
-
-            // 上一页
             buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
             const maxButtons = 7;
@@ -1497,7 +1764,6 @@
                 startPage = Math.max(1, endPage - maxButtons + 1);
             }
 
-            // 第一页
             if (startPage > 1) {
                 buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
                 if (startPage > 2) {
@@ -1505,12 +1771,10 @@
                 }
             }
 
-            // 中间页码
             for (let i = startPage; i <= endPage; i++) {
                 buttonsHTML += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
             }
 
-            // 最后一页
             if (endPage < total_pages) {
                 if (endPage < total_pages - 1) {
                     buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
@@ -1518,15 +1782,11 @@
                 buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})">${total_pages}</button>`;
             }
 
-            // 下一页
             buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
-
-            // 尾页
             buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
 
             buttonsContainer.innerHTML = buttonsHTML;
 
-            // 显示页码跳转（当总页数大于7时）
             if (total_pages > 7) {
                 jumpContainer.style.display = 'flex';
                 document.getElementById('pageJumpInput').max = total_pages;
@@ -1544,15 +1804,13 @@
             document.getElementById('ordersTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
         }
 
-        // 每页显示下拉切换
         function togglePageSizeDropdown() {
             const dropdown = document.getElementById('pageSizeDropdown');
             const isOpen = dropdown.style.display === 'block';
             dropdown.style.display = isOpen ? 'none' : 'block';
         }
 
-        // 点击外部关闭下拉
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const wrapper = document.getElementById('pageSizeWrapper');
             const dropdown = document.getElementById('pageSizeDropdown');
             if (wrapper && dropdown && !wrapper.contains(e.target)) {
@@ -1564,10 +1822,8 @@
             ordersPagination.page_size = newSize;
             ordersPagination.page = 1;
 
-            // 更新显示文本
             document.getElementById('pageSizeText').textContent = newSize + '条';
 
-            // 更新选中状态
             document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
                 opt.classList.remove('selected');
                 if (parseInt(opt.dataset.value) === newSize) {
@@ -1575,7 +1831,6 @@
                 }
             });
 
-            // 关闭下拉
             document.getElementById('pageSizeDropdown').style.display = 'none';
 
             loadOrdersTable();
@@ -1631,6 +1886,26 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        // 导单成功后更新订单ID列内的导单状态图标
+        function updateOrderIdDiviStatus(orderId, isExported, fulfillmentChannel, orderStatus) {
+            const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+            if (!row) return;
+
+            const orderIdCell = row.cells[1]; // 第2列是订单ID列
+            const subTags = orderIdCell.querySelector('.sub-tags');
+            if (!subTags) return;
+
+            // 移除旧的导单状态图标
+            const oldDiviStatus = subTags.querySelector('.tag-divi-status');
+            if (oldDiviStatus) {
+                oldDiviStatus.remove();
+            }
+
+            // 添加新的导单状态图标
+            const newDiviStatusHtml = renderDiviExportStatusInline(isExported, fulfillmentChannel, orderStatus);
+            subTags.insertAdjacentHTML('beforeend', newDiviStatusHtml);
         }
 
         async function exportOrderToDivi(orderId, event) {
@@ -1707,12 +1982,11 @@
                 }
 
                 if (statusChanged) {
-                    const row = button.closest('tr');
-                    const diviStatusCell = row.cells[9];
                     const fulfillmentChannel = button.dataset.fulfillmentChannel;
                     const orderStatus = button.dataset.orderStatus;
 
-                    diviStatusCell.innerHTML = renderDiviExportStatus(true, fulfillmentChannel, orderStatus);
+                    // 更新订单ID列内的导单状态图标
+                    updateOrderIdDiviStatus(orderId, true, fulfillmentChannel, orderStatus);
                     button.disabled = true;
                 }
 
@@ -1739,16 +2013,14 @@
 
             const diviStatus = parseInt(button.dataset.diviStatus || '', 10);
 
-            // 状态3和4都需要二次确认
             if (diviStatus === 3 || diviStatus === 4) {
                 const statusText = diviStatus === 3 ? '排单中' : '生产中';
-
-                // 从DOM获取物流信息
-                const detailsCell = button.closest('tr').querySelector('td:nth-child(11)');
-                const logisticsMethod = detailsCell && detailsCell.children[1] ?
-                    detailsCell.children[1].textContent.replace('物流：', '') : '';
-                const trackingNumber = detailsCell && detailsCell.children[2] ?
-                    detailsCell.children[2].textContent.replace('跟踪号：', '') : '';
+                const row = button.closest('tr');
+                const diviDetailsCell = row.cells[4]; // DIVI详情列现在是第5列
+                const logisticsMethod = diviDetailsCell ?
+                    diviDetailsCell.querySelector('div:nth-child(2)')?.textContent.replace('物流：', '') : '';
+                const trackingNumber = diviDetailsCell ?
+                    diviDetailsCell.querySelector('div:nth-child(3)')?.textContent.replace('跟踪号：', '') : '';
 
                 const message = [
                     '注意：该订单【' + orderId + '】DIVI状态为"' + statusText + '"',
@@ -1814,14 +2086,13 @@
 
             const confirmed = window.confirm(
                 `订单【${orderId}】当前为假面单发货。\n` +
-                `确认已经使用真实物流单号发货，并标注为“真发”？`
+                `确认已经使用真实物流单号发货，并标注为"真发"？`
             );
             if (!confirmed) return;
 
-            // UI 状态
             button.disabled = true;
-            const originalText = button.innerText;
-            button.innerText = '标注中...';
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
             try {
                 const csrfToken =
@@ -1849,28 +2120,21 @@
                 } else {
                     showNotification(`标注真发失败: ${result.message || '未知错误'}`, 'error');
                     button.disabled = false;
-                    button.innerText = originalText;
+                    button.innerHTML = originalHTML;
                 }
             } catch (error) {
                 showNotification(`请求失败: ${error.message}`, 'error');
                 button.disabled = false;
-                button.innerText = originalText;
+                button.innerHTML = originalHTML;
             }
         }
 
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
             try {
-                // 首先初始化所有 SearchableSelect
                 initSearchableSelects();
-
-                // 然后加载分组和运营人员数据
                 await Promise.all([loadGroupsFromAPI(), loadOperatorsFromAPI()]);
-
-                // 设置默认值
                 setDefaultFilters();
-
-                initializeSmartClearButtons();
             } catch (error) {
                 showNotification('初始化失败: ' + error.message, 'error');
             } finally {
@@ -1878,7 +2142,6 @@
             }
         });
 
-        // ========== 批量选择功能 ==========
         function toggleSelectAll() {
             const selectAllCheckbox = document.getElementById('selectAllCheckbox');
             const rowCheckboxes = document.querySelectorAll('.row-checkbox');
@@ -1941,12 +2204,7 @@
 
             showLoading(true);
             try {
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-                // 这里可以添加批量导单的 API 调用
                 showNotification(`已选择 ${selectedIds.length} 个订单，批量导单功能开发中...`, 'info');
-
             } catch (error) {
                 showNotification('批量导单失败: ' + error.message, 'error');
             } finally {
@@ -1955,82 +2213,84 @@
         }
 
         async function exportOrdersToExcel(event) {
-    const button = event.currentTarget;
-    const icon = button.querySelector('i');
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
 
-    if (button.disabled) return;
+            if (button.disabled) return;
 
-    button.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
 
-    try {
-        showLoading(true);
+            try {
+                showLoading(true);
 
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-        const exportData = {
-            ...currentFilters
-        };
+                const exportData = {
+                    ...currentFilters
+                };
 
-        const response = await fetch('/api/export-amazon-orders-excel/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(exportData)
-        });
+                const response = await fetch('/api/export-amazon-orders-excel/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(exportData)
+                });
 
-        if (response.ok) {
-            // ✅ 修复：更安全地获取文件名
-            let filename = '亚马逊订单.xlsx';
-            const contentDisposition = response.headers.get('Content-Disposition');
+                if (response.ok) {
+                    let filename = '亚马逊订单.xlsx';
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            filename = filenameMatch[1];
+                        }
+                    }
 
-            // 检查是否存在并正确解析
-            if (contentDisposition) {
-                // 从 Content-Disposition 中提取文件名（支持多种格式）
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch && filenameMatch[1]) {
-                    filename = filenameMatch[1];
+                    if (!filename || filename === 'undefined') {
+                        const timestamp = new Date().toISOString()
+                            .slice(0, 19)
+                            .replace(/[-:]/g, '')
+                            .replace('T', '_');
+                        filename = `亚马逊订单_${timestamp}.xlsx`;
+                    }
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    setTimeout(() => {
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    }, 100);
+
+                    showNotification('导出成功！', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification('导出失败: ' + (error.message || '未知错误'), 'error');
                 }
+            } catch (error) {
+                showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                icon.className = 'fas fa-download';
+                showLoading(false);
             }
-
-            // ✅ 修复：确保文件名不为空或 undefined
-            if (!filename || filename === 'undefined') {
-                const timestamp = new Date().toISOString()
-                    .slice(0, 19)
-                    .replace(/[-:]/g, '')
-                    .replace('T', '_');
-                filename = `亚马逊订单_${timestamp}.xlsx`;
-            }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-
-            // 清理
-            setTimeout(() => {
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-            }, 100);
-
-            showNotification('导出成功！', 'success');
-        } else {
-            const error = await response.json();
-            showNotification('导出失败: ' + (error.message || '未知错误'), 'error');
         }
-    } catch (error) {
-        showNotification('请求失败: ' + error.message, 'error');
-    } finally {
-        button.disabled = false;
-        icon.className = 'fas fa-download';
-        showLoading(false);
-    }
-}
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (typeof SearchableSelect !== 'undefined' && SearchableSelect.notify) {
+                SearchableSelect.notify(message, type, duration);
+            } else {
+                alert(message);
+            }
+        }
     </script>
 {% endblock %}

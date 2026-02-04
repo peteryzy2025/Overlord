@@ -17,6 +17,8 @@ urlpatterns = [
     path('api/tro-table/create/', views_vocabulary.api_create_tro_record, name='api_create_tro_record'),
     path('api/tro-table/update/', views_vocabulary.api_update_tro_record, name='api_update_tro_record'),
     path('api/tro-table/delete/', views_vocabulary.api_delete_tro_record, name='api_delete_tro_record'),
+    path('api/tro-table/download-template/', views_vocabulary.download_templates, name='download_tro_template'),
+    path('api/tro-table/import/', views_vocabulary.api_import_tro_records, name='api_import_tro_records'),
     path('api/trademark-info/', views_vocabulary.api_trademark_info_list, name='api_trademark_info_list'),
 
     # 产品数据API

@@ -71,7 +71,9 @@ def is_user_in_same_group(user, target_user_id):
 def amazon_shop_emails_page(request):
     """店铺邮件管理页面渲染"""
     return render(request, 'amazon_shop_emails.html', {
-        'active_nav': 'amazon_shop_emails',
+        'active_nav': 'amazon_orders',
+        'active_page': 'amazon_shop_emails',
+        
     })
 
 
