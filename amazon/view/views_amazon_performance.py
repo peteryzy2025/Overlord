@@ -99,8 +99,8 @@ def get_amazon_performance_notifications_api(request):
                 }
             })
 
-        # 获取权限范围内的店铺
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        # 获取权限范围内的店铺（传入user进行公司限定）
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value, user=user)
 
         # 构建查询条件
         notification_filter = Q(shop_id__in=list(shop_ids))
@@ -119,8 +119,12 @@ def get_amazon_performance_notifications_api(request):
             elif 'ops_group' in permissions:
                 # 组长：需要验证运营是否在本组权限范围内
                 valid_shop_ids = set(shop_ids)
-                operator_shops = AmazonShop.objects.filter(ops_id__in=operator_ids).values_list('id', flat=True)
-                valid_operator_ids = AmazonShop.objects.filter(
+                # 获取用户公司的店铺（公司限定）
+                base_shop_qs = AmazonShop.objects.all()
+                if hasattr(user, 'company') and user.company:
+                    base_shop_qs = base_shop_qs.filter(company=user.company)
+                operator_shops = base_shop_qs.filter(ops_id__in=operator_ids).values_list('id', flat=True)
+                valid_operator_ids = base_shop_qs.filter(
                     id__in=valid_shop_ids.intersection(operator_shops)
                 ).values_list('ops_id', flat=True)
                 notification_filter &= Q(shop__ops_id__in=valid_operator_ids)
@@ -265,8 +269,8 @@ def notify_operators_preview_api(request):
                 }
             })
 
-        # 获取可见店铺范围
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        # 获取可见店铺范围（传入user进行公司限定）
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value, user=user)
 
         # 构建基础查询（仅待处理）
         notification_filter = Q(
@@ -391,7 +395,7 @@ def notify_operators_api(request):
                 }
             })
 
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value, user=user)
 
         # 使用Q对象构建基础筛选条件
         base_filter = Q(
@@ -533,16 +537,20 @@ def get_performance_operators_api(request):
         user = request.user
         permissions = parse_permissions(getattr(user, 'permission', []))
 
-        # 判断权限范围
+        # 判断权限范围（带公司限定）
+        base_shop_qs = AmazonShop.objects.all()
+        if hasattr(user, 'company') and user.company:
+            base_shop_qs = base_shop_qs.filter(company=user.company)
+        
         if 'ops_all' in permissions:
-            shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
+            shops = base_shop_qs.filter(ops__isnull=False).select_related('ops')
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
-            shops = AmazonShop.objects.filter(
+            shops = base_shop_qs.filter(
                 ops__operational_account__ops_group=group_name
             ).select_related('ops')
         else:
-            shops = AmazonShop.objects.filter(ops=user).select_related('ops')
+            shops = base_shop_qs.filter(ops=user).select_related('ops')
 
         # 去重并组装数据
         operators_dict = {}
@@ -613,7 +621,7 @@ def mark_notification_processed_api(request, notification_id):
         # 权限验证：确保用户有权限操作此通知
         if 'ops_all' not in permissions:
             # 获取用户有权限的店铺ID列表
-            user_shop_ids = get_shop_ids_by_filter('ops', user.id)
+            user_shop_ids = get_shop_ids_by_filter('ops', user.id, user=user)
             user_shop_ids_list = list(user_shop_ids)
             if notification.shop_id not in user_shop_ids_list:
                 # 备选方案：检查店铺是否直接关联当前用户
