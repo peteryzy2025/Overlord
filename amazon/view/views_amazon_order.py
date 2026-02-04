@@ -127,7 +127,7 @@ def get_amazon_orders_list_api(request):
                                           'total_pages': 0}})
 
         # 获取权限内店铺
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value, user=user)
         shop_ids_list = list(shop_ids)
         if not shop_ids_list:
             return JsonResponse({'success': True,

@@ -629,11 +629,9 @@
                     <div id="shippingDeadlineFilter" class="searchable-select multiple" data-placeholder="全部"></div>
                 </div>
 
-                <div class="filter-group" style="align-self: flex-end;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn" onclick="applyFilters()">应用筛选</button>
-                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
-                    </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i class="fas fa-redo"></i></button>
                 </div>
             </div>
         </div>

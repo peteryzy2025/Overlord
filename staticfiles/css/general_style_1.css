@@ -117,6 +117,15 @@
     margin-top: auto;
 }
 
+/* 修复筛选按钮高度与输入框一致 */
+.filter-actions .btn {
+    height: 42px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .filter-actions-main {
     position: absolute;
     right: 0;
