@@ -1,745 +1,859 @@
-{% extends 'base/base_z.html' %}
-{% load static %}
-
-{% block title %}巡店报告 - Overlord{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+{% extends 'base/base_z.html' %} {% load static %} {% block title %}巡店报告 -
+Overlord{% endblock %} {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}" />
 <style>
-    :root {
-        --accent-color: #10B981;  /* 绿色主题 */
-        --accent-hover: #059669;
-    }
-    
-    /* ===== 平铺式统计卡片样式 ===== */
+  :root {
+    --accent-color: #10b981; /* 绿色主题 */
+    --accent-hover: #059669;
+  }
+
+  /* ===== 平铺式统计卡片样式 ===== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background-color: var(--bg-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-medium);
+    border-color: var(--accent-color);
+  }
+
+  .stat-icon {
+    font-size: 2.5rem;
+    color: var(--accent-color);
+    background: rgba(16, 185, 129, 0.1);
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .stat-content h4 {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem;
+    font-weight: 500;
+  }
+
+  .stat-content p {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  .stat-content small {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-top: 0.25rem;
+  }
+
+  /* ===== 响应式调整 ===== */
+  @media (max-width: 768px) {
     .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+      grid-template-columns: 1fr;
+      gap: 1rem;
     }
 
     .stat-card {
-        background-color: var(--bg-primary);
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: var(--shadow-light);
-        border: 1px solid var(--border-color);
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow-medium);
-        border-color: var(--accent-color);
+      padding: 1rem;
     }
 
     .stat-icon {
-        font-size: 2.5rem;
-        color: var(--accent-color);
-        background: rgba(16, 185, 129, 0.1);
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .stat-content h4 {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin: 0 0 0.25rem;
-        font-weight: 500;
+      font-size: 2rem;
+      width: 50px;
+      height: 50px;
     }
 
     .stat-content p {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0;
+      font-size: 1.5rem;
     }
-
-    .stat-content small {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        display: block;
-        margin-top: 0.25rem;
-    }
-
-    /* ===== 响应式调整 ===== */
-    @media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .stat-card {
-            padding: 1rem;
-        }
-
-        .stat-icon {
-            font-size: 2rem;
-            width: 50px;
-            height: 50px;
-        }
-
-        .stat-content p {
-            font-size: 1.5rem;
-        }
-    }
+  }
 </style>
-{% endblock %}
-
-{% block page_content %}
-<div class="loading-overlay" id="loadingOverlay" style="display: none;">
-    <div class="loading-content">
-        <div class="spinner"></div>
-        <p>数据加载中...</p>
-    </div>
+{% endblock %} {% block page_content %}
+<div class="loading-overlay" id="loadingOverlay" style="display: none">
+  <div class="loading-content">
+    <div class="spinner"></div>
+    <p>数据加载中...</p>
+  </div>
 </div>
 
 <div class="performance-main">
-    <div class="page-header">
-        <div>
-            <h1 class="page-title">巡店报告</h1>
-            <p class="page-subtitle">查看和管理店铺每日巡检记录，支持多维度筛选和统计</p>
-        </div>
-        <div>
-            <button class="btn btn-notify" id="resetTodayBtn" onclick="handleResetToday()"
-                    style="display: none;" title="重置今日所有巡店记录">
-                <i class="fas fa-redo"></i> 重置今日
-            </button>
-            <button class="btn" onclick="refreshData(event)">
-                <i class="fas fa-sync-alt"></i> 刷新数据
-            </button>
-        </div>
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">巡店报告</h1>
+      <p class="page-subtitle">功能待更新，未完善....</p>
+    </div>
+    <div>
+      <button
+        class="btn btn-notify"
+        id="resetTodayBtn"
+        onclick="handleResetToday()"
+        style="display: none"
+        title="重置今日所有巡店记录"
+      >
+        <i class="fas fa-redo"></i> 重置今日
+      </button>
+      <button class="btn" onclick="refreshData(event)">
+        <i class="fas fa-sync-alt"></i> 刷新数据
+      </button>
+    </div>
+  </div>
+
+  <!-- 平铺式统计卡片 -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clipboard-check"></i>
+      </div>
+      <div class="stat-content">
+        <h4>总巡检店铺数</h4>
+        <p id="totalShopsCount">-</p>
+        <small>当前筛选条件下的总数</small>
+      </div>
     </div>
 
-    <!-- 平铺式统计卡片 -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <div class="stat-content">
-                <h4>总巡检店铺数</h4>
-                <p id="totalShopsCount">-</p>
-                <small>当前筛选条件下的总数</small>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="stat-content">
-                <h4>已完成巡店</h4>
-                <p id="completedCount">-</p>
-                <small>三项检查全部完成</small>
-            </div>
-        </div>
-
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="stat-content">
-                <h4>今日待巡检</h4>
-                <p id="pendingTodayCount">-</p>
-                <small>今日尚未巡检的店铺</small>
-            </div>
-        </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-check-circle"></i>
+      </div>
+      <div class="stat-content">
+        <h4>已完成巡店</h4>
+        <p id="completedCount">-</p>
+        <small>三项检查全部完成</small>
+      </div>
     </div>
 
-    <!-- 筛选面板保持不变 -->
-    <div class="control-panel">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label class="filter-label">巡检日期</label>
-                <select class="form-select" id="dateRange">
-                    <option value="unlimited" selected>不限</option>
-                    <option value="today">今日</option>
-                    <option value="last7days">最近7天</option>
-                    <option value="last30days">最近30天</option>
-                    <option value="custom">自定义范围</option>
-                </select>
-            </div>
+    <div class="stat-card">
+      <div class="stat-icon">
+        <i class="fas fa-clock"></i>
+      </div>
+      <div class="stat-content">
+        <h4>今日待巡检</h4>
+        <p id="pendingTodayCount">-</p>
+        <small>今日尚未巡检的店铺</small>
+      </div>
+    </div>
+  </div>
 
-            <div class="filter-group" id="customDateGroup" style="display: none;">
-                <label class="filter-label">开始日期</label>
-                <input type="date" class="form-control" id="startDate">
-            </div>
+  <!-- 筛选面板保持不变 -->
+  <div class="control-panel">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label class="filter-label">巡检日期</label>
+        <select class="form-select" id="dateRange">
+          <option value="unlimited" selected>不限</option>
+          <option value="today">今日</option>
+          <option value="last7days">最近7天</option>
+          <option value="last30days">最近30天</option>
+          <option value="custom">自定义范围</option>
+        </select>
+      </div>
 
-            <div class="filter-group" id="customDateGroup2" style="display: none;">
-                <label class="filter-label">结束日期</label>
-                <input type="date" class="form-control" id="endDate">
-            </div>
+      <div class="filter-group" id="customDateGroup" style="display: none">
+        <label class="filter-label">开始日期</label>
+        <input type="date" class="form-control" id="startDate" />
+      </div>
 
-            <div class="filter-group">
-                <label class="filter-label">运营人员</label>
-                <div id="operatorDropdown" class="dropdown-check-list">
-                    <div class="anchor" id="operatorAnchor">
-                        <span id="operatorSelectedText">选择运营人员</span>
-                    </div>
-                    <div class="items" id="operatorItems"></div>
-                </div>
-            </div>
+      <div class="filter-group" id="customDateGroup2" style="display: none">
+        <label class="filter-label">结束日期</label>
+        <input type="date" class="form-control" id="endDate" />
+      </div>
 
-            <div class="filter-group">
-                <label class="filter-label">运营分组</label>
-                <select class="form-select" id="opsGroupFilter" onchange="applyFilters()">
-                    <option value="">全部</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">店铺名称</label>
-                <input type="text" class="form-control" id="shopNameFilter"
-                       placeholder="输入店铺名称（模糊查询）"
-                       onkeyup="if(event.key==='Enter') applyFilters()">
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">是否进入店铺</label>
-                <select class="form-select" id="visitedFilter">
-                    <option value="">全部</option>
-                    <option value="1">是</option>
-                    <option value="0">否</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">是否绩效检查</label>
-                <select class="form-select" id="performanceCheckedFilter">
-                    <option value="">全部</option>
-                    <option value="1">已检查</option>
-                    <option value="0">未检查</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">是否提现</label>
-                <select class="form-select" id="withdrawalFilter">
-                    <option value="">全部</option>
-                    <option value="1">已提现</option>
-                    <option value="0">未提现</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">最后上货日期</label>
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="date" class="form-control" id="restockStartDate" placeholder="开始">
-                    <input type="date" class="form-control" id="restockEndDate" placeholder="结束">
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">店铺状况</label>
-                <input type="text" class="form-control" id="shopStatusFilter"
-                       placeholder="输入关键词"
-                       onkeyup="if(event.key==='Enter') applyFilters()">
-            </div>
-
-            <div class="filter-group" style="align-self: flex-end;">
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="btn" onclick="applyFilters()">应用筛选</button>
-                    <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
-                </div>
-            </div>
+      <div class="filter-group">
+        <label class="filter-label">运营人员</label>
+        <div id="operatorDropdown" class="dropdown-check-list">
+          <div class="anchor" id="operatorAnchor">
+            <span id="operatorSelectedText">选择运营人员</span>
+          </div>
+          <div class="items" id="operatorItems"></div>
         </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">运营分组</label>
+        <select
+          class="form-select"
+          id="opsGroupFilter"
+          onchange="applyFilters()"
+        >
+          <option value="">全部</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">店铺名称</label>
+        <input
+          type="text"
+          class="form-control"
+          id="shopNameFilter"
+          placeholder="输入店铺名称（模糊查询）"
+          onkeyup="if (event.key === 'Enter') applyFilters();"
+        />
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">是否进入店铺</label>
+        <select class="form-select" id="visitedFilter">
+          <option value="">全部</option>
+          <option value="1">是</option>
+          <option value="0">否</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">是否绩效检查</label>
+        <select class="form-select" id="performanceCheckedFilter">
+          <option value="">全部</option>
+          <option value="1">已检查</option>
+          <option value="0">未检查</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">是否提现</label>
+        <select class="form-select" id="withdrawalFilter">
+          <option value="">全部</option>
+          <option value="1">已提现</option>
+          <option value="0">未提现</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">最后上货日期</label>
+        <div style="display: flex; gap: 0.5rem">
+          <input
+            type="date"
+            class="form-control"
+            id="restockStartDate"
+            placeholder="开始"
+          />
+          <input
+            type="date"
+            class="form-control"
+            id="restockEndDate"
+            placeholder="结束"
+          />
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-label">店铺状况</label>
+        <input
+          type="text"
+          class="form-control"
+          id="shopStatusFilter"
+          placeholder="输入关键词"
+          onkeyup="if (event.key === 'Enter') applyFilters();"
+        />
+      </div>
+
+      <div class="filter-group" style="align-self: flex-end">
+        <div style="display: flex; gap: 0.5rem">
+          <button class="btn" onclick="applyFilters()">应用筛选</button>
+          <button class="btn btn-secondary" onclick="resetFilters(event)">
+            重置
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 数据表格保持不变 -->
+  <div class="data-section">
+    <h3 class="section-title" style="margin-bottom: 1.5rem">巡店记录列表</h3>
+
+    <div class="table-container" id="dailyCheckTableContainer">
+      <table class="table">
+        <thead>
+          <tr>
+            <th
+              class="sortable"
+              data-field="check_date"
+              onclick="handleSort('check_date')"
+            >
+              巡检日期
+            </th>
+            <th
+              class="sortable"
+              data-field="shop_name"
+              onclick="handleSort('shop_name')"
+            >
+              店铺名称
+            </th>
+            <th
+              class="sortable"
+              data-field="operator_name"
+              onclick="handleSort('operator_name')"
+            >
+              运营人员
+            </th>
+            <th
+              class="sortable"
+              data-field="ops_group"
+              onclick="handleSort('ops_group')"
+            >
+              运营分组
+            </th>
+            <th class="sortable" data-field="role" onclick="handleSort('role')">
+              角色
+            </th>
+            <th>进入店铺</th>
+            <th>绩效检查</th>
+            <th>提现操作</th>
+            <th
+              class="sortable"
+              data-field="withdrawal_amount"
+              onclick="handleSort('withdrawal_amount')"
+            >
+              提现金额
+            </th>
+            <th
+              class="sortable"
+              data-field="last_restock_date"
+              onclick="handleSort('last_restock_date')"
+            >
+              最后上货日期
+            </th>
+            <th
+              class="sortable"
+              data-field="shop_status"
+              onclick="handleSort('shop_status')"
+            >
+              店铺状况
+            </th>
+          </tr>
+        </thead>
+        <tbody id="dailyCheckTableBody">
+          <tr>
+            <td colspan="11" class="empty-state">
+              <i class="fas fa-info-circle"></i>
+              <p>请选择筛选条件并点击"应用筛选"</p>
+              <p>巡店报告数据将在此处显示</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
-    <!-- 数据表格保持不变 -->
-    <div class="data-section">
-        <h3 class="section-title" style="margin-bottom: 1.5rem;">巡店记录列表</h3>
+    <!-- 分页控件保持不变 -->
+    <div
+      class="pagination-controls"
+      id="paginationControls"
+      style="display: none"
+    >
+      <div class="page-size-selector">
+        <label for="pageSize">每页显示：</label>
+        <select class="form-select" id="pageSize" onchange="changePageSize()">
+          <option value="10">10条</option>
+          <option value="20" selected>20条</option>
+          <option value="50">50条</option>
+          <option value="100">100条</option>
+        </select>
+      </div>
 
-        <div class="table-container" id="dailyCheckTableContainer">
-            <table class="table">
-                <thead>
-                <tr>
-                    <th class="sortable" data-field="check_date" onclick="handleSort('check_date')">巡检日期</th>
-                    <th class="sortable" data-field="shop_name" onclick="handleSort('shop_name')">店铺名称</th>
-                    <th class="sortable" data-field="operator_name" onclick="handleSort('operator_name')">运营人员</th>
-                    <th class="sortable" data-field="ops_group" onclick="handleSort('ops_group')">运营分组</th>
-                    <th class="sortable" data-field="role" onclick="handleSort('role')">角色</th>
-                    <th>进入店铺</th>
-                    <th>绩效检查</th>
-                    <th>提现操作</th>
-                    <th class="sortable" data-field="withdrawal_amount" onclick="handleSort('withdrawal_amount')">提现金额</th>
-                    <th class="sortable" data-field="last_restock_date" onclick="handleSort('last_restock_date')">最后上货日期</th>
-                    <th class="sortable" data-field="shop_status" onclick="handleSort('shop_status')">店铺状况</th>
-                </tr>
-                </thead>
-                <tbody id="dailyCheckTableBody">
-                <tr>
-                    <td colspan="11" class="empty-state">
-                        <i class="fas fa-info-circle"></i>
-                        <p>请选择筛选条件并点击"应用筛选"</p>
-                        <p>巡店报告数据将在此处显示</p>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+      <div class="pagination-buttons" id="paginationButtons">
+        <!-- 动态生成 -->
+      </div>
 
-        <!-- 分页控件保持不变 -->
-        <div class="pagination-controls" id="paginationControls" style="display: none;">
-            <div class="page-size-selector">
-                <label for="pageSize">每页显示：</label>
-                <select class="form-select" id="pageSize" onchange="changePageSize()">
-                    <option value="10">10条</option>
-                    <option value="20" selected>20条</option>
-                    <option value="50">50条</option>
-                    <option value="100">100条</option>
-                </select>
-            </div>
-
-            <div class="pagination-buttons" id="paginationButtons">
-                <!-- 动态生成 -->
-            </div>
-
-            <div class="pagination-info" id="paginationInfo">
-                <!-- 动态生成 -->
-            </div>
-        </div>
+      <div class="pagination-info" id="paginationInfo">
+        <!-- 动态生成 -->
+      </div>
     </div>
+  </div>
 </div>
 
 <!-- 确认对话框保持不变 -->
 <div class="notify-confirm-modal" id="confirmModal">
-    <div class="notify-confirm-content">
-        <div class="notify-confirm-header">
-            <i class="fas fa-exclamation-triangle"></i> 确认重置操作
-        </div>
-        <div class="notify-confirm-body">
-            <p>确定要重置今日所有巡店记录吗？</p>
-            <p style="color: var(--text-secondary); font-size: 0.875rem;">
-                此操作将把所有"进入店铺"、"绩效检查"、"提现"状态重置为"否"。
-            </p>
-            <p id="confirmAffectedCount" style="margin-top: 1rem; font-weight: 500;"></p>
-        </div>
-        <div class="notify-confirm-footer">
-            <button class="btn btn-secondary btn-confirm-secondary" onclick="closeConfirmModal()">取消</button>
-            <button class="btn btn-confirm-primary" id="confirmResetBtn" onclick="executeReset()">
-                <i class="fas fa-redo"></i> 确认重置
-            </button>
-        </div>
+  <div class="notify-confirm-content">
+    <div class="notify-confirm-header">
+      <i class="fas fa-exclamation-triangle"></i> 确认重置操作
     </div>
+    <div class="notify-confirm-body">
+      <p>确定要重置今日所有巡店记录吗？</p>
+      <p style="color: var(--text-secondary); font-size: 0.875rem">
+        此操作将把所有"进入店铺"、"绩效检查"、"提现"状态重置为"否"。
+      </p>
+      <p
+        id="confirmAffectedCount"
+        style="margin-top: 1rem; font-weight: 500"
+      ></p>
+    </div>
+    <div class="notify-confirm-footer">
+      <button
+        class="btn btn-secondary btn-confirm-secondary"
+        onclick="closeConfirmModal()"
+      >
+        取消
+      </button>
+      <button
+        class="btn btn-confirm-primary"
+        id="confirmResetBtn"
+        onclick="executeReset()"
+      >
+        <i class="fas fa-redo"></i> 确认重置
+      </button>
+    </div>
+  </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
+{% endblock %} {% block extra_js %}
 <script>
-// ===== 全局变量定义（保持不变）=====
-let currentFilters = {
-    date_range: 'unlimited',
-    start_date: '',
-    end_date: '',
+  // ===== 全局变量定义（保持不变）=====
+  let currentFilters = {
+    date_range: "unlimited",
+    start_date: "",
+    end_date: "",
     operator_ids: [],
-    ops_group: '',
-    shop_name: '',
-    visited: '',
-    performance_checked: '',
-    withdrawal_processed: '',
-    restock_start_date: '',
-    restock_end_date: '',
-    shop_status: '',
-    sort_field: 'check_date',
-    sort_order: 'desc'
-};
+    ops_group: "",
+    shop_name: "",
+    visited: "",
+    performance_checked: "",
+    withdrawal_processed: "",
+    restock_start_date: "",
+    restock_end_date: "",
+    shop_status: "",
+    sort_field: "check_date",
+    sort_order: "desc",
+  };
 
-let dailyCheckPagination = {
+  let dailyCheckPagination = {
     page: 1,
     page_size: 20,
     total: 0,
-    total_pages: 0
-};
+    total_pages: 0,
+  };
 
-let currentUserPermissions = {
-    can_reset_daily_check: false
-};
+  let currentUserPermissions = {
+    can_reset_daily_check: false,
+  };
 
-// ===== 工具函数（保持不变）=====
-function showLoading(show = true) {
-    const overlay = document.getElementById('loadingOverlay');
-    overlay.style.display = show ? 'flex' : 'none';
-    overlay.style.visibility = show ? 'visible' : 'hidden';
-    overlay.style.opacity = show ? '1' : '0';
-}
+  // ===== 工具函数（保持不变）=====
+  function showLoading(show = true) {
+    const overlay = document.getElementById("loadingOverlay");
+    overlay.style.display = show ? "flex" : "none";
+    overlay.style.visibility = show ? "visible" : "hidden";
+    overlay.style.opacity = show ? "1" : "0";
+  }
 
-if (typeof showNotification === 'undefined') {
-    window.showNotification = function (message, type = 'info') {
-        console.log(`[${type}] ${message}`);
+  if (typeof showNotification === "undefined") {
+    window.showNotification = function (message, type = "info") {
+      console.log(`[${type}] ${message}`);
     };
-}
+  }
 
-// ===== 日期范围处理（保持不变）=====
-function handleDateRangeChange() {
-    const dateRange = document.getElementById('dateRange').value;
-    const customDateGroup = document.getElementById('customDateGroup');
-    const customDateGroup2 = document.getElementById('customDateGroup2');
-    if (dateRange === 'custom') {
-        customDateGroup.style.display = 'flex';
-        customDateGroup2.style.display = 'flex';
+  // ===== 日期范围处理（保持不变）=====
+  function handleDateRangeChange() {
+    const dateRange = document.getElementById("dateRange").value;
+    const customDateGroup = document.getElementById("customDateGroup");
+    const customDateGroup2 = document.getElementById("customDateGroup2");
+    if (dateRange === "custom") {
+      customDateGroup.style.display = "flex";
+      customDateGroup2.style.display = "flex";
     } else {
-        customDateGroup.style.display = 'none';
-        customDateGroup2.style.display = 'none';
+      customDateGroup.style.display = "none";
+      customDateGroup2.style.display = "none";
     }
-}
+  }
 
-// ===== 运营人员多选下拉（保持不变）=====
-function initOperatorDropdown() {
-    const anchor = document.getElementById('operatorAnchor');
-    const items = document.getElementById('operatorItems');
-    const dropdown = document.getElementById('operatorDropdown');
+  // ===== 运营人员多选下拉（保持不变）=====
+  function initOperatorDropdown() {
+    const anchor = document.getElementById("operatorAnchor");
+    const items = document.getElementById("operatorItems");
+    const dropdown = document.getElementById("operatorDropdown");
 
-    anchor.addEventListener('click', function (e) {
-        e.stopPropagation();
-        dropdown.classList.toggle('visible');
-        anchor.classList.toggle('active');
+    anchor.addEventListener("click", function (e) {
+      e.stopPropagation();
+      dropdown.classList.toggle("visible");
+      anchor.classList.toggle("active");
     });
 
-    document.addEventListener('click', function () {
-        dropdown.classList.remove('visible');
-        anchor.classList.remove('active');
+    document.addEventListener("click", function () {
+      dropdown.classList.remove("visible");
+      anchor.classList.remove("active");
     });
 
-    items.addEventListener('click', function (e) {
-        e.stopPropagation();
+    items.addEventListener("click", function (e) {
+      e.stopPropagation();
     });
-}
+  }
 
-function populateOperatorDropdown(operators) {
-    const items = document.getElementById('operatorItems');
-    items.innerHTML = '';
+  function populateOperatorDropdown(operators) {
+    const items = document.getElementById("operatorItems");
+    items.innerHTML = "";
 
-    operators.forEach(op => {
-        const item = document.createElement('div');
-        item.className = 'item';
-        item.innerHTML = `
-            <input type="checkbox" id="op_${op.id}" value="${op.id}" ${op.id === 'all' ? 'checked' : ''}>
+    operators.forEach((op) => {
+      const item = document.createElement("div");
+      item.className = "item";
+      item.innerHTML = `
+            <input type="checkbox" id="op_${op.id}" value="${op.id}" ${op.id === "all" ? "checked" : ""}>
             <label for="op_${op.id}">${op.first_name}</label>
         `;
-        items.appendChild(item);
+      items.appendChild(item);
 
-        const checkbox = item.querySelector('input');
-        checkbox.addEventListener('change', function () {
-            const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
+      const checkbox = item.querySelector("input");
+      checkbox.addEventListener("change", function () {
+        const allCheckbox = document.querySelector(
+          '#operatorItems input[value="all"]',
+        );
 
-            if (this.value === 'all' && this.checked) {
-                document.querySelectorAll('#operatorItems input[type="checkbox"]').forEach(cb => {
-                    if (cb !== this) cb.checked = false;
-                });
-            } else if (this.value !== 'all' && this.checked && allCheckbox) {
-                allCheckbox.checked = false;
-            }
-            updateOperatorSelection();
-        });
+        if (this.value === "all" && this.checked) {
+          document
+            .querySelectorAll('#operatorItems input[type="checkbox"]')
+            .forEach((cb) => {
+              if (cb !== this) cb.checked = false;
+            });
+        } else if (this.value !== "all" && this.checked && allCheckbox) {
+          allCheckbox.checked = false;
+        }
+        updateOperatorSelection();
+      });
     });
 
     updateOperatorSelection();
-}
+  }
 
-function updateOperatorSelection() {
-    const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
-    const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
+  function updateOperatorSelection() {
+    const checkboxes = document.querySelectorAll(
+      '#operatorItems input[type="checkbox"]',
+    );
+    const allCheckbox = document.querySelector(
+      '#operatorItems input[value="all"]',
+    );
     const selectedOperators = [];
-    let selectedText = '选择运营人员';
+    let selectedText = "选择运营人员";
 
     if (allCheckbox && allCheckbox.checked) {
-        selectedText = '全部人员';
-        currentFilters.operator_ids = [];
+      selectedText = "全部人员";
+      currentFilters.operator_ids = [];
     } else {
-        checkboxes.forEach(cb => {
-            if (cb.checked && cb.value !== 'all') {
-                selectedOperators.push(cb.value);
-            }
-        });
-        if (selectedOperators.length > 0) {
-            selectedText = `已选择 ${selectedOperators.length} 人`;
+      checkboxes.forEach((cb) => {
+        if (cb.checked && cb.value !== "all") {
+          selectedOperators.push(cb.value);
         }
-        currentFilters.operator_ids = selectedOperators;
+      });
+      if (selectedOperators.length > 0) {
+        selectedText = `已选择 ${selectedOperators.length} 人`;
+      }
+      currentFilters.operator_ids = selectedOperators;
     }
 
-    document.getElementById('operatorSelectedText').textContent = selectedText;
-}
+    document.getElementById("operatorSelectedText").textContent = selectedText;
+  }
 
-function populateOpsGroupDropdown(operators) {
-    const select = document.getElementById('opsGroupFilter');
+  function populateOpsGroupDropdown(operators) {
+    const select = document.getElementById("opsGroupFilter");
     // 保留第一个“全部”选项
     select.innerHTML = '<option value="">全部</option>';
 
     // 提取并去重分组信息
-    const groups = [...new Set(operators
-        .map(op => op.group)
-        .filter(g => g && g.trim() !== '')
-    )].sort();
+    const groups = [
+      ...new Set(
+        operators.map((op) => op.group).filter((g) => g && g.trim() !== ""),
+      ),
+    ].sort();
 
-    groups.forEach(group => {
-        const option = document.createElement('option');
-        option.value = group;
-        option.textContent = group;
-        select.appendChild(option);
+    groups.forEach((group) => {
+      const option = document.createElement("option");
+      option.value = group;
+      option.textContent = group;
+      select.appendChild(option);
     });
-}
+  }
 
-async function loadOperators() {
+  async function loadOperators() {
     try {
-        const response = await fetch('/api/amazon-daily-check/operators/');
-        const result = await response.json();
-        if (result.success && result.data) {
-            populateOperatorDropdown(result.data);
-            populateOpsGroupDropdown(result.data);
-            currentUserPermissions = {
-                can_reset_daily_check: result.can_reset_daily_check || false
-            };
-            return true;
-        }
-        return false;
+      const response = await fetch("/api/amazon-daily-check/operators/");
+      const result = await response.json();
+      if (result.success && result.data) {
+        populateOperatorDropdown(result.data);
+        populateOpsGroupDropdown(result.data);
+        currentUserPermissions = {
+          can_reset_daily_check: result.can_reset_daily_check || false,
+        };
+        return true;
+      }
+      return false;
     } catch (error) {
-        console.error('加载运营人员失败:', error);
-        return false;
+      console.error("加载运营人员失败:", error);
+      return false;
     }
-}
+  }
 
-// ===== 筛选逻辑（保持不变）=====
-function getCurrentFilters() {
+  // ===== 筛选逻辑（保持不变）=====
+  function getCurrentFilters() {
     return {
-        date_range: document.getElementById('dateRange').value,
-        start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
-        end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
-        operator_ids: currentFilters.operator_ids,
-        ops_group: document.getElementById('opsGroupFilter').value.trim(),
-        shop_name: document.getElementById('shopNameFilter').value.trim(),
-        visited: document.getElementById('visitedFilter').value,
-        performance_checked: document.getElementById('performanceCheckedFilter').value,
-        withdrawal_processed: document.getElementById('withdrawalFilter').value,
-        restock_start_date: document.getElementById('restockStartDate').value,
-        restock_end_date: document.getElementById('restockEndDate').value,
-        shop_status: document.getElementById('shopStatusFilter').value.trim(),
-        sort_field: currentFilters.sort_field,
-        sort_order: currentFilters.sort_order
+      date_range: document.getElementById("dateRange").value,
+      start_date:
+        document.getElementById("dateRange").value === "custom"
+          ? document.getElementById("startDate").value
+          : "",
+      end_date:
+        document.getElementById("dateRange").value === "custom"
+          ? document.getElementById("endDate").value
+          : "",
+      operator_ids: currentFilters.operator_ids,
+      ops_group: document.getElementById("opsGroupFilter").value.trim(),
+      shop_name: document.getElementById("shopNameFilter").value.trim(),
+      visited: document.getElementById("visitedFilter").value,
+      performance_checked: document.getElementById("performanceCheckedFilter")
+        .value,
+      withdrawal_processed: document.getElementById("withdrawalFilter").value,
+      restock_start_date: document.getElementById("restockStartDate").value,
+      restock_end_date: document.getElementById("restockEndDate").value,
+      shop_status: document.getElementById("shopStatusFilter").value.trim(),
+      sort_field: currentFilters.sort_field,
+      sort_order: currentFilters.sort_order,
     };
-}
+  }
 
-function setDefaultFilters() {
-    document.getElementById('dateRange').value = 'unlimited';
-    document.getElementById('startDate').value = '';
-    document.getElementById('endDate').value = '';
-    document.getElementById('opsGroupFilter').value = '';
-    document.getElementById('shopNameFilter').value = '';
-    document.getElementById('visitedFilter').value = '';
-    document.getElementById('performanceCheckedFilter').value = '';
-    document.getElementById('withdrawalFilter').value = '';
-    document.getElementById('restockStartDate').value = '';
-    document.getElementById('restockEndDate').value = '';
-    document.getElementById('shopStatusFilter').value = '';
-    document.getElementById('pageSize').value = '20';
+  function setDefaultFilters() {
+    document.getElementById("dateRange").value = "unlimited";
+    document.getElementById("startDate").value = "";
+    document.getElementById("endDate").value = "";
+    document.getElementById("opsGroupFilter").value = "";
+    document.getElementById("shopNameFilter").value = "";
+    document.getElementById("visitedFilter").value = "";
+    document.getElementById("performanceCheckedFilter").value = "";
+    document.getElementById("withdrawalFilter").value = "";
+    document.getElementById("restockStartDate").value = "";
+    document.getElementById("restockEndDate").value = "";
+    document.getElementById("shopStatusFilter").value = "";
+    document.getElementById("pageSize").value = "20";
     currentFilters.operator_ids = [];
-}
+  }
 
-async function resetFilters(event) {
+  async function resetFilters(event) {
     showLoading(true);
     try {
-        setDefaultFilters();
-        const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
-        checkboxes.forEach(cb => {
-            cb.checked = cb.value === 'all';
-        });
-        updateOperatorSelection();
-        dailyCheckPagination.page = 1;
-        dailyCheckPagination.page_size = 20;
-        await applyFilters();
-        showNotification('筛选条件已重置', 'success');
+      setDefaultFilters();
+      const checkboxes = document.querySelectorAll(
+        '#operatorItems input[type="checkbox"]',
+      );
+      checkboxes.forEach((cb) => {
+        cb.checked = cb.value === "all";
+      });
+      updateOperatorSelection();
+      dailyCheckPagination.page = 1;
+      dailyCheckPagination.page_size = 20;
+      await applyFilters();
+      showNotification("筛选条件已重置", "success");
     } catch (error) {
-        showNotification('重置失败: ' + error.message, 'error');
+      showNotification("重置失败: " + error.message, "error");
     } finally {
-        showLoading(false);
+      showLoading(false);
     }
-}
+  }
 
-function refreshData(event) {
-    const icon = event.target.closest('button').querySelector('i');
+  function refreshData(event) {
+    const icon = event.target.closest("button").querySelector("i");
     if (icon) {
-        icon.style.animation = 'spin 1s linear infinite';
+      icon.style.animation = "spin 1s linear infinite";
     }
     applyFilters().finally(() => {
-        if (icon) {
-            icon.style.animation = '';
-        }
+      if (icon) {
+        icon.style.animation = "";
+      }
     });
-}
+  }
 
-async function applyFilters() {
+  async function applyFilters() {
     showLoading(true);
     currentFilters = getCurrentFilters();
     try {
-        await loadDailyCheckTable();
-        showNotification('巡店报告数据已更新', 'success');
-        checkResetButtonVisibility();
+      await loadDailyCheckTable();
+      showNotification("巡店报告数据已更新", "success");
+      checkResetButtonVisibility();
     } catch (error) {
-        showNotification('数据请求失败: ' + error.message, 'error');
+      showNotification("数据请求失败: " + error.message, "error");
     } finally {
-        showLoading(false);
+      showLoading(false);
     }
-}
+  }
 
-function handleSort(field) {
+  function handleSort(field) {
     if (currentFilters.sort_field === field) {
-        currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+      currentFilters.sort_order =
+        currentFilters.sort_order === "asc" ? "desc" : "asc";
     } else {
-        currentFilters.sort_field = field;
-        currentFilters.sort_order = 'desc';
+      currentFilters.sort_field = field;
+      currentFilters.sort_order = "desc";
     }
 
-    document.querySelectorAll('thead th.sortable').forEach(th => {
-        th.classList.remove('sort-asc', 'sort-desc');
-        if (th.dataset.field === field) {
-            th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
-        }
+    document.querySelectorAll("thead th.sortable").forEach((th) => {
+      th.classList.remove("sort-asc", "sort-desc");
+      if (th.dataset.field === field) {
+        th.classList.add(
+          currentFilters.sort_order === "asc" ? "sort-asc" : "sort-desc",
+        );
+      }
     });
 
     dailyCheckPagination.page = 1;
     loadDailyCheckTable();
-}
+  }
 
-// ===== 重置功能（保持不变）=====
-function checkResetButtonVisibility() {
-    const resetBtn = document.getElementById('resetTodayBtn');
-    resetBtn.style.display = currentUserPermissions.can_reset_daily_check ? 'inline-flex' : 'none';
-}
+  // ===== 重置功能（保持不变）=====
+  function checkResetButtonVisibility() {
+    const resetBtn = document.getElementById("resetTodayBtn");
+    resetBtn.style.display = currentUserPermissions.can_reset_daily_check
+      ? "inline-flex"
+      : "none";
+  }
 
-function closeConfirmModal() {
-    document.getElementById('confirmModal').style.display = 'none';
-    document.getElementById('confirmResetBtn').disabled = false;
-    document.getElementById('confirmResetBtn').innerHTML = '<i class="fas fa-redo"></i> 确认重置';
-}
+  function closeConfirmModal() {
+    document.getElementById("confirmModal").style.display = "none";
+    document.getElementById("confirmResetBtn").disabled = false;
+    document.getElementById("confirmResetBtn").innerHTML =
+      '<i class="fas fa-redo"></i> 确认重置';
+  }
 
-async function handleResetToday() {
-    document.getElementById('confirmModal').style.display = 'flex';
+  async function handleResetToday() {
+    document.getElementById("confirmModal").style.display = "flex";
 
     const filters = getCurrentFilters();
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
     let affectedCount = 0;
 
     try {
-        const response = await fetch('/api/amazon-daily-check/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
-            },
-            body: JSON.stringify({
-                ...filters,
-                date_range: 'custom',
-                start_date: today,
-                end_date: today
-            })
-        });
+      const response = await fetch("/api/amazon-daily-check/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken":
+            document.querySelector("[name=csrfmiddlewaretoken]")?.value ||
+            document.cookie.match(/csrftoken=([^;]+)/)?.[1] ||
+            "",
+        },
+        body: JSON.stringify({
+          ...filters,
+          date_range: "custom",
+          start_date: today,
+          end_date: today,
+        }),
+      });
 
-        const result = await response.json();
-        if (result.success) {
-            affectedCount = result.data.total;
-        }
+      const result = await response.json();
+      if (result.success) {
+        affectedCount = result.data.total;
+      }
     } catch (error) {
-        console.error('获取影响数量失败:', error);
+      console.error("获取影响数量失败:", error);
     }
 
-    document.getElementById('confirmAffectedCount').textContent =
-        `将影响 ${affectedCount} 条今日巡店记录`;
-}
+    document.getElementById("confirmAffectedCount").textContent =
+      `将影响 ${affectedCount} 条今日巡店记录`;
+  }
 
-async function executeReset() {
-    const confirmBtn = document.getElementById('confirmResetBtn');
+  async function executeReset() {
+    const confirmBtn = document.getElementById("confirmResetBtn");
     confirmBtn.disabled = true;
     confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
 
     try {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+      const csrfToken =
+        document.querySelector("[name=csrfmiddlewaretoken]")?.value ||
+        document.cookie.match(/csrftoken=([^;]+)/)?.[1] ||
+        "";
 
-        const response = await fetch('/api/amazon-daily-check/reset-today/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(currentFilters)
-        });
+      const response = await fetch("/api/amazon-daily-check/reset-today/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(currentFilters),
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (result.success) {
-            showNotification(`重置成功：${result.data.message}`, 'success');
-            closeConfirmModal();
-            await applyFilters();
-        } else {
-            throw new Error(result.message || '重置失败');
-        }
+      if (result.success) {
+        showNotification(`重置成功：${result.data.message}`, "success");
+        closeConfirmModal();
+        await applyFilters();
+      } else {
+        throw new Error(result.message || "重置失败");
+      }
     } catch (error) {
-        showNotification('操作失败: ' + error.message, 'error');
-        confirmBtn.disabled = false;
-        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> 确认重置';
+      showNotification("操作失败: " + error.message, "error");
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="fas fa-redo"></i> 确认重置';
     }
-}
+  }
 
-// ===== 表格渲染（保持不变）=====
-async function loadDailyCheckTable() {
-    const tbody = document.getElementById('dailyCheckTableBody');
-    const paginationControls = document.getElementById('paginationControls');
+  // ===== 表格渲染（保持不变）=====
+  async function loadDailyCheckTable() {
+    const tbody = document.getElementById("dailyCheckTableBody");
+    const paginationControls = document.getElementById("paginationControls");
 
     showLoading(true);
 
     try {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-            document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+      const csrfToken =
+        document.querySelector("[name=csrfmiddlewaretoken]")?.value ||
+        document.cookie.match(/csrftoken=([^;]+)/)?.[1] ||
+        "";
 
-        const requestData = {
-            ...currentFilters,
-            page: dailyCheckPagination.page,
-            page_size: dailyCheckPagination.page_size
-        };
+      const requestData = {
+        ...currentFilters,
+        page: dailyCheckPagination.page,
+        page_size: dailyCheckPagination.page_size,
+      };
 
-        const response = await fetch('/api/amazon-daily-check/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
-            body: JSON.stringify(requestData)
-        });
+      const response = await fetch("/api/amazon-daily-check/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken,
+        },
+        body: JSON.stringify(requestData),
+      });
 
-        const result = await response.json();
+      const result = await response.json();
 
-        if (result.success) {
-            const data = result.data;
-            dailyCheckPagination.total = data.total;
-            dailyCheckPagination.total_pages = data.total_pages;
+      if (result.success) {
+        const data = result.data;
+        dailyCheckPagination.total = data.total;
+        dailyCheckPagination.total_pages = data.total_pages;
 
-            // 更新统计卡片
-            if (data.stats) {
-                document.getElementById('totalShopsCount').textContent = data.stats.total_shops || 0;
-                document.getElementById('completedCount').textContent = data.stats.completed_checks || 0;
-                document.getElementById('pendingTodayCount').textContent = data.stats.pending_today || 0;
-            }
-
-            renderDailyCheckTable(data.daily_checks || []);
-            renderPagination();
-
-            paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
-        } else {
-            throw new Error(result.message || '加载失败');
+        // 更新统计卡片
+        if (data.stats) {
+          document.getElementById("totalShopsCount").textContent =
+            data.stats.total_shops || 0;
+          document.getElementById("completedCount").textContent =
+            data.stats.completed_checks || 0;
+          document.getElementById("pendingTodayCount").textContent =
+            data.stats.pending_today || 0;
         }
+
+        renderDailyCheckTable(data.daily_checks || []);
+        renderPagination();
+
+        paginationControls.style.display = data.total > 0 ? "flex" : "none";
+      } else {
+        throw new Error(result.message || "加载失败");
+      }
     } catch (error) {
-        console.error('加载错误:', error);
-        tbody.innerHTML = `
+      console.error("加载错误:", error);
+      tbody.innerHTML = `
             <tr>
                 <td colspan="11" class="empty-state">
                     <i class="fas fa-exclamation-circle"></i>
@@ -747,28 +861,28 @@ async function loadDailyCheckTable() {
                 </td>
             </tr>
         `;
-        paginationControls.style.display = 'none';
+      paginationControls.style.display = "none";
     } finally {
-        showLoading(false);
+      showLoading(false);
     }
-}
+  }
 
-function renderStatusBadge(value, type = 'visited') {
-    if (type === 'visited') {
-        return value ?
-            '<span class="status-badge processed">是</span>' :
-            '<span class="status-badge needs-attention">否</span>';
+  function renderStatusBadge(value, type = "visited") {
+    if (type === "visited") {
+      return value
+        ? '<span class="status-badge processed">是</span>'
+        : '<span class="status-badge needs-attention">否</span>';
     } else {
-        return value ?
-            '<span class="status-badge processed">已检查</span>' :
-            '<span class="status-badge no-action">未检查</span>';
+      return value
+        ? '<span class="status-badge processed">已检查</span>'
+        : '<span class="status-badge no-action">未检查</span>';
     }
-}
+  }
 
-function renderDailyCheckTable(dailyChecks) {
-    const tbody = document.getElementById('dailyCheckTableBody');
+  function renderDailyCheckTable(dailyChecks) {
+    const tbody = document.getElementById("dailyCheckTableBody");
     if (!dailyChecks || dailyChecks.length === 0) {
-        tbody.innerHTML = `
+      tbody.innerHTML = `
             <tr>
                 <td colspan="11" class="empty-state">
                     <i class="fas fa-inbox"></i>
@@ -776,38 +890,42 @@ function renderDailyCheckTable(dailyChecks) {
                 </td>
             </tr>
         `;
-        return;
+      return;
     }
 
-    tbody.innerHTML = dailyChecks.map(check => `
+    tbody.innerHTML = dailyChecks
+      .map(
+        (check) => `
         <tr data-id="${check.id}">
-            <td>${check.check_date || '-'}</td>
-            <td>${check.shop_name || '未知店铺'}</td>
-            <td>${check.operator_name || '-'}</td>
-            <td>${check.ops_group || '-'}</td>
-            <td>${check.role || '-'}</td>
-            <td>${renderStatusBadge(check.visited, 'visited')}</td>
-            <td>${renderStatusBadge(check.performance_checked, 'checked')}</td>
-            <td>${renderStatusBadge(check.withdrawal_processed, 'checked')}</td>
-            <td>${check.withdrawal_amount !== null && check.withdrawal_amount !== undefined ? check.withdrawal_amount : '-'}</td>
-            <td>${check.last_restock_date || '-'}</td>
-            <td title="${check.shop_status || ''}">${check.shop_status || '-'}</td>
+            <td>${check.check_date || "-"}</td>
+            <td>${check.shop_name || "未知店铺"}</td>
+            <td>${check.operator_name || "-"}</td>
+            <td>${check.ops_group || "-"}</td>
+            <td>${check.role || "-"}</td>
+            <td>${renderStatusBadge(check.visited, "visited")}</td>
+            <td>${renderStatusBadge(check.performance_checked, "checked")}</td>
+            <td>${renderStatusBadge(check.withdrawal_processed, "checked")}</td>
+            <td>${check.withdrawal_amount !== null && check.withdrawal_amount !== undefined ? check.withdrawal_amount : "-"}</td>
+            <td>${check.last_restock_date || "-"}</td>
+            <td title="${check.shop_status || ""}">${check.shop_status || "-"}</td>
         </tr>
-    `).join('');
-}
+    `,
+      )
+      .join("");
+  }
 
-// ===== 分页渲染（保持不变）=====
-function renderPagination() {
-    const buttonsContainer = document.getElementById('paginationButtons');
-    const infoContainer = document.getElementById('paginationInfo');
+  // ===== 分页渲染（保持不变）=====
+  function renderPagination() {
+    const buttonsContainer = document.getElementById("paginationButtons");
+    const infoContainer = document.getElementById("paginationInfo");
 
-    const {page, page_size, total, total_pages} = dailyCheckPagination;
+    const { page, page_size, total, total_pages } = dailyCheckPagination;
 
     infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
 
-    let buttonsHTML = '';
+    let buttonsHTML = "";
 
-    buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+    buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? "disabled" : ""}>
         <i class="fas fa-chevron-left"></i> 上一页
     </button>`;
 
@@ -816,72 +934,80 @@ function renderPagination() {
     let endPage = Math.min(total_pages, startPage + maxButtons - 1);
 
     if (endPage - startPage < maxButtons - 1) {
-        startPage = Math.max(1, endPage - maxButtons + 1);
+      startPage = Math.max(1, endPage - maxButtons + 1);
     }
 
     if (startPage > 1) {
-        buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
-        if (startPage > 2) {
-            buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
-        }
+      buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+      if (startPage > 2) {
+        buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+      }
     }
 
     for (let i = startPage; i <= endPage; i++) {
-        buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+      buttonsHTML += `<button class="pagination-btn ${i === page ? "active" : ""}" onclick="changePage(${i})">${i}</button>`;
     }
 
     if (endPage < total_pages) {
-        if (endPage < total_pages - 1) {
-            buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
-        }
-        buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+      if (endPage < total_pages - 1) {
+        buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+      }
+      buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
     }
 
-    buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+    buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? "disabled" : ""}>
         下一页 <i class="fas fa-chevron-right"></i>
     </button>`;
 
     buttonsContainer.innerHTML = buttonsHTML;
-}
+  }
 
-function changePage(newPage) {
+  function changePage(newPage) {
     if (newPage < 1 || newPage > dailyCheckPagination.total_pages) return;
     dailyCheckPagination.page = newPage;
     loadDailyCheckTable();
-    document.getElementById('dailyCheckTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
-}
+    document
+      .getElementById("dailyCheckTableContainer")
+      .scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
-function changePageSize() {
-    const newSize = parseInt(document.getElementById('pageSize').value);
+  function changePageSize() {
+    const newSize = parseInt(document.getElementById("pageSize").value);
     dailyCheckPagination.page_size = newSize;
     dailyCheckPagination.page = 1;
     loadDailyCheckTable();
-}
+  }
 
-// ===== 初始化（保持不变）=====
-function initializeSortHeader() {
-    const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
+  // ===== 初始化（保持不变）=====
+  function initializeSortHeader() {
+    const th = document.querySelector(
+      `thead th[data-field="${currentFilters.sort_field}"]`,
+    );
     if (th) {
-        th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+      th.classList.add(
+        currentFilters.sort_order === "asc" ? "sort-asc" : "sort-desc",
+      );
     }
-}
+  }
 
-document.addEventListener('DOMContentLoaded', async function () {
+  document.addEventListener("DOMContentLoaded", async function () {
     showLoading(true);
     try {
-        initOperatorDropdown();
-        await loadOperators();
-        setDefaultFilters();
-        document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-        handleDateRangeChange();
-        initializeSortHeader();
-        await applyFilters();
+      initOperatorDropdown();
+      await loadOperators();
+      setDefaultFilters();
+      document
+        .getElementById("dateRange")
+        .addEventListener("change", handleDateRangeChange);
+      handleDateRangeChange();
+      initializeSortHeader();
+      await applyFilters();
     } catch (error) {
-        console.error('初始化错误:', error);
-        showNotification('初始化失败: ' + error.message, 'error');
+      console.error("初始化错误:", error);
+      showNotification("初始化失败: " + error.message, "error");
     } finally {
-        showLoading(false);
+      showLoading(false);
     }
-});
+  });
 </script>
 {% endblock %}

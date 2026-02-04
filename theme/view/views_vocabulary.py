@@ -7,7 +7,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import json
 from theme.models import TroTable, TrademarkInfo
-
+import os
+from django.http import FileResponse, Http404
+from django.conf import settings
+import pandas as pd
 
 # ============================================
 # 1. 页面渲染视图
@@ -399,3 +402,126 @@ def api_trademark_info_list(request):
             'message': f'获取数据失败: {str(e)}'
         }, status=500)
 
+#====================更新：下载批量上传模板（2026.2.4）==========================
+def download_templates(request):
+    file_path = os.path.join(settings.BASE_DIR, 'theme/static/media/templates/侵权词上传.xlsx')
+    if os.path.exists(file_path):
+        #触发下载
+        response = FileResponse(open(file_path, 'rb'), as_attachment=True, filename='侵权词上传模板.xlsx')
+        return response
+    else:
+        raise Http404("文件不存在")
+
+
+#====================更新：批量导入侵权词（2026.2.4）==========================
+@csrf_exempt
+@require_POST
+@login_required
+def api_import_tro_records(request):
+    """
+    批量导入侵权词记录
+    接收 Excel 文件，解析并批量插入到 TroTable
+    支持去重：已存在的记录跳过，不重复写入
+    """
+    if 'file' not in request.FILES:
+        return JsonResponse({'success': False, 'message': '请选择文件'}, status=400)
+
+    uploaded_file = request.FILES['file']
+
+    # 验证文件类型
+    if not (uploaded_file.name.endswith('.xlsx') or uploaded_file.name.endswith('.xlsm')):
+        return JsonResponse({'success': False, 'message': '仅支持 xlsx 或 xlsm 格式文件'}, status=400)
+
+    try:
+        # 读取 Excel 文件
+        df = pd.read_excel(uploaded_file)
+
+        # 验证必要的列
+        required_columns = ['侵权词', '侵权类型码(数字)']
+        if not all(col in df.columns for col in required_columns):
+            return JsonResponse({
+                'success': False,
+                'message': 'Excel 格式错误，需要包含"侵权词"和"侵权类型码(数字)"两列'
+            }, status=400)
+
+        # 获取当前用户
+        user_name = request.user.first_name or request.user.username
+
+        # 获取数据库中已有的侵权词列表（用于去重）
+        existing_records = TroTable.objects.values_list('theme_name', flat=True)
+        existing_set = set(existing_records)
+
+        # 统计变量
+        success_count = 0      # 新增成功
+        skip_count = 0         # 已存在跳过
+        error_count = 0        # 数据错误
+        errors = []
+        skipped_items = []     # 记录跳过的项
+
+        for idx, row in df.iterrows():
+            try:
+                theme_name = str(row['侵权词']).strip() if pd.notna(row['侵权词']) else ''
+                name_type = int(row['侵权类型码(数字)']) if pd.notna(row['侵权类型码(数字)']) else None
+
+                # 如果两列都为空，则忽略该行（可能是Excel中的其他无关数据导致的空行）
+                if not theme_name and name_type is None:
+                    continue
+
+                # 数据完整性检查
+                if not theme_name or not name_type:
+                    error_count += 1
+                    errors.append(f'第 {idx + 2} 行: 数据不完整')
+                    continue
+
+                # 类型码合法性检查（1-10）
+                if name_type not in NAME_TYPE_MAPPING:
+                    error_count += 1
+                    errors.append(f'第 {idx + 2} 行: 无效的类型码 {name_type}（需在1-10之间）')
+                    continue
+
+                # 去重检查：是否已存在
+                if theme_name in existing_set:
+                    skip_count += 1
+                    skipped_items.append(theme_name)
+                    continue
+
+                # 创建新记录
+                TroTable.objects.create(
+                    theme_name=theme_name,
+                    name_type=name_type,
+                    created_by=user_name
+                )
+                success_count += 1
+                # 添加到已存在集合，避免同一批次内重复
+                existing_set.add(theme_name)
+
+            except Exception as e:
+                error_count += 1
+                errors.append(f'第 {idx + 2} 行: {str(e)}')
+
+        # 构建返回消息
+        message_parts = []
+        if success_count > 0:
+            message_parts.append(f'新增 {success_count} 条')
+        if skip_count > 0:
+            message_parts.append(f'跳过 {skip_count} 条（已存在）')
+        if error_count > 0:
+            message_parts.append(f'失败 {error_count} 条')
+
+        return JsonResponse({
+            'success': True,
+            'message': '导入完成：' + '，'.join(message_parts),
+            'data': {
+                'success_count': success_count,
+                'skip_count': skip_count,
+                'error_count': error_count,
+                'errors': errors[:10],
+                'skipped_items': skipped_items[:10]  # 返回前10条跳过的项
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'导入失败: {str(e)}'
+        }, status=500)

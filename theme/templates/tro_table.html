@@ -206,6 +206,64 @@
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
         }
+
+        .btn-success {
+            background-color: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #059669;
+        }
+
+        /* 导入弹窗 - 拖放上传区域 */
+        .upload-dropzone {
+            border: 2px dashed #f59e0b;
+            border-radius: 8px;
+            padding: 50px 30px;
+            text-align: center;
+            background-color: #fffbeb;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .upload-dropzone:hover,
+        .upload-dropzone.dragover {
+            border-color: #d97706;
+            background-color: #fef3c7;
+        }
+
+        .upload-dropzone i {
+            font-size: 48px;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+
+        .upload-dropzone .upload-text {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .upload-dropzone .upload-text .highlight {
+            color: #f59e0b;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .upload-filename {
+            color: #374151;
+            font-size: 14px;
+            margin-top: 12px;
+            text-align: center;
+            font-weight: 500;
+        }
     </style>
 {% endblock %}
 
@@ -226,6 +284,12 @@
             <div>
                 <button class="btn btn-primary" onclick="showCreateModal()">
                     <i class="fas fa-plus"></i> 新增侵权词
+                </button>
+                <a href="{% url 'theme:download_tro_template' %}" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> 下载模板
+                </a>
+                <button class="btn btn-success" onclick="showImportModal()">
+                    <i class="fas fa-file-import"></i> 导入
                 </button>
                 <button class="btn" onclick="refreshData(event)">
                     <i class="fas fa-sync-alt"></i> 刷新数据
@@ -389,6 +453,29 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
                 <button class="btn btn-danger" onclick="submitDelete()" id="deleteBtn">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入弹窗 -->
+    <div class="modal-overlay" id="importModal">
+        <div class="modal-content" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3 class="modal-title">导入</h3>
+                <button class="close-btn" onclick="closeImportModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-dropzone" id="uploadDropzone">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <div class="upload-text">
+                        将文件拖到此处，或 <span class="highlight">点击上传</span>
+                    </div>
+                    <div class="upload-filename" id="uploadFilename" style="display: none;"></div>
+                    <input type="file" id="fileInput" accept=".xlsx,.xlsm" style="display: none;">
+                </div>
+                <p class="upload-hint">提示：仅允许导入"xlsm"或"xlsx"格式文件！</p>
             </div>
         </div>
     </div>
@@ -845,6 +932,121 @@
         document.getElementById('deleteModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeDeleteModal();
+            }
+        });
+
+        // ===== 导入功能 =====
+        function showImportModal() {
+            document.getElementById('importModal').style.display = 'flex';
+            resetUploadState();
+        }
+
+        function closeImportModal() {
+            document.getElementById('importModal').style.display = 'none';
+        }
+
+        function resetUploadState() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadFilename').style.display = 'none';
+            document.getElementById('uploadFilename').textContent = '';
+            document.querySelector('#uploadDropzone i').className = 'fas fa-cloud-upload-alt';
+            document.querySelector('#uploadDropzone .upload-text').innerHTML = '将文件拖到此处，或 <span class="highlight">点击上传</span>';
+        }
+
+        // 拖放上传事件处理
+        const uploadDropzone = document.getElementById('uploadDropzone');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadDropzone.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') {
+                fileInput.click();
+            }
+        });
+
+        uploadDropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+
+        uploadDropzone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+
+        uploadDropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', function(e) {
+            if (this.files.length > 0) {
+                handleFileUpload(this.files[0]);
+            }
+        });
+
+        async function handleFileUpload(file) {
+            // 验证文件类型
+            if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xlsm')) {
+                showNotification('仅支持 xlsx 或 xlsm 格式文件', 'error');
+                return;
+            }
+
+            // 显示文件名
+            document.getElementById('uploadFilename').textContent = file.name;
+            document.getElementById('uploadFilename').style.display = 'block';
+            document.querySelector('#uploadDropzone i').className = 'fas fa-file-excel';
+            document.querySelector('#uploadDropzone i').style.color = '#10b981';
+            document.querySelector('#uploadDropzone .upload-text').innerHTML = '文件已选择，正在上传...';
+
+            showLoading(true);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const csrfToken = document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('{% url "theme:api_import_tro_records" %}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    closeImportModal();
+                    // 刷新表格数据
+                    currentFilters.sort_field = 'create_time';
+                    currentFilters.sort_order = 'desc';
+                    pagination.page = 1;
+                    loadTableData();
+                } else {
+                    showNotification(result.message || '导入失败', 'error');
+                    resetUploadState();
+                }
+
+            } catch (error) {
+                console.error('上传错误:', error);
+                showNotification('上传失败: ' + error.message, 'error');
+                resetUploadState();
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 点击遮罩关闭导入弹窗
+        document.getElementById('importModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeImportModal();
             }
         });
     </script>

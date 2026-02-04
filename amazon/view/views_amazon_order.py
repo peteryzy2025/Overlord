@@ -46,7 +46,8 @@ from api.lingxing_p.lingxing_fh import lingxing_ship_order
 def amazon_order_management_page(request):
     # 什么都不查！直接返回空！
     return render(request, 'amazon_order_management.html', {
-        'active_nav': 'amazon_orders',
+       'active_nav': 'amazon_orders',
+        'active_page': 'amazon_orders',
     })
 
 

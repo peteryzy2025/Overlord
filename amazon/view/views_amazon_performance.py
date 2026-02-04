@@ -34,7 +34,8 @@ def get_date_range_from_option(option):
 def amazon_performance_notifications_page(request):
     """亚马逊绩效通知管理页面渲染"""
     return render(request, 'amazon_performance_notifications.html', {
-        'active_nav': 'amazon_performance',
+        'active_nav': 'amazon_performance_notifications',
+        'active_page': 'amazon_performance_notifications',
     })
 
 

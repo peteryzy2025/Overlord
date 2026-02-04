@@ -1,93 +1,172 @@
-{% extends 'base/base_z.html' %}
+{% extends 'base/base_amazon.html' %}
 {% load static %}
 
 {% block title %}店铺邮件管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
-        :root {
-            /* 定义主题色变量 */
-            --accent-color: #3B82F6;
-            --accent-hover: #2563EB;
+        /* 统计卡片样式 */
+        .stats-card-wrapper {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
 
-    </style>
-    <style>
-        :root {
-            /* 定义主题色变量 */
-            --accent-color: #3B82F6;
-            --accent-hover: #2563EB;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --bg-secondary: #f8fafc;
-            --border-color: #e2e8f0;
-        }
-
-        /* 邮件详情弹窗样式 */
-        .email-detail-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1050;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .email-detail-content {
-            background: white;
+        .stats-card {
+            background-color: var(--bg-primary);
             border-radius: 12px;
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-
-        .email-detail-header {
             padding: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border-radius: 12px 12px 0 0;
+            gap: 1rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
         }
 
-        .email-detail-header h3 {
-            margin: 0;
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-medium);
         }
 
-        .modal-close-btn {
-            background: none;
-            border: none;
+        .stats-icon {
+            width: 48px;
+            height: 48px;
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #3B82F6;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 1.5rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 6px;
-            transition: all 0.2s;
         }
 
-        .modal-close-btn:hover {
-            background: var(--bg-secondary);
+        .stats-content h4 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0 0 0.25rem 0;
+            font-weight: 500;
+        }
+
+        .stats-content p {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #3B82F6;
+            margin: 0;
+        }
+
+        /* 状态标签 */
+        .status-badge.processed {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .status-badge.needs-attention {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        .status-badge.no-action {
+            background-color: #E2E8F0;
+            color: #4A5568;
+        }
+
+        /* 操作按钮 */
+        .btn-process {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-process:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-process:disabled {
+            background-color: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-view {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-view:hover {
+            background-color: var(--bg-secondary);
+            border-color: var(--accent-color);
             color: var(--accent-color);
         }
 
-        .email-detail-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 1.5rem;
+        /* 表格单元格截断样式 */
+        .cell-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: relative;
+            cursor: pointer;
         }
 
+        .cell-title {
+            max-width: 500px;
+        }
+
+        .cell-sender {
+            max-width: 150px;
+        }
+
+        /* 自定义Tooltip样式 */
+        .custom-tooltip {
+            position: fixed;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+            z-index: 9999;
+            max-width: 500px;
+            word-wrap: break-word;
+            display: none;
+            pointer-events: none;
+            line-height: 1.5;
+        }
+
+        .custom-tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0;
+            border-style: solid;
+            border-color: var(--bg-primary) transparent transparent transparent;
+        }
+
+        /* 邮件详情模态框内容样式 */
         .email-meta-info {
             background: var(--bg-secondary);
             padding: 1.25rem;
@@ -141,57 +220,86 @@
             overflow-y: auto;
             line-height: 1.6;
             color: var(--text-primary);
+            background: var(--bg-primary);
         }
 
         .email-body-content p {
             margin-bottom: 0.75rem;
         }
 
-        .email-body-content p:last-child {
-            margin-bottom: 0;
-        }
-
-        .email-detail-footer {
-            padding: 1rem 1.5rem;
-            border-top: 1px solid var(--border-color);
+        /* 自定义日期输入框组 */
+        .date-range-inputs {
             display: flex;
-            justify-content: flex-end;
-            background: var(--bg-secondary);
-            border-radius: 0 0 12px 12px;
+            gap: 0.5rem;
+            align-items: center;
         }
 
+        .date-range-inputs input {
+            flex: 1;
+        }
 
-        /* 标记处理按钮微调 */
-        .btn-process {
-            padding: 0.5rem 1rem;
+        .date-range-inputs span {
+            color: var(--text-secondary);
             font-size: 0.875rem;
-            white-space: nowrap;
         }
 
-        /* 表格操作列调整 */
-        table td:last-child > div {
+        /* 通知确认列表 */
+        .notify-confirm-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .notify-confirm-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .notify-confirm-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 操作列按钮组 */
+        .action-group {
+            display: flex;
+            gap: 0.5rem;
             justify-content: center;
-            flex-wrap: nowrap;
+        }
+
+        /* 表格列宽调整 */
+        #emailsTable th:nth-child(2),
+        #emailsTable td:nth-child(2) {
+            max-width: 500px;
+            width: auto;
+        }
+
+        #emailsTable th:nth-child(4),
+        #emailsTable td:nth-child(4) {
+            max-width: 150px;
+            width: auto;
         }
     </style>
 {% endblock %}
 
-{% block page_content %}
-    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
-        <div class="loading-content">
-            <div class="spinner"></div>
-            <p>数据加载中...</p>
-        </div>
-    </div>
-
-    <div class="performance-main">
+{% block content %}
+    <div class="tab-content">
+        <!-- 页面标题区 -->
         <div class="page-header">
             <div>
-                <h1 class="page-title">店铺邮件管理</h1>
+                <h1 class="page-title">
+                    <i class="fas fa-envelope" style="color: #3B82F6;"></i>
+                    店铺邮件管理
+                </h1>
                 <p class="page-subtitle">查看和管理店铺邮件，支持批量筛选和状态更新</p>
             </div>
-            <div>
-                <button class="btn btn-notify" id="notifyBtn" onclick="handleNotifyOperators()" style="display: none;">
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-create" id="notifyBtn" onclick="handleNotifyOperators()" style="display: none;">
                     <i class="fas fa-bell"></i> 通知运营
                 </button>
                 <button class="btn" onclick="refreshData(event)">
@@ -201,182 +309,183 @@
         </div>
 
         <!-- 统计卡片 -->
-        <div class="stats-card">
-            <i class="fas fa-envelope stats-icon"></i>
-            <div class="stats-content">
-                <h4>待处理邮件数量</h4>
-                <p id="pendingCount">-</p>
+        <div class="stats-card-wrapper">
+            <div class="stats-card">
+                <i class="fas fa-envelope stats-icon"></i>
+                <div class="stats-content">
+                    <h4>待处理邮件数量</h4>
+                    <p id="pendingCount">-</p>
+                </div>
             </div>
         </div>
 
         <!-- 筛选面板 -->
-        <div class="control-panel">
+        <div class="filter-section">
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">接收时间</label>
-                    <select class="form-select" id="dateRange">
-                        <option value="unlimited" selected>不限</option>
-                        <option value="today">今日</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="dateRangeSelect" class="searchable-select single" data-placeholder="选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup" style="display: none;">
-                    <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="startDate">
-                </div>
-
-                <div class="filter-group" id="customDateGroup2" style="display: none;">
-                    <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="endDate">
+                <div class="filter-group" id="customDateGroup" style="display: none; min-width: 280px;">
+                    <label class="filter-label">自定义日期</label>
+                    <div class="date-range-inputs">
+                        <input type="date" class="form-control" id="startDate">
+                        <span>至</span>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <div id="operatorDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="operatorAnchor">
-                            <span id="operatorSelectedText">选择运营人员</span>
-                        </div>
-                        <div class="items" id="operatorItems"></div>
-                    </div>
+                    <div id="operatorSelect" class="searchable-select multiple" data-placeholder="选择运营人员"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">店铺名称</label>
-                    <input type="text" class="form-control" id="shopNameFilter"
-                           placeholder="输入店铺名称（模糊查询）"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
+                    <input type="text" class="form-control" id="shopNameFilter" placeholder="输入店铺名称（模糊查询）">
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">发件人</label>
-                    <input type="text" class="form-control" id="senderFilter"
-                           placeholder="输入发件人关键词"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
+                    <input type="text" class="form-control" id="senderFilter" placeholder="输入发件人关键词">
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">邮件标题</label>
-                    <input type="text" class="form-control" id="subjectFilter"
-                           placeholder="输入标题关键词"
-                           onkeyup="if(event.key==='Enter') applyFilters()">
+                    <input type="text" class="form-control" id="subjectFilter" placeholder="输入标题关键词">
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">状态筛选</label>
-                    <select class="form-select" id="statusFilter">
-                        <option value="">全部</option>
-                        <option value="needs_attention">需要注意</option>
-                        <option value="needs_attention_pending">需要注意-未处理</option>
-                        <option value="processed">已处理</option>
-                    </select>
+                    <div id="statusSelect" class="searchable-select single" data-placeholder="选择状态"></div>
                 </div>
 
-                <div class="filter-group" style="align-self: flex-end;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn" onclick="applyFilters()">应用筛选</button>
-                        <button class="btn btn-secondary" onclick="resetFilters(event)">重置</button>
-                        <button class="btn btn-notify" id="notifyOperatorsBtn" onclick="handleNotifyOperators()"
-                                style="display: none;" title="通知筛选结果中有待处理邮件的运营">
-                            <i class="fas fa-bell"></i> 通知
-                        </button>
-                    </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="applyFilters()" title="应用筛选">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetFilters(event)" title="重置条件">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                    <button class="btn btn-create" id="notifyOperatorsBtn" onclick="handleNotifyOperators()" 
+                            style="display: none;" title="通知待处理邮件的运营">
+                        <i class="fas fa-bell"></i> 通知
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- 数据表格 -->
-        <div class="data-section">
-            <h3 class="section-title" style="margin-bottom: 1.5rem;">邮件列表</h3>
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 封</span>
+            <button class="btn btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                <span>取消选择</span>
+            </button>
+            <button class="btn btn-create" onclick="batchMarkProcessed()" id="batchProcessBtn">
+                <i class="fas fa-check"></i>
+                <span>批量标记处理</span>
+            </button>
+        </div>
 
-            <div class="table-container" id="emailsTableContainer">
-                <table class="table">
-                    <thead>
+        <!-- 数据表格 -->
+        <div class="table-container" id="emailsTableContainer">
+            <table class="table" id="emailsTable">
+                <thead>
                     <tr>
-                        <th class="sortable" data-field="receive_time" onclick="handleSort('receive_time')">接收时间
-                        </th>
-                        <th class="sortable" data-field="shop_name" onclick="handleSort('shop_name')">店铺名称</th>
-                        <th class="sortable" data-field="operator_name" onclick="handleSort('operator_name')">运营人员
-                        </th>
-                        <th class="sortable" data-field="ops_group" onclick="handleSort('ops_group')">运营分组</th>
-                        <th class="sortable" data-field="role" onclick="handleSort('role')">角色</th>
-                        <th>发件人</th>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                         <th>邮件标题</th>
                         <th>状态</th>
+                        <th>发件人</th>
+                        <th class="sortable" data-field="receive_time" onclick="handleSort('receive_time')">接收时间</th>
+                        <th class="sortable" data-field="shop_name" onclick="handleSort('shop_name')">店铺名称</th>
+                        <th class="sortable" data-field="operator_name" onclick="handleSort('operator_name')">运营人员</th>
+                        <th class="sortable" data-field="ops_group" onclick="handleSort('ops_group')">运营分组</th>
+                        <th class="sortable" data-field="role" onclick="handleSort('role')">角色</th>
                         <th>操作</th>
                     </tr>
-                    </thead>
-                    <tbody id="emailsTableBody">
+                </thead>
+                <tbody id="emailsTableBody">
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>请选择筛选条件并点击"应用筛选"</p>
                             <p>店铺邮件数据将在此处显示</p>
                         </td>
                     </tr>
-                    </tbody>
-                </table>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option selected" onclick="changePageSize(10)">10条</div>
+                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats"></span>
+                </div>
             </div>
-
-            <!-- 分页控件 -->
-            <div class="pagination-controls" id="paginationControls" style="display: none;">
-                <div class="page-size-selector">
-                    <label for="pageSize">每页显示：</label>
-                    <select class="form-select" id="pageSize" onchange="changePageSize()">
-                        <option value="10">10条</option>
-                        <option value="20" selected>20条</option>
-                        <option value="50">50条</option>
-                        <option value="100">100条</option>
-                    </select>
-                </div>
-
-                <div class="pagination-buttons" id="paginationButtons">
-                    <!-- 动态生成 -->
-                </div>
-
-                <div class="pagination-info" id="paginationInfo">
-                    <!-- 动态生成 -->
-                </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
             </div>
         </div>
     </div>
-{% endblock %}
-{% block modals %}
-    <!-- 通知确认对话框 -->
-    <div class="notify-confirm-modal" id="notifyConfirmModal">
-        <div class="notify-confirm-content">
-            <div class="notify-confirm-header">
-                <i class="fas fa-bell"></i> 确认发送通知
+
+    <!-- 通知确认模态框 -->
+    <div class="modal-overlay" id="notifyConfirmModal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-bell" style="color: var(--accent-color); margin-right: 0.5rem;"></i>
+                    确认发送通知
+                </h2>
+                <button class="modal-close" onclick="closeNotifyModal()">&times;</button>
             </div>
-            <div class="notify-confirm-body">
-                <p>确定要通知以下运营人员吗？</p>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 0.5rem;">确定要通知以下运营人员吗？</p>
                 <div class="notify-confirm-list" id="notifyConfirmList">
                     <!-- 动态生成运营列表 -->
                 </div>
-                <p id="notifyConfirmTotal" style="margin-top: 1rem; font-weight: 500;"></p>
+                <p id="notifyConfirmTotal" style="margin-top: 1rem; font-weight: 600; color: var(--text-primary);"></p>
             </div>
-            <div class="notify-confirm-footer">
-                <button class="btn btn-secondary btn-confirm-secondary" onclick="closeNotifyModal()">取消</button>
-                <button class="btn btn-confirm-primary" id="confirmNotifyBtn" onclick="executeNotify()">
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeNotifyModal()">取消</button>
+                <button class="btn btn-create" id="confirmNotifyBtn" onclick="executeNotify()">
                     <i class="fas fa-paper-plane"></i> 立即通知
                 </button>
             </div>
         </div>
     </div>
-    <!-- 邮件详情弹窗 -->
-    <div class="email-detail-modal" id="emailDetailModal">
-        <div class="email-detail-content">
-            <div class="email-detail-header">
-                <h3 id="emailDetailTitle">
-                    <i class="fas fa-envelope"></i> 邮件详情
-                </h3>
-                <button class="modal-close-btn" onclick="closeEmailDetailModal()">
-                    <i class="fas fa-times"></i>
-                </button>
+
+    <!-- 邮件详情模态框 -->
+    <div class="modal-overlay" id="emailDetailModal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-envelope" style="color: var(--accent-color); margin-right: 0.5rem;"></i>
+                    邮件详情
+                </h2>
+                <button class="modal-close" onclick="closeEmailDetailModal()">&times;</button>
             </div>
-            <div class="email-detail-body">
+            <div class="modal-body" style="overflow-y: auto;">
                 <div class="email-meta-info">
                     <div class="meta-row">
                         <span class="meta-label">邮件标题：</span>
@@ -408,18 +517,22 @@
                     </div>
                 </div>
                 <div class="email-body-container">
-                    <div class="email-body-header">邮件正文：</div>
+                    <div class="email-body-header">邮件正文</div>
                     <div class="email-body-content" id="emailDetailBody"></div>
                 </div>
             </div>
-            <div class="email-detail-footer">
+            <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeEmailDetailModal()">关闭</button>
             </div>
         </div>
     </div>
+
+    <!-- 自定义Tooltip -->
+    <div id="customTooltip" class="custom-tooltip"></div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
         let currentFilters = {
@@ -448,122 +561,167 @@
             group_name: ''
         };
 
-        // ===== 工具函数 =====
-        function showLoading(show = true) {
-            const overlay = document.getElementById('loadingOverlay');
-            overlay.style.display = show ? 'flex' : 'none';
-            overlay.style.visibility = show ? 'visible' : 'hidden';
-            overlay.style.opacity = show ? '1' : '0';
+        // 批量选择相关
+        let selectedEmailIds = new Set();
+        let allEmails = [];
+
+        // SearchableSelect 实例
+        let dateRangeSelect = null;
+        let operatorSelect = null;
+        let statusSelect = null;
+
+        // Tooltip 元素
+        const tooltip = document.getElementById('customTooltip');
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', async function() {
+            showLoading(true);
+            try {
+                initSearchableSelects();
+                await loadOperators();
+                initializeSortHeader();
+                initTooltip();
+                await applyFilters();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // ===== Tooltip 初始化 =====
+        function initTooltip() {
+            const table = document.getElementById('emailsTable');
+            
+            table.addEventListener('mouseover', function(e) {
+                const cell = e.target.closest('.cell-truncate');
+                if (cell) {
+                    const fullText = cell.getAttribute('data-full-text');
+                    // 检查内容是否被截断（有省略号）
+                    if (fullText && cell.scrollWidth > cell.clientWidth) {
+                        tooltip.textContent = fullText;
+                        tooltip.style.display = 'block';
+                        updateTooltipPosition(e);
+                    }
+                }
+            });
+
+            table.addEventListener('mousemove', function(e) {
+                if (tooltip.style.display === 'block') {
+                    updateTooltipPosition(e);
+                }
+            });
+
+            table.addEventListener('mouseout', function(e) {
+                const cell = e.target.closest('.cell-truncate');
+                if (cell) {
+                    tooltip.style.display = 'none';
+                }
+            });
         }
 
-        if (typeof showNotification === 'undefined') {
-            window.showNotification = function (message, type = 'info') {
-                console.log(`[${type}] ${message}`);
+        function updateTooltipPosition(e) {
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // 防止tooltip超出视口右边界
+            const tooltipRect = tooltip.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            
+            let left = x - tooltipRect.width / 2;
+            if (left < 10) left = 10;
+            if (left + tooltipRect.width > viewportWidth - 10) {
+                left = viewportWidth - tooltipRect.width - 10;
+            }
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = (y - tooltipRect.height - 10) + 'px';
+        }
+
+        // ===== SearchableSelect 初始化 =====
+        function initSearchableSelects() {
+            // 日期范围选择
+            dateRangeSelect = new SearchableSelect('#dateRangeSelect', {
+                options: [
+                    { value: 'unlimited', label: '不限' },
+                    { value: 'today', label: '今日' },
+                    { value: 'last7days', label: '最近7天' },
+                    { value: 'last30days', label: '最近30天' },
+                    { value: 'custom', label: '自定义范围' }
+                ],
+                multiple: false,
+                placeholder: '选择日期范围'
+            });
+            dateRangeSelect.setValue('unlimited');
+            dateRangeSelect.onChange = (value) => {
+                handleDateRangeChange(value);
+                if (value !== 'custom') {
+                    currentFilters.date_range = value;
+                    currentFilters.start_date = '';
+                    currentFilters.end_date = '';
+                }
+            };
+
+            // 状态筛选
+            statusSelect = new SearchableSelect('#statusSelect', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'needs_attention', label: '需要注意' },
+                    { value: 'needs_attention_pending', label: '需要注意-未处理' },
+                    { value: 'processed', label: '已处理' }
+                ],
+                multiple: false,
+                placeholder: '选择状态'
+            });
+            statusSelect.onChange = (value) => {
+                currentFilters.status_filter = value;
             };
         }
 
-        // ===== 日期范围处理 =====
-        function handleDateRangeChange() {
-            const dateRange = document.getElementById('dateRange').value;
-            const customDateGroup = document.getElementById('customDateGroup');
-            const customDateGroup2 = document.getElementById('customDateGroup2');
-            if (dateRange === 'custom') {
-                customDateGroup.style.display = 'flex';
-                customDateGroup2.style.display = 'flex';
+        // ===== 日期范围变化处理 =====
+        function handleDateRangeChange(value) {
+            const customGroup = document.getElementById('customDateGroup');
+            if (value === 'custom') {
+                customGroup.style.display = 'block';
             } else {
-                customDateGroup.style.display = 'none';
-                customDateGroup2.style.display = 'none';
+                customGroup.style.display = 'none';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
             }
         }
 
-        // ===== 运营人员多选下拉 =====
-        function initOperatorDropdown() {
-            const anchor = document.getElementById('operatorAnchor');
-            const items = document.getElementById('operatorItems');
-            const dropdown = document.getElementById('operatorDropdown');
-
-            anchor.addEventListener('click', function (e) {
-                e.stopPropagation();
-                dropdown.classList.toggle('visible');
-                anchor.classList.toggle('active');
-            });
-
-            document.addEventListener('click', function () {
-                dropdown.classList.remove('visible');
-                anchor.classList.remove('active');
-            });
-
-            items.addEventListener('click', function (e) {
-                e.stopPropagation();
-            });
-        }
-
-        function populateOperatorDropdown(operators) {
-            const items = document.getElementById('operatorItems');
-            items.innerHTML = '';
-
-            operators.forEach(op => {
-                const item = document.createElement('div');
-                item.className = 'item';
-                item.innerHTML = `
-            <input type="checkbox" id="op_${op.id}" value="${op.id}" ${op.id === 'all' ? 'checked' : ''}>
-            <label for="op_${op.id}">${op.first_name}</label>
-        `;
-                items.appendChild(item);
-
-                const checkbox = item.querySelector('input');
-                checkbox.addEventListener('change', function () {
-                    const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
-
-                    if (this.value === 'all' && this.checked) {
-                        document.querySelectorAll('#operatorItems input[type="checkbox"]').forEach(cb => {
-                            if (cb !== this) cb.checked = false;
-                        });
-                    } else if (this.value !== 'all' && this.checked && allCheckbox) {
-                        allCheckbox.checked = false;
-                    }
-                    updateOperatorSelection();
-                });
-            });
-
-            updateOperatorSelection();
-        }
-
-        function updateOperatorSelection() {
-            const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
-            const allCheckbox = document.querySelector('#operatorItems input[value="all"]');
-            const selectedOperators = [];
-            let selectedText = '选择运营人员';
-
-            if (allCheckbox && allCheckbox.checked) {
-                selectedText = '全部人员';
-                currentFilters.operator_ids = [];
-            } else {
-                checkboxes.forEach(cb => {
-                    if (cb.checked && cb.value !== 'all') {
-                        selectedOperators.push(cb.value);
-                    }
-                });
-                if (selectedOperators.length > 0) {
-                    selectedText = `已选择 ${selectedOperators.length} 人`;
-                }
-                currentFilters.operator_ids = selectedOperators;
-            }
-
-            document.getElementById('operatorSelectedText').textContent = selectedText;
-        }
-
+        // ===== 加载运营人员 =====
         async function loadOperators() {
             try {
                 const response = await fetch('/api/amazon/shop-emails/operators/');
                 const result = await response.json();
                 if (result.success && result.data) {
-                    populateOperatorDropdown(result.data);
+                    const options = [{ value: 'all', label: '全部人员' }, ...result.data.map(op => ({
+                        value: String(op.id),
+                        label: op.first_name
+                    }))];
+                    
+                    operatorSelect = new SearchableSelect('#operatorSelect', {
+                        options: options,
+                        multiple: true,
+                        placeholder: '选择运营人员'
+                    });
+                    operatorSelect.setValue(['all']);
+                    operatorSelect.onChange = (values) => {
+                        if (values.includes('all')) {
+                            currentFilters.operator_ids = [];
+                        } else {
+                            currentFilters.operator_ids = values;
+                        }
+                    };
+
                     currentUserPermissions = {
                         can_notify_all: result.can_notify_all || false,
                         can_notify_group: result.can_notify_group || false,
                         group_name: result.group_name || ''
                     };
+                    
                     return true;
                 }
                 return false;
@@ -573,46 +731,61 @@
             }
         }
 
-        // ===== 筛选逻辑 =====
+        // ===== 获取当前筛选条件 =====
         function getCurrentFilters() {
+            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited';
             return {
-                date_range: document.getElementById('dateRange').value,
-                start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
+                date_range: dateRange,
+                start_date: dateRange === 'custom' ? document.getElementById('startDate').value : '',
+                end_date: dateRange === 'custom' ? document.getElementById('endDate').value : '',
                 operator_ids: currentFilters.operator_ids,
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
                 sender_keyword: document.getElementById('senderFilter').value.trim(),
                 subject_keyword: document.getElementById('subjectFilter').value.trim(),
-                status_filter: document.getElementById('statusFilter').value,
+                status_filter: statusSelect ? statusSelect.getValue() : '',
                 sort_field: currentFilters.sort_field,
                 sort_order: currentFilters.sort_order
             };
         }
 
-        function setDefaultFilters() {
-            document.getElementById('dateRange').value = 'unlimited';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
-            document.getElementById('shopNameFilter').value = '';
-            document.getElementById('senderFilter').value = '';
-            document.getElementById('subjectFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('pageSize').value = '20';
-            currentFilters.operator_ids = [];
+        // ===== 应用筛选 =====
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+            emailsPagination.page = 1;
+            try {
+                await loadEmailsTable();
+                checkNotifyButtonVisibility();
+            } catch (error) {
+                showNotification('数据请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
         }
 
+        // ===== 重置筛选 =====
         async function resetFilters(event) {
             showLoading(true);
             try {
-                setDefaultFilters();
-                const checkboxes = document.querySelectorAll('#operatorItems input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.checked = cb.value === 'all';
-                });
-                updateOperatorSelection();
+                if (dateRangeSelect) dateRangeSelect.setValue('unlimited');
+                if (operatorSelect) operatorSelect.setValue(['all']);
+                if (statusSelect) statusSelect.setValue('');
+                
+                document.getElementById('shopNameFilter').value = '';
+                document.getElementById('senderFilter').value = '';
+                document.getElementById('subjectFilter').value = '';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+                document.getElementById('customDateGroup').style.display = 'none';
+                
+                clearSelection();
+                
                 emailsPagination.page = 1;
                 emailsPagination.page_size = 20;
-                await applyFilters();
+                updatePageSizeDisplay();
+                
+                currentFilters = getCurrentFilters();
+                await loadEmailsTable();
                 showNotification('筛选条件已重置', 'success');
             } catch (error) {
                 showNotification('重置失败: ' + error.message, 'error');
@@ -621,6 +794,7 @@
             }
         }
 
+        // ===== 刷新数据 =====
         function refreshData(event) {
             const icon = event.target.closest('button').querySelector('i');
             if (icon) {
@@ -633,20 +807,7 @@
             });
         }
 
-        async function applyFilters() {
-            showLoading(true);
-            currentFilters = getCurrentFilters();
-            try {
-                await loadEmailsTable();
-                showNotification('邮件数据已更新', 'success');
-                checkNotifyButtonVisibility();
-            } catch (error) {
-                showNotification('数据请求失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
+        // ===== 排序处理 =====
         function handleSort(field) {
             if (currentFilters.sort_field === field) {
                 currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
@@ -666,117 +827,20 @@
             loadEmailsTable();
         }
 
-        // ===== 通知功能 =====
-        function checkNotifyButtonVisibility() {
-            const notifyBtn = document.getElementById('notifyOperatorsBtn');
-            const hasNotifyPermission = currentUserPermissions.can_notify_all || currentUserPermissions.can_notify_group;
-
-            if (hasNotifyPermission) {
-                notifyBtn.style.display = 'inline-flex';
-                const pendingCount = parseInt(document.getElementById('pendingCount').textContent) || 0;
-                notifyBtn.disabled = pendingCount === 0;
-                if (pendingCount === 0) {
-                    notifyBtn.title = '当前筛选条件下没有待处理的邮件';
-                } else {
-                    notifyBtn.title = `通知筛选结果中有待处理邮件的运营（共${pendingCount}封）`;
-                }
-            } else {
-                notifyBtn.style.display = 'none';
+        function initializeSortHeader() {
+            const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
+            if (th) {
+                th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
             }
         }
 
-        function closeNotifyModal() {
-            document.getElementById('notifyConfirmModal').style.display = 'none';
-            document.getElementById('notifyConfirmList').innerHTML = '';
-            document.getElementById('confirmNotifyBtn').disabled = false;
-            document.getElementById('confirmNotifyBtn').innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
-        }
-
-        async function handleNotifyOperators() {
-            showLoading(true);
-            try {
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-                const response = await fetch('/api/amazon-shop-emails/notify/preview/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(currentFilters)
-                });
-
-                const result = await response.json();
-
-                if (result.success && result.data && result.data.operators.length > 0) {
-                    const listHtml = result.data.operators.map(op => `
-                <div class="notify-confirm-item">
-                    <span>${op.operator_name}</span>
-                    <span style="color: var(--accent-color); font-weight: 500;">${op.pending_count}封</span>
-                </div>
-            `).join('');
-
-                    document.getElementById('notifyConfirmList').innerHTML = listHtml;
-                    document.getElementById('notifyConfirmTotal').textContent =
-                        `共 ${result.data.operators.length} 人，${result.data.total_pending} 封邮件`;
-                    document.getElementById('notifyConfirmModal').style.display = 'flex';
-                } else {
-                    showNotification('当前筛选条件下没有需要通知的运营', 'info');
-                }
-            } catch (error) {
-                showNotification('获取通知列表失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function executeNotify() {
-            const confirmBtn = document.getElementById('confirmNotifyBtn');
-            confirmBtn.disabled = true;
-            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
-
-            try {
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
-                const response = await fetch('/api/amazon-shop-emails/notify/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(currentFilters)
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    showNotification(`通知完成：成功 ${result.data.success_count} 人，失败 ${result.data.fail_count} 人`,
-                        result.data.fail_count > 0 ? 'warning' : 'success');
-                    closeNotifyModal();
-                    await loadEmailsTable();
-                } else {
-                    throw new Error(result.message || '通知发送失败');
-                }
-            } catch (error) {
-                showNotification('通知失败: ' + error.message, 'error');
-                confirmBtn.disabled = false;
-                confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
-            }
-        }
-
-        // ===== 表格渲染 =====
+        // ===== 加载表格数据 =====
         async function loadEmailsTable() {
             const tbody = document.getElementById('emailsTableBody');
-            const paginationControls = document.getElementById('paginationControls');
-
-            showLoading(true);
+            const paginationContainer = document.getElementById('paginationContainer');
 
             try {
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
+                const csrfToken = getCookie('csrftoken');
                 const requestData = {
                     ...currentFilters,
                     page: emailsPagination.page,
@@ -798,34 +862,36 @@
                     const data = result.data;
                     emailsPagination.total = data.total;
                     emailsPagination.total_pages = data.total_pages;
+                    allEmails = data.emails || [];
 
                     if (data.stats && data.stats.pending_count !== undefined) {
                         document.getElementById('pendingCount').textContent = data.stats.pending_count;
                     }
 
-                    renderEmailsTable(data.emails || []);
+                    renderEmailsTable(allEmails);
                     renderPagination();
+                    updateSelectAllCheckbox();
+                    updateBulkActionBar();
 
-                    paginationControls.style.display = data.total > 0 ? 'flex' : 'none';
+                    paginationContainer.style.display = data.total > 0 ? 'flex' : 'none';
                 } else {
                     throw new Error(result.message || '加载失败');
                 }
             } catch (error) {
                 console.error('加载错误:', error);
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="empty-state">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>数据请求失败: ${error.message}</p>
-                </td>
-            </tr>
-        `;
-                paginationControls.style.display = 'none';
-            } finally {
-                showLoading(false);
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationContainer.style.display = 'none';
             }
         }
 
+        // ===== 渲染表格 =====
         function renderStatusBadge(is_attention_needed, is_processed) {
             if (is_attention_needed) {
                 if (is_processed) {
@@ -841,13 +907,13 @@
             const tbody = document.getElementById('emailsTableBody');
             if (!emails || emails.length === 0) {
                 tbody.innerHTML = `
-            <tr>
-                <td colspan="9" class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <p>暂无邮件数据</p>
-                </td>
-            </tr>
-        `;
+                    <tr>
+                        <td colspan="10" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无邮件数据</p>
+                        </td>
+                    </tr>
+                `;
                 return;
             }
 
@@ -855,41 +921,169 @@
                 const showButton = email.is_attention_needed && !email.is_processed;
                 const buttonDisabled = email.is_processed || !email.is_attention_needed;
                 const buttonText = email.is_processed ? '已处理' : '标记处理';
-
-                // 修改 renderEmailsTable 函数中的表格行渲染部分
-// 从第7步开始修改
+                const isSelected = selectedEmailIds.has(email.id);
 
                 return `
-    <tr data-id="${email.id}">
-        <td>${email.receive_time || '-'}</td>
-        <td>${email.shop_name || '未知店铺'}</td>
-        <td>${email.operator_name || '-'}</td>
-        <td>${email.ops_group || '-'}</td>
-        <td>${email.role || '-'}</td>
-        <td title="${email.sender || ''}">${email.sender || '-'}</td>
-        <td title="${email.subject || ''}">${email.subject || '-'}</td>
-        <td>${renderStatusBadge(email.is_attention_needed, email.is_processed)}</td>
-        <td>
-            <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                <button class="btn-process" onclick="viewEmailDetail(${email.id}, event)" title="查看邮件详情">
-                    <i class="fas fa-eye"></i>
-                    <span>查看</span>
-                </button>
-                <button class="btn-process"
-                        onclick="markProcessed(${email.id}, event)"
-                        ${buttonDisabled ? 'disabled' : ''}
-                        title="${showButton ? '标记为已处理' : '已处理或无需处理'}">
-                    <i class="fas fa-check"></i>
-                    <span>${buttonText}</span>
-                </button>
-            </div>
-        </td>
-    </tr>
-`;
+                    <tr data-id="${email.id}">
+                        <td class="w-checkbox">
+                            <input type="checkbox" class="row-checkbox" 
+                                   ${isSelected ? 'checked' : ''}
+                                   onchange="toggleSelectRow(${email.id})">
+                        </td>
+                        <td class="cell-truncate cell-title" data-full-text="${escapeHtml(email.subject || '-')}">
+                            ${email.subject || '-'}
+                        </td>
+                        <td>${renderStatusBadge(email.is_attention_needed, email.is_processed)}</td>
+                        <td class="cell-truncate cell-sender" data-full-text="${escapeHtml(email.sender || '-')}">
+                            ${email.sender || '-'}
+                        </td>
+                        <td>${email.receive_time || '-'}</td>
+                        <td>${email.shop_name || '未知店铺'}</td>
+                        <td>${email.operator_name || '-'}</td>
+                        <td>${email.ops_group || '-'}</td>
+                        <td>${email.role || '-'}</td>
+                        <td>
+                            <div class="action-group">
+                                <button class="btn-view" onclick="viewEmailDetail(${email.id}, event)" title="查看邮件详情">
+                                    <i class="fas fa-eye"></i>
+                                    <span>查看</span>
+                                </button>
+                                <button class="btn-process" 
+                                        onclick="markProcessed(${email.id}, event)"
+                                        ${buttonDisabled ? 'disabled' : ''}
+                                        title="${showButton ? '标记为已处理' : '已处理或无需处理'}">
+                                    <i class="fas fa-check"></i>
+                                    <span>${buttonText}</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
             }).join('');
         }
 
-        // ===== 操作处理 =====
+        // HTML转义函数，防止XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== 批量选择功能 =====
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            
+            rowCheckboxes.forEach((cb, index) => {
+                const emailId = allEmails[index].id;
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedEmailIds.add(emailId);
+                } else {
+                    selectedEmailIds.delete(emailId);
+                }
+            });
+            
+            updateBulkActionBar();
+        }
+
+        function toggleSelectRow(emailId) {
+            if (selectedEmailIds.has(emailId)) {
+                selectedEmailIds.delete(emailId);
+            } else {
+                selectedEmailIds.add(emailId);
+            }
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleIds = allEmails.map(e => e.id);
+            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedEmailIds.has(id));
+            checkbox.checked = allSelected;
+        }
+
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const countText = document.getElementById('selectedCountText');
+            
+            countText.textContent = `已选择 ${selectedEmailIds.size} 封`;
+            
+            if (selectedEmailIds.size > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            selectedEmailIds.clear();
+            document.getElementById('selectAll').checked = false;
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActionBar();
+        }
+
+        // ===== 批量标记处理 =====
+        async function batchMarkProcessed() {
+            if (selectedEmailIds.size === 0) {
+                showNotification('请至少选择一封邮件', 'warning');
+                return;
+            }
+
+            if (!confirm(`确定要将选中的 ${selectedEmailIds.size} 封邮件标记为已处理吗？`)) {
+                return;
+            }
+
+            showLoading(true);
+            const ids = Array.from(selectedEmailIds);
+            let successCount = 0;
+            let failCount = 0;
+
+            try {
+                const csrfToken = getCookie('csrftoken');
+                
+                const batchSize = 5;
+                for (let i = 0; i < ids.length; i += batchSize) {
+                    const batch = ids.slice(i, i + batchSize);
+                    const promises = batch.map(id => 
+                        fetch(`/api/amazon-shop-emails/${id}/mark-processed/`, {
+                            method: 'PUT',
+                            headers: { 'X-CSRFToken': csrfToken }
+                        }).then(async res => {
+                            if (res.ok) {
+                                successCount++;
+                                return { id, success: true };
+                            } else {
+                                failCount++;
+                                return { id, success: false };
+                            }
+                        }).catch(() => {
+                            failCount++;
+                            return { id, success: false };
+                        })
+                    );
+                    
+                    await Promise.all(promises);
+                }
+
+                if (failCount === 0) {
+                    showNotification(`成功标记 ${successCount} 封邮件为已处理`, 'success');
+                } else {
+                    showNotification(`完成：成功 ${successCount} 封，失败 ${failCount} 封`, 'warning');
+                }
+
+                clearSelection();
+                await loadEmailsTable();
+                
+            } catch (error) {
+                showNotification('批量处理失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ===== 单个标记处理 =====
         async function markProcessed(emailId, event) {
             const button = event.currentTarget;
             const icon = button.querySelector('i');
@@ -902,9 +1096,7 @@
             span.textContent = '处理中...';
 
             try {
-                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
-
+                const csrfToken = getCookie('csrftoken');
                 const response = await fetch(`/api/amazon-shop-emails/${emailId}/mark-processed/`, {
                     method: 'PUT',
                     headers: {
@@ -919,22 +1111,25 @@
                     const row = document.querySelector(`tr[data-id="${emailId}"]`);
                     if (row && result.data) {
                         const data = result.data;
-                        row.cells[6].textContent = data.subject || '-';
-                        row.cells[6].title = data.subject || '';
-                        row.cells[7].innerHTML = renderStatusBadge(data.is_attention_needed, data.is_processed);
-                        const button = row.querySelector('.btn-process');
-                        button.disabled = true;
-                        button.title = '已处理';
-                        icon.className = 'fas fa-check';
-                        span.textContent = '已处理';
+                        // 更新标题（第1列）
+                        row.cells[1].textContent = data.subject || '-';
+                        row.cells[1].setAttribute('data-full-text', data.subject || '-');
+                        // 更新状态（第2列）
+                        row.cells[2].innerHTML = renderStatusBadge(data.is_attention_needed, data.is_processed);
+                        // 更新按钮
+                        const btn = row.querySelector('.btn-process');
+                        btn.disabled = true;
+                        btn.title = '已处理';
+                        btn.innerHTML = '<i class="fas fa-check"></i><span>已处理</span>';
                     }
                     const pendingCountEl = document.getElementById('pendingCount');
                     const currentCount = parseInt(pendingCountEl.textContent) || 0;
                     pendingCountEl.textContent = Math.max(0, currentCount - 1);
+                    checkNotifyButtonVisibility();
                 } else {
                     let errorMsg = result.message || '标记失败';
                     if (response.status === 403) {
-                        errorMsg = '权限不足：您无权操作此邮件。请确认该店铺是否属于您。';
+                        errorMsg = '权限不足：您无权操作此邮件';
                     }
                     throw new Error(errorMsg);
                 }
@@ -946,103 +1141,13 @@
             }
         }
 
-        // ===== 分页渲染 =====
-        function renderPagination() {
-            const buttonsContainer = document.getElementById('paginationButtons');
-            const infoContainer = document.getElementById('paginationInfo');
-
-            const {page, page_size, total, total_pages} = emailsPagination;
-
-            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
-
-            let buttonsHTML = '';
-
-            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
-        <i class="fas fa-chevron-left"></i> 上一页
-    </button>`;
-
-            const maxButtons = 7;
-            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
-            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
-
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            if (startPage > 1) {
-                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
-                if (startPage > 2) {
-                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
-                }
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
-            }
-
-            if (endPage < total_pages) {
-                if (endPage < total_pages - 1) {
-                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
-                }
-                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
-            }
-
-            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-        下一页 <i class="fas fa-chevron-right"></i>
-    </button>`;
-
-            buttonsContainer.innerHTML = buttonsHTML;
-        }
-
-        function changePage(newPage) {
-            if (newPage < 1 || newPage > emailsPagination.total_pages) return;
-            emailsPagination.page = newPage;
-            loadEmailsTable();
-            document.getElementById('emailsTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
-        }
-
-        function changePageSize() {
-            const newSize = parseInt(document.getElementById('pageSize').value);
-            emailsPagination.page_size = newSize;
-            emailsPagination.page = 1;
-            loadEmailsTable();
-        }
-
-        // ===== 初始化 =====
-        function initializeSortHeader() {
-            const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
-            if (th) {
-                th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', async function () {
-            showLoading(true);
-            try {
-                initOperatorDropdown();
-                await loadOperators();
-                setDefaultFilters();
-                document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
-                handleDateRangeChange();
-                initializeSortHeader();
-                await applyFilters();
-            } catch (error) {
-                console.error('初始化错误:', error);
-                showNotification('初始化失败: ' + error.message, 'error');
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        // ===== 邮件详情弹窗功能 =====
-
+        // ===== 查看邮件详情 =====
         async function viewEmailDetail(emailId, event) {
             event.stopPropagation();
             const button = event.currentTarget;
             const icon = button.querySelector('i');
             const span = button.querySelector('span');
 
-            // 防止重复点击
             if (button.disabled) return;
 
             button.disabled = true;
@@ -1056,45 +1161,34 @@
                 if (result.success && result.data) {
                     const data = result.data;
 
-                    // 填充弹窗内容
                     document.getElementById('emailDetailSubject').textContent = data.subject || '无标题';
                     document.getElementById('emailDetailSender').textContent = data.sender || '未知发件人';
-                    document.getElementById('emailDetailShopEmail').textContent = data.shop_email || '-'; // 新增
+                    document.getElementById('emailDetailShopEmail').textContent = data.shop_email || '-';
                     document.getElementById('emailDetailReceiveTime').textContent = data.receive_time || '-';
                     document.getElementById('emailDetailShop').textContent = data.shop_name || '未知店铺';
-                    document.getElementById('emailDetailOperator').textContent =
+                    document.getElementById('emailDetailOperator').textContent = 
                         `${data.operator_name || '-'}${data.ops_group ? ' (' + data.ops_group + ')' : ''}`;
+                    document.getElementById('emailDetailStatus').innerHTML = 
+                        renderStatusBadge(data.is_attention_needed, data.is_processed);
 
-                    // 设置状态标签
-                    const statusEl = document.getElementById('emailDetailStatus');
-                    statusEl.innerHTML = renderStatusBadge(data.is_attention_needed, data.is_processed);
-
-                    // 设置邮件正文（优先使用HTML内容）
                     const bodyEl = document.getElementById('emailDetailBody');
-
-// 优先级：html_body > email_body > 暂无内容
                     const htmlContent = data.html_body;
                     const textContent = data.email_body;
 
                     if (htmlContent && htmlContent.trim() !== '') {
-                        // 如果有HTML内容，直接显示
                         bodyEl.innerHTML = htmlContent;
                     } else if (textContent && textContent.trim() !== '') {
-                        // 否则如果有纯文本内容
                         if (/<\/?[a-z][\s\S]*>/i.test(textContent)) {
                             bodyEl.innerHTML = textContent;
                         } else {
                             bodyEl.innerHTML = textContent.replace(/\n/g, '<br>');
                         }
                     } else {
-                        // 否则显示无内容提示
                         bodyEl.innerHTML = '<p style="color: #999; font-style: italic;">暂无邮件内容</p>';
                     }
 
-                    // 显示弹窗
-                    document.getElementById('emailDetailModal').style.display = 'flex';
+                    document.getElementById('emailDetailModal').style.display = 'block';
 
-                    // 恢复按钮状态
                     button.disabled = false;
                     icon.className = 'fas fa-eye';
                     span.textContent = '查看';
@@ -1111,10 +1205,9 @@
 
         function closeEmailDetailModal() {
             document.getElementById('emailDetailModal').style.display = 'none';
-
-            // 清空内容，避免下次打开时闪现旧数据
             document.getElementById('emailDetailSubject').textContent = '';
             document.getElementById('emailDetailSender').textContent = '';
+            document.getElementById('emailDetailShopEmail').textContent = '';
             document.getElementById('emailDetailReceiveTime').textContent = '';
             document.getElementById('emailDetailShop').textContent = '';
             document.getElementById('emailDetailOperator').textContent = '';
@@ -1122,9 +1215,224 @@
             document.getElementById('emailDetailBody').innerHTML = '';
         }
 
-        // 点击弹窗外部关闭弹窗
-        document.getElementById('emailDetailModal').addEventListener('click', function (e) {
-            if (e.target === this) {
+        // ===== 分页渲染 =====
+        function renderPagination() {
+            const pagination = document.getElementById('paginationNew');
+            const { page, page_size, total, total_pages } = emailsPagination;
+
+            const start = (page - 1) * page_size + 1;
+            const end = Math.min(page * page_size, total);
+            const statsText = total === 0 ? '0' : `${start}-${end} / 共 ${total} 条`;
+            document.getElementById('paginationStats').textContent = statsText;
+
+            let html = '';
+
+            html += `<button class="pagination-btn-new ${page === 1 ? 'disabled' : ''}" 
+                           onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>`;
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+            let endPage = Math.min(total_pages, startPage + maxVisible - 1);
+
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" 
+                               onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})">${total_pages}</button>`;
+            }
+
+            html += `<button class="pagination-btn-new ${page === total_pages ? 'disabled' : ''}" 
+                           onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>`;
+
+            pagination.innerHTML = html;
+        }
+
+        function goToPage(newPage) {
+            if (newPage < 1 || newPage > emailsPagination.total_pages) return;
+            emailsPagination.page = newPage;
+            loadEmailsTable();
+            document.getElementById('emailsTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function changePageSize(size) {
+            emailsPagination.page_size = size;
+            emailsPagination.page = 1;
+            updatePageSizeDisplay();
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            loadEmailsTable();
+        }
+
+        function updatePageSizeDisplay() {
+            document.getElementById('pageSizeText').textContent = emailsPagination.page_size + '条';
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${emailsPagination.page_size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+        }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= emailsPagination.total_pages) {
+                    goToPage(page);
+                }
+                event.target.value = '';
+            }
+        }
+
+        // ===== 通知功能 =====
+        function checkNotifyButtonVisibility() {
+            const notifyBtn = document.getElementById('notifyOperatorsBtn');
+            const hasNotifyPermission = currentUserPermissions.can_notify_all || currentUserPermissions.can_notify_group;
+
+            if (hasNotifyPermission) {
+                notifyBtn.style.display = 'inline-flex';
+                const pendingCount = parseInt(document.getElementById('pendingCount').textContent) || 0;
+                notifyBtn.disabled = pendingCount === 0;
+                notifyBtn.title = pendingCount === 0 ? '当前筛选条件下没有待处理的邮件' : `通知筛选结果中有待处理邮件的运营（共${pendingCount}封）`;
+            } else {
+                notifyBtn.style.display = 'none';
+            }
+        }
+
+        function closeNotifyModal() {
+            document.getElementById('notifyConfirmModal').style.display = 'none';
+            document.getElementById('notifyConfirmList').innerHTML = '';
+            document.getElementById('confirmNotifyBtn').disabled = false;
+            document.getElementById('confirmNotifyBtn').innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
+        }
+
+        async function handleNotifyOperators() {
+            showLoading(true);
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch('/api/amazon-shop-emails/notify/preview/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(currentFilters)
+                });
+
+                const result = await response.json();
+
+                if (result.success && result.data && result.data.operators.length > 0) {
+                    const listHtml = result.data.operators.map(op => `
+                        <div class="notify-confirm-item">
+                            <span>${op.operator_name}</span>
+                            <span style="color: var(--accent-color); font-weight: 600;">${op.pending_count}封</span>
+                        </div>
+                    `).join('');
+
+                    document.getElementById('notifyConfirmList').innerHTML = listHtml;
+                    document.getElementById('notifyConfirmTotal').textContent = 
+                        `共 ${result.data.operators.length} 人，${result.data.total_pending} 封邮件`;
+                    document.getElementById('notifyConfirmModal').style.display = 'block';
+                } else {
+                    showNotification('当前筛选条件下没有需要通知的运营', 'info');
+                }
+            } catch (error) {
+                showNotification('获取通知列表失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function executeNotify() {
+            const confirmBtn = document.getElementById('confirmNotifyBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch('/api/amazon-shop-emails/notify/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(currentFilters)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(`通知完成：成功 ${result.data.success_count} 人，失败 ${result.data.fail_count} 人`,
+                                   result.data.fail_count > 0 ? 'warning' : 'success');
+                    closeNotifyModal();
+                    await loadEmailsTable();
+                } else {
+                    throw new Error(result.message || '通知发送失败');
+                }
+            } catch (error) {
+                showNotification('通知失败: ' + error.message, 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 立即通知';
+            }
+        }
+
+        // ===== 工具函数 =====
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+                overlay.style.visibility = show ? 'visible' : 'hidden';
+                overlay.style.opacity = show ? '1' : '0';
+            }
+        }
+
+        // 点击分页下拉外部关闭
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('pageSizeWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                const dropdown = document.getElementById('pageSizeDropdown');
+                if (dropdown) dropdown.classList.remove('open');
+            }
+        });
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeNotifyModal();
                 closeEmailDetailModal();
             }
         });
