@@ -2,10 +2,6 @@
 from api.lingxing.openapi import OpenApiBase
 from api.lingxing.resp_schema import ResponseResult
 
-# 默认配置（向后兼容）
-DEFAULT_LINGXING_APP_ID = "ak_P211HcxRxAZ8x"
-DEFAULT_LINGXING_APP_SECRET = "KZ3Eu6Q9qpVCLPEv1tx/aQ=="
-
 
 async def get_api_resp(
     req_body: dict,
@@ -25,8 +21,8 @@ async def get_api_resp(
         app_secret: 领星AppSecret（可选，默认使用全局配置）
     """
     # 使用传入的配置或默认配置
-    use_app_id = app_id or DEFAULT_LINGXING_APP_ID
-    use_app_secret = app_secret or DEFAULT_LINGXING_APP_SECRET
+    use_app_id = app_id
+    use_app_secret = app_secret
     
     if not use_app_id or not use_app_secret:
         raise ValueError("领星AppID或AppSecret未配置")
