@@ -70,7 +70,7 @@ async def get_lingxing_orders(sid_list: List[int], days: int = 3) -> List[Dict]:
     return all_orders
 
 
-async def get_lingxing_zifa_order(sid:str, days: int = 3):
+async def get_lingxing_zifa_order(sid:str, days: int = 3, app_id: str = None, app_secret: str = None):
     current_time = datetime.today()
     start_time = current_time - timedelta(days=days)
     req_body = {
@@ -79,7 +79,7 @@ async def get_lingxing_zifa_order(sid:str, days: int = 3):
         "end_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
         "length": 5000,
     }
-    resp = await get_api_resp(req_body, api_path="/erp/sc/routing/order/Order/getOrderList")
+    resp = await get_api_resp(req_body, api_path="/erp/sc/routing/order/Order/getOrderList", app_id=app_id, app_secret=app_secret)
     # print(resp.data)
     return resp.data
 
