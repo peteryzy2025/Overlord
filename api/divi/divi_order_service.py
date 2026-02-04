@@ -13,7 +13,7 @@ from api.lingxing.Y_OpenApi import get_api_resp
 from api.lingxing.resp_schema import ResponseResult
 
 from amazon.models import LingXingAmazonShop
-from general.models import AmazonShop
+from general.models import AmazonShop, Project
 import random
 
 # ================== 通用 Divi 请求封装（就是你原来的签名逻辑） ==================
@@ -121,10 +121,15 @@ def get_divi_api_resp(
         data_dict: Dict[str, Any],
         timeout: int = 10,
         print_if: bool = False,
+        brand_id: int = None,
 ) -> requests.Response:
     """
     Divi 通用请求函数（带签名）
+    根据 brand_id 获取对应项目的 PARTNER_CODE 和 SECRET
     """
+    # 根据 brand_id 获取项目配置
+    partner_code, secret = _get_divi_credentials(brand_id)
+    
     # 1) 原始 JSON（不排序）→ payload.data
     data_json_original = json.dumps(
         data_dict, ensure_ascii=False, separators=(",", ":")
@@ -141,7 +146,7 @@ def get_divi_api_resp(
     timestamp = int(time.time() * 1000)
 
     # 4) 签名原文
-    to_verify = f"{sorted_data_json}{timestamp}{SECRET}"
+    to_verify = f"{sorted_data_json}{timestamp}{secret}"
 
     # 5) URL 编码
     to_verify_encoded = quote_plus(to_verify, encoding="utf-8")
@@ -154,7 +159,7 @@ def get_divi_api_resp(
 
     # 7) payload
     payload = {
-        "partnerCode": PARTNER_CODE,
+        "partnerCode": partner_code,
         "timestamp": timestamp,
         "data": data_json_original,
         "digest": digest_base64,
@@ -165,11 +170,43 @@ def get_divi_api_resp(
 
     if print_if:
         print(f"[Divi] URL: {url}")
+        print(f"[Divi] PartnerCode: {partner_code}")
         print(json.dumps(payload, ensure_ascii=False, indent=2))
 
     resp = requests.post(url, json=payload, headers=headers, timeout=timeout)
     resp.raise_for_status()
     return resp
+
+
+def _get_divi_credentials(brand_id: int = None) -> Tuple[str, str]:
+    """
+    根据 brand_id 获取 DIVI 接口凭证
+    优先从项目配置获取，未配置则抛出异常
+    """
+    # 如果有 brand_id，尝试获取对应项目的配置
+    if brand_id:
+        try:
+            # 通过 brand_id (divi_shop_id) 找到 AmazonShop
+            shop = AmazonShop.objects.filter(divi_shop_id=brand_id).select_related('project').first()
+            if shop and shop.project:
+                project = shop.project
+                # 检查项目是否配置了 DIVI 凭证
+                if project.divi_partner_code and project.divi_secret:
+                    return project.divi_partner_code, project.divi_secret
+                else:
+                    raise ValueError(
+                        f"项目 '{project.name}' (ID: {project.id}) 未配置 DIVI 接口凭证，"
+                        f"请先填写 divi_partner_code 和 divi_secret"
+                    )
+            else:
+                raise ValueError(f"未找到 brand_id={brand_id} 对应的店铺或项目")
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"获取项目 DIVI 凭证失败: {str(e)}")
+    
+    # 如果没有 brand_id，使用默认配置（向后兼容）
+    return PARTNER_CODE, SECRET
 
 
 # ================== 时间范围工具（默认前 15 天） ==================
@@ -226,6 +263,7 @@ def query_divi_order(
         data_dict=data_dict,
         timeout=timeout,
         print_if=print_if,
+        brand_id=brand_id,
     )
     resp_json = resp.json()
 
@@ -390,6 +428,7 @@ def divi_add_order(
         data_dict=data_dict,
         timeout=timeout,
         print_if=print_if,
+        brand_id=brand_id,
     )
 
     return ResponseResult(**resp.json())

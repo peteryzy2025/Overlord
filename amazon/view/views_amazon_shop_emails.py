@@ -191,16 +191,20 @@ def get_amazon_shop_emails_api(request):
                 }
             })
 
-        # 获取权限范围内的店铺
+        # 获取权限范围内的店铺（带公司限定）
+        base_shop_qs = AmazonShop.objects.all()
+        if hasattr(user, 'company') and user.company:
+            base_shop_qs = base_shop_qs.filter(company=user.company)
+        
         if filter_type == 'ops_id':
-            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id=filter_value).values_list('id', flat=True)
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
-            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
         elif filter_type == 'all':
-            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+            shop_ids = base_shop_qs.values_list('id', flat=True)
         else:
-            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
+            shop_ids = base_shop_qs.none().values_list('id', flat=True)
 
         # 构建查询条件
         email_filter = Q(shop_id__in=list(shop_ids))
@@ -425,16 +429,20 @@ def notify_operators_preview_api(request):
                 }
             })
 
-        # 获取店铺ID
+        # 获取店铺ID（带公司限定）
+        base_shop_qs = AmazonShop.objects.all()
+        if hasattr(user, 'company') and user.company:
+            base_shop_qs = base_shop_qs.filter(company=user.company)
+        
         if filter_type == 'ops_id':
-            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id=filter_value).values_list('id', flat=True)
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
-            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
         elif filter_type == 'all':
-            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+            shop_ids = base_shop_qs.values_list('id', flat=True)
         else:
-            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
+            shop_ids = base_shop_qs.none().values_list('id', flat=True)
 
         # 构建基础筛选条件
         email_filter = Q(
@@ -604,16 +612,20 @@ def notify_operators_api(request):
                 }
             })
 
-        # 获取店铺ID
+        # 获取店铺ID（带公司限定）
+        base_shop_qs = AmazonShop.objects.all()
+        if hasattr(user, 'company') and user.company:
+            base_shop_qs = base_shop_qs.filter(company=user.company)
+        
         if filter_type == 'ops_id':
-            shop_ids = AmazonShop.objects.filter(ops_id=filter_value).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id=filter_value).values_list('id', flat=True)
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(ops_group=filter_value).values_list('user_id', flat=True)
-            shop_ids = AmazonShop.objects.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
+            shop_ids = base_shop_qs.filter(ops_id__in=list(user_ids)).values_list('id', flat=True)
         elif filter_type == 'all':
-            shop_ids = AmazonShop.objects.all().values_list('id', flat=True)
+            shop_ids = base_shop_qs.values_list('id', flat=True)
         else:
-            shop_ids = AmazonShop.objects.none().values_list('id', flat=True)
+            shop_ids = base_shop_qs.none().values_list('id', flat=True)
 
         # 使用Q对象构建基础筛选条件
         base_filter = Q(
@@ -761,21 +773,25 @@ def get_shop_emails_operators_api(request):
         user = request.user
         permission_codes = get_user_permission_codes(user)
 
-        # 判断权限范围
+        # 判断权限范围（带公司限定）
+        base_shop_qs = AmazonShop.objects.all()
+        if hasattr(user, 'company') and user.company:
+            base_shop_qs = base_shop_qs.filter(company=user.company)
+        
         if 3 in permission_codes or 555 in permission_codes:
-            shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
+            shops = base_shop_qs.filter(ops__isnull=False).select_related('ops')
         elif 2 in permission_codes:
             try:
                 user_group = user.operational_account.ops_group
-                shops = AmazonShop.objects.filter(
+                shops = base_shop_qs.filter(
                     ops__operational_account__ops_group=user_group
                 ).select_related('ops')
             except AttributeError:
-                shops = AmazonShop.objects.none()
+                shops = base_shop_qs.none()
         elif 1 in permission_codes:
-            shops = AmazonShop.objects.filter(ops=user).select_related('ops')
+            shops = base_shop_qs.filter(ops=user).select_related('ops')
         else:
-            shops = AmazonShop.objects.none()
+            shops = base_shop_qs.none()
 
         # 去重并组装数据
         operators_dict = {}
