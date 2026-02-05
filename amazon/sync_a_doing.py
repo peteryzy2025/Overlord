@@ -64,7 +64,7 @@ if __name__ == '__main__':
             lx_order_main()  # 亚马逊订单
             asyncio.run(lx_zf_main())  # 自发货订单号同步
             asyncio.run(lx_order_info_main())  # 更新发货时限
-            divi_process_orders("2025-11-19", True)  # 导单
+            divi_process_orders("2026-01-01", True)  # 导单
             temu_orders()  # temu订单
         except Exception as e:
             print(f"错误: {e}")

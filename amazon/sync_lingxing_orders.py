@@ -221,30 +221,76 @@ def sync_amazon_orders(data_list):
 
 
 def lx_order_main():
-    print("开始同步亚马逊订单数据…")
+    print("开始同步亚马逊订单数据...")
 
     # 1. 从 LingXingAmazonShop 表中获取需要同步的店铺 sid
-    #    这里示例按国家=“美国”筛选，你可以按需要改条件
-    sids = list(
+    #    这里示例按国家="美国"筛选，你可以按需要改条件
+    #    同时关联查询 amazon_shop -> project 获取领星 API 配置
+    shops = (
         LingXingAmazonShop.objects
         .filter(country="美国")
-        .values_list("sid", flat=True)
+        .select_related("amazon_shop__project")
     )
 
-    if not sids:
-        print("没有找到任何国家为“美国”的领星店铺，结束。")
+    if not shops.exists():
+        print("没有找到任何国家为美国的领星店铺，结束。")
         return
 
-    print(f"共找到 {len(sids)} 个美国店铺 sid")
+    # 按项目分组店铺（不同项目可能有不同的领星 API 凭证）
+    project_shops = {}
+    for shop in shops:
+        project = shop.amazon_shop.project if shop.amazon_shop else None
+        project_id = project.id if project else None
+        
+        if project_id not in project_shops:
+            project_shops[project_id] = {
+                "project": project,
+                "sids": [],
+            }
+        project_shops[project_id]["sids"].append(shop.sid)
 
-    # 2. 用异步接口从领星批量拉取订单（内部会自动按 20 个 sid 分组请求）
-    resp_data = asyncio.run(get_lingxing_orders(sids, days=30))
+    print(f"共找到 {shops.count()} 个美国店铺，分布在 {len(project_shops)} 个项目")
 
-    if not resp_data:
+    all_orders = []
+
+    # 2. 按项目分组拉取订单数据
+    for project_id, data in project_shops.items():
+        project = data["project"]
+        sids = data["sids"]
+        
+        if not project:
+            print(f"警告：部分店铺未绑定项目，跳过 {len(sids)} 个店铺")
+            continue
+        
+        if not project.lingxing_app_id or not project.lingxing_app_secret:
+            print(f"警告：项目 {project.name} 未配置领星 API 凭证，跳过 {len(sids)} 个店铺")
+            continue
+        
+        print(f"项目 [{project.name}] 开始同步 {len(sids)} 个店铺...")
+        
+        # 用异步接口从领星批量拉取订单（内部会自动按 20 个 sid 分组请求）
+        resp_data = asyncio.run(
+            get_lingxing_orders(
+                sids, 
+                days=30,
+                app_id=project.lingxing_app_id,
+                app_secret=project.lingxing_app_secret
+            )
+        )
+        
+        if resp_data:
+            all_orders.extend(resp_data)
+            print(f"项目 [{project.name}] 获取到 {len(resp_data)} 条订单")
+        else:
+            print(f"项目 [{project.name}] 未返回订单数据")
+
+    if not all_orders:
         print("接口没有返回任何订单数据，结束。")
         return
+    
     # 3. 写入本地数据库
-    sync_amazon_orders(resp_data)
+    print(f"\n总计获取 {len(all_orders)} 条订单，开始写入数据库...")
+    sync_amazon_orders(all_orders)
     print("完成同步订单")
 
 
