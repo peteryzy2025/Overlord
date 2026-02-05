@@ -17,12 +17,14 @@ async def get_lingxing_shop():
     return resp.data
 
 
-async def get_lingxing_orders(sid_list: List[int], days: int = 3) -> List[Dict]:
+async def get_lingxing_orders(sid_list: List[int], days: int = 3, app_id: str = None, app_secret: str = None) -> List[Dict]:
     """
     根据 sid_list 从领星获取订单数据（自动处理每次最多 20 个 sid 的限制）
 
     :param sid_list: 店铺 sid 列表（可以超过 20 个，本函数会自动分组）
     :param days: 取最近多少天的订单（默认 3 天）
+    :param app_id: 领星AppID（可选，默认使用项目配置）
+    :param app_secret: 领星AppSecret（可选，默认使用项目配置）
     :return: 订单列表（直接返回领星接口返回的 data 合并结果）
     """
     if not sid_list:
@@ -54,7 +56,9 @@ async def get_lingxing_orders(sid_list: List[int], days: int = 3) -> List[Dict]:
             resp = await get_api_resp(
                 req_body=req_body,
                 api_path="/erp/sc/data/mws/orders",
-                method="POST"
+                method="POST",
+                app_id=app_id,
+                app_secret=app_secret
             )
         except Exception as e:
             print(f"[get_lingxing_orders] 第 {idx} 组请求失败：{e}")
