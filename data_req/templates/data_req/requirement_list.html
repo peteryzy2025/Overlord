@@ -1120,6 +1120,20 @@
             window.location.href = '/data_req/';
         }
 
+        function changePage(page) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('page', page);
+            window.location.href = '/data_req/?' + params.toString();
+        }
+
+        function changePageSize() {
+            const pageSize = document.getElementById('pageSize').value;
+            const params = new URLSearchParams(window.location.search);
+            params.set('page_size', pageSize);
+            params.set('page', 1);
+            window.location.href = '/data_req/?' + params.toString();
+        }
+
         document.getElementById('requirementModal').addEventListener('click', function (e) {
             if (e.target === this) closeModal();
         });
