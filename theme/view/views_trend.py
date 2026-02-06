@@ -85,14 +85,15 @@ def batch_analyze_theme_trend(themes):
     for theme in themes:
         if not theme:
             continue
-        # 尝试从缓存获取
-        cache_key = f'risk_analysis_v2:{hash(theme)}'
+        # 尝试从缓存获取 (注意：逻辑变更，升级缓存key)
+        cache_key = f'risk_analysis_v3:{hash(theme)}'
         cached_result = cache.get(cache_key)
         if cached_result:
             results[theme] = cached_result
             continue
             
-        tokens = words_split(theme.strip())
+        # 使用 get_ngram_phrases 进行分词，弃用 words_split
+        tokens = get_ngram_phrases(theme.strip())
         valid_tokens = [t for t in tokens if not should_skip_word(t)]
         valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
@@ -266,7 +267,7 @@ def batch_analyze_theme_trend(themes):
         }
         
         # 存入缓存
-        cache_key = f'risk_analysis_v2:{hash(theme)}'
+        cache_key = f'risk_analysis_v3:{hash(theme)}'
         cache.set(cache_key, result, 3600)
         results[theme] = result
 
