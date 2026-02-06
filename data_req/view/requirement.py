@@ -19,6 +19,16 @@ class RequirementListView(LoginRequiredMixin, ListView):
     context_object_name = 'requirements'
     paginate_by = 20
 
+    def get_paginate_by(self, queryset):
+        """支持动态每页条数"""
+        page_size = self.request.GET.get('page_size')
+        if page_size:
+            try:
+                return int(page_size)
+            except ValueError:
+                pass
+        return self.paginate_by
+
     def get_queryset(self):
         queryset = DataRequirement.objects.all().select_related('requester', 'developer')
         status = self.request.GET.get('status')

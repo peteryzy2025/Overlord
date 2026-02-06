@@ -12,7 +12,6 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from django.contrib.auth.decorators import login_required
 from theme.models import *
 
-
 # 状态码集合（保持不变）
 before_STATUS_CODES = {
     616, 630, 638, 640, 641, 642, 643, 644, 645, 646, 647, 648,
@@ -80,19 +79,20 @@ def batch_analyze_theme_trend(themes):
     results = {}
     unique_tokens = set()
     theme_tokens_map = {}
-    
+
     # 1. 预处理所有主题，收集 tokens
     for theme in themes:
         if not theme:
             continue
-        # 尝试从缓存获取
-        cache_key = f'risk_analysis_v2:{hash(theme)}'
+        # 尝试从缓存获取 (注意：逻辑变更，升级缓存key)
+        cache_key = f'risk_analysis_v3:{hash(theme)}'
         cached_result = cache.get(cache_key)
         if cached_result:
             results[theme] = cached_result
             continue
-            
-        tokens = words_split(theme.strip())
+
+        # 使用 get_ngram_phrases 进行分词，弃用 words_split
+        tokens = get_ngram_phrases(theme.strip())
         valid_tokens = [t for t in tokens if not should_skip_word(t)]
         valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
@@ -109,7 +109,7 @@ def batch_analyze_theme_trend(themes):
             cache.set(cache_key, empty_result, 3600)  # 缓存1小时
             results[theme] = empty_result
             continue
-            
+
         theme_tokens_map[theme] = valid_tokens
         for token in valid_tokens:
             unique_tokens.add(token)
@@ -127,7 +127,7 @@ def batch_analyze_theme_trend(themes):
 
     # 分离低风险白名单词和其他TRO词
     low_risk_whitelist = set()  # name_type in {1,9} 的词（白名单，不查美标网）
-    tro_risk_map_global = {}    # 其他需要风险判断的词
+    tro_risk_map_global = {}  # 其他需要风险判断的词
 
     for r in tro_records_all:
         word_lower = r['theme_name'].lower()
@@ -138,35 +138,35 @@ def batch_analyze_theme_trend(themes):
             tro_risk_map_global[word_lower] = name_type
 
     token_uppers = list({t.upper() for t in unique_tokens if t.lower() not in low_risk_whitelist})
-    
+
     trademark_records = TrademarkInfo.objects.filter(
         word_mark__in=token_uppers
     ).values('word_mark', 'serial_number', 'intl_class', 'status_code')
-    
+
     uspto_details_global = defaultdict(list)
     word_status_codes_global = defaultdict(set)
     word_intl_classes_global = defaultdict(set)
     uspto_word_lower_map_global = {}
-    
+
     for record in trademark_records:
         word = record['word_mark']
         word_lower = word.lower()
-        
+
         uspto_details_global[word].append({
             'serial_number': record['serial_number'],
             'intl_class': record['intl_class'] or 'N/A',
             'status_code': record['status_code']
         })
-        
+
         if record['status_code']:
             try:
                 word_status_codes_global[word].add(int(record['status_code']))
             except (ValueError, TypeError):
                 pass
-                
+
         if record['intl_class']:
             word_intl_classes_global[word].add(record['intl_class'])
-            
+
         uspto_word_lower_map_global[word_lower] = word
 
     # 3. 为每个未缓存的主题生成结果
@@ -254,7 +254,7 @@ def batch_analyze_theme_trend(themes):
             theme_risk_level, theme_risk_text = 'low', '低风险'
 
         result = {
-            'query': theme, 'tokens': words_split(theme), # 返回原始tokens
+            'query': theme, 'tokens': words_split(theme),  # 返回原始tokens
             'uspto_keywords': uspto_matches, 'uspto_details': uspto_details,
             'tro_keywords': tro_matches, 'tro_details': tro_details,
             'word_risk_map': word_risk_map,
@@ -264,14 +264,16 @@ def batch_analyze_theme_trend(themes):
             'theme_risk_level': theme_risk_level,
             'theme_risk_text': theme_risk_text,
         }
-        
+
         # 存入缓存
-        cache_key = f'risk_analysis_v2:{hash(theme)}'
+        cache_key = f'risk_analysis_v3:{hash(theme)}'
         cache.set(cache_key, result, 3600)
         results[theme] = result
 
     return results
-#================2026.2.2更新 算法列出所有情况的分词方法============================
+
+
+# ================2026.2.2更新 算法列出所有情况的分词方法============================
 def get_ngram_phrases(text, min_words=1, max_words=None):
     """
     将文本拆分为所有连续N-gram词组列表
@@ -302,8 +304,9 @@ def get_ngram_phrases(text, min_words=1, max_words=None):
             phrases.append(phrase)
 
     return phrases
-#==================================================End=========================
 
+
+# ==================================================End=========================
 
 
 def analyze_theme_trend(theme, mode=1):
@@ -329,7 +332,7 @@ def analyze_theme_trend(theme, mode=1):
             - tro_keywords (list): 命中的TRO关键词
     """
     query = theme.strip()
-    #===========26.1.31 update 引入过滤停用词======================
+    # ===========26.1.31 update 引入过滤停用词======================
 
     # 1. 分词处理（根据 mode 选择分词方法）
     # if mode == 3:
@@ -367,7 +370,7 @@ def analyze_theme_trend(theme, mode=1):
     if mode == 2:
         # 使用 get_ngram_phrases 方法
         tokens = get_ngram_phrases(query)
-    else:    #默认模式：words_split + 整体查询
+    else:  # 默认模式：words_split + 整体查询
         # words_split + 整体查询
         tokens = words_split(query)
         # 将完整query作为一个整体token加入（大写形式用于查询）
@@ -401,7 +404,7 @@ def analyze_theme_trend(theme, mode=1):
 
     # 分离低风险白名单词和其他TRO词
     low_risk_whitelist = set()  # name_type in {1,9} 的词（白名单，不查美标网）
-    tro_risk_map = {}           # 其他需要风险判断的词
+    tro_risk_map = {}  # 其他需要风险判断的词
 
     for record in tro_records_all:
         word_lower = record['theme_name'].lower()
@@ -531,12 +534,15 @@ def words_split(theme):
     tokenizer = TweetTokenizer()
     return tokenizer.tokenize(theme or '')
 
-#====更新过滤函数===================#
+
+# ====更新过滤函数===================#
 AMAZON_NOISE_WORDS = {
     'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
     'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
     'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
 }
+
+
 def should_skip_word(word):
     """
     判断是否应该跳过该词的检测。

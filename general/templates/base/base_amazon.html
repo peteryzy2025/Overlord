@@ -24,6 +24,14 @@
             </a>
         </li>
         <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_risk_keywords' %}"
+               class="sidebar-link {% if active_page == 'amazon_risk_keywords' %}active{% endif %}">
+                <i class="fas fa-skull-crossbones sidebar-icon"></i>
+                <span>深渊</span>
+            </a>
+        </li>
+        
+        <li class="sidebar-item">
             <a href="{% url 'amazon:amazon_daily_check_report_page' %}"
                class="sidebar-link {% if active_page == 'amazon_daily_check_report_page' %}active{% endif %}"
                onclick="showComingSoon()">

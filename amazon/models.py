@@ -614,7 +614,7 @@ class AmazonPerformanceNotification(models.Model):
         return f"{self.shop.shop_name} - {self.subject[:50]} ({self.date})"
 
 
-# amazon/models.py
+
 
 class AmazonOrderFullDetail(models.Model):
     """

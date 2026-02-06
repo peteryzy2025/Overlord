@@ -1,0 +1,946 @@
+{% extends 'base/base_amazon.html' %}
+{% load static %}
+
+{% block title %}深渊 - 风险关键词管理 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
+    <style>
+        /* 统计卡片 */
+        .stats-card-wrapper {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-card {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .stats-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stats-content h4 {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0 0 0.25rem 0;
+            font-weight: 500;
+        }
+
+        .stats-content p {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin: 0;
+        }
+
+        /* 分类标签 */
+        .category-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .category-account_ban { background-color: #FEE2E2; color: #DC2626; }
+        .category-performance { background-color: #FEF3C7; color: #D97706; }
+        .category-funds { background-color: #FDE68A; color: #B45309; }
+        .category-listing { background-color: #DBEAFE; color: #1D4ED8; }
+        .category-verification { background-color: #E0E7FF; color: #4338CA; }
+        .category-tro { background-color: #FCE7F3; color: #BE185D; }
+        .category-inventory { background-color: #D1FAE5; color: #059669; }
+        .category-other { background-color: #E5E7EB; color: #6B7280; }
+
+        /* 匹配方式标签 */
+        .match-type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        /* 状态标签 */
+        .status-badge.active {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .status-badge.inactive {
+            background-color: #E5E7EB;
+            color: #6B7280;
+        }
+
+        /* 优先级 */
+        .priority-value {
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* 适用范围 */
+        .apply-to-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            background-color: #EDE9FE;
+            color: #7C3AED;
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex !important;
+        }
+
+        .modal-content {
+            position: relative;
+            background-color: var(--bg-primary);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 560px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--border-color);
+            z-index: 10000;
+        }
+
+        .modal-header {
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .modal-footer {
+            flex-shrink: 0;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+
+        /* 表单样式 */
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            flex: 100%;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-label .required::after {
+            content: ' *';
+            color: #EF4444;
+        }
+
+        .form-control {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 0.875rem;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2rem;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* 复选框样式 */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <!-- 页面标题区 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-skull-crossbones" style="color: var(--accent-color);"></i>
+                    深渊
+                </h1>
+                <p class="page-subtitle">风险关键词管理 - 监控店铺邮件和绩效通知中的风险词汇</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-create" onclick="openCreateModal()">
+                    <i class="fas fa-plus"></i> 新增关键词
+                </button>
+                <button class="btn" onclick="refreshData()">
+                    <i class="fas fa-sync-alt"></i> 刷新
+                </button>
+            </div>
+        </div>
+
+        <!-- 统计卡片 -->
+        <div class="stats-card-wrapper">
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="stats-content">
+                    <h4>关键词总数</h4>
+                    <p id="totalCount">-</p>
+                </div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stats-content">
+                    <h4>已启用</h4>
+                    <p id="activeCount">-</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group" style="flex: 2;">
+                    <label class="filter-label">关键词</label>
+                    <input type="text" class="form-control" id="keywordFilter" placeholder="输入关键词搜索..." onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">风险分类</label>
+                    <select class="form-control" id="categoryFilter" onchange="applyFilters()">
+                        <option value="">全部分类</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">匹配方式</label>
+                    <select class="form-control" id="matchTypeFilter" onchange="applyFilters()">
+                        <option value="">全部方式</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">适用范围</label>
+                    <select class="form-control" id="applyToFilter" onchange="applyFilters()">
+                        <option value="">全部范围</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <select class="form-control" id="statusFilter" onchange="applyFilters()">
+                        <option value="">全部状态</option>
+                        <option value="true">已启用</option>
+                        <option value="false">已禁用</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions" style="align-self: flex-end;">
+                    <button class="btn" onclick="applyFilters()" title="应用筛选">
+                        <i class="fas fa-search"></i>
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" title="重置条件">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-container" id="keywordsTableContainer">
+            <table class="table" id="keywordsTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-field="keyword" onclick="handleSort('keyword')">关键词</th>
+                        <th class="sortable" data-field="category" onclick="handleSort('category')">风险分类</th>
+                        <th>匹配方式</th>
+                        <th class="sortable" data-field="priority" onclick="handleSort('priority')">优先级</th>
+                        <th>适用范围</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>描述</th>
+                    </tr>
+                </thead>
+                <tbody id="keywordsTableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>加载中...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option selected" onclick="changePageSize(10)">10条</div>
+                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats"></span>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增关键词模态框 -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus-circle" style="color: var(--accent-color);"></i>
+                    新增风险关键词
+                </h2>
+                <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="form-group full-width">
+                        <label class="form-label">
+                            <span class="required">关键词/短语</span>
+                        </label>
+                        <input type="text" class="form-control" id="createKeyword" placeholder="输入风险关键词或短语">
+                        <div class="form-hint">用于匹配邮件标题或内容的风险词汇</div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">风险分类</label>
+                            <select class="form-control" id="createCategory">
+                                <!-- 动态填充 -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">匹配方式</label>
+                            <select class="form-control" id="createMatchType">
+                                <!-- 动态填充 -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">优先级</label>
+                            <input type="number" class="form-control" id="createPriority" value="0" min="0" max="999">
+                            <div class="form-hint">数值越大优先级越高</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">适用范围</label>
+                            <select class="form-control" id="createApplyTo">
+                                <!-- 动态填充 -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label">规则说明</label>
+                        <textarea class="form-control" id="createDescription" rows="2" placeholder="描述该关键词的匹配规则或用途"></textarea>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label class="form-label">示例文本</label>
+                        <textarea class="form-control" id="createExampleText" rows="2" placeholder="该关键词通常出现的标题/内容示例"></textarea>
+                    </div>
+
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="createIsActive" checked>
+                        <label for="createIsActive">立即启用该关键词</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeCreateModal()">取消</button>
+                <button class="btn btn-create" onclick="submitCreate()">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        // ===== 全局变量 =====
+        let pagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        let currentFilters = {
+            keyword: '',
+            category: '',
+            match_type: '',
+            is_active: '',
+            apply_to: '',
+            sort_field: 'priority',
+            sort_order: 'desc'
+        };
+
+        let optionsData = {
+            categories: [],
+            match_types: [],
+            apply_to_options: []
+        };
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', async function() {
+            showLoading(true);
+            try {
+                await loadOptions();
+                await loadKeywords();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // ===== 加载选项数据 =====
+        async function loadOptions() {
+            try {
+                const response = await fetch('/api/amazon-risk-keywords/options/');
+                const result = await response.json();
+                if (result.success) {
+                    optionsData = result.data;
+                    populateSelects();
+                }
+            } catch (error) {
+                console.error('加载选项失败:', error);
+            }
+        }
+
+        function populateSelects() {
+            // 分类筛选
+            const categoryFilter = document.getElementById('categoryFilter');
+            optionsData.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.value;
+                option.textContent = cat.label;
+                categoryFilter.appendChild(option);
+            });
+
+            // 匹配方式筛选
+            const matchTypeFilter = document.getElementById('matchTypeFilter');
+            optionsData.match_types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.value;
+                option.textContent = type.label;
+                matchTypeFilter.appendChild(option);
+            });
+
+            // 适用范围筛选
+            const applyToFilter = document.getElementById('applyToFilter');
+            optionsData.apply_to_options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.label;
+                applyToFilter.appendChild(option);
+            });
+
+            // 创建表单中的下拉框
+            const createCategory = document.getElementById('createCategory');
+            optionsData.categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.value;
+                option.textContent = cat.label;
+                createCategory.appendChild(option);
+            });
+
+            const createMatchType = document.getElementById('createMatchType');
+            optionsData.match_types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.value;
+                option.textContent = type.label;
+                createMatchType.appendChild(option);
+            });
+
+            const createApplyTo = document.getElementById('createApplyTo');
+            optionsData.apply_to_options.forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.textContent = opt.label;
+                createApplyTo.appendChild(option);
+            });
+        }
+
+        // ===== 加载关键词列表 =====
+        async function loadKeywords() {
+            const tbody = document.getElementById('keywordsTableBody');
+            const paginationContainer = document.getElementById('paginationContainer');
+
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const requestData = {
+                    ...currentFilters,
+                    page: pagination.page,
+                    page_size: pagination.page_size
+                };
+
+                const response = await fetch('/api/amazon-risk-keywords/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    pagination.total = data.total;
+                    pagination.total_pages = data.total_pages;
+
+                    // 更新统计
+                    document.getElementById('totalCount').textContent = data.total;
+                    const activeCount = data.keywords.filter(k => k.is_active).length;
+                    document.getElementById('activeCount').textContent = activeCount;
+
+                    renderTable(data.keywords);
+                    renderPagination();
+
+                    paginationContainer.style.display = data.total > 0 ? 'flex' : 'none';
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载错误:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationContainer.style.display = 'none';
+            }
+        }
+
+        // ===== 渲染表格 =====
+        function renderTable(keywords) {
+            const tbody = document.getElementById('keywordsTableBody');
+            if (!keywords || keywords.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无风险关键词数据</p>
+                            <p>点击"新增关键词"创建第一个关键词</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = keywords.map(item => `
+                <tr>
+                    <td>
+                        <strong>${escapeHtml(item.keyword)}</strong>
+                        ${item.example_text ? `<div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem;">示例: ${escapeHtml(item.example_text)}</div>` : ''}
+                    </td>
+                    <td>
+                        <span class="category-badge category-${item.category}">${item.category_display}</span>
+                    </td>
+                    <td>
+                        <span class="match-type-badge">${item.match_type_display}</span>
+                    </td>
+                    <td>
+                        <span class="priority-value">${item.priority}</span>
+                    </td>
+                    <td>
+                        <span class="apply-to-badge">${item.apply_to_display}</span>
+                    </td>
+                    <td>
+                        <span class="status-badge ${item.is_active ? 'active' : 'inactive'}">
+                            ${item.is_active ? '已启用' : '已禁用'}
+                        </span>
+                    </td>
+                    <td>${item.created_at}</td>
+                    <td>${item.description ? escapeHtml(item.description) : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ===== 排序 =====
+        function handleSort(field) {
+            if (currentFilters.sort_field === field) {
+                currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentFilters.sort_field = field;
+                currentFilters.sort_order = 'desc';
+            }
+
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.field === field) {
+                    th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            pagination.page = 1;
+            loadKeywords();
+        }
+
+        // ===== 筛选 =====
+        function applyFilters() {
+            currentFilters.keyword = document.getElementById('keywordFilter').value.trim();
+            currentFilters.category = document.getElementById('categoryFilter').value;
+            currentFilters.match_type = document.getElementById('matchTypeFilter').value;
+            currentFilters.is_active = document.getElementById('statusFilter').value;
+            currentFilters.apply_to = document.getElementById('applyToFilter').value;
+            
+            pagination.page = 1;
+            loadKeywords();
+        }
+
+        function resetFilters() {
+            document.getElementById('keywordFilter').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('matchTypeFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('applyToFilter').value = '';
+            
+            currentFilters = {
+                keyword: '',
+                category: '',
+                match_type: '',
+                is_active: '',
+                apply_to: '',
+                sort_field: 'priority',
+                sort_order: 'desc'
+            };
+            
+            pagination.page = 1;
+            loadKeywords();
+            showNotification('筛选条件已重置', 'success');
+        }
+
+        function refreshData() {
+            loadKeywords();
+        }
+
+        // ===== 分页 =====
+        function renderPagination() {
+            const paginationEl = document.getElementById('paginationNew');
+            const { page, page_size, total, total_pages } = pagination;
+
+            // 更新统计信息
+            const start = (page - 1) * page_size + 1;
+            const end = Math.min(page * page_size, total);
+            const statsText = total === 0 ? '0' : `${start}-${end} / 共 ${total} 条`;
+            document.getElementById('paginationStats').textContent = statsText;
+
+            let html = '';
+
+            // 上一页
+            html += `<button class="pagination-btn-new ${page === 1 ? 'disabled' : ''}" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-left"></i>
+            </button>`;
+
+            // 页码
+            const maxVisible = 5;
+            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
+            let endPage = Math.min(total_pages, startPage + maxVisible - 1);
+
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})">${total_pages}</button>`;
+            }
+
+            // 下一页
+            html += `<button class="pagination-btn-new ${page === total_pages ? 'disabled' : ''}" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
+                <i class="fas fa-chevron-right"></i>
+            </button>`;
+
+            paginationEl.innerHTML = html;
+        }
+
+        function goToPage(newPage) {
+            if (newPage < 1 || newPage > pagination.total_pages) return;
+            pagination.page = newPage;
+            loadKeywords();
+            document.getElementById('keywordsTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function changePageSize(size) {
+            pagination.page_size = size;
+            pagination.page = 1;
+            updatePageSizeDisplay();
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            loadKeywords();
+        }
+
+        function updatePageSizeDisplay() {
+            document.getElementById('pageSizeText').textContent = pagination.page_size + '条';
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${pagination.page_size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+        }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= pagination.total_pages) {
+                    goToPage(page);
+                }
+                event.target.value = '';
+            }
+        }
+
+        // ===== 模态框操作 =====
+        function openCreateModal() {
+            document.getElementById('createForm').reset();
+            document.getElementById('createModal').classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('show');
+            document.body.classList.remove('modal-open');
+        }
+
+        async function submitCreate() {
+            const keyword = document.getElementById('createKeyword').value.trim();
+            
+            if (!keyword) {
+                showNotification('请输入关键词', 'warning');
+                document.getElementById('createKeyword').focus();
+                return;
+            }
+
+            const data = {
+                keyword: keyword,
+                category: document.getElementById('createCategory').value,
+                match_type: document.getElementById('createMatchType').value,
+                priority: parseInt(document.getElementById('createPriority').value) || 0,
+                apply_to: document.getElementById('createApplyTo').value,
+                description: document.getElementById('createDescription').value.trim(),
+                example_text: document.getElementById('createExampleText').value.trim(),
+                is_active: document.getElementById('createIsActive').checked
+            };
+
+            try {
+                showLoading(true);
+                const csrfToken = getCookie('csrftoken');
+                
+                const response = await fetch('/api/amazon-risk-keywords/create/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('风险关键词创建成功', 'success');
+                    closeCreateModal();
+                    loadKeywords();
+                } else {
+                    showNotification(result.message || '创建失败', 'error');
+                }
+            } catch (error) {
+                console.error('创建失败:', error);
+                showNotification('创建失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('createModal').addEventListener('click', function(e) {
+            if (e.target === this) closeCreateModal();
+        });
+
+        // ESC 键关闭
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCreateModal();
+            }
+        });
+
+        // 点击外部关闭下拉框
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const trigger = document.getElementById('pageSizeTrigger');
+            if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
+    </script>
+{% endblock %}

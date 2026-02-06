@@ -414,7 +414,16 @@ class AmazonShop(models.Model):
     additional_remark = models.TextField(blank=True, null=True, db_comment='备注')
     created_at = models.DateTimeField(db_comment='创建时间')
     updated_at = models.DateTimeField(db_comment='更新时间')
-    qu_dao = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺渠道')
+    qu_dao = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺渠道') # 旧字段，后续代码请勿使用该字段
+    channel_risk = models.ForeignKey(
+        'ShopChannelRisk',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='amazon_shops',
+        verbose_name='店铺渠道配置',
+        db_comment='关联渠道风险表（qu_dao保留仅作历史显示）'
+    )
     img1 = models.CharField(max_length=255, blank=True, null=True, db_comment='图片')
 
     voucher_163 = models.CharField(max_length=255, blank=True, null=True, db_comment='163邮箱凭证')
@@ -851,3 +860,38 @@ class UserOperationLog(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.get_operation_type_display()} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
+
+class ShopChannelRisk(models.Model):
+    """店铺渠道风险（独立表）"""
+
+    id = models.AutoField(primary_key=True, verbose_name='ID')
+
+    LEVEL_CHOICES = [
+        ('low', '低'),
+        ('medium', '中'),
+        ('high', '高'),
+        ('none', '无'),
+    ]
+    channel_name = models.CharField(max_length=50, unique=True,verbose_name='店铺渠道', blank=True)
+
+    risk_level = models.CharField(
+        max_length=20,
+        choices=LEVEL_CHOICES,
+        default='none',
+        verbose_name='渠道风险等级',
+        db_index=True
+
+    )
+
+    channel_remark = models.CharField(max_length=100, verbose_name='渠道备注', blank=True, null=True)
+    class Meta:
+        db_table = 'amazon_channel_risk'
+        verbose_name = '店铺渠道风险'
+        verbose_name_plural = '店铺渠道风险'
+        indexes = [
+            models.Index(fields=['risk_level', 'channel_name']),
+        ]
+
+    def __str__(self):
+        return f"{self.channel_name}"
