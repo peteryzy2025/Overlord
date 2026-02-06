@@ -39,6 +39,7 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'  # 宽松模式，兼容内外网
 CSRF_TRUSTED_ORIGINS = [
     'https://ztzf.cpolar.cn',
+    'https://divi.cpolar.cn',
     'http://192.168.110.54:5555',
     'http://192.168.110.131:5550',
     'http://192.168.110.196:8000',
@@ -51,7 +52,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '192.168.110.196',
-    'ztzf.cpolar.cn'
+    'ztzf.cpolar.cn',
+    'divi.cpolar.cn',
 
 ]
 
