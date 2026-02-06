@@ -129,6 +129,38 @@ class ThemeRecord(models.Model):
         return f"{self.product.asin} - {self.product.subject[:30]}"
 
 
+class ThemeReport(models.Model):
+    """主题举报记录表"""
+    product = models.ForeignKey(
+        AmazonThemeNovelty,
+        on_delete=models.CASCADE,
+        related_name='theme_reports',
+        verbose_name='商品ASIN'
+    )
+    reporter = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='theme_reports',
+        verbose_name='举报人'
+    )
+    is_active = models.BooleanField(default=True, verbose_name='是否有效')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='举报时间')
+
+    class Meta:
+        db_table = 'theme_reports'
+        verbose_name = '主题举报记录'
+        verbose_name_plural = verbose_name
+        unique_together = ['product', 'reporter']  # 每个用户对每个产品只能举报一次
+        indexes = [
+            models.Index(fields=['product', 'is_active']),
+            models.Index(fields=['reporter', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.product.asin} - {self.reporter.first_name if self.reporter else 'Unknown'}"
+
+
 class ThemeDailyData(models.Model):
     """主题每日数据"""
     product = models.ForeignKey(
