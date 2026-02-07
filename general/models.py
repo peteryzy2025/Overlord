@@ -249,6 +249,14 @@ class User(AbstractUser):
         default='light'
     )
 
+    avatar = models.ImageField(
+        '头像',
+        upload_to='avatars/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text='用户头像图片'
+    )
+
     class Meta:
         db_table = 'users'
         verbose_name = '用户信息'
