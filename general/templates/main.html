@@ -122,7 +122,11 @@
 
 {% block page_content %}
 <div class="welcome-section">
-    <h1 class="welcome-title">欢迎来到 Divi智管</h1>
+    <h1 class="welcome-title" style="display: flex; align-items: center; justify-content: center; gap: 0.2em;">
+            <span>欢迎来到</span>
+            <img src="{% static 'img/y/divi.png' %}" alt="Divi" style="height: 1em; display: block; margin-top: 0.08em;">
+            <span>智管</span>
+        </h1>
     <p class="welcome-subtitle">专业的驾驶舱搭建与店铺管理平台</p>
 
     <div class="features-grid">
