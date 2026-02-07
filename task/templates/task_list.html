@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
 <style>
     /* 复用 task_create 的容器样式 */
     .task-list-container {
@@ -622,6 +623,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
     // ===== 全局变量 =====
     let taskData = {

@@ -5,6 +5,7 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/table-fullscreen.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         /* ===== 核心修复：让表格在页面内自适应 ===== */
         .table-container {
@@ -197,6 +198,7 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量 =====
         let currentFilters = {
