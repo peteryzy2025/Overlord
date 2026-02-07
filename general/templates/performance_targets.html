@@ -87,6 +87,67 @@
         transition: all 0.3s ease;
     }
 
+    .month-filter-control {
+        position: relative;
+        width: 100%;
+    }
+
+    .month-filter-input {
+        width: 100%;
+        min-width: 0;
+        padding-left: 2.5rem;
+        padding-right: 4.8rem;
+    }
+
+    .month-action-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 2;
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .month-action-btn.nav {
+        background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+        color: var(--accent-color);
+    }
+
+    .month-action-btn.nav:hover {
+        background: color-mix(in srgb, var(--accent-color) 28%, transparent);
+        transform: translateY(calc(-50% - 1px));
+    }
+
+    .month-action-btn.clear {
+        background: #ffffff;
+        color: #ef4444;
+        border: 1px solid color-mix(in srgb, #ef4444 28%, #e5e7eb);
+    }
+
+    .month-action-btn.clear:hover {
+        background: #f9fafb;
+        transform: translateY(calc(-50% - 1px));
+    }
+
+    .month-action-btn.prev {
+        left: 0.35rem;
+    }
+
+    .month-action-btn.next {
+        right: 2.25rem;
+    }
+
+    .month-action-btn.clear {
+        right: 0.35rem;
+    }
+
     .btn {
         background-color: var(--accent-color);
         color: white;
@@ -475,7 +536,18 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">月份筛选</label>
-                    <input type="month" class="form-control" id="groupMonthFilter">
+                    <div class="month-filter-control">
+                        <button type="button" class="month-action-btn nav prev" id="groupMonthPrev" title="上个月">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <input type="month" class="form-control month-filter-input" id="groupMonthFilter">
+                        <button type="button" class="month-action-btn nav next" id="groupMonthNext" title="下个月">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" class="month-action-btn clear" id="groupMonthClear" title="清空月份">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
@@ -1274,8 +1346,42 @@ function getCSRFToken() {
     return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
 }
 
+function shiftMonthValue(value, step) {
+    const [year, month] = String(value).split('-').map(Number);
+    if (!year || !month) return '';
+    const dt = new Date(year, month - 1 + step, 1);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getCurrentMonthValue() {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function initGroupMonthFilterButtons() {
+    const monthInput = document.getElementById('groupMonthFilter');
+    const prevBtn = document.getElementById('groupMonthPrev');
+    const nextBtn = document.getElementById('groupMonthNext');
+    const clearBtn = document.getElementById('groupMonthClear');
+    if (!monthInput || !prevBtn || !nextBtn || !clearBtn) return;
+
+    prevBtn.addEventListener('click', () => {
+        monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), -1);
+    });
+
+    nextBtn.addEventListener('click', () => {
+        monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), 1);
+    });
+
+    clearBtn.addEventListener('click', () => {
+        monthInput.value = '';
+        monthInput.focus();
+    });
+}
+
 // ========== 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', async function() {
+    initGroupMonthFilterButtons();
     initOpsGroupFilterSelects();
     await loadFilterOptions();
     loadGroupTargets();
