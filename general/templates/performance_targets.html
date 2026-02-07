@@ -4,6 +4,7 @@
 {% block title %}绩效管理 - Overlord{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
 <style>
     /* ========== 复用user_management.html的简洁样式 ========== */
 
@@ -38,15 +39,6 @@
 
     .page-subtitle {
         color: var(--text-secondary);
-    }
-
-    .btn-create {
-        background-color: #22c55e;
-        color: white;
-    }
-
-    .btn-create:hover {
-        background-color: #16a34a;
     }
 
     .filter-section {
@@ -104,6 +96,24 @@
         font-weight: 500;
         cursor: pointer;
         transition: all 0.3s ease;
+    }
+
+    /* 与Temu店铺管理保持一致，覆盖 .btn 的尺寸 */
+    .btn.btn-create {
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        font-weight: 500;
+        border: 1px solid var(--accent-color);
+        transition: all 0.3s ease;
+    }
+
+    .btn.btn-create:hover {
+        background-color: var(--accent-hover);
+        border-color: var(--accent-hover);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
 
     .btn-secondary {
@@ -455,7 +465,8 @@
             </div>
             {% if can_manage_group %}
             <button class="btn btn-create" onclick="openGroupCreateModal()">
-                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建组目标
+                <i class="fas fa-plus"></i>
+                <span>新建组目标</span>
             </button>
             {% endif %}
         </div>
@@ -468,17 +479,15 @@
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <select class="form-select" id="groupOpsGroupFilter">
-                        <option value="">全部分组</option>
-                    </select>
+                    <div id="groupOpsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">搜索</label>
                     <input type="text" class="form-control" id="groupSearch" placeholder="搜索分组/备注">
                 </div>
                 <div class="filter-actions">
-                    <button class="btn" onclick="filterGroupTargets()">筛选</button>
-                    <button class="btn btn-secondary" onclick="resetGroupFilters()">重置</button>
+                    <button class="btn" onclick="filterGroupTargets()" title="筛选"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetGroupFilters()" title="重置"><i class="fas fa-redo"></i></button>
                 </div>
             </div>
         </div>
@@ -537,7 +546,7 @@
                     {% endif %}
                 </p>
             </div>
-            {% if is_group_leader %}
+           {% if is_group_leader %}
             <button class="btn btn-create" onclick="openBatchPersonalModal()">
                 <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>批量设置组员目标
             </button>
@@ -552,16 +561,12 @@
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
-                    <select class="form-select" id="personalUserFilter">
-                        <option value="">全部人员</option>
-                    </select>
+                    <div id="personalUserFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
                 {% if can_manage_group %}
                 <div class="filter-group">
                     <label class="filter-label">运营分组</label>
-                    <select class="form-select" id="personalOpsGroupFilter">
-                        <option value="">全部分组</option>
-                    </select>
+                    <div id="personalOpsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
                 {% endif %}
                 <div class="filter-group">
@@ -569,8 +574,8 @@
                     <input type="text" class="form-control" id="personalSearch" placeholder="搜索用户名/月份">
                 </div>
                 <div class="filter-actions">
-                    <button class="btn" onclick="filterPersonalTargets()">筛选</button>
-                    <button class="btn btn-secondary" onclick="resetPersonalFilters()">重置</button>
+                    <button class="btn" onclick="filterPersonalTargets()" title="筛选"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetPersonalFilters()" title="重置"><i class="fas fa-redo"></i></button>
                 </div>
             </div>
         </div>
@@ -652,14 +657,88 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/searchable-select.js' %}"></script>
 <script>
 // ========== 全局变量 ==========
 let currentTab = 'group';
 let groupCurrentPage = 1, groupPageSize = 10;
 let personalCurrentPage = 1, personalPageSize = 10;
 let allOpsGroups = [], allOperators = [];
+let groupOpsGroupSelect = null;
+let personalOpsGroupSelect = null;
+let personalUserSelect = null;
+let groupModalOpsGroupSelect = null;
 // 批量编辑时存储组目标值
 let batchGroupTarget = 0, batchGroupStretch = 0;
+
+function formatMultiSelect(values) {
+    if (!values) return '';
+    if (Array.isArray(values)) {
+        const nonEmpty = values.filter(v => v !== '');
+        return nonEmpty.length > 0 ? nonEmpty.join(',') : '';
+    }
+    return values;
+}
+
+function initOpsGroupFilterSelects() {
+    if (typeof SearchableSelect !== 'function') return;
+
+    groupOpsGroupSelect = new SearchableSelect('#groupOpsGroupFilter', {
+        options: [{ value: '', label: '全部分组' }],
+        multiple: true,
+        placeholder: '全部分组'
+    });
+    groupOpsGroupSelect.setValue(['']);
+    groupOpsGroupSelect.onChange = () => filterGroupTargets();
+
+    const personalContainer = document.querySelector('#personalOpsGroupFilter');
+    if (personalContainer) {
+        personalOpsGroupSelect = new SearchableSelect('#personalOpsGroupFilter', {
+            options: [{ value: '', label: '全部分组' }],
+            multiple: true,
+            placeholder: '全部分组'
+        });
+        personalOpsGroupSelect.setValue(['']);
+        personalOpsGroupSelect.onChange = () => filterPersonalTargets();
+    }
+
+    const personalUserContainer = document.querySelector('#personalUserFilter');
+    if (personalUserContainer) {
+        personalUserSelect = new SearchableSelect('#personalUserFilter', {
+            options: [{ value: '', label: '全部人员' }],
+            multiple: true,
+            placeholder: '全部人员'
+        });
+        personalUserSelect.setValue(['']);
+        personalUserSelect.onChange = () => filterPersonalTargets();
+    }
+}
+
+function initGroupModalOpsGroupSelect(initialValue = '', disabled = false) {
+    if (typeof SearchableSelect !== 'function') return;
+
+    const container = document.getElementById('group-ops_group-select');
+    const hiddenInput = document.getElementById('group-ops_group');
+    if (!container || !hiddenInput) return;
+
+    const options = [{ value: '', label: '请选择分组' }, ...allOpsGroups.map(g => ({ value: g, label: g }))];
+    groupModalOpsGroupSelect = new SearchableSelect('#group-ops_group-select', {
+        options,
+        multiple: false,
+        placeholder: '请选择分组'
+    });
+
+    groupModalOpsGroupSelect.setValue(initialValue || '');
+    groupModalOpsGroupSelect.onChange = (value) => {
+        hiddenInput.value = value || '';
+    };
+    hiddenInput.value = groupModalOpsGroupSelect.getValue() || '';
+
+    if (disabled) {
+        container.classList.add('disabled');
+        container.style.pointerEvents = 'none';
+    }
+}
 
 // ========== 标签页切换 ==========
 function switchTab(tab) {
@@ -687,7 +766,7 @@ async function loadGroupTargets() {
         page: groupCurrentPage,
         page_size: groupPageSize,
         month: document.getElementById('groupMonthFilter')?.value || '',
-        ops_group: document.getElementById('groupOpsGroupFilter')?.value || '',
+        ops_group: formatMultiSelect(groupOpsGroupSelect ? groupOpsGroupSelect.getValue() : ''),
         search: document.getElementById('groupSearch')?.value || '',
     });
 
@@ -779,7 +858,7 @@ function filterGroupTargets() {
 
 function resetGroupFilters() {
     document.getElementById('groupMonthFilter').value = '';
-    document.getElementById('groupOpsGroupFilter').value = '';
+    if (groupOpsGroupSelect) groupOpsGroupSelect.setValue(['']);
     document.getElementById('groupSearch').value = '';
     groupCurrentPage = 1;
     loadGroupTargets();
@@ -794,8 +873,8 @@ async function loadPersonalTargets() {
         page: personalCurrentPage,
         page_size: personalPageSize,
         month: document.getElementById('personalMonthFilter')?.value || '',
-        user: document.getElementById('personalUserFilter')?.value || '',
-        ops_group: document.getElementById('personalOpsGroupFilter')?.value || '',
+        user: formatMultiSelect(personalUserSelect ? personalUserSelect.getValue() : ''),
+        ops_group: formatMultiSelect(personalOpsGroupSelect ? personalOpsGroupSelect.getValue() : ''),
         search: document.getElementById('personalSearch')?.value || '',
     });
 
@@ -881,8 +960,8 @@ function filterPersonalTargets() {
 
 function resetPersonalFilters() {
     document.getElementById('personalMonthFilter').value = '';
-    document.getElementById('personalUserFilter').value = '';
-    document.getElementById('personalOpsGroupFilter').value = '';
+    if (personalUserSelect) personalUserSelect.setValue(['']);
+    if (personalOpsGroupSelect) personalOpsGroupSelect.setValue(['']);
     document.getElementById('personalSearch').value = '';
     personalCurrentPage = 1;
     loadPersonalTargets();
@@ -892,21 +971,21 @@ function resetPersonalFilters() {
 function openGroupCreateModal() {
     document.getElementById('groupModalTitle').textContent = '新建组目标';
     document.getElementById('groupModalBody').innerHTML = generateGroupForm();
+    initGroupModalOpsGroupSelect('', false);
     document.getElementById('groupModalOverlay').style.display = 'block';
 }
 
 function closeGroupModal() {
+    if (groupModalOpsGroupSelect) {
+        groupModalOpsGroupSelect.destroy();
+        groupModalOpsGroupSelect = null;
+    }
     document.getElementById('groupModalOverlay').style.display = 'none';
 }
 
 function generateGroupForm(targetData = null) {
     const data = targetData || {};
     const isEdit = !!targetData;
-
-    const groupOptions = allOpsGroups.map(g => {
-        const selected = data.ops_group === g ? 'selected' : '';
-        return `<option value="${g}" ${selected}>${g}</option>`;
-    }).join('');
 
     return `
         <div class="modal-form-wrapper">
@@ -916,10 +995,8 @@ function generateGroupForm(targetData = null) {
             </div>
             <div class="form-group">
                 <label>运营分组 <span style="color:red;">*</span></label>
-                <select id="group-ops_group" ${isEdit ? 'disabled' : ''} required>
-                    <option value="">请选择分组</option>
-                    ${groupOptions}
-                </select>
+                <div id="group-ops_group-select" class="searchable-select single" data-placeholder="请选择分组"></div>
+                <input type="hidden" id="group-ops_group" value="${data.ops_group || ''}">
             </div>
             <div class="form-group">
                 <label>组目标业绩（单） <span style="color:red;">*</span></label>
@@ -1138,60 +1215,54 @@ async function saveBatchPersonalModal() {
 async function loadFilterOptions() {
     // 加载运营分组
     try {
-        const groupResponse = await fetch('/api/performance/ops_groups/');
+        const groupResponse = await fetch('/api/general/ops-groups/');
         const groupResult = await groupResponse.json();
         if (groupResult.success) {
-            allOpsGroups = groupResult.data;
+            const groupData = Array.isArray(groupResult.data) ? groupResult.data : [];
+            allOpsGroups = groupData
+                .map(item => {
+                    if (typeof item === 'string') return item;
+                    if (item && typeof item === 'object') return item.value || '';
+                    return '';
+                })
+                .filter(Boolean);
 
-            // 更新组目标筛选器
-            const groupSelect = document.getElementById('groupOpsGroupFilter');
-            groupSelect.innerHTML = '<option value="">全部分组</option>';
-            allOpsGroups.forEach(g => {
-                const option = document.createElement('option');
-                option.value = g;
-                option.textContent = g;
-                groupSelect.appendChild(option);
-            });
+            const options = [{ value: '', label: '全部分组' }, ...allOpsGroups.map(g => ({ value: g, label: g }))];
 
-            // 更新个人目标筛选器（如果有权限）
-            const personalGroupSelect = document.getElementById('personalOpsGroupFilter');
-            if (personalGroupSelect) {
-                personalGroupSelect.innerHTML = '<option value="">全部分组</option>';
-                allOpsGroups.forEach(g => {
-                    const option = document.createElement('option');
-                    option.value = g;
-                    option.textContent = g;
-                    personalGroupSelect.appendChild(option);
-                });
+            if (groupOpsGroupSelect) {
+                const currentValue = groupOpsGroupSelect.getValue();
+                groupOpsGroupSelect.setOptions(options);
+                groupOpsGroupSelect.setValue(currentValue && currentValue.length > 0 ? currentValue : ['']);
+            }
+
+            if (personalOpsGroupSelect) {
+                const currentValue = personalOpsGroupSelect.getValue();
+                personalOpsGroupSelect.setOptions(options);
+                personalOpsGroupSelect.setValue(currentValue && currentValue.length > 0 ? currentValue : ['']);
             }
         }
     } catch (error) {
         console.error('加载分组失败:', error);
     }
 
-    // 加载运营人员（仅运营部门）
+    // 加载运营人员
     try {
-        const userResponse = await fetch('/api/users/all/');
+        const userResponse = await fetch('/api/general/operators/');
         const userResult = await userResponse.json();
         if (userResult.success) {
-            const isOperatorDepartment = (dept) => {
-                if (!dept) return false;
-                return String(dept).includes('运营');
-            };
+            allOperators = (Array.isArray(userResult.data) ? userResult.data : [])
+                .filter(op => op && op.value !== 'all' && op.value !== null && op.value !== undefined)
+                .sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), 'zh-Hans-CN'));
 
-            allOperators = userResult.data
-                .filter(u => isOperatorDepartment(u.department))
-                .sort((a, b) => String(a.first_name || a.username || '').localeCompare(String(b.first_name || b.username || ''), 'zh-Hans-CN'));
-
-            // 更新个人目标筛选器
-            const userSelect = document.getElementById('personalUserFilter');
-            userSelect.innerHTML = '<option value="">全部人员</option>';
-            allOperators.forEach(user => {
-                const option = document.createElement('option');
-                option.value = user.id;
-                option.textContent = user.first_name || user.username;
-                userSelect.appendChild(option);
-            });
+            if (personalUserSelect) {
+                const currentValue = personalUserSelect.getValue();
+                const options = [{ value: '', label: '全部人员' }, ...allOperators.map(op => ({
+                    value: String(op.value),
+                    label: op.label || String(op.value)
+                }))];
+                personalUserSelect.setOptions(options);
+                personalUserSelect.setValue(currentValue && currentValue.length > 0 ? currentValue : ['']);
+            }
         }
     } catch (error) {
         console.error('加载运营人员失败:', error);
@@ -1205,6 +1276,7 @@ function getCSRFToken() {
 
 // ========== 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', async function() {
+    initOpsGroupFilterSelects();
     await loadFilterOptions();
     loadGroupTargets();
 

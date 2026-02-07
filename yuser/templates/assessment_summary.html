@@ -110,6 +110,17 @@
         color: white;
     }
 
+    .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+
+    .btn-secondary:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
     .table-container {
         background-color: var(--bg-primary);
         border-radius: 12px;
@@ -292,11 +303,11 @@
                            value="{{ month }}" required>
                 </div>
                 <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>查询
+                    <button type="submit" class="btn" title="筛选">
+                        <i class="fas fa-search"></i>
                     </button>
-                    <a href="{% url 'yuser:assessment_summary' %}" class="btn btn-outline-primary ms-2">
-                        <i class="fas fa-undo" style="margin-right: 0.5rem;"></i>重置
+                    <a href="{% url 'yuser:assessment_summary' %}" class="btn btn-secondary ms-2" title="重置">
+                        <i class="fas fa-redo"></i>
                     </a>
                 </div>
             </div>
