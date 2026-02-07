@@ -468,6 +468,7 @@ class RiskKeyword(models.Model):
         ('verification', '审核/验证通知'),  # 如：Account verification required
         ('tro', 'TRO/法律诉讼'),  # 如：Temporary Restraining Order
         ('inventory', '库存/物流异常'),  # 如：Stranded inventory, Removal required
+        ('official', '官方通知'),  # 官方通知类
         ('other', '其他'),
     ]
 
@@ -492,6 +493,8 @@ class RiskKeyword(models.Model):
     ]
     apply_to = models.CharField('适用范围', max_length=20, choices=APPLY_TO_CHOICES, default='all')
 
+    created_by = models.ForeignKey('general.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name='创建人', related_name='created_risk_keywords')
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
 
@@ -1384,3 +1387,4 @@ class AmazonOrderItemFullDetail(models.Model):
 
     def __str__(self):
         return f"{self.order.amazon_order_id} - {self.seller_sku}"
+
