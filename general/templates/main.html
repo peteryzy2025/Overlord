@@ -91,6 +91,17 @@
         color: var(--accent-hover);
         gap: 0.75rem;
     }
+    
+    /* 提示文案 */
+    .more-features-tip {
+        text-align: center;
+        color: var(--text-tertiary);
+        font-size: 0.9rem;
+        margin-top: 2rem;
+        padding: 1rem;
+        background-color: var(--bg-tertiary);
+        border-radius: 8px;
+    }
 
     /* 页脚 */
     .footer {
@@ -130,22 +141,24 @@
     <p class="welcome-subtitle">专业的驾驶舱搭建与店铺管理平台</p>
 
     <div class="features-grid">
-        <div class="feature-card" onclick="navigateTo('{% url 'general:management' %}')">
+        <!-- Amazon店铺管理 -->
+        <div class="feature-card" onclick="navigateTo('{% url 'general:amazon_management' %}')">
             <div class="feature-icon">
-                <i class="fas fa-users"></i>
+                <i class="fab fa-amazon"></i>
             </div>
-            <h3 class="feature-title">人员管理</h3>
+            <h3 class="feature-title">Amazon店铺管理</h3>
             <p class="feature-description">
-                统一管理团队成员信息，支持角色分配、权限设置和状态监控，让团队协作更高效。
+                集中管理Amazon平台店铺，支持店铺配置、权限设置和状态监控，让跨店运营更高效。
             </p>
-            <a href="{% url 'general:management' %}" class="feature-link">
+            <a href="{% url 'general:amazon_management' %}" class="feature-link">
                 进入管理 <i class="fas fa-arrow-right"></i>
             </a>
         </div>
 
+        <!-- 驾驶舱 -->
         <div class="feature-card" onclick="navigateTo('{% url 'amazon:dashboard' %}')">
             <div class="feature-icon">
-                <i class="fab fa-amazon"></i>
+                <i class="fas fa-chart-line"></i>
             </div>
             <h3 class="feature-title">驾驶舱</h3>
             <p class="feature-description">
@@ -156,21 +169,53 @@
             </a>
         </div>
 
-        <div class="feature-card" onclick="showComingSoon()">
+        <!-- Amazon订单管理 -->
+        <div class="feature-card" onclick="navigateTo('{% url 'amazon:amazon_order_management' %}')">
             <div class="feature-icon">
-                <i class="fas fa-store"></i>
+                <i class="fas fa-shopping-cart"></i>
             </div>
-            <h3 class="feature-title">更多功能</h3>
+            <h3 class="feature-title">Amazon订单管理</h3>
             <p class="feature-description">
-                敬请期待更多精彩功能。
+                高效处理Amazon平台订单，支持订单查询、状态跟踪和批量操作，让订单处理更便捷。
             </p>
-            <a href="#" class="feature-link" onclick="showComingSoon()">
-                即将推出 <i class="fas fa-clock"></i>
+            <a href="{% url 'amazon:amazon_order_management' %}" class="feature-link">
+                进入管理 <i class="fas fa-arrow-right"></i>
             </a>
         </div>
+
+        <!-- 物流管理 -->
+        <div class="feature-card" onclick="navigateTo('{% url 'track:tracking-management' %}')">
+            <div class="feature-icon">
+                <i class="fas fa-truck"></i>
+            </div>
+            <h3 class="feature-title">物流管理</h3>
+            <p class="feature-description">
+                跟踪物流运单状态，实时监控配送进度，支持异常运单标记和状态管理。
+            </p>
+            <a href="{% url 'track:tracking-management' %}" class="feature-link">
+                进入管理 <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
+        <!-- 新奇特主题 -->
+        <div class="feature-card" onclick="navigateTo('{% url 'theme:theme_product_list' %}')">
+            <div class="feature-icon">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <h3 class="feature-title">新奇特主题</h3>
+            <p class="feature-description">
+                探索市场新奇特产品趋势，获取创新灵感，支持侵权检测和词库查询。
+            </p>
+            <a href="{% url 'theme:theme_product_list' %}" class="feature-link">
+                查看趋势 <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+
     </div>
 </div>
+{% endblock %}
 
+{% block page_footer %}
 <!-- 页脚 -->
 <footer class="footer">
     <p>&copy; 2025 Divi智管. All rights reserved.</p>
