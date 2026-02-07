@@ -424,6 +424,248 @@ class ModalManager {
 // ============================================
 // 导出组件
 // ============================================
+const GeneralStyleYearMonthPicker = (() => {
+    const parseMonthValue = (value) => {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})$/);
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        if (!year || month < 1 || month > 12) return null;
+        return { year, month };
+    };
+
+    const formatMonthValue = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
+
+    const getCurrentMonthValue = () => {
+        const now = new Date();
+        return formatMonthValue(now.getFullYear(), now.getMonth() + 1);
+    };
+
+    const shiftMonthValue = (value, step) => {
+        const parsed = parseMonthValue(value);
+        if (!parsed) return '';
+        const dt = new Date(parsed.year, parsed.month - 1 + step, 1);
+        return formatMonthValue(dt.getFullYear(), dt.getMonth() + 1);
+    };
+
+    const role = (container, name) => container.querySelector(`[data-ym-role="${name}"]`);
+
+    const initOne = (container) => {
+        if (!container || container.dataset.ymInitialized === '1') return null;
+
+        const input = role(container, 'input');
+        const prevBtn = role(container, 'prev');
+        const nextBtn = role(container, 'next');
+        const clearBtn = role(container, 'clear');
+        const popover = role(container, 'popover');
+        const yearLabel = role(container, 'year-label');
+        const yearInput = role(container, 'year-input');
+        const yearPrevBtn = role(container, 'year-prev');
+        const yearNextBtn = role(container, 'year-next');
+        const monthGrid = role(container, 'month-grid');
+        const todayBtn = role(container, 'today');
+
+        if (!input || !prevBtn || !nextBtn || !clearBtn || !popover || !yearLabel || !yearInput || !yearPrevBtn || !yearNextBtn || !monthGrid || !todayBtn) {
+            return null;
+        }
+
+        container.dataset.ymInitialized = '1';
+        let viewYear = parseMonthValue(input.value)?.year || new Date().getFullYear();
+        let yearEditing = false;
+        let yearBlurTimer = null;
+
+        const clampYear = (year) => Math.min(9999, Math.max(1, year));
+
+        const renderGrid = () => {
+            yearLabel.textContent = `${viewYear}`;
+            yearInput.value = String(viewYear);
+            const selected = parseMonthValue(input.value);
+            monthGrid.innerHTML = Array.from({ length: 12 }, (_, index) => {
+                const month = index + 1;
+                const active = selected && selected.year === viewYear && selected.month === month ? 'active' : '';
+                return `<button type="button" class="ym-picker-month-btn ${active}" data-ym-month="${month}">${String(month).padStart(2, '0')}</button>`;
+            }).join('');
+        };
+
+        const finishYearEdit = (applyChange, config = {}) => {
+            const shouldRender = config.render !== false;
+            if (!yearEditing) return;
+            if (applyChange) {
+                const raw = yearInput.value.trim();
+                if (/^\d{1,4}$/.test(raw)) {
+                    viewYear = clampYear(Number(raw));
+                    yearLabel.textContent = `${viewYear}`;
+                    yearInput.value = String(viewYear);
+                    if (shouldRender) renderGrid();
+                } else if (shouldRender) {
+                    renderGrid();
+                }
+            }
+            yearInput.hidden = true;
+            yearLabel.hidden = false;
+            yearEditing = false;
+        };
+
+        const startYearEdit = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            yearEditing = true;
+            yearLabel.hidden = true;
+            yearInput.hidden = false;
+            yearInput.value = String(viewYear);
+            yearInput.focus();
+            yearInput.select();
+        };
+
+        const openPopover = () => {
+            const selectedYear = parseMonthValue(input.value)?.year;
+            if (selectedYear) viewYear = selectedYear;
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(false);
+            renderGrid();
+            popover.hidden = false;
+            container.classList.add('open');
+        };
+
+        const closePopover = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(true);
+            popover.hidden = true;
+            container.classList.remove('open');
+        };
+
+        const pickMonth = (month) => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(true, { render: false });
+            input.value = formatMonthValue(viewYear, month);
+            closePopover();
+        };
+
+        prevBtn.addEventListener('click', () => {
+            input.value = shiftMonthValue(input.value || getCurrentMonthValue(), -1);
+            if (!popover.hidden) renderGrid();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            input.value = shiftMonthValue(input.value || getCurrentMonthValue(), 1);
+            if (!popover.hidden) renderGrid();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            input.focus();
+            if (!popover.hidden) renderGrid();
+        });
+
+        input.addEventListener('click', () => {
+            openPopover();
+        });
+
+        input.addEventListener('focus', () => {
+            if (popover.hidden) openPopover();
+        });
+
+        yearPrevBtn.addEventListener('click', () => {
+            viewYear = clampYear(viewYear - 1);
+            renderGrid();
+        });
+
+        yearNextBtn.addEventListener('click', () => {
+            viewYear = clampYear(viewYear + 1);
+            renderGrid();
+        });
+
+        yearLabel.addEventListener('click', (event) => {
+            event.stopPropagation();
+            startYearEdit();
+        });
+
+        yearInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        yearInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(false);
+            }
+        });
+
+        yearInput.addEventListener('blur', () => {
+            if (yearBlurTimer) clearTimeout(yearBlurTimer);
+            yearBlurTimer = setTimeout(() => {
+                finishYearEdit(true);
+                yearBlurTimer = null;
+            }, 0);
+        });
+
+        monthGrid.addEventListener('mousedown', (event) => {
+            const target = event.target.closest('.ym-picker-month-btn');
+            if (!target) return;
+            event.preventDefault();
+            pickMonth(Number(target.dataset.ymMonth));
+        });
+
+        monthGrid.addEventListener('click', (event) => {
+            const target = event.target.closest('.ym-picker-month-btn');
+            if (!target) return;
+            pickMonth(Number(target.dataset.ymMonth));
+        });
+
+        todayBtn.addEventListener('click', () => {
+            input.value = getCurrentMonthValue();
+            viewYear = parseMonthValue(input.value)?.year || viewYear;
+            closePopover();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!container.contains(event.target)) closePopover();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closePopover();
+        });
+
+        return {
+            open: openPopover,
+            close: closePopover
+        };
+    };
+
+    const initAll = (root = document) => {
+        const containers = root.querySelectorAll('[data-ym-picker]');
+        containers.forEach((container) => initOne(container));
+    };
+
+    return { initOne, initAll };
+})();
+
+if (typeof window !== 'undefined') {
+    window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Pagination, BulkActions, PageSizeSelector, Utils, TableDataManager, ModalManager };
+    module.exports = { Pagination, BulkActions, PageSizeSelector, Utils, TableDataManager, ModalManager, GeneralStyleYearMonthPicker };
 }

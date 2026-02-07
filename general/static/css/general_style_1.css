@@ -181,6 +181,216 @@
 }
 
 /* ============================================
+   4.1 Year-Month Picker (shared)
+   ============================================ */
+
+.ym-picker {
+    position: relative;
+    width: 100%;
+}
+
+.ym-picker .ym-picker-input {
+    width: 100%;
+    min-width: 0;
+    padding-left: 3.4rem;
+    padding-right: 4.9rem;
+    cursor: pointer;
+    background:
+        linear-gradient(120deg, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 42%),
+        var(--bg-secondary);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.ym-picker.open .ym-picker-input {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 20%, transparent);
+}
+
+.ym-picker-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.ym-picker-btn--nav {
+    background: color-mix(in srgb, var(--accent-color) 16%, transparent);
+    color: var(--accent-color);
+}
+
+.ym-picker-btn--nav:hover {
+    background: color-mix(in srgb, var(--accent-color) 28%, transparent);
+    transform: translateY(calc(-50% - 1px));
+}
+
+.ym-picker-btn--clear {
+    background: #ffffff;
+    color: #ef4444;
+    border: 1px solid color-mix(in srgb, #ef4444 28%, #e5e7eb);
+}
+
+.ym-picker-btn--clear:hover {
+    background: #f9fafb;
+    transform: translateY(calc(-50% - 1px));
+}
+
+.ym-picker-btn--prev {
+    left: 0.35rem;
+}
+
+.ym-picker-btn--next {
+    right: 2.25rem;
+}
+
+.ym-picker-btn--clear {
+    right: 0.35rem;
+}
+
+.ym-picker-popover {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 92%, white), var(--bg-primary));
+    border: 1px solid color-mix(in srgb, var(--accent-color) 22%, var(--border-color));
+    border-radius: 14px;
+    padding: 0.85rem;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+    z-index: 30;
+}
+
+.ym-picker-popover[hidden] {
+    display: none;
+}
+
+.ym-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.7rem;
+}
+
+.ym-picker-year-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.ym-picker-year-label {
+    border: 1px solid transparent;
+    background: transparent;
+    border-radius: 8px;
+    padding: 0.2rem 0.45rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+}
+
+.ym-picker-year-label:hover {
+    border-color: var(--border-color);
+    background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
+}
+
+.ym-picker-year-input {
+    width: 78px;
+    min-width: 0;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--accent-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+}
+
+.ym-picker-year-input[hidden] {
+    display: none;
+}
+
+.ym-picker-year-btn {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.ym-picker-year-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.ym-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+    gap: 0.5rem;
+}
+
+.ym-picker-month-btn {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0.45rem 0.2rem;
+    font-size: 0.84rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ym-picker-month-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.ym-picker-month-btn.active {
+    border-color: var(--accent-color);
+    background: color-mix(in srgb, var(--accent-color) 14%, var(--bg-secondary));
+    color: var(--accent-color);
+    font-weight: 700;
+}
+
+.ym-picker-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.75rem;
+}
+
+.ym-picker-today-btn {
+    border: 1px solid color-mix(in srgb, var(--accent-color) 34%, var(--border-color));
+    border-radius: 8px;
+    padding: 0.3rem 0.7rem;
+    background: #ffffff;
+    color: var(--accent-color);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.ym-picker-today-btn:hover {
+    background: #f9fafb;
+}
+
+/* ============================================
    5. 按钮样式
    ============================================ */
 
