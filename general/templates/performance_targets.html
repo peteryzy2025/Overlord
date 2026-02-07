@@ -95,8 +95,19 @@
     .month-filter-input {
         width: 100%;
         min-width: 0;
-        padding-left: 2.5rem;
-        padding-right: 4.8rem;
+        padding-left: 2.45rem;
+        padding-right: 4.9rem;
+        cursor: pointer;
+        background:
+            linear-gradient(120deg, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 42%),
+            var(--bg-secondary);
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+
+    .month-filter-control.open .month-filter-input {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 20%, transparent);
     }
 
     .month-action-btn {
@@ -111,7 +122,7 @@
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
-        z-index: 2;
+        z-index: 3;
         transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
     }
 
@@ -146,6 +157,103 @@
 
     .month-action-btn.clear {
         right: 0.35rem;
+    }
+
+    .month-picker-popover {
+        position: absolute;
+        left: 0;
+        top: calc(100% + 8px);
+        width: 320px;
+        max-width: min(92vw, 320px);
+        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 92%, white), var(--bg-primary));
+        border: 1px solid color-mix(in srgb, var(--accent-color) 22%, var(--border-color));
+        border-radius: 14px;
+        padding: 0.85rem;
+        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+        z-index: 30;
+    }
+
+    .month-picker-popover[hidden] {
+        display: none;
+    }
+
+    .month-pop-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.7rem;
+    }
+
+    .month-year-label {
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: 0.04em;
+    }
+
+    .month-year-btn {
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .month-year-btn:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+
+    .month-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.5rem;
+    }
+
+    .month-grid-btn {
+        border: 1px solid var(--border-color);
+        border-radius: 9px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        padding: 0.45rem 0.2rem;
+        font-size: 0.84rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .month-grid-btn:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+        transform: translateY(-1px);
+    }
+
+    .month-grid-btn.active {
+        border-color: var(--accent-color);
+        background: color-mix(in srgb, var(--accent-color) 14%, var(--bg-secondary));
+        color: var(--accent-color);
+        font-weight: 700;
+    }
+
+    .month-pop-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.75rem;
+    }
+
+    .month-today-btn {
+        border: 1px solid color-mix(in srgb, var(--accent-color) 34%, var(--border-color));
+        border-radius: 8px;
+        padding: 0.3rem 0.7rem;
+        background: #ffffff;
+        color: var(--accent-color);
+        font-size: 0.82rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .month-today-btn:hover {
+        background: #f9fafb;
     }
 
     .btn {
@@ -540,13 +648,28 @@
                         <button type="button" class="month-action-btn nav prev" id="groupMonthPrev" title="上个月">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <input type="month" class="form-control month-filter-input" id="groupMonthFilter">
+                        <input type="text" class="form-control month-filter-input" id="groupMonthFilter" placeholder="点击选择月份" readonly>
                         <button type="button" class="month-action-btn nav next" id="groupMonthNext" title="下个月">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                         <button type="button" class="month-action-btn clear" id="groupMonthClear" title="清空月份">
                             <i class="fas fa-times"></i>
                         </button>
+                        <div class="month-picker-popover" id="groupMonthPopover" hidden>
+                            <div class="month-pop-header">
+                                <button type="button" class="month-year-btn" id="groupMonthYearPrev" aria-label="上一年">
+                                    <i class="fas fa-angle-left"></i>
+                                </button>
+                                <span class="month-year-label" id="groupMonthYearLabel"></span>
+                                <button type="button" class="month-year-btn" id="groupMonthYearNext" aria-label="下一年">
+                                    <i class="fas fa-angle-right"></i>
+                                </button>
+                            </div>
+                            <div class="month-grid" id="groupMonthGrid"></div>
+                            <div class="month-pop-actions">
+                                <button type="button" class="month-today-btn" id="groupMonthToday">本月</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="filter-group">
@@ -1347,35 +1470,123 @@ function getCSRFToken() {
 }
 
 function shiftMonthValue(value, step) {
-    const [year, month] = String(value).split('-').map(Number);
-    if (!year || !month) return '';
-    const dt = new Date(year, month - 1 + step, 1);
-    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+    const parsed = parseMonthValue(value);
+    if (!parsed) return '';
+    const dt = new Date(parsed.year, parsed.month - 1 + step, 1);
+    return formatMonthValue(dt.getFullYear(), dt.getMonth() + 1);
 }
 
 function getCurrentMonthValue() {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    return formatMonthValue(now.getFullYear(), now.getMonth() + 1);
+}
+
+function parseMonthValue(value) {
+    const match = String(value || '').match(/^(\d{4})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!year || month < 1 || month > 12) return null;
+    return { year, month };
+}
+
+function formatMonthValue(year, month) {
+    return `${year}-${String(month).padStart(2, '0')}`;
 }
 
 function initGroupMonthFilterButtons() {
+    const wrap = document.querySelector('.month-filter-control');
     const monthInput = document.getElementById('groupMonthFilter');
     const prevBtn = document.getElementById('groupMonthPrev');
     const nextBtn = document.getElementById('groupMonthNext');
     const clearBtn = document.getElementById('groupMonthClear');
-    if (!monthInput || !prevBtn || !nextBtn || !clearBtn) return;
+    const popover = document.getElementById('groupMonthPopover');
+    const yearLabel = document.getElementById('groupMonthYearLabel');
+    const yearPrevBtn = document.getElementById('groupMonthYearPrev');
+    const yearNextBtn = document.getElementById('groupMonthYearNext');
+    const monthGrid = document.getElementById('groupMonthGrid');
+    const todayBtn = document.getElementById('groupMonthToday');
+    if (!wrap || !monthInput || !prevBtn || !nextBtn || !clearBtn || !popover || !yearLabel || !yearPrevBtn || !yearNextBtn || !monthGrid || !todayBtn) return;
+
+    let viewYear = parseMonthValue(monthInput.value)?.year || new Date().getFullYear();
+
+    const renderGrid = () => {
+        yearLabel.textContent = `${viewYear}年`;
+        const selected = parseMonthValue(monthInput.value);
+        monthGrid.innerHTML = Array.from({ length: 12 }, (_, index) => {
+            const month = index + 1;
+            const active = selected && selected.year === viewYear && selected.month === month ? 'active' : '';
+            return `<button type="button" class="month-grid-btn ${active}" data-month="${month}">${String(month).padStart(2, '0')}月</button>`;
+        }).join('');
+    };
+
+    const openPopover = () => {
+        const selectedYear = parseMonthValue(monthInput.value)?.year;
+        if (selectedYear) viewYear = selectedYear;
+        renderGrid();
+        popover.hidden = false;
+        wrap.classList.add('open');
+    };
+
+    const closePopover = () => {
+        popover.hidden = true;
+        wrap.classList.remove('open');
+    };
 
     prevBtn.addEventListener('click', () => {
         monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), -1);
+        if (!popover.hidden) renderGrid();
     });
 
     nextBtn.addEventListener('click', () => {
         monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), 1);
+        if (!popover.hidden) renderGrid();
     });
 
     clearBtn.addEventListener('click', () => {
         monthInput.value = '';
         monthInput.focus();
+        if (!popover.hidden) renderGrid();
+    });
+
+    monthInput.addEventListener('click', () => {
+        openPopover();
+    });
+
+    monthInput.addEventListener('focus', () => {
+        if (popover.hidden) openPopover();
+    });
+
+    yearPrevBtn.addEventListener('click', () => {
+        viewYear -= 1;
+        renderGrid();
+    });
+
+    yearNextBtn.addEventListener('click', () => {
+        viewYear += 1;
+        renderGrid();
+    });
+
+    monthGrid.addEventListener('click', (event) => {
+        const target = event.target.closest('.month-grid-btn');
+        if (!target) return;
+        const month = Number(target.dataset.month);
+        monthInput.value = formatMonthValue(viewYear, month);
+        closePopover();
+    });
+
+    todayBtn.addEventListener('click', () => {
+        monthInput.value = getCurrentMonthValue();
+        viewYear = parseMonthValue(monthInput.value)?.year || viewYear;
+        closePopover();
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!wrap.contains(event.target)) closePopover();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closePopover();
     });
 }
 
