@@ -1757,7 +1757,7 @@ def get_operator_sales_pie_chart_api(request):
 
                     if sales > 0:
                         pie_data.append({
-                            'name': shop.name or f'店铺({shop.sid})',
+                            'name': shop.shop_name or f'店铺({shop.sid})',
                             'value': sales
                         })
 

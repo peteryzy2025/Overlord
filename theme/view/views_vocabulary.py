@@ -156,7 +156,7 @@ def api_tro_table_list(request):
                 'name_type_desc': NAME_TYPE_MAPPING.get(item.name_type, str(item.name_type)),
                 'international_classes': intl_classes,
                 'shop_id': item.shop_id,
-                'shop_name': item.shop.name if item.shop else '-',
+                'shop_name': item.shop.shop_name if item.shop else '-',
                 'creator_name': item.creator.first_name if item.creator else (item.creator.username if item.creator else '-'),
                 'creator_id': item.creator.id if item.creator else None,
                 'create_time': item.create_time.strftime('%Y-%m-%d %H:%M:%S') if item.create_time else '',
