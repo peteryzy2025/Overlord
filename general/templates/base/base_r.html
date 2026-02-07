@@ -34,6 +34,7 @@
     .sidebar-toggle {
     position: fixed;
     top: 50%;
+    left: 256px;
     transform: translateY(-50%);
     width: 24px;
     height: 64px;
@@ -45,11 +46,6 @@
     justify-content: center;
     transition: all 0.3s ease;
     z-index: 100;
-    }
-
-    /* 展开状态：按钮在sidebar内部，右侧贴紧边缘 */
-    .sidebar-toggle {
-    left: 256px; /* 280px - 24px 按钮完全在内部 */
     border-radius: 12px 0 0 12px; /* 朝向左 */
     border-left: 1px solid var(--border-color);
     border-right: none;
@@ -347,6 +343,16 @@
 
     anime({
     targets: '.sidebar',
+    translateX: [-280, 0],
+    opacity: [0, 1],
+    duration: 600,
+    delay: 200,
+    easing: 'easeOutQuart'
+    });
+
+    // 侧边栏切换按钮动画 - 与侧边栏完全同步，避免分离感
+    anime({
+    targets: '.sidebar-toggle',
     translateX: [-280, 0],
     opacity: [0, 1],
     duration: 600,
