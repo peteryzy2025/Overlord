@@ -6,13 +6,13 @@
         margin-top: 80px;
         min-height: calc(100vh - 80px);
         display: flex;
-        justify-content: center;
-        align-items: flex-start;
+        flex-direction: column;
         padding: 2rem;
     }
 
     .content {
         width: 100%;
+        flex: 1;
 {#        max-width: 1200px;#}
 
     }
@@ -37,6 +37,7 @@
         <div class="content">
             {% block page_content %}{% endblock %}
         </div>
+        {% block page_footer %}{% endblock %}
     </div>
     {% block modals %}{% endblock %}
 {% endblock %}
