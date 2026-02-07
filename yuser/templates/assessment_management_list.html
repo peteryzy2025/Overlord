@@ -4,6 +4,7 @@
 {% block title %}绩效考核管理{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
 <style>
     /* ========== 你的原始样式（完全保留） ========== */
     .page-header {
@@ -421,43 +422,22 @@
             </div>
             <div class="filter-group">
                 <label class="filter-label">员工姓名</label>
-                <select class="form-select" id="employeeFilter">
-                    <option value="">全部员工</option>
-                    {% for emp in employees %}
-                    <option value="{{ emp.id }}" {% if request.GET.employee == emp.id|stringformat:"s" %}selected{% endif %}>
-                        {{ emp.first_name }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <div id="employeeFilter" class="searchable-select single" data-placeholder="全部员工"></div>
             </div>
             <div class="filter-group">
                 <label class="filter-label">考核类型</label>
-                <select class="form-select" id="typeFilter">
-                    <option value="">全部类型</option>
-                    {% for key, label in type_choices %}
-                    <option value="{{ key }}" {% if request.GET.assess_type == key %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <div id="typeFilter" class="searchable-select single" data-placeholder="全部类型"></div>
             </div>
             <div class="filter-group">
                 <label class="filter-label">考核状态</label>
-                <select class="form-select" id="statusFilter">
-                    <option value="">全部状态</option>
-                    {% for key, label in status_choices %}
-                    <option value="{{ key }}" {% if request.GET.status == key %}selected{% endif %}>
-                        {{ label }}
-                    </option>
-                    {% endfor %}
-                </select>
+                <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
             </div>
-            <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
-                <button class="btn btn-primary" onclick="filterAssessments()">
-                    <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>筛选
+            <div class="filter-actions">
+                <button class="btn" onclick="filterAssessments()" title="筛选">
+                    <i class="fas fa-search"></i>
                 </button>
-                <button class="btn btn-secondary ms-2" onclick="resetFilters()">
-                    <i class="fas fa-undo" style="margin-right: 0.5rem;"></i>重置
+                <button class="btn btn-secondary ms-2" onclick="resetFilters()" title="重置">
+                    <i class="fas fa-redo"></i>
                 </button>
                 <!-- 新增：批量刷新订单按钮（仅管理员可见） -->
                 {% if is_admin %}
@@ -683,9 +663,87 @@
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{% static 'js/searchable-select.js' %}"></script>
 <script>
     // ========== 全局变量：缓存月份（解决时序问题）==========
     let cachedMonth = '';
+    let employeeSelect = null;
+    let typeSelect = null;
+    let statusSelect = null;
+
+    function formatMultiSelect(values) {
+        if (!values) return '';
+        if (Array.isArray(values)) {
+            const nonEmpty = values.filter(v => v !== '');
+            return nonEmpty.length > 0 ? nonEmpty.join(',') : '';
+        }
+        return values;
+    }
+
+    function initEmployeeFilterSelect() {
+        if (typeof SearchableSelect !== 'function') return;
+
+        const options = [
+            { value: '', label: '全部员工' },
+            {% for emp in employees %}
+            { value: '{{ emp.id }}', label: '{{ emp.first_name|escapejs }}' },
+            {% endfor %}
+        ];
+
+        employeeSelect = new SearchableSelect('#employeeFilter', {
+            options,
+            multiple: true,
+            placeholder: '全部员工'
+        });
+
+        const initialEmployee = '{{ request.GET.employee|default:""|escapejs }}';
+        if (initialEmployee) {
+            const initialValues = initialEmployee.split(',').map(v => v.trim()).filter(Boolean);
+            employeeSelect.setValue(initialValues.length > 0 ? initialValues : ['']);
+        } else {
+            employeeSelect.setValue(['']);
+        }
+    }
+
+    function initTypeFilterSelect() {
+        if (typeof SearchableSelect !== 'function') return;
+
+        const options = [
+            { value: '', label: '全部类型' },
+            {% for key, label in type_choices %}
+            { value: '{{ key }}', label: '{{ label|escapejs }}' },
+            {% endfor %}
+        ];
+
+        typeSelect = new SearchableSelect('#typeFilter', {
+            options,
+            multiple: false,
+            placeholder: '全部类型'
+        });
+
+        const initialType = '{{ request.GET.assess_type|default:""|escapejs }}';
+        typeSelect.setValue(initialType || '');
+    }
+
+    function initStatusFilterSelect() {
+        if (typeof SearchableSelect !== 'function') return;
+
+        const options = [
+            { value: '', label: '全部状态' },
+            {% for key, label in status_choices %}
+            { value: '{{ key }}', label: '{{ label|escapejs }}' },
+            {% endfor %}
+        ];
+
+        statusSelect = new SearchableSelect('#statusFilter', {
+            options,
+            multiple: false,
+            placeholder: '全部状态'
+        });
+
+        const initialStatus = '{{ request.GET.status|default:""|escapejs }}';
+        statusSelect.setValue(initialStatus || '');
+    }
 
     // ========== 工具函数：获取 CSRF Token ==========
     function getCookie(name) {
@@ -806,9 +864,9 @@
     // ========== 原有函数（保持不变） ==========
     function filterAssessments() {
         const month = document.getElementById('monthFilter').value;
-        const employee = document.getElementById('employeeFilter').value;
-        const assess_type = document.getElementById('typeFilter').value;
-        const status = document.getElementById('statusFilter').value;
+        const employee = formatMultiSelect(employeeSelect ? employeeSelect.getValue() : '');
+        const assess_type = typeSelect ? typeSelect.getValue() : '';
+        const status = statusSelect ? statusSelect.getValue() : '';
 
         let url = '{% url "yuser:assessment_list" %}';
         const params = [];
@@ -825,9 +883,9 @@
 
     function resetFilters() {
         document.getElementById('monthFilter').value = '';
-        document.getElementById('employeeFilter').value = '';
-        document.getElementById('typeFilter').value = '';
-        document.getElementById('statusFilter').value = '';
+        if (employeeSelect) employeeSelect.setValue(['']);
+        if (typeSelect) typeSelect.setValue('');
+        if (statusSelect) statusSelect.setValue('');
         window.location.href = '{% url "yuser:assessment_list" %}';
     }
 
@@ -962,10 +1020,13 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
+        initEmployeeFilterSelect();
+        initTypeFilterSelect();
+        initStatusFilterSelect();
         const filterSection = document.querySelector('.filter-section');
         if (filterSection) {
             filterSection.addEventListener('keydown', function (e) {
-                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+                if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.closest('.searchable-select'))) {
                     e.preventDefault();
                     filterAssessments();
                 }
@@ -977,9 +1038,9 @@
     async function batchRefreshOrders() {
         // 获取当前筛选条件
         const month = document.getElementById('monthFilter').value;
-        const employee = document.getElementById('employeeFilter').value;
-        const assess_type = document.getElementById('typeFilter').value;
-        const status = document.getElementById('statusFilter').value;
+        const employee = formatMultiSelect(employeeSelect ? employeeSelect.getValue() : '');
+        const assess_type = typeSelect ? typeSelect.getValue() : '';
+        const status = statusSelect ? statusSelect.getValue() : '';
 
         // 确认提示
         const result = await Swal.fire({
