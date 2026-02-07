@@ -644,7 +644,7 @@
 {% endblock %}
 
 {% block layout_js %}
-<script>
+    // 确保layout_js块正确包裹JavaScript代码
     // 打开头像弹窗
     function openAvatarModal() {
         document.getElementById('avatarModal').classList.add('show');
@@ -804,5 +804,5 @@
     document.getElementById('passwordModal').addEventListener('click', function(e) {
         if (e.target === this) closePasswordModal();
     });
-</script>
+
 {% endblock %}

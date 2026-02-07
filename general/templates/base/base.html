@@ -819,7 +819,7 @@
             <div class="user-menu">
                 <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
                     <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
-                    <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                    <img src="{% if request.user.avatar %}{{ request.user.avatar.url }}{% else %}{% static 'img/y/avatar.png' %}{% endif %}" alt="用户头像" class="user-avatar" id="userAvatar">
                 </div>
 
                 <div class="user-menu-dropdown" id="userMenuDropdown">
