@@ -87,211 +87,6 @@
         transition: all 0.3s ease;
     }
 
-    .month-filter-control {
-        position: relative;
-        width: 100%;
-    }
-
-    .month-filter-input {
-        width: 100%;
-        min-width: 0;
-        padding-left: 2.45rem;
-        padding-right: 4.9rem;
-        cursor: pointer;
-        background:
-            linear-gradient(120deg, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 42%),
-            var(--bg-secondary);
-        font-weight: 600;
-        letter-spacing: 0.01em;
-    }
-
-    .month-filter-control.open .month-filter-input {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 20%, transparent);
-    }
-
-    .month-action-btn {
-        width: 28px;
-        height: 28px;
-        border: none;
-        border-radius: 7px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        z-index: 3;
-        transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
-    }
-
-    .month-action-btn.nav {
-        background: color-mix(in srgb, var(--accent-color) 16%, transparent);
-        color: var(--accent-color);
-    }
-
-    .month-action-btn.nav:hover {
-        background: color-mix(in srgb, var(--accent-color) 28%, transparent);
-        transform: translateY(calc(-50% - 1px));
-    }
-
-    .month-action-btn.clear {
-        background: #ffffff;
-        color: #ef4444;
-        border: 1px solid color-mix(in srgb, #ef4444 28%, #e5e7eb);
-    }
-
-    .month-action-btn.clear:hover {
-        background: #f9fafb;
-        transform: translateY(calc(-50% - 1px));
-    }
-
-    .month-action-btn.prev {
-        left: 0.35rem;
-    }
-
-    .month-action-btn.next {
-        right: 2.25rem;
-    }
-
-    .month-action-btn.clear {
-        right: 0.35rem;
-    }
-
-    .month-picker-popover {
-        position: absolute;
-        left: 0;
-        right: 0;
-        top: calc(100% + 8px);
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-        background: linear-gradient(180deg, color-mix(in srgb, var(--bg-primary) 92%, white), var(--bg-primary));
-        border: 1px solid color-mix(in srgb, var(--accent-color) 22%, var(--border-color));
-        border-radius: 14px;
-        padding: 0.85rem;
-        box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
-        z-index: 30;
-    }
-
-    .month-picker-popover[hidden] {
-        display: none;
-    }
-
-    .month-pop-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 0.7rem;
-    }
-
-    .month-year-display {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-    }
-
-    .month-year-label {
-        border: 1px solid transparent;
-        background: transparent;
-        border-radius: 8px;
-        padding: 0.2rem 0.45rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        letter-spacing: 0.04em;
-        cursor: pointer;
-    }
-
-    .month-year-label:hover {
-        border-color: var(--border-color);
-        background: color-mix(in srgb, var(--bg-secondary) 88%, transparent);
-    }
-
-    .month-year-input {
-        width: 78px;
-        min-width: 0;
-        padding: 0.2rem 0.4rem;
-        border: 1px solid var(--accent-color);
-        border-radius: 8px;
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        font-weight: 700;
-        text-align: center;
-        outline: none;
-    }
-
-    .month-year-input[hidden] {
-        display: none;
-    }
-
-    .month-year-btn {
-        width: 30px;
-        height: 30px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        cursor: pointer;
-    }
-
-    .month-year-btn:hover {
-        border-color: var(--accent-color);
-        color: var(--accent-color);
-    }
-
-    .month-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
-        gap: 0.5rem;
-    }
-
-    .month-grid-btn {
-        width: 100%;
-        min-width: 0;
-        border: 1px solid var(--border-color);
-        border-radius: 9px;
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        padding: 0.45rem 0.2rem;
-        font-size: 0.84rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .month-grid-btn:hover {
-        border-color: var(--accent-color);
-        color: var(--accent-color);
-        transform: translateY(-1px);
-    }
-
-    .month-grid-btn.active {
-        border-color: var(--accent-color);
-        background: color-mix(in srgb, var(--accent-color) 14%, var(--bg-secondary));
-        color: var(--accent-color);
-        font-weight: 700;
-    }
-
-    .month-pop-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 0.75rem;
-    }
-
-    .month-today-btn {
-        border: 1px solid color-mix(in srgb, var(--accent-color) 34%, var(--border-color));
-        border-radius: 8px;
-        padding: 0.3rem 0.7rem;
-        background: #ffffff;
-        color: var(--accent-color);
-        font-size: 0.82rem;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .month-today-btn:hover {
-        background: #f9fafb;
-    }
 
     .btn {
         background-color: var(--accent-color);
@@ -681,33 +476,33 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">月份筛选</label>
-                    <div class="month-filter-control">
-                        <button type="button" class="month-action-btn nav prev" id="groupMonthPrev" title="上个月">
+                    <div class="ym-picker" data-ym-picker>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--prev" id="groupMonthPrev" title="上个月" data-ym-role="prev">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <input type="text" class="form-control month-filter-input" id="groupMonthFilter" placeholder="点击选择月份" readonly>
-                        <button type="button" class="month-action-btn nav next" id="groupMonthNext" title="下个月">
+                        <input type="text" class="form-control ym-picker-input" id="groupMonthFilter" placeholder="点击选择月份" readonly data-ym-role="input">
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--next" id="groupMonthNext" title="下个月" data-ym-role="next">
                             <i class="fas fa-chevron-right"></i>
                         </button>
-                        <button type="button" class="month-action-btn clear" id="groupMonthClear" title="清空月份">
+                        <button type="button" class="ym-picker-btn ym-picker-btn--clear" id="groupMonthClear" title="清空月份" data-ym-role="clear">
                             <i class="fas fa-times"></i>
                         </button>
-                        <div class="month-picker-popover" id="groupMonthPopover" hidden>
-                            <div class="month-pop-header">
-                                <button type="button" class="month-year-btn" id="groupMonthYearPrev" aria-label="上一年">
+                        <div class="ym-picker-popover" id="groupMonthPopover" hidden data-ym-role="popover">
+                            <div class="ym-picker-header">
+                                <button type="button" class="ym-picker-year-btn" id="groupMonthYearPrev" aria-label="上一年" data-ym-role="year-prev">
                                     <i class="fas fa-angle-left"></i>
                                 </button>
-                                <div class="month-year-display">
-                                    <button type="button" class="month-year-label" id="groupMonthYearLabel"></button>
-                                    <input type="text" class="month-year-input" id="groupMonthYearInput" inputmode="numeric" maxlength="4" hidden>
+                                <div class="ym-picker-year-display">
+                                    <button type="button" class="ym-picker-year-label" id="groupMonthYearLabel" data-ym-role="year-label"></button>
+                                    <input type="text" class="ym-picker-year-input" id="groupMonthYearInput" inputmode="numeric" maxlength="4" hidden data-ym-role="year-input">
                                 </div>
-                                <button type="button" class="month-year-btn" id="groupMonthYearNext" aria-label="下一年">
+                                <button type="button" class="ym-picker-year-btn" id="groupMonthYearNext" aria-label="下一年" data-ym-role="year-next">
                                     <i class="fas fa-angle-right"></i>
                                 </button>
                             </div>
-                            <div class="month-grid" id="groupMonthGrid"></div>
-                            <div class="month-pop-actions">
-                                <button type="button" class="month-today-btn" id="groupMonthToday">本月</button>
+                            <div class="ym-picker-grid" id="groupMonthGrid" data-ym-role="month-grid"></div>
+                            <div class="ym-picker-actions">
+                                <button type="button" class="ym-picker-today-btn" id="groupMonthToday" data-ym-role="today">本月</button>
                             </div>
                         </div>
                     </div>
@@ -893,6 +688,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
 // ========== 全局变量 ==========
 let currentTab = 'group';
@@ -1509,230 +1305,10 @@ function getCSRFToken() {
     return document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
 }
 
-function shiftMonthValue(value, step) {
-    const parsed = parseMonthValue(value);
-    if (!parsed) return '';
-    const dt = new Date(parsed.year, parsed.month - 1 + step, 1);
-    return formatMonthValue(dt.getFullYear(), dt.getMonth() + 1);
-}
-
-function getCurrentMonthValue() {
-    const now = new Date();
-    return formatMonthValue(now.getFullYear(), now.getMonth() + 1);
-}
-
-function parseMonthValue(value) {
-    const match = String(value || '').match(/^(\d{4})-(\d{2})$/);
-    if (!match) return null;
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    if (!year || month < 1 || month > 12) return null;
-    return { year, month };
-}
-
-function formatMonthValue(year, month) {
-    return `${year}-${String(month).padStart(2, '0')}`;
-}
-
-function initGroupMonthFilterButtons() {
-    const wrap = document.querySelector('.month-filter-control');
-    const monthInput = document.getElementById('groupMonthFilter');
-    const prevBtn = document.getElementById('groupMonthPrev');
-    const nextBtn = document.getElementById('groupMonthNext');
-    const clearBtn = document.getElementById('groupMonthClear');
-    const popover = document.getElementById('groupMonthPopover');
-    const yearLabel = document.getElementById('groupMonthYearLabel');
-    const yearInput = document.getElementById('groupMonthYearInput');
-    const yearPrevBtn = document.getElementById('groupMonthYearPrev');
-    const yearNextBtn = document.getElementById('groupMonthYearNext');
-    const monthGrid = document.getElementById('groupMonthGrid');
-    const todayBtn = document.getElementById('groupMonthToday');
-    if (!wrap || !monthInput || !prevBtn || !nextBtn || !clearBtn || !popover || !yearLabel || !yearInput || !yearPrevBtn || !yearNextBtn || !monthGrid || !todayBtn) return;
-
-    let viewYear = parseMonthValue(monthInput.value)?.year || new Date().getFullYear();
-    let yearEditing = false;
-    let yearBlurTimer = null;
-
-    const clampYear = (year) => Math.min(9999, Math.max(1, year));
-    const setViewYear = (year) => {
-        viewYear = clampYear(Math.trunc(year));
-        renderGrid();
-    };
-
-    const renderGrid = () => {
-        yearLabel.textContent = `${viewYear}`;
-        yearInput.value = String(viewYear);
-        const selected = parseMonthValue(monthInput.value);
-        monthGrid.innerHTML = Array.from({ length: 12 }, (_, index) => {
-            const month = index + 1;
-            const active = selected && selected.year === viewYear && selected.month === month ? 'active' : '';
-            return `<button type="button" class="month-grid-btn ${active}" data-month="${month}">${String(month).padStart(2, '0')}</button>`;
-        }).join('');
-    };
-
-    const startYearEdit = () => {
-        if (yearBlurTimer) {
-            clearTimeout(yearBlurTimer);
-            yearBlurTimer = null;
-        }
-        yearEditing = true;
-        yearLabel.hidden = true;
-        yearInput.hidden = false;
-        yearInput.value = String(viewYear);
-        yearInput.focus();
-        yearInput.select();
-    };
-
-    const finishYearEdit = (applyChange, options = {}) => {
-        const { render = true } = options;
-        if (!yearEditing) return;
-        if (applyChange) {
-            const raw = yearInput.value.trim();
-            if (/^\d{1,4}$/.test(raw)) {
-                viewYear = clampYear(Number(raw));
-                yearLabel.textContent = `${viewYear}`;
-                yearInput.value = String(viewYear);
-                if (render) renderGrid();
-            } else if (render) {
-                renderGrid();
-            }
-        }
-        yearInput.hidden = true;
-        yearLabel.hidden = false;
-        yearEditing = false;
-    };
-
-    const openPopover = () => {
-        const selectedYear = parseMonthValue(monthInput.value)?.year;
-        if (selectedYear) viewYear = selectedYear;
-        if (yearBlurTimer) {
-            clearTimeout(yearBlurTimer);
-            yearBlurTimer = null;
-        }
-        finishYearEdit(false);
-        renderGrid();
-        popover.hidden = false;
-        wrap.classList.add('open');
-    };
-
-    const closePopover = () => {
-        if (yearBlurTimer) {
-            clearTimeout(yearBlurTimer);
-            yearBlurTimer = null;
-        }
-        finishYearEdit(true);
-        popover.hidden = true;
-        wrap.classList.remove('open');
-    };
-
-    prevBtn.addEventListener('click', () => {
-        monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), -1);
-        if (!popover.hidden) renderGrid();
-    });
-
-    nextBtn.addEventListener('click', () => {
-        monthInput.value = shiftMonthValue(monthInput.value || getCurrentMonthValue(), 1);
-        if (!popover.hidden) renderGrid();
-    });
-
-    clearBtn.addEventListener('click', () => {
-        monthInput.value = '';
-        monthInput.focus();
-        if (!popover.hidden) renderGrid();
-    });
-
-    monthInput.addEventListener('click', () => {
-        openPopover();
-    });
-
-    monthInput.addEventListener('focus', () => {
-        if (popover.hidden) openPopover();
-    });
-
-    yearPrevBtn.addEventListener('click', () => {
-        setViewYear(viewYear - 1);
-    });
-
-    yearNextBtn.addEventListener('click', () => {
-        setViewYear(viewYear + 1);
-    });
-
-    yearLabel.addEventListener('click', (event) => {
-        event.stopPropagation();
-        startYearEdit();
-    });
-
-    yearInput.addEventListener('click', (event) => {
-        event.stopPropagation();
-    });
-
-    yearInput.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            if (yearBlurTimer) {
-                clearTimeout(yearBlurTimer);
-                yearBlurTimer = null;
-            }
-            finishYearEdit(true);
-        } else if (event.key === 'Escape') {
-            event.preventDefault();
-            if (yearBlurTimer) {
-                clearTimeout(yearBlurTimer);
-                yearBlurTimer = null;
-            }
-            finishYearEdit(false);
-        }
-    });
-
-    yearInput.addEventListener('blur', () => {
-        if (yearBlurTimer) clearTimeout(yearBlurTimer);
-        yearBlurTimer = setTimeout(() => {
-            finishYearEdit(true);
-            yearBlurTimer = null;
-        }, 0);
-    });
-
-    const pickMonth = (month) => {
-        if (yearBlurTimer) {
-            clearTimeout(yearBlurTimer);
-            yearBlurTimer = null;
-        }
-        finishYearEdit(true, { render: false });
-        monthInput.value = formatMonthValue(viewYear, month);
-        closePopover();
-    };
-
-    monthGrid.addEventListener('mousedown', (event) => {
-        const target = event.target.closest('.month-grid-btn');
-        if (!target) return;
-        event.preventDefault();
-        pickMonth(Number(target.dataset.month));
-    });
-
-    monthGrid.addEventListener('click', (event) => {
-        const target = event.target.closest('.month-grid-btn');
-        if (!target) return;
-        pickMonth(Number(target.dataset.month));
-    });
-
-    todayBtn.addEventListener('click', () => {
-        monthInput.value = getCurrentMonthValue();
-        viewYear = parseMonthValue(monthInput.value)?.year || viewYear;
-        closePopover();
-    });
-
-    document.addEventListener('click', (event) => {
-        if (!wrap.contains(event.target)) closePopover();
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') closePopover();
-    });
-}
-
-// ========== 页面初始化 ==========
 document.addEventListener('DOMContentLoaded', async function() {
-    initGroupMonthFilterButtons();
+    if (window.GeneralStyleYearMonthPicker) {
+        window.GeneralStyleYearMonthPicker.initAll(document);
+    }
     initOpsGroupFilterSelects();
     await loadFilterOptions();
     loadGroupTargets();
