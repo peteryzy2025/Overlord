@@ -4,6 +4,7 @@
 {% block title %}登神长阶 - Overlord{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
 <style>
     .ranking-main {
         margin: 20px;
@@ -486,6 +487,7 @@
 
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
     // 全局变量
     let rankingChart = null;

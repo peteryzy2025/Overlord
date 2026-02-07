@@ -1,6 +1,7 @@
 {% extends 'base/base_z.html' %} {% load static %} {% block title %}巡店报告 -
 Overlord{% endblock %} {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}" />
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}" />
 <style>
   :root {
     --accent-color: #10b981; /* 绿色主题 */
@@ -416,6 +417,7 @@ Overlord{% endblock %} {% block extra_css %}
   </div>
 </div>
 {% endblock %} {% block extra_js %}
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
   // ===== 全局变量定义（保持不变）=====
   let currentFilters = {

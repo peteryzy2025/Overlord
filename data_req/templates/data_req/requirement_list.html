@@ -5,6 +5,7 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/tracking_management.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         .stat-card.total {
             border-left: 4px solid #10B981;
@@ -253,19 +254,16 @@
             color: #EF4444;
         }
 
-        .custom-date-range {
-            display: none;
-            flex-direction: row;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
+        .custom-time-range-group {
+            min-width: 220px;
+            flex: 1 1 220px;
         }
 
-        .custom-date-range.show {
-            display: flex;
-        }
-
-        .custom-date-range input {
-            flex: 1;
+        @media (max-width: 768px) {
+            .custom-time-range-group {
+                min-width: 100%;
+                flex-basis: 100%;
+            }
         }
 
         .score-stats-card {
@@ -475,13 +473,18 @@
                         </select>
                         <i class="fas fa-chevron-down select-arrow"></i>
                     </div>
-                    <div class="custom-date-range {% if current_filters.time_filter == 'custom' %}show{% endif %}"
-                         id="customDateRange">
-                        <input type="date" class="form-control" id="customStart"
-                               value="{{ current_filters.custom_start }}">
-                        <span style="color: var(--text-secondary); align-self: center;">至</span>
-                        <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
-                    </div>
+                </div>
+
+                <div class="filter-group custom-time-range-group" id="customTimeStartGroup"
+                     style="{% if current_filters.time_filter == 'custom' %}display: flex;{% else %}display: none;{% endif %}">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="customStart" value="{{ current_filters.custom_start }}">
+                </div>
+
+                <div class="filter-group custom-time-range-group" id="customTimeEndGroup"
+                     style="{% if current_filters.time_filter == 'custom' %}display: flex;{% else %}display: none;{% endif %}">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
                 </div>
 
                 <div class="filter-group" style="align-self: flex-end; min-width: 200px;">
@@ -805,6 +808,7 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         let pendingSaveData = null;
         let needUnclaimReason = false;
@@ -815,11 +819,14 @@
 
         function onTimeFilterChange() {
             const timeFilter = document.getElementById('timeFilter').value;
-            const customDateRange = document.getElementById('customDateRange');
+            const customStartGroup = document.getElementById('customTimeStartGroup');
+            const customEndGroup = document.getElementById('customTimeEndGroup');
             if (timeFilter === 'custom') {
-                customDateRange.classList.add('show');
+                customStartGroup.style.display = 'flex';
+                customEndGroup.style.display = 'flex';
             } else {
-                customDateRange.classList.remove('show');
+                customStartGroup.style.display = 'none';
+                customEndGroup.style.display = 'none';
             }
         }
 

@@ -696,12 +696,34 @@
 
                 <div class="filter-group" id="customDateGroup" style="display: none;">
                     <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="startDate">
+                    <div class="ymd-picker" data-ymd-picker>
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--prev" title="上一天" data-ymd-role="prev-day">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <input type="date" class="form-control ymd-picker-input" id="startDate" data-ymd-role="input">
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--next" title="下一天" data-ymd-role="next-day">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--clear" title="清空日期" data-ymd-role="clear">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="filter-group" id="customDateGroup2" style="display: none;">
                     <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="endDate">
+                    <div class="ymd-picker" data-ymd-picker>
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--prev" title="上一天" data-ymd-role="prev-day">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <input type="date" class="form-control ymd-picker-input" id="endDate" data-ymd-role="input">
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--next" title="下一天" data-ymd-role="next-day">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" class="ymd-picker-btn ymd-picker-btn--clear" title="清空日期" data-ymd-role="clear">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="filter-group">
@@ -849,6 +871,7 @@
 {% block extra_js %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // SearchableSelect 实例
         let groupSelect = null;
@@ -1471,6 +1494,9 @@
 
         // 页面快速加载，数据异步获取
         document.addEventListener('DOMContentLoaded', function () {
+            if (window.GeneralStyleDatePicker) {
+                window.GeneralStyleDatePicker.initAll(document);
+            }
             // 初始化 SearchableSelect 组件并加载数据
             initSearchableSelects()
                 .then(() => {
