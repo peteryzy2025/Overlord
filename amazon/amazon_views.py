@@ -15,6 +15,53 @@ from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
 from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
 
 
+def has_perm_code(user, code):
+    """检查用户是否有特定权限码（使用 permission_configs 模型）"""
+    if not user or not user.is_authenticated:
+        return False
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
+
+
+def get_user_operation_permissions(user):
+    """
+    获取用户在运营数据中的权限列表
+    返回: ['ops_all'] | ['ops_group'] | ['ops'] | []
+    """
+    if not user or not user.is_authenticated:
+        return []
+    
+    permissions = []
+    
+    # 1. 超管(555) / 运营管理员(553) → ops_all
+    if has_perm_code(user, '555') or has_perm_code(user, '553'):
+        permissions.append('ops_all')
+        return permissions
+    
+    # 2. 非运营部人员 → 无权限
+    if user.department != 'operation':
+        return permissions
+    
+    # 3. 获取运营账号信息
+    account = getattr(user, 'operational_account', None)
+    if not account:
+        # 没有运营账号信息，只能看自己
+        permissions.append('ops')
+        return permissions
+    
+    # 4. 运营组长 → ops_group
+    if account.role == OperationalAccount.Role.LEADER:
+        permissions.append('ops_group')
+        return permissions
+    
+    # 5. 普通运营/助理 → ops
+    permissions.append('ops')
+    return permissions
+
+
 @login_required
 def get_operator_pie_chart_api(request):
     """
@@ -38,7 +85,7 @@ def get_operator_pie_chart_api(request):
         }
 
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 权限判断 + 平台识别
         filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
@@ -1037,7 +1084,7 @@ def filter_amazon_data_api(request):
         # 解析请求数据
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # ========== 增强版权限判断 + 平台识别 ==========
         filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
@@ -1524,7 +1571,7 @@ def get_operator_sales_pie_chart_api(request):
         }
 
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 权限判断 + 平台识别（复用现有逻辑）
         filter_type, filter_value, platform_info = determine_filter_type_and_value_with_platform(
