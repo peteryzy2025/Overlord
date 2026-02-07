@@ -180,6 +180,12 @@
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.form-control::placeholder {
+    color: var(--text-secondary);
+    opacity: 1;
+    font-weight: 400;
+}
+
 /* ============================================
    4.1 Year-Month Picker (shared)
    ============================================ */
@@ -195,11 +201,16 @@
     padding-left: 3.4rem;
     padding-right: 4.9rem;
     cursor: pointer;
-    background:
-        linear-gradient(120deg, color-mix(in srgb, var(--accent-color) 8%, transparent), transparent 42%),
-        var(--bg-secondary);
-    font-weight: 600;
-    letter-spacing: 0.01em;
+    background: #ffffff;
+    font-weight: 400;
+    letter-spacing: normal;
+}
+
+.ym-picker .ym-picker-input::placeholder {
+    color: var(--text-secondary) !important;
+    opacity: 1 !important;
+    font-weight: 400 !important;
+    letter-spacing: normal;
 }
 
 .ym-picker.open .ym-picker-input {
@@ -1446,6 +1457,10 @@
 .searchable-select .select-trigger .selected-text .placeholder {
     background-color: transparent !important;
     line-height: 1.5;
+    color: var(--text-secondary);
+    font-weight: 400;
+    opacity: 1;
+    letter-spacing: normal;
 }
 
 /* 下拉面板 */
