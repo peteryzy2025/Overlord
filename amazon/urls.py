@@ -77,6 +77,8 @@ urlpatterns = [
     path('amazon/risk-keywords/', views_risk_keywords.amazon_risk_keywords_page, name='amazon_risk_keywords'),
     path('api/amazon-risk-keywords/', views_risk_keywords.RiskKeywordListAPI.as_view(), name='api_amazon_risk_keywords_list'),
     path('api/amazon-risk-keywords/create/', views_risk_keywords.RiskKeywordCreateAPI.as_view(), name='api_amazon_risk_keywords_create'),
+    path('api/amazon-risk-keywords/update/', views_risk_keywords.RiskKeywordUpdateAPI.as_view(), name='api_amazon_risk_keywords_update'),
+    path('api/amazon-risk-keywords/delete/', views_risk_keywords.RiskKeywordDeleteAPI.as_view(), name='api_amazon_risk_keywords_delete'),
     path('api/amazon-risk-keywords/options/', views_risk_keywords.RiskKeywordOptionsAPI.as_view(), name='api_amazon_risk_keywords_options'),
 
 ]

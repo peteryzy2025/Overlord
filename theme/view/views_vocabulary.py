@@ -6,7 +6,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import json
-from theme.models import TroTable, TrademarkInfo
+from theme.models import TroTable, TrademarkInfo, NiceClassification
+from general.models import AmazonShop
 import os
 from django.http import FileResponse, Http404
 from django.conf import settings
@@ -97,11 +98,22 @@ def api_tro_table_list(request):
                 # 精确搜索：忽略大小写完全匹配
                 queryset = queryset.filter(theme_name__iexact=theme_name)
 
-        name_type = data.get('name_type')
-        if name_type:
+        # 类型码多选筛选
+        name_types = data.get('name_types', [])
+        if name_types:
             try:
-                queryset = queryset.filter(name_type=int(name_type))
-            except ValueError:
+                name_type_list = [int(nt) for nt in name_types if nt]
+                if name_type_list:
+                    queryset = queryset.filter(name_type__in=name_type_list)
+            except (ValueError, TypeError):
+                pass
+        
+        # 国际类多选筛选
+        intl_classes = data.get('intl_classes', [])
+        if intl_classes:
+            try:
+                queryset = queryset.filter(international_classes__code__in=intl_classes).distinct()
+            except (ValueError, TypeError):
                 pass
 
         # 排序
@@ -134,12 +146,19 @@ def api_tro_table_list(request):
         # 序列化数据
         data_list = []
         for item in page_obj:
+            # 获取国际类信息
+            intl_classes = list(item.international_classes.values('code', 'name'))
+            
             data_list.append({
                 'id': item.id,
                 'theme_name': item.theme_name,
                 'name_type': item.name_type,
                 'name_type_desc': NAME_TYPE_MAPPING.get(item.name_type, str(item.name_type)),
-                'created_by': item.created_by or '-',
+                'international_classes': intl_classes,
+                'shop_id': item.shop_id,
+                'shop_name': item.shop.name if item.shop else '-',
+                'creator_name': item.creator.first_name if item.creator else (item.creator.username if item.creator else '-'),
+                'creator_id': item.creator.id if item.creator else None,
                 'create_time': item.create_time.strftime('%Y-%m-%d %H:%M:%S') if item.create_time else '',
                 'update_time': item.update_time.strftime('%Y-%m-%d %H:%M:%S') if item.update_time else '',
             })
@@ -189,12 +208,17 @@ def api_create_tro_record(request):
             return JsonResponse({'success': False, 'message': '类型码必须为数字'}, status=400)
 
         # 创建记录
-        user_name = request.user.first_name or request.user.username
-        TroTable.objects.create(
+        record = TroTable.objects.create(
             theme_name=theme_name,
             name_type=name_type,
-            created_by=user_name
+            creator=request.user,
+            shop_id=data.get('shop_id') or None
         )
+        
+        # 设置国际类关联（传入空列表则清空）
+        intl_class_codes = data.get('international_classes')
+        if intl_class_codes is not None:
+            record.international_classes.set(intl_class_codes)
 
         return JsonResponse({
             'success': True,
@@ -230,8 +254,7 @@ def api_update_tro_record(request):
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
 
         # 权限检查：只有创建人或管理员可编辑
-        current_user_name = request.user.first_name or request.user.username
-        is_creator = record.created_by == current_user_name
+        is_creator = record.creator_id == request.user.id if record.creator else False
         is_admin_user = is_admin(request.user)
 
         if not (is_creator or is_admin_user):
@@ -250,10 +273,18 @@ def api_update_tro_record(request):
         except ValueError:
             return JsonResponse({'success': False, 'message': '类型码必须为数字'}, status=400)
 
+        # 获取国际类列表
+        intl_class_codes = data.get('international_classes')
+        
         # 更新记录
         record.theme_name = theme_name
         record.name_type = name_type
+        record.shop_id = data.get('shop_id') or None
         record.save()
+        
+        # 更新国际类关联（传入空列表会清空所有关联）
+        if intl_class_codes is not None:
+            record.international_classes.set(intl_class_codes)
 
         return JsonResponse({
             'success': True,
@@ -414,6 +445,57 @@ def download_templates(request):
 
 
 #====================更新：批量导入侵权词（2026.2.4）==========================
+@login_required
+def api_nice_classification_list(request):
+    """
+    获取尼斯分类（国际类）列表
+    """
+    try:
+        classifications = NiceClassification.objects.all().order_by('code')
+        data_list = [
+            {
+                'code': item.code,
+                'name': item.name,
+                'category_type': item.category_type
+            }
+            for item in classifications
+        ]
+        return JsonResponse({
+            'success': True,
+            'data': data_list
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取国际类列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def api_shop_list(request):
+    """
+    获取店铺列表
+    """
+    try:
+        shops = AmazonShop.objects.all().order_by('shop_name')
+        data_list = [
+            {
+                'id': item.id,
+                'name': item.shop_name or item.amazon_shop_name or f'店铺{item.id}',
+            }
+            for item in shops
+        ]
+        return JsonResponse({
+            'success': True,
+            'data': data_list
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取店铺列表失败: {str(e)}'
+        }, status=500)
+
+
 @csrf_exempt
 @require_POST
 @login_required
@@ -489,7 +571,7 @@ def api_import_tro_records(request):
                 TroTable.objects.create(
                     theme_name=theme_name,
                     name_type=name_type,
-                    created_by=user_name
+                    creator=request.user
                 )
                 success_count += 1
                 # 添加到已存在集合，避免同一批次内重复

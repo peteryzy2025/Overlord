@@ -67,6 +67,7 @@
         .category-verification { background-color: #E0E7FF; color: #4338CA; }
         .category-tro { background-color: #FCE7F3; color: #BE185D; }
         .category-inventory { background-color: #D1FAE5; color: #059669; }
+        .category-official { background-color: #DBEAFE; color: #1E40AF; border: 1px solid #93C5FD; }
         .category-other { background-color: #E5E7EB; color: #6B7280; }
 
         /* 匹配方式标签 */
@@ -113,23 +114,22 @@
             position: fixed;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 9999;
             backdrop-filter: blur(4px);
-            align-items: center;
-            justify-content: center;
         }
 
         .modal-overlay.show {
-            display: flex !important;
+            display: block !important;
         }
 
         .modal-content {
-            position: relative;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             background-color: var(--bg-primary);
             border-radius: 16px;
             padding: 2rem;
@@ -328,32 +328,22 @@
 
                 <div class="filter-group">
                     <label class="filter-label">风险分类</label>
-                    <select class="form-control" id="categoryFilter" onchange="applyFilters()">
-                        <option value="">全部分类</option>
-                    </select>
+                    <div id="categoryFilter" class="searchable-select single" data-placeholder="全部分类"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">匹配方式</label>
-                    <select class="form-control" id="matchTypeFilter" onchange="applyFilters()">
-                        <option value="">全部方式</option>
-                    </select>
+                    <div id="matchTypeFilter" class="searchable-select single" data-placeholder="全部方式"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">适用范围</label>
-                    <select class="form-control" id="applyToFilter" onchange="applyFilters()">
-                        <option value="">全部范围</option>
-                    </select>
+                    <div id="applyToFilter" class="searchable-select single" data-placeholder="全部范围"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">状态</label>
-                    <select class="form-control" id="statusFilter" onchange="applyFilters()">
-                        <option value="">全部状态</option>
-                        <option value="true">已启用</option>
-                        <option value="false">已禁用</option>
-                    </select>
+                    <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
                 </div>
 
                 <div class="filter-actions" style="align-self: flex-end;">
@@ -378,13 +368,15 @@
                         <th class="sortable" data-field="priority" onclick="handleSort('priority')">优先级</th>
                         <th>适用范围</th>
                         <th>状态</th>
+                        <th>创建人</th>
                         <th>创建时间</th>
                         <th>描述</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="keywordsTableBody">
                     <tr>
-                        <td colspan="8" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>加载中...</p>
                         </td>
@@ -447,15 +439,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">风险分类</label>
-                            <select class="form-control" id="createCategory">
-                                <!-- 动态填充 -->
-                            </select>
+                            <div id="createCategory" class="searchable-select single" data-placeholder="选择分类"></div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">匹配方式</label>
-                            <select class="form-control" id="createMatchType">
-                                <!-- 动态填充 -->
-                            </select>
+                            <div id="createMatchType" class="searchable-select single" data-placeholder="选择匹配方式"></div>
                         </div>
                     </div>
 
@@ -467,9 +455,7 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">适用范围</label>
-                            <select class="form-control" id="createApplyTo">
-                                <!-- 动态填充 -->
-                            </select>
+                            <div id="createApplyTo" class="searchable-select single" data-placeholder="选择适用范围"></div>
                         </div>
                     </div>
 
@@ -497,9 +483,38 @@
             </div>
         </div>
     </div>
+
+    <!-- 删除确认模态框 -->
+    <div class="modal-overlay" id="deleteConfirmModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-exclamation-triangle" style="color: var(--danger-color, #e53e3e);"></i>
+                    确认删除
+                </h2>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body" style="text-align: center; padding: 2rem 1rem;">
+                <p style="font-size: 1rem; color: var(--text-primary); margin-bottom: 0.5rem;">
+                    确定要删除以下关键词吗？
+                </p>
+                <p id="deleteKeywordName" style="font-weight: 600; color: var(--accent-color); font-size: 1.1rem;"></p>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 1rem;">
+                    此操作不可撤销，请谨慎操作！
+                </p>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
+                <button class="btn" style="background-color: var(--danger-color, #e53e3e); color: white;" onclick="executeDelete()">
+                    <i class="fas fa-trash"></i> 确认删除
+                </button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script>
         // ===== 全局变量 =====
         let pagination = {
@@ -524,6 +539,34 @@
             match_types: [],
             apply_to_options: []
         };
+
+        // 当前用户信息
+        let currentUser = {
+            id: {{ request.user.id|default:'null' }},
+            isAdmin: {% if 555 in user_permissions %}true{% else %}false{% endif %}
+        };
+
+        // 当前编辑的关键词ID
+        let editingKeywordId = null;
+        let deletingKeywordId = null;
+        let allKeywords = []; // 存储所有关键词数据用于编辑
+
+        // SearchableSelect 实例
+        let categorySelect = null;
+        let matchTypeSelect = null;
+        let applyToSelect = null;
+        let statusSelect = null;
+        let createCategorySelect = null;
+        let createMatchTypeSelect = null;
+        let createApplyToSelect = null;
+
+        // ===== 加载动画控制 =====
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+            }
+        }
 
         // ===== 初始化 =====
         document.addEventListener('DOMContentLoaded', async function() {
@@ -554,56 +597,70 @@
         }
 
         function populateSelects() {
-            // 分类筛选
-            const categoryFilter = document.getElementById('categoryFilter');
-            optionsData.categories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.value;
-                option.textContent = cat.label;
-                categoryFilter.appendChild(option);
-            });
+            // 筛选面板下拉框
+            const statusOptions = [
+                { value: '', label: '全部状态' },
+                { value: 'true', label: '已启用' },
+                { value: 'false', label: '已禁用' }
+            ];
 
-            // 匹配方式筛选
-            const matchTypeFilter = document.getElementById('matchTypeFilter');
-            optionsData.match_types.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type.value;
-                option.textContent = type.label;
-                matchTypeFilter.appendChild(option);
+            categorySelect = new SearchableSelect('#categoryFilter', {
+                options: [{ value: '', label: '全部分类' }, ...optionsData.categories],
+                multiple: false,
+                placeholder: '全部分类'
             });
+            categorySelect.onChange = (value) => {
+                currentFilters.category = value;
+                applyFilters();
+            };
 
-            // 适用范围筛选
-            const applyToFilter = document.getElementById('applyToFilter');
-            optionsData.apply_to_options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.label;
-                applyToFilter.appendChild(option);
+            matchTypeSelect = new SearchableSelect('#matchTypeFilter', {
+                options: [{ value: '', label: '全部方式' }, ...optionsData.match_types],
+                multiple: false,
+                placeholder: '全部方式'
             });
+            matchTypeSelect.onChange = (value) => {
+                currentFilters.match_type = value;
+                applyFilters();
+            };
+
+            applyToSelect = new SearchableSelect('#applyToFilter', {
+                options: [{ value: '', label: '全部范围' }, ...optionsData.apply_to_options],
+                multiple: false,
+                placeholder: '全部范围'
+            });
+            applyToSelect.onChange = (value) => {
+                currentFilters.apply_to = value;
+                applyFilters();
+            };
+
+            statusSelect = new SearchableSelect('#statusFilter', {
+                options: statusOptions,
+                multiple: false,
+                placeholder: '全部状态'
+            });
+            statusSelect.onChange = (value) => {
+                currentFilters.is_active = value;
+                applyFilters();
+            };
 
             // 创建表单中的下拉框
-            const createCategory = document.getElementById('createCategory');
-            optionsData.categories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.value;
-                option.textContent = cat.label;
-                createCategory.appendChild(option);
+            createCategorySelect = new SearchableSelect('#createCategory', {
+                options: optionsData.categories,
+                multiple: false,
+                placeholder: '选择分类'
             });
 
-            const createMatchType = document.getElementById('createMatchType');
-            optionsData.match_types.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type.value;
-                option.textContent = type.label;
-                createMatchType.appendChild(option);
+            createMatchTypeSelect = new SearchableSelect('#createMatchType', {
+                options: optionsData.match_types,
+                multiple: false,
+                placeholder: '选择匹配方式'
             });
 
-            const createApplyTo = document.getElementById('createApplyTo');
-            optionsData.apply_to_options.forEach(opt => {
-                const option = document.createElement('option');
-                option.value = opt.value;
-                option.textContent = opt.label;
-                createApplyTo.appendChild(option);
+            createApplyToSelect = new SearchableSelect('#createApplyTo', {
+                options: optionsData.apply_to_options,
+                multiple: false,
+                placeholder: '选择适用范围'
             });
         }
 
@@ -635,11 +692,16 @@
                     const data = result.data;
                     pagination.total = data.total;
                     pagination.total_pages = data.total_pages;
+                    allKeywords = data.keywords || []; // 保存数据用于编辑
 
-                    // 更新统计
-                    document.getElementById('totalCount').textContent = data.total;
-                    const activeCount = data.keywords.filter(k => k.is_active).length;
-                    document.getElementById('activeCount').textContent = activeCount;
+                    // 更新统计（使用后端返回的全部统计，而不是当前页）
+                    if (data.stats) {
+                        document.getElementById('totalCount').textContent = data.stats.total_count;
+                        document.getElementById('activeCount').textContent = data.stats.active_count;
+                    } else {
+                        document.getElementById('totalCount').textContent = data.total;
+                        document.getElementById('activeCount').textContent = data.keywords.filter(k => k.is_active).length;
+                    }
 
                     renderTable(data.keywords);
                     renderPagination();
@@ -652,7 +714,7 @@
                 console.error('加载错误:', error);
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>数据请求失败: ${error.message}</p>
                         </td>
@@ -668,7 +730,7 @@
             if (!keywords || keywords.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="8" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-inbox"></i>
                             <p>暂无风险关键词数据</p>
                             <p>点击"新增关键词"创建第一个关键词</p>
@@ -678,8 +740,20 @@
                 return;
             }
 
-            tbody.innerHTML = keywords.map(item => `
-                <tr>
+            tbody.innerHTML = keywords.map(item => {
+                // 权限判断：只有创建人或管理员(555)可以编辑/删除
+                const canEdit = currentUser.isAdmin || currentUser.id === item.created_by_id;
+                const actionButtons = canEdit ? `
+                    <button class="btn btn-sm" onclick="openEditModal(${item.id})" title="编辑">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm btn-secondary" onclick="confirmDelete(${item.id}, '${escapeHtml(item.keyword)}')" title="删除">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                ` : '-';
+                
+                return `
+                <tr data-id="${item.id}">
                     <td>
                         <strong>${escapeHtml(item.keyword)}</strong>
                         ${item.example_text ? `<div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem;">示例: ${escapeHtml(item.example_text)}</div>` : ''}
@@ -701,10 +775,12 @@
                             ${item.is_active ? '已启用' : '已禁用'}
                         </span>
                     </td>
+                    <td>${item.created_by_name || '-'}</td>
                     <td>${item.created_at}</td>
                     <td>${item.description ? escapeHtml(item.description) : '-'}</td>
+                    <td>${actionButtons}</td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         function escapeHtml(text) {
@@ -736,10 +812,10 @@
         // ===== 筛选 =====
         function applyFilters() {
             currentFilters.keyword = document.getElementById('keywordFilter').value.trim();
-            currentFilters.category = document.getElementById('categoryFilter').value;
-            currentFilters.match_type = document.getElementById('matchTypeFilter').value;
-            currentFilters.is_active = document.getElementById('statusFilter').value;
-            currentFilters.apply_to = document.getElementById('applyToFilter').value;
+            currentFilters.category = categorySelect ? categorySelect.getValue() : '';
+            currentFilters.match_type = matchTypeSelect ? matchTypeSelect.getValue() : '';
+            currentFilters.is_active = statusSelect ? statusSelect.getValue() : '';
+            currentFilters.apply_to = applyToSelect ? applyToSelect.getValue() : '';
             
             pagination.page = 1;
             loadKeywords();
@@ -747,10 +823,11 @@
 
         function resetFilters() {
             document.getElementById('keywordFilter').value = '';
-            document.getElementById('categoryFilter').value = '';
-            document.getElementById('matchTypeFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('applyToFilter').value = '';
+            
+            if (categorySelect) categorySelect.setValue('');
+            if (matchTypeSelect) matchTypeSelect.setValue('');
+            if (statusSelect) statusSelect.setValue('');
+            if (applyToSelect) applyToSelect.setValue('');
             
             currentFilters = {
                 keyword: '',
@@ -862,7 +939,18 @@
 
         // ===== 模态框操作 =====
         function openCreateModal() {
+            editingKeywordId = null; // 确保是新建模式
             document.getElementById('createForm').reset();
+            
+            // 重置下拉框
+            if (createCategorySelect) createCategorySelect.setValue('');
+            if (createMatchTypeSelect) createMatchTypeSelect.setValue('');
+            if (createApplyToSelect) createApplyToSelect.setValue('');
+            
+            // 恢复模态框标题和按钮
+            document.querySelector('#createModal .modal-title').innerHTML = '<i class="fas fa-plus-circle" style="color: var(--accent-color);"></i> 新增风险关键词';
+            document.querySelector('#createModal .btn-create').innerHTML = '<i class="fas fa-save"></i> 保存';
+            
             document.getElementById('createModal').classList.add('show');
             document.body.classList.add('modal-open');
         }
@@ -870,6 +958,14 @@
         function closeCreateModal() {
             document.getElementById('createModal').classList.remove('show');
             document.body.classList.remove('modal-open');
+            
+            // 重置编辑状态
+            editingKeywordId = null;
+            document.getElementById('createForm').reset();
+            
+            // 恢复模态框标题和按钮
+            document.querySelector('#createModal .modal-title').innerHTML = '<i class="fas fa-plus-circle" style="color: var(--accent-color);"></i> 新增风险关键词';
+            document.querySelector('#createModal .btn-create').innerHTML = '<i class="fas fa-save"></i> 保存';
         }
 
         async function submitCreate() {
@@ -883,20 +979,33 @@
 
             const data = {
                 keyword: keyword,
-                category: document.getElementById('createCategory').value,
-                match_type: document.getElementById('createMatchType').value,
+                category: createCategorySelect ? createCategorySelect.getValue() : '',
+                match_type: createMatchTypeSelect ? createMatchTypeSelect.getValue() : '',
                 priority: parseInt(document.getElementById('createPriority').value) || 0,
-                apply_to: document.getElementById('createApplyTo').value,
+                apply_to: createApplyToSelect ? createApplyToSelect.getValue() : '',
                 description: document.getElementById('createDescription').value.trim(),
                 example_text: document.getElementById('createExampleText').value.trim(),
                 is_active: document.getElementById('createIsActive').checked
             };
 
+            // 如果是编辑模式，添加ID
+            if (editingKeywordId) {
+                data.id = editingKeywordId;
+            }
+
             try {
                 showLoading(true);
                 const csrfToken = getCookie('csrftoken');
                 
-                const response = await fetch('/api/amazon-risk-keywords/create/', {
+                const url = editingKeywordId 
+                    ? '/api/amazon-risk-keywords/update/' 
+                    : '/api/amazon-risk-keywords/create/';
+                
+                const successMessage = editingKeywordId 
+                    ? '风险关键词更新成功' 
+                    : '风险关键词创建成功';
+                
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -908,30 +1017,106 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    showNotification('风险关键词创建成功', 'success');
+                    showNotification(successMessage, 'success');
                     closeCreateModal();
                     loadKeywords();
                 } else {
-                    showNotification(result.message || '创建失败', 'error');
+                    showNotification(result.message || (editingKeywordId ? '更新失败' : '创建失败'), 'error');
                 }
             } catch (error) {
-                console.error('创建失败:', error);
-                showNotification('创建失败: ' + error.message, 'error');
+                console.error(editingKeywordId ? '更新失败:' : '创建失败:', error);
+                showNotification((editingKeywordId ? '更新失败: ' : '创建失败: ') + error.message, 'error');
             } finally {
                 showLoading(false);
             }
         }
 
-        // 点击模态框外部关闭
-        document.getElementById('createModal').addEventListener('click', function(e) {
-            if (e.target === this) closeCreateModal();
-        });
+        // ===== 编辑功能 =====
+        async function openEditModal(id) {
+            // 获取当前页面中的关键词数据
+            const keywordData = allKeywords.find(k => k.id === id);
+            if (!keywordData) {
+                showNotification('未找到该关键词数据', 'error');
+                return;
+            }
+            
+            editingKeywordId = id;
+            
+            // 填充表单
+            document.getElementById('createKeyword').value = keywordData.keyword;
+            document.getElementById('createPriority').value = keywordData.priority;
+            document.getElementById('createDescription').value = keywordData.description || '';
+            document.getElementById('createExampleText').value = keywordData.example_text || '';
+            document.getElementById('createIsActive').checked = keywordData.is_active;
+            
+            // 设置下拉框值
+            if (createCategorySelect) createCategorySelect.setValue(keywordData.category);
+            if (createMatchTypeSelect) createMatchTypeSelect.setValue(keywordData.match_type);
+            if (createApplyToSelect) createApplyToSelect.setValue(keywordData.apply_to);
+            
+            // 修改模态框标题和按钮
+            document.querySelector('#createModal .modal-title').innerHTML = '<i class="fas fa-edit" style="color: var(--accent-color);"></i> 编辑风险关键词';
+            document.querySelector('#createModal .btn-create').innerHTML = '<i class="fas fa-save"></i> 保存修改';
+            
+            // 显示模态框
+            document.getElementById('createModal').classList.add('show');
+        }
+
+        // ===== 删除功能 =====
+        function confirmDelete(id, keywordName) {
+            deletingKeywordId = id;
+            document.getElementById('deleteKeywordName').textContent = keywordName;
+            document.getElementById('deleteConfirmModal').classList.add('show');
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteConfirmModal').classList.remove('show');
+            deletingKeywordId = null;
+        }
+        
+        async function executeDelete() {
+            if (!deletingKeywordId) return;
+            
+            showLoading(true);
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch('/api/amazon-risk-keywords/delete/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ id: deletingKeywordId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('删除成功', 'success');
+                    closeDeleteModal();
+                    loadKeywords();
+                } else {
+                    showNotification(result.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                console.error('删除失败:', error);
+                showNotification('删除失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
 
         // ESC 键关闭
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeCreateModal();
+                closeDeleteModal();
             }
+        });
+        
+        // 点击删除模态框外部关闭
+        document.getElementById('deleteConfirmModal').addEventListener('click', function(e) {
+            if (e.target === this) closeDeleteModal();
         });
 
         // 点击外部关闭下拉框
