@@ -205,6 +205,11 @@
                 </div>
 
                 <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div id="groupSelect" class="searchable-select multiple" data-placeholder="选择分组"></div>
+                </div>
+
+                <div class="filter-group">
                     <label class="filter-label">运营人员</label>
                     <div id="operatorSelect" class="searchable-select multiple" data-placeholder="选择运营人员"></div>
                 </div>
@@ -346,6 +351,7 @@
             date_range: 'unlimited',
             start_date: '',
             end_date: '',
+            ops_groups: [],
             operator_ids: [],
             shop_name: '',
             subject_keyword: '',
@@ -373,6 +379,7 @@
 
         // SearchableSelect 实例
         let dateRangeSelect = null;
+        let groupSelect = null;
         let operatorSelect = null;
         let statusSelect = null;
 
@@ -381,7 +388,8 @@
             showLoading(true);
             try {
                 initSearchableSelects();
-                await loadOperators();
+                await loadGroupsFromAPI();
+                await loadOperatorsFromAPI();
                 initializeSortHeader();
                 // 初始加载数据
                 await applyFilters();
@@ -445,24 +453,75 @@
             }
         }
 
-        // ===== 加载运营人员 =====
-        async function loadOperators() {
+        // ===== 加载运营分组 =====
+        async function loadGroupsFromAPI() {
             try {
-                const response = await fetch('/api/amazon/performance/operators/');
+                const response = await fetch('/api/general/ops-groups/?platform=amazon');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    groupSelect = new SearchableSelect('#groupSelect', {
+                        options: result.data,
+                        multiple: true,
+                        placeholder: '选择分组'
+                    });
+                    // 默认选中第一项（全部分组）
+                    if (result.data.length > 0) {
+                        groupSelect.setValue([result.data[0].value]);
+                    }
+                    // 联动事件：分组变化时刷新人员列表
+                    groupSelect.onChange = (values) => {
+                        loadOperatorsFromAPI(values).then(() => {
+                            // 重置人员筛选
+                            if (operatorSelect) {
+                                operatorSelect.setValue(['all']);
+                                currentFilters.operator_ids = [];
+                            }
+                            applyFilters();
+                        });
+                    };
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('加载运营分组失败:', error);
+                return false;
+            }
+        }
+
+        // ===== 加载运营人员 =====
+        async function loadOperatorsFromAPI(selectedGroups) {
+            try {
+                const params = new URLSearchParams();
+                params.set('platform', 'amazon');
+                // 如果有选中分组且不是全部，传入分组参数
+                if (selectedGroups && selectedGroups.length > 0) {
+                    const nonEmptyGroups = selectedGroups.filter(g => g !== '');
+                    if (nonEmptyGroups.length > 0) {
+                        params.set('ops_group', nonEmptyGroups.join(','));
+                    }
+                }
+                
+                const response = await fetch(`/api/general/operators/?${params}`);
                 const result = await response.json();
                 if (result.success && result.data) {
                     // 初始化运营人员下拉（多选）
                     const options = [{ value: 'all', label: '全部人员' }, ...result.data.map(op => ({
-                        value: String(op.id),
-                        label: op.first_name
+                        value: String(op.value),
+                        label: op.label
                     }))];
 
-                    operatorSelect = new SearchableSelect('#operatorSelect', {
-                        options: options,
-                        multiple: true,
-                        placeholder: '选择运营人员'
-                    });
-                    operatorSelect.setValue(['all']);
+                    if (operatorSelect) {
+                        operatorSelect.setOptions(options);
+                        operatorSelect.setValue(['all']);
+                    } else {
+                        operatorSelect = new SearchableSelect('#operatorSelect', {
+                            options: options,
+                            multiple: true,
+                            placeholder: '选择运营人员'
+                        });
+                        operatorSelect.setValue(['all']);
+                    }
+                    
                     operatorSelect.onChange = (values) => {
                         if (values.includes('all')) {
                             currentFilters.operator_ids = [];
@@ -470,14 +529,6 @@
                             currentFilters.operator_ids = values;
                         }
                     };
-
-                    // 初始化用户权限
-                    currentUserPermissions = {
-                        can_notify_all: result.can_notify_all || false,
-                        can_notify_group: result.can_notify_group || false,
-                        group_name: result.group_name || ''
-                    };
-
                     return true;
                 }
                 return false;
@@ -490,11 +541,14 @@
         // ===== 获取当前筛选条件 =====
         function getCurrentFilters() {
             const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited';
+            const groupValues = groupSelect ? groupSelect.getValue() : [];
+            const operatorValues = operatorSelect ? operatorSelect.getValue() : [];
             return {
                 date_range: dateRange,
                 start_date: dateRange === 'custom' ? document.getElementById('startDate').value : '',
                 end_date: dateRange === 'custom' ? document.getElementById('endDate').value : '',
-                operator_ids: currentFilters.operator_ids,
+                ops_groups: groupValues.filter(v => v !== ''),
+                operator_ids: operatorValues.includes('all') ? [] : operatorValues,
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
                 subject_keyword: document.getElementById('subjectFilter').value.trim(),
                 status_filter: statusSelect ? statusSelect.getValue() : '',
@@ -524,6 +578,7 @@
             try {
                 // 重置下拉框
                 if (dateRangeSelect) dateRangeSelect.setValue('unlimited');
+                if (groupSelect) groupSelect.setValue(['']);
                 if (operatorSelect) operatorSelect.setValue(['all']);
                 if (statusSelect) statusSelect.setValue('');
 
