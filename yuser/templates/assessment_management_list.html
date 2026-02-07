@@ -59,6 +59,11 @@
         flex: 1;
     }
 
+    .filter-group.filter-group--month {
+        min-width: 320px;
+        max-width: 360px;
+    }
+
     /* 按钮组不伸缩，根据内容自适应 */
     .filter-group.d-flex {
         flex: none !important;
@@ -91,17 +96,6 @@
         outline: none;
         border-color: var(--accent-color);
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    input[type="month"] {
-        appearance: none;
-        -webkit-appearance: none;
-    }
-
-    input[type="month"]::-webkit-calendar-picker-indicator {
-        filter: invert(var(--text-secondary));
-        cursor: pointer;
-        padding: 5px;
     }
 
     .btn {
@@ -416,9 +410,38 @@
     <!-- 筛选区域 -->
     <div class="filter-section">
         <div class="filter-row">
-            <div class="filter-group">
+            <div class="filter-group filter-group--month">
                 <label class="filter-label">考核月份</label>
-                <input type="month" class="form-control" id="monthFilter" value="{{ request.GET.month }}">
+                <div class="ym-picker" data-ym-picker>
+                    <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--prev" id="monthFilterPrev" title="上个月" data-ym-role="prev">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <input type="text" class="form-control ym-picker-input" id="monthFilter" value="{{ request.GET.month }}" placeholder="点击选择月份" readonly data-ym-role="input">
+                    <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--next" id="monthFilterNext" title="下个月" data-ym-role="next">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                    <button type="button" class="ym-picker-btn ym-picker-btn--clear" id="monthFilterClear" title="清空月份" data-ym-role="clear">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="ym-picker-popover" id="monthFilterPopover" hidden data-ym-role="popover">
+                        <div class="ym-picker-header">
+                            <button type="button" class="ym-picker-year-btn" id="monthFilterYearPrev" aria-label="上一年" data-ym-role="year-prev">
+                                <i class="fas fa-angle-left"></i>
+                            </button>
+                            <div class="ym-picker-year-display">
+                                <button type="button" class="ym-picker-year-label" id="monthFilterYearLabel" data-ym-role="year-label"></button>
+                                <input type="text" class="ym-picker-year-input" id="monthFilterYearInput" inputmode="numeric" maxlength="4" hidden data-ym-role="year-input">
+                            </div>
+                            <button type="button" class="ym-picker-year-btn" id="monthFilterYearNext" aria-label="下一年" data-ym-role="year-next">
+                                <i class="fas fa-angle-right"></i>
+                            </button>
+                        </div>
+                        <div class="ym-picker-grid" id="monthFilterGrid" data-ym-role="month-grid"></div>
+                        <div class="ym-picker-actions">
+                            <button type="button" class="ym-picker-today-btn" id="monthFilterToday" data-ym-role="today">本月</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="filter-group">
                 <label class="filter-label">员工姓名</label>
@@ -619,7 +642,36 @@
             <div class="modal-body">
                 <div class="form-group">
                     <label class="filter-label">选择考核月份 <span style="color: var(--danger-color);">*</span></label>
-                    <input type="month" class="form-control" id="createMonth" required>
+                    <div class="ym-picker" data-ym-picker>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--prev" id="createMonthPrev" title="上个月" data-ym-role="prev">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <input type="text" class="form-control ym-picker-input" id="createMonth" placeholder="点击选择月份" readonly data-ym-role="input" required>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--next" id="createMonthNext" title="下个月" data-ym-role="next">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--clear" id="createMonthClear" title="清空月份" data-ym-role="clear">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div class="ym-picker-popover" id="createMonthPopover" hidden data-ym-role="popover">
+                            <div class="ym-picker-header">
+                                <button type="button" class="ym-picker-year-btn" id="createMonthYearPrev" aria-label="上一年" data-ym-role="year-prev">
+                                    <i class="fas fa-angle-left"></i>
+                                </button>
+                                <div class="ym-picker-year-display">
+                                    <button type="button" class="ym-picker-year-label" id="createMonthYearLabel" data-ym-role="year-label"></button>
+                                    <input type="text" class="ym-picker-year-input" id="createMonthYearInput" inputmode="numeric" maxlength="4" hidden data-ym-role="year-input">
+                                </div>
+                                <button type="button" class="ym-picker-year-btn" id="createMonthYearNext" aria-label="下一年" data-ym-role="year-next">
+                                    <i class="fas fa-angle-right"></i>
+                                </button>
+                            </div>
+                            <div class="ym-picker-grid" id="createMonthGrid" data-ym-role="month-grid"></div>
+                            <div class="ym-picker-actions">
+                                <button type="button" class="ym-picker-today-btn" id="createMonthToday" data-ym-role="today">本月</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="alert-info">
                     <i class="fas fa-info-circle"></i> 将为所有符合条件的员工自动创建对应类型的考核
@@ -664,6 +716,7 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{% static 'js/searchable-select.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
     // ========== 全局变量：缓存月份（解决时序问题）==========
     let cachedMonth = '';
@@ -1020,6 +1073,9 @@
     });
 
     document.addEventListener('DOMContentLoaded', function () {
+        if (window.GeneralStyleYearMonthPicker) {
+            window.GeneralStyleYearMonthPicker.initAll(document);
+        }
         initEmployeeFilterSelect();
         initTypeFilterSelect();
         initStatusFilterSelect();

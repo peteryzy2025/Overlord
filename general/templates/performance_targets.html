@@ -587,7 +587,36 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">月份筛选</label>
-                    <input type="month" class="form-control" id="personalMonthFilter">
+                    <div class="ym-picker" data-ym-picker>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--prev" id="personalMonthPrev" title="上个月" data-ym-role="prev">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <input type="text" class="form-control ym-picker-input" id="personalMonthFilter" placeholder="点击选择月份" readonly data-ym-role="input">
+                        <button type="button" class="ym-picker-btn ym-picker-btn--nav ym-picker-btn--next" id="personalMonthNext" title="下个月" data-ym-role="next">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button type="button" class="ym-picker-btn ym-picker-btn--clear" id="personalMonthClear" title="清空月份" data-ym-role="clear">
+                            <i class="fas fa-times"></i>
+                        </button>
+                        <div class="ym-picker-popover" id="personalMonthPopover" hidden data-ym-role="popover">
+                            <div class="ym-picker-header">
+                                <button type="button" class="ym-picker-year-btn" id="personalMonthYearPrev" aria-label="上一年" data-ym-role="year-prev">
+                                    <i class="fas fa-angle-left"></i>
+                                </button>
+                                <div class="ym-picker-year-display">
+                                    <button type="button" class="ym-picker-year-label" id="personalMonthYearLabel" data-ym-role="year-label"></button>
+                                    <input type="text" class="ym-picker-year-input" id="personalMonthYearInput" inputmode="numeric" maxlength="4" hidden data-ym-role="year-input">
+                                </div>
+                                <button type="button" class="ym-picker-year-btn" id="personalMonthYearNext" aria-label="下一年" data-ym-role="year-next">
+                                    <i class="fas fa-angle-right"></i>
+                                </button>
+                            </div>
+                            <div class="ym-picker-grid" id="personalMonthGrid" data-ym-role="month-grid"></div>
+                            <div class="ym-picker-actions">
+                                <button type="button" class="ym-picker-today-btn" id="personalMonthToday" data-ym-role="today">本月</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">运营人员</label>
