@@ -1563,11 +1563,97 @@ const GeneralStyleDateRangeFilter = (() => {
     return { init };
 })();
 
+const GeneralStyleFilterActionButtonAdapter = (() => {
+    const FILTER_SCOPE_SELECTOR = '.filter-section, .control-panel, .filter-row, .filter-actions, .filter-actions-main, .filter-actions-secondary';
+    const SEARCH_TEXT_TOKENS = ['搜索', '筛选', '查询'];
+    const RESET_TEXT_TOKENS = ['重置', '清空', '清除'];
+
+    let observer = null;
+
+    const toArray = (listLike) => Array.from(listLike || []);
+
+    const textOf = (element) => {
+        if (!element) return '';
+        const text = `${element.getAttribute('title') || ''} ${element.textContent || ''}`;
+        return text.replace(/\s+/g, '');
+    };
+
+    const inFilterScope = (button) => {
+        if (!button || typeof button.closest !== 'function') return false;
+        return !!button.closest(FILTER_SCOPE_SELECTOR);
+    };
+
+    const hasAnyToken = (raw, tokens) => tokens.some((token) => raw.includes(token));
+
+    const classify = (button) => {
+        const text = textOf(button);
+        const onclick = String(button.getAttribute('onclick') || '').toLowerCase();
+
+        const isReset = hasAnyToken(text, RESET_TEXT_TOKENS) || /reset|clear/.test(onclick);
+        if (isReset) return 'reset';
+
+        const isSearch = hasAnyToken(text, SEARCH_TEXT_TOKENS) || /applyfilter|filter|search|query/.test(onclick);
+        if (isSearch) return 'search';
+
+        return '';
+    };
+
+    const decorate = (button, type) => {
+        if (!button || !type) return;
+        if (button.dataset.gsFilterActionDecorated === '1') return;
+
+        const isReset = type === 'reset';
+        const label = isReset ? '重置' : '筛选';
+
+        button.classList.add('gs-filter-action-btn');
+        button.classList.add(isReset ? 'gs-filter-reset-btn' : 'gs-filter-search-btn');
+        button.setAttribute('title', label);
+        button.setAttribute('aria-label', label);
+        button.innerHTML = isReset
+            ? '<i class="fas fa-redo" aria-hidden="true"></i>'
+            : '<i class="fas fa-search" aria-hidden="true"></i>';
+        button.dataset.gsFilterActionDecorated = '1';
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+        const buttons = toArray(root.querySelectorAll('button.btn, a.btn'));
+        buttons.forEach((button) => {
+            if (!inFilterScope(button)) return;
+            const type = classify(button);
+            if (!type) return;
+            decorate(button, type);
+        });
+    };
+
+    const observe = () => {
+        if (observer || typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof Element)) return;
+                    if (node.matches('button.btn, a.btn')) {
+                        initAll(node.parentElement || document);
+                        return;
+                    }
+                    if (node.querySelector('button.btn, a.btn')) {
+                        initAll(node);
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    return { initAll, observe };
+})();
+
 if (typeof window !== 'undefined') {
     window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
     window.GeneralStyleDatePicker = GeneralStyleDatePicker;
     window.GeneralStyleFilterSelectAdapter = GeneralStyleFilterSelectAdapter;
     window.GeneralStyleDateRangeFilter = GeneralStyleDateRangeFilter;
+    window.GeneralStyleFilterActionButtonAdapter = GeneralStyleFilterActionButtonAdapter;
 
     const bootDatePicker = () => {
         if (!window.GeneralStyleDatePicker) return;
@@ -1582,12 +1668,20 @@ if (typeof window !== 'undefined') {
         window.GeneralStyleFilterSelectAdapter.observeDom();
     };
 
+    const bootFilterActionButtons = () => {
+        if (!window.GeneralStyleFilterActionButtonAdapter) return;
+        window.GeneralStyleFilterActionButtonAdapter.initAll(document);
+        window.GeneralStyleFilterActionButtonAdapter.observe();
+    };
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootDatePicker);
         document.addEventListener('DOMContentLoaded', bootFilterSelectAdapter);
+        document.addEventListener('DOMContentLoaded', bootFilterActionButtons);
     } else {
         bootDatePicker();
         bootFilterSelectAdapter();
+        bootFilterActionButtons();
     }
 }
 
@@ -1602,6 +1696,7 @@ if (typeof module !== 'undefined' && module.exports) {
         GeneralStyleYearMonthPicker,
         GeneralStyleDatePicker,
         GeneralStyleFilterSelectAdapter,
-        GeneralStyleDateRangeFilter
+        GeneralStyleDateRangeFilter,
+        GeneralStyleFilterActionButtonAdapter
     };
 }
