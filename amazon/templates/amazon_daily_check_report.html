@@ -231,12 +231,7 @@ Overlord{% endblock %} {% block extra_css %}
 
       <div class="filter-group">
         <label class="filter-label">运营人员</label>
-        <div id="operatorDropdown" class="dropdown-check-list">
-          <div class="anchor" id="operatorAnchor">
-            <span id="operatorSelectedText">选择运营人员</span>
-          </div>
-          <div class="items" id="operatorItems"></div>
-        </div>
+        <div id="operatorFilter" class="searchable-select multiple" data-placeholder="点击选择运营人员"></div>
       </div>
 
       <div class="filter-group">
@@ -498,6 +493,7 @@ Overlord{% endblock %} {% block extra_css %}
     can_reset_daily_check: false,
   };
   let dateRangeController = null;
+  let operatorSelect = null;
 
   // ===== 工具函数（保持不变）=====
   function showLoading(show = true) {
@@ -553,89 +549,56 @@ Overlord{% endblock %} {% block extra_css %}
     if (customDateGroup2) customDateGroup2.style.display = visible ? "flex" : "none";
   }
 
-  // ===== 运营人员多选下拉（保持不变）=====
-  function initOperatorDropdown() {
-    const anchor = document.getElementById("operatorAnchor");
-    const items = document.getElementById("operatorItems");
-    const dropdown = document.getElementById("operatorDropdown");
-
-    anchor.addEventListener("click", function (e) {
-      e.stopPropagation();
-      dropdown.classList.toggle("visible");
-      anchor.classList.toggle("active");
+  // ===== 运营人员筛选：统一可搜索多选下拉 =====
+  function normalizeOperatorSelection(rawValue) {
+    const values = Array.isArray(rawValue)
+      ? rawValue.map((v) => String(v))
+      : rawValue
+        ? [String(rawValue)]
+        : [];
+    const hasAll = values.some((v) => {
+      const token = v.trim().toLowerCase();
+      return token === "" || token === "all" || token === "*" || token === "__all__" || v === "全部" || v === "不限";
     });
-
-    document.addEventListener("click", function () {
-      dropdown.classList.remove("visible");
-      anchor.classList.remove("active");
+    if (hasAll) return [];
+    return values.filter((v) => {
+      const token = v.trim().toLowerCase();
+      return token !== "" && token !== "all" && token !== "*" && token !== "__all__";
     });
+  }
 
-    items.addEventListener("click", function (e) {
-      e.stopPropagation();
+  function initOperatorFilter() {
+    operatorSelect = new SearchableSelect("#operatorFilter", {
+      options: [{ value: "", label: "全部人员" }],
+      multiple: true,
+      placeholder: "点击选择运营人员",
     });
+    operatorSelect.setValue([""]);
+    operatorSelect.onChange = (newValue) => {
+      currentFilters.operator_ids = normalizeOperatorSelection(newValue);
+    };
   }
 
   function populateOperatorDropdown(operators) {
-    const items = document.getElementById("operatorItems");
-    items.innerHTML = "";
+    if (!operatorSelect) {
+      initOperatorFilter();
+    }
 
+    const options = [{ value: "", label: "全部人员" }];
     operators.forEach((op) => {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.innerHTML = `
-            <input type="checkbox" id="op_${op.id}" value="${op.id}" ${op.id === "all" ? "checked" : ""}>
-            <label for="op_${op.id}">${op.first_name}</label>
-        `;
-      items.appendChild(item);
-
-      const checkbox = item.querySelector("input");
-      checkbox.addEventListener("change", function () {
-        const allCheckbox = document.querySelector(
-          '#operatorItems input[value="all"]',
-        );
-
-        if (this.value === "all" && this.checked) {
-          document
-            .querySelectorAll('#operatorItems input[type="checkbox"]')
-            .forEach((cb) => {
-              if (cb !== this) cb.checked = false;
-            });
-        } else if (this.value !== "all" && this.checked && allCheckbox) {
-          allCheckbox.checked = false;
-        }
-        updateOperatorSelection();
+      const rawId = op && op.id !== undefined && op.id !== null ? String(op.id) : "";
+      if (!rawId) return;
+      const token = rawId.trim().toLowerCase();
+      if (token === "all" || token === "*" || token === "__all__") return;
+      options.push({
+        value: rawId,
+        label: String(op.first_name || op.name || rawId),
       });
     });
 
-    updateOperatorSelection();
-  }
-
-  function updateOperatorSelection() {
-    const checkboxes = document.querySelectorAll(
-      '#operatorItems input[type="checkbox"]',
-    );
-    const allCheckbox = document.querySelector(
-      '#operatorItems input[value="all"]',
-    );
-    const selectedOperators = [];
-    let selectedText = "选择运营人员";
-
-    if (allCheckbox && allCheckbox.checked) {
-      selectedText = "全部人员";
-      currentFilters.operator_ids = [];
-    } else {
-      checkboxes.forEach((cb) => {
-        if (cb.checked && cb.value !== "all") {
-          selectedOperators.push(cb.value);
-        }
-      });
-      if (selectedOperators.length > 0) {
-        selectedText = `已选择 ${selectedOperators.length} 人`;
-      }
-      currentFilters.operator_ids = selectedOperators;
-    }
-
-    document.getElementById("operatorSelectedText").textContent = selectedText;
+    operatorSelect.setOptions(options);
+    operatorSelect.setValue([""]);
+    currentFilters.operator_ids = [];
   }
 
   function populateOpsGroupDropdown(operators) {
@@ -740,6 +703,9 @@ Overlord{% endblock %} {% block extra_css %}
     document.getElementById("restockEndDate").value = "";
     document.getElementById("shopStatusFilter").value = "";
     document.getElementById("pageSize").value = "20";
+    if (operatorSelect) {
+      operatorSelect.setValue([""]);
+    }
     currentFilters.operator_ids = [];
   }
 
@@ -747,13 +713,6 @@ Overlord{% endblock %} {% block extra_css %}
     showLoading(true);
     try {
       setDefaultFilters();
-      const checkboxes = document.querySelectorAll(
-        '#operatorItems input[type="checkbox"]',
-      );
-      checkboxes.forEach((cb) => {
-        cb.checked = cb.value === "all";
-      });
-      updateOperatorSelection();
       dailyCheckPagination.page = 1;
       dailyCheckPagination.page_size = 20;
       await applyFilters();
@@ -1096,7 +1055,7 @@ Overlord{% endblock %} {% block extra_css %}
     showLoading(true);
     try {
       initDateRangeFilter();
-      initOperatorDropdown();
+      initOperatorFilter();
       await loadOperators();
       setDefaultFilters();
       initializeSortHeader();

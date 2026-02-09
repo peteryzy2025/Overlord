@@ -671,6 +671,42 @@
             min-height: calc(100vh - 80px);
         }
 
+        /* 全站筛选区搜索/重置按钮统一为“人员管理”样式 */
+        .gs-filter-action-btn {
+            width: 42px;
+            min-width: 42px;
+            height: 42px;
+            padding: 0;
+            border: none;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .gs-filter-search-btn {
+            background-color: var(--accent-color);
+            color: #ffffff;
+        }
+
+        .gs-filter-search-btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .gs-filter-reset-btn {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .gs-filter-reset-btn:hover {
+            background-color: var(--border-color);
+            transform: translateY(-1px);
+        }
+
         {% block layout_css %}{% endblock %}
     </style>
 </head>
@@ -1042,6 +1078,72 @@
     function confirmLogout() {
         return confirm('确定要退出登录吗？');
     }
+
+    // ========== 全站筛选按钮统一（搜索/重置） ==========
+    (function initGlobalFilterActionButtons() {
+        const scopeSelector = '.filter-section, .control-panel, .filter-row, .filter-actions, .filter-actions-main, .filter-actions-secondary';
+        const searchTokens = ['搜索', '筛选', '查询'];
+        const resetTokens = ['重置', '清空', '清除'];
+
+        const hasAny = (text, tokens) => tokens.some((token) => text.includes(token));
+        const getText = (el) => `${el.getAttribute('title') || ''}${el.textContent || ''}`.replace(/\s+/g, '');
+        const inScope = (el) => !!(el && el.closest && el.closest(scopeSelector));
+
+        const classify = (button) => {
+            const text = getText(button);
+            const onclick = String(button.getAttribute('onclick') || '').toLowerCase();
+            if (hasAny(text, resetTokens) || /reset|clear/.test(onclick)) return 'reset';
+            if (hasAny(text, searchTokens) || /applyfilter|filter|search|query/.test(onclick)) return 'search';
+            return '';
+        };
+
+        const decorateOne = (button, type) => {
+            if (!button || !type || button.dataset.gsFilterActionDecorated === '1') return;
+            const isReset = type === 'reset';
+            const label = isReset ? '重置' : '筛选';
+            button.classList.add('gs-filter-action-btn', isReset ? 'gs-filter-reset-btn' : 'gs-filter-search-btn');
+            button.setAttribute('title', label);
+            button.setAttribute('aria-label', label);
+            button.innerHTML = isReset
+                ? '<i class="fas fa-redo" aria-hidden="true"></i>'
+                : '<i class="fas fa-search" aria-hidden="true"></i>';
+            button.dataset.gsFilterActionDecorated = '1';
+        };
+
+        const decorateAll = (root = document) => {
+            if (!root || !root.querySelectorAll) return;
+            root.querySelectorAll('button.btn, a.btn').forEach((button) => {
+                if (!inScope(button)) return;
+                const type = classify(button);
+                if (!type) return;
+                decorateOne(button, type);
+            });
+        };
+
+        const observe = () => {
+            if (!window.MutationObserver || !document.body) return;
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (!(node instanceof Element)) return;
+                        if (node.matches('button.btn, a.btn')) {
+                            decorateAll(node.parentElement || document);
+                            return;
+                        }
+                        if (node.querySelector('button.btn, a.btn')) {
+                            decorateAll(node);
+                        }
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            decorateAll(document);
+            observe();
+        });
+    })();
 
     // ========== 公告系统核心逻辑（V1 + 优先级标签） ==========
     class AnnouncementManager {
