@@ -4,6 +4,7 @@
 {% block title %}Amazon Listing 管理 - Overlord{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         :root {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -660,6 +661,8 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ==================== 全局变量 ====================
         let currentFilters = {

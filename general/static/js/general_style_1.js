@@ -1288,8 +1288,8 @@ const GeneralStyleFilterSelectAdapter = (() => {
         if (select.multiple) return true;
         if (select.dataset.searchableMultiple === 'true') return true;
         if (select.dataset.searchableMultiple === 'false') return false;
-        // 默认保持单选，避免旧接口未支持多值导致筛选结果异常
-        return false;
+        // 站点筛选框统一为可搜索多选；单选场景可显式设置 data-searchable-multiple="false"
+        return true;
     };
 
     const mapOptions = (select) => {
