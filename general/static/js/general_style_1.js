@@ -1475,10 +1475,99 @@ const GeneralStyleFilterSelectAdapter = (() => {
     return { initAll, observeDom, getValue };
 })();
 
+const GeneralStyleDateRangeFilter = (() => {
+    const resolveElement = (target) => {
+        if (!target) return null;
+        if (typeof target === 'string') return document.querySelector(target);
+        return target instanceof Element ? target : null;
+    };
+
+    const resolveElements = (targets) => {
+        if (!Array.isArray(targets)) return [];
+        return targets
+            .map((target) => resolveElement(target))
+            .filter((element) => !!element);
+    };
+
+    const setGroupVisible = (group, visible, displayMode) => {
+        if (!group) return;
+        group.classList.add('gs-date-range-custom-group');
+        group.classList.toggle('is-visible', visible);
+        group.style.display = visible ? displayMode : 'none';
+    };
+
+    const init = (config = {}) => {
+        const selectTarget = resolveElement(config.select);
+        if (!selectTarget) return null;
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return null;
+
+        const options = Array.isArray(config.options) ? config.options : [];
+        const placeholder = config.placeholder || selectTarget.dataset.placeholder || '选择日期范围';
+        const defaultValue = config.defaultValue ?? '';
+        const customValue = config.customValue || 'custom';
+        const customGroups = resolveElements(config.customGroups || []);
+        const customDisplay = config.customDisplay || 'flex';
+        const startInput = resolveElement(config.startInput);
+        const endInput = resolveElement(config.endInput);
+        const onChange = typeof config.onChange === 'function' ? config.onChange : null;
+
+        const existingInstance = selectTarget._searchableSelect || null;
+        const select = existingInstance || new window.SearchableSelect(selectTarget, {
+            options,
+            multiple: false,
+            placeholder
+        });
+        if (!existingInstance && options.length > 0) {
+            select.setValue(defaultValue);
+        } else if (existingInstance && options.length > 0) {
+            select.setOptions(options);
+            if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '') {
+                select.setValue(defaultValue);
+            }
+        }
+
+        const api = {
+            select,
+            getValue: () => {
+                const value = select.getValue();
+                return String(value || '');
+            },
+            isCustom: () => {
+                return api.getValue() === customValue;
+            },
+            setValue: (value) => {
+                select.setValue(value);
+                api.syncVisibility();
+            },
+            getStartDate: () => (startInput ? startInput.value : ''),
+            getEndDate: () => (endInput ? endInput.value : ''),
+            clearCustomDates: () => {
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            },
+            syncVisibility: () => {
+                const visible = api.isCustom();
+                customGroups.forEach((group) => setGroupVisible(group, visible, customDisplay));
+            }
+        };
+
+        api.syncVisibility();
+        select.onChange = (value) => {
+            api.syncVisibility();
+            if (onChange) onChange(value, api);
+        };
+
+        return api;
+    };
+
+    return { init };
+})();
+
 if (typeof window !== 'undefined') {
     window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
     window.GeneralStyleDatePicker = GeneralStyleDatePicker;
     window.GeneralStyleFilterSelectAdapter = GeneralStyleFilterSelectAdapter;
+    window.GeneralStyleDateRangeFilter = GeneralStyleDateRangeFilter;
 
     const bootDatePicker = () => {
         if (!window.GeneralStyleDatePicker) return;
@@ -1512,6 +1601,7 @@ if (typeof module !== 'undefined' && module.exports) {
         ModalManager,
         GeneralStyleYearMonthPicker,
         GeneralStyleDatePicker,
-        GeneralStyleFilterSelectAdapter
+        GeneralStyleFilterSelectAdapter,
+        GeneralStyleDateRangeFilter
     };
 }

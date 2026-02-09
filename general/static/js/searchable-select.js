@@ -443,6 +443,11 @@ class SearchableSelect {
     }
 }
 
+// Expose constructor for adapters/helpers that rely on window.SearchableSelect.
+if (typeof window !== 'undefined') {
+    window.SearchableSelect = SearchableSelect;
+}
+
 /**
  * 快速初始化页面上所有带有 searchable-select 类的元素
  */

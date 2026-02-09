@@ -681,20 +681,10 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">日期范围</label>
-                    <select class="form-select" id="dateRange">
-                        <option value="yesterday">昨日</option>
-                        <option value="today">今日</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="this_week">本周</option>
-                        <option value="this_month">本月</option>
-                        <option value="last_week">上周</option>
-                        <option value="last_month">上月</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
                     <label class="filter-label">开始日期</label>
                     <div class="ymd-picker" data-ymd-picker>
                         <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--prev" title="上一天" data-ymd-role="prev-day">
@@ -710,7 +700,7 @@
                     </div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <div class="ymd-picker" data-ymd-picker>
                         <button type="button" class="ymd-picker-btn ymd-picker-btn--nav ymd-picker-btn--prev" title="上一天" data-ymd-role="prev-day">
@@ -876,6 +866,7 @@
         // SearchableSelect 实例
         let groupSelect = null;
         let operatorSelect = null;
+        let dateRangeController = null;
         
         let currentFilters = {
             date_range: 'yesterday',
@@ -904,6 +895,31 @@
         // ==================== 新版 SearchableSelect 初始化 ====================
         async function initSearchableSelects() {
             // 初始化分组下拉框
+            const dateRangeOptions = [
+                { value: 'yesterday', label: '昨日' },
+                { value: 'today', label: '今日' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'this_week', label: '本周' },
+                { value: 'this_month', label: '本月' },
+                { value: 'last_week', label: '上周' },
+                { value: 'last_month', label: '上月' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRange',
+                    options: dateRangeOptions,
+                    placeholder: '日期范围',
+                    defaultValue: 'yesterday',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup', '#customDateGroup2'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    customDisplay: 'flex'
+                })
+                : null;
+
             groupSelect = new SearchableSelect('#groupFilter', {
                 options: [],
                 placeholder: '全部分组'
@@ -970,30 +986,64 @@
         }
 
         function handleDateRangeChange() {
-            const dateRange = document.getElementById('dateRange').value;
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
+            const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#dateRange')
+                : null;
+            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : '';
             const customDateGroup = document.getElementById('customDateGroup');
             const customDateGroup2 = document.getElementById('customDateGroup2');
-            if (dateRange === 'custom') {
-                customDateGroup.style.display = 'flex';
-                customDateGroup2.style.display = 'flex';
-            } else {
-                customDateGroup.style.display = 'none';
-                customDateGroup2.style.display = 'none';
+            const visible = dateRange === 'custom';
+            if (customDateGroup) customDateGroup.style.display = visible ? 'flex' : 'none';
+            if (customDateGroup2) customDateGroup2.style.display = visible ? 'flex' : 'none';
+        }
+
+        function getDateRangeState() {
+            if (dateRangeController) {
+                return {
+                    value: dateRangeController.getValue(),
+                    isCustom: dateRangeController.isCustom(),
+                    startDate: dateRangeController.getStartDate(),
+                    endDate: dateRangeController.getEndDate()
+                };
             }
+            const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#dateRange')
+                : null;
+            const value = dateRangeSelect ? dateRangeSelect.getValue() : '';
+            const isCustom = value === 'custom';
+            return {
+                value,
+                isCustom,
+                startDate: isCustom ? document.getElementById('startDate').value : '',
+                endDate: isCustom ? document.getElementById('endDate').value : ''
+            };
         }
 
         function getCurrentFilters() {
+            const dateRange = getDateRangeState();
             return {
-                date_range: document.getElementById('dateRange').value,
-                start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
+                date_range: dateRange.value,
+                start_date: dateRange.isCustom ? dateRange.startDate : '',
+                end_date: dateRange.isCustom ? dateRange.endDate : '',
                 operator_id: operatorSelect ? operatorSelect.getValue() : '',
                 group: groupSelect ? groupSelect.getValue() : ''
             };
         }
 
         function setDefaultFilters() {
-            document.getElementById('dateRange').value = 'yesterday';
+            if (dateRangeController) {
+                dateRangeController.setValue('yesterday');
+                dateRangeController.clearCustomDates();
+                return;
+            }
+            const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#dateRange')
+                : null;
+            if (dateRangeSelect) dateRangeSelect.setValue('yesterday');
             handleDateRangeChange();
             
             // SearchableSelect 默认值在加载数据时已设置
@@ -1011,8 +1061,16 @@
                 const firstOption = operatorSelect.options[0];
                 if (firstOption) operatorSelect.setValue(firstOption.value);
             }
-            document.getElementById('dateRange').value = 'yesterday';
-            handleDateRangeChange();
+            if (dateRangeController) {
+                dateRangeController.setValue('yesterday');
+                dateRangeController.clearCustomDates();
+            } else {
+                const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                    ? window.SearchableSelect.getInstance('#dateRange')
+                    : null;
+                if (dateRangeSelect) dateRangeSelect.setValue('yesterday');
+                handleDateRangeChange();
+            }
             applyFilters();
         }
 
@@ -1501,7 +1559,6 @@
             initSearchableSelects()
                 .then(() => {
                     setDefaultFilters();
-                    document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
                     // 异步加载图表数据
                     return applyFilters();
                 })

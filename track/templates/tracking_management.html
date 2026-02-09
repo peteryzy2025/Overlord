@@ -73,21 +73,15 @@
             <!-- 日期范围 -->
             <div class="filter-group">
                 <label class="filter-label">日期范围</label>
-                <select class="form-select" id="dateRange">
-                    <option value="yesterday">昨日</option>
-                    <option value="today">今日</option>
-                    <option value="last7days">最近7天</option>
-                    <option value="last30days" selected>最近30天</option>
-                    <option value="custom">自定义范围</option>
-                </select>
+                <div id="dateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
             </div>
 
-            <div class="filter-group" id="customDateGroup" style="display: none;">
+            <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
                 <label class="filter-label">开始日期</label>
                 <input type="date" class="form-control" id="startDate">
             </div>
 
-            <div class="filter-group" id="customDateGroup2" style="display: none;">
+            <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
                 <label class="filter-label">结束日期</label>
                 <input type="date" class="form-control" id="endDate">
             </div>
@@ -467,6 +461,7 @@
     // ==================== 全局变量 ====================
     let allCouriers = [];
     let allFactories = [];  // 🔴 新增：工厂列表
+    let dateRangeController = null;
     let currentFilters = {
         date_range: 'last30days',
         start_date: '',
@@ -758,17 +753,43 @@
     }
 
     // ==================== 筛选逻辑 ====================
+    function initDateRangeFilter() {
+        const dateRangeOptions = [
+            { value: 'yesterday', label: '昨日' },
+            { value: 'today', label: '今日' },
+            { value: 'last7days', label: '最近7天' },
+            { value: 'last30days', label: '最近30天' },
+            { value: 'custom', label: '自定义范围' }
+        ];
+        dateRangeController = window.GeneralStyleDateRangeFilter
+            ? window.GeneralStyleDateRangeFilter.init({
+                select: '#dateRange',
+                options: dateRangeOptions,
+                placeholder: '点击选择日期范围',
+                defaultValue: 'last30days',
+                customValue: 'custom',
+                customGroups: ['#customDateGroup', '#customDateGroup2'],
+                startInput: '#startDate',
+                endInput: '#endDate',
+                customDisplay: 'flex'
+            })
+            : null;
+    }
+
     function handleDateRangeChange() {
-        const dateRange = document.getElementById('dateRange').value;
+        if (dateRangeController) {
+            dateRangeController.syncVisibility();
+            return;
+        }
+        const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+            ? window.SearchableSelect.getInstance('#dateRange')
+            : null;
+        const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : '';
         const customDateGroup = document.getElementById('customDateGroup');
         const customDateGroup2 = document.getElementById('customDateGroup2');
-        if (dateRange === 'custom') {
-            customDateGroup.style.display = 'flex';
-            customDateGroup2.style.display = 'flex';
-        } else {
-            customDateGroup.style.display = 'none';
-            customDateGroup2.style.display = 'none';
-        }
+        const visible = dateRange === 'custom';
+        if (customDateGroup) customDateGroup.style.display = visible ? 'flex' : 'none';
+        if (customDateGroup2) customDateGroup2.style.display = visible ? 'flex' : 'none';
     }
 
 
@@ -789,11 +810,23 @@
         // 保持与后端一致：ops_group 优先
 
         const finalOpsName = opsGroupValue ? [] : opsNameValue;
+        const dateRange = dateRangeController
+            ? dateRangeController.getValue()
+            : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#dateRange') ? window.SearchableSelect.getInstance('#dateRange').getValue() : '')
+                : '');
+        const useCustomDate = dateRangeController
+            ? dateRangeController.isCustom()
+            : dateRange === 'custom';
 
         return {
-            date_range: document.getElementById('dateRange').value,
-            start_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('startDate').value : '',
-            end_date: document.getElementById('dateRange').value === 'custom' ? document.getElementById('endDate').value : '',
+            date_range: dateRange,
+            start_date: useCustomDate
+                ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value)
+                : '',
+            end_date: useCustomDate
+                ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value)
+                : '',
 
             tracking_number: splitInputValues(document.getElementById('trackingNumberFilter').value),
             order_id: splitInputValues(document.getElementById('orderIdFilter').value),
@@ -813,8 +846,18 @@
 
     // 🔴 修改：重置工厂筛选
     function setDefaultFilters() {
-        document.getElementById('dateRange').value = 'last30days';
-        handleDateRangeChange();
+        if (dateRangeController) {
+            dateRangeController.setValue('last30days');
+            dateRangeController.clearCustomDates();
+        } else {
+            const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#dateRange')
+                : null;
+            if (dateRangeSelect) {
+                dateRangeSelect.setValue('last30days');
+            }
+            handleDateRangeChange();
+        }
         document.getElementById('trackingNumberFilter').value = '';
         document.getElementById('orderIdFilter').value = '';
         document.getElementById('logisticsMethodFilter').value = '';
@@ -2083,9 +2126,9 @@
             await loadOpsGroups();
             await loadOpsNames();
             initOpsNameDropdown(); // 🔴 新增：初始化事件
+            initDateRangeFilter();
 
             setDefaultFilters();
-            document.getElementById('dateRange').addEventListener('change', handleDateRangeChange);
 
             // 🔴 这块是你原来的代码
             const fileInput = document.getElementById('fileInput');

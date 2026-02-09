@@ -187,6 +187,18 @@
 }
 
 /* ============================================
+   4.0 Date Range Filter (shared)
+   ============================================ */
+
+.gs-date-range-custom-group {
+    display: none !important;
+}
+
+.gs-date-range-custom-group.is-visible {
+    display: flex !important;
+}
+
+/* ============================================
    4.1 Year-Month Picker (shared)
    ============================================ */
 
