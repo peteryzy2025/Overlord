@@ -236,13 +236,7 @@ Overlord{% endblock %} {% block extra_css %}
 
       <div class="filter-group">
         <label class="filter-label">运营分组</label>
-        <select
-          class="form-select"
-          id="opsGroupFilter"
-          onchange="applyFilters()"
-        >
-          <option value="">全部</option>
-        </select>
+        <div id="opsGroupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
       </div>
 
       <div class="filter-group" id="shopNameGroup">
@@ -494,6 +488,7 @@ Overlord{% endblock %} {% block extra_css %}
   };
   let dateRangeController = null;
   let operatorSelect = null;
+  let opsGroupSelect = null;
 
   // ===== 工具函数（保持不变）=====
   function showLoading(show = true) {
@@ -550,7 +545,7 @@ Overlord{% endblock %} {% block extra_css %}
   }
 
   // ===== 运营人员筛选：统一可搜索多选下拉 =====
-  function normalizeOperatorSelection(rawValue) {
+  function normalizeMultiSelection(rawValue) {
     const values = Array.isArray(rawValue)
       ? rawValue.map((v) => String(v))
       : rawValue
@@ -569,13 +564,13 @@ Overlord{% endblock %} {% block extra_css %}
 
   function initOperatorFilter() {
     operatorSelect = new SearchableSelect("#operatorFilter", {
-      options: [{ value: "", label: "全部人员" }],
+      options: [{ value: "all", label: "全部人员" }],
       multiple: true,
       placeholder: "点击选择运营人员",
     });
-    operatorSelect.setValue([""]);
+    operatorSelect.setValue(["all"]);
     operatorSelect.onChange = (newValue) => {
-      currentFilters.operator_ids = normalizeOperatorSelection(newValue);
+      currentFilters.operator_ids = normalizeMultiSelection(newValue);
     };
   }
 
@@ -584,7 +579,7 @@ Overlord{% endblock %} {% block extra_css %}
       initOperatorFilter();
     }
 
-    const options = [{ value: "", label: "全部人员" }];
+    const options = [{ value: "all", label: "全部人员" }];
     operators.forEach((op) => {
       const rawId = op && op.id !== undefined && op.id !== null ? String(op.id) : "";
       if (!rawId) return;
@@ -597,28 +592,56 @@ Overlord{% endblock %} {% block extra_css %}
     });
 
     operatorSelect.setOptions(options);
-    operatorSelect.setValue([""]);
+    operatorSelect.setValue(["all"]);
     currentFilters.operator_ids = [];
   }
 
-  function populateOpsGroupDropdown(operators) {
-    const select = document.getElementById("opsGroupFilter");
-    // 保留第一个“全部”选项
-    select.innerHTML = '<option value="">全部</option>';
-
-    // 提取并去重分组信息
-    const groups = [
-      ...new Set(
-        operators.map((op) => op.group).filter((g) => g && g.trim() !== ""),
-      ),
-    ].sort();
-
-    groups.forEach((group) => {
-      const option = document.createElement("option");
-      option.value = group;
-      option.textContent = group;
-      select.appendChild(option);
+  function initOpsGroupFilter() {
+    opsGroupSelect = new SearchableSelect("#opsGroupFilter", {
+      options: [{ value: "all", label: "全部分组" }],
+      multiple: true,
+      placeholder: "全部分组",
     });
+    opsGroupSelect.setValue(["all"]);
+  }
+
+  function populateOpsGroupDropdown(groups) {
+    if (!opsGroupSelect) {
+      initOpsGroupFilter();
+    }
+    const options = [{ value: "all", label: "全部分组" }];
+    const uniqueGroups = [...new Set((groups || []).map((g) => String(g || "").trim()).filter((g) => g))].sort();
+    uniqueGroups.forEach((group) => {
+      options.push({
+        value: group,
+        label: group,
+      });
+    });
+    opsGroupSelect.setOptions(options);
+    opsGroupSelect.setValue(["all"]);
+  }
+
+  async function loadOpsGroups() {
+    try {
+      const response = await fetch("/api/general/ops-groups/?platform=amazon");
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        const groups = result.data
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object") return item.value || item.label || "";
+            return "";
+          })
+          .map((g) => String(g || "").trim())
+          .filter((g) => g && g.toLowerCase() !== "all" && g !== "全部分组");
+        populateOpsGroupDropdown(groups);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("加载运营分组失败:", error);
+      return false;
+    }
   }
 
   async function loadOperators() {
@@ -627,7 +650,6 @@ Overlord{% endblock %} {% block extra_css %}
       const result = await response.json();
       if (result.success && result.data) {
         populateOperatorDropdown(result.data);
-        populateOpsGroupDropdown(result.data);
         currentUserPermissions = {
           can_reset_daily_check: result.can_reset_daily_check || false,
         };
@@ -665,7 +687,7 @@ Overlord{% endblock %} {% block extra_css %}
           : document.getElementById("endDate").value
         : "",
       operator_ids: currentFilters.operator_ids,
-      ops_group: document.getElementById("opsGroupFilter").value.trim(),
+      ops_group: normalizeMultiSelection(opsGroupSelect ? opsGroupSelect.getValue() : []).join(","),
       shop_name: document.getElementById("shopNameFilter").value.trim(),
       visited: document.getElementById("visitedFilter").value,
       performance_checked: document.getElementById("performanceCheckedFilter")
@@ -694,7 +716,9 @@ Overlord{% endblock %} {% block extra_css %}
       document.getElementById("endDate").value = "";
       handleDateRangeChange();
     }
-    document.getElementById("opsGroupFilter").value = "";
+    if (opsGroupSelect) {
+      opsGroupSelect.setValue(["all"]);
+    }
     document.getElementById("shopNameFilter").value = "";
     document.getElementById("visitedFilter").value = "";
     document.getElementById("performanceCheckedFilter").value = "";
@@ -704,7 +728,7 @@ Overlord{% endblock %} {% block extra_css %}
     document.getElementById("shopStatusFilter").value = "";
     document.getElementById("pageSize").value = "20";
     if (operatorSelect) {
-      operatorSelect.setValue([""]);
+      operatorSelect.setValue(["all"]);
     }
     currentFilters.operator_ids = [];
   }
@@ -1056,7 +1080,9 @@ Overlord{% endblock %} {% block extra_css %}
     try {
       initDateRangeFilter();
       initOperatorFilter();
+      initOpsGroupFilter();
       await loadOperators();
+      await loadOpsGroups();
       setDefaultFilters();
       initializeSortHeader();
       await applyFilters();

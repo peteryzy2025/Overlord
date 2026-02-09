@@ -56,6 +56,56 @@ def get_date_range_from_option(option):
     return start_date, end_date
 
 
+def is_all_filter_token(value):
+    token = str(value or '').strip().lower()
+    return token in {'', 'all', '*', 'any', '__all__', '全部', '不限'}
+
+
+def parse_multi_filter_values(raw):
+    """
+    将筛选参数统一转换为字符串列表，兼容:
+    - 单值字符串
+    - 逗号分隔字符串
+    - 数组
+    并过滤“全部/不限”类占位值。
+    """
+    if raw is None:
+        return []
+
+    source = raw if isinstance(raw, list) else [raw]
+    values = []
+    for item in source:
+        if item is None:
+            continue
+        if isinstance(item, list):
+            for sub in item:
+                text = str(sub or '').strip()
+                if text:
+                    values.append(text)
+            continue
+        text = str(item).strip()
+        if not text:
+            continue
+        if ',' in text:
+            values.extend([part.strip() for part in text.split(',') if part.strip()])
+        else:
+            values.append(text)
+
+    if any(is_all_filter_token(v) for v in values):
+        return []
+
+    result = []
+    seen = set()
+    for val in values:
+        if is_all_filter_token(val):
+            continue
+        if val in seen:
+            continue
+        seen.add(val)
+        result.append(val)
+    return result
+
+
 @login_required
 def get_factories(request):
     """获取工厂列表"""
@@ -169,29 +219,27 @@ def tracking_list(request):
                 # 兼容旧的字符串格式
                 filters &= Q(order_id__icontains=order_ids)
 
-            # 3. 下拉框筛选
-            if data.get('logistics_method'):
-                filters &= Q(courier__code=data['logistics_method'])
-            if data.get('factory'):
-                filters &= Q(factory_id=data['factory'])
+            # 3. 下拉框筛选（支持多选）
+            logistics_methods = parse_multi_filter_values(data.get('logistics_method'))
+            if logistics_methods:
+                filters &= Q(courier__code__in=logistics_methods)
+
+            factory_values = parse_multi_filter_values(data.get('factory'))
+            if factory_values:
+                factory_ids = [int(v) for v in factory_values if str(v).isdigit()]
+                if factory_ids:
+                    filters &= Q(factory_id__in=factory_ids)
             if data.get('status'):
                 filters &= Q(transit_status=data['status'])
 
             # 4. 运营分组/人员筛选（冲突处理：分组优先）
-            ops_group = data.get('ops_group')
-            if isinstance(ops_group, list):
-                ops_group = ops_group[0] if ops_group else ''
-            ops_group = str(ops_group).strip() if ops_group else ''
-            # 🔴 修改：支持多选运营人员
-            ops_names = data.get('ops_name', [])
-            
-            if ops_group:
-                filters &= Q(ops_group=ops_group)
+            ops_groups = parse_multi_filter_values(data.get('ops_group'))
+            ops_names = parse_multi_filter_values(data.get('ops_name'))
+
+            if ops_groups:
+                filters &= Q(ops_group__in=ops_groups)
             elif ops_names:
-                if isinstance(ops_names, list) and len(ops_names) > 0:
-                    filters &= Q(ops_name__in=ops_names)
-                elif isinstance(ops_names, str) and ops_names.strip():
-                    filters &= Q(ops_name=ops_names.strip())
+                filters &= Q(ops_name__in=ops_names)
 
             # === 5. 新增：未揽收天数筛选（互斥）===
             uncollected_statuses = ['INIT', 'NO_RECORD', 'INFO_RECEIVED']
@@ -386,26 +434,24 @@ def tracking_stats(request):
                 start_date = timezone.now() - timedelta(days=days)
                 filters &= Q(order_time__gte=start_date)
 
-        # B. 工厂/物流商筛选
-        if data.get('factory'):
-            filters &= Q(factory_id=data['factory'])
-        if data.get('logistics_method'):
-            filters &= Q(courier__code=data['logistics_method'])
+        # B. 工厂/物流商筛选（支持多选）
+        factory_values = parse_multi_filter_values(data.get('factory'))
+        if factory_values:
+            factory_ids = [int(v) for v in factory_values if str(v).isdigit()]
+            if factory_ids:
+                filters &= Q(factory_id__in=factory_ids)
+        logistics_methods = parse_multi_filter_values(data.get('logistics_method'))
+        if logistics_methods:
+            filters &= Q(courier__code__in=logistics_methods)
 
         # C. 运营分组/人员筛选
-        ops_group = data.get('ops_group')
-        if isinstance(ops_group, list):
-            ops_group = ops_group[0] if ops_group else ''
-        ops_group = str(ops_group).strip() if ops_group else ''
-        ops_names = data.get('ops_name', [])
-        
-        if ops_group:
-            filters &= Q(ops_group=ops_group)
+        ops_groups = parse_multi_filter_values(data.get('ops_group'))
+        ops_names = parse_multi_filter_values(data.get('ops_name'))
+
+        if ops_groups:
+            filters &= Q(ops_group__in=ops_groups)
         elif ops_names:
-            if isinstance(ops_names, list) and len(ops_names) > 0:
-                filters &= Q(ops_name__in=ops_names)
-            elif isinstance(ops_names, str) and ops_names.strip():
-                filters &= Q(ops_name=ops_names.strip())
+            filters &= Q(ops_name__in=ops_names)
         
         # 应用筛选条件到 base_qs
         base_qs = base_qs.filter(filters)
@@ -568,28 +614,26 @@ def export_tracking_excel(request):
             # 兼容旧的字符串格式
             filters &= Q(order_id__icontains=order_ids)
 
-        # 3. 下拉框筛选
-        if data.get('logistics_method'):
-            filters &= Q(courier__code=data['logistics_method'])
-        if data.get('factory'):
-            filters &= Q(factory_id=data['factory'])
+        # 3. 下拉框筛选（支持多选）
+        logistics_methods = parse_multi_filter_values(data.get('logistics_method'))
+        if logistics_methods:
+            filters &= Q(courier__code__in=logistics_methods)
+
+        factory_values = parse_multi_filter_values(data.get('factory'))
+        if factory_values:
+            factory_ids = [int(v) for v in factory_values if str(v).isdigit()]
+            if factory_ids:
+                filters &= Q(factory_id__in=factory_ids)
         if data.get('status'):
             filters &= Q(transit_status=data['status'])
 
         # 4. 运营分组/人员筛选（冲突处理：分组优先）
-        ops_group = data.get('ops_group')
-        if isinstance(ops_group, list):
-            ops_group = ops_group[0] if ops_group else ''
-        ops_group = str(ops_group).strip() if ops_group else ''
-
-        ops_name = data.get('ops_name')
-        if isinstance(ops_name, list):
-            ops_name = ops_name[0] if ops_name else ''
-        ops_name = str(ops_name).strip() if ops_name else ''
-        if ops_group:
-            filters &= Q(ops_group=ops_group)
-        elif ops_name:
-            filters &= Q(ops_name=ops_name)
+        ops_groups = parse_multi_filter_values(data.get('ops_group'))
+        ops_names = parse_multi_filter_values(data.get('ops_name'))
+        if ops_groups:
+            filters &= Q(ops_group__in=ops_groups)
+        elif ops_names:
+            filters &= Q(ops_name__in=ops_names)
 
         # 5. 轨迹更新筛选（使用 last_update_time 而非 stay_days）
         tracking_update = data.get('tracking_update')
