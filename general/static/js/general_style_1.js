@@ -1245,9 +1245,240 @@ const GeneralStyleDatePicker = (() => {
     return { initOne, initAll, observe };
 })();
 
+const GeneralStyleFilterSelectAdapter = (() => {
+    const FILTER_ROOT_SELECTOR = '.filter-section, .control-panel, .filter-row, .filter-row-main, .filter-row-secondary';
+    const TARGET_SELECTOR = 'select.form-select';
+    let observer = null;
+    const adaptedEntries = [];
+    let syncTimer = null;
+
+    const toArray = (nodeList) => Array.from(nodeList || []);
+
+    const getLabelText = (select) => {
+        const group = select.closest('.filter-group');
+        const label = group?.querySelector('.filter-label');
+        return (label?.textContent || '').trim();
+    };
+
+    const getPlaceholder = (select) => {
+        const selected = toArray(select.options).find((opt) => opt.selected);
+        const emptyOpt = toArray(select.options).find((opt) => String(opt.value || '') === '');
+        return (
+            select.dataset.placeholder ||
+            selected?.textContent?.trim() ||
+            emptyOpt?.textContent?.trim() ||
+            getLabelText(select) ||
+            '请选择'
+        );
+    };
+
+    const shouldSkip = (select) => {
+        if (!select || select.dataset.gsSelectAdapted === '1') return true;
+        if (select.closest('[data-ym-picker], [data-ymd-picker]')) return true;
+        if (!select.closest(FILTER_ROOT_SELECTOR)) return true;
+        if (select.closest('.modal-overlay, .modal-content, .modal-body, .modal-footer')) return true;
+        if (select.closest('.pagination-container, .pagination-controls, .page-size-wrapper')) return true;
+        if ((select.id || '').toLowerCase().includes('pagesize')) return true;
+        if (select.dataset.noSearchable === '1') return true;
+        return false;
+    };
+
+    const isSemanticMultiple = (select) => {
+        if (!select) return false;
+        if (select.multiple) return true;
+        if (select.dataset.searchableMultiple === 'true') return true;
+        if (select.dataset.searchableMultiple === 'false') return false;
+        // 默认保持单选，避免旧接口未支持多值导致筛选结果异常
+        return false;
+    };
+
+    const mapOptions = (select) => {
+        return toArray(select.options).map((opt) => ({
+            value: String(opt.value ?? ''),
+            label: String(opt.textContent || '').trim(),
+            disabled: !!opt.disabled
+        }));
+    };
+
+    const getSelectValues = (select, multiple) => {
+        if (!multiple) return String(select.value ?? '');
+        const selected = toArray(select.selectedOptions).map((opt) => String(opt.value ?? ''));
+        if (selected.length === 0) return [''];
+        if (selected.includes('')) return [''];
+        return selected;
+    };
+
+    const syncNativeSelect = (select, value, multiple) => {
+        if (!multiple) {
+            const text = String(value ?? '');
+            select.multiple = false;
+            select.value = text;
+            select.dataset.multiValue = '';
+            return;
+        }
+
+        const values = Array.isArray(value)
+            ? value.map((v) => String(v ?? ''))
+            : String(value ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+
+        const normalized = values.filter((v) => v !== '');
+        select.multiple = true;
+
+        toArray(select.options).forEach((opt) => {
+            const optValue = String(opt.value ?? '');
+            opt.selected = normalized.includes(optValue) || (normalized.length === 0 && optValue === '');
+        });
+
+        // 兼容仍读取 select.value 的旧逻辑
+        select.dataset.multiValue = normalized.join(',');
+    };
+
+    const readNativeValue = (select, multiple) => {
+        if (!multiple) return String(select.value ?? '');
+        const selected = toArray(select.selectedOptions).map((opt) => String(opt.value ?? ''));
+        const normalized = selected.filter((v) => v !== '');
+        return normalized.length > 0 ? normalized : [''];
+    };
+
+    const modelKey = (value, multiple) => {
+        if (!multiple) return String(value ?? '');
+        return JSON.stringify(Array.isArray(value) ? value : []);
+    };
+
+    const ensureSyncLoop = () => {
+        if (syncTimer || typeof window === 'undefined') return;
+        syncTimer = window.setInterval(() => {
+            adaptedEntries.forEach((entry) => {
+                if (!entry || entry.syncing) return;
+                const current = readNativeValue(entry.select, entry.multiple);
+                const key = modelKey(current, entry.multiple);
+                if (key === entry.lastModelKey) return;
+                entry.syncing = true;
+                entry.instance.setValue(current);
+                entry.lastModelKey = key;
+                entry.syncing = false;
+            });
+        }, 400);
+    };
+
+    const adaptOne = (select) => {
+        if (shouldSkip(select)) return null;
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return null;
+
+        const multiple = isSemanticMultiple(select);
+        const placeholder = getPlaceholder(select);
+        const options = mapOptions(select);
+
+        const holder = document.createElement('div');
+        holder.className = `searchable-select ${multiple ? 'multiple' : 'single'}`;
+        holder.dataset.placeholder = placeholder;
+        holder.dataset.gsSelectHolder = '1';
+        holder.dataset.sourceSelectId = select.id || '';
+        const wrapper = select.closest('.select-wrapper');
+        const sameGroupWrapped = wrapper && wrapper.closest('.filter-group') === select.closest('.filter-group');
+        if (sameGroupWrapped) {
+            wrapper.insertAdjacentElement('afterend', holder);
+            wrapper.style.display = 'none';
+            wrapper.dataset.gsSelectWrapped = '1';
+            select.style.display = 'none';
+        } else {
+            select.insertAdjacentElement('afterend', holder);
+            select.style.display = 'none';
+        }
+        select.dataset.gsSelectAdapted = '1';
+
+        const instance = new window.SearchableSelect(holder, {
+            options,
+            multiple,
+            placeholder,
+            searchable: true
+        });
+
+        const initialValue = getSelectValues(select, multiple);
+        instance.setValue(initialValue);
+        syncNativeSelect(select, initialValue, multiple);
+        const entry = {
+            select,
+            instance,
+            multiple,
+            syncing: false,
+            lastModelKey: modelKey(initialValue, multiple)
+        };
+        adaptedEntries.push(entry);
+        ensureSyncLoop();
+
+        instance.onChange = (newValue) => {
+            entry.syncing = true;
+            syncNativeSelect(select, newValue, multiple);
+            entry.lastModelKey = modelKey(newValue, multiple);
+            entry.syncing = false;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+
+        select.addEventListener('change', () => {
+            if (entry.syncing) return;
+            const current = readNativeValue(select, multiple);
+            const key = modelKey(current, multiple);
+            if (key === entry.lastModelKey) return;
+            entry.syncing = true;
+            instance.setValue(current);
+            entry.lastModelKey = key;
+            entry.syncing = false;
+        });
+
+        return entry;
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return [];
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return [];
+
+        const selects = toArray(root.querySelectorAll(TARGET_SELECTOR));
+        const adapted = [];
+        selects.forEach((select) => {
+            const result = adaptOne(select);
+            if (result) adapted.push(result);
+        });
+        return adapted;
+    };
+
+    const observeDom = () => {
+        if (typeof MutationObserver === 'undefined' || observer || typeof document === 'undefined') return;
+        if (!document.body) return;
+
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof Element)) return;
+                    if (node.matches(TARGET_SELECTOR)) {
+                        adaptOne(node);
+                        return;
+                    }
+                    if (node.querySelector(TARGET_SELECTOR)) {
+                        initAll(node);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const getValue = (selectId) => {
+        const select = typeof selectId === 'string' ? document.getElementById(selectId) : selectId;
+        if (!select) return '';
+        const multiValue = (select.dataset.multiValue || '').trim();
+        if (multiValue) return multiValue.split(',').filter(Boolean);
+        return String(select.value ?? '');
+    };
+
+    return { initAll, observeDom, getValue };
+})();
+
 if (typeof window !== 'undefined') {
     window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
     window.GeneralStyleDatePicker = GeneralStyleDatePicker;
+    window.GeneralStyleFilterSelectAdapter = GeneralStyleFilterSelectAdapter;
 
     const bootDatePicker = () => {
         if (!window.GeneralStyleDatePicker) return;
@@ -1255,10 +1486,19 @@ if (typeof window !== 'undefined') {
         window.GeneralStyleDatePicker.observe();
     };
 
+    const bootFilterSelectAdapter = () => {
+        if (!window.GeneralStyleFilterSelectAdapter) return;
+        if (typeof window.SearchableSelect !== 'function') return;
+        window.GeneralStyleFilterSelectAdapter.initAll(document);
+        window.GeneralStyleFilterSelectAdapter.observeDom();
+    };
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootDatePicker);
+        document.addEventListener('DOMContentLoaded', bootFilterSelectAdapter);
     } else {
         bootDatePicker();
+        bootFilterSelectAdapter();
     }
 }
 
@@ -1271,6 +1511,7 @@ if (typeof module !== 'undefined' && module.exports) {
         TableDataManager,
         ModalManager,
         GeneralStyleYearMonthPicker,
-        GeneralStyleDatePicker
+        GeneralStyleDatePicker,
+        GeneralStyleFilterSelectAdapter
     };
 }
