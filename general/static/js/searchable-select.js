@@ -39,7 +39,42 @@ class SearchableSelect {
         this.init();
     }
 
+    normalizeOptionItem(option) {
+        if (option === null || option === undefined) {
+            return { value: '', label: '', disabled: false };
+        }
+
+        if (typeof option !== 'object') {
+            const text = String(option);
+            return { value: text, label: text, disabled: false };
+        }
+
+        const rawValue = option.value ?? option.id ?? option.key ?? option.code ?? '';
+        let rawLabel = option.label ?? option.name ?? option.text ?? option.display;
+
+        if ((rawLabel === undefined || rawLabel === null || rawLabel === '') && option.first_name !== undefined) {
+            const baseName = String(option.first_name || '-');
+            const groupName = option.group ? ` (${option.group})` : '';
+            rawLabel = `${baseName}${groupName}`;
+        }
+
+        if (rawLabel === undefined || rawLabel === null || rawLabel === '') {
+            rawLabel = String(rawValue ?? '');
+        }
+
+        return {
+            value: this.normalizeOptionValue(rawValue),
+            label: String(rawLabel),
+            disabled: !!option.disabled
+        };
+    }
+
+    normalizeOptions(options) {
+        return (options || []).map((opt) => this.normalizeOptionItem(opt));
+    }
+
     init() {
+        this.options = this.normalizeOptions(this.options);
         this.render();
         if (this.config.multiple) {
             this.selectedValues = this.normalizeMultiSelection(this.selectedValues);
@@ -188,8 +223,7 @@ class SearchableSelect {
             const isSelected = this.config.multiple
                 ? this.selectedValues.includes(optionValue)
                 : this.normalizeOptionValue(this.selectedValues) === optionValue;
-            const dynamicDisabled = this.config.multiple && this.isAllOption(opt) && this.hasNonAllSelected();
-            const isDisabled = !!opt.disabled || dynamicDisabled;
+            const isDisabled = !!opt.disabled;
             
             return `
                 <div class="option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
@@ -294,12 +328,6 @@ class SearchableSelect {
         if (this.config.multiple) {
             const current = Array.isArray(this.selectedValues) ? [...this.selectedValues] : [];
             const isAllOption = this.isAllValue(normalizedValue);
-            const hasNonAllSelected = current.some((item) => !this.isAllValue(item));
-
-            // 已选中非“全部”项时，不允许再点选“全部”
-            if (isAllOption && hasNonAllSelected && !current.includes(normalizedValue)) {
-                return;
-            }
 
             const index = current.indexOf(normalizedValue);
             if (index > -1) {
@@ -429,7 +457,7 @@ class SearchableSelect {
     }
 
     setOptions(options) {
-        this.options = options || [];
+        this.options = this.normalizeOptions(options || []);
         if (this.config.multiple) {
             this.selectedValues = this.normalizeMultiSelection(this.selectedValues);
         }
