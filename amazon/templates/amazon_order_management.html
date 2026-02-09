@@ -837,12 +837,12 @@
                     <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="startDate">
                 </div>
 
-                <div class="filter-group" id="customDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="endDate">
                 </div>
@@ -1081,7 +1081,7 @@
         // 不计算预警的订单状态
         const NON_DEADLINE_STATUSES = ['PendingAvailability', 'Pending', 'Canceled', 'Shipped'];
 
-        let dateRangeSelect, groupSelect, operatorSelect, shopStatusSelect, orderStatusSelect;
+        let dateRangeSelect, dateRangeController, groupSelect, operatorSelect, shopStatusSelect, orderStatusSelect;
         let fulfillmentChannelSelect, diviExportSelect, diviOrderStatusSelect, diviTrackingSelect;
         let maskedSingleSelect, shippingDeadlineSelect;
 
@@ -1126,7 +1126,12 @@
             }
         }
 
-        function handleDateRangeChange() {
+        function syncDateRangeVisibility() {
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
+
             const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'last30days';
             const customDateGroup = document.getElementById('customDateGroup');
             const customDateGroup2 = document.getElementById('customDateGroup2');
@@ -1148,10 +1153,15 @@
                 return value.join(',');
             };
 
+            const currentDateRange = dateRangeController
+                ? dateRangeController.getValue()
+                : (dateRangeSelect ? dateRangeSelect.getValue() : 'last30days');
+            const useCustomDate = dateRangeController ? dateRangeController.isCustom() : currentDateRange === 'custom';
+
             return {
-                date_range: dateRangeSelect ? dateRangeSelect.getValue() : 'last30days',
-                start_date: dateRangeSelect && dateRangeSelect.getValue() === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: dateRangeSelect && dateRangeSelect.getValue() === 'custom' ? document.getElementById('endDate').value : '',
+                date_range: currentDateRange,
+                start_date: useCustomDate ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value) : '',
+                end_date: useCustomDate ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value) : '',
                 operator_id: formatMultiSelect(operatorSelect),
                 group: formatMultiSelect(groupSelect),
                 order_id: document.getElementById('orderIdFilter').value.trim(),
@@ -1168,22 +1178,49 @@
         }
 
         function initSearchableSelects() {
-            dateRangeSelect = new SearchableSelect('#dateRange', {
-                options: [
-                    {value: 'yesterday', label: '昨日'},
-                    {value: 'today', label: '今日'},
-                    {value: 'last7days', label: '最近7天'},
-                    {value: 'last30days', label: '最近30天'},
-                    {value: 'custom', label: '自定义范围'}
-                ],
-                placeholder: '日期范围',
-                multiple: false
-            });
-            dateRangeSelect.setValue('last30days');
-            dateRangeSelect.onChange = (value) => {
-                handleDateRangeChange();
-                ordersPagination.page = 1;
-            };
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRange',
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    defaultValue: 'last30days',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup', '#customDateGroup2'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    onChange: () => {
+                        ordersPagination.page = 1;
+                    }
+                })
+                : null;
+
+            if (dateRangeController) {
+                dateRangeSelect = dateRangeController.select;
+            } else {
+                dateRangeSelect = new SearchableSelect('#dateRange', {
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    multiple: false
+                });
+                dateRangeSelect.setValue('last30days');
+                dateRangeSelect.onChange = () => {
+                    syncDateRangeVisibility();
+                    ordersPagination.page = 1;
+                };
+                syncDateRangeVisibility();
+            }
 
             shopStatusSelect = new SearchableSelect('#shopStatusFilter', {
                 options: [
@@ -1338,9 +1375,15 @@
         }
 
         function setDefaultFilters() {
-            handleDateRangeChange();
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
+            if (dateRangeController) {
+                dateRangeController.setValue('last30days');
+                dateRangeController.clearCustomDates();
+            } else {
+                if (dateRangeSelect) dateRangeSelect.setValue('last30days');
+                syncDateRangeVisibility();
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+            }
             document.getElementById('orderIdFilter').value = '';
             document.getElementById('shopNameFilter').value = '';
         }
@@ -1358,8 +1401,15 @@
                     await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
                 }
 
-                dateRangeSelect.setValue('last30days');
-                handleDateRangeChange();
+                if (dateRangeController) {
+                    dateRangeController.setValue('last30days');
+                    dateRangeController.clearCustomDates();
+                } else {
+                    dateRangeSelect.setValue('last30days');
+                    syncDateRangeVisibility();
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                }
 
                 shopStatusSelect.setValue(['']);
                 orderStatusSelect.setValue(['']);
@@ -1372,8 +1422,6 @@
                 groupSelect.setValue(['']);
                 operatorSelect.setValue(['']);
 
-                document.getElementById('startDate').value = '';
-                document.getElementById('endDate').value = '';
                 document.getElementById('orderIdFilter').value = '';
                 document.getElementById('shopNameFilter').value = '';
 

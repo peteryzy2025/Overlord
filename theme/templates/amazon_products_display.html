@@ -898,47 +898,30 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">上架日期</label>
-                    <select class="form-select" id="launchDateRange" onchange="handleDateRangeChange()">
-                        <option value="">全部时间</option>
-                        <option value="last3days">最近3天</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last15days">最近15天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="last60days">最近60天</option>
-                        <option value="last90days">最近90天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="launchDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customLaunchDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="customLaunchStartDate">
                 </div>
 
-                <div class="filter-group" id="customLaunchDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="customLaunchEndDate">
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">数据日期</label>
-                    <select class="form-select" id="crawlDateRange" onchange="handleDateRangeChange()">
-                        <option value="last30days" selected>最近30天</option>
-                        <option value="last3days">最近3天</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last15days">最近15天</option>
-                        <option value="last60days">最近60天</option>
-                        <option value="last90days">最近90天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="crawlDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customCrawlDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="customCrawlStartDate">
                 </div>
 
-                <div class="filter-group" id="customCrawlDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="customCrawlEndDate">
                 </div>
@@ -1363,6 +1346,8 @@
     <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
+        let launchDateRangeController = null;
+        let crawlDateRangeController = null;
         let currentFilters = {
             asin: '',
             title: '',
@@ -1482,9 +1467,65 @@
         }
 
         // ===== 筛选逻辑 =====
+        function initDateRangeFilters() {
+            const launchDateRangeOptions = [
+                { value: '', label: '全部时间' },
+                { value: 'last3days', label: '最近3天' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last15days', label: '最近15天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'last60days', label: '最近60天' },
+                { value: 'last90days', label: '最近90天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            const crawlDateRangeOptions = [
+                { value: 'last30days', label: '最近30天' },
+                { value: 'last3days', label: '最近3天' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last15days', label: '最近15天' },
+                { value: 'last60days', label: '最近60天' },
+                { value: 'last90days', label: '最近90天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            launchDateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#launchDateRange',
+                    options: launchDateRangeOptions,
+                    placeholder: '点击选择日期范围',
+                    defaultValue: '',
+                    customValue: 'custom',
+                    customGroups: ['#customLaunchDateGroup', '#customLaunchDateGroup2'],
+                    startInput: '#customLaunchStartDate',
+                    endInput: '#customLaunchEndDate',
+                    customDisplay: 'flex'
+                })
+                : null;
+            crawlDateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#crawlDateRange',
+                    options: crawlDateRangeOptions,
+                    placeholder: '点击选择日期范围',
+                    defaultValue: 'last30days',
+                    customValue: 'custom',
+                    customGroups: ['#customCrawlDateGroup', '#customCrawlDateGroup2'],
+                    startInput: '#customCrawlStartDate',
+                    endInput: '#customCrawlEndDate',
+                    customDisplay: 'flex'
+                })
+                : null;
+        }
+
         function handleDateRangeChange() {
+            if (launchDateRangeController && crawlDateRangeController) {
+                launchDateRangeController.syncVisibility();
+                crawlDateRangeController.syncVisibility();
+                return;
+            }
             // 处理上架日期
-            const launchRange = document.getElementById('launchDateRange').value;
+            const launchDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#launchDateRange')
+                : null;
+            const launchRange = launchDateRangeSelect ? launchDateRangeSelect.getValue() : '';
             const customLaunchGroup = document.getElementById('customLaunchDateGroup');
             const customLaunchGroup2 = document.getElementById('customLaunchDateGroup2');
 
@@ -1497,7 +1538,10 @@
             }
 
             // 处理数据日期
-            const crawlRange = document.getElementById('crawlDateRange').value;
+            const crawlDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#crawlDateRange')
+                : null;
+            const crawlRange = crawlDateRangeSelect ? crawlDateRangeSelect.getValue() : '';
             const customCrawlGroup = document.getElementById('customCrawlDateGroup');
             const customCrawlGroup2 = document.getElementById('customCrawlDateGroup2');
 
@@ -1535,16 +1579,26 @@
         }
 
         function getCurrentFilters() {
+            const launchRangeValue = launchDateRangeController
+                ? launchDateRangeController.getValue()
+                : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#launchDateRange') ? window.SearchableSelect.getInstance('#launchDateRange').getValue() : '')
+                : '');
+            const crawlRangeValue = crawlDateRangeController
+                ? crawlDateRangeController.getValue()
+                : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#crawlDateRange') ? window.SearchableSelect.getInstance('#crawlDateRange').getValue() : 'last30days')
+                : 'last30days');
             // 计算上架日期范围
             const launchDates = getDateRangeValues(
-                document.getElementById('launchDateRange').value,
+                launchRangeValue,
                 'customLaunchStartDate',
                 'customLaunchEndDate'
             );
 
             // 计算数据日期范围
             const crawlDates = getDateRangeValues(
-                document.getElementById('crawlDateRange').value,
+                crawlRangeValue,
                 'customCrawlStartDate',
                 'customCrawlEndDate'
             );
@@ -1569,19 +1623,38 @@
         }
 
         function setDefaultFilters() {
-            document.getElementById('launchDateRange').value = '';
-            document.getElementById('crawlDateRange').value = 'last30days';
-            handleDateRangeChange();
+            if (launchDateRangeController && crawlDateRangeController) {
+                launchDateRangeController.setValue('');
+                launchDateRangeController.clearCustomDates();
+                crawlDateRangeController.setValue('last30days');
+                crawlDateRangeController.clearCustomDates();
+            } else {
+                const launchDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                    ? window.SearchableSelect.getInstance('#launchDateRange')
+                    : null;
+                if (launchDateRangeSelect) {
+                    launchDateRangeSelect.setValue('');
+                }
+                const crawlDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                    ? window.SearchableSelect.getInstance('#crawlDateRange')
+                    : null;
+                if (crawlDateRangeSelect) {
+                    crawlDateRangeSelect.setValue('last30days');
+                }
+                handleDateRangeChange();
+            }
 
             document.getElementById('asinFilter').value = '';
             document.getElementById('productFilter').value = '';
             document.getElementById('productTypeFilter').value = '';
             document.getElementById('riskLevelFilter').value = '';
 
-            document.getElementById('customLaunchStartDate').value = '';
-            document.getElementById('customLaunchEndDate').value = '';
-            document.getElementById('customCrawlStartDate').value = '';
-            document.getElementById('customCrawlEndDate').value = '';
+            if (!launchDateRangeController || !crawlDateRangeController) {
+                document.getElementById('customLaunchStartDate').value = '';
+                document.getElementById('customLaunchEndDate').value = '';
+                document.getElementById('customCrawlStartDate').value = '';
+                document.getElementById('customCrawlEndDate').value = '';
+            }
 
             document.getElementById('pageSize').value = '20';
         }
@@ -2835,6 +2908,7 @@
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
             try {
+                initDateRangeFilters();
                 setDefaultFilters();
                 initializeSortHeader();
                 setupDeduplicateSwitch();  // 初始化去重开关

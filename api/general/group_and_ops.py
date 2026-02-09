@@ -153,7 +153,7 @@ def get_operators_api(request):
       - platform: 平台筛选，可选值 'amazon' | 'temu'，不传则返回所有平台人员
       - ops_group: 分组筛选，不传则不按分组筛选
     
-    返回: [{value: 'all', label: '全部人员', group: '全部'}, 
+    返回: [{value: 'all', label: '全部人员', group: '全部'},
            {value: 1, label: '张三 (A组)', group: 'A组'}, ...]
     """
     try:
