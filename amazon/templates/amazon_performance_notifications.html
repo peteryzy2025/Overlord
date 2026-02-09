@@ -142,6 +142,33 @@
             font-size: 0.875rem;
         }
 
+        /* 自定义日期展开后占据足够空间，推动后续筛选项右移（空间不足再换行） */
+        #customDateGroup {
+            min-width: 520px !important;
+            flex: 1.5 1 520px !important;
+        }
+
+        #customDateGroup .date-range-inputs {
+            flex-wrap: nowrap;
+        }
+
+        #customDateGroup .date-range-inputs .ymd-picker {
+            flex: 1 1 0;
+            min-width: 220px;
+        }
+
+        #customDateGroup .date-range-inputs > span {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 992px) {
+            #customDateGroup {
+                min-width: 100% !important;
+                flex-basis: 100% !important;
+            }
+        }
+
         /* 表格容器最小宽度，确保横向滚动 */
         .table-container {
             min-width: 100%;

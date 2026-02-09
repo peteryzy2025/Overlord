@@ -8,6 +8,61 @@ Overlord{% endblock %} {% block extra_css %}
     --accent-hover: #059669;
   }
 
+  /* 调整个别筛选框宽度，避免提示语显示不全 */
+  #customDateGroup,
+  #customDateGroup2 {
+    min-width: 240px;
+    flex: 1 1 240px;
+  }
+
+  #shopNameGroup {
+    min-width: 260px;
+    flex: 1.2 1 260px;
+  }
+
+  #restockDateGroup {
+    min-width: 420px;
+    flex: 1.2 1 420px;
+  }
+
+  #restockDateRange {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  #restockDateRange .ymd-picker,
+  #restockDateRange > input[type="date"] {
+    flex: 1 1 0;
+    min-width: 200px;
+  }
+
+  #shopStatusGroup {
+    min-width: 220px;
+    flex: 1 1 220px;
+  }
+
+  @media (max-width: 992px) {
+    #customDateGroup,
+    #customDateGroup2,
+    #shopNameGroup,
+    #restockDateGroup,
+    #shopStatusGroup {
+      min-width: 100%;
+      flex-basis: 100%;
+    }
+
+    #restockDateRange {
+      flex-wrap: wrap;
+    }
+
+    #restockDateRange .ymd-picker,
+    #restockDateRange > input[type="date"] {
+      min-width: 100%;
+    }
+  }
+
   /* ===== 平铺式统计卡片样式 ===== */
   .stats-grid {
     display: grid;
@@ -201,7 +256,7 @@ Overlord{% endblock %} {% block extra_css %}
         </select>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="shopNameGroup">
         <label class="filter-label">店铺名称</label>
         <input
           type="text"
@@ -239,9 +294,9 @@ Overlord{% endblock %} {% block extra_css %}
         </select>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="restockDateGroup">
         <label class="filter-label">最后上货日期</label>
-        <div style="display: flex; gap: 0.5rem">
+        <div id="restockDateRange" style="display: flex; gap: 0.5rem">
           <input
             type="date"
             class="form-control"
@@ -257,7 +312,7 @@ Overlord{% endblock %} {% block extra_css %}
         </div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="shopStatusGroup">
         <label class="filter-label">店铺状况</label>
         <input
           type="text"
