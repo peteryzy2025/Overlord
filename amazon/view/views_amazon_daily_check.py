@@ -131,10 +131,28 @@ def get_amazon_daily_check_list_api(request):
             else:
                 daily_check_filter &= Q(shop__ops_id=user.id)
 
-        # 运营分组筛选
-        ops_group = data.get('ops_group', '').strip()
-        if ops_group:
-            daily_check_filter &= Q(shop__ops__operational_account__ops_group__icontains=ops_group)
+        # 运营分组筛选（兼容多选）
+        ops_group_raw = data.get('ops_group', [])
+        if isinstance(ops_group_raw, list):
+            ops_groups = [
+                str(g or '').strip()
+                for g in ops_group_raw
+                if str(g or '').strip() and str(g or '').strip().lower() not in ['all', '*', '__all__', '不限', '全部']
+            ]
+        else:
+            ops_group_text = str(ops_group_raw or '').strip()
+            if ops_group_text and ',' in ops_group_text:
+                ops_groups = [
+                    g.strip() for g in ops_group_text.split(',')
+                    if g.strip() and g.strip().lower() not in ['all', '*', '__all__', '不限', '全部']
+                ]
+            elif ops_group_text and ops_group_text.lower() not in ['all', '*', '__all__', '不限', '全部']:
+                ops_groups = [ops_group_text]
+            else:
+                ops_groups = []
+
+        if ops_groups:
+            daily_check_filter &= Q(shop__ops__operational_account__ops_group__in=ops_groups)
 
         # 店铺名称模糊搜索
         shop_name = data.get('shop_name', '').strip()

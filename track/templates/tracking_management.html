@@ -96,29 +96,12 @@
             <!-- 物流商 -->
             <div class="filter-group">
                 <label class="filter-label">物流商</label>
-                <div class="select-wrapper" id="logisticsMethodWrapper">
-                    <select class="form-select" id="logisticsMethodFilter">
-                        <option value="">全部物流商</option>
-                    </select>
-                    <i class="fas fa-chevron-down select-arrow"></i>
-                    <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('logisticsMethod')"
-                        title="清除选择">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
+                <div id="logisticsMethodFilter" class="searchable-select multiple" data-placeholder="全部物流商"></div>
             </div>
             <!-- 🔴 新增：工厂筛选 -->
             <div class="filter-group">
                 <label class="filter-label">工厂</label>
-                <div class="select-wrapper" id="factoryWrapper">
-                    <select class="form-select" id="factoryFilter">
-                        <option value="">全部工厂</option>
-                    </select>
-                    <i class="fas fa-chevron-down select-arrow"></i>
-                    <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('factory')" title="清除选择">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
+                <div id="factoryFilter" class="searchable-select multiple" data-placeholder="全部工厂"></div>
             </div>
             <!-- 当前状态 -->
             <div class="filter-group">
@@ -153,26 +136,13 @@
             <!-- 运营分组 -->
             <div class="filter-group">
                 <label class="filter-label">运营分组</label>
-                <div class="select-wrapper" id="opsGroupWrapper">
-                    <select class="form-select" id="opsGroupFilter">
-                        <option value="">全部分组</option>
-                    </select>
-                    <i class="fas fa-chevron-down select-arrow"></i>
-                    <button type="button" class="btn-clear-toggle" onclick="clearAndToggle('opsGroup')" title="清除选择">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </div>
+                <div id="opsGroupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
             </div>
 
             <!-- 运营姓名 -->
             <div class="filter-group">
                 <label class="filter-label">运营姓名</label>
-                <div id="opsNameDropdown" class="dropdown-check-list">
-                    <div class="anchor" id="opsNameAnchor">
-                        <span id="opsNameSelectedText">全部人员</span>
-                    </div>
-                    <div class="items" id="opsNameItems"></div>
-                </div>
+                <div id="opsNameFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
             </div>
 
             <!-- 轨迹更新情况 -->
@@ -462,17 +432,21 @@
     let allCouriers = [];
     let allFactories = [];  // 🔴 新增：工厂列表
     let dateRangeController = null;
+    let logisticsMethodSelect = null;
+    let factoryFilterSelect = null;
+    let opsGroupFilterSelect = null;
+    let opsNameSelect = null;
     let currentFilters = {
         date_range: 'last30days',
         start_date: '',
         end_date: '',
         tracking_number: '',
         order_id: '',
-        logistics_method: '',
-        factory: '',  // 🔴 新增：工厂筛选值
+        logistics_method: [],
+        factory: [],  // 🔴 新增：工厂筛选值
         status: '',
-        ops_group: '',
-        ops_name: '',
+        ops_group: [],
+        ops_name: [],
         tracking_update: '',
         uncollected_days: '',           // 新增：只显示未揽收超过X天的
         exclude_uncollected_days: ''    // 新增：排除未揽收后超过X天的
@@ -520,22 +494,71 @@
         return div.innerHTML;
     }
 
+    function isAllToken(value) {
+        const token = String(value ?? '').trim().toLowerCase();
+        return token === '' || token === 'all' || token === '*' || token === '__all__' || token === 'any' || token === '不限' || token === '全部';
+    }
+
+    function normalizeMultiSelectValues(values) {
+        const list = Array.isArray(values) ? values : (values ? [values] : []);
+        const normalized = list.map((v) => String(v ?? '').trim()).filter((v) => v !== '');
+        if (normalized.some((v) => isAllToken(v))) {
+            return [];
+        }
+        return normalized.filter((v) => !isAllToken(v));
+    }
+
+    function initTrackingFilterSelects() {
+        logisticsMethodSelect = new SearchableSelect('#logisticsMethodFilter', {
+            options: [{ value: 'all', label: '全部物流商' }],
+            multiple: true,
+            placeholder: '全部物流商'
+        });
+        logisticsMethodSelect.setValue(['all']);
+
+        factoryFilterSelect = new SearchableSelect('#factoryFilter', {
+            options: [{ value: 'all', label: '全部工厂' }],
+            multiple: true,
+            placeholder: '全部工厂'
+        });
+        factoryFilterSelect.setValue(['all']);
+
+        opsGroupFilterSelect = new SearchableSelect('#opsGroupFilter', {
+            options: [{ value: 'all', label: '全部分组' }],
+            multiple: true,
+            placeholder: '全部分组'
+        });
+        opsGroupFilterSelect.setValue(['all']);
+
+        opsNameSelect = new SearchableSelect('#opsNameFilter', {
+            options: [{ value: 'all', label: '全部人员' }],
+            multiple: true,
+            placeholder: '全部人员'
+        });
+        opsNameSelect.setValue(['all']);
+    }
+
     async function loadFactories() {
         try {
             const response = await fetch('/api/factories/');
             const result = await response.json();
-            populateFactoryDropdown
-
             if (result.success) {
-                allFactories = result.data;
+                allFactories = result.data || [];
                 populateFactoryDropdown();
+                populateFactoryFilterDropdown();
                 return true;
             }
             return false;
         } catch (error) {
             console.error('工厂API请求错误:', error);
             const factorySelect = document.getElementById('factorySelect');
-            factorySelect.innerHTML = '<option value="">加载失败</option>';
+            if (factorySelect) {
+                factorySelect.innerHTML = '<option value="">加载失败</option>';
+            }
+            if (factoryFilterSelect) {
+                factoryFilterSelect.setOptions([{ value: 'all', label: '全部工厂' }]);
+                factoryFilterSelect.setValue(['all']);
+            }
             return false;
         }
     }
@@ -554,198 +577,167 @@
         });
     }
 
+    function populateFactoryFilterDropdown() {
+        if (!factoryFilterSelect) return;
+        const options = [{ value: 'all', label: '全部工厂' }];
+        allFactories.forEach(factory => {
+            if (!factory || factory.id === undefined || factory.id === null) return;
+            options.push({
+                value: String(factory.id),
+                label: String(factory.name || factory.id)
+            });
+        });
+        factoryFilterSelect.setOptions(options);
+        factoryFilterSelect.setValue(['all']);
+    }
+
     // ==================== 数据加载函数 ====================
     async function loadCouriersFromAPI() {
         try {
             const response = await fetch('/api/couriers/');
             const result = await response.json();
             if (result.success) {
-                allCouriers = result.data;
+                allCouriers = result.data || [];
                 populateCourierDropdown();
                 return true;
             }
             return false;
         } catch (error) {
             console.error('物流商API请求错误:', error);
-            const courierSelect = document.getElementById('logisticsMethodFilter');
-            courierSelect.innerHTML = '<option value="">无可用选项</option>';
+            if (logisticsMethodSelect) {
+                logisticsMethodSelect.setOptions([{ value: 'all', label: '全部物流商' }]);
+                logisticsMethodSelect.setValue(['all']);
+            }
             return false;
         }
     }
 
     function populateCourierDropdown() {
-        const courierSelect = document.getElementById('logisticsMethodFilter');
-        const firstOption = courierSelect.options[0];
-        courierSelect.innerHTML = '';
-        courierSelect.appendChild(firstOption);
-
+        if (!logisticsMethodSelect) return;
+        const options = [{ value: 'all', label: '全部物流商' }];
         allCouriers.forEach(courier => {
-            const option = document.createElement('option');
-            option.value = courier.code;
-            option.textContent = courier.name_cn || courier.name_en || courier.code;
-            courierSelect.appendChild(option);
+            if (!courier || !courier.code) return;
+            options.push({
+                value: String(courier.code),
+                label: courier.name_cn || courier.name_en || courier.code
+            });
         });
+        logisticsMethodSelect.setOptions(options);
+        logisticsMethodSelect.setValue(['all']);
     }
 
-    // 🔴 新增：加载运营分组列表
+    // 加载运营分组列表
     async function loadOpsGroups() {
         try {
-            const response = await fetch('/api/ops-groups/list');
-            const result = await response.json();
+            const parseGroups = (payload) => {
+                const list = Array.isArray(payload) ? payload : [];
+                const groups = [];
+                const seen = new Set();
+                list.forEach(item => {
+                    const raw = typeof item === 'object' && item !== null
+                        ? (item.value ?? item.label ?? '')
+                        : item;
+                    const val = String(raw ?? '').trim();
+                    if (!val || isAllToken(val) || seen.has(val)) return;
+                    seen.add(val);
+                    groups.push(val);
+                });
+                return groups;
+            };
 
-            if (result.success) {
-                const select = document.getElementById('opsGroupFilter');
-                const firstOption = select.options[0];
-                select.innerHTML = '';
-                select.appendChild(firstOption);
+            let groups = [];
+            try {
+                const response = await fetch('/api/general/ops-groups/');
+                const result = await response.json();
+                if (result.success) {
+                    groups = parseGroups(result.data);
+                }
+            } catch (error) {
+                console.warn('统一分组接口请求失败，尝试旧接口兜底:', error);
+            }
 
-                // 添加"未分组"选项
-                const ungroupedOption = document.createElement('option');
-                ungroupedOption.value = '未分组';
-                ungroupedOption.textContent = '未分组';
-                select.appendChild(ungroupedOption);
+            if (groups.length === 0) {
+                const response = await fetch('/api/ops-groups/list');
+                const result = await response.json();
+                if (result.success) {
+                    groups = parseGroups(result.data);
+                }
+            }
 
-                // 添加其他分组
-                result.data.forEach(group => {
+            if (opsGroupFilterSelect) {
+                const options = [{ value: 'all', label: '全部分组' }, { value: '未分组', label: '未分组' }];
+                groups.forEach(group => {
                     if (group && group !== '未分组') {
-                        const option = document.createElement('option');
-                        option.value = group;
-                        option.textContent = group;
-                        select.appendChild(option);
+                        options.push({ value: group, label: group });
                     }
                 });
+                opsGroupFilterSelect.setOptions(options);
+                opsGroupFilterSelect.setValue(['all']);
             }
         } catch (error) {
             console.error('加载运营分组失败:', error);
         }
     }
 
-    // 🔴 新增：运营人员多选下拉逻辑
-    function initOpsNameDropdown() {
-        const anchor = document.getElementById('opsNameAnchor');
-        const items = document.getElementById('opsNameItems');
-        const dropdown = document.getElementById('opsNameDropdown');
-
-        if (!anchor || !items || !dropdown) return;
-
-        anchor.addEventListener('click', function (e) {
-            e.stopPropagation();
-            dropdown.classList.toggle('visible');
-            anchor.classList.toggle('active');
-        });
-
-        document.addEventListener('click', function () {
-            dropdown.classList.remove('visible');
-            anchor.classList.remove('active');
-        });
-
-        items.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-    }
-
-    function updateOpsNameSelection() {
-        const checkboxes = document.querySelectorAll('#opsNameItems input[type="checkbox"]');
-        const allCheckbox = document.querySelector('#opsNameItems input[value="all"]');
-        const selectedOps = [];
-        let selectedText = '选择运营人员';
-
-        if (allCheckbox && allCheckbox.checked) {
-            selectedText = '全部人员';
-            // 清除其他选中
-            checkboxes.forEach(cb => {
-                if (cb.value !== 'all') cb.checked = false;
-            });
-        } else {
-            checkboxes.forEach(cb => {
-                if (cb.checked && cb.value !== 'all') {
-                    selectedOps.push(cb.value);
-                }
-            });
-
-            // 如果没有选中任何项，或者手动取消了all，默认视为全部？
-            // 现在的逻辑：如果有选中项，显示选中数量；否则显示"选择运营人员"
-            if (selectedOps.length > 0) {
-                selectedText = `已选择 ${selectedOps.length} 人`;
-            } else {
-                // 如果都没选，是否默认为全部？通常筛选逻辑是空=全部。
-                // 这里为了UI一致性，如果没有选中项，且all也没选中，显示"选择运营人员"
-                // 后端逻辑：ops_name为空列表时，不筛选ops_name（即全部）
-            }
-        }
-
-        document.getElementById('opsNameSelectedText').textContent = selectedText;
-    }
-
-    // 🔴 新增：加载运营人员列表（替换原有函数）
+    // 加载运营人员列表（统一为可搜索多选）
     async function loadOpsNames() {
         try {
-            const response = await fetch('/api/ops/list');
-            const result = await response.json();
+            let operators = [];
+            const seen = new Set();
 
-            if (result.success) {
-                const items = document.getElementById('opsNameItems');
-                items.innerHTML = '';
+            try {
+                const response = await fetch('/api/ops/list');
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    operators = result.data;
+                }
+            } catch (error) {
+                console.warn('旧运营人员接口请求失败，尝试新接口兜底:', error);
+            }
 
-                // 添加"全部人员"选项
-                const allItem = document.createElement('div');
-                allItem.className = 'item';
-                allItem.innerHTML = `
-                        <input type="checkbox" id="ops_all" value="all" checked>
-                        <label for="ops_all">全部人员</label>
-                    `;
-                items.appendChild(allItem);
+            if (operators.length === 0) {
+                const response = await fetch('/api/general/operators/');
+                const result = await response.json();
+                if (result.success && Array.isArray(result.data)) {
+                    operators = result.data.map((item) => {
+                        const label = String(item.label || '').trim();
+                        const groupMatch = label.match(/\(([^)]*)\)\s*$/);
+                        return {
+                            first_name: label.replace(/\s*\([^)]*\)\s*$/, '').trim(),
+                            group: groupMatch ? groupMatch[1] : (item.group || '未分组')
+                        };
+                    });
+                }
+            }
 
-                // 按分组排序后添加
-                const sortedOps = result.data.sort((a, b) => {
-                    const groupCompare = (a.group || '').localeCompare(b.group || '');
+            const normalized = operators
+                .map((op) => ({
+                    first_name: String(op.first_name || '').trim(),
+                    group: String(op.group || '未分组').trim() || '未分组'
+                }))
+                .filter((op) => op.first_name && op.first_name !== '-' && !isAllToken(op.first_name))
+                .filter((op) => {
+                    const key = `${op.first_name}__${op.group}`;
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                })
+                .sort((a, b) => {
+                    const groupCompare = a.group.localeCompare(b.group);
                     if (groupCompare !== 0) return groupCompare;
-                    return (a.first_name || '').localeCompare(b.first_name || '');
+                    return a.first_name.localeCompare(b.first_name);
                 });
 
-                sortedOps.forEach(op => {
-                    if (op.first_name && op.first_name !== '-') {
-                        const item = document.createElement('div');
-                        item.className = 'item';
-                        const displayName = `${op.first_name} (${op.group || '未分组'})`;
-                        item.innerHTML = `
-                                <input type="checkbox" id="ops_${op.first_name}" value="${op.first_name}">
-                                <label for="ops_${op.first_name}">${displayName}</label>
-                            `;
-                        items.appendChild(item);
-                    }
-                });
-
-                // 绑定事件
-                const checkboxes = items.querySelectorAll('input[type="checkbox"]');
-                checkboxes.forEach(cb => {
-                    cb.addEventListener('change', function () {
-                        const allCb = items.querySelector('input[value="all"]');
-                        if (this.value === 'all') {
-                            if (this.checked) {
-                                // 选中全部：取消其他
-                                checkboxes.forEach(c => {
-                                    if (c !== this) c.checked = false;
-                                });
-                            }
-                        } else {
-                            if (this.checked && allCb) {
-                                allCb.checked = false;
-                            }
-                        }
-                        updateOpsNameSelection();
+            if (opsNameSelect) {
+                const options = [{ value: 'all', label: '全部人员' }];
+                normalized.forEach((op) => {
+                    options.push({
+                        value: op.first_name,
+                        label: `${op.first_name} (${op.group})`
                     });
                 });
-
-                updateOpsNameSelection();
-
-                // 强制关闭下拉框（防止初始化时自动展开）
-                const dropdown = document.getElementById('opsNameDropdown');
-                const itemsDiv = document.getElementById('opsNameItems');
-                const anchor = document.getElementById('opsNameAnchor');
-                if (dropdown) dropdown.classList.remove('visible');
-                if (itemsDiv) itemsDiv.classList.remove('visible');
-                if (anchor) anchor.classList.remove('active');
+                opsNameSelect.setOptions(options);
+                opsNameSelect.setValue(['all']);
             }
         } catch (error) {
             console.error('加载运营人员失败:', error);
@@ -794,22 +786,21 @@
 
 
     function getCurrentFilters() {
-        const opsGroupValue = document.getElementById('opsGroupFilter').value.trim();
+        const logisticsMethodValues = normalizeMultiSelectValues(
+            logisticsMethodSelect ? logisticsMethodSelect.getValue() : []
+        );
+        const factoryValues = normalizeMultiSelectValues(
+            factoryFilterSelect ? factoryFilterSelect.getValue() : []
+        );
+        const opsGroupValues = normalizeMultiSelectValues(
+            opsGroupFilterSelect ? opsGroupFilterSelect.getValue() : []
+        );
+        const opsNameValues = normalizeMultiSelectValues(
+            opsNameSelect ? opsNameSelect.getValue() : []
+        );
 
-        // 🔴 修改：获取自定义下拉框的多选值
-        const opsNameCheckboxes = document.querySelectorAll('#opsNameItems input[type="checkbox"]:checked');
-        const opsNameValue = Array.from(opsNameCheckboxes)
-            .map(cb => cb.value)
-            .filter(v => v !== 'all'); // 排除'all'值
-
-        // 如果选择了分组，则忽略人员选择（或者根据需求决定，这里保持原逻辑但适配多选）
-        // 如果分组有值，通常是只看该组，但如果同时选了人，可能是看该组下的特定人
-        // 之前的逻辑是：if ops_group: ignore ops_name.
-        // 现在的逻辑：后端已改为 if ops_group: filter by group. elif ops_names: filter by names.
-        // 所以这里可以传递两者，让后端决定优先级，或者前端处理。
-        // 保持与后端一致：ops_group 优先
-
-        const finalOpsName = opsGroupValue ? [] : opsNameValue;
+        // 分组筛选优先于人员筛选
+        const finalOpsName = opsGroupValues.length > 0 ? [] : opsNameValues;
         const dateRange = dateRangeController
             ? dateRangeController.getValue()
             : (window.SearchableSelect && window.SearchableSelect.getInstance
@@ -831,10 +822,10 @@
             tracking_number: splitInputValues(document.getElementById('trackingNumberFilter').value),
             order_id: splitInputValues(document.getElementById('orderIdFilter').value),
 
-            logistics_method: document.getElementById('logisticsMethodFilter').value,
-            factory: document.getElementById('factoryFilter').value,
+            logistics_method: logisticsMethodValues,
+            factory: factoryValues,
             status: document.getElementById('statusFilter').value,
-            ops_group: opsGroupValue,
+            ops_group: opsGroupValues,
             ops_name: finalOpsName,
             tracking_update: document.getElementById('trackingUpdateFilter').value,
             // 新增两个参数（互斥）
@@ -860,17 +851,11 @@
         }
         document.getElementById('trackingNumberFilter').value = '';
         document.getElementById('orderIdFilter').value = '';
-        document.getElementById('logisticsMethodFilter').value = '';
-        document.getElementById('factoryFilter').value = '';
         document.getElementById('statusFilter').value = '';
-        document.getElementById('opsGroupFilter').value = '';
-
-        // 重置运营人员多选
-        const opsCheckboxes = document.querySelectorAll('#opsNameItems input[type="checkbox"]');
-        opsCheckboxes.forEach(cb => {
-            cb.checked = (cb.value === 'all');
-        });
-        updateOpsNameSelection();
+        if (logisticsMethodSelect) logisticsMethodSelect.setValue(['all']);
+        if (factoryFilterSelect) factoryFilterSelect.setValue(['all']);
+        if (opsGroupFilterSelect) opsGroupFilterSelect.setValue(['all']);
+        if (opsNameSelect) opsNameSelect.setValue(['all']);
 
         document.getElementById('trackingUpdateFilter').value = '';
         // 新增：重置两个筛选
@@ -893,12 +878,11 @@
             populateFactoryFilterDropdown();
             await loadOpsGroups();
             await loadOpsNames();
-            // initOpsNameDropdown(); // 移除重复初始化，防止事件监听器叠加
 
             setDefaultFilters();
 
-            // 触发所有下拉框的change事件以更新UI状态
-            ['logisticsMethod', 'status', 'trackingUpdate', 'opsGroup', 'uncollectedDays', 'excludeUncollectedDays'].forEach(type => {
+            // 触发原生select的change事件以更新UI状态
+            ['status', 'trackingUpdate', 'uncollectedDays', 'excludeUncollectedDays'].forEach(type => {
                 const element = document.getElementById(type + 'Filter');
                 if (element) element.dispatchEvent(new Event('change'));
             });
@@ -2120,12 +2104,12 @@
     document.addEventListener('DOMContentLoaded', async function () {
         showLoading(true);
         try {
+            initTrackingFilterSelects();
             await loadCouriersFromAPI();
             await loadFactories();
             populateFactoryFilterDropdown();
             await loadOpsGroups();
             await loadOpsNames();
-            initOpsNameDropdown(); // 🔴 新增：初始化事件
             initDateRangeFilter();
 
             setDefaultFilters();
@@ -2172,20 +2156,6 @@
             showLoading(false);
         }
     });
-
-    function populateFactoryFilterDropdown() {
-        const factorySelect = document.getElementById('factoryFilter');
-        const firstOption = factorySelect.options[0];
-        factorySelect.innerHTML = '';
-        factorySelect.appendChild(firstOption);
-
-        allFactories.forEach(factory => {
-            const option = document.createElement('option');
-            option.value = factory.id;
-            option.textContent = factory.name;
-            factorySelect.appendChild(option);
-        });
-    }
 
     async function toggleCancelStatus(trackNo, action, event) {
         event.stopPropagation();

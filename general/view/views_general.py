@@ -1,6 +1,7 @@
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 
 from general.models import User, OperationalAccount
 
@@ -17,12 +18,19 @@ def get_ops_list(request):
     try:
         platform = request.GET.get('platform', '').strip()
 
+        # 兼容历史数据：运营部门可能存为 operation 或中文“运营*”
         queryset = User.objects.filter(
-            department__icontains='运营部门'
+            company=request.user.company
+        ).filter(
+            Q(department='operation') | Q(department__icontains='运营')
         ).select_related('operational_account')
 
-        if platform == 'Temu' or platform == 'Amazon':
-            queryset = queryset.filter(platform=platform)
+        if platform:
+            platform_token = platform.lower()
+            if platform_token in ('temu', 'amazon'):
+                queryset = queryset.filter(platform__iexact=platform_token)
+            elif platform in ('Temu', 'Amazon', '亚马逊'):
+                queryset = queryset.filter(platform__iexact=platform)
 
         operators = queryset.values(
             'id', 'first_name', 'operational_account__ops_group'
