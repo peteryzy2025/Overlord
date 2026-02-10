@@ -129,38 +129,6 @@ class ThemeRecord(models.Model):
         return f"{self.product.asin} - {self.product.subject[:30]}"
 
 
-class ThemeReport(models.Model):
-    """主题举报记录表"""
-    product = models.ForeignKey(
-        AmazonThemeNovelty,
-        on_delete=models.CASCADE,
-        related_name='theme_reports',
-        verbose_name='商品ASIN'
-    )
-    reporter = models.ForeignKey(
-        'general.User',
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='theme_reports',
-        verbose_name='举报人'
-    )
-    is_active = models.BooleanField(default=True, verbose_name='是否有效')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='举报时间')
-
-    class Meta:
-        db_table = 'theme_reports'
-        verbose_name = '主题举报记录'
-        verbose_name_plural = verbose_name
-        unique_together = ['product', 'reporter']  # 每个用户对每个产品只能举报一次
-        indexes = [
-            models.Index(fields=['product', 'is_active']),
-            models.Index(fields=['reporter', 'is_active']),
-        ]
-
-    def __str__(self):
-        return f"{self.product.asin} - {self.reporter.first_name if self.reporter else 'Unknown'}"
-
-
 class ThemeDailyData(models.Model):
     """主题每日数据"""
     product = models.ForeignKey(
@@ -270,6 +238,13 @@ class TroTable(models.Model):
     """侵权词表,用于判断高/低风险"""
     id = models.AutoField(primary_key=True, verbose_name='ID')
     theme_name = models.CharField(max_length=765, verbose_name='侵权词名')
+    replacement_word = models.CharField(
+        max_length=765,
+        verbose_name='建议替换词',
+        null=True,
+        blank=True,
+        help_text='检测到侵权时建议使用的替代词汇'
+    )
     name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
     international_classes = models.ManyToManyField(
         'NiceClassification',
@@ -285,6 +260,14 @@ class TroTable(models.Model):
         blank=True,
         related_name='tro_words',  # 反向查询：shop.tro_words.all()
         verbose_name='所属店铺'
+    )
+    class Category(models.IntegerChoices):
+        TEXT = 1, '文字侵权'
+        COPYRIGHT = 2, '版权侵权'
+    category = models.IntegerField(
+        verbose_name='侵权分类',
+        choices=Category.choices,  # type: ignore
+        null=True, blank=True
     )
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
