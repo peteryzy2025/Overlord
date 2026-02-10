@@ -8,7 +8,7 @@ import nltk
 import string
 from collections import defaultdict
 from nltk.tokenize import TweetTokenizer
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+# from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from django.contrib.auth.decorators import login_required
 from theme.models import *
 
@@ -563,12 +563,12 @@ def should_skip_word(word):
         return True
 
     # 2. 停用词过滤 (核心优化：过滤 is, the, with, for 等)
-    if word in ENGLISH_STOP_WORDS:
-        return True
+    # if word in ENGLISH_STOP_WORDS:
+    #     return True
 
     # 3. 电商属性噪声过滤 (核心优化：过滤 shirt, size 等)
-    if word in AMAZON_NOISE_WORDS:
-        return True
+    # if word in AMAZON_NOISE_WORDS:
+    #     return True
 
     # 4. 纯数字过滤 (可选)
     # 亚马逊标题中常有价格或年份，如果你的侵权库不包含年份，可以过滤
