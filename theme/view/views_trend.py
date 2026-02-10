@@ -94,7 +94,7 @@ def batch_analyze_theme_trend(themes):
         # 使用 get_ngram_phrases 进行分词，弃用 words_split
         tokens = get_ngram_phrases(theme.strip())
         valid_tokens = [t for t in tokens if not should_skip_word(t)]
-        valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
+        # valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
         if not valid_tokens:
             # 空结果直接缓存
@@ -379,7 +379,7 @@ def analyze_theme_trend(theme, mode=1):
             tokens.append(full_theme_token)
 
     valid_tokens = [t for t in tokens if not should_skip_word(t)]
-    valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
+    # valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
     if not valid_tokens:
         return {
