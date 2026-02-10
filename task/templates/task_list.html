@@ -90,6 +90,256 @@
         color: var(--text-secondary);
     }
 
+    /* 仅保留筛选组件样式，避免 general_style_1.css 全局规则覆盖同事页面样式 */
+    .gs-date-range-custom-group {
+        display: none !important;
+    }
+
+    .gs-date-range-custom-group.is-visible {
+        display: flex !important;
+    }
+
+    .searchable-select {
+        position: relative;
+        width: 100%;
+        display: block;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .select-trigger {
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 42px;
+        width: 100%;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .select-trigger:hover {
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select.open .select-trigger {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .searchable-select .select-trigger::after {
+        content: "\f078";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+        margin-left: 0.5rem;
+    }
+
+    .searchable-select.open .select-trigger::after {
+        transform: rotate(180deg);
+    }
+
+    .searchable-select .select-trigger .selected-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-color: transparent !important;
+        line-height: 1.5;
+        min-height: 1.5em;
+        display: flex;
+        align-items: center;
+    }
+
+    .searchable-select .select-trigger .selected-text .placeholder {
+        background-color: transparent !important;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        font-weight: 400;
+        opacity: 1;
+        letter-spacing: normal;
+    }
+
+    .searchable-select .dropdown-panel {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--accent-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 280px;
+        overflow: hidden;
+        z-index: 1000;
+        display: none;
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .searchable-select.open .dropdown-panel {
+        display: block;
+    }
+
+    .searchable-select .search-input-wrapper {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .search-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .searchable-select .search-input::placeholder {
+        color: var(--text-secondary);
+    }
+
+    .searchable-select .options-list {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.25rem 0;
+    }
+
+    .searchable-select .option {
+        padding: 0.5rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .option:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .option.selected {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .searchable-select .option.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .searchable-select .option .checkbox {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+    }
+
+    .searchable-select .option.selected .checkbox {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select .option.selected .checkbox::after {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.625rem;
+        color: white;
+    }
+
+    .searchable-select .option .option-text {
+        flex: 1;
+    }
+
+    .searchable-select .no-options {
+        padding: 1rem;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .select-trigger .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+    }
+
+    .searchable-select .select-trigger .tag {
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .searchable-select .select-trigger .tag .remove {
+        cursor: pointer;
+        opacity: 0.8;
+    }
+
+    .searchable-select .select-trigger .tag .remove:hover {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn {
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-right: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .searchable-select:hover .clear-btn {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn:hover {
+        color: var(--accent-color);
+    }
+
+    .searchable-select.single .option.selected::before {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--accent-color);
+        margin-right: 0.25rem;
+    }
+
+    .searchable-select.disabled .select-trigger {
+        background-color: var(--bg-tertiary);
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
     /* 模态框样式 - 复用 tracking_management 样式 */
     .modal-overlay {
         display: none;
@@ -496,51 +746,25 @@
         <div class="filter-row">
             <div class="filter-group">
                 <label class="filter-label">状态筛选</label>
-                <div id="statusDropdown" class="dropdown-check-list">
-                    <div class="anchor" id="statusAnchor">
-                        <span id="statusSelectedText">全部状态</span>
-                    </div>
-                    <div class="items" id="statusItems">
-                        <div class="item"><input type="checkbox" value="all" checked> 全部状态</div>
-                        <div class="item"><input type="checkbox" value="draft"> 草稿</div>
-                        <div class="item"><input type="checkbox" value="pending"> 待执行</div>
-                        <div class="item"><input type="checkbox" value="in_progress"> 进行中</div>
-                        <div class="item"><input type="checkbox" value="completed"> 已完成</div>
-                        <div class="item"><input type="checkbox" value="failed"> 执行失败</div>
-                        <div class="item"><input type="checkbox" value="cancelled"> 已取消</div>
-                    </div>
-                </div>
+                <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
             </div>
 
             <div class="filter-group">
                 <label class="filter-label">创建人</label>
-                <div id="creatorDropdown" class="dropdown-check-list">
-                    <div class="anchor" id="creatorAnchor">
-                        <span id="creatorSelectedText">全部人员</span>
-                    </div>
-                    <div class="items" id="creatorItems">
-                        <!-- 动态加载 -->
-                    </div>
-                </div>
+                <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
             </div>
 
             <div class="filter-group">
                 <label class="filter-label">时间范围</label>
-                <select class="form-select" id="dateRangeFilter">
-                    <option value="all">全部时间</option>
-                    <option value="today">今天</option>
-                    <option value="last7days">最近7天</option>
-                    <option value="last30days">最近30天</option>
-                    <option value="custom">自定义范围</option>
-                </select>
+                <div id="dateRangeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
             </div>
 
-            <div class="filter-group" id="customDateGroup" style="display: none;">
+            <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
                 <label class="filter-label">开始日期</label>
                 <input type="date" class="form-control" id="startDate">
             </div>
 
-            <div class="filter-group" id="customDateGroup2" style="display: none;">
+            <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
                 <label class="filter-label">结束日期</label>
                 <input type="date" class="form-control" id="endDate">
             </div>
@@ -622,6 +846,8 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/searchable-select.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
     // ===== 全局变量 =====
     let taskData = {
@@ -648,6 +874,10 @@
     };
 
     let deleteTargetId = null;
+    let statusSelect = null;
+    let creatorSelect = null;
+    let dateRangeController = null;
+    let suppressFilterAutoLoad = false;
 
     // ===== 工具函数 =====
     function getCsrfToken() {
@@ -685,106 +915,61 @@
 
     // ===== 初始化 =====
     document.addEventListener('DOMContentLoaded', function () {
+        initFilterSelects();
         loadCreators();
         setupDateFilter();
         loadTasks();
         loadStats();
-        initDropdowns();
     });
 
-    // 初始化下拉框逻辑
-    function initDropdowns() {
-        setupDropdown('statusDropdown', 'statusAnchor', 'statusItems', updateStatusSelection);
-        setupDropdown('creatorDropdown', 'creatorAnchor', 'creatorItems', updateCreatorSelection);
+    function getMultiSelectValues(selectInstance) {
+        if (!selectInstance || typeof selectInstance.getValue !== 'function') return [];
+        const raw = selectInstance.getValue();
+        const values = Array.isArray(raw) ? raw.map(v => String(v)) : (raw ? [String(raw)] : []);
+        const hasAll = values.some(v => v === '' || v.toLowerCase() === 'all' || v === '全部' || v === '不限');
+        if (hasAll) return [];
+        return values.filter(v => v !== '');
     }
 
-    function setupDropdown(dropdownId, anchorId, itemsId, updateCallback) {
-        const dropdown = document.getElementById(dropdownId);
-        const anchor = document.getElementById(anchorId);
-        const items = document.getElementById(itemsId);
-
-        anchor.addEventListener('click', function (e) {
-            e.stopPropagation();
-            // Close other dropdowns
-            document.querySelectorAll('.dropdown-check-list').forEach(d => {
-                if (d.id !== dropdownId) d.classList.remove('visible');
-            });
-            dropdown.classList.toggle('visible');
-        });
-
-        items.addEventListener('click', function (e) {
-            e.stopPropagation();
-        });
-
-        // 绑定checkbox事件
-        items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener('change', function () {
-                handleCheckboxChange(this, itemsId);
-                updateCallback();
-                taskData.pagination.page = 1;
-                loadTasks();
-            });
-        });
-
-        document.addEventListener('click', function () {
-            dropdown.classList.remove('visible');
-        });
+    function syncFilterMultiValues() {
+        taskData.filters.status = getMultiSelectValues(statusSelect);
+        taskData.filters.creator = getMultiSelectValues(creatorSelect);
     }
 
-    function handleCheckboxChange(checkbox, itemsId) {
-        const allCheckbox = document.querySelector(`#${itemsId} input[value="all"]`);
-
-        if (checkbox.value === 'all') {
-            if (checkbox.checked) {
-                document.querySelectorAll(`#${itemsId} input[type="checkbox"]`).forEach(cb => {
-                    if (cb !== checkbox) cb.checked = false;
-                });
-            }
-        } else {
-            if (checkbox.checked && allCheckbox) {
-                allCheckbox.checked = false;
-            }
-        }
-    }
-
-    function updateStatusSelection() {
-        const checkboxes = document.querySelectorAll('#statusItems input[type="checkbox"]');
-        const selected = [];
-        let allChecked = false;
-
-        checkboxes.forEach(cb => {
-            if (cb.value === 'all' && cb.checked) allChecked = true;
-            if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+    function initFilterSelects() {
+        statusSelect = new SearchableSelect('#statusFilter', {
+            options: [
+                { value: '', label: '全部状态' },
+                { value: 'draft', label: '草稿' },
+                { value: 'pending', label: '待执行' },
+                { value: 'in_progress', label: '进行中' },
+                { value: 'completed', label: '已完成' },
+                { value: 'failed', label: '执行失败' },
+                { value: 'cancelled', label: '已取消' }
+            ],
+            multiple: true,
+            placeholder: '全部状态'
         });
+        statusSelect.setValue(['']);
+        statusSelect.onChange = () => {
+            if (suppressFilterAutoLoad) return;
+            syncFilterMultiValues();
+            taskData.pagination.page = 1;
+            loadTasks();
+        };
 
-        taskData.filters.status = allChecked ? [] : selected;
-
-        const textEl = document.getElementById('statusSelectedText');
-        if (allChecked || selected.length === 0) {
-            textEl.textContent = '全部状态';
-        } else {
-            textEl.textContent = `已选 ${selected.length} 项`;
-        }
-    }
-
-    function updateCreatorSelection() {
-        const checkboxes = document.querySelectorAll('#creatorItems input[type="checkbox"]');
-        const selected = [];
-        let allChecked = false;
-
-        checkboxes.forEach(cb => {
-            if (cb.value === 'all' && cb.checked) allChecked = true;
-            if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+        creatorSelect = new SearchableSelect('#creatorFilter', {
+            options: [{ value: '', label: '全部人员' }],
+            multiple: true,
+            placeholder: '全部人员'
         });
-
-        taskData.filters.creator = allChecked ? [] : selected;
-
-        const textEl = document.getElementById('creatorSelectedText');
-        if (allChecked || selected.length === 0) {
-            textEl.textContent = '全部人员';
-        } else {
-            textEl.textContent = `已选 ${selected.length} 人`;
-        }
+        creatorSelect.setValue(['']);
+        creatorSelect.onChange = () => {
+            if (suppressFilterAutoLoad) return;
+            syncFilterMultiValues();
+            taskData.pagination.page = 1;
+            loadTasks();
+        };
     }
 
     // ===== 加载创建人列表 =====
@@ -794,22 +979,20 @@
             const result = await response.json();
 
             if (result.success) {
-                const items = document.getElementById('creatorItems');
-                let html = '<div class="item"><input type="checkbox" value="all" checked> 全部人员</div>';
+                const options = [{ value: '', label: '全部人员' }];
                 result.data.forEach(creator => {
-                    html += `<div class="item"><input type="checkbox" value="${creator.id}"> ${creator.name}</div>`;
+                    options.push({ value: String(creator.id), label: creator.name });
                 });
-                items.innerHTML = html;
 
-                // Re-bind events for new items
-                items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                    cb.addEventListener('change', function () {
-                        handleCheckboxChange(this, 'creatorItems');
-                        updateCreatorSelection();
-                        taskData.pagination.page = 1;
-                        loadTasks();
-                    });
-                });
+                if (creatorSelect) {
+                    const current = getMultiSelectValues(creatorSelect);
+                    const validValues = new Set(options.map(opt => String(opt.value)));
+                    const next = current.filter(v => validValues.has(String(v)));
+                    creatorSelect.setOptions(options);
+                    creatorSelect.setValue(next.length > 0 ? next : ['']);
+                }
+
+                syncFilterMultiValues();
             }
         } catch (error) {
             console.error('加载创建人列表失败:', error);
@@ -818,19 +1001,42 @@
 
     // ===== 日期筛选设置 =====
     function setupDateFilter() {
-        const dateRangeSelect = document.getElementById('dateRangeFilter');
-        const customDateGroup = document.getElementById('customDateGroup');
-        const customDateGroup2 = document.getElementById('customDateGroup2');
+        const dateRangeOptions = [
+            { value: 'all', label: '全部时间' },
+            { value: 'today', label: '今天' },
+            { value: 'last7days', label: '最近7天' },
+            { value: 'last30days', label: '最近30天' },
+            { value: 'custom', label: '自定义范围' }
+        ];
+        dateRangeController = window.GeneralStyleDateRangeFilter
+            ? window.GeneralStyleDateRangeFilter.init({
+                select: '#dateRangeFilter',
+                options: dateRangeOptions,
+                placeholder: '点击选择日期范围',
+                defaultValue: 'all',
+                customValue: 'custom',
+                customGroups: ['#customDateGroup', '#customDateGroup2'],
+                startInput: '#startDate',
+                endInput: '#endDate',
+                customDisplay: 'flex'
+            })
+            : null;
 
-        dateRangeSelect.addEventListener('change', function () {
-            if (this.value === 'custom') {
-                customDateGroup.style.display = 'flex';
-                customDateGroup2.style.display = 'flex';
-            } else {
-                customDateGroup.style.display = 'none';
-                customDateGroup2.style.display = 'none';
-            }
-        });
+        if (!dateRangeController && typeof window.SearchableSelect === 'function') {
+            const dateRangeSelect = new SearchableSelect('#dateRangeFilter', {
+                options: dateRangeOptions,
+                multiple: false,
+                placeholder: '点击选择日期范围'
+            });
+            dateRangeSelect.setValue('all');
+            dateRangeSelect.onChange = function (value) {
+                const customDateGroup = document.getElementById('customDateGroup');
+                const customDateGroup2 = document.getElementById('customDateGroup2');
+                const visible = value === 'custom';
+                customDateGroup.style.display = visible ? 'flex' : 'none';
+                customDateGroup2.style.display = visible ? 'flex' : 'none';
+            };
+        }
     }
 
     // ===== 加载任务列表 =====
@@ -1045,11 +1251,23 @@
 
     // ===== 筛选操作 =====
     function applyFilters() {
-        taskData.filters.date_range = document.getElementById('dateRangeFilter').value;
+        syncFilterMultiValues();
+        taskData.filters.date_range = dateRangeController
+            ? dateRangeController.getValue()
+            : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#dateRangeFilter') ? window.SearchableSelect.getInstance('#dateRangeFilter').getValue() : 'all')
+                : 'all');
 
-        if (taskData.filters.date_range === 'custom') {
-            taskData.filters.start_date = document.getElementById('startDate').value;
-            taskData.filters.end_date = document.getElementById('endDate').value;
+        const useCustomRange = dateRangeController
+            ? dateRangeController.isCustom()
+            : taskData.filters.date_range === 'custom';
+        if (useCustomRange) {
+            taskData.filters.start_date = dateRangeController
+                ? dateRangeController.getStartDate()
+                : document.getElementById('startDate').value;
+            taskData.filters.end_date = dateRangeController
+                ? dateRangeController.getEndDate()
+                : document.getElementById('endDate').value;
         } else {
             taskData.filters.start_date = '';
             taskData.filters.end_date = '';
@@ -1060,22 +1278,30 @@
     }
 
     function resetFilters() {
-        // 重置多选下拉框
-        document.querySelectorAll('.dropdown-check-list input[type="checkbox"]').forEach(cb => {
-            cb.checked = cb.value === 'all';
-        });
-        updateStatusSelection();
-        updateCreatorSelection();
+        suppressFilterAutoLoad = true;
+        if (statusSelect) statusSelect.setValue(['']);
+        if (creatorSelect) creatorSelect.setValue(['']);
+        suppressFilterAutoLoad = false;
 
-        document.getElementById('dateRangeFilter').value = 'all';
-        document.getElementById('startDate').value = '';
-        document.getElementById('endDate').value = '';
-        document.getElementById('customDateGroup').style.display = 'none';
-        document.getElementById('customDateGroup2').style.display = 'none';
+        if (dateRangeController) {
+            dateRangeController.setValue('all');
+            dateRangeController.clearCustomDates();
+        } else {
+            const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#dateRangeFilter')
+                : null;
+            if (dateRangeSelect) {
+                dateRangeSelect.setValue('all');
+            }
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('customDateGroup').style.display = 'none';
+            document.getElementById('customDateGroup2').style.display = 'none';
+        }
 
         taskData.filters = {
-            status: [],
-            creator: [],
+            status: getMultiSelectValues(statusSelect),
+            creator: getMultiSelectValues(creatorSelect),
             date_range: 'all',
             start_date: '',
             end_date: ''

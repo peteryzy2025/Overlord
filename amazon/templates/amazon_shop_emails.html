@@ -4,7 +4,6 @@
 {% block title %}店铺邮件管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         /* 统计卡片样式 */
         .stats-card-wrapper {
@@ -243,6 +242,33 @@
             font-size: 0.875rem;
         }
 
+        /* 自定义日期展开后占据足够空间，推动后续筛选项右移（空间不足再换行） */
+        #customDateGroup {
+            min-width: 520px !important;
+            flex: 1.5 1 520px !important;
+        }
+
+        #customDateGroup .date-range-inputs {
+            flex-wrap: nowrap;
+        }
+
+        #customDateGroup .date-range-inputs .ymd-picker {
+            flex: 1 1 0;
+            min-width: 220px;
+        }
+
+        #customDateGroup .date-range-inputs > span {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 992px) {
+            #customDateGroup {
+                min-width: 100% !important;
+                flex-basis: 100% !important;
+            }
+        }
+
         /* 通知确认列表 */
         .notify-confirm-list {
             max-height: 300px;
@@ -327,7 +353,7 @@
                     <div id="dateRangeSelect" class="searchable-select single" data-placeholder="选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup" style="display: none; min-width: 280px;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup" style="min-width: 280px;">
                     <label class="filter-label">自定义日期</label>
                     <div class="date-range-inputs">
                         <input type="date" class="form-control" id="startDate">
@@ -533,6 +559,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
         let currentFilters = {
@@ -567,6 +594,7 @@
 
         // SearchableSelect 实例
         let dateRangeSelect = null;
+        let dateRangeController = null;
         let operatorSelect = null;
         let statusSelect = null;
 
@@ -641,6 +669,29 @@
 
         // ===== SearchableSelect 初始化 =====
         function initSearchableSelects() {
+            const dateRangeOptions = [
+                { value: 'unlimited', label: '不限' },
+                { value: 'today', label: '今日' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRangeSelect',
+                    options: dateRangeOptions,
+                    placeholder: '选择日期范围',
+                    defaultValue: 'unlimited',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    customDisplay: 'block'
+                })
+                : null;
+            if (dateRangeController) {
+                dateRangeSelect = dateRangeController.select;
+            } else {
             // 日期范围选择
             dateRangeSelect = new SearchableSelect('#dateRangeSelect', {
                 options: [
@@ -664,6 +715,8 @@
             };
 
             // 状态筛选
+            }
+
             statusSelect = new SearchableSelect('#statusSelect', {
                 options: [
                     { value: '', label: '全部' },
@@ -681,6 +734,10 @@
 
         // ===== 日期范围变化处理 =====
         function handleDateRangeChange(value) {
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
             const customGroup = document.getElementById('customDateGroup');
             if (value === 'custom') {
                 customGroup.style.display = 'block';
@@ -733,11 +790,20 @@
 
         // ===== 获取当前筛选条件 =====
         function getCurrentFilters() {
-            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited';
+            const dateRange = dateRangeController
+                ? dateRangeController.getValue()
+                : (dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited');
+            const useCustomDate = dateRangeController
+                ? dateRangeController.isCustom()
+                : dateRange === 'custom';
             return {
                 date_range: dateRange,
-                start_date: dateRange === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: dateRange === 'custom' ? document.getElementById('endDate').value : '',
+                start_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value)
+                    : '',
+                end_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value)
+                    : '',
                 operator_ids: currentFilters.operator_ids,
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
                 sender_keyword: document.getElementById('senderFilter').value.trim(),
@@ -767,16 +833,23 @@
         async function resetFilters(event) {
             showLoading(true);
             try {
-                if (dateRangeSelect) dateRangeSelect.setValue('unlimited');
+                if (dateRangeController) {
+                    dateRangeController.setValue('unlimited');
+                    dateRangeController.clearCustomDates();
+                } else if (dateRangeSelect) {
+                    dateRangeSelect.setValue('unlimited');
+                }
                 if (operatorSelect) operatorSelect.setValue(['all']);
                 if (statusSelect) statusSelect.setValue('');
                 
                 document.getElementById('shopNameFilter').value = '';
                 document.getElementById('senderFilter').value = '';
                 document.getElementById('subjectFilter').value = '';
-                document.getElementById('startDate').value = '';
-                document.getElementById('endDate').value = '';
-                document.getElementById('customDateGroup').style.display = 'none';
+                if (!dateRangeController) {
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                    document.getElementById('customDateGroup').style.display = 'none';
+                }
                 
                 clearSelection();
                 

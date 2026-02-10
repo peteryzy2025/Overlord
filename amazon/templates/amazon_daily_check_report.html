@@ -7,6 +7,61 @@ Divi智管{% endblock %} {% block extra_css %}
     --accent-hover: #059669;
   }
 
+  /* 调整个别筛选框宽度，避免提示语显示不全 */
+  #customDateGroup,
+  #customDateGroup2 {
+    min-width: 240px;
+    flex: 1 1 240px;
+  }
+
+  #shopNameGroup {
+    min-width: 260px;
+    flex: 1.2 1 260px;
+  }
+
+  #restockDateGroup {
+    min-width: 420px;
+    flex: 1.2 1 420px;
+  }
+
+  #restockDateRange {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  #restockDateRange .ymd-picker,
+  #restockDateRange > input[type="date"] {
+    flex: 1 1 0;
+    min-width: 200px;
+  }
+
+  #shopStatusGroup {
+    min-width: 220px;
+    flex: 1 1 220px;
+  }
+
+  @media (max-width: 992px) {
+    #customDateGroup,
+    #customDateGroup2,
+    #shopNameGroup,
+    #restockDateGroup,
+    #shopStatusGroup {
+      min-width: 100%;
+      flex-basis: 100%;
+    }
+
+    #restockDateRange {
+      flex-wrap: wrap;
+    }
+
+    #restockDateRange .ymd-picker,
+    #restockDateRange > input[type="date"] {
+      min-width: 100%;
+    }
+  }
+
   /* ===== 平铺式统计卡片样式 ===== */
   .stats-grid {
     display: grid;
@@ -160,47 +215,30 @@ Divi智管{% endblock %} {% block extra_css %}
     <div class="filter-row">
       <div class="filter-group">
         <label class="filter-label">巡检日期</label>
-        <select class="form-select" id="dateRange">
-          <option value="unlimited" selected>不限</option>
-          <option value="today">今日</option>
-          <option value="last7days">最近7天</option>
-          <option value="last30days">最近30天</option>
-          <option value="custom">自定义范围</option>
-        </select>
+        <div id="dateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
       </div>
 
-      <div class="filter-group" id="customDateGroup" style="display: none">
+      <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
         <label class="filter-label">开始日期</label>
         <input type="date" class="form-control" id="startDate" />
       </div>
 
-      <div class="filter-group" id="customDateGroup2" style="display: none">
+      <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
         <label class="filter-label">结束日期</label>
         <input type="date" class="form-control" id="endDate" />
       </div>
 
       <div class="filter-group">
         <label class="filter-label">运营人员</label>
-        <div id="operatorDropdown" class="dropdown-check-list">
-          <div class="anchor" id="operatorAnchor">
-            <span id="operatorSelectedText">选择运营人员</span>
-          </div>
-          <div class="items" id="operatorItems"></div>
-        </div>
+        <div id="operatorFilter" class="searchable-select multiple" data-placeholder="点击选择运营人员"></div>
       </div>
 
       <div class="filter-group">
         <label class="filter-label">运营分组</label>
-        <select
-          class="form-select"
-          id="opsGroupFilter"
-          onchange="applyFilters()"
-        >
-          <option value="">全部</option>
-        </select>
+        <div id="opsGroupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="shopNameGroup">
         <label class="filter-label">店铺名称</label>
         <input
           type="text"
@@ -238,9 +276,9 @@ Divi智管{% endblock %} {% block extra_css %}
         </select>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="restockDateGroup">
         <label class="filter-label">最后上货日期</label>
-        <div style="display: flex; gap: 0.5rem">
+        <div id="restockDateRange" style="display: flex; gap: 0.5rem">
           <input
             type="date"
             class="form-control"
@@ -256,7 +294,7 @@ Divi智管{% endblock %} {% block extra_css %}
         </div>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" id="shopStatusGroup">
         <label class="filter-label">店铺状况</label>
         <input
           type="text"
@@ -416,6 +454,8 @@ Divi智管{% endblock %} {% block extra_css %}
   </div>
 </div>
 {% endblock %} {% block extra_js %}
+<script src="{% static 'js/searchable-select.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script>
   // ===== 全局变量定义（保持不变）=====
   let currentFilters = {
@@ -445,6 +485,9 @@ Divi智管{% endblock %} {% block extra_css %}
   let currentUserPermissions = {
     can_reset_daily_check: false,
   };
+  let dateRangeController = null;
+  let operatorSelect = null;
+  let opsGroupSelect = null;
 
   // ===== 工具函数（保持不变）=====
   function showLoading(show = true) {
@@ -461,122 +504,143 @@ Divi智管{% endblock %} {% block extra_css %}
   }
 
   // ===== 日期范围处理（保持不变）=====
-  function handleDateRangeChange() {
-    const dateRange = document.getElementById("dateRange").value;
-    const customDateGroup = document.getElementById("customDateGroup");
-    const customDateGroup2 = document.getElementById("customDateGroup2");
-    if (dateRange === "custom") {
-      customDateGroup.style.display = "flex";
-      customDateGroup2.style.display = "flex";
-    } else {
-      customDateGroup.style.display = "none";
-      customDateGroup2.style.display = "none";
-    }
+  function initDateRangeFilter() {
+    const dateRangeOptions = [
+      { value: "unlimited", label: "不限" },
+      { value: "today", label: "今日" },
+      { value: "last7days", label: "最近7天" },
+      { value: "last30days", label: "最近30天" },
+      { value: "custom", label: "自定义范围" },
+    ];
+    dateRangeController = window.GeneralStyleDateRangeFilter
+      ? window.GeneralStyleDateRangeFilter.init({
+          select: "#dateRange",
+          options: dateRangeOptions,
+          placeholder: "点击选择日期范围",
+          defaultValue: "unlimited",
+          customValue: "custom",
+          customGroups: ["#customDateGroup", "#customDateGroup2"],
+          startInput: "#startDate",
+          endInput: "#endDate",
+          customDisplay: "flex",
+        })
+      : null;
   }
 
-  // ===== 运营人员多选下拉（保持不变）=====
-  function initOperatorDropdown() {
-    const anchor = document.getElementById("operatorAnchor");
-    const items = document.getElementById("operatorItems");
-    const dropdown = document.getElementById("operatorDropdown");
+  function handleDateRangeChange() {
+    if (dateRangeController) {
+      dateRangeController.syncVisibility();
+      return;
+    }
+    const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+      ? window.SearchableSelect.getInstance("#dateRange")
+      : null;
+    const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : "";
+    const customDateGroup = document.getElementById("customDateGroup");
+    const customDateGroup2 = document.getElementById("customDateGroup2");
+    const visible = dateRange === "custom";
+    if (customDateGroup) customDateGroup.style.display = visible ? "flex" : "none";
+    if (customDateGroup2) customDateGroup2.style.display = visible ? "flex" : "none";
+  }
 
-    anchor.addEventListener("click", function (e) {
-      e.stopPropagation();
-      dropdown.classList.toggle("visible");
-      anchor.classList.toggle("active");
+  // ===== 运营人员筛选：统一可搜索多选下拉 =====
+  function normalizeMultiSelection(rawValue) {
+    const values = Array.isArray(rawValue)
+      ? rawValue.map((v) => String(v))
+      : rawValue
+        ? [String(rawValue)]
+        : [];
+    const hasAll = values.some((v) => {
+      const token = v.trim().toLowerCase();
+      return token === "" || token === "all" || token === "*" || token === "__all__" || v === "全部" || v === "不限";
     });
+    if (hasAll) return [];
+    return values.filter((v) => {
+      const token = v.trim().toLowerCase();
+      return token !== "" && token !== "all" && token !== "*" && token !== "__all__";
+    });
+  }
 
-    document.addEventListener("click", function () {
-      dropdown.classList.remove("visible");
-      anchor.classList.remove("active");
+  function initOperatorFilter() {
+    operatorSelect = new SearchableSelect("#operatorFilter", {
+      options: [{ value: "all", label: "全部人员" }],
+      multiple: true,
+      placeholder: "点击选择运营人员",
     });
-
-    items.addEventListener("click", function (e) {
-      e.stopPropagation();
-    });
+    operatorSelect.setValue(["all"]);
+    operatorSelect.onChange = (newValue) => {
+      currentFilters.operator_ids = normalizeMultiSelection(newValue);
+    };
   }
 
   function populateOperatorDropdown(operators) {
-    const items = document.getElementById("operatorItems");
-    items.innerHTML = "";
-
-    operators.forEach((op) => {
-      const item = document.createElement("div");
-      item.className = "item";
-      item.innerHTML = `
-            <input type="checkbox" id="op_${op.id}" value="${op.id}" ${op.id === "all" ? "checked" : ""}>
-            <label for="op_${op.id}">${op.first_name}</label>
-        `;
-      items.appendChild(item);
-
-      const checkbox = item.querySelector("input");
-      checkbox.addEventListener("change", function () {
-        const allCheckbox = document.querySelector(
-          '#operatorItems input[value="all"]',
-        );
-
-        if (this.value === "all" && this.checked) {
-          document
-            .querySelectorAll('#operatorItems input[type="checkbox"]')
-            .forEach((cb) => {
-              if (cb !== this) cb.checked = false;
-            });
-        } else if (this.value !== "all" && this.checked && allCheckbox) {
-          allCheckbox.checked = false;
-        }
-        updateOperatorSelection();
-      });
-    });
-
-    updateOperatorSelection();
-  }
-
-  function updateOperatorSelection() {
-    const checkboxes = document.querySelectorAll(
-      '#operatorItems input[type="checkbox"]',
-    );
-    const allCheckbox = document.querySelector(
-      '#operatorItems input[value="all"]',
-    );
-    const selectedOperators = [];
-    let selectedText = "选择运营人员";
-
-    if (allCheckbox && allCheckbox.checked) {
-      selectedText = "全部人员";
-      currentFilters.operator_ids = [];
-    } else {
-      checkboxes.forEach((cb) => {
-        if (cb.checked && cb.value !== "all") {
-          selectedOperators.push(cb.value);
-        }
-      });
-      if (selectedOperators.length > 0) {
-        selectedText = `已选择 ${selectedOperators.length} 人`;
-      }
-      currentFilters.operator_ids = selectedOperators;
+    if (!operatorSelect) {
+      initOperatorFilter();
     }
 
-    document.getElementById("operatorSelectedText").textContent = selectedText;
+    const options = [{ value: "all", label: "全部人员" }];
+    operators.forEach((op) => {
+      const rawId = op && op.id !== undefined && op.id !== null ? String(op.id) : "";
+      if (!rawId) return;
+      const token = rawId.trim().toLowerCase();
+      if (token === "all" || token === "*" || token === "__all__") return;
+      options.push({
+        value: rawId,
+        label: String(op.first_name || op.name || rawId),
+      });
+    });
+
+    operatorSelect.setOptions(options);
+    operatorSelect.setValue(["all"]);
+    currentFilters.operator_ids = [];
   }
 
-  function populateOpsGroupDropdown(operators) {
-    const select = document.getElementById("opsGroupFilter");
-    // 保留第一个“全部”选项
-    select.innerHTML = '<option value="">全部</option>';
-
-    // 提取并去重分组信息
-    const groups = [
-      ...new Set(
-        operators.map((op) => op.group).filter((g) => g && g.trim() !== ""),
-      ),
-    ].sort();
-
-    groups.forEach((group) => {
-      const option = document.createElement("option");
-      option.value = group;
-      option.textContent = group;
-      select.appendChild(option);
+  function initOpsGroupFilter() {
+    opsGroupSelect = new SearchableSelect("#opsGroupFilter", {
+      options: [{ value: "all", label: "全部分组" }],
+      multiple: true,
+      placeholder: "全部分组",
     });
+    opsGroupSelect.setValue(["all"]);
+  }
+
+  function populateOpsGroupDropdown(groups) {
+    if (!opsGroupSelect) {
+      initOpsGroupFilter();
+    }
+    const options = [{ value: "all", label: "全部分组" }];
+    const uniqueGroups = [...new Set((groups || []).map((g) => String(g || "").trim()).filter((g) => g))].sort();
+    uniqueGroups.forEach((group) => {
+      options.push({
+        value: group,
+        label: group,
+      });
+    });
+    opsGroupSelect.setOptions(options);
+    opsGroupSelect.setValue(["all"]);
+  }
+
+  async function loadOpsGroups() {
+    try {
+      const response = await fetch("/api/general/ops-groups/?platform=amazon");
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        const groups = result.data
+          .map((item) => {
+            if (typeof item === "string") return item;
+            if (item && typeof item === "object") return item.value || item.label || "";
+            return "";
+          })
+          .map((g) => String(g || "").trim())
+          .filter((g) => g && g.toLowerCase() !== "all" && g !== "全部分组");
+        populateOpsGroupDropdown(groups);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("加载运营分组失败:", error);
+      return false;
+    }
   }
 
   async function loadOperators() {
@@ -585,7 +649,6 @@ Divi智管{% endblock %} {% block extra_css %}
       const result = await response.json();
       if (result.success && result.data) {
         populateOperatorDropdown(result.data);
-        populateOpsGroupDropdown(result.data);
         currentUserPermissions = {
           can_reset_daily_check: result.can_reset_daily_check || false,
         };
@@ -600,18 +663,30 @@ Divi智管{% endblock %} {% block extra_css %}
 
   // ===== 筛选逻辑（保持不变）=====
   function getCurrentFilters() {
+    const rangeValue = dateRangeController
+      ? dateRangeController.getValue()
+      : (window.SearchableSelect && window.SearchableSelect.getInstance
+      ? (window.SearchableSelect.getInstance("#dateRange")
+        ? window.SearchableSelect.getInstance("#dateRange").getValue()
+        : "unlimited")
+      : "unlimited");
+    const useCustomRange = dateRangeController
+      ? dateRangeController.isCustom()
+      : rangeValue === "custom";
     return {
-      date_range: document.getElementById("dateRange").value,
-      start_date:
-        document.getElementById("dateRange").value === "custom"
-          ? document.getElementById("startDate").value
-          : "",
-      end_date:
-        document.getElementById("dateRange").value === "custom"
-          ? document.getElementById("endDate").value
-          : "",
+      date_range: rangeValue,
+      start_date: useCustomRange
+        ? dateRangeController
+          ? dateRangeController.getStartDate()
+          : document.getElementById("startDate").value
+        : "",
+      end_date: useCustomRange
+        ? dateRangeController
+          ? dateRangeController.getEndDate()
+          : document.getElementById("endDate").value
+        : "",
       operator_ids: currentFilters.operator_ids,
-      ops_group: document.getElementById("opsGroupFilter").value.trim(),
+      ops_group: normalizeMultiSelection(opsGroupSelect ? opsGroupSelect.getValue() : []).join(","),
       shop_name: document.getElementById("shopNameFilter").value.trim(),
       visited: document.getElementById("visitedFilter").value,
       performance_checked: document.getElementById("performanceCheckedFilter")
@@ -626,10 +701,23 @@ Divi智管{% endblock %} {% block extra_css %}
   }
 
   function setDefaultFilters() {
-    document.getElementById("dateRange").value = "unlimited";
-    document.getElementById("startDate").value = "";
-    document.getElementById("endDate").value = "";
-    document.getElementById("opsGroupFilter").value = "";
+    if (dateRangeController) {
+      dateRangeController.setValue("unlimited");
+      dateRangeController.clearCustomDates();
+    } else {
+      const dateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+        ? window.SearchableSelect.getInstance("#dateRange")
+        : null;
+      if (dateRangeSelect) {
+        dateRangeSelect.setValue("unlimited");
+      }
+      document.getElementById("startDate").value = "";
+      document.getElementById("endDate").value = "";
+      handleDateRangeChange();
+    }
+    if (opsGroupSelect) {
+      opsGroupSelect.setValue(["all"]);
+    }
     document.getElementById("shopNameFilter").value = "";
     document.getElementById("visitedFilter").value = "";
     document.getElementById("performanceCheckedFilter").value = "";
@@ -638,6 +726,9 @@ Divi智管{% endblock %} {% block extra_css %}
     document.getElementById("restockEndDate").value = "";
     document.getElementById("shopStatusFilter").value = "";
     document.getElementById("pageSize").value = "20";
+    if (operatorSelect) {
+      operatorSelect.setValue(["all"]);
+    }
     currentFilters.operator_ids = [];
   }
 
@@ -645,13 +736,6 @@ Divi智管{% endblock %} {% block extra_css %}
     showLoading(true);
     try {
       setDefaultFilters();
-      const checkboxes = document.querySelectorAll(
-        '#operatorItems input[type="checkbox"]',
-      );
-      checkboxes.forEach((cb) => {
-        cb.checked = cb.value === "all";
-      });
-      updateOperatorSelection();
       dailyCheckPagination.page = 1;
       dailyCheckPagination.page_size = 20;
       await applyFilters();
@@ -993,13 +1077,12 @@ Divi智管{% endblock %} {% block extra_css %}
   document.addEventListener("DOMContentLoaded", async function () {
     showLoading(true);
     try {
-      initOperatorDropdown();
+      initDateRangeFilter();
+      initOperatorFilter();
+      initOpsGroupFilter();
       await loadOperators();
+      await loadOpsGroups();
       setDefaultFilters();
-      document
-        .getElementById("dateRange")
-        .addEventListener("change", handleDateRangeChange);
-      handleDateRangeChange();
       initializeSortHeader();
       await applyFilters();
     } catch (error) {

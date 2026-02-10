@@ -335,11 +335,22 @@ def get_amazon_shops_api(request):
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 20))
 
-        # 支持多选参数处理
+        # 支持多选参数处理，统一将“全部”类值视为不筛选
         def get_list_param(name):
             val = request.GET.get(name, '').strip()
-            if not val: return []
-            return [v.strip() for v in val.split(',') if v.strip()]
+            if not val:
+                return []
+
+            def is_all_token(raw):
+                token = str(raw or '').strip().lower()
+                return token in {'', 'all', '*', 'any', '__all__', '全部', '不限'}
+
+            values = [v.strip() for v in val.split(',') if v.strip()]
+            if not values:
+                return []
+            if any(is_all_token(v) for v in values):
+                return []
+            return [v for v in values if not is_all_token(v)]
 
         status_filters = get_list_param('status')
         operator_filters = get_list_param('operator')

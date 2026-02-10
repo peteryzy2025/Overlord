@@ -87,6 +87,231 @@
             color: var(--text-secondary);
         }
 
+        /* 仅保留筛选控件兼容样式（避免引入 general_style_1.css 全局表格规则） */
+        .gs-date-range-custom-group {
+            display: none !important;
+        }
+
+        .gs-date-range-custom-group.is-visible {
+            display: flex !important;
+        }
+
+        .searchable-select {
+            position: relative;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        .searchable-select .select-trigger {
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            cursor: pointer;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 42px;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+            background-color: var(--bg-secondary);
+        }
+
+        .searchable-select .select-trigger:hover {
+            border-color: var(--accent-color);
+        }
+
+        .searchable-select.open .select-trigger {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .searchable-select .select-trigger::after {
+            content: "\f078";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            transition: transform 0.2s;
+            margin-left: 0.5rem;
+        }
+
+        .searchable-select.open .select-trigger::after {
+            transform: rotate(180deg);
+        }
+
+        .searchable-select .select-trigger .selected-text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            background-color: transparent !important;
+            line-height: 1.5;
+            min-height: 1.5em;
+            display: flex;
+            align-items: center;
+        }
+
+        .searchable-select .select-trigger .selected-text .placeholder {
+            background-color: transparent !important;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            font-weight: 400;
+            opacity: 1;
+            letter-spacing: normal;
+        }
+
+        .searchable-select .dropdown-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--accent-color);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 280px;
+            overflow: hidden;
+            z-index: 1000;
+            display: none;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .searchable-select.open .dropdown-panel {
+            display: block;
+        }
+
+        .searchable-select .search-input-wrapper {
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-secondary);
+        }
+
+        .searchable-select .search-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            box-sizing: border-box;
+        }
+
+        .searchable-select .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .searchable-select .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .searchable-select .options-list {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+
+        .searchable-select .option {
+            padding: 0.5rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            font-size: 0.875rem;
+        }
+
+        .searchable-select .option:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .searchable-select .option.selected {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+        }
+
+        .searchable-select .option.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .searchable-select .option .checkbox {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .searchable-select .option.selected .checkbox {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        .searchable-select .option.selected .checkbox::after {
+            content: "\f00c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 0.625rem;
+            color: white;
+        }
+
+        .searchable-select .option .option-text {
+            flex: 1;
+        }
+
+        .searchable-select .no-options {
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .searchable-select.single .option.selected::before {
+            content: "\f00c";
+            font-family: "Font Awesome 5 Free";
+            font-weight: 900;
+            font-size: 0.75rem;
+            color: var(--accent-color);
+            margin-right: 0.25rem;
+        }
+
+        .searchable-select.disabled .select-trigger {
+            background-color: var(--bg-tertiary);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        /* 拉宽筛选区的年月日输入，避免日期控件过窄 */
+        #customLaunchDateGroup,
+        #customLaunchDateGroup2,
+        #customCrawlDateGroup,
+        #customCrawlDateGroup2 {
+            min-width: 260px;
+            flex: 1 1 260px;
+        }
+
+        @media (max-width: 768px) {
+            #customLaunchDateGroup,
+            #customLaunchDateGroup2,
+            #customCrawlDateGroup,
+            #customCrawlDateGroup2 {
+                min-width: 100%;
+                flex-basis: 100%;
+            }
+        }
+
         /*===========================================================================*/
         /* 为标题/主题及其翻译添加独立的tooltip样式 - 采用第二段代码的优化版本 */
         .tooltip-wrapper {
@@ -641,7 +866,7 @@
             cursor: pointer;
             transition: color 0.2s;
         }
-
+        
         .copyable-subject:hover {
             color: var(--accent-color);
         }
@@ -805,7 +1030,6 @@
             /* 宽度和位置将由JS动态设置 */
         }
 
-
         /* 不同状态的指示器颜色 */
         .tri-state-toggle[data-state="reported"] .toggle-indicator {
             background-color: #fee2e2;
@@ -879,47 +1103,30 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">上架日期</label>
-                    <select class="form-select" id="launchDateRange" onchange="handleDateRangeChange()">
-                        <option value="">全部时间</option>
-                        <option value="last3days">最近3天</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last15days">最近15天</option>
-                        <option value="last30days">最近30天</option>
-                        <option value="last60days">最近60天</option>
-                        <option value="last90days">最近90天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="launchDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customLaunchDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="customLaunchStartDate">
                 </div>
 
-                <div class="filter-group" id="customLaunchDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="customLaunchEndDate">
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">数据日期</label>
-                    <select class="form-select" id="crawlDateRange" onchange="handleDateRangeChange()">
-                        <option value="last30days" selected>最近30天</option>
-                        <option value="last3days">最近3天</option>
-                        <option value="last7days">最近7天</option>
-                        <option value="last15days">最近15天</option>
-                        <option value="last60days">最近60天</option>
-                        <option value="last90days">最近90天</option>
-                        <option value="custom">自定义范围</option>
-                    </select>
+                    <div id="crawlDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customCrawlDateGroup" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="customCrawlStartDate">
                 </div>
 
-                <div class="filter-group" id="customCrawlDateGroup2" style="display: none;">
+                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="customCrawlEndDate">
                 </div>
@@ -985,7 +1192,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center;">
                     <h3 class="section-title" style="margin-bottom: 0;">产品列表</h3>
-
+                    
                     <!-- 三段式开关 -->
                     <div class="tri-state-toggle" id="reportStatusToggle" data-state="all">
                         <div class="toggle-indicator"></div>
@@ -1340,8 +1547,12 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
+        let launchDateRangeController = null;
+        let crawlDateRangeController = null;
         let currentFilters = {
             asin: '',
             title: '',
@@ -1359,18 +1570,18 @@
         // ===== 举报状态开关逻辑 =====
         function setReportStatus(status) {
             currentFilters.report_status = status;
-
+            
             // 更新UI状态
             const toggle = document.getElementById('reportStatusToggle');
             const options = toggle.querySelectorAll('.toggle-option');
             const indicator = toggle.querySelector('.toggle-indicator');
-
+            
             toggle.setAttribute('data-state', status);
-
+            
             options.forEach(opt => {
                 if (opt.dataset.value === status) {
                     opt.classList.add('active');
-
+                    
                     // 移动指示器
                     indicator.style.left = opt.offsetLeft + 'px';
                     indicator.style.width = opt.offsetWidth + 'px';
@@ -1461,9 +1672,65 @@
         }
 
         // ===== 筛选逻辑 =====
+        function initDateRangeFilters() {
+            const launchDateRangeOptions = [
+                { value: '', label: '全部时间' },
+                { value: 'last3days', label: '最近3天' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last15days', label: '最近15天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'last60days', label: '最近60天' },
+                { value: 'last90days', label: '最近90天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            const crawlDateRangeOptions = [
+                { value: 'last30days', label: '最近30天' },
+                { value: 'last3days', label: '最近3天' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last15days', label: '最近15天' },
+                { value: 'last60days', label: '最近60天' },
+                { value: 'last90days', label: '最近90天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            launchDateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#launchDateRange',
+                    options: launchDateRangeOptions,
+                    placeholder: '点击选择日期范围',
+                    defaultValue: '',
+                    customValue: 'custom',
+                    customGroups: ['#customLaunchDateGroup', '#customLaunchDateGroup2'],
+                    startInput: '#customLaunchStartDate',
+                    endInput: '#customLaunchEndDate',
+                    customDisplay: 'flex'
+                })
+                : null;
+            crawlDateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#crawlDateRange',
+                    options: crawlDateRangeOptions,
+                    placeholder: '点击选择日期范围',
+                    defaultValue: 'last30days',
+                    customValue: 'custom',
+                    customGroups: ['#customCrawlDateGroup', '#customCrawlDateGroup2'],
+                    startInput: '#customCrawlStartDate',
+                    endInput: '#customCrawlEndDate',
+                    customDisplay: 'flex'
+                })
+                : null;
+        }
+
         function handleDateRangeChange() {
+            if (launchDateRangeController && crawlDateRangeController) {
+                launchDateRangeController.syncVisibility();
+                crawlDateRangeController.syncVisibility();
+                return;
+            }
             // 处理上架日期
-            const launchRange = document.getElementById('launchDateRange').value;
+            const launchDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#launchDateRange')
+                : null;
+            const launchRange = launchDateRangeSelect ? launchDateRangeSelect.getValue() : '';
             const customLaunchGroup = document.getElementById('customLaunchDateGroup');
             const customLaunchGroup2 = document.getElementById('customLaunchDateGroup2');
 
@@ -1476,7 +1743,10 @@
             }
 
             // 处理数据日期
-            const crawlRange = document.getElementById('crawlDateRange').value;
+            const crawlDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                ? window.SearchableSelect.getInstance('#crawlDateRange')
+                : null;
+            const crawlRange = crawlDateRangeSelect ? crawlDateRangeSelect.getValue() : '';
             const customCrawlGroup = document.getElementById('customCrawlDateGroup');
             const customCrawlGroup2 = document.getElementById('customCrawlDateGroup2');
 
@@ -1514,16 +1784,26 @@
         }
 
         function getCurrentFilters() {
+            const launchRangeValue = launchDateRangeController
+                ? launchDateRangeController.getValue()
+                : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#launchDateRange') ? window.SearchableSelect.getInstance('#launchDateRange').getValue() : '')
+                : '');
+            const crawlRangeValue = crawlDateRangeController
+                ? crawlDateRangeController.getValue()
+                : (window.SearchableSelect && window.SearchableSelect.getInstance
+                ? (window.SearchableSelect.getInstance('#crawlDateRange') ? window.SearchableSelect.getInstance('#crawlDateRange').getValue() : 'last30days')
+                : 'last30days');
             // 计算上架日期范围
             const launchDates = getDateRangeValues(
-                document.getElementById('launchDateRange').value,
+                launchRangeValue,
                 'customLaunchStartDate',
                 'customLaunchEndDate'
             );
 
             // 计算数据日期范围
             const crawlDates = getDateRangeValues(
-                document.getElementById('crawlDateRange').value,
+                crawlRangeValue,
                 'customCrawlStartDate',
                 'customCrawlEndDate'
             );
@@ -1548,19 +1828,38 @@
         }
 
         function setDefaultFilters() {
-            document.getElementById('launchDateRange').value = '';
-            document.getElementById('crawlDateRange').value = 'last30days';
-            handleDateRangeChange();
+            if (launchDateRangeController && crawlDateRangeController) {
+                launchDateRangeController.setValue('');
+                launchDateRangeController.clearCustomDates();
+                crawlDateRangeController.setValue('last30days');
+                crawlDateRangeController.clearCustomDates();
+            } else {
+                const launchDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                    ? window.SearchableSelect.getInstance('#launchDateRange')
+                    : null;
+                if (launchDateRangeSelect) {
+                    launchDateRangeSelect.setValue('');
+                }
+                const crawlDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
+                    ? window.SearchableSelect.getInstance('#crawlDateRange')
+                    : null;
+                if (crawlDateRangeSelect) {
+                    crawlDateRangeSelect.setValue('last30days');
+                }
+                handleDateRangeChange();
+            }
 
             document.getElementById('asinFilter').value = '';
             document.getElementById('productFilter').value = '';
             document.getElementById('productTypeFilter').value = '';
             document.getElementById('riskLevelFilter').value = '';
 
-            document.getElementById('customLaunchStartDate').value = '';
-            document.getElementById('customLaunchEndDate').value = '';
-            document.getElementById('customCrawlStartDate').value = '';
-            document.getElementById('customCrawlEndDate').value = '';
+            if (!launchDateRangeController || !crawlDateRangeController) {
+                document.getElementById('customLaunchStartDate').value = '';
+                document.getElementById('customLaunchEndDate').value = '';
+                document.getElementById('customCrawlStartDate').value = '';
+                document.getElementById('customCrawlEndDate').value = '';
+            }
 
             document.getElementById('pageSize').value = '20';
         }
@@ -1712,7 +2011,7 @@
             // 归一化输入
             if (!level) return '-';
             const levelLower = String(level).toLowerCase();
-
+            
             const levelMap = {
                 'high': '高',
                 'high risk': '高',
@@ -1749,10 +2048,10 @@
 
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
-
+            
             // 清空已收集的主题集合
             window.pageSubjects = new Set();
-
+            
             if (!products || products.length === 0) {
                 tbody.innerHTML = `
                     <tr>
@@ -1771,7 +2070,7 @@
                 if (product.subject) {
                     window.pageSubjects.add(product.subject);
                 }
-
+                
                 // 图片列HTML - 包装在A标签中，点击跳转到Amazon产品页面
                 let imageHtml = '';
                 if (product.image_url) {
@@ -1804,7 +2103,7 @@
                 // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
                 const themeRecord = product.theme_record;
                 let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
-
+                
                 // 数据库侵权等级
                 let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '"></span>';
 
@@ -1891,17 +2190,17 @@
                     </tr>
                 `;
             }).join('');
-
+            
             products.forEach(p => {
                 updateReporterBadge(p.asin, p.all_reporters || []);
             });
-
+            
             // 渲染完成后，触发批量风险检测
             if (window.pageSubjects && window.pageSubjects.size > 0) {
                 fetchRiskData(Array.from(window.pageSubjects));
             }
         }
-
+        
         // 批量获取风险数据
         async function fetchRiskData(themes) {
             try {
@@ -1912,7 +2211,7 @@
                     },
                     body: JSON.stringify({ themes: themes })
                 });
-
+                
                 const result = await response.json();
                 if (result.success && result.data) {
                     updateRiskCells(result.data);
@@ -1921,7 +2220,7 @@
                 console.error('批量获取风险数据失败:', error);
             }
         }
-
+        
         // 更新表格中的风险单元格
         function updateRiskCells(riskData) {
             // 更新侵权词列
@@ -1938,13 +2237,13 @@
                         }
                     }
                 }
-
+                
                 if (data) {
                     let html = '-';
                     const highRisk = data.high_risk_words || [];
                     const mediumRisk = data.medium_risk_words || [];
                     // lowRisk 不显示
-
+                    
                     if (highRisk.length > 0 || mediumRisk.length > 0) {
                         const parts = [];
                         if (highRisk.length > 0) {
@@ -1953,10 +2252,10 @@
                         if (mediumRisk.length > 0) {
                             parts.push(`<span style="color: #f97316; font-weight: bold; display: inline-block;">${mediumRisk.join(', ')}</span>`);
                         }
-
+                        
                         html = `<div style="white-space: normal; word-wrap: break-word; overflow-wrap: break-word; max-width: 200px; line-height: 1.4;">${parts.join(', ')}</div>`;
                     }
-
+                    
                     // 替换加载动画
                     // 找到所在的td
                     const td = el.closest('td');
@@ -1966,7 +2265,7 @@
                      if (td) td.innerHTML = '-';
                 }
             });
-
+            
             // 更新侵权等级徽章
             document.querySelectorAll('.loading-level').forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
@@ -1981,12 +2280,12 @@
                         }
                     }
                 }
-
+                
                 if (data) {
                     const level = data.theme_risk_level || 'low';
                     const levelText = getInfringementLevelText(level);
                     const levelClass = getInfringementLevelClass(level);
-
+                    
                     let html = '';
                     // 只要有等级（即使是"低"），就应该显示
                     // 修改判断逻辑：只要 levelText 不是空且不是'-'
@@ -1994,9 +2293,9 @@
                          html = `<span class="infringement-level ${levelClass}" style="font-size: 0.75rem; padding: 1px 4px; line-height: 1.2;">${levelText}</span>`;
                     } else {
                          // 如果确实没有风险等级数据，才显示空白占位
-                         html = '<div style="height: 18px;"></div>';
+                         html = '<div style="height: 18px;"></div>'; 
                     }
-
+                    
                     const container = el.closest('.level-container');
                     if (container) container.innerHTML = html;
                 }
@@ -2206,7 +2505,7 @@
 
                 if (result.success) {
                     showNotification(result.message || '举报成功', 'success');
-
+                    
                     const relatedAsins = result.data.related_reported_asins || [asin];
                     const statusMap = result.data.related_status_map || {};
                     const reportersMap = result.data.related_reporters_map || {};
@@ -2226,7 +2525,7 @@
                 alert('举报失败，请稍后重试');
             }
         }
-
+        
         // 更新举报状态 (辅助函数)
         function updateReportStatus(asin, isReported) {
             // 找到页面上所有对应ASIN的行
@@ -2261,7 +2560,7 @@
 
                 if (result.success) {
                     showNotification(result.message || '已撤销举报', 'success');
-
+                    
                     // 批量更新UI：根据后端返回的状态映射决定每个ASIN是否仍显示举报
                     const relatedAsins = result.data.related_unreported_asins || [asin];
                     const statusMap = result.data.related_status_map || {};
@@ -2814,6 +3113,7 @@
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
             try {
+                initDateRangeFilters();
                 setDefaultFilters();
                 initializeSortHeader();
                 setupDeduplicateSwitch();  // 初始化去重开关

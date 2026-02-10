@@ -1,10 +1,9 @@
 {% extends 'base/base_amazon.html' %}
 {% load static %}
 
-{% block title %}亚马逊绩效通知 - Divi智管{% endblock %}
+{% block title %}亚马逊绩效通知 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         /* 统计卡片样式适配 */
         .stats-card-wrapper {
@@ -142,6 +141,33 @@
             font-size: 0.875rem;
         }
 
+        /* 自定义日期展开后占据足够空间，推动后续筛选项右移（空间不足再换行） */
+        #customDateGroup {
+            min-width: 520px !important;
+            flex: 1.5 1 520px !important;
+        }
+
+        #customDateGroup .date-range-inputs {
+            flex-wrap: nowrap;
+        }
+
+        #customDateGroup .date-range-inputs .ymd-picker {
+            flex: 1 1 0;
+            min-width: 220px;
+        }
+
+        #customDateGroup .date-range-inputs > span {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 992px) {
+            #customDateGroup {
+                min-width: 100% !important;
+                flex-basis: 100% !important;
+            }
+        }
+
         /* 表格容器最小宽度，确保横向滚动 */
         .table-container {
             min-width: 100%;
@@ -195,18 +221,13 @@
                     <div id="dateRangeSelect" class="searchable-select single" data-placeholder="选择日期范围"></div>
                 </div>
 
-                <div class="filter-group" id="customDateGroup" style="display: none; min-width: 280px;">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup" style="min-width: 280px;">
                     <label class="filter-label">自定义日期</label>
                     <div class="date-range-inputs">
                         <input type="date" class="form-control" id="startDate">
                         <span>至</span>
                         <input type="date" class="form-control" id="endDate">
                     </div>
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">运营分组</label>
-                    <div id="groupSelect" class="searchable-select multiple" data-placeholder="选择分组"></div>
                 </div>
 
                 <div class="filter-group">
@@ -345,13 +366,13 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
         let currentFilters = {
             date_range: 'unlimited',
             start_date: '',
             end_date: '',
-            ops_groups: [],
             operator_ids: [],
             shop_name: '',
             subject_keyword: '',
@@ -379,7 +400,7 @@
 
         // SearchableSelect 实例
         let dateRangeSelect = null;
-        let groupSelect = null;
+        let dateRangeController = null;
         let operatorSelect = null;
         let statusSelect = null;
 
@@ -388,8 +409,7 @@
             showLoading(true);
             try {
                 initSearchableSelects();
-                await loadGroupsFromAPI();
-                await loadOperatorsFromAPI();
+                await loadOperators();
                 initializeSortHeader();
                 // 初始加载数据
                 await applyFilters();
@@ -403,6 +423,29 @@
 
         // ===== SearchableSelect 初始化 =====
         function initSearchableSelects() {
+            const dateRangeOptions = [
+                { value: 'unlimited', label: '不限' },
+                { value: 'today', label: '今日' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRangeSelect',
+                    options: dateRangeOptions,
+                    placeholder: '选择日期范围',
+                    defaultValue: 'unlimited',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    customDisplay: 'block'
+                })
+                : null;
+            if (dateRangeController) {
+                dateRangeSelect = dateRangeController.select;
+            } else {
             // 日期范围选择
             dateRangeSelect = new SearchableSelect('#dateRangeSelect', {
                 options: [
@@ -426,6 +469,8 @@
             };
 
             // 状态筛选
+            }
+
             statusSelect = new SearchableSelect('#statusSelect', {
                 options: [
                     { value: '', label: '全部' },
@@ -443,6 +488,10 @@
 
         // ===== 日期范围变化处理 =====
         function handleDateRangeChange(value) {
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
             const customGroup = document.getElementById('customDateGroup');
             if (value === 'custom') {
                 customGroup.style.display = 'block';
@@ -453,75 +502,24 @@
             }
         }
 
-        // ===== 加载运营分组 =====
-        async function loadGroupsFromAPI() {
-            try {
-                const response = await fetch('/api/general/ops-groups/?platform=amazon');
-                const result = await response.json();
-                if (result.success && result.data) {
-                    groupSelect = new SearchableSelect('#groupSelect', {
-                        options: result.data,
-                        multiple: true,
-                        placeholder: '选择分组'
-                    });
-                    // 默认选中第一项（全部分组）
-                    if (result.data.length > 0) {
-                        groupSelect.setValue([result.data[0].value]);
-                    }
-                    // 联动事件：分组变化时刷新人员列表
-                    groupSelect.onChange = (values) => {
-                        loadOperatorsFromAPI(values).then(() => {
-                            // 重置人员筛选
-                            if (operatorSelect) {
-                                operatorSelect.setValue(['all']);
-                                currentFilters.operator_ids = [];
-                            }
-                            applyFilters();
-                        });
-                    };
-                    return true;
-                }
-                return false;
-            } catch (error) {
-                console.error('加载运营分组失败:', error);
-                return false;
-            }
-        }
-
         // ===== 加载运营人员 =====
-        async function loadOperatorsFromAPI(selectedGroups) {
+        async function loadOperators() {
             try {
-                const params = new URLSearchParams();
-                params.set('platform', 'amazon');
-                // 如果有选中分组且不是全部，传入分组参数
-                if (selectedGroups && selectedGroups.length > 0) {
-                    const nonEmptyGroups = selectedGroups.filter(g => g !== '');
-                    if (nonEmptyGroups.length > 0) {
-                        params.set('ops_group', nonEmptyGroups.join(','));
-                    }
-                }
-                
-                const response = await fetch(`/api/general/operators/?${params}`);
+                const response = await fetch('/api/amazon/performance/operators/');
                 const result = await response.json();
                 if (result.success && result.data) {
                     // 初始化运营人员下拉（多选）
                     const options = [{ value: 'all', label: '全部人员' }, ...result.data.map(op => ({
-                        value: String(op.value),
-                        label: op.label
+                        value: String(op.id),
+                        label: op.first_name
                     }))];
 
-                    if (operatorSelect) {
-                        operatorSelect.setOptions(options);
-                        operatorSelect.setValue(['all']);
-                    } else {
-                        operatorSelect = new SearchableSelect('#operatorSelect', {
-                            options: options,
-                            multiple: true,
-                            placeholder: '选择运营人员'
-                        });
-                        operatorSelect.setValue(['all']);
-                    }
-                    
+                    operatorSelect = new SearchableSelect('#operatorSelect', {
+                        options: options,
+                        multiple: true,
+                        placeholder: '选择运营人员'
+                    });
+                    operatorSelect.setValue(['all']);
                     operatorSelect.onChange = (values) => {
                         if (values.includes('all')) {
                             currentFilters.operator_ids = [];
@@ -529,6 +527,14 @@
                             currentFilters.operator_ids = values;
                         }
                     };
+
+                    // 初始化用户权限
+                    currentUserPermissions = {
+                        can_notify_all: result.can_notify_all || false,
+                        can_notify_group: result.can_notify_group || false,
+                        group_name: result.group_name || ''
+                    };
+
                     return true;
                 }
                 return false;
@@ -540,15 +546,21 @@
 
         // ===== 获取当前筛选条件 =====
         function getCurrentFilters() {
-            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited';
-            const groupValues = groupSelect ? groupSelect.getValue() : [];
-            const operatorValues = operatorSelect ? operatorSelect.getValue() : [];
+            const dateRange = dateRangeController
+                ? dateRangeController.getValue()
+                : (dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited');
+            const useCustomDate = dateRangeController
+                ? dateRangeController.isCustom()
+                : dateRange === 'custom';
             return {
                 date_range: dateRange,
-                start_date: dateRange === 'custom' ? document.getElementById('startDate').value : '',
-                end_date: dateRange === 'custom' ? document.getElementById('endDate').value : '',
-                ops_groups: groupValues.filter(v => v !== ''),
-                operator_ids: operatorValues.includes('all') ? [] : operatorValues,
+                start_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value)
+                    : '',
+                end_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value)
+                    : '',
+                operator_ids: currentFilters.operator_ids,
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
                 subject_keyword: document.getElementById('subjectFilter').value.trim(),
                 status_filter: statusSelect ? statusSelect.getValue() : '',
@@ -577,17 +589,23 @@
             showLoading(true);
             try {
                 // 重置下拉框
-                if (dateRangeSelect) dateRangeSelect.setValue('unlimited');
-                if (groupSelect) groupSelect.setValue(['']);
+                if (dateRangeController) {
+                    dateRangeController.setValue('unlimited');
+                    dateRangeController.clearCustomDates();
+                } else if (dateRangeSelect) {
+                    dateRangeSelect.setValue('unlimited');
+                }
                 if (operatorSelect) operatorSelect.setValue(['all']);
                 if (statusSelect) statusSelect.setValue('');
 
                 // 重置输入框
                 document.getElementById('shopNameFilter').value = '';
                 document.getElementById('subjectFilter').value = '';
-                document.getElementById('startDate').value = '';
-                document.getElementById('endDate').value = '';
-                document.getElementById('customDateGroup').style.display = 'none';
+                if (!dateRangeController) {
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                    document.getElementById('customDateGroup').style.display = 'none';
+                }
 
                 // 清空选择
                 clearSelection();

@@ -4,7 +4,6 @@
 {% block title %}Amazon店铺管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         /* Amazon店铺管理特有样式 */
         .table-container table {
@@ -495,6 +494,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // 全局变量
@@ -614,7 +614,7 @@
     function initSearchableSelects() {
         statusSelect = new SearchableSelect('#amazonShopStatusFilter', {
             options: [
-                { value: '', label: '全部状态' },
+                { value: 'all', label: '全部状态' },
                 { value: '正常', label: '正常' },
                 { value: '停用', label: '停用' },
                 { value: '注销', label: '注销' },
@@ -625,7 +625,7 @@
             placeholder: '全部状态',
             multiple: true
         });
-        statusSelect.setValue(['']);
+        statusSelect.setValue(['all']);
         statusSelect.onChange = () => filterAmazonShops();
 
         customerSelect = new SearchableSelect('#amazonCustomerFilter', {
@@ -746,13 +746,19 @@
 
     async function loadShopsFromAPI(page, pageSize) {
         try {
+            const isAllToken = (value) => {
+                const token = String(value ?? '').trim().toLowerCase();
+                return token === '' || token === 'all' || token === '*' || token === 'any' || token === '__all__' || value === '全部' || value === '不限';
+            };
+
             const formatMultiSelect = (values) => {
                 if (!values) return '';
-                if (Array.isArray(values)) {
-                    const nonEmpty = values.filter(v => v !== '');
-                    return nonEmpty.length > 0 ? nonEmpty.join(',') : '';
-                }
-                return values;
+                const list = Array.isArray(values) ? values : [values];
+                const normalized = list.map(v => String(v ?? '').trim()).filter(v => v !== '');
+                if (normalized.length === 0) return '';
+                if (normalized.some(v => isAllToken(v))) return '';
+                const valid = normalized.filter(v => !isAllToken(v));
+                return valid.length > 0 ? valid.join(',') : '';
             };
 
             const params = new URLSearchParams({
@@ -1544,7 +1550,7 @@
 
     function resetAmazonShopFilters() {
         // 重置所有的 SearchableSelect
-        statusSelect.setValue(['']);
+        statusSelect.setValue(['all']);
         customerSelect.setValue(['']);
         operatorSelect.setValue(['']);
         groupSelect.setValue(['']);
