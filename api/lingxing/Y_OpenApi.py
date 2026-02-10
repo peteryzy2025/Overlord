@@ -25,7 +25,9 @@ async def get_api_resp(
     use_app_secret = app_secret
     
     if not use_app_id or not use_app_secret:
-        raise ValueError("领星AppID或AppSecret未配置")
+        use_app_id = "ak_P211HcxRxAZ8x"
+        use_app_secret = "KZ3Eu6Q9qpVCLPEv1tx/aQ=="
+        # raise ValueError("领星AppID或AppSecret未配置")
     
     op_api = OpenApiBase(
         host="https://openapi.lingxing.com",
