@@ -253,19 +253,16 @@
             color: #EF4444;
         }
 
-        .custom-date-range {
-            display: none;
-            flex-direction: row;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
+        .custom-time-range-group {
+            min-width: 220px;
+            flex: 1 1 220px;
         }
 
-        .custom-date-range.show {
-            display: flex;
-        }
-
-        .custom-date-range input {
-            flex: 1;
+        @media (max-width: 768px) {
+            .custom-time-range-group {
+                min-width: 100%;
+                flex-basis: 100%;
+            }
         }
 
         .score-stats-card {
@@ -459,29 +456,19 @@
 
                 <div class="filter-group" style="min-width: 150px;">
                     <label class="filter-label">完成时间</label>
-                    <div class="select-wrapper">
-                        <select class="form-select" id="timeFilter" onchange="onTimeFilterChange()">
-                            <option value="" {% if current_filters.time_filter == '' %}selected{% endif %}>全部时间
-                            </option>
-                            <option value="this_month"
-                                    {% if current_filters.time_filter == 'this_month' %}selected{% endif %}>当月
-                            </option>
-                            <option value="last_month"
-                                    {% if current_filters.time_filter == 'last_month' %}selected{% endif %}>上个月
-                            </option>
-                            <option value="custom" {% if current_filters.time_filter == 'custom' %}selected{% endif %}>
-                                自定义
-                            </option>
-                        </select>
-                        <i class="fas fa-chevron-down select-arrow"></i>
-                    </div>
-                    <div class="custom-date-range {% if current_filters.time_filter == 'custom' %}show{% endif %}"
-                         id="customDateRange">
-                        <input type="date" class="form-control" id="customStart"
-                               value="{{ current_filters.custom_start }}">
-                        <span style="color: var(--text-secondary); align-self: center;">至</span>
-                        <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
-                    </div>
+                    <div id="timeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+                </div>
+
+                <div class="filter-group custom-time-range-group" id="customTimeStartGroup"
+                     style="{% if current_filters.time_filter == 'custom' %}display: flex;{% else %}display: none;{% endif %}">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="customStart" value="{{ current_filters.custom_start }}">
+                </div>
+
+                <div class="filter-group custom-time-range-group" id="customTimeEndGroup"
+                     style="{% if current_filters.time_filter == 'custom' %}display: flex;{% else %}display: none;{% endif %}">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
                 </div>
 
                 <div class="filter-group" style="align-self: flex-end; min-width: 200px;">
@@ -805,22 +792,83 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         let pendingSaveData = null;
         let needUnclaimReason = false;
+        let timeFilterController = null;
 
         function getCsrfToken() {
             return document.querySelector('[name=csrfmiddlewaretoken]')?.value || document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
         }
 
-        function onTimeFilterChange() {
-            const timeFilter = document.getElementById('timeFilter').value;
-            const customDateRange = document.getElementById('customDateRange');
-            if (timeFilter === 'custom') {
-                customDateRange.classList.add('show');
-            } else {
-                customDateRange.classList.remove('show');
+        function getTimeFilterValue() {
+            if (timeFilterController) {
+                return timeFilterController.getValue();
             }
+            if (window.SearchableSelect && typeof window.SearchableSelect.getInstance === 'function') {
+                const select = window.SearchableSelect.getInstance('#timeFilter');
+                if (select) {
+                    return select.getValue() || '';
+                }
+            }
+            const element = document.getElementById('timeFilter');
+            return element && typeof element.value !== 'undefined' ? element.value : '';
+        }
+
+        function onTimeFilterChange() {
+            if (timeFilterController) {
+                timeFilterController.syncVisibility();
+            }
+
+            const timeFilter = getTimeFilterValue();
+            const customStartGroup = document.getElementById('customTimeStartGroup');
+            const customEndGroup = document.getElementById('customTimeEndGroup');
+            if (timeFilter === 'custom') {
+                customStartGroup.style.display = 'flex';
+                customEndGroup.style.display = 'flex';
+            } else {
+                customStartGroup.style.display = 'none';
+                customEndGroup.style.display = 'none';
+            }
+        }
+
+        function initTimeFilter() {
+            const options = [
+                { value: '', label: '全部时间' },
+                { value: 'this_month', label: '当月' },
+                { value: 'last_month', label: '上个月' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            const currentValue = "{{ current_filters.time_filter|default:''|escapejs }}";
+
+            timeFilterController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#timeFilter',
+                    options: options,
+                    placeholder: '点击选择日期范围',
+                    defaultValue: currentValue,
+                    customValue: 'custom',
+                    customGroups: ['#customTimeStartGroup', '#customTimeEndGroup'],
+                    startInput: '#customStart',
+                    endInput: '#customEnd',
+                    customDisplay: 'flex',
+                    onChange: onTimeFilterChange
+                })
+                : null;
+
+            if (!timeFilterController && typeof window.SearchableSelect === 'function') {
+                const timeFilterSelect = new SearchableSelect('#timeFilter', {
+                    options: options,
+                    multiple: false,
+                    placeholder: '点击选择日期范围'
+                });
+                timeFilterSelect.setValue(currentValue || '');
+                timeFilterSelect.onChange = onTimeFilterChange;
+            }
+
+            onTimeFilterChange();
         }
 
         function openModal() {
@@ -1097,7 +1145,7 @@
             const type = document.getElementById('typeFilter').value;
             const developer = document.getElementById('developerFilter').value;
             const requester = document.getElementById('requesterFilter').value;
-            const timeFilter = document.getElementById('timeFilter').value;
+            const timeFilter = getTimeFilterValue();
             if (keyword) params.append('keyword', keyword);
             if (status) params.append('status', status);
             if (priority) params.append('priority', priority);
@@ -1147,6 +1195,7 @@
             }
         });
         document.addEventListener('DOMContentLoaded', function () {
+            initTimeFilter();
             refreshData();
             onTimeFilterChange();
         });

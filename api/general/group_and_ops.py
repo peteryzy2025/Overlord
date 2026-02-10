@@ -153,13 +153,13 @@ def get_operators_api(request):
       - platform: 平台筛选，可选值 'amazon' | 'temu'，不传则返回所有平台人员
       - ops_group: 分组筛选，不传则不按分组筛选
     
-    返回: [{value: 'all', label: '全部人员', group: '全部'}, 
+    返回: [{value: 'all', label: '全部人员', group: '全部'},
            {value: 1, label: '张三 (A组)', group: 'A组'}, ...]
     """
     try:
         user = request.user
         platform = request.GET.get('platform', '').strip()
-        ops_group = request.GET.get('ops_group', '').strip()
+        ops_group_raw = request.GET.get('ops_group', '').strip()
         
         # 获取用户权限级别
         perm_level = get_user_ops_permission(user)
@@ -194,9 +194,11 @@ def get_operators_api(request):
         if platform:
             queryset = queryset.filter(operational_account__platform=platform)
         
-        # 分组筛选（仅当传了 ops_group 且不是空字符串时）
-        if ops_group:
-            queryset = queryset.filter(operational_account__ops_group=ops_group)
+        # 分组筛选（支持逗号分隔多选）
+        if ops_group_raw:
+            ops_groups = [g.strip() for g in ops_group_raw.split(',') if g.strip()]
+            if ops_groups:
+                queryset = queryset.filter(operational_account__ops_group__in=ops_groups)
         
         # 构建返回数据
         result = []

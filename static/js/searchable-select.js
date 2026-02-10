@@ -39,10 +39,138 @@ class SearchableSelect {
         this.init();
     }
 
+    normalizeOptionItem(option) {
+        if (option === null || option === undefined) {
+            return { value: '', label: '', disabled: false };
+        }
+
+        if (typeof option !== 'object') {
+            const text = String(option);
+            return { value: text, label: text, disabled: false };
+        }
+
+        const rawValue = option.value ?? option.id ?? option.key ?? option.code ?? '';
+        let rawLabel = option.label ?? option.name ?? option.text ?? option.display;
+
+        if ((rawLabel === undefined || rawLabel === null || rawLabel === '') && option.first_name !== undefined) {
+            const baseName = String(option.first_name || '-');
+            const groupName = option.group ? ` (${option.group})` : '';
+            rawLabel = `${baseName}${groupName}`;
+        }
+
+        if (rawLabel === undefined || rawLabel === null || rawLabel === '') {
+            rawLabel = String(rawValue ?? '');
+        }
+
+        return {
+            value: this.normalizeOptionValue(rawValue),
+            label: String(rawLabel),
+            disabled: !!option.disabled
+        };
+    }
+
+    normalizeOptions(options) {
+        return (options || []).map((opt) => this.normalizeOptionItem(opt));
+    }
+
     init() {
+        this.options = this.normalizeOptions(this.options);
         this.render();
+        if (this.config.multiple) {
+            this.selectedValues = this.normalizeMultiSelection(this.selectedValues);
+        }
         this.bindEvents();
         this.updateDisplay();
+    }
+
+    normalizeOptionValue(value) {
+        if (value === null || value === undefined) return '';
+        return String(value);
+    }
+
+    normalizeToken(value) {
+        return this.normalizeOptionValue(value).trim().toLowerCase().replace(/\s+/g, '');
+    }
+
+    findOptionByValue(value) {
+        const target = this.normalizeOptionValue(value);
+        return this.options.find((opt) => this.normalizeOptionValue(opt.value) === target) || null;
+    }
+
+    isAllOption(option) {
+        if (!option) return false;
+
+        const rawValue = this.normalizeOptionValue(option.value);
+        const valueToken = this.normalizeToken(rawValue);
+        const labelToken = this.normalizeToken(option.label || '');
+
+        if (rawValue === '') return true;
+        if (valueToken === '*' || valueToken === 'all' || valueToken === 'any' || valueToken === '不限' || valueToken === '全部' || valueToken === '__all__') return true;
+        if (labelToken === 'all' || labelToken === '不限' || labelToken === '全部') return true;
+        if (labelToken.startsWith('全部') || labelToken.startsWith('不限')) return true;
+        if (/^all($|[_-])/.test(valueToken) || /(^|[_-])all$/.test(valueToken)) return true;
+
+        return false;
+    }
+
+    isAllValue(value) {
+        const option = this.findOptionByValue(value);
+        if (option) return this.isAllOption(option);
+
+        const token = this.normalizeToken(value);
+        return token === '' || token === '*' || token === 'all' || token === 'any' || token === '不限' || token === '全部' || token === '__all__';
+    }
+
+    getAllOptionValues() {
+        return this.options
+            .filter((opt) => this.isAllOption(opt))
+            .map((opt) => this.normalizeOptionValue(opt.value));
+    }
+
+    getDefaultMultiSelection() {
+        const allValues = this.getAllOptionValues();
+        return allValues.length > 0 ? [allValues[0]] : [];
+    }
+
+    normalizeMultiSelection(values) {
+        const source = Array.isArray(values)
+            ? values
+            : (values === '' || values === null || values === undefined ? [] : [values]);
+        const normalized = [];
+        const allValues = this.getAllOptionValues();
+
+        source.forEach((value) => {
+            const text = this.normalizeOptionValue(value);
+
+            // 兼容旧逻辑传入 ['']，但“全部”选项值并非空字符串的情况
+            if (text === '' && allValues.length > 0) {
+                const emptyOptionExists = this.options.some((opt) => this.normalizeOptionValue(opt.value) === '');
+                if (!emptyOptionExists) {
+                    if (!normalized.includes(allValues[0])) normalized.push(allValues[0]);
+                    return;
+                }
+            }
+
+            if (!normalized.includes(text)) {
+                normalized.push(text);
+            }
+        });
+
+        if (allValues.length === 0) return normalized;
+
+        const allSet = new Set(allValues);
+        const nonAll = normalized.filter((value) => !allSet.has(value));
+        if (nonAll.length > 0) return nonAll;
+
+        const selectedAll = normalized.find((value) => allSet.has(value));
+        if (selectedAll !== undefined) return [selectedAll];
+
+        return [allValues[0]];
+    }
+
+    hasNonAllSelected() {
+        if (!this.config.multiple) return false;
+        return this.selectedValues.some((value) => !this.isAllValue(value));
     }
 
     render() {
@@ -91,13 +219,15 @@ class SearchableSelect {
         }
 
         return filtered.map(opt => {
-            const isSelected = this.config.multiple 
-                ? this.selectedValues.includes(opt.value) || this.selectedValues.includes(String(opt.value)) || this.selectedValues.includes(Number(opt.value))
-                : this.selectedValues == opt.value || String(this.selectedValues) === String(opt.value);
+            const optionValue = this.normalizeOptionValue(opt.value);
+            const isSelected = this.config.multiple
+                ? this.selectedValues.includes(optionValue)
+                : this.normalizeOptionValue(this.selectedValues) === optionValue;
+            const isDisabled = !!opt.disabled;
             
             return `
-                <div class="option ${isSelected ? 'selected' : ''} ${opt.disabled ? 'disabled' : ''}" 
-                     data-value="${opt.value}">
+                <div class="option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
+                     data-value="${optionValue}">
                     ${this.config.multiple ? '<span class="checkbox"></span>' : ''}
                     <span class="option-text">${opt.label}</span>
                 </div>
@@ -108,7 +238,7 @@ class SearchableSelect {
     getFilteredOptions() {
         if (!this.searchText) return this.options;
         const text = this.searchText.toLowerCase();
-        return this.options.filter(opt => opt.label.toLowerCase().includes(text));
+        return this.options.filter(opt => String(opt.label || '').toLowerCase().includes(text));
     }
 
     bindEvents() {
@@ -193,37 +323,26 @@ class SearchableSelect {
     }
 
     selectOption(value) {
+        const normalizedValue = this.normalizeOptionValue(value);
+
         if (this.config.multiple) {
-            const index = this.selectedValues.indexOf(value);
-            const isAllOption = value === '' || value === null || value === undefined;
-            
+            const current = Array.isArray(this.selectedValues) ? [...this.selectedValues] : [];
+            const isAllOption = this.isAllValue(normalizedValue);
+
+            const index = current.indexOf(normalizedValue);
             if (index > -1) {
-                // 取消选择
-                this.selectedValues.splice(index, 1);
-                // 如果取消后没有选中任何项，默认选中"全部"
-                if (this.selectedValues.length === 0) {
-                    this.selectedValues = [''];
-                }
+                current.splice(index, 1);
+            } else if (isAllOption) {
+                current.splice(0, current.length, normalizedValue);
             } else {
-                // 新增选择
-                if (isAllOption) {
-                    // 选择"全部"，清空其他所有选择
-                    this.selectedValues = [''];
-                } else {
-                    // 选择其他选项，去掉"全部"
-                    const allIndex = this.selectedValues.indexOf('');
-                    if (allIndex > -1) {
-                        this.selectedValues.splice(allIndex, 1);
-                    }
-                    this.selectedValues.push(value);
-                    // 如果去掉"全部"后没有选中任何项，重新选中"全部"
-                    if (this.selectedValues.length === 0) {
-                        this.selectedValues = [''];
-                    }
-                }
+                const withoutAll = current.filter((item) => !this.isAllValue(item));
+                withoutAll.push(normalizedValue);
+                current.splice(0, current.length, ...withoutAll);
             }
+
+            this.selectedValues = this.normalizeMultiSelection(current);
         } else {
-            this.selectedValues = value;
+            this.selectedValues = normalizedValue;
             this.close();
         }
 
@@ -237,19 +356,17 @@ class SearchableSelect {
 
     updateDisplay() {
         if (this.config.multiple) {
+            const selectedLabels = this.selectedValues
+                .filter((v) => !this.isAllValue(v))
+                .map((v) => {
+                    const opt = this.options.find((o) => this.normalizeOptionValue(o.value) === this.normalizeOptionValue(v));
+                    return opt ? opt.label : v;
+                });
+
             // 多选显示 - 显示具体选项名，超出显示+N
-            if (this.selectedValues.length === 0 || (this.selectedValues.length === 1 && this.selectedValues[0] === '')) {
-                // 只选中了"全部"或什么都没选
+            if (selectedLabels.length === 0) {
                 this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
             } else {
-                // 获取选中的标签
-                const selectedLabels = this.selectedValues
-                    .filter(v => v !== '') // 排除"全部"
-                    .map(v => {
-                        const opt = this.options.find(o => String(o.value) === String(v));
-                        return opt ? opt.label : v;
-                    });
-                
                 // 根据容器宽度显示，简单实现：最多显示2个，超出显示+N
                 const maxDisplay = 2;
                 if (selectedLabels.length <= maxDisplay) {
@@ -313,14 +430,14 @@ class SearchableSelect {
 
     clear() {
         if (this.config.multiple) {
-            this.selectedValues = [];
+            this.selectedValues = this.getDefaultMultiSelection();
         } else {
             this.selectedValues = '';
         }
         this.updateDisplay();
         this.refreshOptions();
         if (this.onChange) {
-            this.onChange(this.config.multiple ? [] : '');
+            this.onChange(this.config.multiple ? [...this.selectedValues] : '');
         }
     }
 
@@ -331,24 +448,20 @@ class SearchableSelect {
 
     setValue(value) {
         if (this.config.multiple) {
-            this.selectedValues = Array.isArray(value) ? [...value] : (value ? [value] : []);
-            // 确保多选模式下如果没有选中任何项，默认选中"全部"
-            if (this.selectedValues.length === 0) {
-                this.selectedValues = [''];
-            }
-            // 如果选中了"全部"和其他项，去掉"全部"
-            if (this.selectedValues.length > 1 && this.selectedValues.includes('')) {
-                this.selectedValues = this.selectedValues.filter(v => v !== '');
-            }
+            this.selectedValues = this.normalizeMultiSelection(value);
         } else {
-            this.selectedValues = value || '';
+            this.selectedValues = this.normalizeOptionValue(value || '');
         }
         this.updateDisplay();
         this.refreshOptions();
     }
 
     setOptions(options) {
-        this.options = options || [];
+        this.options = this.normalizeOptions(options || []);
+        if (this.config.multiple) {
+            this.selectedValues = this.normalizeMultiSelection(this.selectedValues);
+        }
+        this.updateDisplay();
         this.refreshOptions();
     }
 
@@ -356,6 +469,11 @@ class SearchableSelect {
         this.container.innerHTML = '';
         this.container.classList.remove('searchable-select', 'multiple', 'single', 'open');
     }
+}
+
+// Expose constructor for adapters/helpers that rely on window.SearchableSelect.
+if (typeof window !== 'undefined') {
+    window.SearchableSelect = SearchableSelect;
 }
 
 /**

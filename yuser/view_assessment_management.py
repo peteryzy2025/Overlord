@@ -415,7 +415,17 @@ class AssessmentListView(AssessmentManagementView, ListView):
         if month:
             queryset = queryset.filter(month=month)
         if employee_id:
-            queryset = queryset.filter(employee_id=employee_id)
+            employee_ids = []
+            for eid in str(employee_id).split(','):
+                eid = eid.strip()
+                if not eid:
+                    continue
+                try:
+                    employee_ids.append(int(eid))
+                except ValueError:
+                    continue
+            if employee_ids:
+                queryset = queryset.filter(employee_id__in=employee_ids)
         if assess_type:
             queryset = queryset.filter(assess_type=assess_type)
         if status:
@@ -1105,7 +1115,17 @@ class BatchRefreshOrdersView(AssessmentManagementView):
         if month:
             queryset = queryset.filter(month=month)
         if employee_id:
-            queryset = queryset.filter(employee_id=employee_id)
+            employee_ids = []
+            for eid in str(employee_id).split(','):
+                eid = eid.strip()
+                if not eid:
+                    continue
+                try:
+                    employee_ids.append(int(eid))
+                except ValueError:
+                    continue
+            if employee_ids:
+                queryset = queryset.filter(employee_id__in=employee_ids)
         if assess_type:
             queryset = queryset.filter(assess_type=assess_type)
         if status:

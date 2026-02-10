@@ -424,6 +424,1287 @@ class ModalManager {
 // ============================================
 // 导出组件
 // ============================================
+const GeneralStyleYearMonthPicker = (() => {
+    const parseMonthValue = (value) => {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})$/);
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        if (!year || month < 1 || month > 12) return null;
+        return { year, month };
+    };
+
+    const formatMonthValue = (year, month) => `${year}-${String(month).padStart(2, '0')}`;
+
+    const getCurrentMonthValue = () => {
+        const now = new Date();
+        return formatMonthValue(now.getFullYear(), now.getMonth() + 1);
+    };
+
+    const shiftMonthValue = (value, step) => {
+        const parsed = parseMonthValue(value);
+        if (!parsed) return '';
+        const dt = new Date(parsed.year, parsed.month - 1 + step, 1);
+        return formatMonthValue(dt.getFullYear(), dt.getMonth() + 1);
+    };
+
+    const role = (container, name) => container.querySelector(`[data-ym-role="${name}"]`);
+
+    const initOne = (container) => {
+        if (!container || container.dataset.ymInitialized === '1') return null;
+
+        const input = role(container, 'input');
+        const prevBtn = role(container, 'prev');
+        const nextBtn = role(container, 'next');
+        const clearBtn = role(container, 'clear');
+        const popover = role(container, 'popover');
+        const yearLabel = role(container, 'year-label');
+        const yearInput = role(container, 'year-input');
+        const yearPrevBtn = role(container, 'year-prev');
+        const yearNextBtn = role(container, 'year-next');
+        const monthGrid = role(container, 'month-grid');
+        const todayBtn = role(container, 'today');
+
+        if (!input || !prevBtn || !nextBtn || !clearBtn || !popover || !yearLabel || !yearInput || !yearPrevBtn || !yearNextBtn || !monthGrid || !todayBtn) {
+            return null;
+        }
+
+        container.dataset.ymInitialized = '1';
+        let viewYear = parseMonthValue(input.value)?.year || new Date().getFullYear();
+        let yearEditing = false;
+        let yearBlurTimer = null;
+
+        const clampYear = (year) => Math.min(9999, Math.max(1, year));
+
+        const renderGrid = () => {
+            yearLabel.textContent = `${viewYear}`;
+            yearInput.value = String(viewYear);
+            const selected = parseMonthValue(input.value);
+            monthGrid.innerHTML = Array.from({ length: 12 }, (_, index) => {
+                const month = index + 1;
+                const active = selected && selected.year === viewYear && selected.month === month ? 'active' : '';
+                return `<button type="button" class="ym-picker-month-btn ${active}" data-ym-month="${month}">${String(month).padStart(2, '0')}</button>`;
+            }).join('');
+        };
+
+        const finishYearEdit = (applyChange, config = {}) => {
+            const shouldRender = config.render !== false;
+            if (!yearEditing) return;
+            if (applyChange) {
+                const raw = yearInput.value.trim();
+                if (/^\d{1,4}$/.test(raw)) {
+                    viewYear = clampYear(Number(raw));
+                    yearLabel.textContent = `${viewYear}`;
+                    yearInput.value = String(viewYear);
+                    if (shouldRender) renderGrid();
+                } else if (shouldRender) {
+                    renderGrid();
+                }
+            }
+            yearInput.hidden = true;
+            yearLabel.hidden = false;
+            yearEditing = false;
+        };
+
+        const startYearEdit = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            yearEditing = true;
+            yearLabel.hidden = true;
+            yearInput.hidden = false;
+            yearInput.value = String(viewYear);
+            yearInput.focus();
+            yearInput.select();
+        };
+
+        const openPopover = () => {
+            const selectedYear = parseMonthValue(input.value)?.year;
+            if (selectedYear) viewYear = selectedYear;
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(false);
+            renderGrid();
+            popover.hidden = false;
+            container.classList.add('open');
+        };
+
+        const closePopover = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(true);
+            popover.hidden = true;
+            container.classList.remove('open');
+        };
+
+        const pickMonth = (month) => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishYearEdit(true, { render: false });
+            input.value = formatMonthValue(viewYear, month);
+            closePopover();
+        };
+
+        prevBtn.addEventListener('click', () => {
+            input.value = shiftMonthValue(input.value || getCurrentMonthValue(), -1);
+            if (!popover.hidden) renderGrid();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            input.value = shiftMonthValue(input.value || getCurrentMonthValue(), 1);
+            if (!popover.hidden) renderGrid();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            input.focus();
+            if (!popover.hidden) renderGrid();
+        });
+
+        input.addEventListener('click', () => {
+            openPopover();
+        });
+
+        input.addEventListener('focus', () => {
+            if (popover.hidden) openPopover();
+        });
+
+        yearPrevBtn.addEventListener('click', () => {
+            viewYear = clampYear(viewYear - 1);
+            renderGrid();
+        });
+
+        yearNextBtn.addEventListener('click', () => {
+            viewYear = clampYear(viewYear + 1);
+            renderGrid();
+        });
+
+        yearLabel.addEventListener('click', (event) => {
+            event.stopPropagation();
+            startYearEdit();
+        });
+
+        yearInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        yearInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(false);
+            }
+        });
+
+        yearInput.addEventListener('blur', () => {
+            if (yearBlurTimer) clearTimeout(yearBlurTimer);
+            yearBlurTimer = setTimeout(() => {
+                finishYearEdit(true);
+                yearBlurTimer = null;
+            }, 0);
+        });
+
+        monthGrid.addEventListener('mousedown', (event) => {
+            const target = event.target.closest('.ym-picker-month-btn');
+            if (!target) return;
+            event.preventDefault();
+            pickMonth(Number(target.dataset.ymMonth));
+        });
+
+        monthGrid.addEventListener('click', (event) => {
+            const target = event.target.closest('.ym-picker-month-btn');
+            if (!target) return;
+            pickMonth(Number(target.dataset.ymMonth));
+        });
+
+        todayBtn.addEventListener('click', () => {
+            input.value = getCurrentMonthValue();
+            viewYear = parseMonthValue(input.value)?.year || viewYear;
+            closePopover();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!container.contains(event.target)) closePopover();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closePopover();
+        });
+
+        return {
+            open: openPopover,
+            close: closePopover
+        };
+    };
+
+    const initAll = (root = document) => {
+        const containers = root.querySelectorAll('[data-ym-picker]');
+        containers.forEach((container) => initOne(container));
+    };
+
+    return { initOne, initAll };
+})();
+
+const GeneralStyleDatePicker = (() => {
+    const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'];
+    const AUTO_INPUT_SELECTOR = 'input[type="date"]';
+    let autoObserver = null;
+
+    const createDate = (year, month, day) => new Date(year, month - 1, day);
+
+    const parseDateValue = (value) => {
+        const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!match) return null;
+        const year = Number(match[1]);
+        const month = Number(match[2]);
+        const day = Number(match[3]);
+        if (!year || month < 1 || month > 12 || day < 1 || day > 31) return null;
+        const dt = createDate(year, month, day);
+        if (dt.getFullYear() !== year || dt.getMonth() + 1 !== month || dt.getDate() !== day) return null;
+        return { year, month, day };
+    };
+
+    const formatDateParts = (year, month, day) =>
+        `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    const formatDateValue = (date) => {
+        return formatDateParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+    };
+
+    const getCurrentDateValue = () => formatDateValue(new Date());
+
+    const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
+
+    const shiftMonth = (year, month, step) => {
+        const dt = new Date(year, month - 1 + step, 1);
+        return { year: dt.getFullYear(), month: dt.getMonth() + 1 };
+    };
+
+    const shiftDateValue = (value, stepDays) => {
+        const parsed = parseDateValue(value);
+        if (!parsed) return '';
+        const dt = new Date(parsed.year, parsed.month - 1, parsed.day);
+        dt.setDate(dt.getDate() + stepDays);
+        return formatDateValue(dt);
+    };
+
+    const role = (container, name) => container.querySelector(`[data-ymd-role="${name}"]`);
+
+    const emitChange = (input) => {
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const NAV_ICON_HTML = {
+        prev: '<i class="fas fa-chevron-left"></i>',
+        next: '<i class="fas fa-chevron-right"></i>'
+    };
+
+    const createControlButton = (roleName, className, title, text, html = null) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `ymd-picker-btn ${className}`;
+        button.title = title;
+        button.dataset.ymdRole = roleName;
+        if (html) {
+            button.innerHTML = html;
+        } else {
+            button.textContent = text;
+        }
+        return button;
+    };
+
+    const ensureControls = (container, input) => {
+        if (!container || !input) return null;
+
+        input.dataset.ymdRole = 'input';
+        input.classList.add('ymd-picker-input');
+
+        let prevBtn = role(container, 'prev-day') || container.querySelector('.ymd-picker-btn--prev');
+        if (!prevBtn) {
+            prevBtn = createControlButton(
+                'prev-day',
+                'ymd-picker-btn--nav ymd-picker-btn--prev',
+                '上一天',
+                '',
+                NAV_ICON_HTML.prev
+            );
+            container.insertBefore(prevBtn, input);
+        } else {
+            prevBtn.dataset.ymdRole = 'prev-day';
+            prevBtn.type = 'button';
+            if (prevBtn.children.length === 0) {
+                const raw = (prevBtn.textContent || '').trim();
+                if (raw === '<' || raw === '‹' || raw === '') {
+                    prevBtn.innerHTML = NAV_ICON_HTML.prev;
+                }
+            }
+        }
+
+        let nextBtn = role(container, 'next-day') || container.querySelector('.ymd-picker-btn--next');
+        if (!nextBtn) {
+            nextBtn = createControlButton(
+                'next-day',
+                'ymd-picker-btn--nav ymd-picker-btn--next',
+                '下一天',
+                '',
+                NAV_ICON_HTML.next
+            );
+            container.appendChild(nextBtn);
+        } else {
+            nextBtn.dataset.ymdRole = 'next-day';
+            nextBtn.type = 'button';
+            if (nextBtn.children.length === 0) {
+                const raw = (nextBtn.textContent || '').trim();
+                if (raw === '>' || raw === '›' || raw === '') {
+                    nextBtn.innerHTML = NAV_ICON_HTML.next;
+                }
+            }
+        }
+
+        let clearBtn = role(container, 'clear') || container.querySelector('.ymd-picker-btn--clear');
+        if (!clearBtn) {
+            clearBtn = createControlButton('clear', 'ymd-picker-btn--clear', '清空日期', '×');
+            container.appendChild(clearBtn);
+        } else {
+            clearBtn.dataset.ymdRole = 'clear';
+            clearBtn.type = 'button';
+            if (clearBtn.children.length === 0) {
+                const raw = (clearBtn.textContent || '').trim();
+                if (!raw || raw.toLowerCase() === 'x') {
+                    clearBtn.textContent = '×';
+                }
+            }
+        }
+
+        return container;
+    };
+
+    const wrapInputToContainer = (input) => {
+        if (!input || !input.parentNode) return null;
+        const container = document.createElement('div');
+        container.className = 'ymd-picker';
+        container.dataset.ymdPicker = '';
+        container.dataset.ymdAuto = '1';
+        input.parentNode.insertBefore(container, input);
+        container.appendChild(input);
+        return ensureControls(container, input);
+    };
+
+    const ensureContainerForInput = (input) => {
+        if (!input || input.type !== 'date') return null;
+        const existingContainer = input.closest('[data-ymd-picker]');
+        if (existingContainer) {
+            return ensureControls(existingContainer, input);
+        }
+        return wrapInputToContainer(input);
+    };
+
+    const buildPopover = (container) => {
+        const popover = document.createElement('div');
+        popover.className = 'ymd-picker-popover';
+        popover.hidden = true;
+        popover.dataset.ymdRole = 'popover';
+        popover.innerHTML = `
+            <div class="ymd-picker-header">
+                <button type="button" class="ymd-picker-period-btn" data-ymd-role="month-prev" aria-label="上月">‹</button>
+                <div class="ymd-picker-period">
+                    <button type="button" class="ymd-picker-year-label" data-ymd-role="year-label" aria-label="编辑年份"></button>
+                    <input type="text" class="ymd-picker-year-input" data-ymd-role="year-input" inputmode="numeric" maxlength="4" hidden>
+                    <button type="button" class="ymd-picker-month-label" data-ymd-role="month-label" aria-label="编辑月份"></button>
+                    <input type="text" class="ymd-picker-month-input" data-ymd-role="month-input" inputmode="numeric" maxlength="2" hidden>
+                </div>
+                <button type="button" class="ymd-picker-period-btn" data-ymd-role="month-next" aria-label="下月">›</button>
+            </div>
+            <div class="ymd-picker-weekdays">
+                ${WEEKDAY_LABELS.map((label) => `<span class="ymd-picker-weekday">${label}</span>`).join('')}
+            </div>
+            <div class="ymd-picker-grid" data-ymd-role="day-grid"></div>
+            <div class="ymd-picker-actions">
+                <button type="button" class="ymd-picker-today-btn" data-ymd-role="today">今天</button>
+            </div>
+        `;
+        container.appendChild(popover);
+        return popover;
+    };
+
+    const isSameYmd = (left, right) => {
+        if (!left || !right) return false;
+        return left.year === right.year && left.month === right.month && left.day === right.day;
+    };
+
+    const initOne = (container) => {
+        if (!container || container.dataset.ymdInitialized === '1') return null;
+
+        const input = role(container, 'input');
+        const prevBtn = role(container, 'prev-day');
+        const nextBtn = role(container, 'next-day');
+        const clearBtn = role(container, 'clear');
+        if (!input || !prevBtn || !nextBtn || !clearBtn) return null;
+
+        const popover = role(container, 'popover') || buildPopover(container);
+        const yearLabel = role(container, 'year-label');
+        const yearInput = role(container, 'year-input');
+        const monthLabel = role(container, 'month-label');
+        const monthInput = role(container, 'month-input');
+        const monthPrevBtn = role(container, 'month-prev');
+        const monthNextBtn = role(container, 'month-next');
+        const dayGrid = role(container, 'day-grid');
+        const todayBtn = role(container, 'today');
+        if (!popover || !yearLabel || !yearInput || !monthLabel || !monthInput || !monthPrevBtn || !monthNextBtn || !dayGrid || !todayBtn) {
+            return null;
+        }
+
+        container.dataset.ymdInitialized = '1';
+        const current = parseDateValue(getCurrentDateValue());
+        let viewYear = parseDateValue(input.value)?.year || current.year;
+        let viewMonth = parseDateValue(input.value)?.month || current.month;
+        let yearEditing = false;
+        let monthEditing = false;
+        let yearBlurTimer = null;
+        let monthBlurTimer = null;
+
+        const clampYear = (year) => Math.min(9999, Math.max(1, year));
+        const clampMonth = (month) => Math.min(12, Math.max(1, month));
+
+        const renderGrid = () => {
+            const selected = parseDateValue(input.value);
+            const today = parseDateValue(getCurrentDateValue());
+
+            yearLabel.textContent = `${viewYear}年`;
+            yearInput.value = String(viewYear);
+            monthLabel.textContent = `${String(viewMonth).padStart(2, '0')}月`;
+            monthInput.value = String(viewMonth);
+
+            const firstWeekday = createDate(viewYear, viewMonth, 1).getDay();
+            const currentMonthDays = daysInMonth(viewYear, viewMonth);
+
+            const prev = shiftMonth(viewYear, viewMonth, -1);
+            const prevMonthDays = daysInMonth(prev.year, prev.month);
+            const cells = [];
+
+            for (let i = 0; i < firstWeekday; i += 1) {
+                const day = prevMonthDays - firstWeekday + i + 1;
+                cells.push({ year: prev.year, month: prev.month, day, muted: true });
+            }
+
+            for (let day = 1; day <= currentMonthDays; day += 1) {
+                cells.push({ year: viewYear, month: viewMonth, day, muted: false });
+            }
+
+            const next = shiftMonth(viewYear, viewMonth, 1);
+            while (cells.length < 42) {
+                const day = cells.length - (firstWeekday + currentMonthDays) + 1;
+                cells.push({ year: next.year, month: next.month, day, muted: true });
+            }
+
+            dayGrid.innerHTML = cells.map((cell) => {
+                const value = formatDateParts(cell.year, cell.month, cell.day);
+                const parsed = parseDateValue(value);
+                const classes = ['ymd-picker-day-btn'];
+                if (cell.muted) classes.push('muted');
+                if (isSameYmd(parsed, today)) classes.push('today');
+                if (isSameYmd(parsed, selected)) classes.push('active');
+                return `<button type="button" class="${classes.join(' ')}" data-ymd-date="${value}">${cell.day}</button>`;
+            }).join('');
+        };
+
+        const finishYearEdit = (applyChange, config = {}) => {
+            const shouldRender = config.render !== false;
+            if (!yearEditing) return;
+            if (applyChange) {
+                const raw = yearInput.value.trim();
+                if (/^\d{1,4}$/.test(raw)) {
+                    viewYear = clampYear(Number(raw));
+                }
+            }
+            yearInput.hidden = true;
+            yearLabel.hidden = false;
+            yearEditing = false;
+            if (shouldRender && !popover.hidden) renderGrid();
+        };
+
+        const finishMonthEdit = (applyChange, config = {}) => {
+            const shouldRender = config.render !== false;
+            if (!monthEditing) return;
+            if (applyChange) {
+                const raw = monthInput.value.trim();
+                if (/^\d{1,2}$/.test(raw)) {
+                    viewMonth = clampMonth(Number(raw));
+                }
+            }
+            monthInput.hidden = true;
+            monthLabel.hidden = false;
+            monthEditing = false;
+            if (shouldRender && !popover.hidden) renderGrid();
+        };
+
+        const startYearEdit = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            finishMonthEdit(true, { render: false });
+            yearEditing = true;
+            yearLabel.hidden = true;
+            yearInput.hidden = false;
+            yearInput.value = String(viewYear);
+            yearInput.focus();
+            yearInput.select();
+        };
+
+        const startMonthEdit = () => {
+            if (monthBlurTimer) {
+                clearTimeout(monthBlurTimer);
+                monthBlurTimer = null;
+            }
+            finishYearEdit(true, { render: false });
+            monthEditing = true;
+            monthLabel.hidden = true;
+            monthInput.hidden = false;
+            monthInput.value = String(viewMonth);
+            monthInput.focus();
+            monthInput.select();
+        };
+
+        const syncViewFromInput = () => {
+            const selected = parseDateValue(input.value);
+            if (!selected) return;
+            viewYear = selected.year;
+            viewMonth = selected.month;
+        };
+
+        const openPopover = () => {
+            syncViewFromInput();
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            if (monthBlurTimer) {
+                clearTimeout(monthBlurTimer);
+                monthBlurTimer = null;
+            }
+            finishYearEdit(false);
+            finishMonthEdit(false);
+            renderGrid();
+            popover.hidden = false;
+            container.classList.add('open');
+        };
+
+        const closePopover = () => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            if (monthBlurTimer) {
+                clearTimeout(monthBlurTimer);
+                monthBlurTimer = null;
+            }
+            finishYearEdit(true);
+            finishMonthEdit(true);
+            popover.hidden = true;
+            container.classList.remove('open');
+        };
+
+        const pickDate = (value) => {
+            if (yearBlurTimer) {
+                clearTimeout(yearBlurTimer);
+                yearBlurTimer = null;
+            }
+            if (monthBlurTimer) {
+                clearTimeout(monthBlurTimer);
+                monthBlurTimer = null;
+            }
+            finishYearEdit(true, { render: false });
+            finishMonthEdit(true, { render: false });
+            if (!parseDateValue(value)) return;
+            input.value = value;
+            emitChange(input);
+            closePopover();
+        };
+
+        prevBtn.addEventListener('click', () => {
+            const base = input.value || getCurrentDateValue();
+            input.value = shiftDateValue(base, -1);
+            emitChange(input);
+            if (!popover.hidden) {
+                syncViewFromInput();
+                renderGrid();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            const base = input.value || getCurrentDateValue();
+            input.value = shiftDateValue(base, 1);
+            emitChange(input);
+            if (!popover.hidden) {
+                syncViewFromInput();
+                renderGrid();
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            emitChange(input);
+            input.focus();
+            if (!popover.hidden) renderGrid();
+        });
+
+        input.addEventListener('click', () => {
+            openPopover();
+        });
+
+        input.addEventListener('focus', () => {
+            if (popover.hidden) openPopover();
+        });
+
+        monthPrevBtn.addEventListener('click', () => {
+            finishYearEdit(true, { render: false });
+            finishMonthEdit(true, { render: false });
+            const shifted = shiftMonth(viewYear, viewMonth, -1);
+            viewYear = shifted.year;
+            viewMonth = shifted.month;
+            renderGrid();
+        });
+
+        monthNextBtn.addEventListener('click', () => {
+            finishYearEdit(true, { render: false });
+            finishMonthEdit(true, { render: false });
+            const shifted = shiftMonth(viewYear, viewMonth, 1);
+            viewYear = shifted.year;
+            viewMonth = shifted.month;
+            renderGrid();
+        });
+
+        yearLabel.addEventListener('click', (event) => {
+            event.stopPropagation();
+            startYearEdit();
+        });
+
+        monthLabel.addEventListener('click', (event) => {
+            event.stopPropagation();
+            startMonthEdit();
+        });
+
+        yearInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        monthInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        yearInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                if (yearBlurTimer) {
+                    clearTimeout(yearBlurTimer);
+                    yearBlurTimer = null;
+                }
+                finishYearEdit(false);
+            }
+        });
+
+        monthInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (monthBlurTimer) {
+                    clearTimeout(monthBlurTimer);
+                    monthBlurTimer = null;
+                }
+                finishMonthEdit(true);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                if (monthBlurTimer) {
+                    clearTimeout(monthBlurTimer);
+                    monthBlurTimer = null;
+                }
+                finishMonthEdit(false);
+            }
+        });
+
+        yearInput.addEventListener('blur', () => {
+            if (yearBlurTimer) clearTimeout(yearBlurTimer);
+            yearBlurTimer = setTimeout(() => {
+                finishYearEdit(true);
+                yearBlurTimer = null;
+            }, 0);
+        });
+
+        monthInput.addEventListener('blur', () => {
+            if (monthBlurTimer) clearTimeout(monthBlurTimer);
+            monthBlurTimer = setTimeout(() => {
+                finishMonthEdit(true);
+                monthBlurTimer = null;
+            }, 0);
+        });
+
+        dayGrid.addEventListener('mousedown', (event) => {
+            const target = event.target.closest('.ymd-picker-day-btn');
+            if (!target) return;
+            event.preventDefault();
+            pickDate(target.dataset.ymdDate);
+        });
+
+        dayGrid.addEventListener('click', (event) => {
+            const target = event.target.closest('.ymd-picker-day-btn');
+            if (!target) return;
+            pickDate(target.dataset.ymdDate);
+        });
+
+        todayBtn.addEventListener('click', () => {
+            input.value = getCurrentDateValue();
+            emitChange(input);
+            syncViewFromInput();
+            closePopover();
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!container.contains(event.target)) closePopover();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closePopover();
+        });
+
+        return {
+            input,
+            open: openPopover,
+            close: closePopover
+        };
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+
+        const containers = new Set();
+        const dateInputs = root.querySelectorAll(AUTO_INPUT_SELECTOR);
+        dateInputs.forEach((input) => {
+            const container = ensureContainerForInput(input);
+            if (container) containers.add(container);
+        });
+
+        const pickerContainers = root.querySelectorAll('[data-ymd-picker]');
+        pickerContainers.forEach((container) => {
+            const input = role(container, 'input') || container.querySelector(AUTO_INPUT_SELECTOR);
+            if (!input) return;
+            const normalized = ensureControls(container, input);
+            if (normalized) containers.add(normalized);
+        });
+
+        containers.forEach((container) => initOne(container));
+    };
+
+    const observe = () => {
+        if (typeof MutationObserver === 'undefined' || autoObserver || typeof document === 'undefined') return;
+        if (!document.body) return;
+
+        autoObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof Element)) return;
+
+                    if (node.matches(AUTO_INPUT_SELECTOR) || node.matches('[data-ymd-picker]')) {
+                        initAll(node.parentElement || document);
+                        return;
+                    }
+
+                    if (node.querySelector(AUTO_INPUT_SELECTOR) || node.querySelector('[data-ymd-picker]')) {
+                        initAll(node);
+                    }
+                });
+            });
+        });
+
+        autoObserver.observe(document.body, { childList: true, subtree: true });
+    };
+
+    return { initOne, initAll, observe };
+})();
+
+const GeneralStyleFilterSelectAdapter = (() => {
+    const FILTER_ROOT_SELECTOR = '.filter-section, .control-panel, .filter-row, .filter-row-main, .filter-row-secondary';
+    const TARGET_SELECTOR = 'select.form-select';
+    let observer = null;
+    const adaptedEntries = [];
+
+    const toArray = (nodeList) => Array.from(nodeList || []);
+
+    const getLabelText = (select) => {
+        const group = select.closest('.filter-group');
+        const label = group?.querySelector('.filter-label');
+        return (label?.textContent || '').trim();
+    };
+
+    const getPlaceholder = (select) => {
+        const selected = toArray(select.options).find((opt) => opt.selected);
+        const emptyOpt = toArray(select.options).find((opt) => String(opt.value || '') === '');
+        return (
+            select.dataset.placeholder ||
+            selected?.textContent?.trim() ||
+            emptyOpt?.textContent?.trim() ||
+            getLabelText(select) ||
+            '请选择'
+        );
+    };
+
+    const shouldSkip = (select) => {
+        if (!select || select.dataset.gsSelectAdapted === '1') return true;
+        if (select.closest('[data-ym-picker], [data-ymd-picker]')) return true;
+        if (!select.closest(FILTER_ROOT_SELECTOR)) return true;
+        if (select.closest('.modal-overlay, .modal-content, .modal-body, .modal-footer')) return true;
+        if (select.closest('.pagination-container, .pagination-controls, .page-size-wrapper')) return true;
+        if ((select.id || '').toLowerCase().includes('pagesize')) return true;
+        if (select.dataset.noSearchable === '1') return true;
+        return false;
+    };
+
+    const isSemanticMultiple = (select) => {
+        if (!select) return false;
+        if (select.multiple) return true;
+        if (select.dataset.searchableMultiple === 'true') return true;
+        if (select.dataset.searchableMultiple === 'false') return false;
+        // 站点筛选框统一为可搜索多选；单选场景可显式设置 data-searchable-multiple="false"
+        return true;
+    };
+
+    const mapOptions = (select) => {
+        return toArray(select.options).map((opt) => ({
+            value: String(opt.value ?? ''),
+            label: String(opt.textContent || '').trim(),
+            disabled: !!opt.disabled
+        }));
+    };
+
+    const getSelectValues = (select, multiple) => {
+        if (!multiple) return String(select.value ?? '');
+        const selected = toArray(select.selectedOptions).map((opt) => String(opt.value ?? ''));
+        if (selected.length === 0) return [''];
+        if (selected.includes('')) return [''];
+        return selected;
+    };
+
+    const syncNativeSelect = (select, value, multiple) => {
+        if (!multiple) {
+            const text = String(value ?? '');
+            select.multiple = false;
+            select.value = text;
+            select.dataset.multiValue = '';
+            return;
+        }
+
+        const values = Array.isArray(value)
+            ? value.map((v) => String(v ?? ''))
+            : String(value ?? '').split(',').map((v) => v.trim()).filter(Boolean);
+
+        const normalized = values.filter((v) => v !== '');
+        select.multiple = true;
+
+        toArray(select.options).forEach((opt) => {
+            const optValue = String(opt.value ?? '');
+            opt.selected = normalized.includes(optValue) || (normalized.length === 0 && optValue === '');
+        });
+
+        // 兼容仍读取 select.value 的旧逻辑
+        select.dataset.multiValue = normalized.join(',');
+    };
+
+    const readNativeValue = (select, multiple) => {
+        if (!multiple) return String(select.value ?? '');
+        const selected = toArray(select.selectedOptions).map((opt) => String(opt.value ?? ''));
+        const normalized = selected.filter((v) => v !== '');
+        return normalized.length > 0 ? normalized : [''];
+    };
+
+    const modelKey = (value, multiple) => {
+        if (!multiple) return String(value ?? '');
+        return JSON.stringify(Array.isArray(value) ? value : []);
+    };
+
+    const syncEntryFromNative = (entry) => {
+        if (!entry || entry.syncing) return;
+        if (!entry.select || !entry.select.isConnected) return;
+        const current = readNativeValue(entry.select, entry.multiple);
+        const key = modelKey(current, entry.multiple);
+        if (key === entry.lastModelKey) return;
+        entry.syncing = true;
+        entry.instance.setValue(current);
+        entry.lastModelKey = key;
+        entry.syncing = false;
+    };
+
+    const adaptOne = (select) => {
+        if (shouldSkip(select)) return null;
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return null;
+
+        const multiple = isSemanticMultiple(select);
+        const placeholder = getPlaceholder(select);
+        const options = mapOptions(select);
+
+        const holder = document.createElement('div');
+        holder.className = `searchable-select ${multiple ? 'multiple' : 'single'}`;
+        holder.dataset.placeholder = placeholder;
+        holder.dataset.gsSelectHolder = '1';
+        holder.dataset.sourceSelectId = select.id || '';
+        const wrapper = select.closest('.select-wrapper');
+        const sameGroupWrapped = wrapper && wrapper.closest('.filter-group') === select.closest('.filter-group');
+        if (sameGroupWrapped) {
+            wrapper.insertAdjacentElement('afterend', holder);
+            wrapper.style.display = 'none';
+            wrapper.dataset.gsSelectWrapped = '1';
+            select.style.display = 'none';
+        } else {
+            select.insertAdjacentElement('afterend', holder);
+            select.style.display = 'none';
+        }
+        select.dataset.gsSelectAdapted = '1';
+
+        const instance = new window.SearchableSelect(holder, {
+            options,
+            multiple,
+            placeholder,
+            searchable: true
+        });
+
+        const initialValue = getSelectValues(select, multiple);
+        instance.setValue(initialValue);
+        syncNativeSelect(select, initialValue, multiple);
+        const entry = {
+            select,
+            instance,
+            multiple,
+            syncing: false,
+            lastModelKey: modelKey(initialValue, multiple)
+        };
+        adaptedEntries.push(entry);
+
+        instance.onChange = (newValue) => {
+            entry.syncing = true;
+            syncNativeSelect(select, newValue, multiple);
+            entry.lastModelKey = modelKey(newValue, multiple);
+            entry.syncing = false;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+
+        select.addEventListener('change', () => {
+            syncEntryFromNative(entry);
+        });
+
+        return entry;
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return [];
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return [];
+
+        const selects = toArray(root.querySelectorAll(TARGET_SELECTOR));
+        const adapted = [];
+        selects.forEach((select) => {
+            const result = adaptOne(select);
+            if (result) adapted.push(result);
+        });
+        return adapted;
+    };
+
+    const observeDom = () => {
+        if (typeof MutationObserver === 'undefined' || observer || typeof document === 'undefined') return;
+        if (!document.body) return;
+
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof Element)) return;
+                    if (node.matches(TARGET_SELECTOR)) {
+                        adaptOne(node);
+                        return;
+                    }
+                    if (node.querySelector(TARGET_SELECTOR)) {
+                        initAll(node);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    const syncVisibleEntries = () => {
+        if (typeof document === 'undefined') return;
+        if (document.visibilityState === 'hidden') return;
+        adaptedEntries.forEach((entry) => syncEntryFromNative(entry));
+    };
+
+    const getValue = (selectId) => {
+        const select = typeof selectId === 'string' ? document.getElementById(selectId) : selectId;
+        if (!select) return '';
+        const multiValue = (select.dataset.multiValue || '').trim();
+        if (multiValue) return multiValue.split(',').filter(Boolean);
+        return String(select.value ?? '');
+    };
+
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', syncVisibleEntries);
+        window.addEventListener('pageshow', syncVisibleEntries);
+    }
+
+    return { initAll, observeDom, getValue, syncVisibleEntries };
+})();
+
+const GeneralStyleDateRangeFilter = (() => {
+    const resolveElement = (target) => {
+        if (!target) return null;
+        if (typeof target === 'string') return document.querySelector(target);
+        return target instanceof Element ? target : null;
+    };
+
+    const resolveElements = (targets) => {
+        if (!Array.isArray(targets)) return [];
+        return targets
+            .map((target) => resolveElement(target))
+            .filter((element) => !!element);
+    };
+
+    const setGroupVisible = (group, visible, displayMode) => {
+        if (!group) return;
+        group.classList.add('gs-date-range-custom-group');
+        group.classList.toggle('is-visible', visible);
+        group.style.display = visible ? displayMode : 'none';
+    };
+
+    const init = (config = {}) => {
+        const selectTarget = resolveElement(config.select);
+        if (!selectTarget) return null;
+        if (typeof window === 'undefined' || typeof window.SearchableSelect !== 'function') return null;
+
+        const options = Array.isArray(config.options) ? config.options : [];
+        const placeholder = config.placeholder || selectTarget.dataset.placeholder || '选择日期范围';
+        const defaultValue = config.defaultValue ?? '';
+        const customValue = config.customValue || 'custom';
+        const customGroups = resolveElements(config.customGroups || []);
+        const customDisplay = config.customDisplay || 'flex';
+        const startInput = resolveElement(config.startInput);
+        const endInput = resolveElement(config.endInput);
+        const onChange = typeof config.onChange === 'function' ? config.onChange : null;
+
+        const existingInstance = selectTarget._searchableSelect || null;
+        const select = existingInstance || new window.SearchableSelect(selectTarget, {
+            options,
+            multiple: false,
+            placeholder
+        });
+        if (!existingInstance && options.length > 0) {
+            select.setValue(defaultValue);
+        } else if (existingInstance && options.length > 0) {
+            select.setOptions(options);
+            if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '') {
+                select.setValue(defaultValue);
+            }
+        }
+
+        const api = {
+            select,
+            getValue: () => {
+                const value = select.getValue();
+                return String(value || '');
+            },
+            isCustom: () => {
+                return api.getValue() === customValue;
+            },
+            setValue: (value) => {
+                select.setValue(value);
+                api.syncVisibility();
+            },
+            getStartDate: () => (startInput ? startInput.value : ''),
+            getEndDate: () => (endInput ? endInput.value : ''),
+            clearCustomDates: () => {
+                if (startInput) startInput.value = '';
+                if (endInput) endInput.value = '';
+            },
+            syncVisibility: () => {
+                const visible = api.isCustom();
+                customGroups.forEach((group) => setGroupVisible(group, visible, customDisplay));
+            }
+        };
+
+        api.syncVisibility();
+        select.onChange = (value) => {
+            api.syncVisibility();
+            if (onChange) onChange(value, api);
+        };
+
+        return api;
+    };
+
+    return { init };
+})();
+
+const GeneralStyleFilterActionButtonAdapter = (() => {
+    const FILTER_SCOPE_SELECTOR = '.filter-section, .control-panel, .filter-row, .filter-actions, .filter-actions-main, .filter-actions-secondary';
+    const SEARCH_TEXT_TOKENS = ['搜索', '筛选', '查询'];
+    const RESET_TEXT_TOKENS = ['重置', '清空', '清除'];
+
+    let observer = null;
+
+    const toArray = (listLike) => Array.from(listLike || []);
+
+    const textOf = (element) => {
+        if (!element) return '';
+        const text = `${element.getAttribute('title') || ''} ${element.textContent || ''}`;
+        return text.replace(/\s+/g, '');
+    };
+
+    const inFilterScope = (button) => {
+        if (!button || typeof button.closest !== 'function') return false;
+        return !!button.closest(FILTER_SCOPE_SELECTOR);
+    };
+
+    const hasAnyToken = (raw, tokens) => tokens.some((token) => raw.includes(token));
+
+    const classify = (button) => {
+        const text = textOf(button);
+        const onclick = String(button.getAttribute('onclick') || '').toLowerCase();
+
+        const isReset = hasAnyToken(text, RESET_TEXT_TOKENS) || /reset|clear/.test(onclick);
+        if (isReset) return 'reset';
+
+        const isSearch = hasAnyToken(text, SEARCH_TEXT_TOKENS) || /applyfilter|filter|search|query/.test(onclick);
+        if (isSearch) return 'search';
+
+        return '';
+    };
+
+    const decorate = (button, type) => {
+        if (!button || !type) return;
+        if (button.dataset.gsFilterActionDecorated === '1') return;
+
+        const isReset = type === 'reset';
+        const label = isReset ? '重置' : '筛选';
+
+        button.classList.add('gs-filter-action-btn');
+        button.classList.add(isReset ? 'gs-filter-reset-btn' : 'gs-filter-search-btn');
+        button.setAttribute('title', label);
+        button.setAttribute('aria-label', label);
+        button.innerHTML = isReset
+            ? '<i class="fas fa-redo" aria-hidden="true"></i>'
+            : '<i class="fas fa-search" aria-hidden="true"></i>';
+        button.dataset.gsFilterActionDecorated = '1';
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+        const buttons = toArray(root.querySelectorAll('button.btn, a.btn'));
+        buttons.forEach((button) => {
+            if (!inFilterScope(button)) return;
+            const type = classify(button);
+            if (!type) return;
+            decorate(button, type);
+        });
+    };
+
+    const observe = () => {
+        if (observer || typeof MutationObserver === 'undefined' || typeof document === 'undefined' || !document.body) return;
+        observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (!(node instanceof Element)) return;
+                    if (node.matches('button.btn, a.btn')) {
+                        initAll(node.parentElement || document);
+                        return;
+                    }
+                    if (node.querySelector('button.btn, a.btn')) {
+                        initAll(node);
+                    }
+                });
+            });
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    return { initAll, observe };
+})();
+
+if (typeof window !== 'undefined') {
+    window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
+    window.GeneralStyleDatePicker = GeneralStyleDatePicker;
+    window.GeneralStyleFilterSelectAdapter = GeneralStyleFilterSelectAdapter;
+    window.GeneralStyleDateRangeFilter = GeneralStyleDateRangeFilter;
+    window.GeneralStyleFilterActionButtonAdapter = GeneralStyleFilterActionButtonAdapter;
+
+    const bootDatePicker = () => {
+        if (!window.GeneralStyleDatePicker) return;
+        window.GeneralStyleDatePicker.initAll(document);
+        window.GeneralStyleDatePicker.observe();
+    };
+
+    const bootFilterSelectAdapter = () => {
+        if (!window.GeneralStyleFilterSelectAdapter) return;
+        if (typeof window.SearchableSelect !== 'function') return;
+        window.GeneralStyleFilterSelectAdapter.initAll(document);
+        // 默认关闭全局 DOM 观察器，避免动态表格场景下持续扫描引发主线程繁忙。
+        // 如需动态节点自动适配，可在页面中显式设置:
+        // window.__GS_ENABLE_FILTER_SELECT_OBSERVER__ = true;
+        if (window.__GS_ENABLE_FILTER_SELECT_OBSERVER__ === true) {
+            window.GeneralStyleFilterSelectAdapter.observeDom();
+        }
+    };
+
+    const bootFilterActionButtons = () => {
+        if (!window.GeneralStyleFilterActionButtonAdapter) return;
+        window.GeneralStyleFilterActionButtonAdapter.initAll(document);
+        // 默认关闭按钮装饰观察器，避免频繁 DOM 变更时持续扫描。
+        // 如需自动处理后续动态插入的筛选按钮，可显式开启:
+        // window.__GS_ENABLE_FILTER_ACTION_OBSERVER__ = true;
+        if (window.__GS_ENABLE_FILTER_ACTION_OBSERVER__ === true) {
+            window.GeneralStyleFilterActionButtonAdapter.observe();
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootDatePicker);
+        document.addEventListener('DOMContentLoaded', bootFilterSelectAdapter);
+        document.addEventListener('DOMContentLoaded', bootFilterActionButtons);
+    } else {
+        bootDatePicker();
+        bootFilterSelectAdapter();
+        bootFilterActionButtons();
+    }
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { Pagination, BulkActions, PageSizeSelector, Utils, TableDataManager, ModalManager };
+    module.exports = {
+        Pagination,
+        BulkActions,
+        PageSizeSelector,
+        Utils,
+        TableDataManager,
+        ModalManager,
+        GeneralStyleYearMonthPicker,
+        GeneralStyleDatePicker,
+        GeneralStyleFilterSelectAdapter,
+        GeneralStyleDateRangeFilter,
+        GeneralStyleFilterActionButtonAdapter
+    };
 }

@@ -444,26 +444,12 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">状态筛选</label>
-                    <div id="statusDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="statusAnchor">
-                            <span id="statusSelectedText">全部状态</span>
-                        </div>
-                        <div class="items" id="statusItems">
-                            <!-- 动态加载状态选项 -->
-                        </div>
-                    </div>
+                    <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">创建人</label>
-                    <div id="creatorDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="creatorAnchor">
-                            <span id="creatorSelectedText">全部创建人</span>
-                        </div>
-                        <div class="items" id="creatorItems">
-                            <!-- 动态加载创建人选项 -->
-                        </div>
-                    </div>
+                    <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部创建人"></div>
                 </div>
 
                 <div class="filter-group">
@@ -646,12 +632,17 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         let currentData = {
             list: [],
             pagination: {page: 1, page_size: 20, total: 0, total_pages: 0},
             filters: {status: [], created_by: [], search: ''}
         };
+        let statusSelect = null;
+        let creatorSelect = null;
+        let suppressFilterAutoLoad = false;
         let currentDetailId = null;
         let canEdit = false;
         let selectedIds = new Set();
@@ -664,143 +655,82 @@
         let completeTargetId = null;
 
         document.addEventListener('DOMContentLoaded', function () {
-            // 🔥 修复：先加载状态选项，再加载创建人和产品列表
+            initFilterSelects();
             Promise.all([
-                loadStatusOptions(),  // 新增：加载状态选项
+                loadStatusOptions(),
                 loadCreators(),
                 loadProducts()
             ]).then(() => {
-                initDropdowns();
+                syncFilterMultiValues();
             });
         });
 
-        // 初始化下拉框逻辑
-        function initDropdowns() {
-            setupDropdown('statusDropdown', 'statusAnchor', 'statusItems', updateStatusSelection);
-            setupDropdown('creatorDropdown', 'creatorAnchor', 'creatorItems', updateCreatorSelection);
+        function getMultiSelectValues(selectInstance) {
+            if (!selectInstance || typeof selectInstance.getValue !== 'function') return [];
+            const raw = selectInstance.getValue();
+            const values = Array.isArray(raw) ? raw.map(v => String(v)) : (raw ? [String(raw)] : []);
+            const hasAll = values.some(v => v === '' || v.toLowerCase() === 'all' || v === '\u5168\u90e8' || v === '\u4e0d\u9650');
+            if (hasAll) return [];
+            return values.filter(v => v !== '');
         }
 
-        function setupDropdown(dropdownId, anchorId, itemsId, updateCallback) {
-            const dropdown = document.getElementById(dropdownId);
-            const anchor = document.getElementById(anchorId);
-            const items = document.getElementById(itemsId);
-
-            anchor.addEventListener('click', function (e) {
-                e.stopPropagation();
-                // Close other dropdowns
-                document.querySelectorAll('.dropdown-check-list').forEach(d => {
-                    if (d.id !== dropdownId) d.classList.remove('visible');
-                });
-                dropdown.classList.toggle('visible');
-            });
-
-            items.addEventListener('click', function (e) {
-                e.stopPropagation();
-            });
-
-            // 绑定checkbox事件
-            items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.addEventListener('change', function () {
-                    handleCheckboxChange(this, itemsId);
-                    updateCallback();
-                    currentData.pagination.page = 1; // Reset page
-                    loadProducts();
-                });
-            });
-
-            document.addEventListener('click', function () {
-                dropdown.classList.remove('visible');
-            });
+        function syncFilterMultiValues() {
+            currentData.filters.status = getMultiSelectValues(statusSelect);
+            currentData.filters.created_by = getMultiSelectValues(creatorSelect);
         }
 
-        function handleCheckboxChange(checkbox, itemsId) {
-            const allCheckbox = document.querySelector(`#${itemsId} input[value="all"]`);
-
-            if (checkbox.value === 'all') {
-                if (checkbox.checked) {
-                    document.querySelectorAll(`#${itemsId} input[type="checkbox"]`).forEach(cb => {
-                        if (cb !== checkbox) cb.checked = false;
-                    });
-                }
-            } else {
-                if (checkbox.checked && allCheckbox) {
-                    allCheckbox.checked = false;
-                }
-            }
-        }
-
-        function updateStatusSelection() {
-            const checkboxes = document.querySelectorAll('#statusItems input[type="checkbox"]');
-            const selected = [];
-            let allChecked = false;
-
-            checkboxes.forEach(cb => {
-                if (cb.value === 'all' && cb.checked) allChecked = true;
-                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+        function initFilterSelects() {
+            statusSelect = new SearchableSelect('#statusFilter', {
+                options: [{value: '', label: '\u5168\u90e8\u72b6\u6001'}],
+                multiple: true,
+                placeholder: '\u5168\u90e8\u72b6\u6001'
             });
+            statusSelect.setValue(['']);
+            statusSelect.onChange = () => {
+                if (suppressFilterAutoLoad) return;
+                syncFilterMultiValues();
+                currentData.pagination.page = 1;
+                loadProducts();
+            };
 
-            currentData.filters.status = allChecked ? [] : selected;
-
-            const textEl = document.getElementById('statusSelectedText');
-            if (allChecked || selected.length === 0) {
-                textEl.textContent = '全部状态';
-            } else {
-                textEl.textContent = `已选 ${selected.length} 项`;
-            }
-        }
-
-        function updateCreatorSelection() {
-            const checkboxes = document.querySelectorAll('#creatorItems input[type="checkbox"]');
-            const selected = [];
-            let allChecked = false;
-
-            checkboxes.forEach(cb => {
-                if (cb.value === 'all' && cb.checked) allChecked = true;
-                if (cb.value !== 'all' && cb.checked) selected.push(cb.value);
+            creatorSelect = new SearchableSelect('#creatorFilter', {
+                options: [{value: '', label: '\u5168\u90e8\u521b\u5efa\u4eba'}],
+                multiple: true,
+                placeholder: '\u5168\u90e8\u521b\u5efa\u4eba'
             });
-
-            currentData.filters.created_by = allChecked ? [] : selected;
-
-            const textEl = document.getElementById('creatorSelectedText');
-            if (allChecked || selected.length === 0) {
-                textEl.textContent = '全部创建人';
-            } else {
-                textEl.textContent = `已选 ${selected.length} 人`;
-            }
+            creatorSelect.setValue(['']);
+            creatorSelect.onChange = () => {
+                if (suppressFilterAutoLoad) return;
+                syncFilterMultiValues();
+                currentData.pagination.page = 1;
+                loadProducts();
+            };
         }
 
-        // 🔥 新增：动态加载状态选项
         async function loadStatusOptions() {
             try {
                 const response = await fetch('/api/products/status-choices/');
                 const result = await response.json();
                 if (result.success) {
-                    const items = document.getElementById('statusItems');
-                    let html = '<div class="item"><input type="checkbox" value="all" checked> 全部状态</div>';
-
-                    // 过滤掉草稿状态，按业务需求显示
+                    const options = [{value: '', label: '\u5168\u90e8\u72b6\u6001'}];
                     const excludeStatus = ['draft', 'cancelled'];
                     result.data.forEach(status => {
                         if (!excludeStatus.includes(status.code)) {
-                            html += `<div class="item"><input type="checkbox" value="${status.code}"> ${status.display}</div>`;
+                            options.push({value: String(status.code), label: status.display});
                         }
                     });
 
-                    items.innerHTML = html;
-
-                    // 重新绑定事件
-                    const dropdown = document.getElementById('statusDropdown');
-                    items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                        cb.addEventListener('change', function () {
-                            handleCheckboxChange(this, 'statusItems');
-                            updateStatusSelection();
-                            currentData.pagination.page = 1;
-                            loadProducts();
-                        });
-                    });
+                    if (statusSelect) {
+                        const current = getMultiSelectValues(statusSelect);
+                        const validValues = new Set(options.map(opt => String(opt.value)));
+                        const next = current.filter(v => validValues.has(String(v)));
+                        statusSelect.setOptions(options);
+                        statusSelect.setValue(next.length > 0 ? next : ['']);
+                    }
+                    syncFilterMultiValues();
                 }
             } catch (error) {
-                console.error('加载状态选项失败', error);
+                console.error('load status options failed', error);
             }
         }
 
@@ -809,26 +739,22 @@
                 const response = await fetch('/api/tasks/available-owners/');
                 const result = await response.json();
                 if (result.success) {
-                    const items = document.getElementById('creatorItems');
-                    let html = '<div class="item"><input type="checkbox" value="all" checked> 全部创建人</div>';
+                    const options = [{value: '', label: '\u5168\u90e8\u521b\u5efa\u4eba'}];
                     result.data.forEach(user => {
-                        html += `<div class="item"><input type="checkbox" value="${user.id}"> ${user.name}</div>`;
+                        options.push({value: String(user.id), label: user.name});
                     });
-                    items.innerHTML = html;
 
-                    // 重新绑定事件
-                    const dropdown = document.getElementById('creatorDropdown');
-                    items.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                        cb.addEventListener('change', function () {
-                            handleCheckboxChange(this, 'creatorItems');
-                            updateCreatorSelection();
-                            currentData.pagination.page = 1;
-                            loadProducts();
-                        });
-                    });
+                    if (creatorSelect) {
+                        const current = getMultiSelectValues(creatorSelect);
+                        const validValues = new Set(options.map(opt => String(opt.value)));
+                        const next = current.filter(v => validValues.has(String(v)));
+                        creatorSelect.setOptions(options);
+                        creatorSelect.setValue(next.length > 0 ? next : ['']);
+                    }
+                    syncFilterMultiValues();
                 }
             } catch (error) {
-                console.error('加载创建人失败', error);
+                console.error('load creators failed', error);
             }
         }
 
@@ -1148,7 +1074,7 @@
         }
 
         function applyFilters() {
-            currentData.filters.status = document.getElementById('statusFilter').value;
+            syncFilterMultiValues();
             currentData.pagination.page = 1;
             loadProducts();
         }

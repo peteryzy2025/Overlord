@@ -65,7 +65,9 @@ def get_group_targets_api(request):
 
         ops_group_filter = request.GET.get('ops_group', '').strip()
         if ops_group_filter:
-            query = query.filter(ops_group=ops_group_filter)
+            ops_groups = [g.strip() for g in ops_group_filter.split(',') if g.strip()]
+            if ops_groups:
+                query = query.filter(ops_group__in=ops_groups)
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -270,11 +272,23 @@ def get_personal_targets_api(request):
 
         user_filter = request.GET.get('user', '').strip()
         if user_filter:
-            query = query.filter(user_id=int(user_filter))
+            user_ids = []
+            for uid in user_filter.split(','):
+                uid = uid.strip()
+                if not uid:
+                    continue
+                try:
+                    user_ids.append(int(uid))
+                except ValueError:
+                    continue
+            if user_ids:
+                query = query.filter(user_id__in=user_ids)
 
         ops_group_filter = request.GET.get('ops_group', '').strip()
         if ops_group_filter and request.user.can_manage_group_targets():
-            query = query.filter(ops_group=ops_group_filter)
+            ops_groups = [g.strip() for g in ops_group_filter.split(',') if g.strip()]
+            if ops_groups:
+                query = query.filter(ops_group__in=ops_groups)
 
         search = request.GET.get('search', '').strip()
         if search:
