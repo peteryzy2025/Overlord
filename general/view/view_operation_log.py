@@ -26,6 +26,7 @@ def get_operation_log_permissions(user):
     permissions = {
         'can_see_type_1': False,
         'can_see_type_2': False,
+        'can_see_type_8': False,  # 8xxx: 侵权词库操作
         'ops_all': False,
         'ops_group': False,
         'ops': False,
@@ -49,6 +50,11 @@ def get_operation_log_permissions(user):
     if '555' in perm_list:
         permissions['can_see_type_1'] = True
         permissions['can_see_type_2'] = True
+        permissions['can_see_type_8'] = True  # 555也能看8xxx
+
+    # 判断556权限（8xxx侵权词库操作）
+    if '556' in perm_list:
+        permissions['can_see_type_8'] = True
 
     # 判断3xxx和4xxx类操作权限（订单+邮件）
     if 'ops_all' in perm_list:
@@ -141,6 +147,9 @@ def get_operation_types_api(request):
             # 修改：3xxx和4xxx共享同一套权限
             if (type_str.startswith('3') or type_str.startswith('4')) and not (
                     permissions['ops_all'] or permissions['ops_group'] or permissions['ops']):
+                continue
+            # 8xxx: 侵权词库操作
+            if type_str.startswith('8') and not permissions['can_see_type_8']:
                 continue
 
             visible_types.append({
@@ -255,6 +264,10 @@ def get_operation_logs_api(request):
         # 2. 如果用户有2xxx权限，可以看到所有店铺管理类操作
         if permissions['can_see_type_2']:
             user_query |= Q(operation_type__gte=2000, operation_type__lt=3000)
+
+        # 2.5 如果用户有8xxx权限，可以看到所有侵权词库操作
+        if permissions['can_see_type_8']:
+            user_query |= Q(operation_type__gte=8000, operation_type__lt=9000)
 
         # 3. 3xxx和4xxx订单/邮件操作权限（核心修改）
         if permissions['ops_all']:

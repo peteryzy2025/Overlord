@@ -806,6 +806,12 @@ class UserOperationLog(models.Model):
         TRACKING_MARK_CANCELLED = 7101, '物流追踪-标记运单取消'
         TRACKING_UNDO_CANCEL = 7102, '物流追踪-恢复运单状态'
 
+        # 8xxx: 侵权词库操作
+        TRO_CREATE = 8001, '新增侵权词'
+        TRO_UPDATE = 8002, '修改侵权词'
+        TRO_DELETE = 8003, '删除侵权词'
+        TRO_IMPORT = 8004, '批量导入侵权词'
+
     # ============= 字段定义 =============
     company = models.ForeignKey(
         'general.Company',
