@@ -238,6 +238,13 @@ class TroTable(models.Model):
     """侵权词表,用于判断高/低风险"""
     id = models.AutoField(primary_key=True, verbose_name='ID')
     theme_name = models.CharField(max_length=765, verbose_name='侵权词名')
+    replacement_word = models.CharField(
+        max_length=765,
+        verbose_name='建议替换词',
+        null=True,
+        blank=True,
+        help_text='检测到侵权时建议使用的替代词汇'
+    )
     name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
     international_classes = models.ManyToManyField(
         'NiceClassification',
@@ -253,6 +260,14 @@ class TroTable(models.Model):
         blank=True,
         related_name='tro_words',  # 反向查询：shop.tro_words.all()
         verbose_name='所属店铺'
+    )
+    class Category(models.IntegerChoices):
+        TEXT = 1, '文字侵权'
+        COPYRIGHT = 2, '版权侵权'
+    category = models.IntegerField(
+        verbose_name='侵权分类',
+        choices=Category.choices,  # type: ignore
+        null=True, blank=True
     )
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
