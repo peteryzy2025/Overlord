@@ -443,6 +443,10 @@ class AmazonShop(models.Model):
 
     class Meta:
         db_table = 'amazon_shop'
+
+
+
+        
         db_table_comment = '亚马逊店铺信息表'
         indexes = [
             models.Index(fields=['company', 'project'], name='idx_shop_company_project'),

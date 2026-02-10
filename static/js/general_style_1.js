@@ -1250,7 +1250,6 @@ const GeneralStyleFilterSelectAdapter = (() => {
     const TARGET_SELECTOR = 'select.form-select';
     let observer = null;
     const adaptedEntries = [];
-    let syncTimer = null;
 
     const toArray = (nodeList) => Array.from(nodeList || []);
 
@@ -1345,20 +1344,16 @@ const GeneralStyleFilterSelectAdapter = (() => {
         return JSON.stringify(Array.isArray(value) ? value : []);
     };
 
-    const ensureSyncLoop = () => {
-        if (syncTimer || typeof window === 'undefined') return;
-        syncTimer = window.setInterval(() => {
-            adaptedEntries.forEach((entry) => {
-                if (!entry || entry.syncing) return;
-                const current = readNativeValue(entry.select, entry.multiple);
-                const key = modelKey(current, entry.multiple);
-                if (key === entry.lastModelKey) return;
-                entry.syncing = true;
-                entry.instance.setValue(current);
-                entry.lastModelKey = key;
-                entry.syncing = false;
-            });
-        }, 400);
+    const syncEntryFromNative = (entry) => {
+        if (!entry || entry.syncing) return;
+        if (!entry.select || !entry.select.isConnected) return;
+        const current = readNativeValue(entry.select, entry.multiple);
+        const key = modelKey(current, entry.multiple);
+        if (key === entry.lastModelKey) return;
+        entry.syncing = true;
+        entry.instance.setValue(current);
+        entry.lastModelKey = key;
+        entry.syncing = false;
     };
 
     const adaptOne = (select) => {
@@ -1405,7 +1400,6 @@ const GeneralStyleFilterSelectAdapter = (() => {
             lastModelKey: modelKey(initialValue, multiple)
         };
         adaptedEntries.push(entry);
-        ensureSyncLoop();
 
         instance.onChange = (newValue) => {
             entry.syncing = true;
@@ -1416,14 +1410,7 @@ const GeneralStyleFilterSelectAdapter = (() => {
         };
 
         select.addEventListener('change', () => {
-            if (entry.syncing) return;
-            const current = readNativeValue(select, multiple);
-            const key = modelKey(current, multiple);
-            if (key === entry.lastModelKey) return;
-            entry.syncing = true;
-            instance.setValue(current);
-            entry.lastModelKey = key;
-            entry.syncing = false;
+            syncEntryFromNative(entry);
         });
 
         return entry;
@@ -1464,6 +1451,12 @@ const GeneralStyleFilterSelectAdapter = (() => {
         observer.observe(document.body, { childList: true, subtree: true });
     };
 
+    const syncVisibleEntries = () => {
+        if (typeof document === 'undefined') return;
+        if (document.visibilityState === 'hidden') return;
+        adaptedEntries.forEach((entry) => syncEntryFromNative(entry));
+    };
+
     const getValue = (selectId) => {
         const select = typeof selectId === 'string' ? document.getElementById(selectId) : selectId;
         if (!select) return '';
@@ -1472,7 +1465,12 @@ const GeneralStyleFilterSelectAdapter = (() => {
         return String(select.value ?? '');
     };
 
-    return { initAll, observeDom, getValue };
+    if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', syncVisibleEntries);
+        window.addEventListener('pageshow', syncVisibleEntries);
+    }
+
+    return { initAll, observeDom, getValue, syncVisibleEntries };
 })();
 
 const GeneralStyleDateRangeFilter = (() => {
@@ -1665,13 +1663,23 @@ if (typeof window !== 'undefined') {
         if (!window.GeneralStyleFilterSelectAdapter) return;
         if (typeof window.SearchableSelect !== 'function') return;
         window.GeneralStyleFilterSelectAdapter.initAll(document);
-        window.GeneralStyleFilterSelectAdapter.observeDom();
+        // 默认关闭全局 DOM 观察器，避免动态表格场景下持续扫描引发主线程繁忙。
+        // 如需动态节点自动适配，可在页面中显式设置:
+        // window.__GS_ENABLE_FILTER_SELECT_OBSERVER__ = true;
+        if (window.__GS_ENABLE_FILTER_SELECT_OBSERVER__ === true) {
+            window.GeneralStyleFilterSelectAdapter.observeDom();
+        }
     };
 
     const bootFilterActionButtons = () => {
         if (!window.GeneralStyleFilterActionButtonAdapter) return;
         window.GeneralStyleFilterActionButtonAdapter.initAll(document);
-        window.GeneralStyleFilterActionButtonAdapter.observe();
+        // 默认关闭按钮装饰观察器，避免频繁 DOM 变更时持续扫描。
+        // 如需自动处理后续动态插入的筛选按钮，可显式开启:
+        // window.__GS_ENABLE_FILTER_ACTION_OBSERVER__ = true;
+        if (window.__GS_ENABLE_FILTER_ACTION_OBSERVER__ === true) {
+            window.GeneralStyleFilterActionButtonAdapter.observe();
+        }
     };
 
     if (document.readyState === 'loading') {

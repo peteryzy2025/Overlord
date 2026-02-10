@@ -59,7 +59,7 @@
     }
 
     /* 收缩状态：按钮在sidebar外部，左侧贴紧边缘 */
-    body:has(.sidebar.collapsed) .sidebar-toggle {
+    body.sidebar-collapsed .sidebar-toggle {
     left: 70px; /* 贴着sidebar右侧 */
     border-radius: 0 12px 12px 0; /* 朝向右 */
     border-left: none;
@@ -67,7 +67,7 @@
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
     }
 
-    body:has(.sidebar.collapsed) .sidebar-toggle:hover {
+    body.sidebar-collapsed .sidebar-toggle:hover {
     background: var(--accent-color);
     border-color: var(--accent-color);
     box-shadow: 2px 0 12px rgba(102, 126, 234, 0.25);
@@ -300,6 +300,8 @@
         if (sidebarCollapsed) {
             sidebar.classList.add('collapsed');
             updateTogglePosition(true);
+        } else {
+            updateTogglePosition(false);
         }
         
         // 点击切换
@@ -312,6 +314,7 @@
         
         // 更新按钮位置和样式
         function updateTogglePosition(isCollapsed) {
+            document.body.classList.toggle('sidebar-collapsed', !!isCollapsed);
             if (isCollapsed) {
                 // 收缩状态：按钮在外部，左侧贴紧sidebar右侧
                 sidebarToggle.style.left = '70px';

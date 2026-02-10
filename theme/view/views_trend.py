@@ -536,11 +536,11 @@ def words_split(theme):
 
 
 # ====更新过滤函数===================#
-AMAZON_NOISE_WORDS = {
-    'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
-    'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
-    'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
-}
+# AMAZON_NOISE_WORDS = {
+#     'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
+#     'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
+#     'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
+# }
 
 
 def should_skip_word(word):
@@ -564,10 +564,6 @@ def should_skip_word(word):
 
     # 2. 停用词过滤 (核心优化：过滤 is, the, with, for 等)
     if word in ENGLISH_STOP_WORDS:
-        return True
-
-    # 3. 电商属性噪声过滤 (核心优化：过滤 shirt, size 等)
-    if word in AMAZON_NOISE_WORDS:
         return True
 
     # 4. 纯数字过滤 (可选)
