@@ -127,7 +127,7 @@ def get_operation_types_api(request):
         permissions = get_operation_log_permissions(user)
 
         # 获取所有操作类型
-        all_types = UserOperationLog.OPERATION_TYPE_CHOICES
+        all_types = UserOperationLog.OperationType.choices
 
         visible_types = []
 
@@ -347,7 +347,7 @@ def get_operation_logs_api(request):
         logs_list = []
         for log in page_obj.object_list:
             # 获取操作类型显示名称
-            operation_type_display = dict(UserOperationLog.OPERATION_TYPE_CHOICES).get(
+            operation_type_display = dict(UserOperationLog.OperationType.choices).get(
                 log['operation_type'], log['operation_type']
             )
 

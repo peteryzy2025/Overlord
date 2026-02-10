@@ -11,7 +11,7 @@ import json
 
 from general.models import AmazonShop, User, OperationalAccount
 from amazon.models import AmazonShopDailyCheck
-from amazon.view.views_amazon_performance import parse_permissions, determine_filter_type_and_value, \
+from amazon.amazon_views import get_user_operation_permissions, determine_filter_type_and_value, \
     get_shop_ids_by_filter
 # 修正导入路径：从Amazon模块下的amazon_order_views导入
 from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
@@ -52,7 +52,7 @@ def get_amazon_daily_check_list_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 权限控制核心逻辑
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
@@ -322,7 +322,7 @@ def get_daily_check_operators_api(request):
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 判断权限范围
         if 'ops_all' in permissions:
@@ -384,7 +384,7 @@ def reset_today_daily_check_api(request):
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 权限验证：仅限管理员
         if 'ops_all' not in permissions:

@@ -7,7 +7,7 @@ from amazon import (
 )
 from amazon.view import views_dashboard
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
-from amazon.view import views_rpa_sync
+from amazon.view import views_rpa_sync, views_risk_keywords
 app_name = 'amazon'
 
 urlpatterns = [
@@ -72,5 +72,13 @@ urlpatterns = [
     # ========== 影刀 RPA 同步接口 ==========
     path('api/rpa/amazon-emails/sync/', views_rpa_sync.sync_email_api, name='rpa_sync_email'),
     path('api/rpa/amazon-performance/sync/', views_rpa_sync.sync_performance_api, name='rpa_sync_performance'),
+
+    # ========== 深渊 - 风险关键词管理 ==========
+    path('amazon/risk-keywords/', views_risk_keywords.amazon_risk_keywords_page, name='amazon_risk_keywords'),
+    path('api/amazon-risk-keywords/', views_risk_keywords.RiskKeywordListAPI.as_view(), name='api_amazon_risk_keywords_list'),
+    path('api/amazon-risk-keywords/create/', views_risk_keywords.RiskKeywordCreateAPI.as_view(), name='api_amazon_risk_keywords_create'),
+    path('api/amazon-risk-keywords/update/', views_risk_keywords.RiskKeywordUpdateAPI.as_view(), name='api_amazon_risk_keywords_update'),
+    path('api/amazon-risk-keywords/delete/', views_risk_keywords.RiskKeywordDeleteAPI.as_view(), name='api_amazon_risk_keywords_delete'),
+    path('api/amazon-risk-keywords/options/', views_risk_keywords.RiskKeywordOptionsAPI.as_view(), name='api_amazon_risk_keywords_options'),
 
 ]

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 import json
 from amazon.models import AmazonPerformanceNotification
 from general.models import AmazonShop, User, OperationalAccount
-from amazon.amazon_views import parse_permissions, determine_filter_type_and_value
+from amazon.amazon_views import get_user_operation_permissions, determine_filter_type_and_value
 from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from amazon.amazon_order_views import get_shop_ids_by_filter
 from api.WX.wx import send_wechat_work_message
@@ -51,7 +51,7 @@ def get_amazon_performance_notifications_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 权限控制核心逻辑
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
@@ -109,6 +109,11 @@ def get_amazon_performance_notifications_api(request):
         if current_start and current_end:
             notification_filter &= Q(date__gte=current_start)
             notification_filter &= Q(date__lte=current_end)
+
+        # 运营分组多选筛选
+        ops_groups = data.get('ops_groups', [])
+        if ops_groups:
+            notification_filter &= Q(shop__ops__operational_account__ops_group__in=ops_groups)
 
         # 运营人员多选筛选
         operator_ids = data.get('operator_ids', [])
@@ -255,7 +260,7 @@ def notify_operators_preview_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 使用与列表查询相同的权限和筛选逻辑
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
@@ -375,7 +380,7 @@ def notify_operators_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         if 'ops_all' not in permissions and 'ops_group' not in permissions:
             return JsonResponse({
@@ -535,7 +540,7 @@ def get_performance_operators_api(request):
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 判断权限范围（带公司限定）
         base_shop_qs = AmazonShop.objects.all()
@@ -605,7 +610,7 @@ def mark_notification_processed_api(request, notification_id):
 
     try:
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # 获取通知并验证权限
         try:

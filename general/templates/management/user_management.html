@@ -562,8 +562,9 @@
         };
 
         // ==================== 初始化 ====================
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             initSearchableSelects();
+            await loadOpsGroupsFromAPI();
             loadUsers();
             loadDepartments();
             loadPermissions();
@@ -633,8 +634,6 @@
                     renderUsersTable(allUsers);
                     renderPagination();
                     updatePaginationStats();
-                    // 更新运营分组筛选项
-                    updateOpsGroupFilter(result.ops_groups || []);
                 } else {
                     showNotification(result.error || '加载失败', 'error');
                 }
@@ -644,15 +643,19 @@
             }
         }
 
-        function updateOpsGroupFilter(groups) {
-            if (opsGroupSelect && groups.length > 0) {
-                const currentValue = opsGroupSelect.getValue();
-                const options = [{ value: '', label: '全部分组' }, ...groups.map(g => ({ value: g, label: g }))];
-                opsGroupSelect.setOptions(options);
-                // 保留当前选择
-                if (currentValue && currentValue.length > 0) {
-                    opsGroupSelect.setValue(currentValue);
+        async function loadOpsGroupsFromAPI() {
+            try {
+                const response = await fetch('/api/general/ops-groups/');
+                const result = await response.json();
+                if (result.success && opsGroupSelect) {
+                    opsGroupSelect.setOptions(result.data);
+                    // 默认选中第一项（通常是"全部分组"）
+                    if (result.data.length > 0) {
+                        opsGroupSelect.setValue(result.data[0].value);
+                    }
                 }
+            } catch (error) {
+                console.error('加载运营分组失败:', error);
             }
         }
 

@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Overlord{% endblock %}</title>
+    <title>{% block title %}Divi智管{% endblock %}</title>
     <link rel="icon" href="{% static 'img/ico/favicon.ico' %}" type="image/x-icon"/>
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -97,8 +97,8 @@
         }
 
         .navbar-brand img {
-            width: 40px;
-            height: 40px;
+{% comment %}            width: 40px;
+            height: 40px;{% endcomment %}
             margin-right: 12px;
             border-radius: 8px;
         }
@@ -129,13 +129,17 @@
         }
 
         .nav-link:hover {
-            color: var(--accent-color);
-            background-color: var(--bg-secondary);
+            color: #c05621;
+            background-color: #fff7ed;
         }
 
         .nav-link.active {
-            color: var(--accent-color);
-            background-color: var(--bg-secondary);
+            color: #ed8936 !important;
+            background-color: #fff7ed;
+        }
+
+        .nav-link.active .dropdown-arrow {
+            color: #ed8936 !important;
         }
 
         .nav-link.active::after {
@@ -144,9 +148,9 @@
             bottom: -2px;
             left: 50%;
             transform: translateX(-50%);
-            width: 30px;
+            width: 80%;
             height: 3px;
-            background-color: var(--accent-color);
+            background-color: #dd6b20;
             border-radius: 2px;
         }
 
@@ -219,8 +223,8 @@
         }
 
         .nav-dropdown-item:hover {
-            background-color: var(--bg-secondary);
-            color: var(--accent-color);
+            background-color: #fff7ed;
+            color: #c05621;
             padding-left: 1.25rem;
         }
 
@@ -239,7 +243,7 @@
 
         .nav-item-wrapper:hover .dropdown-arrow {
             transform: rotate(180deg);
-            color: var(--accent-color);
+            color: #c05621;
         }
 
         .user-area {
@@ -685,8 +689,7 @@
 <nav class="navbar">
     <div class="container-fluid">
         <a class="navbar-brand" href="{% url 'general:main' %}">
-            <img src="{% static 'img/y/logo.png' %}" alt="Overlord Logo">
-            Overlord
+            <img src="{% static 'img/y/logo.png' %}" alt="Logo">
         </a>
 
         <div class="navbar-nav">
@@ -749,6 +752,9 @@
                     </a>
                     <a href="{% url 'amazon:amazon_shop_emails' %}" class="nav-dropdown-item">
                         <i class="fas fa-envelope"></i> 店铺邮件
+                    </a>
+                    <a href="{% url 'amazon:amazon_risk_keywords' %}" class="nav-dropdown-item">
+                        <i class="fas fa-skull-crossbones"></i> 深渊
                     </a>
                     <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-item"
                        onclick="showComingSoon()">
@@ -813,10 +819,13 @@
             <div class="user-menu">
                 <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
                     <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
-                    <img src="{% static 'img/y/avatar.png' %}" alt="用户头像" class="user-avatar" id="userAvatar">
+                    <img src="{% if request.user.avatar %}{{ request.user.avatar.url }}{% else %}{% static 'img/y/avatar.png' %}{% endif %}" alt="用户头像" class="user-avatar" id="userAvatar">
                 </div>
 
                 <div class="user-menu-dropdown" id="userMenuDropdown">
+                    <a href="{% url 'general:profile' %}" class="user-menu-item">
+                        <i class="fas fa-user-circle"></i> 个人中心
+                    </a>
                     <a href="javascript:void(0)" class="user-menu-item" onclick="showComingSoon()">
                         <i class="fas fa-cog"></i> 设置
                     </a>
