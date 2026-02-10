@@ -6,7 +6,8 @@ from general import (
     views_temu_management,
     views_performance,
     demo_view,
-    views_announcement_management
+    views_announcement_management,
+    views_profile
 )
 from general.view import view_operation_log, views_general, views_user_management
 from api.general import group_and_ops
@@ -109,4 +110,10 @@ urlpatterns = [
     path('api/users/all/', view_operation_log.get_all_users_api, name='get_all_users_api'),
     path('api/operation-log/types/', view_operation_log.get_operation_types_api, name='get_operation_types_api'),
     path('api/operation-logs/', view_operation_log.get_operation_logs_api, name='get_operation_logs_api'),
+
+    # ========== 个人中心 ==========
+    path('profile/', views_profile.profile_view, name='profile'),
+    path('api/profile/avatar/', views_profile.upload_avatar_api, name='profile_upload_avatar'),
+    path('api/profile/basic-info/', views_profile.update_basic_info_api, name='profile_update_basic_info'),
+    path('api/profile/password/', views_profile.change_password_api, name='profile_change_password'),
 ]

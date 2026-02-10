@@ -1,0 +1,808 @@
+{% extends 'base/base.html' %}
+{% load static %}
+
+{% block title %}个人中心 - Divi智管{% endblock %}
+
+{% block layout_css %}
+<style>
+    .profile-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .profile-header {
+        background: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: var(--shadow-medium);
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+    }
+
+    .profile-avatar-section {
+        position: relative;
+    }
+
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--border-color);
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .profile-avatar:hover {
+        border-color: var(--accent-color);
+        transform: scale(1.05);
+    }
+
+    .avatar-upload-overlay {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 36px;
+        height: 36px;
+        background: var(--accent-color);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 3px solid var(--bg-primary);
+        transition: all 0.3s ease;
+    }
+
+    .avatar-upload-overlay:hover {
+        background: var(--accent-hover);
+        transform: scale(1.1);
+    }
+
+    .avatar-upload-overlay i {
+        color: white;
+        font-size: 14px;
+    }
+
+    .profile-info h1 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .profile-info .username {
+        color: var(--text-secondary);
+        font-size: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .profile-meta {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .profile-meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-tertiary);
+        font-size: 0.875rem;
+    }
+
+    .profile-meta-item i {
+        color: var(--accent-color);
+    }
+
+    .profile-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+    }
+
+    @media (max-width: 768px) {
+        .profile-content {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .profile-card {
+        background: var(--bg-primary);
+        border-radius: 16px;
+        box-shadow: var(--shadow-medium);
+        overflow: hidden;
+    }
+
+    .profile-card-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .profile-card-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .profile-card-title i {
+        color: var(--accent-color);
+    }
+
+    .profile-card-body {
+        padding: 1.5rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        font-size: 0.9375rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-input:disabled {
+        background: var(--bg-tertiary);
+        cursor: not-allowed;
+        color: var(--text-tertiary);
+    }
+
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .btn-primary {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .btn-secondary {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+        background: var(--border-color);
+    }
+
+    .security-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .security-item:last-child {
+        border-bottom: none;
+    }
+
+    .security-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .security-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent-color);
+    }
+
+    .security-details h4 {
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .security-details p {
+        font-size: 0.8125rem;
+        color: var(--text-tertiary);
+    }
+
+    .activity-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bg-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: var(--accent-color);
+        font-size: 0.875rem;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-text {
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .activity-time {
+        font-size: 0.8125rem;
+        color: var(--text-tertiary);
+    }
+
+    /* 头像裁剪弹窗 */
+    .avatar-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .avatar-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .avatar-modal {
+        background: var(--bg-primary);
+        border-radius: 16px;
+        width: 90%;
+        max-width: 500px;
+        padding: 2rem;
+        transform: scale(0.9);
+        transition: all 0.3s ease;
+    }
+
+    .avatar-modal-overlay.show .avatar-modal {
+        transform: scale(1);
+    }
+
+    .avatar-modal-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .avatar-modal-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .avatar-preview-area {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto 1.5rem;
+        border-radius: 50%;
+        overflow: hidden;
+        border: 3px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-secondary);
+    }
+
+    .avatar-preview-area img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .avatar-upload-btn {
+        display: block;
+        width: 100%;
+        padding: 1rem;
+        border: 2px dashed var(--border-color);
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 1.5rem;
+    }
+
+    .avatar-upload-btn:hover {
+        border-color: var(--accent-color);
+        background: var(--bg-secondary);
+    }
+
+    .avatar-upload-btn i {
+        font-size: 2rem;
+        color: var(--accent-color);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .avatar-modal-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+    }
+
+    .avatar-modal-actions .btn {
+        flex: 1;
+    }
+
+    .hidden-input {
+        display: none;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background: rgba(72, 187, 120, 0.1);
+        color: var(--success-color);
+    }
+
+    .status-badge.inactive {
+        background: rgba(229, 62, 62, 0.1);
+        color: var(--danger-color);
+    }
+</style>
+{% endblock %}
+
+{% block main_container %}
+<div class="main-container">
+    <div class="profile-container">
+        <!-- 个人信息头部 -->
+        <div class="profile-header">
+            <div class="profile-avatar-section">
+                <img src="{{ user_avatar|default:'/static/img/y/avatar.png' }}" alt="头像" class="profile-avatar" id="currentAvatar">
+                <div class="avatar-upload-overlay" onclick="openAvatarModal()" title="修改头像">
+                    <i class="fas fa-camera"></i>
+                </div>
+            </div>
+            <div class="profile-info">
+                <h1>{{ request.user.first_name|default:request.user.username }}</h1>
+                <div class="username">@{{ request.user.username }}</div>
+                <div class="profile-meta">
+                    <div class="profile-meta-item">
+                        <i class="fas fa-building"></i>
+                        <span>{{ request.user.company.name|default:'未设置公司' }}</span>
+                    </div>
+                    <div class="profile-meta-item">
+                        <i class="fas fa-briefcase"></i>
+                        <span>{{ department_display|default:'未设置部门' }}</span>
+                    </div>
+                    <div class="profile-meta-item">
+                        <i class="fas fa-envelope"></i>
+                        <span>{{ request.user.email|default:'未设置邮箱' }}</span>
+                    </div>
+                    <div class="profile-meta-item">
+                        <span class="status-badge {% if request.user.is_active_status %}active{% else %}inactive{% endif %}">
+                            <i class="fas fa-circle"></i>
+                            {% if request.user.is_active_status %}账号正常{% else %}账号已停用{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内容区域 -->
+        <div class="profile-content">
+            <!-- 基本信息 -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-title">
+                        <i class="fas fa-id-card"></i>
+                        基本信息
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBasicInfo()">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                </div>
+                <div class="profile-card-body">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-input" value="{{ request.user.username }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">姓名</label>
+                        <input type="text" class="form-input" id="firstName" value="{{ request.user.first_name }}" placeholder="请输入姓名">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-input" id="email" value="{{ request.user.email }}" placeholder="请输入邮箱">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">手机号</label>
+                        <input type="tel" class="form-input" id="phone" value="{{ request.user.phone|default:'' }}" placeholder="请输入手机号">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 安全设置 -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-title">
+                        <i class="fas fa-shield-alt"></i>
+                        安全设置
+                    </div>
+                </div>
+                <div class="profile-card-body">
+                    <div class="security-item">
+                        <div class="security-info">
+                            <div class="security-icon">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <div class="security-details">
+                                <h4>登录密码</h4>
+                                <p>定期修改密码可以保护账号安全</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="openPasswordModal()">修改</button>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-info">
+                            <div class="security-icon">
+                                <i class="fas fa-moon"></i>
+                            </div>
+                            <div class="security-details">
+                                <h4>主题偏好</h4>
+                                <p>当前主题: {{ theme_display }}</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="toggleTheme()">切换</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 运营账号信息 -->
+            {% if operational_account %}
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-title">
+                        <i class="fas fa-store"></i>
+                        运营账号信息
+                    </div>
+                </div>
+                <div class="profile-card-body">
+                    <div class="form-group">
+                        <label class="form-label">运营分组</label>
+                        <input type="text" class="form-input" value="{{ operational_account.ops_group|default:'未分配' }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">平台</label>
+                        <input type="text" class="form-input" value="{{ operational_account.get_platform_display|default:'未设置' }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">角色</label>
+                        <input type="text" class="form-input" value="{{ operational_account.get_role_display|default:'未设置' }}" disabled>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 最近活动 -->
+            <div class="profile-card">
+                <div class="profile-card-header">
+                    <div class="profile-card-title">
+                        <i class="fas fa-history"></i>
+                        最近活动
+                    </div>
+                    <a href="{% url 'general:operation_log_management' %}" class="btn btn-secondary">查看全部</a>
+                </div>
+                <div class="profile-card-body">
+                    <div class="activity-list">
+                        {% for log in recent_logs %}
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                <i class="fas fa-{{ log.icon|default:'circle' }}"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-text">{{ log.operation_record }}</div>
+                                <div class="activity-time">{{ log.created_at|date:'Y-m-d H:i' }}</div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="activity-item" style="justify-content: center; color: var(--text-tertiary);">
+                            暂无活动记录
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 头像上传弹窗 -->
+<div class="avatar-modal-overlay" id="avatarModal">
+    <div class="avatar-modal">
+        <div class="avatar-modal-header">
+            <h3 class="avatar-modal-title">修改头像</h3>
+        </div>
+        <div class="avatar-preview-area">
+            <img src="{{ user_avatar|default:'/static/img/y/avatar.png' }}" alt="预览" id="avatarPreview">
+        </div>
+        <label class="avatar-upload-btn">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span>点击选择图片</span>
+            <input type="file" class="hidden-input" id="avatarInput" accept="image/*" onchange="previewAvatar(this)">
+        </label>
+        <div class="avatar-modal-actions">
+            <button class="btn btn-secondary" onclick="closeAvatarModal()">取消</button>
+            <button class="btn btn-primary" onclick="uploadAvatar()">
+                <i class="fas fa-check"></i> 确认上传
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 修改密码弹窗 -->
+<div class="avatar-modal-overlay" id="passwordModal">
+    <div class="avatar-modal">
+        <div class="avatar-modal-header">
+            <h3 class="avatar-modal-title">修改密码</h3>
+        </div>
+        <div class="profile-card-body">
+            <div class="form-group">
+                <label class="form-label">当前密码</label>
+                <input type="password" class="form-input" id="currentPassword" placeholder="请输入当前密码">
+            </div>
+            <div class="form-group">
+                <label class="form-label">新密码</label>
+                <input type="password" class="form-input" id="newPassword" placeholder="请输入新密码（至少6位）">
+            </div>
+            <div class="form-group">
+                <label class="form-label">确认新密码</label>
+                <input type="password" class="form-input" id="confirmPassword" placeholder="请再次输入新密码">
+            </div>
+        </div>
+        <div class="avatar-modal-actions">
+            <button class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
+            <button class="btn btn-primary" onclick="changePassword()">
+                <i class="fas fa-check"></i> 确认修改
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block layout_js %}
+    // 确保layout_js块正确包裹JavaScript代码
+    // 打开头像弹窗
+    function openAvatarModal() {
+        document.getElementById('avatarModal').classList.add('show');
+    }
+
+    // 关闭头像弹窗
+    function closeAvatarModal() {
+        document.getElementById('avatarModal').classList.remove('show');
+    }
+
+    // 预览头像
+    function previewAvatar(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatarPreview').src = e.target.result;
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // 上传头像
+    function uploadAvatar() {
+        const input = document.getElementById('avatarInput');
+        if (!input.files || !input.files[0]) {
+            showNotification('请先选择图片', 'warning');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('avatar', input.files[0]);
+
+        fetch('/api/profile/avatar/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('currentAvatar').src = data.avatar_url;
+                closeAvatarModal();
+                showNotification('头像修改成功', 'success');
+            } else {
+                showNotification(data.message || '上传失败', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('上传失败: ' + error.message, 'error');
+        });
+    }
+
+    // 保存基本信息
+    function saveBasicInfo() {
+        const data = {
+            first_name: document.getElementById('firstName').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value
+        };
+
+        fetch('/api/profile/basic-info/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('保存成功', 'success');
+            } else {
+                showNotification(data.message || '保存失败', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('保存失败: ' + error.message, 'error');
+        });
+    }
+
+    // 打开密码弹窗
+    function openPasswordModal() {
+        document.getElementById('passwordModal').classList.add('show');
+    }
+
+    // 关闭密码弹窗
+    function closePasswordModal() {
+        document.getElementById('passwordModal').classList.remove('show');
+        // 清空输入
+        document.getElementById('currentPassword').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('confirmPassword').value = '';
+    }
+
+    // 修改密码
+    function changePassword() {
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showNotification('请填写所有密码字段', 'warning');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showNotification('新密码至少需要6位', 'warning');
+            return;
+        }
+
+        if (newPassword !== confirmPassword) {
+            showNotification('两次输入的新密码不一致', 'warning');
+            return;
+        }
+
+        fetch('/api/profile/password/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                closePasswordModal();
+                showNotification('密码修改成功', 'success');
+            } else {
+                showNotification(data.message || '修改失败', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('修改失败: ' + error.message, 'error');
+        });
+    }
+
+    // 切换主题
+    function toggleTheme() {
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.click();
+        }
+    }
+
+    // 点击弹窗外部关闭
+    document.getElementById('avatarModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAvatarModal();
+    });
+    
+    document.getElementById('passwordModal').addEventListener('click', function(e) {
+        if (e.target === this) closePasswordModal();
+    });
+
+{% endblock %}

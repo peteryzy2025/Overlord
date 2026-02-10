@@ -20,6 +20,8 @@ urlpatterns = [
     path('api/tro-table/download-template/', views_vocabulary.download_templates, name='download_tro_template'),
     path('api/tro-table/import/', views_vocabulary.api_import_tro_records, name='api_import_tro_records'),
     path('api/trademark-info/', views_vocabulary.api_trademark_info_list, name='api_trademark_info_list'),
+    path('api/nice-classification/', views_vocabulary.api_nice_classification_list, name='api_nice_classification_list'),
+    path('api/shops/', views_vocabulary.api_shop_list, name='api_shop_list'),
 
     # 产品数据API
     path('api/amazon-products/', views.api_amazon_products, name='api_amazon_products'),

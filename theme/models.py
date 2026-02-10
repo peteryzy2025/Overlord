@@ -271,9 +271,31 @@ class TroTable(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
     theme_name = models.CharField(max_length=765, verbose_name='侵权词名')
     name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
+    international_classes = models.ManyToManyField(
+        'NiceClassification',
+        related_name='tro_words',
+        verbose_name='所属国际类',
+        blank=True,
+        db_table='theme_tro_nice_classification'  # 自定义中间表名，避免自动生成太长
+    )
+    shop = models.ForeignKey(
+        'general.AmazonShop',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tro_words',  # 反向查询：shop.tro_words.all()
+        verbose_name='所属店铺'
+    )
     create_time = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     update_time = models.DateTimeField(auto_now=True, verbose_name='更新时间')
-    created_by = models.CharField(max_length=150, null=True, blank=True, verbose_name='创建人')
+    creator = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_tro_words',
+        verbose_name='创建人'
+    )
 
     class Meta:
         db_table = 'theme_tro_table'
@@ -462,3 +484,41 @@ class ThemeReport(models.Model):
 #         shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
 #         return f"{shop_name} - {self.asin}"
 
+class NiceClassification(models.Model):
+    """
+    尼斯分类（商标国际分类）- 共45类
+    01-34类为商品，35-45类为服务
+    """
+    code = models.CharField(
+        max_length=2,
+        primary_key=True,
+        verbose_name='分类编号',
+        help_text='01-45，带前导零'
+    )
+    name = models.CharField(
+        max_length=100,
+        verbose_name='分类名称'
+    )
+    category_type = models.CharField(
+        max_length=10,
+        choices=[('goods', '商品'), ('service', '服务')],
+        verbose_name='类型',
+        db_index=True
+    )
+
+    class Meta:
+        db_table = 'theme_nice_classification'
+        verbose_name = '尼斯分类'
+        verbose_name_plural = verbose_name
+        ordering = ['code']
+
+    def __str__(self):
+        return f"{self.code}类：{self.name}"
+
+    def save(self, *args, **kwargs):
+        # 自动判断商品/服务类型
+        if int(self.code) <= 34:
+            self.category_type = 'goods'
+        else:
+            self.category_type = 'service'
+        super().save(*args, **kwargs)

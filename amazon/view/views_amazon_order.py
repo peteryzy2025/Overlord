@@ -25,7 +25,7 @@ from general.models import UserOperationLog
 
 # 项目内工具函数 / 视图函数
 from amazon.amazon_views import (
-    parse_permissions,
+    get_user_operation_permissions,
     determine_filter_type_and_value,
     get_date_range_from_option,
     get_shop_ids_by_filter,
@@ -63,7 +63,7 @@ def get_amazon_orders_list_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # ========== 权限控制 ==========
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
@@ -621,7 +621,7 @@ def update_divi_export_status_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         print(f"\n{'=' * 60}")
         print(f"🔄 批量更新DIVI状态API - 用户: {user.username} (权限: {permissions})")
@@ -1187,7 +1187,7 @@ def export_amazon_orders_excel(request):
         # 解析请求数据
         data = json.loads(request.body)
         user = request.user
-        permissions = parse_permissions(getattr(user, 'permission', []))
+        permissions = get_user_operation_permissions(user)
 
         # ========== 权限控制核心逻辑 ==========
         filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
