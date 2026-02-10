@@ -8,7 +8,7 @@ import nltk
 import string
 from collections import defaultdict
 from nltk.tokenize import TweetTokenizer
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+# from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from django.contrib.auth.decorators import login_required
 from theme.models import *
 
@@ -90,11 +90,11 @@ def batch_analyze_theme_trend(themes):
         if cached_result:
             results[theme] = cached_result
             continue
-        
+
         # 使用 get_ngram_phrases 进行分词，弃用 words_split
         tokens = get_ngram_phrases(theme.strip())
         valid_tokens = [t for t in tokens if not should_skip_word(t)]
-        valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
+        # valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
         if not valid_tokens:
             # 空结果直接缓存
@@ -379,7 +379,7 @@ def analyze_theme_trend(theme, mode=1):
             tokens.append(full_theme_token)
 
     valid_tokens = [t for t in tokens if not should_skip_word(t)]
-    valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
+    # valid_tokens = [word for word in valid_tokens if word.lower() not in ENGLISH_STOP_WORDS]
 
     if not valid_tokens:
         return {
@@ -536,11 +536,11 @@ def words_split(theme):
 
 
 # ====更新过滤函数===================#
-# AMAZON_NOISE_WORDS = {
-#     'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
-#     'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
-#     'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
-# }
+AMAZON_NOISE_WORDS = {
+    'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
+    'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
+    'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
+}
 
 
 def should_skip_word(word):
@@ -563,8 +563,12 @@ def should_skip_word(word):
         return True
 
     # 2. 停用词过滤 (核心优化：过滤 is, the, with, for 等)
-    if word in ENGLISH_STOP_WORDS:
-        return True
+    # if word in ENGLISH_STOP_WORDS:
+    #     return True
+
+    # 3. 电商属性噪声过滤 (核心优化：过滤 shirt, size 等)
+    # if word in AMAZON_NOISE_WORDS:
+    #     return True
 
     # 4. 纯数字过滤 (可选)
     # 亚马逊标题中常有价格或年份，如果你的侵权库不包含年份，可以过滤

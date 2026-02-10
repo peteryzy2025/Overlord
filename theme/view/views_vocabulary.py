@@ -7,7 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 import json
 from theme.models import TroTable, TrademarkInfo, NiceClassification
-from general.models import AmazonShop
+from general.models import AmazonShop, UserOperationLog
 import os
 from django.http import FileResponse, Http404
 from django.conf import settings
@@ -18,7 +18,7 @@ import pandas as pd
 # ============================================
 
 def is_admin(user):
-    """判断用户是否为管理员（拥有code=555的权限）"""
+    """判断用户是否为全局管理员（拥有code=555的权限）"""
     if not user.is_authenticated:
         return False
     # 超级管理员默认是管理员
@@ -26,6 +26,19 @@ def is_admin(user):
         return True
     try:
         return user.permission_configs.filter(code=555).exists()
+    except Exception:
+        return False
+
+
+def is_tro_admin(user):
+    """判断用户是否为侵权词库页面管理员（拥有code=555或code=556的权限）"""
+    if not user.is_authenticated:
+        return False
+    # 超级管理员默认是管理员
+    if user.is_superuser:
+        return True
+    try:
+        return user.permission_configs.filter(code__in=[555, 556]).exists()
     except Exception:
         return False
 
@@ -38,7 +51,7 @@ def tro_table_page(request):
     return render(request, 'tro_table.html', {
         'page_title': '侵权词库',
         'active_nav': 'theme_tro_table',
-        'is_admin': is_admin(request.user),  # 传递管理员状态到前端
+        'is_admin': is_tro_admin(request.user),  # 传递管理员状态到前端（支持555或556）
         'current_user': request.user.first_name or request.user.username,  # 传递当前用户名
     })
 
@@ -70,6 +83,12 @@ NAME_TYPE_MAPPING = {
     8: '商标侵权',
     9: '自定义白名单',
     10: '知名IP'
+}
+
+# 侵权分类映射
+CATEGORY_MAPPING = {
+    1: '文字侵权',
+    2: '版权侵权'
 }
 
 
@@ -152,8 +171,10 @@ def api_tro_table_list(request):
             data_list.append({
                 'id': item.id,
                 'theme_name': item.theme_name,
+                'replacement_word': item.replacement_word,
                 'name_type': item.name_type,
                 'name_type_desc': NAME_TYPE_MAPPING.get(item.name_type, str(item.name_type)),
+                'category': item.category,
                 'international_classes': intl_classes,
                 'shop_id': item.shop_id,
                 'shop_name': item.shop.shop_name if item.shop else '-',
@@ -208,9 +229,15 @@ def api_create_tro_record(request):
             return JsonResponse({'success': False, 'message': '类型码必须为数字'}, status=400)
 
         # 创建记录
+        replacement_word = data.get('replacement_word')
+        replacement_word = replacement_word.strip() if replacement_word else None
+        category = data.get('category')
+        category = int(category) if category else None
         record = TroTable.objects.create(
             theme_name=theme_name,
+            replacement_word=replacement_word,
             name_type=name_type,
+            category=category,
             creator=request.user,
             shop_id=data.get('shop_id') or None
         )
@@ -219,6 +246,17 @@ def api_create_tro_record(request):
         intl_class_codes = data.get('international_classes')
         if intl_class_codes is not None:
             record.international_classes.set(intl_class_codes)
+
+        # 记录操作日志
+        try:
+            UserOperationLog.objects.create(
+                user=request.user,
+                operation_type=UserOperationLog.OperationType.TRO_CREATE,
+                operation_record=f'新增侵权词: {theme_name}',
+                company=getattr(request.user, 'company', None)
+            )
+        except Exception as log_error:
+            print(f'[日志记录失败] 新增: {log_error}')
 
         return JsonResponse({
             'success': True,
@@ -255,7 +293,7 @@ def api_update_tro_record(request):
 
         # 权限检查：只有创建人或管理员可编辑
         is_creator = record.creator_id == request.user.id if record.creator else False
-        is_admin_user = is_admin(request.user)
+        is_admin_user = is_tro_admin(request.user)
 
         if not (is_creator or is_admin_user):
             return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
@@ -277,14 +315,31 @@ def api_update_tro_record(request):
         intl_class_codes = data.get('international_classes')
         
         # 更新记录
+        replacement_word = data.get('replacement_word')
+        replacement_word = replacement_word.strip() if replacement_word else None
+        category = data.get('category')
+        category = int(category) if category else None
         record.theme_name = theme_name
+        record.replacement_word = replacement_word
         record.name_type = name_type
+        record.category = category
         record.shop_id = data.get('shop_id') or None
         record.save()
         
         # 更新国际类关联（传入空列表会清空所有关联）
         if intl_class_codes is not None:
             record.international_classes.set(intl_class_codes)
+
+        # 记录操作日志
+        try:
+            UserOperationLog.objects.create(
+                user=request.user,
+                operation_type=UserOperationLog.OperationType.TRO_UPDATE,
+                operation_record=f'修改侵权词: {theme_name}(ID:{record_id})',
+                company=getattr(request.user, 'company', None)
+            )
+        except Exception as log_error:
+            print(f'[日志记录失败] 编辑: {log_error}')
 
         return JsonResponse({
             'success': True,
@@ -313,14 +368,26 @@ def api_delete_tro_record(request):
             return JsonResponse({'success': False, 'message': 'ID不能为空'}, status=400)
 
         # 权限检查：只有管理员可删除
-        if not is_admin(request.user):
+        if not is_tro_admin(request.user):
             return JsonResponse({'success': False, 'message': '只有管理员可以删除记录'}, status=403)
 
         try:
             record = TroTable.objects.get(id=record_id)
+            theme_name = record.theme_name  # 先保存名称用于日志
             record.delete()
         except TroTable.DoesNotExist:
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
+
+        # 记录操作日志
+        try:
+            UserOperationLog.objects.create(
+                user=request.user,
+                operation_type=UserOperationLog.OperationType.TRO_DELETE,
+                operation_record=f'删除侵权词: {theme_name}(ID:{record_id})',
+                company=getattr(request.user, 'company', None)
+            )
+        except Exception as log_error:
+            print(f'[日志记录失败] 删除: {log_error}')
 
         return JsonResponse({
             'success': True,
@@ -589,6 +656,18 @@ def api_import_tro_records(request):
             message_parts.append(f'跳过 {skip_count} 条（已存在）')
         if error_count > 0:
             message_parts.append(f'失败 {error_count} 条')
+
+        # 记录操作日志（只有有成功导入的时候才记录）
+        if success_count > 0:
+            try:
+                UserOperationLog.objects.create(
+                    user=request.user,
+                    operation_type=UserOperationLog.OperationType.TRO_IMPORT,
+                    operation_record=f'批量导入侵权词: 成功{success_count}条, 跳过{skip_count}条, 失败{error_count}条',
+                    company=getattr(request.user, 'company', None)
+                )
+            except Exception as log_error:
+                print(f'[日志记录失败] 导入: {log_error}')
 
         return JsonResponse({
             'success': True,

@@ -5,6 +5,7 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         :root {
             --accent-color: #3B82F6;
@@ -18,6 +19,70 @@
 
         .col-type {
             width: 120px;
+        }
+
+        .col-name-type {
+            overflow: visible !important;
+            position: relative;
+        }
+
+        .col-replacement {
+            width: 150px;
+            max-width: 150px;
+        }
+
+        .replacement-word {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            cursor: help;
+        }
+
+        /* 侵权分类标签样式 */
+        .category-tag {
+            display: inline-block;
+            padding: 2px 6px;
+            margin-left: 6px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            vertical-align: middle;
+            cursor: help;
+            position: relative;
+        }
+
+        .category-tag:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            background: #1f2937;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 500;
+            white-space: nowrap;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .category-tag:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 4px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 50;
         }
 
         .col-intl-class {
@@ -373,6 +438,7 @@
                         <th class="sortable" data-field="theme_name" onclick="handleSort('theme_name')">侵权词</th>
                         <th class="sortable col-type" data-field="name_type" onclick="handleSort('name_type')">类型码
                         </th>
+                        <th class="col-replacement">建议替换词</th>
                         <th>国际类</th>
                         <th>店铺</th>
                         <th>创建人</th>
@@ -387,7 +453,7 @@
                     </thead>
                     <tbody id="tableBody">
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>数据加载中...</p>
                         </td>
@@ -437,8 +503,16 @@
                     <input type="text" class="form-control" id="newThemeName" placeholder="输入侵权词">
                 </div>
                 <div class="form-group">
+                    <label class="form-label">建议替换词</label>
+                    <input type="text" class="form-control" id="newReplacementWord" placeholder="输入建议替换词（可选）">
+                </div>
+                <div class="form-group">
                     <label class="form-label">类型码</label>
                     <div id="newNameType" class="searchable-select single" data-placeholder="请选择类型"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">侵权分类</label>
+                    <div id="newCategory" class="searchable-select single" data-placeholder="请选择分类（可选）"></div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">国际类（可多选）</label>
@@ -503,7 +577,6 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ===== 全局变量定义 =====
         let currentFilters = {
@@ -516,7 +589,7 @@
         };
 
         // 下拉框组件实例
-        let nameTypeFilterSelect, intlClassFilterSelect, newNameTypeSelect, newIntlClassesSelect, newShopSelect;
+        let nameTypeFilterSelect, intlClassFilterSelect, newNameTypeSelect, newCategorySelect, newIntlClassesSelect, newShopSelect;
 
         let pagination = {
             page: 1,
@@ -678,7 +751,7 @@
                 console.error('加载错误:', error);
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-exclamation-circle"></i>
                             <p>数据请求失败: ${error.message}</p>
                         </td>
@@ -695,7 +768,7 @@
             if (!list || list.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-inbox"></i>
                             <p>暂无数据</p>
                         </td>
@@ -719,17 +792,31 @@
 
                 if (canEdit) {
                     const intlClassesJson = JSON.stringify(intlClasses.map(ic => ic.code)).replace(/"/g, '&quot;');
-                    actions += `<button class="btn btn-sm btn-primary" style="margin-right: 0.5rem;" onclick="showEditModal(${item.id}, '${item.theme_name.replace(/'/g, "\\'")}', ${item.name_type}, ${intlClassesJson}, ${item.shop_id || 'null'})">编辑</button>`;
+                    const replacementWordJson = item.replacement_word ? item.replacement_word.replace(/'/g, "\\'") : '';
+                    actions += `<button class="btn btn-sm btn-primary" style="margin-right: 0.5rem;" onclick="showEditModal(${item.id}, '${item.theme_name.replace(/'/g, "\\'")}', '${replacementWordJson}', ${item.name_type}, ${item.category || 'null'}, ${intlClassesJson}, ${item.shop_id || 'null'})">编辑</button>`;
                 }
                 if (canDelete) {
                     actions += `<button class="btn btn-sm btn-danger" onclick="showDeleteModal(${item.id})">删除</button>`;
                 }
 
+                const replacementWord = item.replacement_word || '-';
+                
+                // 生成分类标签
+                let categoryTag = '';
+                if (item.category) {
+                    const categoryLabel = item.category === 1 ? '文' : '版';
+                    const categoryTooltip = item.category === 1 ? '文字侵权' : '版权侵权';
+                    categoryTag = `<span class="category-tag" data-tooltip="${categoryTooltip}">${categoryLabel}</span>`;
+                }
+                
                 return `
                     <tr>
                         <td>${item.id}</td>
                         <td>${item.theme_name || '-'}</td>
-                        <td>${item.name_type_desc || item.name_type || '-'}</td>
+                        <td class="col-name-type">${item.name_type_desc || item.name_type || '-'}${categoryTag}</td>
+                        <td class="col-replacement" title="${item.replacement_word ? item.replacement_word.replace(/"/g, '&quot;') : ''}">
+                            <span class="replacement-word">${replacementWord}</span>
+                        </td>
                         <td class="col-intl-class">${intlClassHtml}</td>
                         <td class="col-shop">${shopName}</td>
                         <td class="col-creator">${item.creator_name || '-'}</td>
@@ -845,6 +932,17 @@
                     placeholder: '请选择类型'
                 });
 
+                // 初始化侵权分类下拉框（单选）
+                const categoryOptions = [
+                    {value: '1', label: '文字侵权'},
+                    {value: '2', label: '版权侵权'}
+                ];
+                newCategorySelect = new SearchableSelect('#newCategory', {
+                    options: categoryOptions,
+                    multiple: false,
+                    placeholder: '请选择分类（可选）'
+                });
+
                 // 初始化弹窗国际类下拉框（多选）
                 newIntlClassesSelect = new SearchableSelect('#newIntlClasses', {
                     options: [],
@@ -859,7 +957,8 @@
                     placeholder: '请选择店铺（可选）'
                 });
 
-                // 加载国际类选项
+                // 全局分类选项映射
+                window.categoryOptions = categoryOptions;
                 await loadIntlClasses();
                 
                 // 加载店铺选项
@@ -939,19 +1038,23 @@
             document.getElementById('modalTitle').textContent = '新增侵权词';
             document.getElementById('editRecordId').value = '';
             document.getElementById('newThemeName').value = '';
+            document.getElementById('newReplacementWord').value = '';
             // 重置下拉框
             if (newNameTypeSelect) newNameTypeSelect.setValue('');
             if (newIntlClassesSelect) newIntlClassesSelect.setValue([]);
             if (newShopSelect) newShopSelect.setValue('');
+            if (newCategorySelect) newCategorySelect.setValue('');
             document.getElementById('createModal').style.display = 'flex';
         }
 
-        function showEditModal(id, name, type, intlClasses, shopId) {
+        function showEditModal(id, name, replacementWord, type, category, intlClasses, shopId) {
             document.getElementById('modalTitle').textContent = '编辑侵权词';
             document.getElementById('editRecordId').value = id;
             document.getElementById('newThemeName').value = name;
+            document.getElementById('newReplacementWord').value = replacementWord || '';
             // 设置下拉框值
             if (newNameTypeSelect) newNameTypeSelect.setValue(String(type));
+            if (newCategorySelect) newCategorySelect.setValue(category ? String(category) : '');
             if (newIntlClassesSelect) newIntlClassesSelect.setValue(intlClasses || []);
             if (newShopSelect) newShopSelect.setValue(shopId ? String(shopId) : '');
             document.getElementById('createModal').style.display = 'flex';
@@ -973,7 +1076,9 @@
         async function submitCreate() {
             const recordId = document.getElementById('editRecordId').value;
             const themeName = document.getElementById('newThemeName').value.trim();
+            const replacementWord = document.getElementById('newReplacementWord').value.trim();
             const nameType = newNameTypeSelect ? newNameTypeSelect.getValue() : '';
+            const category = newCategorySelect ? newCategorySelect.getValue() : '';
             const intlClasses = newIntlClassesSelect ? newIntlClassesSelect.getValue().filter(v => v !== '') : [];
             const shopId = newShopSelect ? newShopSelect.getValue() : '';
 
@@ -997,7 +1102,9 @@
                 const url = recordId ? '{% url "theme:api_update_tro_record" %}' : '{% url "theme:api_create_tro_record" %}';
                 const payload = {
                     theme_name: themeName,
+                    replacement_word: replacementWord || null,
                     name_type: nameType,
+                    category: category || null,
                     international_classes: intlClasses,
                     shop_id: shopId || null
                 };
