@@ -4,7 +4,6 @@
 {% block title %}人员管理 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <style>
         .table-container table {
             min-width: 1000px;
@@ -59,7 +58,7 @@
         }
 
         /* 已勾选的权限卡片 */
-        .permission-checkbox:has(input[type="checkbox"]:checked) {
+        .permission-checkbox.is-checked {
             border-color: #10b981;
             background-color: rgba(16, 185, 129, 0.05);
             box-shadow: 0 0 0 1px #10b981;
@@ -583,7 +582,7 @@
                 placeholder: '全部状态'
             });
             statusSelect.onChange = () => filterUsers();
-            
+
             // 筛选器 - 部门
             departmentSelect = new SearchableSelect('#departmentFilter', {
                 options: [{ value: '', label: '全部部门' }, ...DEPARTMENT_OPTIONS],
@@ -591,7 +590,7 @@
                 placeholder: '全部部门'
             });
             departmentSelect.onChange = () => filterUsers();
-            
+
             // 筛选器 - 运营分组
             opsGroupSelect = new SearchableSelect('#opsGroupFilter', {
                 options: [{ value: '', label: '全部分组' }],
@@ -757,6 +756,7 @@
                         </label>
                     `;
                 }).join('');
+                bindPermissionCheckboxState(grid);
             }
 
             const bulkGrid = document.getElementById('bulkPermissionsGrid');
@@ -781,7 +781,22 @@
                         </label>
                     `;
                 }).join('');
+                bindPermissionCheckboxState(bulkGrid);
             }
+        }
+
+        function bindPermissionCheckboxState(container) {
+            if (!container) return;
+            const items = container.querySelectorAll('.permission-checkbox');
+            items.forEach((item) => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (!checkbox) return;
+                const syncCheckedState = () => {
+                    item.classList.toggle('is-checked', !!checkbox.checked);
+                };
+                syncCheckedState();
+                checkbox.addEventListener('change', syncCheckedState);
+            });
         }
 
         function renderPagination() {

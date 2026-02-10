@@ -1728,7 +1728,7 @@
     color: var(--text-primary);
     border-radius: 8px;
     padding: 0.5rem 2rem 0.5rem 0.75rem;
-    cursor: pointer;
+    cursor: text;
     position: relative;
     display: flex;
     justify-content: space-between;
@@ -1737,7 +1737,16 @@
     width: 100%;
     box-sizing: border-box;
     box-sizing: border-box;
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter-group .form-select,
+.control-panel .form-select,
+.filter-section .form-select,
+.filter-row .form-select,
+.filter-row-main .form-select,
+.filter-row-secondary .form-select {
+    cursor: text !important;
 }
 
 .searchable-select .select-trigger:hover {

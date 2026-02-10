@@ -5,7 +5,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
-<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
 <style>
     /* 复用 task_create 的容器样式 */
     .task-list-container {
@@ -89,6 +88,256 @@
         font-size: 0.75rem;
         margin-top: 0.5rem;
         color: var(--text-secondary);
+    }
+
+    /* 仅保留筛选组件样式，避免 general_style_1.css 全局规则覆盖同事页面样式 */
+    .gs-date-range-custom-group {
+        display: none !important;
+    }
+
+    .gs-date-range-custom-group.is-visible {
+        display: flex !important;
+    }
+
+    .searchable-select {
+        position: relative;
+        width: 100%;
+        display: block;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .select-trigger {
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 42px;
+        width: 100%;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .select-trigger:hover {
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select.open .select-trigger {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .searchable-select .select-trigger::after {
+        content: "\f078";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+        margin-left: 0.5rem;
+    }
+
+    .searchable-select.open .select-trigger::after {
+        transform: rotate(180deg);
+    }
+
+    .searchable-select .select-trigger .selected-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-color: transparent !important;
+        line-height: 1.5;
+        min-height: 1.5em;
+        display: flex;
+        align-items: center;
+    }
+
+    .searchable-select .select-trigger .selected-text .placeholder {
+        background-color: transparent !important;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        font-weight: 400;
+        opacity: 1;
+        letter-spacing: normal;
+    }
+
+    .searchable-select .dropdown-panel {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--accent-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 280px;
+        overflow: hidden;
+        z-index: 1000;
+        display: none;
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .searchable-select.open .dropdown-panel {
+        display: block;
+    }
+
+    .searchable-select .search-input-wrapper {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .search-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .searchable-select .search-input::placeholder {
+        color: var(--text-secondary);
+    }
+
+    .searchable-select .options-list {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.25rem 0;
+    }
+
+    .searchable-select .option {
+        padding: 0.5rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .option:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .option.selected {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .searchable-select .option.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .searchable-select .option .checkbox {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+    }
+
+    .searchable-select .option.selected .checkbox {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select .option.selected .checkbox::after {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.625rem;
+        color: white;
+    }
+
+    .searchable-select .option .option-text {
+        flex: 1;
+    }
+
+    .searchable-select .no-options {
+        padding: 1rem;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .select-trigger .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+    }
+
+    .searchable-select .select-trigger .tag {
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .searchable-select .select-trigger .tag .remove {
+        cursor: pointer;
+        opacity: 0.8;
+    }
+
+    .searchable-select .select-trigger .tag .remove:hover {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn {
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-right: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .searchable-select:hover .clear-btn {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn:hover {
+        color: var(--accent-color);
+    }
+
+    .searchable-select.single .option.selected::before {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--accent-color);
+        margin-right: 0.25rem;
+    }
+
+    .searchable-select.disabled .select-trigger {
+        background-color: var(--bg-tertiary);
+        cursor: not-allowed;
+        opacity: 0.7;
     }
 
     /* 模态框样式 - 复用 tracking_management 样式 */
