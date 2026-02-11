@@ -27,7 +27,8 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from amazon.models import AmazonOrders
+from amazon.models import AmazonOrders, LingXingAmazonShop
+from general.models import AmazonShop, Project
 from api.divi.divi_order_service import (
     query_divi_order,
     get_divi_brand_id_from_sid,
@@ -48,6 +49,47 @@ TARGET_DATE = "2026-01-01"  # 同步/补导的起始日期
 
 # ============ 缓存：SID → BrandID 映射 ============
 _BRAND_ID_CACHE = {}
+
+# ============ 缓存：BrandID → 项目DIVI配置状态 ============
+_PROJECT_DIVI_CACHE = {}
+
+
+def check_project_divi_config(brand_id):
+    """
+    检查 brand_id 对应的项目是否配置了 DIVI 接口
+    返回: (是否可导单, 项目信息字符串)
+    """
+    if brand_id in _PROJECT_DIVI_CACHE:
+        return _PROJECT_DIVI_CACHE[brand_id]
+    
+    try:
+        # 通过 brand_id (divi_shop_id) 找到 AmazonShop
+        shop = AmazonShop.objects.filter(divi_shop_id=brand_id).select_related('project').first()
+        if not shop:
+            result = (False, f"brand_id={brand_id} 无对应店铺")
+            _PROJECT_DIVI_CACHE[brand_id] = result
+            return result
+        
+        if not shop.project:
+            result = (False, f"店铺 {shop.name} 未绑定项目")
+            _PROJECT_DIVI_CACHE[brand_id] = result
+            return result
+        
+        project = shop.project
+        # 检查项目是否配置了 DIVI 凭证
+        if not project.divi_partner_code or not project.divi_secret:
+            result = (False, f"项目 '{project.name}'(ID:{project.id}) 未配置 DIVI 凭证")
+            _PROJECT_DIVI_CACHE[brand_id] = result
+            return result
+        
+        result = (True, f"项目 '{project.name}'")
+        _PROJECT_DIVI_CACHE[brand_id] = result
+        return result
+        
+    except Exception as e:
+        result = (False, f"检查项目配置异常: {str(e)}")
+        _PROJECT_DIVI_CACHE[brand_id] = result
+        return result
 
 
 # ==================================
@@ -107,6 +149,13 @@ def reimport_orders(queryset, total):
             brand_id = get_divi_brand_id_from_sid(sid)
             if not brand_id:
                 print(f"× sid={sid} 无对应divi品牌")
+                error += 1
+                continue
+
+            # ⭐ 提前检查项目是否配置了 DIVI 接口
+            can_import, project_info = check_project_divi_config(brand_id)
+            if not can_import:
+                print(f"× {project_info}，跳过导单")
                 error += 1
                 continue
 
