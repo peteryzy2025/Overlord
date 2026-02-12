@@ -7,7 +7,7 @@ app_name = 'theme'
 
 urlpatterns = [
     # 页面渲染
-    path('Theme/products/', views.product_list_page, name='theme_product_list'),
+    path('theme/products/', views.product_list_page, name='theme_product_list'),
     path('vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
     path('vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
     path('Theme/trend',views_trend.trend_page, name='trend_page'),
