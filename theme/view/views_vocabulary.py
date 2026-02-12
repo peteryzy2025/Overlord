@@ -12,6 +12,7 @@ import os
 from django.http import FileResponse, Http404
 from django.conf import settings
 import pandas as pd
+from django.utils import timezone
 
 # ============================================
 # 1. 页面渲染视图
@@ -583,7 +584,8 @@ def api_import_tro_records(request):
 
     try:
         # 读取 Excel 文件
-        df = pd.read_excel(uploaded_file)
+        # 显式指定'侵权词'列为字符串类型，避免 pandas 将数字字符串解析为浮点数（例如 '100' 解析为 100.0）
+        df = pd.read_excel(uploaded_file, dtype={'侵权词': str})
 
         # 验证必要的列
         required_columns = ['侵权词', '侵权类型码(数字)']
@@ -596,12 +598,14 @@ def api_import_tro_records(request):
         # 获取当前用户
         user_name = request.user.first_name or request.user.username
 
-        # 获取数据库中已有的侵权词列表（用于去重）
-        existing_records = TroTable.objects.values_list('theme_name', flat=True)
-        existing_set = set(existing_records)
+        # 获取数据库中已有的侵权词及其类型（用于去重和更新）
+        existing_records = TroTable.objects.values('theme_name', 'name_type')
+        # 构建字典：{theme_name: name_type}
+        existing_map = {item['theme_name']: item['name_type'] for item in existing_records}
 
         # 统计变量
         success_count = 0      # 新增成功
+        update_count = 0       # 更新成功
         skip_count = 0         # 已存在跳过
         error_count = 0        # 数据错误
         errors = []
@@ -628,12 +632,25 @@ def api_import_tro_records(request):
                     errors.append(f'第 {idx + 2} 行: 无效的类型码 {name_type}（需在1-10之间）')
                     continue
 
-                # 去重检查：是否已存在
-                if theme_name in existing_set:
-                    skip_count += 1
-                    skipped_items.append(theme_name)
-                    continue
-
+                # 检查是否已存在
+                if theme_name in existing_map:
+                    old_name_type = existing_map[theme_name]
+                    # 如果类型码一致，跳过
+                    if old_name_type == name_type:
+                        skip_count += 1
+                        skipped_items.append(theme_name)
+                        continue
+                    else:
+                        # 如果类型码不一致，更新
+                        # update() 方法不会自动更新 auto_now=True 的字段，需要手动指定 update_time
+                        TroTable.objects.filter(theme_name=theme_name).update(
+                            name_type=name_type,
+                            update_time=timezone.now()
+                        )
+                        update_count += 1
+                        existing_map[theme_name] = name_type # 更新内存中的映射，防止后续重复处理
+                        continue
+            
                 # 创建新记录
                 TroTable.objects.create(
                     theme_name=theme_name,
@@ -642,7 +659,7 @@ def api_import_tro_records(request):
                 )
                 success_count += 1
                 # 添加到已存在集合，避免同一批次内重复
-                existing_set.add(theme_name)
+                existing_map[theme_name] = name_type
 
             except Exception as e:
                 error_count += 1
@@ -652,18 +669,20 @@ def api_import_tro_records(request):
         message_parts = []
         if success_count > 0:
             message_parts.append(f'新增 {success_count} 条')
+        if update_count > 0:
+            message_parts.append(f'更新 {update_count} 条')
         if skip_count > 0:
-            message_parts.append(f'跳过 {skip_count} 条（已存在）')
+            message_parts.append(f'跳过 {skip_count} 条（已存在且类型一致）')
         if error_count > 0:
             message_parts.append(f'失败 {error_count} 条')
 
-        # 记录操作日志（只有有成功导入的时候才记录）
-        if success_count > 0:
+        # 记录操作日志（只有有成功导入或更新的时候才记录）
+        if success_count > 0 or update_count > 0:
             try:
                 UserOperationLog.objects.create(
                     user=request.user,
                     operation_type=UserOperationLog.OperationType.TRO_IMPORT,
-                    operation_record=f'批量导入侵权词: 成功{success_count}条, 跳过{skip_count}条, 失败{error_count}条',
+                    operation_record=f'批量导入侵权词: 成功{success_count}条, 更新{update_count}条, 跳过{skip_count}条, 失败{error_count}条',
                     company=getattr(request.user, 'company', None)
                 )
             except Exception as log_error:
@@ -674,6 +693,7 @@ def api_import_tro_records(request):
             'message': '导入完成：' + '，'.join(message_parts),
             'data': {
                 'success_count': success_count,
+                'update_count': update_count,
                 'skip_count': skip_count,
                 'error_count': error_count,
                 'errors': errors[:10],

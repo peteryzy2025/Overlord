@@ -112,19 +112,12 @@
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">操作人员</label>
-                    <div id="userDropdown" class="dropdown-check-list">
-                        <div class="anchor" id="userAnchor">
-                            <span id="userSelectedText" class="selected-text">选择操作人员</span>
-                        </div>
-                        <div class="items" id="userItems"></div>
-                    </div>
+                    <div id="userFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
                 </div>
 
                 <div class="filter-group">
                     <label class="filter-label">操作类型</label>
-                    <select class="form-select" id="operationTypeFilter">
-                        <option value="">全部类型</option>
-                    </select>
+                    <div id="operationTypeFilter" class="searchable-select single" data-placeholder="全部类型"></div>
                 </div>
 
                 <div class="filter-group" style="flex: 2;">
@@ -230,6 +223,8 @@
 
         let allUsers = []; // 缓存所有用户数据
         let allOperationTypes = []; // 缓存所有操作类型
+        let userFilterSelect = null;
+        let operationTypeSelect = null;
 
         // ===== 工具函数 =====
         function showLoading(show = true) {
@@ -306,95 +301,33 @@
             };
         }
 
-        // ===== 用户多选下拉初始化 =====
-        function initUserDropdown() {
-            const anchor = document.getElementById('userAnchor');
-            const items = document.getElementById('userItems');
-            const dropdown = document.getElementById('userDropdown');
-
-            anchor.addEventListener('click', function (e) {
-                e.stopPropagation();
-                dropdown.classList.toggle('visible');
-                anchor.classList.toggle('active');
+        // ===== 统一筛选组件初始化 =====
+        function initFilterSelects() {
+            userFilterSelect = new SearchableSelect('#userFilter', {
+                options: [{value: '', label: '全部人员'}],
+                multiple: true,
+                placeholder: '全部人员',
+                searchable: true
             });
+            userFilterSelect.setValue(['']);
 
-            document.addEventListener('click', function () {
-                dropdown.classList.remove('visible');
-                anchor.classList.remove('active');
+            operationTypeSelect = new SearchableSelect('#operationTypeFilter', {
+                options: [{value: '', label: '全部类型'}],
+                multiple: false,
+                placeholder: '全部类型',
+                searchable: true
             });
-
-            items.addEventListener('click', function (e) {
-                e.stopPropagation();
-            });
+            operationTypeSelect.setValue('');
         }
 
-        function populateUserDropdown(users) {
-            const items = document.getElementById('userItems');
-            items.innerHTML = '';
-
-            // 添加"全部人员"选项
-            const allItem = document.createElement('div');
-            allItem.className = 'item';
-            allItem.innerHTML = `
-        <input type="checkbox" id="user_all" value="all" checked>
-        <label for="user_all">全部人员</label>
-    `;
-            items.appendChild(allItem);
-
-            allItem.querySelector('input').addEventListener('change', function () {
-                if (this.checked) {
-                    document.querySelectorAll('#userItems input[type="checkbox"]').forEach(cb => {
-                        if (cb !== this) cb.checked = false;
-                    });
-                }
-                updateUserSelection();
-            });
-
-            // 添加用户列表
-            users.forEach(user => {
-                const item = document.createElement('div');
-                item.className = 'item';
-                item.innerHTML = `
-            <input type="checkbox" id="user_${user.id}" value="${user.id}">
-            <label for="user_${user.id}">${user.first_name || user.username} (${user.department || '未知部门'})</label>
-        `;
-                items.appendChild(item);
-
-                const checkbox = item.querySelector('input');
-                checkbox.addEventListener('change', function () {
-                    const allCheckbox = document.querySelector('#userItems input[value="all"]');
-                    if (this.value !== 'all' && this.checked && allCheckbox) {
-                        allCheckbox.checked = false;
-                    }
-                    updateUserSelection();
-                });
-            });
-
-            updateUserSelection();
-        }
-
-        function updateUserSelection() {
-            const checkboxes = document.querySelectorAll('#userItems input[type="checkbox"]');
-            const allCheckbox = document.querySelector('#userItems input[value="all"]');
-            const selectedUsers = [];
-            let selectedText = '选择操作人员';
-
-            if (allCheckbox && allCheckbox.checked) {
-                selectedText = '全部人员';
-                currentFilters.user_ids = [];
-            } else {
-                checkboxes.forEach(cb => {
-                    if (cb.checked && cb.value !== 'all') {
-                        selectedUsers.push(cb.value);
-                    }
-                });
-                if (selectedUsers.length > 0) {
-                    selectedText = `已选择 ${selectedUsers.length} 人`;
-                }
-                currentFilters.user_ids = selectedUsers;
-            }
-
-            document.getElementById('userSelectedText').textContent = selectedText;
+        function getSelectedUserIds() {
+            if (!userFilterSelect) return [];
+            const raw = userFilterSelect.getValue();
+            const values = Array.isArray(raw) ? raw : [raw];
+            return values
+                .filter(v => v !== '' && v !== null && v !== undefined)
+                .map(v => parseInt(v, 10))
+                .filter(v => Number.isInteger(v) && v > 0);
         }
 
         async function loadAllUsers() {
@@ -403,7 +336,16 @@
                 const result = await response.json();
                 if (result.success && result.data) {
                     allUsers = result.data;
-                    populateUserDropdown(result.data);
+                    if (userFilterSelect) {
+                        const options = [{value: '', label: '全部人员'}].concat(
+                            result.data.map((user) => ({
+                                value: String(user.id),
+                                label: `${user.first_name || user.username} (${user.department || '未知部门'})`
+                            }))
+                        );
+                        userFilterSelect.setOptions(options);
+                        userFilterSelect.setValue(['']);
+                    }
                     return true;
                 }
                 return false;
@@ -431,15 +373,15 @@
         }
 
         function populateOperationTypeDropdown(types) {
-            const select = document.getElementById('operationTypeFilter');
-            select.innerHTML = '<option value="">全部类型</option>';
-
-            types.forEach(type => {
-                const option = document.createElement('option');
-                option.value = type.id;
-                option.textContent = type.name;
-                select.appendChild(option);
-            });
+            if (!operationTypeSelect) return;
+            const options = [{value: '', label: '全部类型'}].concat(
+                (types || []).map((type) => ({
+                    value: String(type.id),
+                    label: type.name
+                }))
+            );
+            operationTypeSelect.setOptions(options);
+            operationTypeSelect.setValue('');
         }
 
         // ===== 权限初始化 =====
@@ -463,8 +405,8 @@
             return {
                 start_date: document.getElementById('startDate').value,
                 end_date: document.getElementById('endDate').value,
-                user_ids: currentFilters.user_ids,
-                operation_type: document.getElementById('operationTypeFilter').value,
+                user_ids: getSelectedUserIds(),
+                operation_type: operationTypeSelect ? operationTypeSelect.getValue() : '',
                 record_keyword: document.getElementById('recordKeywordFilter').value.trim(),
                 sort_field: currentFilters.sort_field,
                 sort_order: currentFilters.sort_order
@@ -476,15 +418,9 @@
             document.getElementById('recordKeywordFilter').value = '';
             document.getElementById('pageSize').value = '20';
 
-            // 重置用户选择
-            const checkboxes = document.querySelectorAll('#userItems input[type="checkbox"]');
-            checkboxes.forEach(cb => {
-                cb.checked = cb.value === 'all';
-            });
-            updateUserSelection();
-
-            // 重置操作类型
-            document.getElementById('operationTypeFilter').value = '';
+            // 重置用户与操作类型
+            if (userFilterSelect) userFilterSelect.setValue(['']);
+            if (operationTypeSelect) operationTypeSelect.setValue('');
         }
 
         async function resetFilters(event) {
@@ -710,7 +646,7 @@
         document.addEventListener('DOMContentLoaded', async function () {
             showLoading(true);
             try {
-                initUserDropdown();
+                initFilterSelects();
                 getCurrentUserPermissions();
                 await Promise.all([
                     loadAllUsers(),
