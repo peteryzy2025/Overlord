@@ -1,12 +1,21 @@
 {% extends 'base/base_amazon.html' %}
 {% load static %}
 
-{% block title %}Amazon Listing Management - Divi Smart{% endblock %}
+{% block title %}Amazon Listing 管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
     <style>
+        .tab-content {
+            display: block;
+            width: 100%;
+            max-width: 100%;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
         .amazon-listing-main {
-            margin: 20px;
+            margin: 0;
+            width: 100%;
         }
 
         .loading-overlay {
@@ -390,49 +399,50 @@
     </style>
 {% endblock %}
 
-{% block page_content %}
-    <div class="loading-overlay" id="loadingOverlay">
+{% block content %}
+    <div class="loading-overlay" id="listingLoadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>
-            <span>Loading data...</span>
+            <span>数据加载中...</span>
         </div>
     </div>
 
-    <div class="amazon-listing-main">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-list-alt" style="color: #2563eb;"></i>
-                    Amazon Listing Management
-                </h1>
-                <p class="page-subtitle">Listing risk overview and infringement source details</p>
+    <div class="tab-content">
+        <div class="amazon-listing-main">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">
+                        <i class="fas fa-list-alt" style="color: #2563eb;"></i>
+                        Amazon Listing 管理
+                    </h1>
+                    <p class="page-subtitle">查看 Listing 侵权风险并追踪词来源</p>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn" onclick="refreshData(event)">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
             </div>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn" onclick="refreshData(event)">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
-            </div>
-        </div>
 
         <div class="stats-card-wrapper">
             <div class="stats-card">
                 <i class="fas fa-list stats-icon"></i>
                 <div class="stats-content">
-                    <h4>Total Listing</h4>
+                    <h4>Listing 总数</h4>
                     <p id="totalCount">0</p>
                 </div>
             </div>
             <div class="stats-card">
                 <i class="fas fa-exclamation-triangle stats-icon"></i>
                 <div class="stats-content">
-                    <h4>High Risk</h4>
+                    <h4>高风险</h4>
                     <p id="highCount">0</p>
                 </div>
             </div>
             <div class="stats-card">
                 <i class="fas fa-shield-alt stats-icon"></i>
                 <div class="stats-content">
-                    <h4>Medium Risk</h4>
+                    <h4>中风险</h4>
                     <p id="mediumCount">0</p>
                 </div>
             </div>
@@ -441,24 +451,24 @@
         <div class="filter-section">
             <div class="filter-row">
                 <div class="filter-group">
-                    <label class="filter-label">LingXing Shop</label>
-                    <input type="text" class="form-control" id="shopNameFilter" placeholder="Fuzzy shop name">
+                    <label class="filter-label">领星店铺</label>
+                    <input type="text" class="form-control" id="shopNameFilter" placeholder="输入店铺名（模糊查询）">
                 </div>
                 <div class="filter-group">
-                    <label class="filter-label">Shop Owner</label>
-                    <input type="text" class="form-control" id="shopOwnerFilter" placeholder="Fuzzy owner name">
+                    <label class="filter-label">负责人</label>
+                    <input type="text" class="form-control" id="shopOwnerFilter" placeholder="输入负责人（模糊查询）">
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">ASIN</label>
-                    <input type="text" class="form-control" id="asinFilter" placeholder="ASIN keyword">
+                    <input type="text" class="form-control" id="asinFilter" placeholder="输入 ASIN 关键字">
                 </div>
                 <div class="filter-group">
-                    <label class="filter-label">Risk Level</label>
+                    <label class="filter-label">风险等级</label>
                     <select class="form-select" id="infringementFilter">
-                        <option value="">All</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
+                        <option value="">全部</option>
+                        <option value="high">高风险</option>
+                        <option value="medium">中风险</option>
+                        <option value="low">低风险</option>
                     </select>
                 </div>
                 <div class="filter-actions">
@@ -476,22 +486,22 @@
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Amazon Shop</th>
-                        <th>LingXing Shop</th>
-                        <th>Owner</th>
+                        <th>Amazon店铺</th>
+                        <th>领星店铺</th>
+                        <th>负责人</th>
                         <th>ASIN</th>
-                        <th>Title</th>
-                        <th>Risk</th>
-                        <th>High Risk Words</th>
-                        <th>Medium Risk Words</th>
-                        <th>Action</th>
+                        <th>标题</th>
+                        <th>风险等级</th>
+                        <th>高风险词</th>
+                        <th>中风险词</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody id="listingTableBody">
                     <tr>
                         <td colspan="9" class="empty-state">
                             <i class="fas fa-info-circle"></i>
-                            <p>Click search to load listings.</p>
+                            <p>点击查询后加载 Listing 数据</p>
                         </td>
                     </tr>
                 </tbody>
@@ -500,7 +510,7 @@
 
         <div class="pagination-container" id="paginationContainer">
             <div class="pagination-info">
-                <span>Per page</span>
+                <span>每页显示</span>
                 <select class="form-select" id="pageSizeSelect" style="width: 82px;" onchange="changePageSize()">
                     <option value="10">10</option>
                     <option value="20" selected>20</option>
@@ -513,41 +523,42 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="wordSourceModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fas fa-search" style="color: var(--accent-color); margin-right: 0.35rem;"></i>
-                    Word Source Details
-                </h2>
-                <button class="modal-close" onclick="closeWordSourceModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 0.9rem;">
-                    <div style="font-size: 0.86rem; color: var(--text-secondary);">ASIN</div>
-                    <div id="sourceModalAsin" style="font-weight: 700; color: var(--text-primary);"></div>
+        <div class="modal-overlay" id="wordSourceModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">
+                        <i class="fas fa-search" style="color: var(--accent-color); margin-right: 0.35rem;"></i>
+                        侵权词来源详情
+                    </h2>
+                    <button class="modal-close" onclick="closeWordSourceModal()">&times;</button>
                 </div>
-                <div style="margin-bottom: 1rem;">
-                    <div style="font-size: 0.86rem; color: var(--text-secondary);">Title</div>
-                    <div id="sourceModalTitle" style="color: var(--text-primary); line-height: 1.5;"></div>
+                <div class="modal-body">
+                    <div style="margin-bottom: 0.9rem;">
+                        <div style="font-size: 0.86rem; color: var(--text-secondary);">ASIN</div>
+                        <div id="sourceModalAsin" style="font-weight: 700; color: var(--text-primary);"></div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 0.86rem; color: var(--text-secondary);">标题</div>
+                        <div id="sourceModalTitle" style="color: var(--text-primary); line-height: 1.5;"></div>
+                    </div>
+                    <table class="source-table">
+                        <thead>
+                            <tr>
+                                <th>词</th>
+                                <th>风险</th>
+                                <th>来源</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sourceTableBody">
+                            <tr>
+                                <td colspan="3" class="empty-state">暂无来源数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-                <table class="source-table">
-                    <thead>
-                        <tr>
-                            <th>Word</th>
-                            <th>Risk</th>
-                            <th>Source</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sourceTableBody">
-                        <tr>
-                            <td colspan="3" class="empty-state">No source data</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeWordSourceModal()">Close</button>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeWordSourceModal()">关闭</button>
+                </div>
             </div>
         </div>
     </div>
@@ -569,6 +580,7 @@
             total: 0,
             total_pages: 0
         };
+        let pageTitles = new Set();
 
         function getCookie(name) {
             const cookieValue = document.cookie
@@ -578,7 +590,9 @@
         }
 
         function showLoading(show) {
-            document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+            const overlay = document.getElementById('listingLoadingOverlay');
+            if (!overlay) return;
+            overlay.style.display = show ? 'flex' : 'none';
         }
 
         function showToast(message, type) {
@@ -604,10 +618,16 @@
             return div.innerHTML;
         }
 
+        function normalizeTitle(text) {
+            if (!text) return '';
+            return String(text).trim().replace(/"/g, '').replace(/''/g, "'").toLowerCase();
+        }
+
         function renderRiskBadge(level) {
-            const mapped = level === 'high' ? 'High' : 'Medium';
-            const css = level === 'high' ? 'risk-high' : 'risk-medium';
-            return `<span class="risk-badge ${css}">${mapped}</span>`;
+            if (level === 'high') return '<span class="risk-badge risk-high">高风险</span>';
+            if (level === 'medium') return '<span class="risk-badge risk-medium">中风险</span>';
+            if (level === 'low') return '<span class="risk-badge">低风险</span>';
+            return '<span class="risk-badge">-</span>';
         }
 
         function renderWordTags(words, level) {
@@ -621,41 +641,148 @@
         function renderStats(stats) {
             const safeStats = stats || {};
             document.getElementById('totalCount').textContent = safeStats.total_count || 0;
-            document.getElementById('highCount').textContent = safeStats.high_count || 0;
-            document.getElementById('mediumCount').textContent = safeStats.medium_count || 0;
+            document.getElementById('highCount').textContent = safeStats.high_count == null ? '-' : safeStats.high_count;
+            document.getElementById('mediumCount').textContent = safeStats.medium_count == null ? '-' : safeStats.medium_count;
         }
 
         function renderListingTable(rows) {
             const tbody = document.getElementById('listingTableBody');
+            pageTitles = new Set();
             if (!rows || rows.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="9" class="empty-state">
                             <i class="fas fa-inbox"></i>
-                            <p>No matching listings</p>
+                            <p>暂无匹配的 Listing</p>
                         </td>
                     </tr>
                 `;
                 return;
             }
 
-            tbody.innerHTML = rows.map(row => `
-                <tr>
+            tbody.innerHTML = rows.map(row => {
+                const title = row.title || '';
+                if (title) pageTitles.add(title);
+                const encodedTitle = encodeURIComponent(title);
+                return `
+                <tr data-title="${encodedTitle}">
                     <td>${escapeHtml(row.amazon_shop_name || '-')}</td>
                     <td>${escapeHtml(row.shop_name || '-')}</td>
                     <td>${escapeHtml(row.shop_owner || '-')}</td>
                     <td>${escapeHtml(row.asin || '-')}</td>
-                    <td class="cell-truncate" title="${escapeHtml(row.title || '')}">${escapeHtml(row.title || '-')}</td>
-                    <td>${renderRiskBadge(row.infringement_level)}</td>
-                    <td>${renderWordTags(row.high_risk_words, 'high')}</td>
-                    <td>${renderWordTags(row.medium_risk_words, 'medium')}</td>
+                    <td class="cell-truncate" title="${escapeHtml(title)}">${escapeHtml(title || '-')}</td>
+                    <td><span class="loading-level" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
+                    <td><span class="loading-risk-high" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
+                    <td><span class="loading-risk-medium" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
                     <td>
                         <button class="btn-view" onclick="viewWordSources(${row.id}, event)">
-                            <i class="fas fa-eye"></i> View
+                            <i class="fas fa-eye"></i> 查看
                         </button>
                     </td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
+
+            if (pageTitles.size > 0) {
+                fetchRiskData(Array.from(pageTitles));
+            }
+        }
+
+        async function fetchRiskData(titles) {
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const response = await fetch('/api/amazon-listing-management/batch-risk-check/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ titles: titles })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.success && result.data) {
+                    updateRiskCells(result.data);
+                }
+            } catch (error) {
+                console.error('batch risk check failed', error);
+            }
+        }
+
+        function updateRiskCells(riskData) {
+            let highCount = 0;
+            let mediumCount = 0;
+
+            document.querySelectorAll('.loading-level').forEach(el => {
+                const title = decodeURIComponent(el.getAttribute('data-title') || '');
+                let data = riskData[title];
+                if (!data) {
+                    const norm = normalizeTitle(title);
+                    for (const key in riskData) {
+                        if (normalizeTitle(key) === norm) {
+                            data = riskData[key];
+                            break;
+                        }
+                    }
+                }
+                const level = (data && data.theme_risk_level) ? data.theme_risk_level : 'low';
+                if (level === 'high') highCount += 1;
+                else if (level === 'medium') mediumCount += 1;
+                const row = el.closest('tr');
+                if (row) row.setAttribute('data-risk-level', level);
+                el.outerHTML = renderRiskBadge(level);
+            });
+
+            document.querySelectorAll('.loading-risk-high').forEach(el => {
+                const title = decodeURIComponent(el.getAttribute('data-title') || '');
+                let data = riskData[title];
+                if (!data) {
+                    const norm = normalizeTitle(title);
+                    for (const key in riskData) {
+                        if (normalizeTitle(key) === norm) {
+                            data = riskData[key];
+                            break;
+                        }
+                    }
+                }
+                const words = (data && data.high_risk_words) ? data.high_risk_words : [];
+                el.outerHTML = renderWordTags(words, 'high');
+            });
+
+            document.querySelectorAll('.loading-risk-medium').forEach(el => {
+                const title = decodeURIComponent(el.getAttribute('data-title') || '');
+                let data = riskData[title];
+                if (!data) {
+                    const norm = normalizeTitle(title);
+                    for (const key in riskData) {
+                        if (normalizeTitle(key) === norm) {
+                            data = riskData[key];
+                            break;
+                        }
+                    }
+                }
+                const words = (data && data.medium_risk_words) ? data.medium_risk_words : [];
+                el.outerHTML = renderWordTags(words, 'medium');
+            });
+
+            document.getElementById('highCount').textContent = highCount;
+            document.getElementById('mediumCount').textContent = mediumCount;
+            applyCurrentRiskFilterOnPage();
+        }
+
+        function applyCurrentRiskFilterOnPage() {
+            const levelFilter = (currentFilters.infringement || '').trim().toLowerCase();
+            if (!levelFilter) {
+                document.querySelectorAll('#listingTableBody tr').forEach(row => {
+                    row.style.display = '';
+                });
+                return;
+            }
+
+            document.querySelectorAll('#listingTableBody tr').forEach(row => {
+                const rowLevel = (row.getAttribute('data-risk-level') || '').toLowerCase();
+                row.style.display = rowLevel === levelFilter ? '' : 'none';
+            });
         }
 
         function renderPagination() {
@@ -677,7 +804,7 @@
             stats.textContent = `${start}-${end} / ${total}`;
 
             let html = '';
-            html += `<button class="pagination-btn" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Prev</button>`;
+            html += `<button class="pagination-btn" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
             const maxButtons = 7;
             let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
@@ -690,7 +817,7 @@
                 html += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
             }
 
-            html += `<button class="pagination-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>Next</button>`;
+            html += `<button class="pagination-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
             buttons.innerHTML = html;
         }
 
@@ -698,18 +825,26 @@
             showLoading(true);
             try {
                 const csrfToken = getCookie('csrftoken');
-                const response = await fetch('/api/amazon-listing-management/list/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        ...currentFilters,
-                        page: listPagination.page,
-                        page_size: listPagination.page_size
-                    })
-                });
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+                let response;
+                try {
+                    response = await fetch('/api/amazon-listing-management/list/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        signal: controller.signal,
+                        body: JSON.stringify({
+                            ...currentFilters,
+                            page: listPagination.page,
+                            page_size: listPagination.page_size
+                        })
+                    });
+                } finally {
+                    clearTimeout(timeoutId);
+                }
 
                 const result = await response.json();
                 if (!response.ok || !result.success) {
@@ -717,6 +852,9 @@
                 }
 
                 const data = result.data || {};
+                if (data.server_timing_ms) {
+                    console.info('listing list api timing(ms):', data.server_timing_ms);
+                }
                 listPagination.total = data.total || 0;
                 listPagination.total_pages = data.total_pages || 0;
                 listPagination.page = data.page || 1;
@@ -727,7 +865,11 @@
             } catch (error) {
                 renderListingTable([]);
                 renderPagination();
-                showToast('Failed to load listings: ' + error.message, 'error');
+                if (error.name === 'AbortError') {
+                    showToast('列表请求超时（20秒），请重试或缩小筛选范围。', 'error');
+                } else {
+                    showToast('加载 Listing 失败：' + error.message, 'error');
+                }
             } finally {
                 showLoading(false);
             }
@@ -773,12 +915,12 @@
                 const response = await fetch(`/api/amazon-listing-management/${listingId}/word-sources/`);
                 const result = await response.json();
                 if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Failed to load source details');
+                    throw new Error(result.message || '加载来源详情失败');
                 }
                 renderSourceModal(result.data || {});
                 document.getElementById('wordSourceModal').style.display = 'flex';
             } catch (error) {
-                showToast('Failed to load sources: ' + error.message, 'error');
+                showToast('加载来源失败：' + error.message, 'error');
             } finally {
                 btn.disabled = false;
                 icon.className = 'fas fa-eye';
@@ -802,7 +944,7 @@
             const rows = data.word_sources || [];
             const tbody = document.getElementById('sourceTableBody');
             if (!rows.length) {
-                tbody.innerHTML = `<tr><td colspan="3" class="empty-state">No risk words for this listing.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="empty-state">该 Listing 暂无风险词。</td></tr>`;
                 return;
             }
 
@@ -811,8 +953,8 @@
                     ? row.sources.map(renderSourceBadge).join('')
                     : renderSourceBadge('');
                 const level = row.risk_level === 'high'
-                    ? '<span class="risk-badge risk-high">High</span>'
-                    : '<span class="risk-badge risk-medium">Medium</span>';
+                    ? '<span class="risk-badge risk-high">高风险</span>'
+                    : '<span class="risk-badge risk-medium">中风险</span>';
                 return `
                     <tr>
                         <td>${escapeHtml(row.word || '-')}</td>
@@ -827,7 +969,7 @@
             document.getElementById('wordSourceModal').style.display = 'none';
             document.getElementById('sourceModalAsin').textContent = '';
             document.getElementById('sourceModalTitle').textContent = '';
-            document.getElementById('sourceTableBody').innerHTML = '<tr><td colspan="3" class="empty-state">No source data</td></tr>';
+            document.getElementById('sourceTableBody').innerHTML = '<tr><td colspan="3" class="empty-state">暂无来源数据</td></tr>';
         }
 
         function goToPage(targetPage) {
