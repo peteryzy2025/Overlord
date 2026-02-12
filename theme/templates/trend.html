@@ -433,8 +433,8 @@
                            placeholder="请输入关键词（例如：brand / 标题关键词）"
                            autocomplete="off"
                            style="padding-right: 50px;">
-                    <span class="search-mode-tag mode-2" id="searchModeTag" title="点击切换分词模式">组词</span>
-                    <input type="hidden" id="searchModeInput" name="searchMode" value="2">
+                    <span class="search-mode-tag mode-1" id="searchModeTag" title="点击切换分词模式">切词</span>
+                    <input type="hidden" id="searchModeInput" name="searchMode" value="1">
                 </div>
                 <button class="btn trend-search-btn" type="submit">搜索</button>
             </form>
@@ -501,7 +501,7 @@
             // 3: { text: '语义', desc: 'spacy语义分词', className: 'mode-3' }  // 已废弃
         };
 
-        let currentSearchMode = 2;  // 默认使用全组合查询
+        let currentSearchMode = 1;  // 默认使用切词查询
 
         function updateSearchModeDisplay() {
             const tag = document.getElementById('searchModeTag');
