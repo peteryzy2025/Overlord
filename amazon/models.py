@@ -143,7 +143,7 @@ class AmazonOrders(models.Model):
     )
     # 绑定到 LingXingAmazonShop（反向可查订单）
     lingxing_shop = models.ForeignKey(
-        'LingXingAmazonShop',
+        'amazon.LingXingAmazonShop',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -1388,6 +1388,7 @@ class AmazonOrderItemFullDetail(models.Model):
     def __str__(self):
         return f"{self.order.amazon_order_id} - {self.seller_sku}"
 
+
 class AmazonListing(models.Model):
     """
     Listing 数据库
@@ -1417,7 +1418,7 @@ class AmazonListing(models.Model):
 
     # 外键：一个 Listing 属于一个店铺（多对一）
     lingxing_shop = models.ForeignKey(
-        'LingXingAmazonShop',
+        'amazon.LingXingAmazonShop',
         on_delete=models.CASCADE,  # 店铺删除则 Listing 删除
         related_name='listings',
         verbose_name='所属领星店铺',
@@ -1473,5 +1474,4 @@ class AmazonListing(models.Model):
     def __str__(self):
         shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
         return f"{shop_name} - {self.asin}"
-
 
