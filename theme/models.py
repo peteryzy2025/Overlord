@@ -60,8 +60,6 @@ class ProductRankHistory(models.Model):
         return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
 
 
-#  下面是新的模型
-
 
 class AmazonThemeNovelty(models.Model):
     """亚马逊主题，存放稳定的基础信息"""

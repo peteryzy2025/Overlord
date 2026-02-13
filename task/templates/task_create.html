@@ -6,7 +6,9 @@
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
     <link rel="stylesheet" href="{% static 'css/task_create.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
     <script src="{% static 'js/Sortable.min.js' %}"></script>
+    <script src="{% static 'js/searchable-select.js' %}"></script>
 {% endblock %}
 
 {% block sidebar %}
@@ -41,9 +43,7 @@
 
                 <div class="form-group">
                     <label class="form-label">任务所有者 <span style="color: var(--danger-color);">*</span></label>
-                    <select class="form-select" id="taskOwner">
-                        <option value="">加载中...</option>
-                    </select>
+                    <div id="taskOwner" class="searchable-select single" data-placeholder="选择任务所有者"></div>
                 </div>
 
                 <div class="form-group">
@@ -153,6 +153,13 @@
                         <h4>Amazon上传商品</h4>
                         <p>上传Excel文件到Amazon</p>
                     </div>
+                    <div class="subtask-type-card" data-type="diwei_auto_upload" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>自动化铺货</h4>
+                        <p>VIP专用</p>
+                    </div>
                 </div>
                 <button class="btn btn-primary" id="confirmAddSubtaskBtn" onclick="confirmAddSubtask()"
                         style="width: 100%; margin-top: 1.5rem;" disabled>
@@ -164,7 +171,7 @@
 
     <!-- 保存模板模态框 -->
     <div class="modal-overlay" id="saveTemplateModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
             <div class="modal-header">
                 <h3 class="modal-title">保存任务模板</h3>
                 <button class="btn-icon" onclick="closeSaveTemplateModal()">
@@ -180,7 +187,7 @@
                 <div class="form-group">
                     <label class="form-label">模板描述</label>
                     <textarea class="form-control" id="templateDescription" placeholder="描述此模板的用途和使用场景"
-                              rows="3"></textarea>
+                              rows="6" style="resize: vertical; min-height: 120px;"></textarea>
                 </div>
                 <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
                     <button class="btn btn-secondary" onclick="closeSaveTemplateModal()" style="flex: 1;">
@@ -343,19 +350,8 @@
 
                 if (result.success) {
                     availableOwners = result.data;
-                    const ownerSelect = document.getElementById('taskOwner');
-                    ownerSelect.innerHTML = availableOwners.map(owner =>
-                        `<option value="${owner.id}" ${owner.id == "{{ request.user.id }}" ? 'selected' : ''}>
-                            ${owner.name}
-                        </option>`
-                    ).join('');
-
-                    taskData.ownerId = "{{ request.user.id }}";
-
-                    ownerSelect.addEventListener('change', function () {
-                        taskData.ownerId = this.value;
-                        triggerAutoSave();
-                    });
+                    // 初始化 SearchableSelect
+                    initTaskOwnerSelect();
                 }
             } catch (error) {
                 console.error('加载所有者列表失败:', error);
@@ -403,6 +399,200 @@
                 console.error('生成任务单号失败:', error);
                 document.getElementById('taskNoPreview').textContent = '生成失败';
             }
+        }
+
+        // ===== 初始化任务所有者选择器 =====
+        let taskOwnerSelect = null;
+
+        function initTaskOwnerSelect() {
+            if (availableOwners.length === 0) return;
+
+            const options = availableOwners.map(owner => ({
+                value: String(owner.id),
+                label: owner.name
+            }));
+
+            taskOwnerSelect = new SearchableSelect('#taskOwner', {
+                options: options,
+                multiple: false,
+                placeholder: '选择任务所有者'
+            });
+
+            // 设置默认值
+            const currentUserId = String("{{ request.user.id }}");
+            taskOwnerSelect.setValue(currentUserId);
+            taskData.ownerId = currentUserId;
+
+            // 监听变化
+            taskOwnerSelect.onChange = (value) => {
+                taskData.ownerId = value;
+                triggerAutoSave();
+            };
+        }
+
+        // ===== 初始化子任务中的SearchableSelect =====
+        function initSubtaskSearchableSelects(subtask) {
+            if (subtask.type === 'multi_side_custom' || subtask.type === 'custom_upload') {
+                // 模式选择
+                const modeSelectEl = document.querySelector(`#mode-select-${subtask.id}`);
+                if (modeSelectEl && !modeSelectEl.dataset.initialized) {
+                    const modeSelect = new SearchableSelect(`#mode-select-${subtask.id}`, {
+                        options: [
+                            { value: 'adapt', label: '适应' },
+                            { value: 'fill', label: '填充' }
+                        ],
+                        multiple: false,
+                        placeholder: '选择模式'
+                    });
+                    modeSelect.setValue(subtask.params.mode || 'adapt');
+                    modeSelect.onChange = (value) => {
+                        updateSubtaskParam(subtask.id, 'mode', value);
+                    };
+                    modeSelectEl.dataset.initialized = 'true';
+                }
+
+                // 图库账号选择
+                const galleryAccountEl = document.querySelector(`#gallery-account-select-${subtask.id}`);
+                if (galleryAccountEl && !galleryAccountEl.dataset.initialized) {
+                    const galleryAccountSelect = new SearchableSelect(`#gallery-account-select-${subtask.id}`, {
+                        options: [
+                            { value: '曾雪莹', label: '曾雪莹' },
+                            { value: '杨涵', label: '杨涵' },
+                            { value: '魏李杰', label: '魏李杰' },
+                            { value: '吴杰柱', label: '吴杰柱' },
+                            { value: '侯益山', label: '侯益山' },
+                            { value: '郭子伊', label: '郭子伊' },
+                            { value: '吴晓纯', label: '吴晓纯' },
+                            { value: '林焕源', label: '林焕源' },
+                            { value: '罗仕明', label: '罗仕明' }
+                        ],
+                        multiple: false,
+                        placeholder: '选择图库账号'
+                    });
+                    galleryAccountSelect.setValue(subtask.params.gallery_account || '侯益山');
+                    galleryAccountSelect.onChange = (value) => {
+                        updateSubtaskParam(subtask.id, 'gallery_account', value);
+                    };
+                    galleryAccountEl.dataset.initialized = 'true';
+                }
+
+                // 工艺类型选择
+                const craftTypeEl = document.querySelector(`#craft-type-select-${subtask.id}`);
+                if (craftTypeEl && !craftTypeEl.dataset.initialized) {
+                    const craftTypeSelect = new SearchableSelect(`#craft-type-select-${subtask.id}`, {
+                        options: [
+                            { value: 'print', label: '印花' },
+                            { value: 'emboss', label: '刺绣' },
+                            { value: 'laser', label: '镭射' }
+                        ],
+                        multiple: false,
+                        placeholder: '选择工艺类型'
+                    });
+                    craftTypeSelect.setValue(subtask.params.craft_type || 'print');
+                    craftTypeSelect.onChange = (value) => {
+                        updateSubtaskParam(subtask.id, 'craft_type', value);
+                    };
+                    craftTypeEl.dataset.initialized = 'true';
+                }
+
+                // 定制方式选择
+                const customMethodEl = document.querySelector(`#custom-method-select-${subtask.id}`);
+                if (customMethodEl && !customMethodEl.dataset.initialized) {
+                    const customMethodSelect = new SearchableSelect(`#custom-method-select-${subtask.id}`, {
+                        options: [
+                            { value: 'batch', label: '批量定制' },
+                            { value: 'single', label: '单个定制' }
+                        ],
+                        multiple: false,
+                        placeholder: '选择定制方式'
+                    });
+                    customMethodSelect.setValue(subtask.params.custom_method || 'batch');
+                    customMethodSelect.onChange = (value) => {
+                        updateSubtaskParam(subtask.id, 'custom_method', value);
+                    };
+                    customMethodEl.dataset.initialized = 'true';
+                }
+            }
+        }
+
+        // ===== 初始化迪唯操作选择器 =====
+        function initDiweiOperationSelect(subtask) {
+            const operationSelectEl = document.querySelector(`#operation-select-${subtask.id}`);
+            if (!operationSelectEl || operationSelectEl.dataset.initialized) return;
+
+            const operationSelect = new SearchableSelect(`#operation-select-${subtask.id}`, {
+                options: [
+                    { value: 'distribution', label: '铺货' },
+                    { value: 'export', label: '汇出' },
+                    { value: 'custom', label: '定制' }
+                ],
+                multiple: false,
+                placeholder: '选择操作'
+            });
+
+            operationSelect.setValue(subtask.params.operation || 'custom');
+            operationSelect.onChange = (value) => {
+                updateSubtaskParam(subtask.id, 'operation', value);
+                toggleDiweiCustomFields(subtask.id, value === 'custom');
+            };
+
+            operationSelectEl.dataset.initialized = 'true';
+        }
+
+        // ===== 切换迪唯定制字段显示 =====
+        function toggleDiweiCustomFields(subtaskId, show) {
+            const customFields = document.getElementById(`custom-fields-${subtaskId}`);
+            if (customFields) {
+                customFields.style.display = show ? 'contents' : 'none';
+            }
+        }
+
+        // ===== 处理迪唯图库输入互斥 =====
+        function handleDiweiGalleryInput(element, subtaskId, fieldName) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+
+            const value = element.value.trim();
+            updateSubtaskParam(subtaskId, fieldName, value);
+
+            // 互斥逻辑：如果填写了当前字段，清空另一个字段
+            if (value) {
+                const otherFieldName = fieldName === 'gallery_path' ? 'local_gallery_path' : 'gallery_path';
+                const otherInput = document.getElementById(`${otherFieldName === 'gallery_path' ? 'gallery-path' : 'local-gallery-path'}-${subtaskId}`);
+                if (otherInput) {
+                    otherInput.value = '';
+                }
+                subtask.params[otherFieldName] = '';
+                
+                // 如果清空的是图库目录，同时隐藏预览
+                if (otherFieldName === 'gallery_path') {
+                    const previewContainer = document.getElementById(`gallery-path-preview-${subtaskId}`);
+                    if (previewContainer) {
+                        previewContainer.style.display = 'none';
+                    }
+                }
+            }
+        }
+
+        // ===== 迪唯图库目录输入处理（结合多面定制预览和互斥逻辑） =====
+        function handleDiweiGalleryPathInput(element, subtaskId) {
+            // 先执行互斥逻辑（在 handleGalleryPathInput 之前，避免 auto-save 时数据不一致）
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+
+            const value = element.value.trim();
+            
+            // 互斥逻辑：如果填写了图库目录，清空本地图库路径
+            if (value) {
+                const otherInput = document.getElementById(`local-gallery-path-${subtaskId}`);
+                if (otherInput) {
+                    otherInput.value = '';
+                }
+                subtask.params.local_gallery_path = '';
+            }
+            
+            // 再调用多面定制的图库目录处理（自动切割分级预览）
+            handleGalleryPathInput(element, subtaskId);
         }
 
         // ===== 拖拽排序初始化 =====
@@ -609,6 +799,13 @@
                     file_list: [],
                     file_paths: []
                 };
+            } else if (type === 'diwei_auto_upload') {
+                defaultParams = {
+                    diwei_account: '',
+                    operation: 'custom',
+                    gallery_path: '',
+                    local_gallery_path: ''
+                };
             }
 
             // 合并参数（优先使用传入的params，缺失的使用defaultParams）
@@ -623,6 +820,11 @@
             } else if (type === 'amazon_upload') {
                 if (!params.file_list) mergedParams.file_list = [];
                 if (!params.file_paths) mergedParams.file_paths = [];
+            } else if (type === 'diwei_auto_upload') {
+                if (!params.diwei_account) mergedParams.diwei_account = '';
+                if (!params.operation) mergedParams.operation = 'custom';
+                if (!params.gallery_path) mergedParams.gallery_path = '';
+                if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
 
             const subtask = {
@@ -744,6 +946,24 @@
             if (subtask.type === 'amazon_upload') {
                 refreshFileList(subtask.id);
             }
+
+            // 如果是diwei_auto_upload类型，初始化SearchableSelect
+            if (subtask.type === 'diwei_auto_upload') {
+                initDiweiOperationSelect(subtask);
+                
+                // 初始化图库目录预览（如果操作是定制）
+                if (subtask.params.operation === 'custom' && subtask.params.gallery_path) {
+                    const input = document.querySelector(`#gallery-path-${subtask.id}`);
+                    if (input) {
+                        const val = Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path;
+                        input.value = val;
+                        handleGalleryPathInput(input, subtask.id);
+                    }
+                }
+            }
+
+            // 初始化所有子任务中的SearchableSelect
+            initSubtaskSearchableSelects(subtask);
         }
 
         // ===== Amazon上传文件相关函数 =====
@@ -928,46 +1148,22 @@
 
                         <div class="form-group">
                             <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select mode-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'mode', this.value)">
-                                <option value="adapt" ${subtask.params.mode === 'adapt' ? 'selected' : ''}>适应</option>
-                                <option value="fill" ${subtask.params.mode === 'fill' ? 'selected' : ''}>填充</option>
-                            </select>
+                            <div id="mode-select-${subtask.id}" class="searchable-select single" data-placeholder="选择模式"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">图库账号 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select gallery-account-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'gallery_account', this.value)">
-                                <option value="曾雪莹" ${subtask.params.gallery_account === '曾雪莹' ? 'selected' : ''}>曾雪莹</option>
-                                <option value="杨涵" ${subtask.params.gallery_account === '杨涵' ? 'selected' : ''}>杨涵</option>
-                                <option value="魏李杰" ${subtask.params.gallery_account === '魏李杰' ? 'selected' : ''}>魏李杰</option>
-                                <option value="吴杰柱" ${subtask.params.gallery_account === '吴杰柱' ? 'selected' : ''}>吴杰柱</option>
-                                <option value="侯益山" ${subtask.params.gallery_account === '侯益山' ? 'selected' : ''} selected>侯益山</option>
-                                <option value="郭子伊" ${subtask.params.gallery_account === '郭子伊' ? 'selected' : ''}>郭子伊</option>
-                                <option value="吴晓纯" ${subtask.params.gallery_account === '吴晓纯' ? 'selected' : ''}>吴晓纯</option>
-                                <option value="林焕源" ${subtask.params.gallery_account === '林焕源' ? 'selected' : ''}>林焕源</option>
-                                <option value="罗仕明" ${subtask.params.gallery_account === '罗仕明' ? 'selected' : ''}>罗仕明</option>
-                            </select>
+                            <div id="gallery-account-select-${subtask.id}" class="searchable-select single" data-placeholder="选择图库账号"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select craft-type-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'craft_type', this.value)">
-                                <option value="print" ${subtask.params.craft_type === 'print' ? 'selected' : ''}>印花</option>
-                                <option value="emboss" ${subtask.params.craft_type === 'emboss' ? 'selected' : ''}>刺绣</option>
-                                <option value="laser" ${subtask.params.craft_type === 'laser' ? 'selected' : ''}>镭射</option>
-                            </select>
+                            <div id="craft-type-select-${subtask.id}" class="searchable-select single" data-placeholder="选择工艺类型"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">定制方式 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select custom-method-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'custom_method', this.value)">
-                                <option value="batch" ${(!subtask.params.custom_method || subtask.params.custom_method === 'batch') ? 'selected' : ''}>批量定制</option>
-                                <option value="single" ${subtask.params.custom_method === 'single' ? 'selected' : ''}>单个定制</option>
-                            </select>
+                            <div id="custom-method-select-${subtask.id}" class="searchable-select single" data-placeholder="选择定制方式"></div>
                         </div>
 
                         <div class="form-group">
@@ -1069,46 +1265,22 @@
 
                         <div class="form-group">
                             <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select mode-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'mode', this.value)">
-                                <option value="adapt" ${subtask.params.mode === 'adapt' ? 'selected' : ''}>适应</option>
-                                <option value="fill" ${subtask.params.mode === 'fill' ? 'selected' : ''}>填充</option>
-                            </select>
+                            <div id="mode-select-${subtask.id}" class="searchable-select single" data-placeholder="选择模式"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">图库账号 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select gallery-account-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'gallery_account', this.value)">
-                                <option value="曾雪莹" ${subtask.params.gallery_account === '曾雪莹' ? 'selected' : ''}>曾雪莹</option>
-                                <option value="杨涵" ${subtask.params.gallery_account === '杨涵' ? 'selected' : ''}>杨涵</option>
-                                <option value="魏李杰" ${subtask.params.gallery_account === '魏李杰' ? 'selected' : ''}>魏李杰</option>
-                                <option value="吴杰柱" ${subtask.params.gallery_account === '吴杰柱' ? 'selected' : ''}>吴杰柱</option>
-                                <option value="侯益山" ${subtask.params.gallery_account === '侯益山' ? 'selected' : ''} selected>侯益山</option>
-                                <option value="郭子伊" ${subtask.params.gallery_account === '郭子伊' ? 'selected' : ''}>郭子伊</option>
-                                <option value="吴晓纯" ${subtask.params.gallery_account === '吴晓纯' ? 'selected' : ''}>吴晓纯</option>
-                                <option value="林焕源" ${subtask.params.gallery_account === '林焕源' ? 'selected' : ''}>林焕源</option>
-                                <option value="罗仕明" ${subtask.params.gallery_account === '罗仕明' ? 'selected' : ''}>罗仕明</option>
-                            </select>
+                            <div id="gallery-account-select-${subtask.id}" class="searchable-select single" data-placeholder="选择图库账号"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select craft-type-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'craft_type', this.value)">
-                                <option value="print" ${subtask.params.craft_type === 'print' ? 'selected' : ''}>印花</option>
-                                <option value="emboss" ${subtask.params.craft_type === 'emboss' ? 'selected' : ''}>刺绣</option>
-                                <option value="laser" ${subtask.params.craft_type === 'laser' ? 'selected' : ''}>镭射</option>
-                            </select>
+                            <div id="craft-type-select-${subtask.id}" class="searchable-select single" data-placeholder="选择工艺类型"></div>
                         </div>
 
                         <div class="form-group">
                             <label class="form-label">定制方式 <span style="color: var(--danger-color);">*</span></label>
-                            <select class="form-select custom-method-select" data-subtask-id="${subtask.id}"
-                                    onchange="updateSubtaskParam(${subtask.id}, 'custom_method', this.value)">
-                                <option value="batch" ${(!subtask.params.custom_method || subtask.params.custom_method === 'batch') ? 'selected' : ''}>批量定制</option>
-                                <option value="single" ${subtask.params.custom_method === 'single' ? 'selected' : ''}>单个定制</option>
-                            </select>
+                            <div id="custom-method-select-${subtask.id}" class="searchable-select single" data-placeholder="选择定制方式"></div>
                         </div>
 
                         <div class="form-group">
@@ -1221,6 +1393,56 @@
                         </div>
                     </div>
                 `;
+            } else if (subtask.type === 'diwei_auto_upload') {
+                const isCustom = subtask.params.operation === 'custom';
+                return `
+                    <div class="dynamic-fields">
+                        <div class="form-group">
+                            <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="text" class="form-control"
+                                   id="diwei-account-${subtask.id}"
+                                   placeholder="请输入迪唯账号"
+                                   value="${subtask.params.diwei_account || ''}"
+                                   oninput="updateSubtaskParam(${subtask.id}, 'diwei_account', this.value)">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">操作 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="operation-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择操作"></div>
+                        </div>
+
+                        <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'}; grid-column: span 2;">
+                            <div class="form-group has-autocomplete" style="grid-column: span 1;">
+                                <label class="form-label">图库目录</label>
+                                <div class="product-ids-wrapper">
+                                    <input type="text" class="form-control gallery-path-input"
+                                           id="gallery-path-${subtask.id}"
+                                           placeholder="输入多级目录，如 10月 10.31 10.31-樱花"
+                                           value="${subtask.params.gallery_path || ''}"
+                                           data-subtask-id="${subtask.id}"
+                                           oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
+                                           onfocus="showPathSuggestions(this)">
+                                    <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}">
+                                        <!-- 动态生成 -->
+                                    </div>
+                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}">
+                                        <!-- 自动补全建议 -->
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="grid-column: span 1;">
+                                <label class="form-label">本地图库路径</label>
+                                <input type="text" class="form-control"
+                                       id="local-gallery-path-${subtask.id}"
+                                       placeholder="请输入本地图库路径"
+                                       value="${subtask.params.local_gallery_path || ''}"
+                                       oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
             return '';
         }
@@ -1292,7 +1514,8 @@
                 'multi_side_custom': '多面定制',
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
-                'amazon_upload': 'Amazon上传商品'
+                'amazon_upload': 'Amazon上传商品',
+                'diwei_auto_upload': '自动化铺货'
             };
             return typeMap[type] || type;
         }
@@ -1352,16 +1575,18 @@
 
             const previewContainer = document.getElementById(`gallery-path-preview-${subtaskId}`);
 
-            if (paths.length > 0) {
-                previewContainer.innerHTML = paths.map(path => `
-                    <span class="product-id-tag" style="background: var(--info-color);">
-                        ${path}
-                        <span class="remove-product-id" onclick="removeGalleryPath('${path.replace(/'/g, "\\'")}', ${subtaskId})">×</span>
-                    </span>
-                `).join('');
-                previewContainer.style.display = 'flex';
-            } else {
-                previewContainer.style.display = 'none';
+            if (previewContainer) {
+                if (paths.length > 0) {
+                    previewContainer.innerHTML = paths.map(path => `
+                        <span class="product-id-tag" style="background: var(--info-color);">
+                            ${path}
+                            <span class="remove-product-id" onclick="removeGalleryPath('${path.replace(/'/g, "\\'")}', ${subtaskId})">×</span>
+                        </span>
+                    `).join('');
+                    previewContainer.style.display = 'flex';
+                } else {
+                    previewContainer.style.display = 'none';
+                }
             }
 
             triggerAutoSave();
@@ -1910,6 +2135,24 @@
                     if (!hasValidFiles) {
                         showNotification(`子任务 #${subtask.order + 1} 必须上传至少一个有效的Excel文件`, 'warning');
                         return false;
+                    }
+                } else if (subtask.type === 'diwei_auto_upload') {
+                    if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
+                        return false;
+                    }
+                    if (!subtask.params.operation) {
+                        showNotification(`子任务 #${subtask.order + 1} 的操作类型不能为空`, 'warning');
+                        return false;
+                    }
+                    // 如果操作是定制，必须填写图库或本地图库路径之一
+                    if (subtask.params.operation === 'custom') {
+                        const hasGallery = subtask.params.gallery_path && subtask.params.gallery_path.trim() !== '';
+                        const hasLocalGallery = subtask.params.local_gallery_path && subtask.params.local_gallery_path.trim() !== '';
+                        if (!hasGallery && !hasLocalGallery) {
+                            showNotification(`子任务 #${subtask.order + 1} 选择了定制操作，必须填写图库或本地图库路径`, 'warning');
+                            return false;
+                        }
                     }
                 }
             }

@@ -683,6 +683,49 @@ def create_task_api(request):
                     process_amazon_upload_files(subtask_data.get('params', {}), task_no, task_instance=task,
                                                 subtask_instance=subtask)
 
+                # 自动化铺货类型发送 webhook
+                if subtask_type == 'diwei_auto_upload' and not is_draft:
+                    try:
+                        # 构造 webhook 数据
+                        diwei_params = subtask_data.get('params', {})
+                        diwei_webhook_data = {
+                            'task_id': task.id,
+                            'task_no': task_no,
+                            'subtask_id': subtask.id,
+                            'subtask_type': 'diwei_auto_upload',
+                            'diwei_account': diwei_params.get('diwei_account', ''),
+                            'operation': diwei_params.get('operation', ''),
+                            'created_by_id': current_user.id,
+                            'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
+                            'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
+                            'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            'status': 'pending'
+                        }
+
+                        # 根据操作类型添加路径信息
+                        operation = diwei_params.get('operation', '')
+                        if operation == 'custom':
+                            gallery_path = diwei_params.get('gallery_path', '').strip()
+                            local_gallery_path = diwei_params.get('local_gallery_path', '').strip()
+                            if gallery_path:
+                                diwei_webhook_data['gallery_source'] = 'gallery'
+                                diwei_webhook_data['gallery_path'] = gallery_path
+                            elif local_gallery_path:
+                                diwei_webhook_data['gallery_source'] = 'local'
+                                diwei_webhook_data['local_gallery_path'] = local_gallery_path
+
+                        def send_diwei_webhook(payload):
+                            url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/918309922287583232"
+                            try:
+                                requests.post(url, json=payload, timeout=10)
+                            except Exception as e:
+                                print(f"Diwei webhook send failed: {e}")
+
+                        # 事务提交后异步发送
+                        transaction.on_commit(lambda data=diwei_webhook_data: threading.Thread(target=send_diwei_webhook, args=(data,)).start())
+                    except Exception as e:
+                        print(f"Error preparing diwei webhook: {e}")
+
             except Exception as e:
                 # 回滚事务
                 raise ValueError(f"子任务 #{idx + 1} 验证失败: {str(e)}")

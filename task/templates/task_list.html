@@ -12,7 +12,6 @@
         flex-direction: column;
         gap: 1.5rem;
         width: 100%;
-        max-width: 1400px;
         margin: 0 auto;
         padding: 2rem;
     }
@@ -744,6 +743,16 @@
     <!-- 筛选面板 -->
     <div class="task-card">
         <div class="filter-row">
+            <div class="filter-group" style="min-width: 280px;">
+                <label class="filter-label">搜索</label>
+                <div style="position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索任务标题、任务单号..." 
+                           style="padding-left: 2.5rem; width: 100%;"
+                           onkeyup="handleSearch(event)">
+                </div>
+            </div>
+
             <div class="filter-group">
                 <label class="filter-label">状态筛选</label>
                 <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
@@ -771,12 +780,13 @@
 
             <div class="filter-group" style="align-self: flex-end;">
                 <div style="display: flex; gap: 0.5rem;">
+                                 <button class="btn btn-primary" onclick="applyFilters()">
+                        <i class="fas fa-filter"></i> 应用筛选
+                    </button>
                     <button class="btn btn-secondary" onclick="resetFilters()">
                         <i class="fas fa-undo"></i> 重置
                     </button>
-                    <button class="btn btn-primary" onclick="applyFilters()">
-                        <i class="fas fa-filter"></i> 应用筛选
-                    </button>
+       
                 </div>
             </div>
         </div>
@@ -1058,6 +1068,9 @@
             if (taskData.filters.creator.length > 0) {
                 params.append('creator', taskData.filters.creator.join(','));
             }
+            if (currentSearchKeyword) {
+                params.append('search', currentSearchKeyword);
+            }
 
             const response = await fetch(`/api/tasks/list/?${params}`, {
                 cache: 'no-cache' // 添加这行，避免浏览器缓存
@@ -1246,6 +1259,29 @@
         if (newPage < 1 || newPage > taskData.pagination.total_pages) return;
 
         taskData.pagination.page = newPage;
+        loadTasks();
+    }
+
+    // ===== 搜索功能 =====
+    let currentSearchKeyword = '';
+
+    function handleSearch(event) {
+        if (event.key === 'Enter') {
+            applySearch();
+        }
+    }
+
+    function applySearch() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        currentSearchKeyword = keyword;
+        taskData.pagination.page = 1;
+        loadTasks();
+    }
+
+    function clearSearch() {
+        document.getElementById('searchInput').value = '';
+        currentSearchKeyword = '';
+        taskData.pagination.page = 1;
         loadTasks();
     }
 
