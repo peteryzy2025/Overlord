@@ -212,6 +212,25 @@ def validate_subtask_params(subtask_type, params, user):
 
             return {'valid': True, 'message': ''}
 
+        elif subtask_type == 'diwei_auto_upload':
+            # 自动化铺货验证
+            diwei_account = params.get('diwei_account', '').strip()
+            if not diwei_account:
+                return {'valid': False, 'message': '迪唯账号不能为空'}
+
+            operation = params.get('operation', '')
+            if operation not in ['distribution', 'export', 'custom']:
+                return {'valid': False, 'message': '操作类型必须是"铺货"、"汇出"或"定制"'}
+
+            # 如果操作是定制，必须填写图库或本地图库路径之一
+            if operation == 'custom':
+                gallery_path = params.get('gallery_path', '').strip()
+                local_gallery_path = params.get('local_gallery_path', '').strip()
+                if not gallery_path and not local_gallery_path:
+                    return {'valid': False, 'message': '选择定制操作时，必须填写图库或本地图库路径'}
+
+            return {'valid': True, 'message': ''}
+
         else:
 
             return {'valid': False, 'message': f'未知的子任务类型: {subtask_type}'}
