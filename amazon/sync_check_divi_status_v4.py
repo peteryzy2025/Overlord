@@ -29,6 +29,9 @@ django.setup()
 
 from amazon.models import AmazonOrders, LingXingAmazonShop
 from general.models import AmazonShop, Project
+
+# ============ 缓存：brand_id → 店铺信息映射 ============
+_BRAND_INFO_CACHE = {}
 from api.divi.divi_order_service import (
     query_divi_order,
     get_divi_brand_id_from_sid,
@@ -96,20 +99,52 @@ def check_project_divi_config(brand_id):
 
 
 def query_reimport_orders(start_datetime):
-    """查询需要补导的订单：本地标记为未导出 + 店铺状态正常"""
-    return (AmazonOrders.objects.filter(
+    """查询需要补导的订单：本地标记为未导出 + 店铺状态正常 + 项目已配置DIVI凭证"""
+    # 先获取所有符合条件的订单（未导出、店铺状态正常）
+    orders = AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
         is_exported_to_divi=False,  # 核心条件：只找漏单
-        amazon_shop__shop_status='正常',  # ⭐ 新增：只查询正常状态的店铺
+        amazon_shop__shop_status='正常',  # ⭐ 只查询正常状态的店铺
     ).exclude(
         divi_order_status__in={0, 5}
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).select_related(
         'lingxing_shop',
-        'amazon_shop'  # ⭐ 新增：优化查询
-    ).order_by('purchase_date_local'))
+        'amazon_shop',  # ⭐ 新增：优化查询
+        'amazon_shop__project'  # ⭐ 新增：获取项目信息用于检查凭证
+    ).order_by('purchase_date_local')
+    
+    # ⭐ 新增：过滤出项目已配置 DIVI 凭证的订单
+    # 先收集所有需要检查的 brand_id
+    brand_ids_to_check = set()
+    for order in orders:
+        sid = order.lingxing_shop.sid if order.lingxing_shop else None
+        if sid:
+            brand_id = get_brand_id_with_cache(sid)
+            if brand_id:
+                brand_ids_to_check.add(brand_id)
+    
+    # 批量检查项目配置，缓存结果
+    valid_brand_ids = set()
+    for brand_id in brand_ids_to_check:
+        can_import, _ = check_project_divi_config(brand_id)
+        if can_import:
+            valid_brand_ids.add(brand_id)
+    
+    # 过滤订单：只保留项目已配置凭证的
+    filtered_order_ids = []
+    for order in orders:
+        sid = order.lingxing_shop.sid if order.lingxing_shop else None
+        if sid:
+            brand_id = get_brand_id_with_cache(sid)
+            if brand_id in valid_brand_ids:
+                filtered_order_ids.append(order.id)
+    
+    return AmazonOrders.objects.filter(id__in=filtered_order_ids).select_related(
+        'lingxing_shop', 'amazon_shop'
+    ).order_by('purchase_date_local')
 
 
 def query_sync_orders(start_datetime):
@@ -183,10 +218,36 @@ def get_brand_id_with_cache(sid):
         _BRAND_ID_CACHE[sid] = get_divi_brand_id_from_sid(sid)
     return _BRAND_ID_CACHE[sid]
 
+
+def get_brand_info_with_cache(brand_id):
+    """带缓存的 brand_id → 店铺信息映射"""
+    if brand_id not in _BRAND_INFO_CACHE:
+        shop = AmazonShop.objects.filter(
+            divi_shop_id=brand_id
+        ).select_related('project').first()
+        
+        if shop:
+            _BRAND_INFO_CACHE[brand_id] = {
+                'shop_name': shop.shop_name or '未命名店铺',
+                'project_name': shop.project.name if shop.project else '未分配项目',
+                'sid': shop.id
+            }
+        else:
+            _BRAND_INFO_CACHE[brand_id] = {
+                'shop_name': '未知店铺',
+                'project_name': '未知项目',
+                'sid': None
+            }
+    return _BRAND_INFO_CACHE[brand_id]
+
+
 def extract_unique_brand_ids(start_datetime):
     """
-    提取需要同步的订单中出现的所有唯一 brand_id
-    通过 SID → BrandID 映射，并自动去重
+    提取需要同步的订单中出现的所有唯一 brand_id（只包含项目已配置DIVI凭证的）
+    通过 SID → BrandID 映射，并自动去重，同时过滤掉未配置凭证的项目
+    返回: (brand_ids列表, brand_info_dict)
+        - brand_ids: [brand_id1, brand_id2, ...]
+        - brand_info_dict: {brand_id: {'shop_name': ..., 'project_name': ...}, ...}
     """
     # 1. 先获取所有待同步订单的店铺 SID（去重）
     # ⭐ 注意：这里已经通过 query_sync_orders 过滤了店铺状态
@@ -200,26 +261,57 @@ def extract_unique_brand_ids(start_datetime):
         lingxing_shop__isnull=True
     ).values('lingxing_shop__sid').distinct()
 
-    # 2. 映射为 BrandID 并去重
+    # 2. 映射为 BrandID 并去重，同时检查项目配置
     brand_ids = set()
+    brand_info = {}
+    skipped_brands = []  # 记录被跳过的品牌
+    
     for row in orders_with_sid:
         sid = row['lingxing_shop__sid']
         brand_id = get_brand_id_with_cache(sid)
         if brand_id:
+            # ⭐ 新增：检查项目是否配置了 DIVI 凭证
+            can_import, msg = check_project_divi_config(brand_id)
+            if not can_import:
+                if brand_id not in [b['brand_id'] for b in skipped_brands]:
+                    skipped_brands.append({'brand_id': brand_id, 'reason': msg})
+                continue
+            
             brand_ids.add(brand_id)
+            # 获取店铺详细信息
+            if brand_id not in brand_info:
+                brand_info[brand_id] = get_brand_info_with_cache(brand_id)
 
-    return list(brand_ids)
+    # 打印被跳过的品牌信息
+    if skipped_brands:
+        print(f"\n⚠️  跳过 {len(skipped_brands)} 个未配置DIVI凭证的品牌：")
+        for sb in skipped_brands:
+            print(f"    - brand_id={sb['brand_id']}: {sb['reason']}")
+        print()
 
-def sync_brand_orders(brand_ids):
+    return list(brand_ids), brand_info
+
+def sync_brand_orders(brand_ids, brand_info=None):
     """
     按 brand_id 批量同步 DIVI 订单数据（v2 核心函数）
     一个 brand_id 可能对应多个领星店铺
+    
+    Args:
+        brand_ids: brand_id 列表
+        brand_info: {brand_id: {'shop_name': ..., 'project_name': ...}, ...}
     """
     total_success = total_error = 0
+    
+    if brand_info is None:
+        brand_info = {}
 
     for brand_id in brand_ids:
+        # 获取店铺名
+        info = brand_info.get(brand_id, {})
+        shop_name = info.get('shop_name', '未知店铺')
+        
         print(f"\n{'=' * 60}")
-        print(f">>> 开始同步 brand_id={brand_id}")
+        print(f">>> 开始同步 brand_id={brand_id} (店铺: {shop_name})")
 
         try:
             # 1. 批量获取该品牌下所有 DIVI 订单（一次网络请求）
@@ -323,10 +415,28 @@ def divi_process_orders(target_date_str, force_reimport):
 
     # 步骤2：所有模式都执行的批量字段同步操作（已过滤店铺状态）
     print("\n【批量同步阶段】正在提取需要同步的品牌...")
-    brand_ids = extract_unique_brand_ids(start_datetime)
-    print(f"🚀 准备同步 {len(brand_ids)} 个品牌的数据（已过滤店铺状态）...")
+    brand_ids, brand_info = extract_unique_brand_ids(start_datetime)
+    
+    # 按项目分组统计
+    project_groups = {}
+    for bid in brand_ids:
+        info = brand_info.get(bid, {})
+        proj_name = info.get('project_name', '未知项目')
+        if proj_name not in project_groups:
+            project_groups[proj_name] = []
+        project_groups[proj_name].append({
+            'brand_id': bid,
+            'shop_name': info.get('shop_name', '未知店铺')
+        })
+    
+    print(f"🚀 准备同步 {len(brand_ids)} 个品牌的数据（已过滤店铺状态），分布如下：")
+    for proj_name, shops in sorted(project_groups.items()):
+        print(f"\n  【{proj_name}】: {len(shops)}个品牌")
+        for shop in shops:
+            print(f"    - brand_id={shop['brand_id']} (店铺: {shop['shop_name']})")
+    print()  # 空行
 
-    sync_success, sync_errors = sync_brand_orders(brand_ids)
+    sync_success, sync_errors = sync_brand_orders(brand_ids, brand_info)
 
     # 最终统计报告
     print(f"\n{'=' * 96}")
