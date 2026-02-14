@@ -83,7 +83,8 @@ NAME_TYPE_MAPPING = {
     7: '违禁词',
     8: '商标侵权',
     9: '自定义白名单',
-    10: '知名IP'
+    10: '知名IP',
+    11: '版权图片'
 }
 
 # 侵权分类映射
@@ -629,7 +630,7 @@ def api_import_tro_records(request):
                 # 类型码合法性检查（1-10）
                 if name_type not in NAME_TYPE_MAPPING:
                     error_count += 1
-                    errors.append(f'第 {idx + 2} 行: 无效的类型码 {name_type}（需在1-10之间）')
+                    errors.append(f'第 {idx + 2} 行: 无效的类型码 {name_type}（需在1-11之间）')
                     continue
 
                 # 检查是否已存在
