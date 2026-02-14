@@ -1,7 +1,7 @@
 {% extends 'base/base_z.html' %}
 {% load static %}
 
-{% block title %}侵权风险检测 V2 - Divi智管{% endblock %}
+{% block title %}侵权词搜索判断 - Divi智管{% endblock %}
 
 {% block extra_css %}
     <style>
@@ -22,35 +22,21 @@
             transform: translateY(-100px);
         }
 
-        .trend-header {
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-
         .trend-title {
-            font-size: 3rem;
-            font-weight: 800;
+            font-size: 3.5rem;
+            font-weight: 700;
             color: var(--text-primary);
-            letter-spacing: -0.02em;
-            margin-bottom: 0.5rem;
-            line-height: 1.2;
+            letter-spacing: 0.02em;
         }
 
         .trend-subtitle {
             font-size: 0.95rem;
             color: var(--text-secondary);
-            font-weight: 400;
-            letter-spacing: 0.02em;
-        }
-
-        .trend-subtitle strong {
-            color: var(--accent-color);
-            font-weight: 600;
+            margin-top: -0.75rem;
         }
 
         .trend-search {
             width: 75vw;
-            max-width: 800px;
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -58,7 +44,7 @@
 
         .trend-searchbar {
             width: 100%;
-            height: 52px;
+            height: 68px;
             display: flex;
             align-items: center;
             background: var(--bg-primary);
@@ -84,78 +70,22 @@
             outline: none;
             background: transparent;
             color: var(--text-primary);
-            font-size: 1rem;
-            padding: 0 1rem;
+            font-size: 1.1rem;
+            padding: 0 1.25rem;
             height: 100%;
-            border-radius: 9999px 0 0 9999px;
+            border-radius: 9999px;
         }
 
         .trend-input::placeholder {
             color: var(--text-tertiary);
         }
 
-        .trend-search-btn {
-            height: 100%;
-            min-width: 120px;
-            border-radius: 0 9999px 9999px 0;
-            padding: 0 1.5rem;
-            border: none;
-            background: var(--accent-color);
-            color: #fff;
-            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.25);
-            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
-            cursor: pointer;
-        }
-
-        .trend-search-btn:hover {
-            background: var(--accent-hover);
-            box-shadow: 0 10px 26px rgba(102, 126, 234, 0.32);
-            transform: translateY(-1px);
-        }
-
-        .trend-search-btn:active {
-            transform: translateY(0);
-            box-shadow: 0 6px 18px rgba(102, 126, 234, 0.22);
-        }
-
         .trend-results {
-            width: 90vw;
-            max-width: 1400px;
+            width: 75vw;
             display: none;
             flex-direction: column;
-            gap: 1.5rem;
-            margin-top: 0.5rem;
-        }
-
-        /* V2 双栏布局 */
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            align-items: start;
-        }
-
-        .analysis-column {
-            display: flex;
-            flex-direction: column;
             gap: 0.9rem;
-        }
-
-        .column-title {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            padding: 0 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .column-icon {
-            font-size: 1.1em;
+            margin-top: 0.5rem;
         }
 
         .trend-card {
@@ -205,76 +135,7 @@
             color: #dc2626;
         }
 
-        .risk-unknown {
-            color: var(--text-secondary);
-        }
-
-        /* AI 列特定样式 */
-        .ai-column .trend-card:first-of-type {
-            border-left: 3px solid var(--accent-color);
-        }
-
-        .ai-loading {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-secondary);
-            padding: 1rem 0;
-            font-size: 0.9rem;
-        }
-
-        .ai-pulse {
-            width: 6px;
-            height: 6px;
-            background: var(--accent-color);
-            border-radius: 50%;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        .ai-assessment {
-            color: var(--text-primary);
-            line-height: 1.5;
-            font-size: 0.9rem;
-            padding: 0.6rem;
-            background: var(--bg-secondary);
-            border-radius: 8px;
-            margin-top: 0.5rem;
-        }
-
-        .recommendation-tag {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin-top: 0.5rem;
-        }
-
-        .rec-forbidden {
-            background: rgba(220, 38, 38, 0.1);
-            color: #dc2626;
-        }
-
-        .rec-caution {
-            background: rgba(217, 119, 6, 0.1);
-            color: #d97706;
-        }
-
-        .rec-modify {
-            background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
-        }
-
-        .rec-safe {
-            background: rgba(22, 163, 74, 0.1);
-            color: #16a34a;
-        }
-
+        /* 风险词颜色样式 */
         .trend-keyword.risk-high {
             color: #dc2626;
             border-color: #dc2626;
@@ -291,6 +152,53 @@
 
         .trend-keyword.risk-low {
             color: var(--text-secondary);
+        }
+
+        /* 特殊国际分类橙色边框样式 - 用于商标详情卡片 */
+        .detail-group.special-intl-class {
+            border-color: #f97316 !important;
+            border-width: 2px;
+            box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+        }
+
+        /* 状态码悬浮提示样式 */
+        .status-code-tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .status-code-tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #1f2937;
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 400;
+            white-space: nowrap;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 300px;
+            white-space: normal;
+            min-width: 150px;
+        }
+
+        .status-code-tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 6px solid transparent;
+            border-top-color: #1f2937;
+            z-index: 1000;
         }
 
         .trend-keywords {
@@ -319,44 +227,7 @@
             color: #fff;
         }
 
-        /* AI 关键词详情提示 */
-        .ai-keyword-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        .ai-keyword-detail {
-            display: none;
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0.6rem;
-            width: 220px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-            z-index: 100;
-            font-size: 0.8rem;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-
-        .ai-keyword-wrapper:hover .ai-keyword-detail {
-            display: block;
-        }
-
-        .keyword-category {
-            display: inline-block;
-            font-size: 0.7rem;
-            padding: 0.1rem 0.4rem;
-            background: var(--accent-color);
-            color: white;
-            border-radius: 4px;
-            margin-bottom: 0.25rem;
-        }
-
+        /* 商标详情内容样式 */
         .detail-content {
             display: flex;
             flex-wrap: wrap;
@@ -418,6 +289,7 @@
             text-decoration: underline;
         }
 
+        /* 商标详情卡片收起/展开按钮样式 */
         .detail-toggle-btn {
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
@@ -461,177 +333,168 @@
             padding: 2rem 1rem;
         }
 
-        @media (max-width: 968px) {
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .trend-title {
-                font-size: 2rem;
-            }
-            
-            .trend-search {
-                width: 85vw;
-            }
-            
-            .trend-results {
-                width: 92vw;
-            }
+        /* 搜索提交按钮 - 内置一体式圆形按钮 */
+        .trend-submit-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            background: var(--accent-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 4px;
+            flex-shrink: 0;
+        }
+
+        .trend-submit-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        }
+
+        .trend-submit-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* 搜索模式标签样式（放在输入框内） */
+        .search-mode-tag {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+            user-select: none;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-color: var(--border-color);
+        }
+
+        .search-mode-tag:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .search-mode-tag.mode-1 {
+            background: #dbeafe;
+            color: #1d4ed8;
+            border-color: #93c5fd;
+        }
+
+        .search-mode-tag.mode-2 {
+            background: #dcfce7;
+            color: #15803d;
+            border-color: #86efac;
+        }
+
+        /* mode-3 已废弃 - 语义查询已注释 */
+        .search-mode-tag.mode-3 {
+            background: #fef3c7;
+            color: #b45309;
+            border-color: #fcd34d;
         }
 
         @media (max-width: 480px) {
             .trend-title {
-                font-size: 1.5rem;
+                font-size: 1.25rem;
             }
             .trend-searchbar {
-                height: 48px;
+                height: 50px;
             }
-            .trend-search-btn {
-                min-width: 80px;
-                padding: 0 1rem;
+            .trend-search,
+            .trend-results {
+                width: 90vw;
             }
         }
     </style>
 {% endblock %}
 
 {% block page_content %}
-    <div class="trend-page">
-        <div class="trend-header">
-            <div class="trend-title">侵权风险检测 <span style="font-size:0.5em; opacity:0.6;">V2</span></div>
-            <div class="trend-subtitle">
-                <strong>AI</strong> + <strong>数据库</strong> 双重检测，识别潜在侵权风险
-            </div>
+    <div class="trend-page" style="margin-top: 70px;">
+        <div style="text-align: center;">
+            <div class="trend-title">侵权词搜索判断</div>
+            <div class="trend-subtitle">输入关键词，查看风险等级与命中词库占位展示</div>
         </div>
 
         <div class="trend-search" role="search">
-            <form class="trend-searchbar" method="POST" action="#" onsubmit="handleTrendSearchV2(event)">
+            <form class="trend-searchbar" method="POST" action="{% url 'theme:trend_search' %}" onsubmit="handleTrendSearch(event)">
                 {% csrf_token %}
-                <input id="trendQueryInput"
-                       class="trend-input"
-                       name="trendQueryInput"
-                       type="text"
-                       placeholder="请输入关键词（例如：brand / 标题关键词）"
-                       autocomplete="off">
-                <button class="btn trend-search-btn" type="submit">检测</button>
+                <div style="position: relative; flex: 1; display: flex; align-items: center; padding: 0 6px 0 0;">
+                    <input id="trendQueryInput"
+                           class="trend-input"
+                           name="trendQueryInput"
+                           type="text"
+                           placeholder="请输入关键词（例如：brand / 标题关键词）"
+                           autocomplete="off"
+                           style="padding-right: 110px;">
+                    <span class="search-mode-tag mode-2" id="searchModeTag" title="点击切换分词模式">组词</span>
+                    <input type="hidden" id="searchModeInput" name="searchMode" value="2">
+                </div>
+                <button type="submit" class="trend-submit-btn" title="搜索">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </button>
             </form>
         </div>
 
         <div id="trendResults" class="trend-results">
-            <div class="results-grid">
-                <!-- 左侧：系统风险分析（快） -->
-                <div class="analysis-column system-column">
-                    <div class="column-title">
-                        <span class="column-icon">🗄️</span>
-                        系统风险分析
-                    </div>
+            <div class="trend-card">
+                <div class="trend-card-header">
+                    <div class="trend-card-title">风险等级</div>
                     
-                    <div class="trend-card">
-                        <div class="trend-card-header">
-                            <div class="trend-card-title">风险等级</div>
-                        </div>
-                        <div>
-                            <span class="risk-level risk-medium" id="systemRiskLevel">待检测</span>
-                        </div>
-                    </div>
-
-                    <div class="trend-card">
-                        <div class="trend-card-header">
-                            <div class="trend-card-title">美标网</div>
-                            <button class="detail-toggle-btn collapsed" onclick="toggleDetailCard()" aria-label="收起/展开">
-                                <svg id="detailToggleIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                                    <path d="M8 11L3 6h10l-5 5z"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <ul class="trend-keywords" id="usptoKeywords">
-                            <li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>
-                        </ul>
-                    </div>
-
-                    <div class="trend-card" id="trademarkDetailCard" style="display: none;">
-                        <div class="trend-card-header">
-                            <div class="trend-card-title" id="detailTitle">商标详情</div>
-                            <span class="trend-tag">详细信息</span>
-                        </div>
-                        <div class="detail-content" id="detailContent"></div>
-                    </div>
-
-                    <div class="trend-card">
-                        <div class="trend-card-header">
-                            <div class="trend-card-title">侵权词库</div>
-                        </div>
-                        <ul class="trend-keywords" id="riskKeywords">
-                            <li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>
-                        </ul>
-                        <div id="troRiskTypeDisplay" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); display: none;">
-                            <span style="color: var(--text-secondary); font-size: 0.85rem;">风险类型：</span>
-                            <span id="troRiskTypeText" style="font-weight: 600; color: var(--text-primary);"></span>
-                        </div>
-                    </div>
                 </div>
+                <div>
+                    <span class="risk-level risk-medium" id="riskLevelText">待判断</span>
+                </div>
+            </div>
 
-                <!-- 右侧：AI 风险分析（慢，异步加载） -->
-                <div class="analysis-column ai-column">
-                    <div class="column-title">
-                        <span class="column-icon">🤖</span>
-                        AI 深度分析
-                    </div>
+            <div class="trend-card">
+                <div class="trend-card-header">
+                    <div class="trend-card-title">美标网</div>
+                    <button class="detail-toggle-btn collapsed" onclick="toggleDetailCard()" aria-label="收起/展开">
+                        <svg id="detailToggleIcon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 11L3 6h10l-5 5z"/>
+                        </svg>
+                    </button>
+                </div>
+                <ul class="trend-keywords" id="usptoKeywords">
+                    <li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>
+                </ul>
+            </div>
 
-                    <div class="trend-card" id="aiAnalysisCard">
-                        <div class="trend-card-header">
-                            <div class="trend-card-title">AI 评估结果</div>
-                            <span class="trend-tag" id="aiStatusTag">等待中</span>
-                        </div>
-                        
-                        <!-- 初始状态 -->
-                        <div id="aiInitialState" style="color: var(--text-tertiary); font-size: 0.9rem; padding: 1rem 0;">
-                            等待系统分析完成后启动 AI 检测...
-                        </div>
+            <!-- 商标详情卡片 -->
+            <div class="trend-card" id="trademarkDetailCard" style="display: none;">
+                <div class="trend-card-header">
+                    <div class="trend-card-title" id="detailTitle">商标详情</div>
+                    <span class="trend-tag">详细信息</span>
+                </div>
+                <div class="detail-content" id="detailContent">
+                    <!-- 动态内容 -->
+                </div>
+            </div>
 
-                        <!-- 加载中 -->
-                        <div id="aiLoadingState" class="ai-loading" style="display: none;">
-                            <div class="ai-pulse"></div>
-                            <span>AI 正在深度分析风险...</span>
-                        </div>
-
-                        <!-- 结果展示 -->
-                        <div id="aiContentState" style="display: none;">
-                            <div style="margin-bottom: 0.5rem;">
-                                <span id="aiRiskLevel" class="risk-level risk-unknown">未知</span>
-                            </div>
-
-                            <div class="trend-card-header" style="margin-top: 0.75rem;">
-                                <div class="trend-card-title" style="font-size: 0.95rem;">整体评价</div>
-                            </div>
-                            <div class="ai-assessment" id="aiAssessment"></div>
-
-                            <div style="margin-top: 0.75rem;">
-                                <span style="color: var(--text-secondary); font-size: 0.8rem;">建议操作：</span>
-                                <div id="aiRecommendation" class="recommendation-tag rec-safe">安全</div>
-                            </div>
-
-                            <div id="aiHighRiskSection" style="margin-top: 0.75rem; display: none;">
-                                <div class="trend-card-header">
-                                    <div class="trend-card-title" style="font-size: 0.95rem; color: #dc2626;">高风险项</div>
-                                </div>
-                                <div class="trend-keywords" id="aiHighRiskKeywords"></div>
-                            </div>
-
-                            <div id="aiMediumRiskSection" style="margin-top: 0.75rem; display: none;">
-                                <div class="trend-card-header">
-                                    <div class="trend-card-title" style="font-size: 0.95rem; color: #d97706;">中风险项</div>
-                                </div>
-                                <div class="trend-keywords" id="aiMediumRiskKeywords"></div>
-                            </div>
-
-                            <div id="aiLowRiskSection" style="margin-top: 0.75rem; display: none;">
-                                <div class="trend-card-header">
-                                    <div class="trend-card-title" style="font-size: 0.95rem; color: var(--text-secondary);">注意事项</div>
-                                </div>
-                                <ul style="margin: 0; padding-left: 1.2rem; color: var(--text-secondary); font-size: 0.85rem;" id="aiLowRiskNotes"></ul>
-                            </div>
-                        </div>
-                    </div>
+            <div class="trend-card">
+                <div class="trend-card-header">
+                    <div class="trend-card-title">侵权词库</div>
+                </div>
+                <ul class="trend-keywords" id="riskKeywords">
+                    <li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>
+                </ul>
+                <div id="troRiskTypeDisplay" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); display: none;">
+                    <span style="color: var(--text-secondary); font-size: 0.85rem;">风险类型：</span>
+                    <span id="troRiskTypeText" style="font-weight: 600; color: var(--text-primary);"></span>
                 </div>
             </div>
         </div>
@@ -640,17 +503,137 @@
 
 {% block extra_js %}
     <script>
-        const NAME_TYPE_MAPPING = {
-            1: '系统白名单', 2: '用户未指定', 3: '观察名单',
-            4: '亚马逊涉嫌侵权', 5: '律师函', 6: '权利人投诉',
-            7: '违禁词', 8: '商标侵权', 9: '自定义白名单', 10: '知名IP'
+        // ===== 搜索模式切换 =====
+        const SEARCH_MODES = {
+            1: { text: '切词', desc: 'words_split + 整体查询', className: 'mode-1' },
+            2: { text: '组词', desc: 'N-gram全组合', className: 'mode-2' }
+            // 3: { text: '语义', desc: 'spacy语义分词', className: 'mode-3' }  // 已废弃
         };
 
+        let currentSearchMode = 2;  // 默认使用组词查询
+
+        function updateSearchModeDisplay() {
+            const tag = document.getElementById('searchModeTag');
+            const hiddenInput = document.getElementById('searchModeInput');
+            const mode = SEARCH_MODES[currentSearchMode];
+
+            if (tag) {
+                tag.textContent = mode.text;
+                tag.className = `search-mode-tag ${mode.className}`;
+                tag.title = `当前模式：${mode.desc}（点击切换）`;
+            }
+            if (hiddenInput) {
+                hiddenInput.value = currentSearchMode;
+            }
+        }
+
+        function cycleSearchMode() {
+            // 在 mode 1 和 2 之间循环切换（mode 3 已废弃）
+            currentSearchMode = currentSearchMode === 2 ? 1 : 2;
+            updateSearchModeDisplay();
+            const mode = SEARCH_MODES[currentSearchMode];
+            console.log(`搜索模式已切换为：${currentSearchMode} - ${mode.desc}`);
+        }
+
+        // 绑定搜索模式标签点击事件
+        document.addEventListener('DOMContentLoaded', function() {
+            const modeTag = document.getElementById('searchModeTag');
+            if (modeTag) {
+                modeTag.addEventListener('click', cycleSearchMode);
+            }
+        });
+
+        // 风险类型映射表
+        const NAME_TYPE_MAPPING = {
+            1: '系统白名单',
+            2: '用户未指定',
+            3: '观察名单',
+            4: '亚马逊涉嫌侵权',
+            5: '律师函',
+            6: '权利人投诉',
+            7: '违禁词',
+            8: '商标侵权',
+            9: '自定义白名单',
+            10: '知名IP',
+            11: '版权图片'
+        };
+
+        // 美标网状态码映射表
+        const STATUS_CODE_MAPPING = {
+            '0': '未知状态',
+            '401': '等待进一步行动',
+            '404': '美国注册已撤销',
+            '600': '弃置-答辩不完整',
+            '601': '弃置-申请人主动撤回',
+            '602': '弃置-未能按时答辩',
+            '604': '已放弃',
+            '605': '已放弃',
+            '606': '弃置-未提交使用证据',
+            '610': '因制裁而终止',
+            '616': '已恢复-等待进一步行动',
+            '618': '已注册',
+            '620': '已注册',
+            '622': '序列号分配错误',
+            '624': '已注册',
+            '625': '已注册',
+            '630': '新申请-记录初始化',
+            '631': '新申请',
+            '632': '不符合规范的申请',
+            '638': '新申请-已分配审查员',
+            '640': '初步拒绝/官函-已邮寄',
+            '641': '初步拒绝/官函-已邮寄',
+            '642': '初步拒绝/官函',
+            '643': '初步拒绝/官函',
+            '644': '初步拒绝/官函',
+            '645': '初步拒绝/官函',
+            '646': '初步拒绝/官函',
+            '647': '初步拒绝/官函',
+            '648': '初步拒绝/官函',
+            '649': '初步拒绝/官函',
+            '650': '初步拒绝/官函',
+            '651': '初步拒绝/官函',
+            '652': '初步拒绝/官函',
+            '653': '初步拒绝/官函',
+            '654': '初步拒绝/官函',
+            '655': '初步拒绝/官函',
+            '656': '初步拒绝/官函',
+            '657': '初步拒绝/官函',
+            '658': '初步拒绝/官函',
+            '659': '初步拒绝/官函',
+            '660': '初步拒绝/官函',
+            '661': '官函答辩-已录入',
+            '663': '官函答辩',
+            '664': '官函答辩',
+            '665': '官函答辩',
+            '666': '官函答辩',
+            '667': '官函答辩',
+            '668': '官函答辩',
+            '672': '已恢复原状',
+            '680': '公告中',
+            '681': '公告中',
+            '682': '公告中',
+            '686': '公告中',
+            '688': '准予注册通知',
+            '689': '准予注册通知',
+            '690': '准予注册通知',
+            '692': '异议程序',
+            '693': '异议程序',
+            '694': '异议程序',
+            '710': '撤销-未提交维持声明',
+            '711': '撤销',
+            '712': '撤销-法院判决',
+            '713': '撤销',
+            '715': '已撤销-但已恢复',
+            '717': '撤销',
+            '718': '撤销程序进行中',
+            '719': '撤销程序进行中'
+        };
+
+        // 全局变量：存储商标详情数据和侵权词库详情数据
         let usptoDetailsData = {};
         let troDetailsData = {};
 
-        // V2：异步双请求，系统风险和 AI 风险分开
-        async function handleTrendSearchV2(event) {
+        async function handleTrendSearch(event) {
             event.preventDefault();
 
             const form = event.target;
@@ -662,314 +645,223 @@
                 return;
             }
 
-            // 显示结果区域
-            document.getElementById('trendResults').style.display = 'flex';
-            
-            // 重置状态
-            resetSystemState();
-            resetAIState();
-            
+            const results = document.getElementById('trendResults');
+            if (results) results.style.display = 'flex';
+
+            const riskLevelText = document.getElementById('riskLevelText');
+            if (riskLevelText) riskLevelText.textContent = '查询中...';
+
+            // 重置商标详情卡片状态（默认收起，隐藏按钮）
+            const detailCard = document.getElementById('trademarkDetailCard');
+            const toggleBtn = document.querySelector('.detail-toggle-btn');
+            if (detailCard) detailCard.style.display = 'none';
+            if (toggleBtn) {
+                toggleBtn.classList.add('collapsed');
+                toggleBtn.classList.remove('visible');
+            }
+
             const csrfToken = form?.querySelector('input[name=csrfmiddlewaretoken]')?.value;
 
-            // ========== 第 1 个请求：系统风险（快） ==========
-            fetchSystemRisk(query, csrfToken);
-            
-            // ========== 第 2 个请求：AI 风险（慢，不阻塞） ==========
-            // 稍微延迟 500ms，避免同时请求导致卡顿，也让用户看到系统结果先出来
-            setTimeout(() => {
-                fetchAIRisk(query, csrfToken);
-            }, 500);
-        }
-
-        function resetSystemState() {
-            document.getElementById('systemRiskLevel').textContent = '查询中...';
-            document.getElementById('systemRiskLevel').className = 'risk-level risk-unknown';
-            document.getElementById('usptoKeywords').innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>';
-            document.getElementById('riskKeywords').innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">等待查询...</li>';
-            document.getElementById('trademarkDetailCard').style.display = 'none';
-            document.querySelector('.detail-toggle-btn').classList.remove('visible');
-            document.getElementById('troRiskTypeDisplay').style.display = 'none';
-        }
-
-        function resetAIState() {
-            document.getElementById('aiInitialState').style.display = 'block';
-            document.getElementById('aiLoadingState').style.display = 'none';
-            document.getElementById('aiContentState').style.display = 'none';
-            document.getElementById('aiStatusTag').textContent = '等待中';
-            document.getElementById('aiStatusTag').style.background = 'var(--bg-secondary)';
-            document.getElementById('aiStatusTag').style.color = 'var(--text-secondary)';
-        }
-
-        // 请求系统风险（数据库查询，快）
-        async function fetchSystemRisk(query, csrfToken) {
             try {
-                const resp = await fetch("{% url 'theme:trend_search_v2' %}", {
+                const searchMode = document.getElementById('searchModeInput')?.value || '1';
+
+                const resp = await fetch(form.action, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
                         ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
                     },
-                    body: new URLSearchParams({ trendQueryInput: query }),
+                    body: new URLSearchParams({
+                        trendQueryInput: query,
+                        searchMode: searchMode,
+                    }),
                 });
 
                 const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) throw new Error(data?.error || `请求失败 (${resp.status})`);
-
-                renderSystemResults(data);
-
-            } catch (err) {
-                console.error('系统风险查询失败:', err);
-                document.getElementById('systemRiskLevel').textContent = '查询失败';
-                document.getElementById('systemRiskLevel').className = 'risk-level risk-unknown';
-                document.getElementById('usptoKeywords').innerHTML = '<li class="trend-keyword" style="color: #dc2626;">系统查询失败</li>';
-                document.getElementById('riskKeywords').innerHTML = '<li class="trend-keyword" style="color: #dc2626;">系统查询失败</li>';
-            }
-        }
-
-        // 请求 AI 风险（Gemini，慢）
-        async function fetchAIRisk(query, csrfToken) {
-            // 切换到加载状态
-            document.getElementById('aiInitialState').style.display = 'none';
-            document.getElementById('aiLoadingState').style.display = 'flex';
-            document.getElementById('aiStatusTag').textContent = '分析中';
-
-            try {
-                const resp = await fetch("{% url 'theme:trend_ai_v2' %}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
-                        ...(csrfToken ? { 'X-CSRFToken': csrfToken } : {}),
-                    },
-                    body: new URLSearchParams({ trendQueryInput: query }),
-                });
-
-                const data = await resp.json().catch(() => ({}));
-                if (!resp.ok) throw new Error(data?.error || `AI 请求失败 (${resp.status})`);
-
-                renderAIResults(data);
-
-            } catch (err) {
-                console.error('AI 分析失败:', err);
-                document.getElementById('aiLoadingState').style.display = 'none';
-                document.getElementById('aiContentState').style.display = 'block';
-                
-                // 显示错误状态
-                document.getElementById('aiRiskLevel').textContent = '分析失败';
-                document.getElementById('aiRiskLevel').className = 'risk-level risk-unknown';
-                document.getElementById('aiAssessment').textContent = 'AI 服务暂时不可用: ' + err.message;
-                document.getElementById('aiRecommendation').textContent = '请重试';
-                document.getElementById('aiRecommendation').className = 'recommendation-tag rec-caution';
-                document.getElementById('aiStatusTag').textContent = '异常';
-                document.getElementById('aiStatusTag').style.background = 'rgba(220, 38, 38, 0.1)';
-                document.getElementById('aiStatusTag').style.color = '#dc2626';
-                
-                document.getElementById('aiHighRiskSection').style.display = 'none';
-                document.getElementById('aiMediumRiskSection').style.display = 'none';
-                document.getElementById('aiLowRiskSection').style.display = 'none';
-            }
-        }
-
-        function renderSystemResults(data) {
-            const systemRiskLevel = document.getElementById('systemRiskLevel');
-            systemRiskLevel.textContent = data?.theme_risk_text || '低风险';
-            systemRiskLevel.className = `risk-level risk-${data?.theme_risk_level || 'low'}`;
-
-            usptoDetailsData = data.uspto_details || {};
-            troDetailsData = data.tro_details || {};
-
-            function getRiskLevel(word) {
-                if (!data?.word_risk_map) return 'low';
-                const wordLower = word.toLowerCase();
-                for (const [key, riskLevel] of Object.entries(data.word_risk_map)) {
-                    if (key.toLowerCase() === wordLower) return riskLevel;
+                if (!resp.ok) {
+                    throw new Error(data?.error || `请求失败 (${resp.status})`);
                 }
-                return 'low';
-            }
 
-            document.getElementById('troRiskTypeDisplay').style.display = 'none';
+                // 更新风险等级卡片
+                if (riskLevelText) {
+                    riskLevelText.textContent = data?.theme_risk_text || '低风险';
 
-            const usptoKeywords = document.getElementById('usptoKeywords');
-            if (data.uspto_keywords?.length > 0) {
-                usptoKeywords.innerHTML = data.uspto_keywords.map(keyword => {
-                    const riskLevel = getRiskLevel(keyword);
-                    const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
-                    return `<li class="trend-keyword ${riskClass}" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
-                }).join('');
-            } else {
-                usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
-            }
+                    // 更新风险等级颜色类
+                    riskLevelText.classList.remove('risk-low', 'risk-medium', 'risk-high');
+                    const riskLevelClass = `risk-${data?.theme_risk_level || 'low'}`;
+                    riskLevelText.classList.add(riskLevelClass);
+                }
 
-            const riskKeywords = document.getElementById('riskKeywords');
-            if (data.tro_keywords?.length > 0) {
-                riskKeywords.innerHTML = data.tro_keywords.map(keyword => {
-                    const riskLevel = getRiskLevel(keyword);
-                    const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
-                    return `<li class="trend-keyword ${riskClass}" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
-                }).join('');
-            } else {
-                riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
+                // 存储商标详情数据和侵权词库详情数据
+                usptoDetailsData = data.uspto_details || {};
+                troDetailsData = data.tro_details || {};
+
+                // 辅助函数：查找词的风险等级（忽略大小写）
+                function getRiskLevel(word) {
+                    if (!data?.word_risk_map) return 'low';
+                    const wordLower = word.toLowerCase();
+                    // word_risk_map 格式: [riskLevel, statusCodes, intlClasses, hasSpecialClass]
+                    for (const [key, wordData] of Object.entries(data.word_risk_map)) {
+                        if (key.toLowerCase() === wordLower) {
+                            return wordData[0]; // 返回风险等级
+                        }
+                    }
+                    return 'low';
+                }
+
+                // 重置侵权词库风险类型显示
+                const troRiskTypeDisplay = document.getElementById('troRiskTypeDisplay');
+                if (troRiskTypeDisplay) troRiskTypeDisplay.style.display = 'none';
+
+                // 渲染美标网关键词（添加点击事件）
+                const usptoKeywords = document.getElementById('usptoKeywords');
+                if (usptoKeywords) {
+                    if (data.uspto_keywords && data.uspto_keywords.length > 0) {
+                        usptoKeywords.innerHTML = data.uspto_keywords
+                            .map(keyword => {
+                                const riskLevel = getRiskLevel(keyword);
+                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                                return `<li class="trend-keyword ${riskClass}" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                            })
+                            .join('');
+                    } else {
+                        usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
+                    }
+                }
+
+                // 渲染侵权词库关键词（TroTable，添加点击事件）
+                const riskKeywords = document.getElementById('riskKeywords');
+                if (riskKeywords) {
+                    if (data.tro_keywords && data.tro_keywords.length > 0) {
+                        riskKeywords.innerHTML = data.tro_keywords
+                            .map(keyword => {
+                                const riskLevel = getRiskLevel(keyword);
+                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                                return `<li class="trend-keyword ${riskClass}" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                            })
+                            .join('');
+                    } else {
+                        riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
+                    }
+                }
+            } catch (err) {
+                if (riskLevelText) riskLevelText.textContent = err?.message || '请求失败';
+
+                // 查询失败时清空关键词列表和重置商标详情卡片
+                const usptoKeywords = document.getElementById('usptoKeywords');
+                const riskKeywords = document.getElementById('riskKeywords');
+                const troRiskTypeDisplay = document.getElementById('troRiskTypeDisplay');
+
+                if (usptoKeywords) {
+                    usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">查询失败</li>';
+                }
+
+                if (riskKeywords) {
+                    riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">查询失败</li>';
+                }
+
+                if (troRiskTypeDisplay) {
+                    troRiskTypeDisplay.style.display = 'none';
+                }
+
+                const detailCard = document.getElementById('trademarkDetailCard');
+                const toggleBtn = document.querySelector('.detail-toggle-btn');
+                if (detailCard) detailCard.style.display = 'none';
+                if (toggleBtn) {
+                    toggleBtn.classList.add('collapsed');
+                    toggleBtn.classList.remove('visible');
+                }
             }
         }
 
-        function renderAIResults(aiData) {
-            document.getElementById('aiLoadingState').style.display = 'none';
-            document.getElementById('aiContentState').style.display = 'block';
-            
-            const statusTag = document.getElementById('aiStatusTag');
-            const riskLevelEl = document.getElementById('aiRiskLevel');
-            const assessmentEl = document.getElementById('aiAssessment');
-            const recommendationEl = document.getElementById('aiRecommendation');
-            
-            if (aiData.error) {
-                statusTag.textContent = '异常';
-                statusTag.style.background = 'rgba(220, 38, 38, 0.1)';
-                statusTag.style.color = '#dc2626';
-                riskLevelEl.textContent = '未知';
-                riskLevelEl.className = 'risk-level risk-unknown';
-                assessmentEl.textContent = aiData.overall_assessment || 'AI 分析服务暂时不可用';
-                recommendationEl.textContent = '请重试';
-                recommendationEl.className = 'recommendation-tag rec-caution';
-                document.getElementById('aiHighRiskSection').style.display = 'none';
-                document.getElementById('aiMediumRiskSection').style.display = 'none';
-                document.getElementById('aiLowRiskSection').style.display = 'none';
-                return;
-            }
-
-            const riskLevel = (aiData.overall_risk_level || '低').toLowerCase();
-            let levelClass, levelText;
-            
-            if (riskLevel.includes('高')) {
-                levelClass = 'risk-high'; levelText = '高风险'; 
-                statusTag.textContent = '高风险';
-                statusTag.style.background = 'rgba(220, 38, 38, 0.1)';
-                statusTag.style.color = '#dc2626';
-            } else if (riskLevel.includes('中')) {
-                levelClass = 'risk-medium'; levelText = '中风险';
-                statusTag.textContent = '中风险';
-                statusTag.style.background = 'rgba(217, 119, 6, 0.1)';
-                statusTag.style.color = '#d97706';
-            } else {
-                levelClass = 'risk-low'; levelText = '低风险';
-                statusTag.textContent = '已完成';
-                statusTag.style.background = 'rgba(22, 163, 74, 0.1)';
-                statusTag.style.color = '#16a34a';
-            }
-            
-            riskLevelEl.className = `risk-level ${levelClass}`;
-            riskLevelEl.textContent = levelText;
-            assessmentEl.textContent = aiData.overall_assessment || '暂无详细评价';
-            
-            const rec = aiData.recommendation || '安全';
-            recommendationEl.textContent = rec;
-            recommendationEl.className = rec.includes('禁止') ? 'recommendation-tag rec-forbidden' :
-                                         rec.includes('谨慎') ? 'recommendation-tag rec-caution' :
-                                         rec.includes('修改') ? 'recommendation-tag rec-modify' : 'recommendation-tag rec-safe';
-            
-            // 高风险项
-            const highRiskSection = document.getElementById('aiHighRiskSection');
-            if (aiData.high_risk_items?.length > 0) {
-                highRiskSection.style.display = 'block';
-                document.getElementById('aiHighRiskKeywords').innerHTML = aiData.high_risk_items.map(item => `
-                    <div class="ai-keyword-wrapper">
-                        <span class="trend-keyword risk-high">${escapeHtml(item.term)}</span>
-                        <div class="ai-keyword-detail">
-                            <span class="keyword-category">${escapeHtml(item.category || '未知')}</span>
-                            <div style="margin-top: 0.25rem; color: var(--text-secondary); line-height: 1.4;">
-                                ${escapeHtml(item.reason || '')}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                highRiskSection.style.display = 'none';
-            }
-            
-            // 中风险项
-            const mediumRiskSection = document.getElementById('aiMediumRiskSection');
-            if (aiData.medium_risk_items?.length > 0) {
-                mediumRiskSection.style.display = 'block';
-                document.getElementById('aiMediumRiskKeywords').innerHTML = aiData.medium_risk_items.map(item => `
-                    <div class="ai-keyword-wrapper">
-                        <span class="trend-keyword risk-medium">${escapeHtml(item.term)}</span>
-                        <div class="ai-keyword-detail">
-                            <span class="keyword-category" style="background: #d97706;">${escapeHtml(item.category || '未知')}</span>
-                            <div style="margin-top: 0.25rem; color: var(--text-secondary); line-height: 1.4;">
-                                ${escapeHtml(item.reason || '')}
-                            </div>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                mediumRiskSection.style.display = 'none';
-            }
-            
-            // 低风险注意事项
-            const lowRiskSection = document.getElementById('aiLowRiskSection');
-            if (aiData.low_risk_notes?.length > 0) {
-                lowRiskSection.style.display = 'block';
-                document.getElementById('aiLowRiskNotes').innerHTML = aiData.low_risk_notes.map(note => `<li>${escapeHtml(note)}</li>`).join('');
-            } else {
-                lowRiskSection.style.display = 'none';
-            }
-        }
-
+        // HTML转义函数，防止XSS
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
+        // 收起/展开商标详情卡片
         function toggleDetailCard() {
             const detailCard = document.getElementById('trademarkDetailCard');
             const toggleBtn = document.querySelector('.detail-toggle-btn');
 
             if (detailCard.style.display === 'none') {
+                // 展开
                 detailCard.style.display = 'block';
                 toggleBtn.classList.remove('collapsed');
             } else {
+                // 收起
                 detailCard.style.display = 'none';
                 toggleBtn.classList.add('collapsed');
             }
         }
 
+        // 显示商标详情
         function showTrademarkDetail(keyword) {
             const detailCard = document.getElementById('trademarkDetailCard');
             const detailTitle = document.getElementById('detailTitle');
             const detailContent = document.getElementById('detailContent');
             const toggleBtn = document.querySelector('.detail-toggle-btn');
 
+            // 特殊国际分类集合（与后端保持一致）
+            const SPECIAL_INTL_CLASSES = ['006', '015', '016', '018', '024', '025', '027', '035'];
+
+            // 第一次点击时显示按钮
             toggleBtn.classList.add('visible');
             toggleBtn.classList.remove('collapsed');
+
             detailCard.style.display = 'block';
+
             detailTitle.textContent = `商标详情: ${escapeHtml(keyword)}`;
 
             const details = usptoDetailsData[keyword];
-            if (details?.length > 0) {
+            if (details && details.length > 0) {
                 detailContent.innerHTML = details.map(item => {
                     const usptoUrl = `https://tsdr.uspto.gov/#caseNumber=${escapeHtml(item.serial_number)}&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch`;
+
+                    // 检查国际分类是否包含特殊分类
+                    const intlClassStr = String(item.intl_class || '');
+                    const hasSpecialClass = SPECIAL_INTL_CLASSES.some(cls => intlClassStr.includes(cls));
+                    const specialClass = hasSpecialClass ? 'special-intl-class' : '';
+
+                    // 获取状态码说明
+                    const statusCode = String(item.status_code || '');
+                    const statusCodeDesc = STATUS_CODE_MAPPING[statusCode] || '未知状态';
+
                     return `
-                    <div class="detail-group">
+                    <div class="detail-group ${specialClass}">
                         <div class="detail-row">
                             <span class="detail-label">注册号</span>
-                            <span class="detail-value"><a href="${usptoUrl}" target="_blank" class="detail-link">${escapeHtml(item.serial_number)}</a></span>
+                            <span class="detail-value"><a href="${usptoUrl}" target="_blank" rel="noopener noreferrer" class="detail-link">${escapeHtml(item.serial_number)}</a></span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">国际类</span>
                             <span class="detail-value">${escapeHtml(item.intl_class)}</span>
                         </div>
-                    </div>`;
-                }).join('');
+                        <div class="detail-row">
+                            <span class="detail-label">状态</span>
+                            <span class="detail-value">${escapeHtml(statusCode)}-${escapeHtml(statusCodeDesc)}</span>
+                        </div>
+                    </div>
+                `}).join('');
             } else {
                 detailContent.innerHTML = '<div class="detail-empty">暂无详细信息</div>';
             }
         }
 
+        // 显示侵权词库风险类型
         function showTroRiskType(keyword) {
-            const display = document.getElementById('troRiskTypeDisplay');
-            const text = document.getElementById('troRiskTypeText');
-            const nameType = troDetailsData[keyword];
-            text.textContent = NAME_TYPE_MAPPING[nameType] || '未知类型';
-            display.style.display = 'block';
+            const troRiskTypeDisplay = document.getElementById('troRiskTypeDisplay');
+            const troRiskTypeText = document.getElementById('troRiskTypeText');
+
+            if (troRiskTypeDisplay && troRiskTypeText) {
+                const nameType = troDetailsData[keyword];
+                const riskTypeName = NAME_TYPE_MAPPING[nameType] || '未知类型';
+                troRiskTypeText.textContent = riskTypeName;
+                troRiskTypeDisplay.style.display = 'block';
+            }
         }
     </script>
 {% endblock %}
+

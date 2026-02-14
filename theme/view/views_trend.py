@@ -27,7 +27,7 @@ SPECIAL_INTL_CLASSES = {'006', '015', '016', '018', '024', '025', '027', '035'}
 
 @login_required
 def trend_page(request):
-    return render(request, 'trend.html', {'active_nav': 'theme_products'})
+    return render(request, 'trend_v2.html', {'active_nav': 'theme_products'})
 
 
 @require_POST
