@@ -1,106 +1,82 @@
-# verify_fix.py
-"""
-验证修改后的视图逻辑是否与排名脚本一致
-"""
-
 import os
 import sys
 import django
-from datetime import date
 
-# Django环境设置
+# ===== Django环境设置 =====
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
 sys.path.append(PROJECT_ROOT)
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from django.db.models import Sum, Q
-from general.models import User, AmazonShop
-from amazon.models import AmazonOrders, AmazonOrderItem
+# ===== 查询代码 =====
+from amazon.models import AmazonListing
 
-TEST_USER_ID = 23
-TARGET_DATE = date(2025, 12, 31)
-MONTH_START = date(2025, 12, 1)
+print("=" * 60)
+print("Listing 详情查询（含侵权词）")
+print("=" * 60)
 
+try:
+    # 预加载领星店铺->本地店铺，同时预加载多对多的侵权词
+    listing = AmazonListing.objects.select_related(
+        'lingxing_shop__amazon_shop'
+    ).prefetch_related(
+        'tro_words',  # 预加载侵权词
+        'tro_words__creator'  # 预加载侵权词的创建人（可选）
+    ).get(id=1)
 
-def calculate_with_old_logic(user_id, start_date, end_date):
-    """旧逻辑：通过LingXing映射查询"""
-    from amazon.models import LingXingAmazonShop
+    print(f"📦 Listing 基础信息:")
+    print(f"   ID: {listing.id}")
+    print(f"   ASIN: {listing.asin}")
+    print(f"   标题: {listing.title[:50]}..." if listing.title and len(
+        listing.title) > 50 else f"   标题: {listing.title}")
+    print(f"   在售状态: {'✅ 在售' if listing.is_active else '❌ 停售'}")
 
-    # 获取映射
-    amazon_shops = AmazonShop.objects.filter(ops_id=user_id)
-    amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
+    # 店铺信息链
+    if listing.lingxing_shop:
+        lx_shop = listing.lingxing_shop
+        print(f"\n🏪 领星店铺信息:")
+        print(f"   sid: {lx_shop.sid}")
+        print(f"   店铺名: {lx_shop.name}")
+        print(f"   账号: {lx_shop.account_name}")
 
-    lingxing_shops = LingXingAmazonShop.objects.filter(
-        amazon_shop_id__in=amazon_shop_ids,
-        sid__isnull=False
-    ).exclude(sid=0)
-    lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
-
-    # 统计
-    items = AmazonOrderItem.objects.filter(
-        order__lingxing_shop_id__in=lingxing_shop_ids,
-        order__purchase_date_local__date__gte=start_date,
-        order__purchase_date_local__date__lte=end_date
-    ).exclude(order__order_status='Canceled')
-
-    return items.aggregate(total=Sum('quantity_ordered'))['total'] or 0
-
-
-def calculate_with_new_logic(user_id, start_date, end_date):
-    """新逻辑：通过反向关联查询"""
-    # 获取所有店铺ID（包括停用）
-    amazon_shop_ids = list(AmazonShop.objects.filter(
-        ops_id=user_id
-    ).values_list('id', flat=True))
-
-    # 统计
-    items = AmazonOrderItem.objects.filter(
-        order__lingxing_shop__amazon_shop_id__in=amazon_shop_ids,
-        order__purchase_date_local__date__gte=start_date,
-        order__purchase_date_local__date__lte=end_date
-    ).exclude(order__order_status='Canceled')
-
-    return items.aggregate(total=Sum('quantity_ordered'))['total'] or 0
-
-
-def main():
-    print("\n" + "🔍" * 30)
-    print("验证修复效果")
-    print("🔍" * 30)
-
-    old_result = calculate_with_old_logic(TEST_USER_ID, MONTH_START, TARGET_DATE)
-    new_result = calculate_with_new_logic(TEST_USER_ID, MONTH_START, TARGET_DATE)
-
-    print(f"\n旧逻辑结果（通过LingXing映射）: {old_result}")
-    print(f"新逻辑结果（通过反向关联）: {new_result}")
-
-    if old_result == new_result:
-        print("\n✅ 结果一致！修复成功")
+        if lx_shop.amazon_shop:
+            amazon_shop = lx_shop.amazon_shop
+            print(f"\n🎯 本地 AmazonShop:")
+            print(f"   店铺ID: {amazon_shop.id}")
+            print(f"   ⭐ 店铺名称: {amazon_shop.shop_name}")
+            print(f"   卖家记号: {amazon_shop.seller_mark or '无'}")
+        else:
+            print("\n⚠️  该领星店铺未绑定本地 AmazonShop")
     else:
-        print(f"\n❌ 差异: {abs(new_result - old_result)}")
-        print("需要进一步检查映射表是否还有未发现问题")
+        print("\n⚠️  该 Listing 未关联领星店铺")
 
-    # 显示缺失映射的店铺
-    from amazon.models import LingXingAmazonShop
-    all_shops = AmazonShop.objects.filter(ops_id=TEST_USER_ID)
-    missing = []
-    for shop in all_shops:
-        exists = LingXingAmazonShop.objects.filter(
-            amazon_shop_id=shop.id,
-            sid__isnull=False
-        ).exclude(sid=0).exists()
-        if not exists:
-            missing.append(f"{shop.shop_name} (ID: {shop.id}, 状态: {shop.shop_status})")
+    # 侵权词信息（多对多）
+    print(f"\n🚨 侵权词检查 ({listing.tro_words.count()}个):")
+    print("-" * 60)
 
-    if missing:
-        print(f"\n⚠️ 仍有 {len(missing)} 个店铺缺失LingXing映射:")
-        for m in missing:
-            print(f"  - {m}")
+    if listing.tro_words.exists():
+        for idx, tro in enumerate(listing.tro_words.all(), 1):
+            # 获取分类显示名称
+            category_display = tro.get_category_display() if tro.category else "未分类"
+
+            print(f"   {idx}. 侵权词: {tro.theme_name}")
+            print(f"      类型码: {tro.name_type or '无'}")
+            print(f"      分类: {category_display}")
+            if tro.replacement_word:
+                print(f"      建议替换为: {tro.replacement_word}")
+            if tro.shop:
+                print(f"      所属店铺: {tro.shop.shop_name}")
+            print(f"      创建时间: {tro.create_time.strftime('%Y-%m-%d %H:%M') if tro.create_time else '未知'}")
+            print()
     else:
-        print("\n✅ 所有店铺都有LingXing映射")
+        print("   ✅ 未命中任何侵权词")
 
+except AmazonListing.DoesNotExist:
+    print("❌ ID=1 的 Listing 不存在")
+except Exception as e:
+    print(f"❌ 查询出错: {str(e)}")
+    import traceback
 
-if __name__ == "__main__":
-    main()
+    traceback.print_exc()
