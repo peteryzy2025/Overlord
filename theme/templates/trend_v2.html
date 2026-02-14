@@ -16,17 +16,20 @@
             min-height: calc(100vh - 80px - 3rem);
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            gap: 1.25rem;
-            transform: translateY(-100px);
+            gap: 1.5rem;
+            padding-top: 10vh;
         }
 
         .trend-title {
             font-size: 3.5rem;
             font-weight: 700;
-            color: var(--text-primary);
             letter-spacing: 0.02em;
+            background: linear-gradient(135deg, var(--accent-color), var(--accent-hover));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .trend-subtitle {
@@ -422,7 +425,7 @@
 {% block page_content %}
     <div class="trend-page" style="margin-top: 70px;">
         <div style="text-align: center;">
-            <div class="trend-title">侵权词搜索判断</div>
+            <div class="trend-title">DIVI智管侵权检测</div>
             <div class="trend-subtitle">输入关键词，查看风险等级与命中词库占位展示</div>
         </div>
 
