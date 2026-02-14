@@ -12,43 +12,17 @@ from nltk.tokenize import TweetTokenizer
 from django.contrib.auth.decorators import login_required
 from theme.models import *
 
-# 状态码集合（保持不变）
-before_STATUS_CODES = {
-    616, 630, 638, 640, 641, 642, 643, 644, 645, 646, 647, 648,
-    649, 650, 651, 652, 653, 654, 655, 656, 657, 658, 659, 660,
-    661, 663, 665, 666, 672, 680, 681, 746, 760, 969, 686
+# 中风险状态码集合（美标网）- 只有这些状态码才视为中风险
+MEDIUM_RISK_STATUS_CODES = {
+    0, 401, 404, 600, 601, 602, 604, 605, 606, 610, 616, 618, 620, 622, 624, 625,
+    630, 631, 632, 638, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651,
+    652, 653, 654, 655, 656, 657, 658, 659, 660, 661, 663, 664, 665, 666, 667, 668,
+    672, 680, 681, 682, 686, 688, 689, 690, 692, 693, 694, 710, 711, 712, 713, 715,
+    717, 718, 719
 }
-
-live_pending = {
-    410, 413, 616, 620, 630, 631, 638, 640, 641, 642, 643, 644,
-    645, 646, 647, 648, 649, 650, 651, 652, 653, 654, 655, 656,
-    657, 658, 659, 660, 661, 663, 664, 665, 666, 667, 668, 672,
-    680, 681, 682, 686, 688, 689, 690, 692, 693, 694, 718, 719,
-    720, 721, 722, 724, 725, 730, 731, 732, 733, 734, 740, 744,
-    745, 746, 748, 752, 753, 756, 757, 760, 762, 763, 764, 772,
-    773, 774, 777, 779, 794, 801, 802, 803, 804, 806, 807, 808,
-    809, 810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820,
-    821, 822, 823, 824, 825, 969, 973
-}
-
-last_STATUS_CODES = live_pending - before_STATUS_CODES
-HIGH_RISK_NAME_TYPES = {4, 5, 6, 7, 10}
+HIGH_RISK_NAME_TYPES = {4, 5, 6, 7, 10, 11}
 LOW_RISK_NAME_TYPES = {1, 9}
 SPECIAL_INTL_CLASSES = {'006', '015', '016', '018', '024', '025', '027', '035'}
-
-
-def get_live_status_codes():
-    """缓存获取 live_registered 状态码"""
-    cache_key = 'live_registered_status_codes'
-    live_registered = cache.get(cache_key)
-    if live_registered is None:
-        live_registered = set(
-            StatusCodeMapping.objects.filter(
-                status_type='Registered'
-            ).values_list('status_code', flat=True)
-        )
-        cache.set(cache_key, live_registered, 3600)
-    return live_registered
 
 
 @login_required
@@ -170,8 +144,6 @@ def batch_analyze_theme_trend(themes):
         uspto_word_lower_map_global[word_lower] = word
 
     # 3. 为每个未缓存的主题生成结果
-    all_live = last_STATUS_CODES.union(get_live_status_codes())
-
     for theme, valid_tokens in theme_tokens_map.items():
         uspto_matches = []
         uspto_details = {}
@@ -228,7 +200,7 @@ def batch_analyze_theme_trend(themes):
                 intl_classes = list(word_intl_classes_global.get(original_word, set()))
                 has_special_class = any(cls in SPECIAL_INTL_CLASSES for cls in intl_classes)
 
-                if status_codes.intersection(all_live):
+                if status_codes.intersection(MEDIUM_RISK_STATUS_CODES):
                     word_risk_map[original_word] = ['medium', list(status_codes), intl_classes, has_special_class]
                     medium_risk_words.append(original_word)
                 else:
@@ -455,7 +427,6 @@ def analyze_theme_trend(theme, mode=1):
         uspto_word_lower_map[word_lower] = word
 
     # 4. 风险判断（纯内存操作）
-    all_live = last_STATUS_CODES.union(get_live_status_codes())
     high_risk_words, medium_risk_words, low_risk_words = [], [], []
     word_risk_map = {}
 
@@ -492,7 +463,7 @@ def analyze_theme_trend(theme, mode=1):
             intl_classes = list(word_intl_classes.get(original_word, set()))
             has_special_class = any(cls in SPECIAL_INTL_CLASSES for cls in intl_classes)
 
-            if status_codes.intersection(all_live):
+            if status_codes.intersection(MEDIUM_RISK_STATUS_CODES):
                 word_risk_map[original_word] = ['medium', list(status_codes), intl_classes, has_special_class]
                 medium_risk_words.append(original_word)
             else:
