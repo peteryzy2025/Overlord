@@ -182,14 +182,14 @@ def run_module(module: ModuleConfig) -> bool:
             module.func(*module.args)
         
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         logger.info(f"[{module.name}] 完成，耗时 {elapsed:.2f}s")
         stats_manager.get(module.name).record(True, elapsed)
         return True
         
     except Exception as e:
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         error_msg = str(e)
         logger.error(f"[{module.name}] 失败: {error_msg}")
         stats_manager.get(module.name).record(False, elapsed, error_msg)
@@ -211,14 +211,14 @@ def run_divi_process_orders() -> bool:
     try:
         divi_process_orders(target_date, True)
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         logger.info(f"[{name}] 完成，耗时 {elapsed:.2f}s")
         stats_manager.get(name).record(True, elapsed)
         return True
         
     except Exception as e:
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         error_msg = str(e)
         logger.error(f"[{name}] 失败: {error_msg}")
         stats_manager.get(name).record(False, elapsed, error_msg)
@@ -237,14 +237,14 @@ def run_amazon_shipment() -> bool:
     try:
         amazon_shipment()
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         logger.info(f"[{name}] 完成，耗时 {elapsed:.2f}s")
         stats_manager.get(name).record(True, elapsed)
         return True
         
     except Exception as e:
         timer.stop()
-        elapsed = timer.elapsed_seconds()
+        elapsed = timer.elapsed()
         error_msg = str(e)
         logger.error(f"[{name}] 失败: {error_msg}")
         stats_manager.get(name).record(False, elapsed, error_msg)
