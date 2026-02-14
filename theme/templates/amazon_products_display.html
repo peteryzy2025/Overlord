@@ -1568,7 +1568,7 @@
         };
 
         // ===== 举报状态开关逻辑 =====
-        function setReportStatus(status) {
+        function setReportStatus(status, shouldReload = true) {
             currentFilters.report_status = status;
             
             // 更新UI状态
@@ -1591,13 +1591,15 @@
             });
 
             // 重新加载数据
-            productsPagination.page = 1;
-            loadProductsTable();
+            if (shouldReload) {
+                productsPagination.page = 1;
+                loadProductsTable();
+            }
         }
 
         // 初始化开关状态
         document.addEventListener('DOMContentLoaded', function() {
-            setReportStatus('all'); // 默认选中"全部"
+            setReportStatus('all', false); // 默认选中"全部"
         });
 
         // ===== ASIN去重开关逻辑 =====
@@ -1649,6 +1651,7 @@
 
         let selectedProducts = new Set();
         let editingProductId = null;
+        let latestRiskRenderVersion = 0;
 
         // ===== 工具函数 =====
         function showLoading(show = true) {
@@ -1697,7 +1700,7 @@
                     select: '#launchDateRange',
                     options: launchDateRangeOptions,
                     placeholder: '点击选择日期范围',
-                    defaultValue: '',
+                    defaultValue: 'last3days',
                     customValue: 'custom',
                     customGroups: ['#customLaunchDateGroup', '#customLaunchDateGroup2'],
                     startInput: '#customLaunchStartDate',
@@ -1787,8 +1790,8 @@
             const launchRangeValue = launchDateRangeController
                 ? launchDateRangeController.getValue()
                 : (window.SearchableSelect && window.SearchableSelect.getInstance
-                ? (window.SearchableSelect.getInstance('#launchDateRange') ? window.SearchableSelect.getInstance('#launchDateRange').getValue() : '')
-                : '');
+                ? (window.SearchableSelect.getInstance('#launchDateRange') ? window.SearchableSelect.getInstance('#launchDateRange').getValue() : 'last3days')
+                : 'last3days');
             const crawlRangeValue = crawlDateRangeController
                 ? crawlDateRangeController.getValue()
                 : (window.SearchableSelect && window.SearchableSelect.getInstance
@@ -1829,7 +1832,7 @@
 
         function setDefaultFilters() {
             if (launchDateRangeController && crawlDateRangeController) {
-                launchDateRangeController.setValue('');
+                launchDateRangeController.setValue('last3days');
                 launchDateRangeController.clearCustomDates();
                 crawlDateRangeController.setValue('last30days');
                 crawlDateRangeController.clearCustomDates();
@@ -1838,7 +1841,7 @@
                     ? window.SearchableSelect.getInstance('#launchDateRange')
                     : null;
                 if (launchDateRangeSelect) {
-                    launchDateRangeSelect.setValue('');
+                    launchDateRangeSelect.setValue('last3days');
                 }
                 const crawlDateRangeSelect = window.SearchableSelect && window.SearchableSelect.getInstance
                     ? window.SearchableSelect.getInstance('#crawlDateRange')
@@ -2048,6 +2051,8 @@
 
         function renderProductsTable(products) {
             const tbody = document.getElementById('productsTableBody');
+            const renderVersion = ++latestRiskRenderVersion;
+            tbody.dataset.renderVersion = String(renderVersion);
             
             // 清空已收集的主题集合
             window.pageSubjects = new Set();
@@ -2102,10 +2107,10 @@
 
                 // 数据库侵权词 - JSON数组转逗号分隔字符串 (根据风险等级显示颜色)
                 const themeRecord = product.theme_record;
-                let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
+                let dbWords = '<span class="loading-risk" data-subject="' + encodeURIComponent(subjectText) + '" data-render-version="' + renderVersion + '"><i class="fas fa-spinner fa-spin text-muted"></i></span>';
                 
                 // 数据库侵权等级
-                let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '"></span>';
+                let dbLevelHtml = '<span class="loading-level" data-subject="' + encodeURIComponent(subjectText) + '" data-render-version="' + renderVersion + '"></span>';
 
                 // 如果有本地缓存的风险数据（后续实现），可以立即显示
                 // 目前先默认 loading
@@ -2197,12 +2202,12 @@
             
             // 渲染完成后，触发批量风险检测
             if (window.pageSubjects && window.pageSubjects.size > 0) {
-                fetchRiskData(Array.from(window.pageSubjects));
+                fetchRiskData(Array.from(window.pageSubjects), renderVersion);
             }
         }
         
         // 批量获取风险数据
-        async function fetchRiskData(themes) {
+        async function fetchRiskData(themes, renderVersion) {
             try {
                 const response = await fetch('/api/amazon-products/batch-risk-check/', {
                     method: 'POST',
@@ -2214,7 +2219,11 @@
                 
                 const result = await response.json();
                 if (result.success && result.data) {
-                    updateRiskCells(result.data);
+                    const tbody = document.getElementById('productsTableBody');
+                    if (!tbody || String(renderVersion) !== tbody.dataset.renderVersion) {
+                        return;
+                    }
+                    updateRiskCells(result.data, renderVersion);
                 }
             } catch (error) {
                 console.error('批量获取风险数据失败:', error);
@@ -2222,9 +2231,10 @@
         }
         
         // 更新表格中的风险单元格
-        function updateRiskCells(riskData) {
+        function updateRiskCells(riskData, renderVersion = null) {
+            const renderSelector = renderVersion !== null ? `[data-render-version="${renderVersion}"]` : '';
             // 更新侵权词列
-            document.querySelectorAll('.loading-risk').forEach(el => {
+            document.querySelectorAll(`.loading-risk${renderSelector}`).forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
                 const subject = decodeURIComponent(subjectEncoded);
                 let data = riskData[subject];
@@ -2267,7 +2277,7 @@
             });
             
             // 更新侵权等级徽章
-            document.querySelectorAll('.loading-level').forEach(el => {
+            document.querySelectorAll(`.loading-level${renderSelector}`).forEach(el => {
                 const subjectEncoded = el.getAttribute('data-subject');
                 const subject = decodeURIComponent(subjectEncoded);
                 let data = riskData[subject];
@@ -3115,6 +3125,8 @@
             try {
                 initDateRangeFilters();
                 setDefaultFilters();
+                currentFilters = getCurrentFilters();
+                setReportStatus(currentFilters.report_status, false);
                 initializeSortHeader();
                 setupDeduplicateSwitch();  // 初始化去重开关
                 await loadProductsTable();
