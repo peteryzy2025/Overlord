@@ -2147,8 +2147,12 @@
                     }
                     // 如果操作是定制，必须填写图库或本地图库路径之一
                     if (subtask.params.operation === 'custom') {
-                        const hasGallery = subtask.params.gallery_path && subtask.params.gallery_path.trim() !== '';
-                        const hasLocalGallery = subtask.params.local_gallery_path && subtask.params.local_gallery_path.trim() !== '';
+                        const galleryPath = Array.isArray(subtask.params.gallery_path) 
+                            ? subtask.params.gallery_path.join(' ') 
+                            : (subtask.params.gallery_path || '');
+                        const localGalleryPath = subtask.params.local_gallery_path || '';
+                        const hasGallery = galleryPath.trim() !== '';
+                        const hasLocalGallery = localGalleryPath.trim() !== '';
                         if (!hasGallery && !hasLocalGallery) {
                             showNotification(`子任务 #${subtask.order + 1} 选择了定制操作，必须填写图库或本地图库路径`, 'warning');
                             return false;
