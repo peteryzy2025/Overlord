@@ -224,7 +224,11 @@ def validate_subtask_params(subtask_type, params, user):
 
             # 如果操作是定制，必须填写图库或本地图库路径之一
             if operation == 'custom':
-                gallery_path = params.get('gallery_path', '').strip()
+                gallery_path_raw = params.get('gallery_path', '')
+                if isinstance(gallery_path_raw, list):
+                    gallery_path = ' '.join(gallery_path_raw).strip()
+                else:
+                    gallery_path = str(gallery_path_raw).strip()
                 local_gallery_path = params.get('local_gallery_path', '').strip()
                 if not gallery_path and not local_gallery_path:
                     return {'valid': False, 'message': '选择定制操作时，必须填写图库或本地图库路径'}

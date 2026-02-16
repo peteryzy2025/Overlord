@@ -705,7 +705,11 @@ def create_task_api(request):
                         # 根据操作类型添加路径信息
                         operation = diwei_params.get('operation', '')
                         if operation == 'custom':
-                            gallery_path = diwei_params.get('gallery_path', '').strip()
+                            gallery_path_raw = diwei_params.get('gallery_path', '')
+                            if isinstance(gallery_path_raw, list):
+                                gallery_path = ' '.join(gallery_path_raw).strip()
+                            else:
+                                gallery_path = str(gallery_path_raw).strip()
                             local_gallery_path = diwei_params.get('local_gallery_path', '').strip()
                             if gallery_path:
                                 diwei_webhook_data['gallery_source'] = 'gallery'
