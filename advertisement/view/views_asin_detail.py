@@ -155,26 +155,42 @@ def get_asin_hourly_data_api(request, asin):
 @login_required
 def get_asin_hourly_distribution_api(request, asin):
     """
-    获取 ASIN 小时分布数据（最近7天平均）
+    获取 ASIN 24小时数据（最近24小时或指定日期）
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
 
     try:
         asin = asin.strip().upper()
+        date_str = request.GET.get('date', '')
         
         if not asin:
             return JsonResponse({'success': False, 'message': 'ASIN不能为空'}, status=400)
         
-        # 最近7天
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=6)
+        # 如果指定了日期，使用该日期；否则使用最近有数据的日期
+        if date_str:
+            try:
+                query_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            except:
+                return JsonResponse({'success': False, 'message': '日期格式错误'}, status=400)
+        else:
+            # 获取最近有数据的日期
+            latest = LingXingAdHourlyData.objects.filter(asin=asin).order_by('-report_date').first()
+            if not latest:
+                return JsonResponse({
+                    'success': True,
+                    'data': {
+                        'asin': asin,
+                        'date': '-',
+                        'hourly_distribution': []
+                    }
+                })
+            query_date = latest.report_date
         
-        # 获取小时数据
+        # 获取该日小时数据
         hourly_data = LingXingAdHourlyData.objects.filter(
             asin=asin,
-            report_date__gte=start_date,
-            report_date__lte=end_date
+            report_date=query_date
         ).values('hour').annotate(
             cost=Sum('cost'),
             sales=Sum('sales'),
@@ -183,40 +199,46 @@ def get_asin_hourly_distribution_api(request, asin):
             orders=Sum('orders')
         ).order_by('hour')
         
-        # 计算7天平均
+        # 组装24小时数据（缺失小时补0）
+        hourly_map = {h['hour']: h for h in hourly_data}
         result = []
-        for data in hourly_data:
-            result.append({
-                'hour': data['hour'],
-                'hour_display': f'{data["hour"]:02d}:00',
-                'impressions': round(int(data['impressions'] or 0) / 7),
-                'clicks': round(int(data['clicks'] or 0) / 7, 1),
-                'orders': round(int(data['orders'] or 0) / 7, 1),
-                'cost': round(float(data['cost'] or 0) / 7, 2),
-                'sales': round(float(data['sales'] or 0) / 7, 2),
-            })
-        
-        # 补全24小时
-        existing_hours = {r['hour'] for r in result}
         for hour in range(24):
-            if hour not in existing_hours:
-                result.append({
-                    'hour': hour,
-                    'hour_display': f'{hour:02d}:00',
-                    'impressions': 0,
-                    'clicks': 0,
-                    'orders': 0,
-                    'cost': 0,
-                    'sales': 0,
-                })
-        
-        result.sort(key=lambda x: x['hour'])
+            data = hourly_map.get(hour, {
+                'hour': hour,
+                'cost': 0,
+                'sales': 0,
+                'clicks': 0,
+                'impressions': 0,
+                'orders': 0
+            })
+            
+            # 计算比率
+            ctr = (data['clicks'] / data['impressions'] * 100) if data['impressions'] > 0 else 0
+            cvr = (data['orders'] / data['clicks'] * 100) if data['clicks'] > 0 else 0
+            acos = (data['cost'] / data['sales'] * 100) if data['sales'] > 0 else 0
+            roas = (data['sales'] / data['cost']) if data['cost'] > 0 else 0
+            cpc = (data['cost'] / data['clicks']) if data['clicks'] > 0 else 0
+            
+            result.append({
+                'hour': hour,
+                'hour_display': f'{hour:02d}:00',
+                'impressions': int(data['impressions'] or 0),
+                'clicks': int(data['clicks'] or 0),
+                'orders': int(data['orders'] or 0),
+                'cost': round(float(data['cost'] or 0), 2),
+                'sales': round(float(data['sales'] or 0), 2),
+                'ctr': round(ctr, 2),
+                'cvr': round(cvr, 2),
+                'acos': round(acos, 2),
+                'roas': round(roas, 2),
+                'cpc': round(cpc, 2),
+            })
         
         return JsonResponse({
             'success': True,
             'data': {
                 'asin': asin,
-                'date_range': f'{start_date} 至 {end_date}',
+                'date': query_date.strftime('%Y-%m-%d'),
                 'hourly_distribution': result
             }
         })
