@@ -45,5 +45,12 @@
                 <span>广告列表</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'advertisement:asin_list' %}"
+               class="sidebar-link {% if active_page == 'asin_list' %}active{% endif %}">
+                <i class="fas fa-barcode sidebar-icon"></i>
+                <span>ASIN 广告</span>
+            </a>
+        </li>
     </ul>
 {% endblock %}
