@@ -1,6 +1,6 @@
 # advertisement/urls.py
 from django.urls import path
-from advertisement.view import views_campaign, views_asin
+from advertisement.view import views_campaign, views_asin, views_asin_detail
 
 app_name = 'advertisement'
 
@@ -15,4 +15,12 @@ urlpatterns = [
     path('advertisement/asin/', views_asin.asin_list_page, name='asin_list'),
     path('api/advertisement/asin/list/', views_asin.get_asin_list_api, name='get_asin_list_api'),
     path('api/advertisement/asin/<str:asin>/detail/', views_asin.get_asin_detail_api, name='get_asin_detail_api'),
+    
+    # ========== ASIN 详情页面 ==========
+    path('advertisement/asin/<str:asin>/detail/', views_asin_detail.asin_detail_page, name='asin_detail'),
+    path('api/advertisement/asin/<str:asin>/summary/', views_asin_detail.get_asin_summary_api, name='get_asin_summary_api'),
+    path('api/advertisement/asin/<str:asin>/daily/', views_asin_detail.get_asin_daily_data_api, name='get_asin_daily_data_api'),
+    path('api/advertisement/asin/<str:asin>/hourly/', views_asin_detail.get_asin_hourly_data_api, name='get_asin_hourly_data_api'),
+    path('api/advertisement/asin/<str:asin>/hourly-distribution/', views_asin_detail.get_asin_hourly_distribution_api, name='get_asin_hourly_distribution_api'),
+    path('api/advertisement/asin/<str:asin>/campaigns/', views_asin_detail.get_asin_campaigns_api, name='get_asin_campaigns_api'),
 ]
