@@ -76,7 +76,8 @@ INSTALLED_APPS = [
     'task.apps.TaskConfig',
     'shop_guard.apps.ShopGuardConfig',
     'inventory.apps.InventoryConfig',
-    'data_req.apps.DataReqConfig'
+    'data_req.apps.DataReqConfig',
+    'advertisement.apps.AdvertisementConfig'
 ]
 
 MIDDLEWARE = [
