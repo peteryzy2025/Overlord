@@ -105,7 +105,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    min-width: 180px;
+    min-width: 220px;
+    max-width: 300px;
     flex: 1;
 }
 
@@ -119,8 +120,8 @@
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
+    margin-left: auto;
     align-self: flex-end;
-    margin-top: auto;
 }
 
 /* 修复筛选按钮高度与输入框一致 */
