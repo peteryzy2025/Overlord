@@ -141,7 +141,7 @@
         }
 
         .table-container table {
-            min-width: 1400px;
+            min-width: 2400px;
         }
 
         #campaignsTable td {
@@ -624,12 +624,22 @@
         <div class="control-panel">
             <div class="filter-row">
                 <div class="filter-group">
-                    <label class="filter-label">开始日期</label>
+                    <label class="filter-label">广告日期范围（开始）</label>
+                    <input type="date" class="form-control" id="adStartDate">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">广告日期范围（结束）</label>
+                    <input type="date" class="form-control" id="adEndDate">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">活动开始日期</label>
                     <input type="date" class="form-control" id="startDate">
                 </div>
 
                 <div class="filter-group">
-                    <label class="filter-label">结束日期</label>
+                    <label class="filter-label">活动结束日期</label>
                     <input type="date" class="form-control" id="endDate">
                 </div>
 
@@ -703,7 +713,6 @@
                         <th class="w-checkbox">
                             <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
                         </th>
-                        <th>Campaign ID</th>
                         <th>活动名称</th>
                         <th>店铺名称</th>
                         <th>活动类型</th>
@@ -713,12 +722,22 @@
                         <th>日预算</th>
                         <th>开始日期</th>
                         <th>结束日期</th>
+                        <th>曝光量</th>
+                        <th>点击量</th>
+                        <th>CTR(%)</th>
+                        <th>CPC</th>
+                        <th>订单数</th>
+                        <th>CVR(%)</th>
+                        <th>花费</th>
+                        <th>销售额</th>
+                        <th>ACOS(%)</th>
+                        <th>ROAS</th>
                         <th class="w-actions">操作</th>
                     </tr>
                     </thead>
                     <tbody id="campaignsTableBody">
                     <tr>
-                        <td colspan="12" class="empty-state">
+                        <td colspan="21" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>请点击"筛选"按钮加载数据</p>
                             <p>广告活动数据将在此处显示</p>
@@ -797,11 +816,12 @@
         document.addEventListener('DOMContentLoaded', function() {
             initSearchableSelects();
             
-            // 设置默认日期（本月）
+            // 设置广告日期范围默认为当月
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            document.getElementById('startDate').value = formatDate(firstDay);
-            document.getElementById('endDate').value = formatDate(today);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            document.getElementById('adStartDate').value = formatDate(firstDay);
+            document.getElementById('adEndDate').value = formatDate(lastDay);
             
             // 默认加载数据
             applyFilters();
@@ -872,6 +892,8 @@
             };
 
             currentFilters = {
+                ad_start_date: document.getElementById('adStartDate').value,
+                ad_end_date: document.getElementById('adEndDate').value,
                 start_date: document.getElementById('startDate').value,
                 end_date: document.getElementById('endDate').value,
                 campaign_name: document.getElementById('campaignNameFilter').value,
@@ -926,7 +948,7 @@
             if (!campaigns || campaigns.length === 0) {
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="12" class="empty-state">
+                        <td colspan="21" class="empty-state">
                             <i class="fas fa-inbox"></i>
                             <p>暂无数据</p>
                             <p>请调整筛选条件后重试</p>
@@ -953,6 +975,18 @@
 
                 const isSelected = selectedCampaigns.has(campaign.campaign_id.toString());
 
+                // 格式化效果数据（确保是数字类型）
+                const impressions = parseInt(campaign.impressions) || 0;
+                const clicks = parseInt(campaign.clicks) || 0;
+                const orders = parseInt(campaign.orders) || 0;
+                const cost = parseFloat(campaign.cost) || 0;
+                const sales = parseFloat(campaign.sales) || 0;
+                const ctr = parseFloat(campaign.ctr) || 0;
+                const cpc = parseFloat(campaign.cpc) || 0;
+                const cvr = parseFloat(campaign.cvr) || 0;
+                const acos = parseFloat(campaign.acos) || 0;
+                const roas = parseFloat(campaign.roas) || 0;
+
                 return `
                     <tr>
                         <td class="w-checkbox">
@@ -961,7 +995,6 @@
                                    ${isSelected ? 'checked' : ''}
                                    onchange="toggleSelectCampaign('${campaign.campaign_id}')">
                         </td>
-                        <td>${campaign.campaign_id}</td>
                         <td>
                             <a href="javascript:void(0)" class="campaign-name-link" 
                                onclick="viewCampaignDetail(${campaign.campaign_id})">
@@ -984,6 +1017,16 @@
                         <td>${campaign.daily_budget}</td>
                         <td>${campaign.start_date || '-'}</td>
                         <td>${campaign.end_date || '-'}</td>
+                        <td>${impressions.toLocaleString()}</td>
+                        <td>${clicks.toLocaleString()}</td>
+                        <td>${ctr.toFixed(2)}%</td>
+                        <td>${cpc.toFixed(2)}</td>
+                        <td>${orders}</td>
+                        <td>${cvr.toFixed(2)}%</td>
+                        <td>${cost.toFixed(2)}</td>
+                        <td>${sales.toFixed(2)}</td>
+                        <td>${acos.toFixed(2)}%</td>
+                        <td>${roas.toFixed(2)}</td>
                         <td class="w-actions">
                             <div class="action-buttons">
                                 <button class="btn-action btn-view" onclick="viewCampaignDetail(${campaign.campaign_id})" title="查看详情">
@@ -1308,11 +1351,16 @@
             if (servingStatusSelect) servingStatusSelect.clear();
             if (targetingTypeSelect) targetingTypeSelect.clear();
             
-            // 重置日期
+            // 重置广告日期范围为当月
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            document.getElementById('startDate').value = formatDate(firstDay);
-            document.getElementById('endDate').value = formatDate(today);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            document.getElementById('adStartDate').value = formatDate(firstDay);
+            document.getElementById('adEndDate').value = formatDate(lastDay);
+            
+            // 重置活动日期为空
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
             
             applyFilters();
         }
