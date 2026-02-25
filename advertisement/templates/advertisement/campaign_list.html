@@ -17,7 +17,7 @@
             --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
         }
 
-        .campaign-main {
+        .tab-content {
             margin: 20px;
         }
 
@@ -55,13 +55,7 @@
             flex-wrap: wrap;
         }
 
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 200px;
-            flex: 1;
-        }
+
 
         .filter-label {
             font-weight: 500;
@@ -573,7 +567,7 @@
         }
 
         @media (max-width: 768px) {
-            .campaign-main {
+            .tab-content {
                 margin: 10px;
             }
 
@@ -582,10 +576,7 @@
                 align-items: stretch;
             }
 
-            .filter-group {
-                width: 100%;
-                min-width: auto;
-            }
+
         }
 
         @media (max-width: 576px) {
@@ -612,7 +603,7 @@
         </div>
     </div>
 
-    <div class="campaign-main">
+    <div class="tab-content">
         <!-- 页面标题区 -->
         <div class="page-header">
             <div>
@@ -762,7 +753,7 @@
                 </div>
                 <div class="pagination-jump" id="paginationJump" style="display: none;">
                     <span>跳至</span>
-                    <input type="number" class="page-jump-input" id="pageJumpInput" min="1" onkeypress="if(event.key==='Enter') jumpToPage()">
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                     <span>页</span>
                 </div>
             </div>
@@ -789,6 +780,8 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
     <script>
         // ========== 全局状态 ==========
         let currentPage = 1;
@@ -797,69 +790,73 @@
         let selectedCampaigns = new Set();
         let currentCampaigns = [];
 
-        // ========== 筛选器选项配置 ==========
-        const filterOptions = {
-            campaign_type: [
-                {value: 'SP', label: 'SP（商品推广）'},
-                {value: 'SB', label: 'SB（品牌推广）'},
-                {value: 'SD', label: 'SD（展示型推广）'}
-            ],
-            status: [
-                {value: 'enabled', label: '启用'},
-                {value: 'paused', label: '暂停'},
-                {value: 'archived', label: '归档'}
-            ],
-            serving_status: [
-                {value: 'CAMPAIGN_STATUS_ENABLED', label: '活动启用'},
-                {value: 'CAMPAIGN_PAUSED', label: '活动暂停'},
-                {value: 'CAMPAIGN_OUT_OF_BUDGET', label: '活动预算不足'},
-                {value: 'ACCOUNT_OUT_OF_BUDGET', label: '账户预算不足'},
-                {value: 'CAMPAIGN_ARCHIVED', label: '已归档'},
-                {value: 'CAMPAIGN_INCOMPLETE', label: '设置不完整'}
-            ],
-            targeting_type: [
-                {value: 'manual', label: '手动投放'},
-                {value: 'auto', label: '自动投放'}
-            ]
-        };
+        // ========== Select 组件实例 ==========
+        let campaignTypeSelect, statusSelect, servingStatusSelect, targetingTypeSelect;
 
         // ========== 初始化 ==========
         document.addEventListener('DOMContentLoaded', function() {
-            // 初始化筛选器
-            initFilters();
+            initSearchableSelects();
             
-            // 默认加载数据
-            applyFilters();
-        });
-
-        function initFilters() {
-            // 初始化多选下拉框
-            initMultiSelect('campaignTypeFilter', filterOptions.campaign_type);
-            initMultiSelect('statusFilter', filterOptions.status);
-            initMultiSelect('servingStatusFilter', filterOptions.serving_status);
-            initMultiSelect('targetingTypeFilter', filterOptions.targeting_type);
-
             // 设置默认日期（本月）
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
             document.getElementById('startDate').value = formatDate(firstDay);
             document.getElementById('endDate').value = formatDate(today);
-        }
-
-        function initMultiSelect(elementId, options) {
-            const container = document.getElementById(elementId);
-            if (!container) return;
-
-            const placeholder = container.dataset.placeholder || '请选择';
             
-            let html = `<select class="form-select" id="${elementId}Select" multiple style="height: 38px;">`;
-            html += `<option value="" disabled>${placeholder}</option>`;
-            options.forEach(opt => {
-                html += `<option value="${opt.value}">${opt.label}</option>`;
+            // 默认加载数据
+            applyFilters();
+        });
+
+        function initSearchableSelects() {
+            // 活动类型
+            campaignTypeSelect = new SearchableSelect('#campaignTypeFilter', {
+                options: [
+                    {value: 'SP', label: 'SP（商品推广）'},
+                    {value: 'SB', label: 'SB（品牌推广）'},
+                    {value: 'SD', label: 'SD（展示型推广）'}
+                ],
+                multiple: true,
+                placeholder: '全部类型'
             });
-            html += '</select>';
-            
-            container.innerHTML = html;
+            campaignTypeSelect.onChange = () => { currentPage = 1; };
+
+            // 状态
+            statusSelect = new SearchableSelect('#statusFilter', {
+                options: [
+                    {value: 'enabled', label: '启用'},
+                    {value: 'paused', label: '暂停'},
+                    {value: 'archived', label: '归档'}
+                ],
+                multiple: true,
+                placeholder: '全部状态'
+            });
+            statusSelect.onChange = () => { currentPage = 1; };
+
+            // 投放状态
+            servingStatusSelect = new SearchableSelect('#servingStatusFilter', {
+                options: [
+                    {value: 'CAMPAIGN_STATUS_ENABLED', label: '活动启用'},
+                    {value: 'CAMPAIGN_PAUSED', label: '活动暂停'},
+                    {value: 'CAMPAIGN_OUT_OF_BUDGET', label: '活动预算不足'},
+                    {value: 'ACCOUNT_OUT_OF_BUDGET', label: '账户预算不足'},
+                    {value: 'CAMPAIGN_ARCHIVED', label: '已归档'},
+                    {value: 'CAMPAIGN_INCOMPLETE', label: '设置不完整'}
+                ],
+                multiple: true,
+                placeholder: '全部状态'
+            });
+            servingStatusSelect.onChange = () => { currentPage = 1; };
+
+            // 投放方式
+            targetingTypeSelect = new SearchableSelect('#targetingTypeFilter', {
+                options: [
+                    {value: 'manual', label: '手动投放'},
+                    {value: 'auto', label: '自动投放'}
+                ],
+                multiple: true,
+                placeholder: '全部方式'
+            });
+            targetingTypeSelect.onChange = () => { currentPage = 1; };
         }
 
         // ========== 数据加载 ==========
@@ -867,15 +864,22 @@
             showLoading(true);
             
             // 收集筛选条件
+            const formatMultiSelect = (select) => {
+                if (!select) return '';
+                const value = select.getValue();
+                if (!value || value.length === 0) return '';
+                return value.join(',');
+            };
+
             currentFilters = {
                 start_date: document.getElementById('startDate').value,
                 end_date: document.getElementById('endDate').value,
                 campaign_name: document.getElementById('campaignNameFilter').value,
                 shop_name: document.getElementById('shopNameFilter').value,
-                campaign_type: getMultiSelectValues('campaignTypeFilterSelect'),
-                status: getMultiSelectValues('statusFilterSelect'),
-                serving_status: getMultiSelectValues('servingStatusFilterSelect'),
-                targeting_type: getMultiSelectValues('targetingTypeFilterSelect'),
+                campaign_type: formatMultiSelect(campaignTypeSelect),
+                status: formatMultiSelect(statusSelect),
+                serving_status: formatMultiSelect(servingStatusSelect),
+                targeting_type: formatMultiSelect(targetingTypeSelect),
                 page: 1,
                 page_size: currentPageSize
             };
@@ -883,13 +887,6 @@
             currentPage = 1;
             await loadData();
             showLoading(false);
-        }
-
-        function getMultiSelectValues(selectId) {
-            const select = document.getElementById(selectId);
-            if (!select) return '';
-            const values = Array.from(select.selectedOptions).map(o => o.value).filter(v => v);
-            return values.join(',');
         }
 
         async function loadData() {
@@ -998,7 +995,6 @@
                 `;
             }).join('');
 
-            // 更新全选框状态
             updateSelectAllCheckbox();
         }
 
@@ -1083,10 +1079,12 @@
             dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
         }
 
-        function jumpToPage() {
-            const input = document.getElementById('pageJumpInput');
-            const page = parseInt(input.value);
-            if (page) goToPage(page);
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const input = document.getElementById('pageJumpInput');
+                const page = parseInt(input.value);
+                if (page) goToPage(page);
+            }
         }
 
         // ========== 多选功能 ==========
@@ -1303,16 +1301,18 @@
             
             document.getElementById('campaignNameFilter').value = '';
             document.getElementById('shopNameFilter').value = '';
-            document.getElementById('startDate').value = '';
-            document.getElementById('endDate').value = '';
             
             // 重置多选框
-            ['campaignTypeFilterSelect', 'statusFilterSelect', 'servingStatusFilterSelect', 'targetingTypeFilterSelect'].forEach(id => {
-                const select = document.getElementById(id);
-                if (select) {
-                    Array.from(select.options).forEach(opt => opt.selected = false);
-                }
-            });
+            if (campaignTypeSelect) campaignTypeSelect.clear();
+            if (statusSelect) statusSelect.clear();
+            if (servingStatusSelect) servingStatusSelect.clear();
+            if (targetingTypeSelect) targetingTypeSelect.clear();
+            
+            // 重置日期
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('startDate').value = formatDate(firstDay);
+            document.getElementById('endDate').value = formatDate(today);
             
             applyFilters();
         }
