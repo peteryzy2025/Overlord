@@ -1,14 +1,15 @@
 # advertisement/view/views_campaign.py
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
+from calendar import monthrange
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import render
 
-from advertisement.models import LingXingCampaign
+from advertisement.models import LingXingCampaign, LingXingAdHourlyData
 from amazon.models import LingXingAmazonShop
 
 
@@ -27,7 +28,7 @@ def campaign_list_page(request):
 def get_campaign_list_api(request):
     """
     获取广告活动列表数据 API
-    支持分页、筛选
+    支持分页、筛选，包含广告效果数据汇总
     """
     if request.method != 'POST':
         return JsonResponse({'success': False, 'message': '只支持POST请求'}, status=405)
@@ -41,8 +42,11 @@ def get_campaign_list_api(request):
         page_size = int(data.get('page_size', 20))
         page_size = min(page_size, 100)  # 最多100条
 
-        # 日期筛选
-        date_range_option = data.get('date_range', 'all')
+        # 广告日期范围筛选（用于效果数据汇总）
+        ad_start_date_str = data.get('ad_start_date', '')
+        ad_end_date_str = data.get('ad_end_date', '')
+
+        # Campaign 日期筛选（保留原有功能）
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
 
@@ -63,22 +67,38 @@ def get_campaign_list_api(request):
         targeting_type_filter = data.get('targeting_type', '').strip()
         targeting_type_list = [s.strip() for s in targeting_type_filter.split(',') if s.strip()] if targeting_type_filter else []
 
-        # 解析日期范围
-        current_start, current_end = None, None
-        if start_date_str and end_date_str:
+        # 解析广告日期范围（效果数据）
+        ad_start_date, ad_end_date = None, None
+        if ad_start_date_str and ad_end_date_str:
             try:
-                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
-                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+                ad_start_date = datetime.strptime(ad_start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                ad_end_date = datetime.strptime(ad_end_date_str.split(' ')[0], '%Y-%m-%d').date()
             except:
                 pass
 
-        # ========== 构建查询条件 ==========
+        # 默认当月（如果没有传）
+        if not ad_start_date or not ad_end_date:
+            today = datetime.now().date()
+            ad_start_date = today.replace(day=1)
+            _, last_day = monthrange(today.year, today.month)
+            ad_end_date = today.replace(day=last_day)
+
+        # 解析 Campaign 日期范围（原有功能）
+        campaign_start_date, campaign_end_date = None, None
+        if start_date_str and end_date_str:
+            try:
+                campaign_start_date = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
+                campaign_end_date = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
+            except:
+                pass
+
+        # ========== 构建 Campaign 查询条件 ==========
         campaign_filter = Q()
 
-        # 日期筛选（根据开始日期）
-        if current_start and current_end:
-            campaign_filter &= Q(start_date__gte=current_start)
-            campaign_filter &= Q(start_date__lte=current_end)
+        # Campaign 日期筛选（根据开始日期）
+        if campaign_start_date and campaign_end_date:
+            campaign_filter &= Q(start_date__gte=campaign_start_date)
+            campaign_filter &= Q(start_date__lte=campaign_end_date)
 
         # 活动名称模糊查询
         if campaign_name_filter:
@@ -132,10 +152,71 @@ def get_campaign_list_api(request):
         except EmptyPage:
             page_obj = paginator.page(paginator.num_pages)
 
+        # ========== 获取当前页所有 Campaign ID ==========
+        campaign_ids = [c.campaign_id for c in page_obj]
+
+        # ========== 批量查询效果数据 ==========
+        campaign_metrics = {}
+        if campaign_ids and ad_start_date and ad_end_date:
+            # 使用 campaign_id 字段查询（不是 id）
+            hourly_data = LingXingAdHourlyData.objects.filter(
+                campaign_id__in=campaign_ids,
+                report_date__gte=ad_start_date,
+                report_date__lte=ad_end_date
+            ).values('campaign_id').annotate(
+                total_cost=Sum('cost'),
+                total_sales=Sum('sales'),
+                total_clicks=Sum('clicks'),
+                total_impressions=Sum('impressions'),
+                total_orders=Sum('orders')
+            )
+
+            for item in hourly_data:
+                campaign_id = item['campaign_id']
+                total_cost = item['total_cost'] or 0
+                total_sales = item['total_sales'] or 0
+                total_clicks = item['total_clicks'] or 0
+                total_impressions = item['total_impressions'] or 0
+                total_orders = item['total_orders'] or 0
+
+                # 计算指标
+                acos = (total_cost / total_sales * 100) if total_sales > 0 else 0
+                roas = (total_sales / total_cost) if total_cost > 0 else 0
+                ctr = (total_clicks / total_impressions * 100) if total_impressions > 0 else 0
+                cvr = (total_orders / total_clicks * 100) if total_clicks > 0 else 0
+                cpc = (total_cost / total_clicks) if total_clicks > 0 else 0
+
+                campaign_metrics[campaign_id] = {
+                    'cost': round(total_cost, 2),
+                    'sales': round(total_sales, 2),
+                    'clicks': int(total_clicks),
+                    'impressions': int(total_impressions),
+                    'orders': int(total_orders),
+                    'acos': round(acos, 2),
+                    'roas': round(roas, 2),
+                    'ctr': round(ctr, 2),
+                    'cvr': round(cvr, 2),
+                    'cpc': round(cpc, 2),
+                }
+
         # ========== 组装返回数据 ==========
         campaigns_data = []
         for campaign in page_obj:
             shop_name = campaign.lingxing_shop.name if campaign.lingxing_shop else '未知店铺'
+            
+            # 获取效果数据（如果没有则显示为 0 或 -）
+            metrics = campaign_metrics.get(campaign.campaign_id, {
+                'cost': 0,
+                'sales': 0,
+                'clicks': 0,
+                'impressions': 0,
+                'orders': 0,
+                'acos': 0,
+                'roas': 0,
+                'ctr': 0,
+                'cvr': 0,
+                'cpc': 0,
+            })
             
             campaigns_data.append({
                 'campaign_id': campaign.campaign_id,
@@ -153,6 +234,17 @@ def get_campaign_list_api(request):
                 'start_date': campaign.start_date.strftime('%Y-%m-%d') if campaign.start_date else '',
                 'end_date': campaign.end_date.strftime('%Y-%m-%d') if campaign.end_date else '',
                 'last_updated_at': campaign.last_updated_at.strftime('%Y-%m-%d %H:%M:%S') if campaign.last_updated_at else '',
+                # 效果数据
+                'cost': metrics['cost'],
+                'sales': metrics['sales'],
+                'clicks': metrics['clicks'],
+                'impressions': metrics['impressions'],
+                'orders': metrics['orders'],
+                'acos': metrics['acos'],
+                'roas': metrics['roas'],
+                'ctr': metrics['ctr'],
+                'cvr': metrics['cvr'],
+                'cpc': metrics['cpc'],
             })
 
         return JsonResponse({
