@@ -1,0 +1,808 @@
+{% extends 'base/base_advertisement.html' %}
+{% load static %}
+
+{% block title %}{{ asin }} - ASIN 详情 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <style>
+        :root {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .tab-content {
+            margin: 20px;
+        }
+
+        /* 顶部信息栏 */
+        .info-header {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .info-row {
+            display: flex;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .info-value.asin {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+        }
+
+        /* 对比功能 */
+        .compare-section {
+            margin-left: auto;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .compare-input {
+            width: 200px;
+        }
+
+        /* 核心指标卡片 */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .metric-card {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .metric-card.compare {
+            border-left: 4px solid var(--accent-color);
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value.compare {
+            font-size: 1.25rem;
+            color: var(--accent-color);
+        }
+
+        .metric-sub {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        .metric-change {
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .metric-change.up {
+            color: #10B981;
+        }
+
+        .metric-change.down {
+            color: #EF4444;
+        }
+
+        /* 图表区域 */
+        .chart-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+
+        .chart-container.small {
+            height: 280px;
+        }
+
+        /* 数据表格 */
+        .table-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .table-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .table {
+            width: 100%;
+            margin: 0;
+            color: var(--text-primary);
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 11;
+            background-color: var(--bg-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .table tbody tr {
+            cursor: pointer;
+        }
+
+        .date-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .date-link:hover {
+            text-decoration: underline;
+        }
+
+        /* 小时明细弹窗 */
+        .hour-chart-container {
+            width: 100%;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .info-row {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+            
+            .compare-section {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 1rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <!-- 顶部信息栏 -->
+        <div class="info-header">
+            <div class="info-row">
+                <div class="info-item">
+                    <span class="info-label">ASIN</span>
+                    <span class="info-value asin" id="asinDisplay">{{ asin }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">MSKU</span>
+                    <span class="info-value" id="mskuDisplay">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">店铺</span>
+                    <span class="info-value" id="shopDisplay">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">最新数据日期</span>
+                    <span class="info-value" id="latestDateDisplay">-</span>
+                </div>
+                
+                <!-- 对比功能 -->
+                <div class="compare-section">
+                    <input type="text" class="form-control compare-input" id="compareAsinInput" 
+                           placeholder="输入对比 ASIN">
+                    <button class="btn" onclick="loadCompareData()">
+                        <i class="fas fa-chart-line"></i> 对比
+                    </button>
+                    <button class="btn btn-secondary" onclick="clearCompare()" id="clearCompareBtn" style="display: none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 核心指标卡片 -->
+        <div class="metrics-grid" id="metricsGrid">
+            <!-- 动态生成 -->
+        </div>
+
+        <!-- 每日趋势图 -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h3 class="chart-title">📈 每日趋势（最近30天）</h3>
+                <div class="chart-legend" id="trendLegend">
+                    <span style="color: #5470c6;">● 主 ASIN</span>
+                    <span id="compareLegend" style="color: #91cc75; display: none;">● 对比 ASIN</span>
+                </div>
+            </div>
+            <div class="chart-container" id="dailyTrendChart"></div>
+        </div>
+
+        <!-- 小时分布图 -->
+        <div class="chart-section">
+            <div class="chart-header">
+                <h3 class="chart-title">⏰ 24小时分布（最近7天平均）</h3>
+            </div>
+            <div class="chart-container small" id="hourlyChart"></div>
+        </div>
+
+        <!-- 每日数据明细表 -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3 class="chart-title">📋 每日数据明细（点击日期查看小时明细）</h3>
+            </div>
+            <div class="table-container">
+                <table class="table" id="dailyTable">
+                    <thead>
+                        <tr>
+                            <th>日期</th>
+                            <th>曝光量</th>
+                            <th>点击量</th>
+                            <th>CTR(%)</th>
+                            <th>订单数</th>
+                            <th>CVR(%)</th>
+                            <th>花费</th>
+                            <th>销售额</th>
+                            <th>ACOS(%)</th>
+                            <th>ROAS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailyTableBody">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 关联活动列表 -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3 class="chart-title">🎯 关联广告活动（最近30天）</h3>
+            </div>
+            <div class="table-container">
+                <table class="table" id="campaignTable">
+                    <thead>
+                        <tr>
+                            <th>活动名称</th>
+                            <th>店铺</th>
+                            <th>状态</th>
+                            <th>日预算</th>
+                            <th>花费</th>
+                            <th>销售额</th>
+                            <th>ACOS(%)</th>
+                            <th>订单数</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaignTableBody">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 小时明细弹窗 -->
+    <div class="modal fade" id="hourlyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background-color: var(--bg-primary); color: var(--text-primary);">
+                <div class="modal-header" style="border-bottom-color: var(--border-color);">
+                    <h5 class="modal-title" id="hourlyModalTitle">24小时明细</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="hour-chart-container" id="hourlyDetailChart"></div>
+                    <div class="table-container mt-3" style="max-height: 300px;">
+                        <table class="table" id="hourlyTable">
+                            <thead>
+                                <tr>
+                                    <th>小时</th>
+                                    <th>曝光量</th>
+                                    <th>点击量</th>
+                                    <th>CTR(%)</th>
+                                    <th>订单数</th>
+                                    <th>CVR(%)</th>
+                                    <th>花费</th>
+                                    <th>销售额</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hourlyTableBody">
+                                <!-- 动态生成 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top-color: var(--border-color);">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script>
+        // ========== 全局变量 ==========
+        const currentAsin = '{{ asin }}';
+        let compareAsin = '';
+        let dailyTrendChart = null;
+        let hourlyChart = null;
+        let hourlyDetailChart = null;
+
+        // ========== 初始化 ==========
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            loadPageData();
+        });
+
+        function initCharts() {
+            dailyTrendChart = echarts.init(document.getElementById('dailyTrendChart'));
+            hourlyChart = echarts.init(document.getElementById('hourlyChart'));
+            hourlyDetailChart = echarts.init(document.getElementById('hourlyDetailChart'));
+            
+            // 响应式
+            window.addEventListener('resize', () => {
+                dailyTrendChart.resize();
+                hourlyChart.resize();
+                hourlyDetailChart.resize();
+            });
+        }
+
+        async function loadPageData() {
+            await Promise.all([
+                loadSummaryData(),
+                loadDailyData(),
+                loadHourlyDistribution(),
+                loadCampaignList()
+            ]);
+        }
+
+        // ========== 加载汇总数据 ==========
+        async function loadSummaryData() {
+            try {
+                const url = `/api/advertisement/asin/${currentAsin}/summary/?compare_asin=${compareAsin}`;
+                console.log('Loading summary:', url);
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderSummary(result.data);
+                }
+            } catch (error) {
+                console.error('加载汇总数据失败:', error);
+            }
+        }
+
+        function renderSummary(data) {
+            // 基本信息
+            document.getElementById('mskuDisplay').textContent = data.basic_info.msku;
+            document.getElementById('shopDisplay').textContent = data.basic_info.shop_name;
+            document.getElementById('latestDateDisplay').textContent = data.basic_info.latest_date;
+
+            // 核心指标卡片
+            const metrics = [
+                { key: 'impressions', label: '曝光量', isInteger: true },
+                { key: 'clicks', label: '点击量', isInteger: true },
+                { key: 'orders', label: '订单数', isInteger: true },
+                { key: 'cost', label: '花费', prefix: '$' },
+                { key: 'sales', label: '销售额', prefix: '$' },
+                { key: 'ctr', label: 'CTR', suffix: '%' },
+                { key: 'cvr', label: 'CVR', suffix: '%' },
+                { key: 'acos', label: 'ACOS', suffix: '%' },
+                { key: 'roas', label: 'ROAS' },
+            ];
+
+            let html = '';
+            metrics.forEach(m => {
+                const mainValue = formatValue(data.summary[m.key], m);
+                let compareHtml = '';
+                
+                if (data.compare_summary) {
+                    const compareValue = formatValue(data.compare_summary[m.key], m);
+                    const change = calculateChange(data.summary[m.key], data.compare_summary[m.key]);
+                    compareHtml = `
+                        <div class="metric-value compare">${compareValue}</div>
+                        <div class="metric-change ${change >= 0 ? 'up' : 'down'}">
+                            ${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(1)}%
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div class="metric-card ${data.compare_summary ? 'compare' : ''}">
+                        <div class="metric-label">${m.label}</div>
+                        <div class="metric-value">${mainValue}</div>
+                        ${compareHtml}
+                    </div>
+                `;
+            });
+
+            document.getElementById('metricsGrid').innerHTML = html;
+        }
+
+        function formatValue(value, config) {
+            if (value === undefined || value === null) return '-';
+            let str = config.isInteger ? parseInt(value).toLocaleString() : parseFloat(value).toFixed(2);
+            if (config.prefix) str = config.prefix + str;
+            if (config.suffix) str += config.suffix;
+            return str;
+        }
+
+        function calculateChange(current, compare) {
+            if (!compare || compare == 0) return 0;
+            return ((current - compare) / compare) * 100;
+        }
+
+        // ========== 加载每日数据 ==========
+        async function loadDailyData() {
+            try {
+                const url = `/api/advertisement/asin/${currentAsin}/daily/?compare_asin=${compareAsin}&days=30`;
+                console.log('Loading daily:', url);
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderDailyTrendChart(result.data);
+                    renderDailyTable(result.data);
+                }
+            } catch (error) {
+                console.error('加载每日数据失败:', error);
+            }
+        }
+
+        function renderDailyTrendChart(data) {
+            const dates = data.daily_data.map(d => d.date);
+            const sales = data.daily_data.map(d => d.sales);
+            const clicks = data.daily_data.map(d => d.clicks);
+            
+            const series = [
+                {
+                    name: '销售额',
+                    type: 'line',
+                    data: sales,
+                    smooth: true,
+                    yAxisIndex: 0,
+                    itemStyle: { color: '#5470c6' }
+                },
+                {
+                    name: '点击量',
+                    type: 'line',
+                    data: clicks,
+                    smooth: true,
+                    yAxisIndex: 1,
+                    itemStyle: { color: '#91cc75' }
+                }
+            ];
+
+            // 对比数据
+            if (data.compare_daily_data) {
+                series.push(
+                    {
+                        name: '对比-销售额',
+                        type: 'line',
+                        data: data.compare_daily_data.map(d => d.sales),
+                        smooth: true,
+                        yAxisIndex: 0,
+                        itemStyle: { color: '#5470c6', opacity: 0.5 },
+                        lineStyle: { type: 'dashed' }
+                    },
+                    {
+                        name: '对比-点击量',
+                        type: 'line',
+                        data: data.compare_daily_data.map(d => d.clicks),
+                        smooth: true,
+                        yAxisIndex: 1,
+                        itemStyle: { color: '#91cc75', opacity: 0.5 },
+                        lineStyle: { type: 'dashed' }
+                    }
+                );
+            }
+
+            const option = {
+                tooltip: { trigger: 'axis' },
+                legend: { data: series.map(s => s.name), top: 0 },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: dates },
+                yAxis: [
+                    { type: 'value', name: '销售额', position: 'left' },
+                    { type: 'value', name: '点击量', position: 'right' }
+                ],
+                series: series
+            };
+
+            dailyTrendChart.setOption(option, true);
+        }
+
+        function renderDailyTable(data) {
+            const tbody = document.getElementById('dailyTableBody');
+            tbody.innerHTML = data.daily_data.map(d => `
+                <tr onclick="showHourlyDetail('${d.date}')">
+                    <td><a href="javascript:void(0)" class="date-link">${d.date}</a></td>
+                    <td>${d.impressions.toLocaleString()}</td>
+                    <td>${d.clicks.toLocaleString()}</td>
+                    <td>${d.ctr.toFixed(2)}%</td>
+                    <td>${d.orders}</td>
+                    <td>${d.cvr.toFixed(2)}%</td>
+                    <td>$${d.cost.toFixed(2)}</td>
+                    <td>$${d.sales.toFixed(2)}</td>
+                    <td>${d.acos.toFixed(2)}%</td>
+                    <td>${d.roas.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== 加载小时分布 ==========
+        async function loadHourlyDistribution() {
+            try {
+                const url = `/api/advertisement/asin/${currentAsin}/hourly-distribution/`;
+                console.log('Loading hourly dist:', url);
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderHourlyChart(result.data);
+                }
+            } catch (error) {
+                console.error('加载小时分布失败:', error);
+            }
+        }
+
+        function renderHourlyChart(data) {
+            const hours = data.hourly_distribution.map(h => h.hour_display);
+            const sales = data.hourly_distribution.map(h => h.sales);
+
+            const option = {
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: hours },
+                yAxis: { type: 'value', name: '销售额(平均)' },
+                series: [{
+                    type: 'bar',
+                    data: sales,
+                    itemStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#83bff6' },
+                            { offset: 0.5, color: '#188df0' },
+                            { offset: 1, color: '#188df0' }
+                        ])
+                    }
+                }]
+            };
+
+            hourlyChart.setOption(option);
+        }
+
+        // ========== 加载活动列表 ==========
+        async function loadCampaignList() {
+            try {
+                const url = `/api/advertisement/asin/${currentAsin}/campaigns/`;
+                console.log('Loading campaigns:', url);
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    renderCampaignTable(result.data);
+                }
+            } catch (error) {
+                console.error('加载活动列表失败:', error);
+            }
+        }
+
+        function renderCampaignTable(data) {
+            const tbody = document.getElementById('campaignTableBody');
+            if (!data.campaigns || data.campaigns.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">暂无关联活动</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.campaigns.map(c => `
+                <tr>
+                    <td>${escapeHtml(c.campaign_name)}</td>
+                    <td>${escapeHtml(c.shop_name)}</td>
+                    <td>${c.status}</td>
+                    <td>$${c.daily_budget}</td>
+                    <td>$${c.cost.toFixed(2)}</td>
+                    <td>$${c.sales.toFixed(2)}</td>
+                    <td>${c.acos.toFixed(2)}%</td>
+                    <td>${c.orders}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== 显示小时明细 ==========
+        async function showHourlyDetail(date) {
+            try {
+                const url = `/api/advertisement/asin/${currentAsin}/hourly/?date=${date}`;
+                console.log('Loading hourly detail:', url);
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('hourlyModalTitle').textContent = `${date} 24小时明细`;
+                    renderHourlyDetailChart(result.data);
+                    renderHourlyTable(result.data);
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('hourlyModal'));
+                    modal.show();
+                }
+            } catch (error) {
+                console.error('加载小时明细失败:', error);
+            }
+        }
+
+        function renderHourlyDetailChart(data) {
+            const hours = data.hourly_data.map(h => h.hour_display);
+            const sales = data.hourly_data.map(h => h.sales);
+
+            const option = {
+                tooltip: { trigger: 'axis' },
+                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                xAxis: { type: 'category', data: hours },
+                yAxis: { type: 'value', name: '销售额' },
+                series: [{
+                    type: 'line',
+                    data: sales,
+                    smooth: true,
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
+                            { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
+                        ])
+                    },
+                    itemStyle: { color: '#5470c6' }
+                }]
+            };
+
+            hourlyDetailChart.setOption(option, true);
+        }
+
+        function renderHourlyTable(data) {
+            const tbody = document.getElementById('hourlyTableBody');
+            tbody.innerHTML = data.hourly_data.map(h => `
+                <tr>
+                    <td>${h.hour_display}</td>
+                    <td>${h.impressions.toLocaleString()}</td>
+                    <td>${h.clicks.toLocaleString()}</td>
+                    <td>${h.ctr.toFixed(2)}%</td>
+                    <td>${h.orders}</td>
+                    <td>${h.cvr.toFixed(2)}%</td>
+                    <td>$${h.cost.toFixed(2)}</td>
+                    <td>$${h.sales.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // ========== 对比功能 ==========
+        async function loadCompareData() {
+            const input = document.getElementById('compareAsinInput');
+            const asin = input.value.trim().toUpperCase();
+            
+            if (!asin) {
+                showNotification('请输入对比 ASIN', 'warning');
+                return;
+            }
+            
+            if (asin === currentAsin) {
+                showNotification('不能与自己对比', 'warning');
+                return;
+            }
+            
+            compareAsin = asin;
+            document.getElementById('clearCompareBtn').style.display = 'inline-block';
+            document.getElementById('compareLegend').style.display = 'inline';
+            
+            await loadPageData();
+            showNotification('对比数据已加载', 'success');
+        }
+
+        async function clearCompare() {
+            compareAsin = '';
+            document.getElementById('compareAsinInput').value = '';
+            document.getElementById('clearCompareBtn').style.display = 'none';
+            document.getElementById('compareLegend').style.display = 'none';
+            
+            await loadPageData();
+        }
+
+        // ========== 工具函数 ==========
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+{% endblock %}
