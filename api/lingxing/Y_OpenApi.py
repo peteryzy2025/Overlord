@@ -1,7 +1,7 @@
 
 from api.lingxing.openapi import OpenApiBase
 from api.lingxing.resp_schema import ResponseResult
-
+import asyncio
 
 async def get_api_resp(
     req_body: dict,

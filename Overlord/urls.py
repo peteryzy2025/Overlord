@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('general.urls')),  # 包含 General app 的所有路由
     path('', include('amazon.urls')),  # 包含 Amazon app 的所有路由
+    path('', include('advertisement.urls')),  # 包含 Advertisement app 的所有路由
     # path('', include('temu.urls')),
     path('', include('track.urls')),
     path('', include('yuser.urls')),  # 添加这一行

@@ -763,6 +763,18 @@
                     </a>
                 </div>
             </div>
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'advertisement_campaigns' %}active{% endif %}"
+                   href="{% url 'advertisement:campaign_list' %}">
+                    广告
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'advertisement:campaign_list' %}" class="nav-dropdown-item">
+                        <i class="fas fa-ad"></i> 广告列表
+                    </a>
+                </div>
+            </div>
             <a class="nav-link" href="#" onclick="showComingSoon()">Temu</a>
             <div class="nav-item-wrapper">
                 <a class="nav-link" href="{% url 'task:task_list_page' %}">

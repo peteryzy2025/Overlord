@@ -16,8 +16,16 @@ class LingXingAmazonShop(models.Model):
         db_comment='领星店铺 sid（主键）'
     )
 
+
     mid = models.IntegerField(
         db_comment='领星店铺 mid（账号内唯一）'
+    )
+    profile_id = models.BigIntegerField(
+        '领星ProfileID',
+        blank=True,
+        null=True,
+        db_index=True,  # 方便反向查询
+        db_comment='领星API返回的profile_id（与sid一一对应，用于数据校验）用于广告'
     )
 
     name = models.CharField(
