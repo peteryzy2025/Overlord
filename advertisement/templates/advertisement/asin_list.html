@@ -187,9 +187,7 @@
             background-color: var(--bg-secondary);
         }
 
-        .table tbody tr:hover .asin-link {
-            color: var(--accent-color);
-        }
+
 
         /* 多选框列宽 */
         .w-checkbox {
@@ -204,18 +202,10 @@
             text-align: center;
         }
 
-        /* ASIN 链接 */
-        .asin-link {
+        /* ASIN 文本 */
+        .asin-text {
             color: var(--text-primary);
-            text-decoration: none;
             font-weight: 500;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .asin-link:hover {
-            color: var(--accent-color);
-            text-decoration: underline;
         }
 
         /* 操作按钮 */
@@ -814,9 +804,7 @@
                                    onchange="toggleSelectAsin('${asin.asin}')">
                         </td>
                         <td>
-                            <a href="/advertisement/asin/${asin.asin}/detail/" class="asin-link">
-                                ${escapeHtml(asin.asin)}
-                            </a>
+                            <span class="asin-text">${escapeHtml(asin.asin)}</span>
                         </td>
                         <td>${escapeHtml(asin.shop_name)}</td>
                         <td>${impressions.toLocaleString()}</td>
@@ -831,8 +819,8 @@
                         <td>${roas.toFixed(2)}</td>
                         <td class="w-actions">
                             <div class="action-buttons">
-                                <button class="btn-action btn-view" onclick="viewAsinDetail('${asin.asin}')" title="查看详情">
-                                    <i class="fas fa-eye"></i>
+                                <button class="btn-action btn-view" onclick="openAsinDetail('${asin.asin}')" title="新页面打开">
+                                    <i class="fas fa-external-link-alt"></i>
                                 </button>
                             </div>
                         </td>
@@ -1007,27 +995,9 @@
             showNotification('批量操作功能开发中...', 'info');
         }
 
-        // ========== 查看详情 ==========
-        async function viewAsinDetail(asin) {
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`/api/advertisement/asin/${asin}/detail/`);
-                const result = await response.json();
-                
-                if (result.success) {
-                    renderAsinDetail(result.data);
-                    const modal = new bootstrap.Modal(document.getElementById('asinDetailModal'));
-                    modal.show();
-                } else {
-                    showNotification(result.message || '获取详情失败', 'error');
-                }
-            } catch (error) {
-                console.error('获取详情失败:', error);
-                showNotification('获取详情失败', 'error');
-            } finally {
-                showLoading(false);
-            }
+        // ========== 新页面打开 ASIN 详情 ==========
+        function openAsinDetail(asin) {
+            window.open(`/advertisement/asin/${asin}/detail/`, '_blank');
         }
 
         function renderAsinDetail(data) {

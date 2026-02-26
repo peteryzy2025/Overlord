@@ -152,16 +152,68 @@ def get_asin_hourly_data_api(request, asin):
         return JsonResponse({'success': False, 'message': f'服务器错误: {str(e)}'}, status=500)
 
 
+def get_hourly_data_for_asin(asin, query_date):
+    """获取指定 ASIN 和日期的小时数据（辅助函数）"""
+    hourly_data = LingXingAdHourlyData.objects.filter(
+        asin=asin,
+        report_date=query_date
+    ).values('hour').annotate(
+        cost=Sum('cost'),
+        sales=Sum('sales'),
+        clicks=Sum('clicks'),
+        impressions=Sum('impressions'),
+        orders=Sum('orders')
+    ).order_by('hour')
+    
+    # 组装24小时数据（缺失小时补0）
+    hourly_map = {h['hour']: h for h in hourly_data}
+    result = []
+    for hour in range(24):
+        data = hourly_map.get(hour, {
+            'hour': hour,
+            'cost': 0,
+            'sales': 0,
+            'clicks': 0,
+            'impressions': 0,
+            'orders': 0
+        })
+        
+        # 计算比率
+        ctr = (data['clicks'] / data['impressions'] * 100) if data['impressions'] > 0 else 0
+        cvr = (data['orders'] / data['clicks'] * 100) if data['clicks'] > 0 else 0
+        acos = (data['cost'] / data['sales'] * 100) if data['sales'] > 0 else 0
+        roas = (data['sales'] / data['cost']) if data['cost'] > 0 else 0
+        cpc = (data['cost'] / data['clicks']) if data['clicks'] > 0 else 0
+        
+        result.append({
+            'hour': hour,
+            'hour_display': f'{hour:02d}:00',
+            'impressions': int(data['impressions'] or 0),
+            'clicks': int(data['clicks'] or 0),
+            'orders': int(data['orders'] or 0),
+            'cost': round(float(data['cost'] or 0), 2),
+            'sales': round(float(data['sales'] or 0), 2),
+            'ctr': round(ctr, 2),
+            'cvr': round(cvr, 2),
+            'acos': round(acos, 2),
+            'roas': round(roas, 2),
+            'cpc': round(cpc, 2),
+        })
+    
+    return result
+
+
 @login_required
 def get_asin_hourly_distribution_api(request, asin):
     """
-    获取 ASIN 24小时数据（最近24小时或指定日期）
+    获取 ASIN 24小时数据（最近24小时或指定日期），支持对比
     """
     if request.method != 'GET':
         return JsonResponse({'success': False, 'message': '只支持GET请求'}, status=405)
 
     try:
         asin = asin.strip().upper()
+        compare_asin = request.GET.get('compare_asin', '').strip().upper()
         date_str = request.GET.get('date', '')
         
         if not asin:
@@ -187,59 +239,22 @@ def get_asin_hourly_distribution_api(request, asin):
                 })
             query_date = latest.report_date
         
-        # 获取该日小时数据
-        hourly_data = LingXingAdHourlyData.objects.filter(
-            asin=asin,
-            report_date=query_date
-        ).values('hour').annotate(
-            cost=Sum('cost'),
-            sales=Sum('sales'),
-            clicks=Sum('clicks'),
-            impressions=Sum('impressions'),
-            orders=Sum('orders')
-        ).order_by('hour')
+        # 获取主 ASIN 小时数据
+        result = get_hourly_data_for_asin(asin, query_date)
         
-        # 组装24小时数据（缺失小时补0）
-        hourly_map = {h['hour']: h for h in hourly_data}
-        result = []
-        for hour in range(24):
-            data = hourly_map.get(hour, {
-                'hour': hour,
-                'cost': 0,
-                'sales': 0,
-                'clicks': 0,
-                'impressions': 0,
-                'orders': 0
-            })
-            
-            # 计算比率
-            ctr = (data['clicks'] / data['impressions'] * 100) if data['impressions'] > 0 else 0
-            cvr = (data['orders'] / data['clicks'] * 100) if data['clicks'] > 0 else 0
-            acos = (data['cost'] / data['sales'] * 100) if data['sales'] > 0 else 0
-            roas = (data['sales'] / data['cost']) if data['cost'] > 0 else 0
-            cpc = (data['cost'] / data['clicks']) if data['clicks'] > 0 else 0
-            
-            result.append({
-                'hour': hour,
-                'hour_display': f'{hour:02d}:00',
-                'impressions': int(data['impressions'] or 0),
-                'clicks': int(data['clicks'] or 0),
-                'orders': int(data['orders'] or 0),
-                'cost': round(float(data['cost'] or 0), 2),
-                'sales': round(float(data['sales'] or 0), 2),
-                'ctr': round(ctr, 2),
-                'cvr': round(cvr, 2),
-                'acos': round(acos, 2),
-                'roas': round(roas, 2),
-                'cpc': round(cpc, 2),
-            })
+        # 获取对比 ASIN 小时数据（如果指定了）
+        compare_result = None
+        if compare_asin and compare_asin != asin:
+            compare_result = get_hourly_data_for_asin(compare_asin, query_date)
         
         return JsonResponse({
             'success': True,
             'data': {
                 'asin': asin,
+                'compare_asin': compare_asin if compare_asin != asin else None,
                 'date': query_date.strftime('%Y-%m-%d'),
-                'hourly_distribution': result
+                'hourly_distribution': result,
+                'compare_hourly_distribution': compare_result
             }
         })
 
@@ -385,7 +400,7 @@ def get_asin_summary_api(request, asin):
 
 def get_asin_daily_summary(asin, start_date, end_date):
     """
-    获取 ASIN 每日汇总数据
+    获取 ASIN 每日汇总数据（只返回有数据的日期）
     """
     daily_data = LingXingAdHourlyData.objects.filter(
         asin=asin,
