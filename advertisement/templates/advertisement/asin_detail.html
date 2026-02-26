@@ -288,6 +288,11 @@
             min-height: calc(100% - 3.5rem);
         }
 
+        .modal-dialog.modal-xl {
+            max-width: 95vw;
+            margin: 1.75rem auto;
+        }
+
         .modal-content {
             width: 100%;
         }
@@ -405,6 +410,7 @@
                             <th>销售额</th>
                             <th>ACOS(%)</th>
                             <th>ROAS</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody id="dailyTableBody">
@@ -462,17 +468,16 @@
         </div>
     </div>
 
-    <!-- 小时明细弹窗（加大版） -->
+    <!-- 小时明细弹窗 -->
     <div class="modal fade" id="hourlyModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl" style="max-width: 90vw;">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content" style="background-color: var(--bg-primary); color: var(--text-primary);">
                 <div class="modal-header" style="border-bottom-color: var(--border-color);">
                     <h5 class="modal-title" id="hourlyModalTitle">24小时明细</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
                 </div>
                 <div class="modal-body">
-                    <div id="hourlyDetailChart" style="width: 100%; height: 400px;"></div>
-                    <div class="table-container mt-3" style="max-height: 350px;">
+                    <div class="table-container" style="max-height: 500px;">
                         <table class="table" id="hourlyTable">
                             <thead>
                                 <tr>
@@ -512,7 +517,6 @@
         let compareAsin = '';
         let dailyTrendChart = null;
         let hourlyChart = null;
-        let hourlyDetailChart = null;
         let currentHourlyDate = ''; // 当前24小时图表显示的日期
         let currentMetricSelector = ''; // 'daily' 或 'hourly'
 
@@ -573,7 +577,6 @@
         function initCharts() {
             const dailyDom = document.getElementById('dailyTrendChart');
             const hourlyDom = document.getElementById('hourlyChart');
-            const detailDom = document.getElementById('hourlyDetailChart');
             
             // 确保容器有正确高度
             dailyDom.style.height = '350px';
@@ -581,7 +584,6 @@
             
             dailyTrendChart = echarts.init(dailyDom);
             hourlyChart = echarts.init(hourlyDom);
-            hourlyDetailChart = echarts.init(detailDom);
             
             // 显示ECharts loading
             dailyTrendChart.showLoading({
@@ -601,7 +603,6 @@
         function resizeCharts() {
             if (dailyTrendChart) dailyTrendChart.resize();
             if (hourlyChart) hourlyChart.resize();
-            if (hourlyDetailChart) hourlyDetailChart.resize();
         }
 
         async function loadPageData() {
@@ -1002,7 +1003,6 @@
                 
                 if (result.success) {
                     document.getElementById('hourlyModalTitle').textContent = `${date} 24小时明细`;
-                    renderHourlyDetailChart(result.data);
                     renderHourlyTable(result.data);
                     
                     const modal = new bootstrap.Modal(document.getElementById('hourlyModal'));
@@ -1011,63 +1011,6 @@
             } catch (error) {
                 console.error('加载小时明细失败:', error);
             }
-        }
-
-        function renderHourlyDetailChart(data) {
-            const hours = data.hourly_data.map(h => h.hour_display);
-            const sales = data.hourly_data.map(h => h.sales);
-            const clicks = data.hourly_data.map(h => h.clicks);
-
-            const option = {
-                tooltip: { 
-                    trigger: 'axis',
-                    formatter: function(params) {
-                        const h = data.hourly_data[params[0].dataIndex];
-                        return `
-                            <div><strong>${h.hour_display}</strong></div>
-                            <div>销售额: $${h.sales.toFixed(2)}</div>
-                            <div>点击量: ${h.clicks}</div>
-                            <div>订单数: ${h.orders}</div>
-                            <div>CTR: ${h.ctr.toFixed(2)}%</div>
-                        `;
-                    }
-                },
-                legend: { data: ['销售额', '点击量'], top: 10 },
-                grid: { left: '3%', right: '4%', bottom: '3%', top: 60, containLabel: true },
-                xAxis: { type: 'category', data: hours },
-                yAxis: [
-                    { type: 'value', name: '销售额', position: 'left' },
-                    { type: 'value', name: '点击量', position: 'right' }
-                ],
-                series: [
-                    {
-                        name: '销售额',
-                        type: 'line',
-                        data: sales,
-                        smooth: true,
-                        yAxisIndex: 0,
-                        areaStyle: {
-                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                                { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
-                                { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
-                            ])
-                        },
-                        itemStyle: { color: '#5470c6' }
-                    },
-                    {
-                        name: '点击量',
-                        type: 'line',
-                        data: clicks,
-                        smooth: true,
-                        yAxisIndex: 1,
-                        itemStyle: { color: '#91cc75' }
-                    }
-                ]
-            };
-
-            hourlyDetailChart.setOption(option, true);
-            // 确保图表正确渲染
-            setTimeout(() => hourlyDetailChart.resize(), 100);
         }
 
         function renderHourlyTable(data) {
