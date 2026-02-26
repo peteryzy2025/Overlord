@@ -121,11 +121,11 @@
         }
 
         .metric-change.up {
-            color: #10B981;
+            color: #EF4444;
         }
 
         .metric-change.down {
-            color: #EF4444;
+            color: #10B981;
         }
 
         /* 图表区域 */
@@ -293,6 +293,10 @@
             margin: 1.75rem auto;
         }
 
+        .modal-dialog.modal-metric {
+            max-width: 800px;
+        }
+
         .modal-content {
             width: 100%;
         }
@@ -360,7 +364,12 @@
         <!-- 每日趋势图 -->
         <div class="chart-section">
             <div class="chart-header">
-                <h3 class="chart-title">📈 每日趋势（最近30天）</h3>
+                <h3 class="chart-title">
+                    📈 每日趋势（最近30天）
+                    <span id="compareLegend" style="display: none; margin-left: 10px; font-size: 0.875rem; color: var(--accent-color);">
+                        <i class="fas fa-chart-line"></i> 对比中
+                    </span>
+                </h3>
                 <div>
                     <button class="btn btn-sm btn-secondary" onclick="showMetricSelector('daily')">
                         <i class="fas fa-cog"></i> 设置显示指标
@@ -449,7 +458,7 @@
 
     <!-- 指标选择器弹窗 -->
     <div class="modal fade" id="metricSelectorModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-metric">
             <div class="modal-content" style="background-color: var(--bg-primary); color: var(--text-primary);">
                 <div class="modal-header" style="border-bottom-color: var(--border-color);">
                     <h5 class="modal-title">选择显示指标</h5>
@@ -720,6 +729,14 @@
             const dates = data.daily_data.map(d => d.date);
             const selectedMetrics = getSavedMetrics('daily');
             
+            // 对比数据按日期建立索引
+            const compareDataMap = {};
+            if (data.compare_daily_data) {
+                data.compare_daily_data.forEach(d => {
+                    compareDataMap[d.date] = d;
+                });
+            }
+            
             const series = [];
             const yAxes = [];
             let yAxisIndex = 0;
@@ -741,10 +758,11 @@
                 
                 yAxes.push({
                     type: 'value',
-                    name: metric.label,
+                    name: yAxisIndex === 0 ? metric.label : '',
                     position: yAxisIndex % 2 === 0 ? 'left' : 'right',
                     offset: yAxisIndex > 1 ? (yAxisIndex - 1) * 50 : 0,
                     axisLabel: { 
+                        show: yAxisIndex === 0,
                         formatter: (value) => {
                             if (value >= 10000) return (value / 10000).toFixed(1) + 'w';
                             if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
@@ -757,21 +775,27 @@
                         fontSize: 10,
                         padding: [0, 0, 0, yAxisIndex % 2 === 0 ? -30 : 30]
                     },
-                    nameGap: 8
+                    nameGap: 8,
+                    splitLine: { show: yAxisIndex === 0 }
                 });
                 
                 yAxisIndex++;
                 
-                // 对比数据
+                // 对比数据 - 按日期对齐，没有的数据补 null
                 if (data.compare_daily_data) {
+                    const compareValues = dates.map(date => {
+                        const d = compareDataMap[date];
+                        return d ? d[metricKey] : null;
+                    });
                     series.push({
                         name: `对比-${metric.label}`,
                         type: 'line',
-                        data: data.compare_daily_data.map(d => d[metricKey]),
+                        data: compareValues,
                         smooth: true,
                         yAxisIndex: yAxisIndex - 1,
                         itemStyle: { color: metric.color, opacity: 0.5 },
-                        lineStyle: { type: 'dashed' }
+                        lineStyle: { type: 'dashed' },
+                        connectNulls: false
                     });
                 }
             });
@@ -850,8 +874,15 @@
         async function loadHourlyDistribution(date = '') {
             try {
                 let url = `/api/advertisement/asin/${currentAsin}/hourly-distribution/`;
+                const params = [];
                 if (date) {
-                    url += `?date=${date}`;
+                    params.push(`date=${date}`);
+                }
+                if (compareAsin) {
+                    params.push(`compare_asin=${compareAsin}`);
+                }
+                if (params.length > 0) {
+                    url += '?' + params.join('&');
                 }
                 console.log('Loading hourly dist:', url);
                 const response = await fetch(url);
@@ -879,13 +910,17 @@
             const selectedMetrics = getSavedMetrics('hourly');
             
             // 更新日期标签
-            document.getElementById('hourlyDateLabel').textContent = 
-                data.date ? `（${data.date}）` : '（最近24小时）';
+            let dateLabel = data.date ? `（${data.date}）` : '（最近24小时）';
+            if (data.compare_asin) {
+                dateLabel += ` <span style="color: var(--accent-color);">vs ${data.compare_asin}</span>`;
+            }
+            document.getElementById('hourlyDateLabel').innerHTML = dateLabel;
             
             const series = [];
             const yAxes = [];
+            let yAxisIndex = 0;
             
-            selectedMetrics.forEach((metricKey, index) => {
+            selectedMetrics.forEach((metricKey) => {
                 const metric = ALL_METRICS.find(m => m.key === metricKey);
                 if (!metric) return;
                 
@@ -896,22 +931,23 @@
                     type: 'line',
                     data: values,
                     smooth: true,
-                    yAxisIndex: index,
+                    yAxisIndex: yAxisIndex,
                     itemStyle: { color: metric.color },
                     areaStyle: {
                         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: metric.color + '80' },  // 50% 透明度
-                            { offset: 1, color: metric.color + '10' }   // 10% 透明度
+                            { offset: 0, color: metric.color + '80' },
+                            { offset: 1, color: metric.color + '10' }
                         ])
                     }
                 });
                 
                 yAxes.push({
                     type: 'value',
-                    name: metric.label,
-                    position: index % 2 === 0 ? 'left' : 'right',
-                    offset: index > 1 ? (index - 1) * 40 : 0,
+                    name: yAxisIndex === 0 ? metric.label : '',
+                    position: yAxisIndex % 2 === 0 ? 'left' : 'right',
+                    offset: yAxisIndex > 1 ? (yAxisIndex - 1) * 40 : 0,
                     axisLabel: { 
+                        show: yAxisIndex === 0,
                         formatter: (value) => {
                             if (value >= 10000) return (value / 10000).toFixed(1) + 'w';
                             if (value >= 1000) return (value / 1000).toFixed(1) + 'k';
@@ -922,10 +958,28 @@
                     },
                     nameTextStyle: { 
                         fontSize: 9,
-                        padding: [0, 0, 0, index % 2 === 0 ? -25 : 25]
+                        padding: [0, 0, 0, yAxisIndex % 2 === 0 ? -25 : 25]
                     },
-                    nameGap: 6
+                    nameGap: 6,
+                    splitLine: { show: yAxisIndex === 0 }
                 });
+                
+                yAxisIndex++;
+                
+                // 对比数据
+                if (data.compare_hourly_distribution) {
+                    const compareValues = data.compare_hourly_distribution.map(h => h[metricKey]);
+                    series.push({
+                        name: `对比-${metric.label}`,
+                        type: 'line',
+                        data: compareValues,
+                        smooth: true,
+                        yAxisIndex: yAxisIndex - 1,
+                        itemStyle: { color: metric.color, opacity: 0.5 },
+                        lineStyle: { type: 'dashed' },
+                        symbol: 'none'
+                    });
+                }
             });
 
             const option = {
@@ -1062,8 +1116,8 @@
                 return;
             }
             
-            if (selectedMetrics.length > 5) {
-                showNotification('最多选择5个指标，请减少选择', 'warning');
+            if (selectedMetrics.length > 10) {
+                showNotification('最多选择10个指标，请减少选择', 'warning');
                 return;
             }
             
