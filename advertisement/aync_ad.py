@@ -186,7 +186,7 @@ async def fetch_and_save_campaigns(sid: str, app_id: str = "", app_secret: str =
 async def main():
     """主入口"""
     # 配置你的 sid 和凭证
-    SID = "508575"  # 吴晓云-04李尧尧-US
+    SID = "521754"  # 吴晓云-04李尧尧-US
     APP_ID = ""  # 你的 app_id
     APP_SECRET = ""  # 你的 app_secret
 
