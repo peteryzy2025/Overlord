@@ -237,8 +237,14 @@
         /* 小时明细弹窗 */
         .hour-chart-container {
             width: 100%;
-            height: 300px;
+            height: 400px;
             margin-top: 1rem;
+        }
+
+        /* 模态框表格样式 */
+        #hourlyTable th, #hourlyTable td {
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
         }
 
         /* 指标选择器样式 */
@@ -383,7 +389,7 @@
         <!-- 每日数据明细表 -->
         <div class="table-section">
             <div class="table-header">
-                <h3 class="chart-title">📋 每日数据明细（点击日期查看小时明细）</h3>
+                <h3 class="chart-title">📋 每日数据明细（点击日期切换24小时图表，点击查看打开明细）</h3>
             </div>
             <div class="table-container">
                 <table class="table" id="dailyTable">
@@ -456,17 +462,17 @@
         </div>
     </div>
 
-    <!-- 小时明细弹窗 -->
+    <!-- 小时明细弹窗（加大版） -->
     <div class="modal fade" id="hourlyModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl" style="max-width: 90vw;">
             <div class="modal-content" style="background-color: var(--bg-primary); color: var(--text-primary);">
                 <div class="modal-header" style="border-bottom-color: var(--border-color);">
                     <h5 class="modal-title" id="hourlyModalTitle">24小时明细</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1);"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="hour-chart-container" id="hourlyDetailChart"></div>
-                    <div class="table-container mt-3" style="max-height: 300px;">
+                    <div id="hourlyDetailChart" style="width: 100%; height: 400px;"></div>
+                    <div class="table-container mt-3" style="max-height: 350px;">
                         <table class="table" id="hourlyTable">
                             <thead>
                                 <tr>
@@ -478,6 +484,8 @@
                                     <th>CVR(%)</th>
                                     <th>花费</th>
                                     <th>销售额</th>
+                                    <th>ACOS(%)</th>
+                                    <th>ROAS</th>
                                 </tr>
                             </thead>
                             <tbody id="hourlyTableBody">
@@ -808,20 +816,33 @@
 
         function renderDailyTable(data) {
             const tbody = document.getElementById('dailyTableBody');
-            tbody.innerHTML = data.daily_data.map(d => `
-                <tr onclick="showHourlyDetail('${d.date}')">
-                    <td><a href="javascript:void(0)" class="date-link">${d.date}</a></td>
-                    <td>${d.impressions.toLocaleString()}</td>
-                    <td>${d.clicks.toLocaleString()}</td>
-                    <td>${d.ctr.toFixed(2)}%</td>
-                    <td>${d.orders}</td>
-                    <td>${d.cvr.toFixed(2)}%</td>
-                    <td>$${d.cost.toFixed(2)}</td>
-                    <td>$${d.sales.toFixed(2)}</td>
-                    <td>${d.acos.toFixed(2)}%</td>
-                    <td>${d.roas.toFixed(2)}</td>
+            tbody.innerHTML = data.daily_data.map(d => {
+                // 确保数据是数字类型
+                const impressions = parseInt(d.impressions) || 0;
+                const clicks = parseInt(d.clicks) || 0;
+                const orders = parseInt(d.orders) || 0;
+                const cost = parseFloat(d.cost) || 0;
+                const sales = parseFloat(d.sales) || 0;
+                const ctr = parseFloat(d.ctr) || 0;
+                const cvr = parseFloat(d.cvr) || 0;
+                const acos = parseFloat(d.acos) || 0;
+                const roas = parseFloat(d.roas) || 0;
+                
+                return `
+                <tr>
+                    <td><a href="javascript:void(0)" class="date-link" onclick="switchHourlyDate('${d.date}')">${d.date}</a></td>
+                    <td>${impressions.toLocaleString()}</td>
+                    <td>${clicks.toLocaleString()}</td>
+                    <td>${ctr.toFixed(2)}%</td>
+                    <td>${orders}</td>
+                    <td>${cvr.toFixed(2)}%</td>
+                    <td>$${cost.toFixed(2)}</td>
+                    <td>$${sales.toFixed(2)}</td>
+                    <td>${acos.toFixed(2)}%</td>
+                    <td>${roas.toFixed(2)}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="openHourlyModal('${d.date}')"><i class="fas fa-eye"></i> 查看</button></td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         // ========== 加载小时分布 ==========
@@ -871,10 +892,17 @@
                 
                 series.push({
                     name: metric.label,
-                    type: 'bar',
+                    type: 'line',
                     data: values,
+                    smooth: true,
                     yAxisIndex: index,
-                    itemStyle: { color: metric.color }
+                    itemStyle: { color: metric.color },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: metric.color + '80' },  // 50% 透明度
+                            { offset: 1, color: metric.color + '10' }   // 10% 透明度
+                        ])
+                    }
                 });
                 
                 yAxes.push({
@@ -984,32 +1012,66 @@
         function renderHourlyDetailChart(data) {
             const hours = data.hourly_data.map(h => h.hour_display);
             const sales = data.hourly_data.map(h => h.sales);
+            const clicks = data.hourly_data.map(h => h.clicks);
 
             const option = {
-                tooltip: { trigger: 'axis' },
-                grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                tooltip: { 
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        const h = data.hourly_data[params[0].dataIndex];
+                        return `
+                            <div><strong>${h.hour_display}</strong></div>
+                            <div>销售额: $${h.sales.toFixed(2)}</div>
+                            <div>点击量: ${h.clicks}</div>
+                            <div>订单数: ${h.orders}</div>
+                            <div>CTR: ${h.ctr.toFixed(2)}%</div>
+                        `;
+                    }
+                },
+                legend: { data: ['销售额', '点击量'], top: 10 },
+                grid: { left: '3%', right: '4%', bottom: '3%', top: 60, containLabel: true },
                 xAxis: { type: 'category', data: hours },
-                yAxis: { type: 'value', name: '销售额' },
-                series: [{
-                    type: 'line',
-                    data: sales,
-                    smooth: true,
-                    areaStyle: {
-                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
-                            { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
-                        ])
+                yAxis: [
+                    { type: 'value', name: '销售额', position: 'left' },
+                    { type: 'value', name: '点击量', position: 'right' }
+                ],
+                series: [
+                    {
+                        name: '销售额',
+                        type: 'line',
+                        data: sales,
+                        smooth: true,
+                        yAxisIndex: 0,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(84, 112, 198, 0.5)' },
+                                { offset: 1, color: 'rgba(84, 112, 198, 0.1)' }
+                            ])
+                        },
+                        itemStyle: { color: '#5470c6' }
                     },
-                    itemStyle: { color: '#5470c6' }
-                }]
+                    {
+                        name: '点击量',
+                        type: 'line',
+                        data: clicks,
+                        smooth: true,
+                        yAxisIndex: 1,
+                        itemStyle: { color: '#91cc75' }
+                    }
+                ]
             };
 
             hourlyDetailChart.setOption(option, true);
+            // 确保图表正确渲染
+            setTimeout(() => hourlyDetailChart.resize(), 100);
         }
 
         function renderHourlyTable(data) {
             const tbody = document.getElementById('hourlyTableBody');
-            tbody.innerHTML = data.hourly_data.map(h => `
+            tbody.innerHTML = data.hourly_data.map(h => {
+                const acos = (h.cost / h.sales * 100) || 0;
+                const roas = (h.sales / h.cost) || 0;
+                return `
                 <tr>
                     <td>${h.hour_display}</td>
                     <td>${h.impressions.toLocaleString()}</td>
@@ -1019,8 +1081,10 @@
                     <td>${h.cvr.toFixed(2)}%</td>
                     <td>$${h.cost.toFixed(2)}</td>
                     <td>$${h.sales.toFixed(2)}</td>
+                    <td>${acos.toFixed(2)}%</td>
+                    <td>${roas.toFixed(2)}</td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
         // ========== 指标选择器功能 ==========

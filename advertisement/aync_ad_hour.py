@@ -189,9 +189,9 @@ async def sync_all_campaigns_hourly(
 
 async def demo_single():
     """单 Campaign 测试（你的 demo4 扩展版）"""
-    SID = "508575"
+    SID = "521754"
     CAMPAIGN_ID = "167060198167068"
-    REPORT_DATE = "2026-02-24"
+    REPORT_DATE = "2026-02-22"
     APP_ID = ""
     APP_SECRET = ""
 
@@ -216,8 +216,8 @@ async def demo_single():
 
 async def demo_all():
     """同步所有 Campaign（指定日期）"""
-    REPORT_DATE = "2026-02-24"  # 修改为你需要的日期
-    SID = "508575"  # 如果只想同步特定店铺，指定sid；注释掉这行则同步全部
+    REPORT_DATE = "2026-02-22"  # 修改为你需要的日期
+    SID = "521754"  # 如果只想同步特定店铺，指定sid；注释掉这行则同步全部
     APP_ID = ""
     APP_SECRET = ""
 
@@ -231,5 +231,5 @@ async def demo_all():
 
 if __name__ == '__main__':
     # 二选一运行：
-    asyncio.run(demo_single())  # 单 Campaign 测试
-    # asyncio.run(demo_all())  # 全部 Campaign 同步
+    # asyncio.run(demo_single())  # 单 Campaign 测试
+    asyncio.run(demo_all())  # 全部 Campaign 同步
