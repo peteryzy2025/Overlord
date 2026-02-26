@@ -968,28 +968,32 @@
                 return;
             }
 
-            tbody.innerHTML = data.campaigns.map(c => `
+            tbody.innerHTML = data.campaigns.map(c => {
+                const cost = parseFloat(c.cost) || 0;
+                const sales = parseFloat(c.sales) || 0;
+                const acos = parseFloat(c.acos) || 0;
+                return `
                 <tr>
                     <td>${escapeHtml(c.campaign_name)}</td>
                     <td>${escapeHtml(c.shop_name)}</td>
                     <td>${c.status}</td>
                     <td>$${c.daily_budget}</td>
-                    <td>$${c.cost.toFixed(2)}</td>
-                    <td>$${c.sales.toFixed(2)}</td>
-                    <td>${c.acos.toFixed(2)}%</td>
+                    <td>$${cost.toFixed(2)}</td>
+                    <td>$${sales.toFixed(2)}</td>
+                    <td>${acos.toFixed(2)}%</td>
                     <td>${c.orders}</td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
 
-        // ========== 显示小时明细 ==========
-        async function showHourlyDetail(date) {
+        // 切换24小时图表日期（点击日期）
+        async function switchHourlyDate(date) {
             currentHourlyDate = date;
-            
-            // 更新24小时分布图表为选中日期的数据
             await loadHourlyDistribution(date);
-            
-            // 显示弹窗
+        }
+
+        // 打开小时明细弹窗（点击查看按钮）
+        async function openHourlyModal(date) {
             try {
                 const url = `/api/advertisement/asin/${currentAsin}/hourly/?date=${date}`;
                 console.log('Loading hourly detail:', url);
