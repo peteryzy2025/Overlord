@@ -549,7 +549,7 @@
 
         // 获取保存的指标设置
         function getSavedMetrics(type) {
-            const key = `asin_detail_${type}_metrics`;
+            const key = `asin_detail_${type}_metrics_v2`;
             const saved = localStorage.getItem(key);
             if (saved) {
                 try {
@@ -558,12 +558,12 @@
                     console.error('解析保存的指标失败:', e);
                 }
             }
-            return type === 'daily' ? DEFAULT_DAILY_METRICS : DEFAULT_HOURLY_METRICS;
+            return type === 'daily' ? [...DEFAULT_DAILY_METRICS] : [...DEFAULT_HOURLY_METRICS];
         }
 
         // 保存指标设置
         function saveMetrics(type, metrics) {
-            const key = `asin_detail_${type}_metrics`;
+            const key = `asin_detail_${type}_metrics_v2`;
             localStorage.setItem(key, JSON.stringify(metrics));
         }
 

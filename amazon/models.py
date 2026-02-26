@@ -1403,6 +1403,12 @@ class AmazonListing(models.Model):
     唯一约束：同一个领星店铺（站点）内，ASIN 不能重复
     """
 
+    class RiskLevelChoice(models.TextChoices):
+        UNKNOWN = 'unknown'
+        LOW = 'low'
+        MEDIUM = 'medium'
+        HIGH = 'high'
+
     id = models.BigAutoField(
         primary_key=True,
         verbose_name='ID',
@@ -1455,6 +1461,14 @@ class AmazonListing(models.Model):
         db_comment='Listing是否处于在售状态'
     )
 
+    risk_level = models.CharField(
+        max_length=10,
+        choices=RiskLevelChoice.choices,
+        default=RiskLevelChoice.UNKNOWN,
+        verbose_name="主题风险等级",
+        db_comment="主题风险等级",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
@@ -1475,6 +1489,7 @@ class AmazonListing(models.Model):
         # 常用查询索引
         indexes = [
             models.Index(fields=['asin'], name='idx_listing_asin'),
+            models.Index(fields=['risk_level'], name='idx_listing_risk'),
             models.Index(fields=['is_active'], name='idx_listing_active'),
             models.Index(fields=['created_at'], name='idx_listing_created'),
         ]
@@ -1482,4 +1497,5 @@ class AmazonListing(models.Model):
     def __str__(self):
         shop_name = self.lingxing_shop.name if self.lingxing_shop else '未知店铺'
         return f"{shop_name} - {self.asin}"
+
 
