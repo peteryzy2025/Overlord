@@ -811,6 +811,7 @@ class UserOperationLog(models.Model):
         TRO_UPDATE = 8002, '修改侵权词'
         TRO_DELETE = 8003, '删除侵权词'
         TRO_IMPORT = 8004, '批量导入侵权词'
+        TRO_SEARCH = 8005, '查询侵权词'
 
     # ============= 字段定义 =============
     company = models.ForeignKey(
