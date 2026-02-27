@@ -105,7 +105,8 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    min-width: 180px;
+    min-width: 260px;
+    max-width: 300px;
     flex: 1;
 }
 
@@ -119,13 +120,15 @@
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
+    margin-left: auto;
     align-self: flex-end;
-    margin-top: auto;
 }
 
 /* 修复筛选按钮高度与输入框一致 */
 .filter-actions .btn {
+    width: 42px;
     height: 42px;
+    padding: 0;
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
@@ -205,6 +208,11 @@
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
+}
+
+.form-control:hover,
+.form-select:hover {
+    border-color: var(--accent-color);
 }
 
 .form-control:focus,
@@ -746,7 +754,9 @@
 }
 
 .btn:hover {
-    background-color: var(--accent-hover);
+    background-color: #ffffff;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
     transform: translateY(-1px);
 }
 
@@ -756,12 +766,14 @@
 }
 
 .btn-secondary {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
+    background-color: #ffffff;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
 }
 
 .btn-secondary:hover {
-    background-color: var(--border-color);
+    background-color: var(--accent-color);
+    color: #ffffff;
 }
 
 /* 新建店铺按钮 - 使用主题色 */
