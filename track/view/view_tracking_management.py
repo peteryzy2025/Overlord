@@ -15,7 +15,7 @@ import openpyxl
 from openpyxl.utils.exceptions import InvalidFileException
 import json
 from track.models import Tracking, Courier, TrackingDetail, Factory
-from api.track.track_api import register_tracking, get_tracking_updates
+from api.track.track_api import register_tracking, get_tracking_updates, parse_datetime
 
 
 # 主页视图
@@ -904,6 +904,8 @@ def import_tracking_excel(request):
                         track_no = accepted_item['trackNo']
                         courier_code = accepted_item.get('courierCode')
                         courier = courier_cache.get(courier_code)
+                        # 从API返回获取创建时间，如果没有则使用当前时间
+                        order_time = parse_datetime(accepted_item.get('createTime')) or timezone.now()
 
                         new_tracking_objects.append(
                             Tracking(
@@ -911,7 +913,7 @@ def import_tracking_excel(request):
                                 courier=courier,
                                 factory=factory,
                                 transit_status='INIT',
-                                order_time=timezone.now(),
+                                order_time=order_time,
                             )
                         )
                         track_nos_to_update.append(track_no)
@@ -932,6 +934,8 @@ def import_tracking_excel(request):
                         if error_code == 'A0400':
                             courier_code = rejected_item.get('courierCode')
                             courier = courier_cache.get(courier_code)
+                            # 从API返回获取创建时间，如果没有则使用当前时间
+                            order_time = parse_datetime(rejected_item.get('createTime')) or timezone.now()
 
                             new_tracking_objects.append(
                                 Tracking(
@@ -939,7 +943,7 @@ def import_tracking_excel(request):
                                     courier=courier,
                                     factory=factory,
                                     transit_status='PRE_TRANSIT',
-                                    order_time=timezone.now(),
+                                    order_time=order_time,
                                 )
                             )
                             track_nos_to_update.append(track_no)
@@ -1141,7 +1145,7 @@ def toggle_cancel_status(request):
                     tracking = Tracking.objects.get(track_no=track_no)
                     UserOperationLog.objects.create(
                         user=request.user,
-                        operation_type=UserOperationLog.TRACKING_MARK_CANCELLED,
+                        operation_type=UserOperationLog.OperationType.TRACKING_MARK_CANCELLED,
                         operation_record=f'运单号: {track_no}, 物流商: {tracking.courier.name_cn if tracking.courier else "-"}'
                     )
                 except:
@@ -1159,7 +1163,7 @@ def toggle_cancel_status(request):
                     tracking = Tracking.objects.get(track_no=track_no)
                     UserOperationLog.objects.create(
                         user=request.user,
-                        operation_type=UserOperationLog.TRACKING_UNDO_CANCEL,
+                        operation_type=UserOperationLog.OperationType.TRACKING_UNDO_CANCEL,
                         operation_record=f'运单号: {track_no}, 物流商: {tracking.courier.name_cn if tracking.courier else "-"}'
                     )
                 except:
