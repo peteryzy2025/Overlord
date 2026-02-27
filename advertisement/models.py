@@ -161,10 +161,10 @@ class LingXingCampaign(models.Model):
         return f"{self.campaign_name or '未命名'} ({self.campaign_id})"
 
 
-class LingXingAdHourlyData(models.Model):
+class LingXingAdDailyData(models.Model):
     """
-    领星广告小时数据（事实表）
-    存储 spTargetHourData 接口返回的原始数据
+    领星广告天数据（事实表）
+    存储 spTargetDayData 接口返回的原始数据
     PostgreSQL 按月分区（Range Partitioning on report_date）
     """
 
@@ -180,7 +180,7 @@ class LingXingAdHourlyData(models.Model):
     lingxing_shop = models.ForeignKey(
         'amazon.LingXingAmazonShop',
         on_delete=models.CASCADE,
-        related_name='ad_hourly_data',
+        related_name='ad_daily_data',
         verbose_name='领星店铺',
         db_comment='关联领星店铺（级联删除）'
     )
@@ -194,6 +194,22 @@ class LingXingAdHourlyData(models.Model):
     ad_group_id = models.BigIntegerField(
         'Ad Group ID',
         db_comment='广告组ID'
+    )
+
+    ad_group_name = models.CharField(
+        '广告组名称',
+        max_length=200,
+        blank=True,
+        null=True,
+        db_comment='广告组名称（冗余存储）'
+    )
+
+    campaign_name = models.CharField(
+        '广告活动名称',
+        max_length=200,
+        blank=True,
+        null=True,
+        db_comment='广告活动名称（冗余存储）'
     )
 
     ad_id = models.BigIntegerField(
@@ -211,11 +227,6 @@ class LingXingAdHourlyData(models.Model):
         '报表日期',
         db_comment='报表日期（YYYY-MM-DD），分区键',
         help_text='PostgreSQL按月分区'
-    )
-
-    hour = models.SmallIntegerField(
-        '小时',
-        db_comment='小时（0-23）'
     )
 
     asin = models.CharField(
@@ -316,22 +327,18 @@ class LingXingAdHourlyData(models.Model):
     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
 
     class Meta:
-        db_table = 'ad_hourly_data'
-        verbose_name = '领星广告小时数据'
+        db_table = 'ad_daily_data'
+        verbose_name = '领星广告天数据'
         verbose_name_plural = verbose_name
 
         unique_together = [
-            ['lingxing_shop', 'report_date', 'hour', 'ad_id', 'targeting_id']
+            ['lingxing_shop', 'report_date', 'ad_id', 'targeting_id']
         ]
 
         indexes = [
             models.Index(
                 fields=['lingxing_shop', 'asin', 'report_date'],
                 name='idx_ad_asin_date'
-            ),
-            models.Index(
-                fields=['report_date', 'hour'],
-                name='idx_ad_datetime'
             ),
             models.Index(
                 fields=['campaign_id', 'report_date'],
@@ -344,41 +351,41 @@ class LingXingAdHourlyData(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.asin} | {self.report_date} {self.hour}:00 | 花费:${self.cost}"
+        return f"{self.asin} | {self.report_date} | 花费:${self.cost}"
 
     # ========== 实例方法：单条记录计算 ==========
     def get_acos(self):
-        """单小时 ACOS（%）"""
+        """单日 ACOS（%）"""
         if self.sales and self.sales > 0:
             return (self.cost / self.sales) * 100
         return None
 
     def get_roas(self):
-        """单小时 ROAS"""
+        """单日 ROAS"""
         if self.cost and self.cost > 0:
             return self.sales / self.cost
         return None
 
     def get_ctr(self):
-        """单小时 CTR（%）"""
+        """单日 CTR（%）"""
         if self.impressions and self.impressions > 0:
             return (self.clicks / self.impressions) * 100
         return None
 
     def get_cvr(self):
-        """单小时 CVR（%）"""
+        """单日 CVR（%）"""
         if self.clicks and self.clicks > 0:
             return (self.orders / self.clicks) * 100
         return None
 
     def get_cpc(self):
-        """单小时 CPC"""
+        """单日 CPC"""
         if self.clicks and self.clicks > 0:
             return self.cost / self.clicks
         return None
 
     def get_cpa(self):
-        """单小时 CPA（单次获取成本）"""
+        """单日 CPA（单次获取成本）"""
         if self.orders and self.orders > 0:
             return self.cost / self.orders
         return None
@@ -387,8 +394,8 @@ class LingXingAdHourlyData(models.Model):
     def calculate_asin_metrics(cls, queryset):
         """
         对 QuerySet 聚合计算 ASIN 级别指标
-        用法：LingXingAdHourlyData.calculate_asin_metrics(
-            LingXingAdHourlyData.objects.filter(asin='B0XXX', report_date__gte='2026-02-01')
+        用法：LingXingAdDailyData.calculate_asin_metrics(
+            LingXingAdDailyData.objects.filter(asin='B0XXX', report_date__gte='2026-02-01')
         )
         """
         result = queryset.aggregate(

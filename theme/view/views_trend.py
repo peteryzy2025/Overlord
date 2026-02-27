@@ -11,6 +11,7 @@ from nltk.tokenize import TweetTokenizer
 # from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from django.contrib.auth.decorators import login_required
 from theme.models import *
+from general.models import UserOperationLog
 
 # 中风险状态码集合（美标网）- 只有这些状态码才视为中风险
 MEDIUM_RISK_STATUS_CODES = {
@@ -39,6 +40,26 @@ def trend_search(request):
         return JsonResponse({'error': '请输入搜索关键词'}, status=400)
 
     data = analyze_theme_trend(query, mode=mode)
+
+    # 记录查询日志
+    try:
+        mode_text = '切词' if mode == 1 else '组词'
+        risk_text = data.get('theme_risk_text', '未知')
+        hit_uspto = len(data.get('uspto_keywords', []))
+        hit_tro = len(data.get('tro_keywords', []))
+        record = f"查询词: {query} | 模式: {mode_text} | 风险: {risk_text} | 美标命中: {hit_uspto} | 侵权词库命中: {hit_tro}"
+        # 截断到250字符
+        if len(record) > 250:
+            record = record[:247] + "..."
+
+        UserOperationLog.objects.create(
+            user=request.user,
+            operation_type=UserOperationLog.OperationType.TRO_SEARCH,
+            operation_record=record,
+        )
+    except Exception as log_error:
+        print(f"❌ 侵权词查询日志记录失败: {log_error}")
+
     return JsonResponse(data, json_dumps_params={'ensure_ascii': False})
 
 

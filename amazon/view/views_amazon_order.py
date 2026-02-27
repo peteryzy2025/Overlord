@@ -967,7 +967,7 @@ def api_ship_order(request):
 
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ORDER_SHIP,
+                operation_type=UserOperationLog.OperationType.ORDER_SHIP,
                 operation_record=record,
             )
         except Exception as log_error:
