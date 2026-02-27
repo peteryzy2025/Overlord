@@ -289,7 +289,7 @@ def get_tracking_updates(track_nos):
                                 'tracking_status': item.get('trackingStatus', ''),
                                 'delivered_time': parse_datetime(item.get('deliveredTime')),
                                 'last_update_time': parse_datetime(item.get('lastTrackingTime')),
-                                'order_time': parse_datetime(item.get('orderTime')),
+                                'order_time': parse_datetime(item.get('createTime')),
                                 'next_update_time': parse_datetime(item.get('nextUpdateTime')),
                                 'stay_days': item.get('stayDays'),
                                 'transit_days': item.get('transitDays'),
