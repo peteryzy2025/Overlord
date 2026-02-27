@@ -136,7 +136,7 @@ def batch_analyze_theme_trend(themes):
 
     trademark_records = TrademarkInfo.objects.filter(
         word_mark__in=token_uppers
-    ).values('word_mark', 'serial_number', 'intl_class', 'status_code')
+    ).values('word_mark', 'serial_number', 'intl_class', 'status_code', 'mark_drawing_type__description_cn')
 
     uspto_details_global = defaultdict(list)
     word_status_codes_global = defaultdict(set)
@@ -150,7 +150,8 @@ def batch_analyze_theme_trend(themes):
         uspto_details_global[word].append({
             'serial_number': record['serial_number'],
             'intl_class': record['intl_class'] or 'N/A',
-            'status_code': record['status_code']
+            'status_code': record['status_code'],
+            'mark_drawing_type_cn': record['mark_drawing_type__description_cn'] or 'N/A'
         })
 
         if record['status_code']:
@@ -416,7 +417,7 @@ def analyze_theme_trend(theme, mode=1):
 
     trademark_records = TrademarkInfo.objects.filter(
         word_mark__in=token_uppers
-    ).values('word_mark', 'serial_number', 'intl_class', 'status_code')
+    ).values('word_mark', 'serial_number', 'intl_class', 'status_code', 'mark_drawing_type__description_cn')
 
     uspto_matches = []
     uspto_details = {}
@@ -434,7 +435,8 @@ def analyze_theme_trend(theme, mode=1):
         uspto_details[word].append({
             'serial_number': record['serial_number'],
             'intl_class': record['intl_class'] or 'N/A',
-            'status_code': record['status_code']
+            'status_code': record['status_code'],
+            'mark_drawing_type_cn': record['mark_drawing_type__description_cn'] or 'N/A'
         })
         if record['status_code']:
             try:

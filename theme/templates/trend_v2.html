@@ -245,8 +245,7 @@
             padding: 0.6rem 0.8rem;
             background: var(--bg-secondary);
             flex: 0 0 auto;
-            min-width: 200px;
-            max-width: 280px;
+            width: 260px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
         }
 
@@ -274,11 +273,25 @@
             color: var(--text-secondary);
             font-family: monospace;
             font-size: 0.8rem;
-            word-wrap: break-word;
-            word-break: break-word;
-            overflow-wrap: break-word;
             flex: 1;
             text-align: right;
+            /* 文字超长时截断 */
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        /* 悬浮时显示完整内容 */
+        .detail-value:hover {
+            white-space: normal;
+            overflow: visible;
+            background: var(--bg-secondary);
+            position: relative;
+            z-index: 10;
+            word-wrap: break-word;
+            word-break: break-word;
         }
 
         .detail-link {
@@ -1093,7 +1106,11 @@ const STATUS_CODE_MAPPING = {
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">状态</span>
-                            <span class="detail-value">${escapeHtml(statusCode)}-${escapeHtml(statusCodeDesc)}</span>
+                            <span class="detail-value" title="${escapeHtml(statusCode)}: ${escapeHtml(statusCodeDesc)}">${escapeHtml(statusCodeDesc)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">商标类型</span>
+                            <span class="detail-value" title="${escapeHtml(item.mark_drawing_type_cn || 'N/A')}">${escapeHtml(item.mark_drawing_type_cn || 'N/A')}</span>
                         </div>
                     </div>
                 `}).join('');
