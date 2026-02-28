@@ -111,6 +111,12 @@ def management_page(request):
     })
 
 
+@login_required(login_url='/login/')
+def search_view(request):
+    """搜索页面"""
+    return render(request, 'search.html')
+
+
 
 def csrf_token_view(request):
     token = get_token(request)
