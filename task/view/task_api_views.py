@@ -717,6 +717,11 @@ def create_task_api(request):
                             elif local_gallery_path:
                                 diwei_webhook_data['gallery_source'] = 'local'
                                 diwei_webhook_data['local_gallery_path'] = local_gallery_path
+                        elif operation == 'export':
+                            # 汇出模式：添加产品行数据
+                            export_rows = diwei_params.get('export_rows', [])
+                            if export_rows:
+                                diwei_webhook_data['export_rows'] = export_rows
 
                         def send_diwei_webhook(payload):
                             url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/918309922287583232"

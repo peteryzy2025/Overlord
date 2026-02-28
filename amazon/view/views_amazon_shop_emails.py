@@ -744,7 +744,7 @@ def notify_operators_api(request):
 
         UserOperationLog.objects.create(
             user=user,
-            operation_type=UserOperationLog.EMAIL_NOTIFY_OPERATORS,
+            operation_type=UserOperationLog.OperationType.EMAIL_NOTIFY_OPERATORS,
             operation_record=f"批量通知运营处理邮件: {details}"
         )
 
@@ -890,7 +890,7 @@ def mark_email_processed_api(request, email_id):
         # 记录操作日志
         UserOperationLog.objects.create(
             user=user,
-            operation_type=UserOperationLog.EMAIL_MARK_PROCESSED,
+            operation_type=UserOperationLog.OperationType.EMAIL_MARK_PROCESSED,
             operation_record=f"标记邮件已处理: {email.subject[:50]}"
         )
 

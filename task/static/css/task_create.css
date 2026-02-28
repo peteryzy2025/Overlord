@@ -203,6 +203,16 @@
     gap: 1rem;
 }
 
+/* 自动化铺货子任务的动态字段 - 汇出模式 */
+.dynamic-fields:has(#export-fields-1),
+.dynamic-fields:has([id^="export-fields-"]) {
+    grid-template-columns: 1fr 1fr;
+}
+
+.dynamic-fields [id^="export-fields-"] {
+    grid-column: 1 / -1;
+}
+
 /* ===== 产品ID输入与预览 ===== */
 .product-ids-wrapper {
     display: flex;

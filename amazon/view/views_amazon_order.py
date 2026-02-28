@@ -372,7 +372,7 @@ def add_divi_amazon_order(request):
         try:
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ORDER_IMPORT,
+                operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                 operation_record=f"店铺[未知]订单导单失败: 缺少order_id参数",
             )
         except Exception as log_error:
@@ -407,7 +407,7 @@ def add_divi_amazon_order(request):
                 try:
                     UserOperationLog.objects.create(
                         user=request.user,
-                        operation_type=UserOperationLog.ORDER_IMPORT,
+                        operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                         operation_record=f"店铺[未知]订单[{amazon_order_id}]导单失败: 领星未找到该订单",
                     )
                 except Exception as log_error:
@@ -440,7 +440,7 @@ def add_divi_amazon_order(request):
             try:
                 UserOperationLog.objects.create(
                     user=request.user,
-                    operation_type=UserOperationLog.ORDER_IMPORT,
+                    operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                     operation_record=f"店铺[未知]订单[{amazon_order_id}]导单失败: 未配置divi_shop_id",
                 )
             except Exception as log_error:
@@ -481,7 +481,7 @@ def add_divi_amazon_order(request):
             try:
                 UserOperationLog.objects.create(
                     user=request.user,
-                    operation_type=UserOperationLog.ORDER_IMPORT,
+                    operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                     operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单到DIVI: 成功（订单已存在）",
                 )
             except Exception as log_error:
@@ -544,7 +544,7 @@ def add_divi_amazon_order(request):
             try:
                 UserOperationLog.objects.create(
                     user=request.user,
-                    operation_type=UserOperationLog.ORDER_IMPORT,
+                    operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                     operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单到DIVI: 成功",
                 )
             except Exception as log_error:
@@ -573,7 +573,7 @@ def add_divi_amazon_order(request):
         try:
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ORDER_IMPORT,
+                operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                 operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单到DIVI: 成功（DIVI响应）",
             )
         except Exception as log_error:
@@ -598,7 +598,7 @@ def add_divi_amazon_order(request):
         try:
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ORDER_IMPORT,
+                operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
                 operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单异常: {str(e)[:200]}",
             )
         except Exception as log_error:
@@ -1127,7 +1127,7 @@ def api_mark_real_shipment(request):
 
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.ORDER_MARK_REAL,
+                operation_type=UserOperationLog.OperationType.ORDER_MARK_REAL,
                 operation_record=record,
             )
         except Exception as log_error:

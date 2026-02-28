@@ -513,7 +513,7 @@ def notify_operators_api(request):
 
         UserOperationLog.objects.create(
             user=user,
-            operation_type=UserOperationLog.PERFORMANCE_NOTIFY_OPERATORS,
+            operation_type=UserOperationLog.OperationType.PERFORMANCE_NOTIFY_OPERATORS,
             operation_record=f"批量通知运营处理绩效: {details}"
         )
 

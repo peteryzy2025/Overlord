@@ -1225,7 +1225,7 @@ def update_tracking_remark(request):
                 tracking = Tracking.objects.get(track_no=track_no)
                 UserOperationLog.objects.create(
                     user=request.user,
-                    operation_type=UserOperationLog.TRACKING_REMARK_UPDATE,
+                    operation_type=UserOperationLog.OperationType.TRACKING_REMARK_UPDATE,
                     operation_record=f'运单: {track_no}, 备注: {remark}'
                 )
             except:
