@@ -1,0 +1,286 @@
+{% extends 'base/base_z.html' %}
+{% load static %}
+
+{% block title %}Divi智管搜索{% endblock %}
+
+{% block extra_css %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    body {
+        font-family: 'Inter', sans-serif;
+    }
+
+    .search-container {
+        max-width: 880px;
+    }
+
+    /* 搜索页面专用：覆盖 main-container 的 padding，占满可用空间 */
+    .search-fullpage {
+        height: calc(100vh - 80px - 4rem);  /* viewport - navbar - main-container padding */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .logo-img {
+        height: 4.8rem;  /* 原4rem * 1.2 = 4.8rem */
+        width: auto;
+        object-fit: contain;
+    }
+
+    .search-card {
+        background-color: #fff;
+        border-radius: 1.1rem;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+        transition: box-shadow 0.3s ease;
+    }
+
+    .search-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .search-textarea {
+        width: 100%;
+        padding: 1.65rem;
+        color: #1f2937;
+        font-size: 1.1rem;
+        resize: none;
+        outline: none;
+        background: transparent;
+        border: none;
+    }
+
+    .search-textarea::placeholder {
+        color: #9ca3af;
+    }
+
+    .search-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.825rem 1.1rem;
+        border-top: 1px solid #f3f4f6;
+    }
+
+    .engine-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .engine-btn {
+        padding: 0.41rem 1.1rem;
+        border-radius: 50rem;
+        font-size: 0.96rem;
+        font-weight: 500;
+        border: 2px solid transparent;
+        background-color: #f9fafb;
+        color: #4b5563;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .engine-btn:hover {
+        background-color: #f3f4f6;
+    }
+
+    .engine-btn.active {
+        border-color: #f97316;
+        color: #ea580c;
+        background-color: #fff7ed;
+    }
+
+    .engine-btn.active:hover {
+        transform: scale(1.05);
+    }
+
+    .search-submit-btn {
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        background-color: #000;
+        color: #fff;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .search-submit-btn:hover {
+        background-color: #374151;
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-submit-btn:active {
+        transform: scale(0.95);
+    }
+
+    .search-submit-btn svg {
+        width: 1.375rem;
+        height: 1.375rem;
+        transform: rotate(90deg);
+    }
+
+    .search-hint {
+        color: #9ca3af;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="search-fullpage w-100">
+    <div class="w-100 search-container">
+        <!-- 标题 -->
+        <div class="text-center mb-4">
+            <img src="{% static 'img/y/logo_z.png' %}" alt="Divi智管搜索" class="logo-img mx-auto d-block">
+        </div>
+
+        <!-- 搜索卡片 -->
+        <div class="search-card">
+            <!-- 输入框 -->
+            <div class="position-relative">
+                <textarea id="searchInput" class="search-textarea" rows="3" placeholder="输入你想搜索的内容..."></textarea>
+            </div>
+
+            <!-- 底部工具栏 -->
+            <div class="search-toolbar">
+                <!-- 搜索引擎选择区 -->
+                <div class="engine-buttons">
+                    <button onclick="selectEngine('google')" id="btn-google" class="engine-btn active">
+                        Google
+                    </button>
+                    <button onclick="selectEngine('baidu')" id="btn-baidu" class="engine-btn">
+                        Baidu
+                    </button>
+                    <button onclick="selectEngine('bing')" id="btn-bing" class="engine-btn">
+                        Bing
+                    </button>
+                    <button onclick="selectEngine('duckduckgo')" id="btn-duckduckgo" class="engine-btn">
+                        DuckDuckGo
+                    </button>
+                    <button onclick="selectEngine('yandex')" id="btn-yandex" class="engine-btn">
+                        Yandex
+                    </button>
+                    <button onclick="selectEngine('yahoo')" id="btn-yahoo" class="engine-btn">
+                        Yahoo
+                    </button>
+                    <button onclick="selectEngine('sogou')" id="btn-sogou" class="engine-btn">
+                        Sogou
+                    </button>
+                </div>
+
+                <!-- 发送按钮 -->
+                <button onclick="doSearch()" class="search-submit-btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- 提示文字 -->
+        <p class="text-center search-hint mt-4">
+            按 Enter 直接搜索，Shift + Enter 换行
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // 从 localStorage 读取上次选择的引擎，默认 google
+    let currentEngine = localStorage.getItem('preferred_search_engine') || 'google';
+    
+    const engines = {
+        google: {
+            name: 'Google',
+            url: 'https://www.google.com/search?q=',
+            btnId: 'btn-google'
+        },
+        baidu: {
+            name: 'Baidu',
+            url: 'https://www.baidu.com/s?wd=',
+            btnId: 'btn-baidu'
+        },
+        bing: {
+            name: 'Bing',
+            url: 'https://www.bing.com/search?q=',
+            btnId: 'btn-bing'
+        },
+        duckduckgo: {
+            name: 'DuckDuckGo',
+            url: 'https://duckduckgo.com/?q=',
+            btnId: 'btn-duckduckgo'
+        },
+        yandex: {
+            name: 'Yandex',
+            url: 'https://yandex.com/search/?text=',
+            btnId: 'btn-yandex'
+        },
+        yahoo: {
+            name: 'Yahoo',
+            url: 'https://search.yahoo.com/search?p=',
+            btnId: 'btn-yahoo'
+        },
+        sogou: {
+            name: 'Sogou',
+            url: 'https://www.sogou.com/web?query=',
+            btnId: 'btn-sogou'
+        }
+    };
+
+    function selectEngine(engineName) {
+        currentEngine = engineName;
+        
+        // 保存到 localStorage
+        localStorage.setItem('preferred_search_engine', engineName);
+
+        // 重置所有按钮样式
+        Object.keys(engines).forEach(key => {
+            const btn = document.getElementById(engines[key].btnId);
+            if (key === engineName) {
+                // 选中状态：橙色边框
+                btn.classList.add('active');
+            } else {
+                // 未选中状态：灰色背景
+                btn.classList.remove('active');
+            }
+        });
+    }
+    
+    // 页面加载时初始化选中状态
+    document.addEventListener('DOMContentLoaded', function() {
+        selectEngine(currentEngine);
+    });
+
+    function doSearch() {
+        const input = document.getElementById('searchInput');
+        const query = input.value.trim();
+
+        if (!query) {
+            input.focus();
+            return;
+        }
+
+        const targetUrl = engines[currentEngine].url + encodeURIComponent(query);
+        window.open(targetUrl, '_blank');
+    }
+
+    // 键盘事件监听
+    document.getElementById('searchInput').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            doSearch();
+        }
+    });
+</script>
+{% endblock %}

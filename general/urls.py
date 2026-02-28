@@ -113,6 +113,9 @@ urlpatterns = [
 
     # ========== 个人中心 ==========
     path('profile/', views_profile.profile_view, name='profile'),
+
+    # ========== 搜索 ==========
+    path('search/', views.search_view, name='search'),
     path('api/profile/avatar/', views_profile.upload_avatar_api, name='profile_upload_avatar'),
     path('api/profile/basic-info/', views_profile.update_basic_info_api, name='profile_update_basic_info'),
     path('api/profile/password/', views_profile.change_password_api, name='profile_change_password'),
