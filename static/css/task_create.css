@@ -203,6 +203,12 @@
     gap: 1rem;
 }
 
+/* 自动化铺货子任务的动态字段 */
+.diwei-fields [id^="export-fields-"],
+.diwei-fields [id^="custom-fields-"] {
+    grid-column: 1 / -1;
+}
+
 /* ===== 产品ID输入与预览 ===== */
 .product-ids-wrapper {
     display: flex;
