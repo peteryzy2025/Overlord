@@ -592,12 +592,246 @@
             }
         }
 
+        // ===== 切换迪唯定制产品行显示 =====
+        function toggleDiweiCustomRows(subtaskId, show) {
+            const customRowsContainer = document.getElementById(`custom-rows-container-${subtaskId}`);
+            const addButton = customRowsContainer ? customRowsContainer.nextElementSibling : null;
+            if (customRowsContainer) {
+                customRowsContainer.style.display = show ? 'block' : 'none';
+            }
+            if (addButton && addButton.tagName === 'BUTTON') {
+                addButton.style.display = show ? 'block' : 'none';
+            }
+        }
+
         // ===== 切换迪唯汇出字段显示 =====
         function toggleDiweiExportFields(subtaskId, show) {
             const exportFields = document.getElementById(`export-fields-${subtaskId}`);
             if (exportFields) {
                 exportFields.style.display = show ? 'block' : 'none';
             }
+        }
+
+        // ===== 渲染定制产品行 =====
+        function renderCustomRow(subtaskId, rowIndex, rowData = {}) {
+            const useBackground = rowData.use_background || false;
+            const backgroundColor = rowData.background_color || '#000000';
+            return `
+                <div class="custom-row" id="custom-row-${subtaskId}-${rowIndex}" data-row-index="${rowIndex}" style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75rem;
+                    align-items: end;
+                    padding: 1rem;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                    margin-bottom: 0.75rem;
+                    border: 1px solid var(--border-color);">
+                    
+                    <!-- 产品ID输入 -->
+                    <div class="form-group" style="margin: 0; max-width: 300px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品ID</label>
+                        <input type="text" class="form-control"
+                               id="custom-product-id-${subtaskId}-${rowIndex}"
+                               placeholder="输入产品ID"
+                               value="${rowData.product_id || ''}"
+                               oninput="updateCustomRow(${subtaskId}, ${rowIndex}, 'product_id', this.value)">
+                    </div>
+
+                    <!-- 模式单选下拉框 -->
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">模式</label>
+                        <div id="custom-mode-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择模式"></div>
+                    </div>
+
+                    <!-- 使用背景图开关 -->
+                    <div class="form-group" style="margin: 0; display: flex; align-items: center; padding-bottom: 0.5rem;">
+                        <label class="form-switch" style="margin: 0;">
+                            <input type="checkbox" class="switch-input"
+                                   id="custom-use-background-${subtaskId}-${rowIndex}"
+                                   ${useBackground ? 'checked' : ''}
+                                   onchange="toggleCustomBackground(${subtaskId}, ${rowIndex}, this.checked)">
+                            <span class="switch-slider"></span>
+                            <span class="switch-label" style="font-size: 0.75rem;">背景图</span>
+                        </label>
+                    </div>
+
+                    <!-- 背景颜色选择器 -->
+                    <div class="form-group" id="custom-bg-color-group-${subtaskId}-${rowIndex}" style="margin: 0; display: ${useBackground ? 'block' : 'none'};">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">背景颜色</label>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <input type="color"
+                                   id="custom-bg-color-picker-${subtaskId}-${rowIndex}"
+                                   value="${backgroundColor}"
+                                   onchange="updateCustomBackgroundColor(${subtaskId}, ${rowIndex}, this.value)"
+                                   style="width: 40px; height: 40px; padding: 0; border: none; border-radius: 4px; background: none; cursor: pointer; outline: none;">
+                            <input type="text" class="form-control"
+                                   id="custom-bg-color-text-${subtaskId}-${rowIndex}"
+                                   value="${backgroundColor}"
+                                   placeholder="#RRGGBB"
+                                   oninput="updateCustomBackgroundColor(${subtaskId}, ${rowIndex}, this.value)"
+                                   style="flex: 1; min-width: 80px;">
+                        </div>
+                    </div>
+
+                    <!-- 删除按钮 -->
+                    <div style="padding-bottom: 0.25rem;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteCustomRowModal(${subtaskId}, ${rowIndex})" style="padding: 0.375rem 0.625rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== 初始化定制行模式选择器 =====
+        function initCustomRowModeSelect(subtaskId, rowIndex, selectedMode = 'fill') {
+            const selectEl = document.querySelector(`#custom-mode-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            const modeOptions = [
+                { value: 'fill', label: '填充' },
+                { value: 'adapt', label: '适应' }
+            ];
+
+            const modeSelect = new SearchableSelect(`#custom-mode-select-${subtaskId}-${rowIndex}`, {
+                options: modeOptions,
+                multiple: false,
+                placeholder: '选择模式'
+            });
+
+            modeSelect.setValue(selectedMode || 'fill');
+            modeSelect.onChange = (value) => {
+                updateCustomRow(subtaskId, rowIndex, 'mode', value);
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._modeSelectInstance = modeSelect;
+        }
+
+        // ===== 添加定制产品行 =====
+        function addCustomRow(subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask) return;
+
+            if (!subtask.params.custom_rows) {
+                subtask.params.custom_rows = [];
+            }
+
+            const newRow = {
+                product_id: '',
+                mode: 'fill',
+                use_background: false,
+                background_color: '#000000'
+            };
+
+            subtask.params.custom_rows.push(newRow);
+            const rowIndex = subtask.params.custom_rows.length - 1;
+
+            const container = document.getElementById(`custom-rows-container-${subtaskId}`);
+            if (container) {
+                const rowHtml = renderCustomRow(subtaskId, rowIndex, newRow);
+                container.insertAdjacentHTML('beforeend', rowHtml);
+                
+                // 初始化新行的模式选择器
+                setTimeout(() => {
+                    initCustomRowModeSelect(subtaskId, rowIndex, 'fill');
+                }, 0);
+            }
+
+            triggerAutoSave();
+        }
+
+        // ===== 更新定制行数据 =====
+        function updateCustomRow(subtaskId, rowIndex, field, value) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.custom_rows) return;
+
+            if (subtask.params.custom_rows[rowIndex]) {
+                subtask.params.custom_rows[rowIndex][field] = value;
+                triggerAutoSave();
+            }
+        }
+
+        // ===== 切换定制行背景图显示 =====
+        function toggleCustomBackground(subtaskId, rowIndex, checked) {
+            updateCustomRow(subtaskId, rowIndex, 'use_background', checked);
+            
+            const colorGroup = document.getElementById(`custom-bg-color-group-${subtaskId}-${rowIndex}`);
+            if (colorGroup) {
+                colorGroup.style.display = checked ? 'block' : 'none';
+            }
+        }
+
+        // ===== 更新定制行背景颜色 =====
+        function updateCustomBackgroundColor(subtaskId, rowIndex, value) {
+            // 确保是有效的颜色格式
+            let colorValue = value;
+            if (!colorValue.startsWith('#')) {
+                colorValue = '#' + colorValue;
+            }
+            if (!/^#[0-9A-Fa-f]{6}$/.test(colorValue)) {
+                return; // 格式不对则不更新
+            }
+            
+            updateCustomRow(subtaskId, rowIndex, 'background_color', colorValue);
+            
+            // 同步更新另一个输入框
+            const picker = document.getElementById(`custom-bg-color-picker-${subtaskId}-${rowIndex}`);
+            const textInput = document.getElementById(`custom-bg-color-text-${subtaskId}-${rowIndex}`);
+            
+            if (document.activeElement !== picker && picker) {
+                picker.value = colorValue;
+            }
+            if (document.activeElement !== textInput && textInput) {
+                textInput.value = colorValue;
+            }
+        }
+
+        // ===== 显示删除定制行确认弹窗 =====
+        let customRowToDelete = null; // { subtaskId, rowIndex }
+
+        function showDeleteCustomRowModal(subtaskId, rowIndex) {
+            customRowToDelete = { subtaskId, rowIndex };
+            document.getElementById('deleteExportRowModal').classList.add('active');
+            // 修改弹窗文案
+            const modalBody = document.querySelector('#deleteExportRowModal .modal-body p');
+            if (modalBody) {
+                modalBody.textContent = '确定要删除此定制产品行吗？';
+            }
+        }
+
+        // ===== 确认删除定制行 =====
+        function confirmDeleteCustomRow() {
+            if (!customRowToDelete) return;
+            
+            const { subtaskId, rowIndex } = customRowToDelete;
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.custom_rows) return;
+
+            // 从数据中删除
+            subtask.params.custom_rows.splice(rowIndex, 1);
+
+            // 重新渲染所有行
+            const container = document.getElementById(`custom-rows-container-${subtaskId}`);
+            if (container) {
+                container.innerHTML = subtask.params.custom_rows.map((row, index) => renderCustomRow(subtaskId, index, row)).join('');
+                
+                // 重新初始化所有模式选择器
+                subtask.params.custom_rows.forEach((row, index) => {
+                    setTimeout(() => {
+                        initCustomRowModeSelect(subtaskId, index, row.mode || 'fill');
+                    }, 0);
+                });
+            }
+
+            triggerAutoSave();
+            closeDeleteExportRowModal();
+            showNotification('已删除定制产品行', 'success', 2000);
+            
+            // 重置
+            customRowToDelete = null;
         }
 
         // ===== 渲染汇出产品行 =====
@@ -797,10 +1031,11 @@
             document.getElementById('deleteExportRowModal').classList.add('active');
         }
 
-        // ===== 关闭删除汇出行弹窗 =====
+        // ===== 关闭删除行弹窗 =====
         function closeDeleteExportRowModal() {
             document.getElementById('deleteExportRowModal').classList.remove('active');
             exportRowToDelete = null;
+            customRowToDelete = null;
         }
 
         // ===== 确认删除汇出行 =====
@@ -833,11 +1068,17 @@
             showNotification('已删除产品行', 'success', 2000);
         }
 
-        // ===== 绑定删除汇出行按钮事件 =====
+        // ===== 绑定删除行按钮事件 =====
         document.addEventListener('DOMContentLoaded', function() {
             const confirmBtn = document.getElementById('confirmDeleteExportRowBtn');
             if (confirmBtn) {
-                confirmBtn.addEventListener('click', confirmDeleteExportRow);
+                confirmBtn.addEventListener('click', function() {
+                    if (customRowToDelete) {
+                        confirmDeleteCustomRow();
+                    } else if (exportRowToDelete) {
+                        confirmDeleteExportRow();
+                    }
+                });
             }
         });
 
@@ -1099,7 +1340,8 @@
                     operation: 'custom',
                     gallery_path: '',
                     local_gallery_path: '',
-                    export_rows: []
+                    export_rows: [],
+                    custom_rows: []
                 };
             }
 
@@ -1121,6 +1363,7 @@
                 if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
                 if (!params.export_rows) mergedParams.export_rows = [];
+                if (!params.custom_rows) mergedParams.custom_rows = [];
             }
 
             const subtask = {
@@ -1256,6 +1499,15 @@
                         input.value = val;
                         handleGalleryPathInput(input, subtask.id);
                     }
+                }
+
+                // 初始化定制行模式选择器（如果操作是定制）
+                if (subtask.params.operation === 'custom' && subtask.params.custom_rows) {
+                    setTimeout(() => {
+                        subtask.params.custom_rows.forEach((row, index) => {
+                            initCustomRowModeSelect(subtask.id, index, row.mode || 'fill');
+                        });
+                    }, 0);
                 }
 
                 // 初始化汇出行尺码和颜色选择器（如果操作是汇出）
@@ -1705,7 +1957,7 @@
                 const isExport = subtask.params.operation === 'export';
                 const exportRows = subtask.params.export_rows || [];
                 return `
-                    <div class="dynamic-fields">
+                    <div class="dynamic-fields diwei-fields">
                         <div class="form-group">
                             <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
                             <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
@@ -1718,34 +1970,37 @@
                                  data-placeholder="选择操作"></div>
                         </div>
 
-                        <!-- 定制模式：图库目录输入 -->
-                        <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'}; grid-column: span 2;">
-                            <div class="form-group has-autocomplete" style="grid-column: span 1;">
-                                <label class="form-label">图库目录</label>
-                                <div class="product-ids-wrapper">
+                        <!-- 定制模式：多行产品数据输入 -->
+                        <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'};">
+                            <div class="form-group has-autocomplete" style="grid-column: 1 / -1;">
+                                <label class="form-label">图库 / 本地路径</label>
+                                <div style="display: flex; gap: 0.5rem; position: relative; max-width: 1010px;">
                                     <input type="text" class="form-control gallery-path-input"
                                            id="gallery-path-${subtask.id}"
-                                           placeholder="输入多级目录，如 10月 10.31 10.31-樱花"
+                                           placeholder="图库目录"
                                            value="${subtask.params.gallery_path || ''}"
                                            data-subtask-id="${subtask.id}"
                                            oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
-                                           onfocus="showPathSuggestions(this)">
-                                    <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}">
-                                        <!-- 动态生成 -->
-                                    </div>
-                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}">
-                                        <!-- 自动补全建议 -->
-                                    </div>
+                                           onfocus="showPathSuggestions(this)"
+                                           style="flex: 1; max-width: 500px;">
+                                    <input type="text" class="form-control"
+                                           id="local-gallery-path-${subtask.id}"
+                                           placeholder="本地路径"
+                                           value="${subtask.params.local_gallery_path || ''}"
+                                           oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')"
+                                           style="flex: 1; max-width: 500px;">
+                                    <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
+                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 50%; z-index: 100;"></div>
                                 </div>
                             </div>
 
-                            <div class="form-group" style="grid-column: span 1;">
-                                <label class="form-label">本地图库路径</label>
-                                <input type="text" class="form-control"
-                                       id="local-gallery-path-${subtask.id}"
-                                       placeholder="请输入本地图库路径"
-                                       value="${subtask.params.local_gallery_path || ''}"
-                                       oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
+                            <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                                <div class="custom-rows-container" id="custom-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
+                                    ${(subtask.params.custom_rows || []).map((row, index) => renderCustomRow(subtask.id, index, row)).join('')}
+                                </div>
+                                <button type="button" class="btn btn-secondary" onclick="addCustomRow(${subtask.id})" style="width: 100%;">
+                                    <i class="fas fa-plus"></i> 添加产品
+                                </button>
                             </div>
                         </div>
 
