@@ -241,6 +241,29 @@
         </div>
     </div>
 
+    <!-- 确认删除汇出产品行模态框 -->
+    <div class="modal-overlay" id="deleteExportRowModal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">确认删除</h3>
+                <button class="btn-icon" onclick="closeDeleteExportRowModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除此行产品数据吗？</p>
+                <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                    <button class="btn btn-secondary" onclick="closeDeleteExportRowModal()" style="flex: 1;">
+                        取消
+                    </button>
+                    <button class="btn btn-danger" id="confirmDeleteExportRowBtn" style="flex: 1;">
+                        <i class="fas fa-trash"></i> 删除
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 发现草稿模态框 -->
     <div class="modal-overlay" id="loadDraftModal">
         <div class="modal-content" style="max-width: 400px;">
@@ -515,6 +538,27 @@
             }
         }
 
+        // ===== 初始化迪唯账号选择器 =====
+        function initDiweiAccountSelect(subtask) {
+            const accountSelectEl = document.querySelector(`#diwei-account-select-${subtask.id}`);
+            if (!accountSelectEl || accountSelectEl.dataset.initialized) return;
+
+            const accountSelect = new SearchableSelect(`#diwei-account-select-${subtask.id}`, {
+                options: [
+                    { value: '测试', label: '测试（YMX-28）' }
+                ],
+                multiple: false,
+                placeholder: '选择迪唯账号'
+            });
+
+            accountSelect.setValue(subtask.params.diwei_account || '测试');
+            accountSelect.onChange = (value) => {
+                updateSubtaskParam(subtask.id, 'diwei_account', value);
+            };
+
+            accountSelectEl.dataset.initialized = 'true';
+        }
+
         // ===== 初始化迪唯操作选择器 =====
         function initDiweiOperationSelect(subtask) {
             const operationSelectEl = document.querySelector(`#operation-select-${subtask.id}`);
@@ -522,9 +566,9 @@
 
             const operationSelect = new SearchableSelect(`#operation-select-${subtask.id}`, {
                 options: [
-                    { value: 'distribution', label: '铺货' },
+                    { value: 'custom', label: '定制' },
                     { value: 'export', label: '汇出' },
-                    { value: 'custom', label: '定制' }
+                    { value: 'distribution', label: '铺货' }
                 ],
                 multiple: false,
                 placeholder: '选择操作'
@@ -534,6 +578,7 @@
             operationSelect.onChange = (value) => {
                 updateSubtaskParam(subtask.id, 'operation', value);
                 toggleDiweiCustomFields(subtask.id, value === 'custom');
+                toggleDiweiExportFields(subtask.id, value === 'export');
             };
 
             operationSelectEl.dataset.initialized = 'true';
@@ -546,6 +591,255 @@
                 customFields.style.display = show ? 'contents' : 'none';
             }
         }
+
+        // ===== 切换迪唯汇出字段显示 =====
+        function toggleDiweiExportFields(subtaskId, show) {
+            const exportFields = document.getElementById(`export-fields-${subtaskId}`);
+            if (exportFields) {
+                exportFields.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        // ===== 渲染汇出产品行 =====
+        function renderExportRow(subtaskId, rowIndex, rowData = {}) {
+            const colors = rowData.colors || [];
+            const sizes = rowData.sizes || [];
+            return `
+                <div class="export-row" id="export-row-${subtaskId}-${rowIndex}" data-row-index="${rowIndex}" style="
+                    display: grid;
+                    grid-template-columns: 2fr 1.5fr 2fr auto auto;
+                    gap: 0.75rem;
+                    align-items: end;
+                    padding: 1rem;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                    margin-bottom: 0.75rem;
+                    border: 1px solid var(--border-color);">
+                    
+                    <!-- 产品ID输入 -->
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品ID</label>
+                        <input type="text" class="form-control"
+                               id="export-product-id-${subtaskId}-${rowIndex}"
+                               placeholder="输入产品ID"
+                               value="${rowData.product_id || ''}"
+                               oninput="updateExportRow(${subtaskId}, ${rowIndex}, 'product_id', this.value)">
+                    </div>
+
+                    <!-- 尺码多选下拉框 -->
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">尺码</label>
+                        <div id="export-sizes-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
+                             data-placeholder="选择尺码"></div>
+                    </div>
+
+                    <!-- 颜色多选下拉框 -->
+                    <div class="form-group" style="margin: 0;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">颜色</label>
+                        <div id="export-colors-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
+                             data-placeholder="选择颜色"></div>
+                    </div>
+
+                    <!-- 全选/清空按钮 -->
+                    <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="selectAllExportColors(${subtaskId}, ${rowIndex})" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">
+                            全选
+                        </button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="clearExportColors(${subtaskId}, ${rowIndex})" style="padding: 0.25rem 0.5rem; font-size: 0.7rem;">
+                            清空
+                        </button>
+                    </div>
+
+                    <!-- 删除按钮 -->
+                    <div>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteExportRowModal(${subtaskId}, ${rowIndex})" style="padding: 0.375rem 0.625rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== 初始化汇出行尺码选择器 =====
+        function initExportRowSizeSelect(subtaskId, rowIndex, selectedSizes = []) {
+            const selectEl = document.querySelector(`#export-sizes-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            const sizeOptions = [
+                { value: 'Small', label: 'Small' },
+                { value: 'Medium', label: 'Medium' },
+                { value: 'Large', label: 'Large' },
+                { value: 'X-Large', label: 'X-Large' },
+                { value: 'XX-Large', label: 'XX-Large' }
+            ];
+
+            const sizeSelect = new SearchableSelect(`#export-sizes-select-${subtaskId}-${rowIndex}`, {
+                options: sizeOptions,
+                multiple: true,
+                placeholder: '选择尺码'
+            });
+
+            sizeSelect.setValue(selectedSizes);
+            sizeSelect.onChange = (value) => {
+                updateExportRow(subtaskId, rowIndex, 'sizes', value);
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._sizeSelectInstance = sizeSelect;
+        }
+
+        // ===== 初始化汇出行颜色选择器 =====
+        function initExportRowColorSelect(subtaskId, rowIndex, selectedColors = []) {
+            const selectEl = document.querySelector(`#export-colors-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            const colorOptions = [
+                { value: 'AllBlack', label: '黑色（AllBlack）' },
+                { value: 'AllWhite', label: '白色（AllWhite）' },
+                { value: 'Red', label: '红色（Red）' },
+                { value: 'Blue', label: '蓝色（Blue）' },
+                { value: 'Green', label: '绿色（Green）' },
+                { value: 'Yellow', label: '黄色（Yellow）' },
+                { value: 'Pink', label: '粉色（Pink）' },
+                { value: 'Purple', label: '紫色（Purple）' },
+                { value: 'Orange', label: '橙色（Orange）' },
+                { value: 'Gray', label: '灰色（Gray）' },
+                { value: 'Brown', label: '棕色（Brown）' },
+                { value: 'Navy', label: '海军蓝（Navy）' },
+                { value: 'Beige', label: '米色（Beige）' }
+            ];
+
+            const colorSelect = new SearchableSelect(`#export-colors-select-${subtaskId}-${rowIndex}`, {
+                options: colorOptions,
+                multiple: true,
+                placeholder: '选择颜色'
+            });
+
+            colorSelect.setValue(selectedColors);
+            colorSelect.onChange = (value) => {
+                updateExportRow(subtaskId, rowIndex, 'colors', value);
+            };
+
+            selectEl.dataset.initialized = 'true';
+            
+            // 将实例保存到DOM上，方便后续操作
+            selectEl._colorSelectInstance = colorSelect;
+        }
+
+        // ===== 添加汇出产品行 =====
+        function addExportRow(subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask) return;
+
+            if (!subtask.params.export_rows) {
+                subtask.params.export_rows = [];
+            }
+
+            const newRow = {
+                product_id: '',
+                sizes: [],
+                colors: []
+            };
+
+            subtask.params.export_rows.push(newRow);
+            const rowIndex = subtask.params.export_rows.length - 1;
+
+            const container = document.getElementById(`export-rows-container-${subtaskId}`);
+            if (container) {
+                const rowHtml = renderExportRow(subtaskId, rowIndex, newRow);
+                container.insertAdjacentHTML('beforeend', rowHtml);
+                
+                // 初始化新行的尺码和颜色选择器
+                setTimeout(() => {
+                    initExportRowSizeSelect(subtaskId, rowIndex, []);
+                    initExportRowColorSelect(subtaskId, rowIndex, []);
+                }, 0);
+            }
+
+            triggerAutoSave();
+        }
+
+        // ===== 更新汇出行数据 =====
+        function updateExportRow(subtaskId, rowIndex, field, value) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.export_rows) return;
+
+            if (subtask.params.export_rows[rowIndex]) {
+                subtask.params.export_rows[rowIndex][field] = value;
+                triggerAutoSave();
+            }
+        }
+
+        // ===== 全选汇出行颜色 =====
+        function selectAllExportColors(subtaskId, rowIndex) {
+            const selectEl = document.querySelector(`#export-colors-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || !selectEl._colorSelectInstance) return;
+
+            const allColors = ['AllBlack', 'AllWhite', 'Red', 'Blue', 'Green', 'Yellow', 'Pink', 'Purple', 'Orange', 'Gray', 'Brown', 'Navy', 'Beige'];
+            selectEl._colorSelectInstance.setValue(allColors);
+            updateExportRow(subtaskId, rowIndex, 'colors', allColors);
+        }
+
+        // ===== 清空汇出行颜色 =====
+        function clearExportColors(subtaskId, rowIndex) {
+            const selectEl = document.querySelector(`#export-colors-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || !selectEl._colorSelectInstance) return;
+
+            selectEl._colorSelectInstance.setValue([]);
+            updateExportRow(subtaskId, rowIndex, 'colors', []);
+        }
+
+        // ===== 显示删除汇出行确认弹窗 =====
+        let exportRowToDelete = null; // { subtaskId, rowIndex }
+
+        function showDeleteExportRowModal(subtaskId, rowIndex) {
+            exportRowToDelete = { subtaskId, rowIndex };
+            document.getElementById('deleteExportRowModal').classList.add('active');
+        }
+
+        // ===== 关闭删除汇出行弹窗 =====
+        function closeDeleteExportRowModal() {
+            document.getElementById('deleteExportRowModal').classList.remove('active');
+            exportRowToDelete = null;
+        }
+
+        // ===== 确认删除汇出行 =====
+        function confirmDeleteExportRow() {
+            if (!exportRowToDelete) return;
+            
+            const { subtaskId, rowIndex } = exportRowToDelete;
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.export_rows) return;
+
+            // 从数据中删除
+            subtask.params.export_rows.splice(rowIndex, 1);
+
+            // 重新渲染所有行
+            const container = document.getElementById(`export-rows-container-${subtaskId}`);
+            if (container) {
+                container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportRow(subtaskId, index, row)).join('');
+                
+                // 重新初始化所有尺码和颜色选择器
+                subtask.params.export_rows.forEach((row, index) => {
+                    setTimeout(() => {
+                        initExportRowSizeSelect(subtaskId, index, row.sizes || []);
+                        initExportRowColorSelect(subtaskId, index, row.colors || []);
+                    }, 0);
+                });
+            }
+
+            triggerAutoSave();
+            closeDeleteExportRowModal();
+            showNotification('已删除产品行', 'success', 2000);
+        }
+
+        // ===== 绑定删除汇出行按钮事件 =====
+        document.addEventListener('DOMContentLoaded', function() {
+            const confirmBtn = document.getElementById('confirmDeleteExportRowBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', confirmDeleteExportRow);
+            }
+        });
 
         // ===== 处理迪唯图库输入互斥 =====
         function handleDiweiGalleryInput(element, subtaskId, fieldName) {
@@ -801,10 +1095,11 @@
                 };
             } else if (type === 'diwei_auto_upload') {
                 defaultParams = {
-                    diwei_account: '',
+                    diwei_account: '测试',
                     operation: 'custom',
                     gallery_path: '',
-                    local_gallery_path: ''
+                    local_gallery_path: '',
+                    export_rows: []
                 };
             }
 
@@ -821,10 +1116,11 @@
                 if (!params.file_list) mergedParams.file_list = [];
                 if (!params.file_paths) mergedParams.file_paths = [];
             } else if (type === 'diwei_auto_upload') {
-                if (!params.diwei_account) mergedParams.diwei_account = '';
+                if (!params.diwei_account) mergedParams.diwei_account = '测试';
                 if (!params.operation) mergedParams.operation = 'custom';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
+                if (!params.export_rows) mergedParams.export_rows = [];
             }
 
             const subtask = {
@@ -949,6 +1245,7 @@
 
             // 如果是diwei_auto_upload类型，初始化SearchableSelect
             if (subtask.type === 'diwei_auto_upload') {
+                initDiweiAccountSelect(subtask);
                 initDiweiOperationSelect(subtask);
                 
                 // 初始化图库目录预览（如果操作是定制）
@@ -959,6 +1256,16 @@
                         input.value = val;
                         handleGalleryPathInput(input, subtask.id);
                     }
+                }
+
+                // 初始化汇出行尺码和颜色选择器（如果操作是汇出）
+                if (subtask.params.operation === 'export' && subtask.params.export_rows) {
+                    setTimeout(() => {
+                        subtask.params.export_rows.forEach((row, index) => {
+                            initExportRowSizeSelect(subtask.id, index, row.sizes || []);
+                            initExportRowColorSelect(subtask.id, index, row.colors || []);
+                        });
+                    }, 0);
                 }
             }
 
@@ -1395,15 +1702,14 @@
                 `;
             } else if (subtask.type === 'diwei_auto_upload') {
                 const isCustom = subtask.params.operation === 'custom';
+                const isExport = subtask.params.operation === 'export';
+                const exportRows = subtask.params.export_rows || [];
                 return `
                     <div class="dynamic-fields">
                         <div class="form-group">
                             <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
-                            <input type="text" class="form-control"
-                                   id="diwei-account-${subtask.id}"
-                                   placeholder="请输入迪唯账号"
-                                   value="${subtask.params.diwei_account || ''}"
-                                   oninput="updateSubtaskParam(${subtask.id}, 'diwei_account', this.value)">
+                            <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择迪唯账号"></div>
                         </div>
 
                         <div class="form-group">
@@ -1412,6 +1718,7 @@
                                  data-placeholder="选择操作"></div>
                         </div>
 
+                        <!-- 定制模式：图库目录输入 -->
                         <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'}; grid-column: span 2;">
                             <div class="form-group has-autocomplete" style="grid-column: span 1;">
                                 <label class="form-label">图库目录</label>
@@ -1440,6 +1747,16 @@
                                        value="${subtask.params.local_gallery_path || ''}"
                                        oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
                             </div>
+                        </div>
+
+                        <!-- 汇出模式：多行产品数据输入 -->
+                        <div id="export-fields-${subtask.id}" style="display: ${isExport ? 'block' : 'none'}; grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="export-rows-container" id="export-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
+                                ${exportRows.map((row, index) => renderExportRow(subtask.id, index, row)).join('')}
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addExportRow(${subtask.id})" style="width: 100%;">
+                                <i class="fas fa-plus"></i> 添加产品
+                            </button>
                         </div>
                     </div>
                 `;
