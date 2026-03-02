@@ -7,7 +7,7 @@ from amazon import (
 )
 from amazon.view import views_dashboard
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
-from amazon.view import views_rpa_sync, views_risk_keywords
+from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
 
 app_name = 'amazon'
 
@@ -82,5 +82,35 @@ urlpatterns = [
     path('api/amazon-risk-keywords/delete/', views_risk_keywords.RiskKeywordDeleteAPI.as_view(), name='api_amazon_risk_keywords_delete'),
     path('api/amazon-risk-keywords/options/', views_risk_keywords.RiskKeywordOptionsAPI.as_view(), name='api_amazon_risk_keywords_options'),
 
-
+ #=====Amazon Listing管理页面==============
+    path(
+        'amazon-listing-management/',
+        views_amazon_listing_management.views_amazon_listing_management,
+        name='amazon_listing_management'
+    ),
+    path(
+        'api/amazon-listing-management/list/',
+        views_amazon_listing_management.get_amazon_listing_management_list_api,
+        name='api_amazon_listing_management_list'
+    ),
+    path(
+        'api/amazon-listing-management/filter-options/',
+        views_amazon_listing_management.get_amazon_listing_management_filter_options_api,
+        name='api_amazon_listing_management_filter_options'
+    ),
+    path(
+        'api/amazon-listing-management/risk-stats/',
+        views_amazon_listing_management.get_amazon_listing_management_risk_stats_api,
+        name='api_amazon_listing_management_risk_stats'
+    ),
+    path(
+        'api/amazon-listing-management/batch-risk-check/',
+        views_amazon_listing_management.get_amazon_listing_batch_risk_check_api,
+        name='api_amazon_listing_batch_risk_check'
+    ),
+    path(
+        'api/amazon-listing-management/<int:listing_id>/word-sources/',
+        views_amazon_listing_management.get_amazon_listing_word_sources_api,
+        name='api_amazon_listing_word_sources'
+    ),
 ]

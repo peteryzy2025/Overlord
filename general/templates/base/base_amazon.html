@@ -46,6 +46,13 @@
             </a>
         </li>
         <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_listing_management' %}"
+               class="sidebar-link {% if active_page == 'amazon_listing_management' %}active{% endif %}">
+                <i class="fas fa-search sidebar-icon"></i>
+                <span>Listing侵权检测</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
             <a href="{% url 'amazon:amazon_performance_notifications' %}"
                class="sidebar-link {% if active_page == 'amazon_performance_notifications' %}active{% endif %}">
                 <i class="fas fa-bell sidebar-icon"></i>
