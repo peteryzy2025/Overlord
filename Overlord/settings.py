@@ -77,7 +77,8 @@ INSTALLED_APPS = [
     'shop_guard.apps.ShopGuardConfig',
     'inventory.apps.InventoryConfig',
     'data_req.apps.DataReqConfig',
-    'advertisement.apps.AdvertisementConfig'
+    'advertisement.apps.AdvertisementConfig',
+    'aba.apps.AbaConfig'
 ]
 
 MIDDLEWARE = [
@@ -126,14 +127,26 @@ DATABASES = {
         "HOST": "192.168.110.54",
         "PORT": "5432",
         # "PORT": "12763",
-
         "NAME": os.getenv('DB_NAME', 'overlord_db'),  # ✅ 数据库名
         "USER": os.getenv('DB_USER', 'track'),  # ✅ 用户名
         "PASSWORD": os.getenv('DB_PASSWORD'),  # ✅ 密码从环境变量读
         "CONN_MAX_AGE": 60,  # 连接池：长连接，单位秒（生产可调大一些）
         "ATOMIC_REQUESTS": True,  # 每个请求包裹在事务中（出错自动回滚）
     },
+    "aba_db": {
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": "192.168.110.54",
+        "PORT": "5432",
+        "NAME": os.getenv('ABA_DB_NAME', 'aba_db'),
+        "USER": os.getenv('DB_USER', 'track'),
+        "PASSWORD": os.getenv('DB_PASSWORD'),
+        "CONN_MAX_AGE": 60,
+        "ATOMIC_REQUESTS": True,
+    },
 }
+
+# 数据库路由配置
+DATABASE_ROUTERS = ['aba.routers.ABA_Router']
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -235,7 +235,7 @@ class EntityTypeMapping(models.Model):
 class TroTable(models.Model):
     """侵权词表,用于判断高/低风险"""
     id = models.AutoField(primary_key=True, verbose_name='ID')
-    theme_name = models.CharField(max_length=765, verbose_name='侵权词名')
+    theme_name = models.CharField(max_length=765, verbose_name='侵权词名', unique=True)
     replacement_word = models.CharField(
         max_length=765,
         verbose_name='建议替换词',
@@ -419,3 +419,5 @@ class NiceClassification(models.Model):
         else:
             self.category_type = 'service'
         super().save(*args, **kwargs)
+
+
