@@ -1,7 +1,7 @@
-{% extends 'base/base_amazon.html' %}
+﻿{% extends 'base/base_amazon.html' %}
 {% load static %}
 
-{% block title %}Amazon Listing 管理 - Divi智管{% endblock %}
+{% block title %}Amazon Listing &#31649;&#29702;{% endblock %}
 
 {% block extra_css %}
     <style>
@@ -98,7 +98,8 @@
             line-height: 1.1;
         }
 
-        .filter-section {
+        /* Keep filter controls aligned and prevent action buttons from wrapping. */
+        .amazon-listing-main .filter-section {
             background-color: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
@@ -107,80 +108,129 @@
             box-shadow: var(--shadow-light);
         }
 
-        .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            align-items: end;
+        .stats-card.stats-card-high {
+            border-left: 4px solid #EF4444;
         }
 
-        .filter-group {
+        .stats-card.stats-card-high .stats-content p {
+            color: #EF4444;
+        }
+
+        .stats-card.stats-card-medium {
+            border-left: 4px solid #ed8936;
+        }
+
+        .stats-card.stats-card-medium .stats-content p {
+            color: #ed8936;
+        }
+
+        .amazon-listing-main .filter-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            align-items: flex-end;
+        }
+
+        .amazon-listing-main .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
             min-width: 180px;
             flex: 1 1 180px;
         }
 
-        .filter-label {
-            display: block;
-            margin-bottom: 0.4rem;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        .form-control,
-        .form-select {
-            width: 100%;
-            padding: 0.56rem 0.7rem;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        .filter-actions {
+        .amazon-listing-main .filter-actions {
             display: flex;
-            align-items: end;
+            align-items: flex-end;
             gap: 0.5rem;
             flex: 0 0 auto;
+            align-self: flex-end;
         }
 
-        .table-container {
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            overflow-x: auto;
-            box-shadow: var(--shadow-light);
-        }
-
-        .table {
+        .amazon-listing-main #shopNameFilter,
+        .amazon-listing-main #groupFilter,
+        .amazon-listing-main #operatorFilter,
+        .amazon-listing-main #infringementFilter,
+        .amazon-listing-main #activeStatusFilter {
             width: 100%;
-            border-collapse: collapse;
         }
 
-        .table thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            font-weight: 700;
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.75rem;
+        .amazon-listing-main .table-container {
+            overflow-x: auto;
+            max-height: 700px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        #listingTable {
+            min-width: 1685px;
+            table-layout: fixed;
+        }
+
+        #listingTable th,
+        #listingTable td {
+            vertical-align: middle;
+        }
+
+        #listingTable th:nth-child(1),
+        #listingTable td:nth-child(1) {
+            width: 45px;
+            min-width: 45px;
+        }
+
+        #listingTable th:nth-child(2),
+        #listingTable td:nth-child(2) {
+            width: 180px;
+            min-width: 180px;
+        }
+
+        #listingTable th:nth-child(3),
+        #listingTable td:nth-child(3) {
+            width: 180px;
+            min-width: 180px;
+        }
+
+        #listingTable th:nth-child(4),
+        #listingTable td:nth-child(4) {
+            width: 180px;
+            min-width: 180px;
+        }
+
+        #listingTable th:nth-child(5),
+        #listingTable td:nth-child(5) {
+            width: 120px;
+            min-width: 120px;
+        }
+
+        #listingTable th:nth-child(6),
+        #listingTable td:nth-child(6) {
+            width: 380px;
+            min-width: 380px;
             text-align: left;
-            white-space: nowrap;
-            font-size: 0.84rem;
         }
 
-        .table tbody td {
-            border-bottom: 1px solid var(--border-color);
-            padding: 0.7rem;
-            font-size: 0.84rem;
-            color: var(--text-primary);
-            vertical-align: top;
+        #listingTable th:nth-child(7),
+        #listingTable td:nth-child(7) {
+            width: 110px;
+            min-width: 110px;
         }
 
-        .table tbody tr:hover {
-            background-color: var(--bg-secondary);
+        #listingTable th:nth-child(8),
+        #listingTable td:nth-child(8) {
+            width: 220px;
+            min-width: 220px;
+        }
+
+        #listingTable th:nth-child(9),
+        #listingTable td:nth-child(9) {
+            width: 220px;
+            min-width: 220px;
+        }
+
+        #listingTable th:nth-child(10),
+        #listingTable td:nth-child(10) {
+            width: 110px;
+            min-width: 110px;
         }
 
         .cell-truncate {
@@ -208,11 +258,33 @@
             color: #92400e;
         }
 
+        .risk-low {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
         .word-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 0.25rem;
             max-width: 260px;
+        }
+
+        .ops-info-cell {
+            line-height: 1.35;
+        }
+
+        .ops-group-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            display: block;
+        }
+
+        .ops-operator-text {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            display: block;
         }
 
         .word-tag {
@@ -247,56 +319,6 @@
         .btn-view:hover {
             border-color: var(--accent-color);
             color: var(--accent-color);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem 1rem;
-            color: var(--text-secondary);
-        }
-
-        .pagination-container {
-            margin-top: 0.9rem;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.8rem;
-            flex-wrap: wrap;
-        }
-
-        .pagination-info {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 0.65rem;
-        }
-
-        .pagination-buttons {
-            display: flex;
-            gap: 0.35rem;
-            flex-wrap: wrap;
-        }
-
-        .pagination-btn {
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            border-radius: 8px;
-            min-width: 34px;
-            padding: 0.35rem 0.55rem;
-            cursor: pointer;
-        }
-
-        .pagination-btn.active {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-            color: #fff;
-        }
-
-        .pagination-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
         }
 
         .modal-overlay {
@@ -403,7 +425,7 @@
     <div class="loading-overlay" id="listingLoadingOverlay">
         <div class="loading-content">
             <div class="spinner"></div>
-            <span>数据加载中...</span>
+            <span>&#25968;&#25454;&#21152;&#36733;&#20013;...</span>
         </div>
     </div>
 
@@ -413,14 +435,12 @@
                 <div>
                     <h1 class="page-title">
                         <i class="fas fa-list-alt" style="color: #2563eb;"></i>
-                        Amazon Listing 管理
-                    </h1>
-                    <p class="page-subtitle">查看 Listing 侵权风险并追踪词来源</p>
+                        Amazon Listing &#31649;&#29702;</h1>
+                    <p class="page-subtitle">&#26597;&#30475; Listing &#20405;&#26435;&#39118;&#38505;&#24182;&#36861;&#36394;&#35789;&#26469;&#28304;</p>
                 </div>
                 <div style="display: flex; gap: 0.5rem;">
                     <button class="btn" onclick="refreshData(event)">
-                        <i class="fas fa-sync-alt"></i> 刷新
-                    </button>
+                        <i class="fas fa-sync-alt"></i> &#21047;&#26032;</button>
                 </div>
             </div>
 
@@ -428,21 +448,21 @@
             <div class="stats-card">
                 <i class="fas fa-list stats-icon"></i>
                 <div class="stats-content">
-                    <h4>Listing 总数</h4>
+                    <h4>Listing &#24635;&#25968;</h4>
                     <p id="totalCount">0</p>
                 </div>
             </div>
-            <div class="stats-card">
+            <div class="stats-card stats-card-high">
                 <i class="fas fa-exclamation-triangle stats-icon"></i>
                 <div class="stats-content">
-                    <h4>高风险</h4>
+                    <h4>&#39640;&#39118;&#38505;</h4>
                     <p id="highCount">0</p>
                 </div>
             </div>
-            <div class="stats-card">
+            <div class="stats-card stats-card-medium">
                 <i class="fas fa-shield-alt stats-icon"></i>
                 <div class="stats-content">
-                    <h4>中风险</h4>
+                    <h4>&#20013;&#39118;&#38505;</h4>
                     <p id="mediumCount">0</p>
                 </div>
             </div>
@@ -451,31 +471,34 @@
         <div class="filter-section">
             <div class="filter-row">
                 <div class="filter-group">
-                    <label class="filter-label">领星店铺</label>
-                    <input type="text" class="form-control" id="shopNameFilter" placeholder="输入店铺名（模糊查询）">
+                    <label class="filter-label">&#39046;&#26143;&#24215;&#38138;</label>
+                    <div id="shopNameFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#39046;&#26143;&#24215;&#38138;"></div>
                 </div>
                 <div class="filter-group">
-                    <label class="filter-label">负责人</label>
-                    <input type="text" class="form-control" id="shopOwnerFilter" placeholder="输入负责人（模糊查询）">
+                    <label class="filter-label">&#36816;&#33829;&#20998;&#32452;</label>
+                    <div id="groupFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#36816;&#33829;&#20998;&#32452;"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">&#36816;&#33829;&#20154;&#21592;</label>
+                    <div id="operatorFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#36816;&#33829;&#20154;&#21592;"></div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">ASIN</label>
-                    <input type="text" class="form-control" id="asinFilter" placeholder="输入 ASIN 关键字">
+                    <input type="text" class="form-control" id="asinFilter" placeholder="&#36755;&#20837; ASIN &#20851;&#38190;&#23383;">
                 </div>
                 <div class="filter-group">
-                    <label class="filter-label">风险等级</label>
-                    <select class="form-select" id="infringementFilter">
-                        <option value="">全部</option>
-                        <option value="high">高风险</option>
-                        <option value="medium">中风险</option>
-                        <option value="low">低风险</option>
-                    </select>
+                    <label class="filter-label">&#39118;&#38505;&#31561;&#32423;</label>
+                    <div id="infringementFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#39118;&#38505;&#31561;&#32423;"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">&#22312;&#21806;&#29366;&#24577;</label>
+                    <div id="activeStatusFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#22312;&#21806;&#29366;&#24577;"></div>
                 </div>
                 <div class="filter-actions">
-                    <button class="btn" onclick="applyFilters()">
+                    <button class="btn gs-filter-action-btn gs-filter-search-btn" onclick="applyFilters()">
                         <i class="fas fa-search"></i>
                     </button>
-                    <button class="btn btn-secondary" onclick="resetFilters(event)">
+                    <button class="btn gs-filter-action-btn gs-filter-reset-btn" onclick="resetFilters(event)">
                         <i class="fas fa-redo"></i>
                     </button>
                 </div>
@@ -483,43 +506,57 @@
         </div>
 
         <div class="table-container">
-            <table class="table">
+            <table class="table" id="listingTable">
                 <thead>
                     <tr>
-                        <th>Amazon店铺</th>
-                        <th>领星店铺</th>
-                        <th>负责人</th>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>Amazon&#24215;&#38138;</th>
+                        <th>&#39046;&#26143;&#24215;&#38138;</th>
+                        <th>&#36816;&#33829;&#20998;&#32452;/&#20154;&#21592;</th>
                         <th>ASIN</th>
-                        <th>标题</th>
-                        <th>风险等级</th>
-                        <th>高风险词</th>
-                        <th>中风险词</th>
-                        <th>操作</th>
+                        <th>&#26631;&#39064;</th>
+                        <th>&#39118;&#38505;&#31561;&#32423;</th>
+                        <th>&#39640;&#39118;&#38505;&#35789;</th>
+                        <th>&#20013;&#39118;&#38505;&#35789;</th>
+                        <th>&#25805;&#20316;</th>
                     </tr>
                 </thead>
                 <tbody id="listingTableBody">
                     <tr>
-                        <td colspan="9" class="empty-state">
+                        <td colspan="10" class="empty-state">
                             <i class="fas fa-info-circle"></i>
-                            <p>点击查询后加载 Listing 数据</p>
+                            <p>&#28857;&#20987;&#26597;&#35810;&#21518;&#21152;&#36733; Listing &#25968;&#25454;</p>
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <div class="pagination-container" id="paginationContainer">
-            <div class="pagination-info">
-                <span>每页显示</span>
-                <select class="form-select" id="pageSizeSelect" style="width: 82px;" onchange="changePageSize()">
-                    <option value="10">10</option>
-                    <option value="20" selected>20</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                </select>
-                <span id="paginationStats">0</span>
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">&#27599;&#39029;&#26174;&#31034;&#65306;</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20&#26465;</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10&#26465;</div>
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20&#26465;</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50&#26465;</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100&#26465;</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats">0-0 / &#20849; 0 &#26465;</span>
+                </div>
             </div>
-            <div class="pagination-buttons" id="paginationButtons"></div>
+            <div class="pagination-new" id="paginationButtons"></div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>&#36339;&#33267;</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="&#39029;&#30721;" onkeypress="handlePageJump(event)">
+                <span>&#39029;</span>
+            </div>
         </div>
     </div>
 
@@ -528,7 +565,7 @@
                 <div class="modal-header">
                     <h2 class="modal-title">
                         <i class="fas fa-search" style="color: var(--accent-color); margin-right: 0.35rem;"></i>
-                        侵权词来源详情
+                        &#20405;&#26435;&#35789;&#26469;&#28304;&#35814;&#24773;
                     </h2>
                     <button class="modal-close" onclick="closeWordSourceModal()">&times;</button>
                 </div>
@@ -538,26 +575,27 @@
                         <div id="sourceModalAsin" style="font-weight: 700; color: var(--text-primary);"></div>
                     </div>
                     <div style="margin-bottom: 1rem;">
-                        <div style="font-size: 0.86rem; color: var(--text-secondary);">标题</div>
+                        <div style="font-size: 0.86rem; color: var(--text-secondary);">&#26631;&#39064;</div>
                         <div id="sourceModalTitle" style="color: var(--text-primary); line-height: 1.5;"></div>
                     </div>
                     <table class="source-table">
                         <thead>
                             <tr>
-                                <th>词</th>
-                                <th>风险</th>
-                                <th>来源</th>
+                                <th>&#35789;</th>
+                                <th>&#39118;&#38505;</th>
+                                <th>&#26469;&#28304;</th>
+                                <th>&#20405;&#26435;&#31867;&#22411;</th>
                             </tr>
                         </thead>
                         <tbody id="sourceTableBody">
                             <tr>
-                                <td colspan="3" class="empty-state">暂无来源数据</td>
+                                <td colspan="4" class="empty-state">&#26242;&#26080;&#26469;&#28304;&#25968;&#25454;</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="closeWordSourceModal()">关闭</button>
+                    <button class="btn btn-secondary" onclick="closeWordSourceModal()">&#20851;&#38381;</button>
                 </div>
             </div>
         </div>
@@ -565,445 +603,7 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script src="{% static 'js/general_style_1.js' %}"></script>
-    <script>
-        let currentFilters = {
-            shop_name: '',
-            shop_owner: '',
-            asin: '',
-            infringement: ''
-        };
-
-        let listPagination = {
-            page: 1,
-            page_size: 20,
-            total: 0,
-            total_pages: 0
-        };
-        let pageTitles = new Set();
-
-        function getCookie(name) {
-            const cookieValue = document.cookie
-                .split('; ')
-                .find(row => row.startsWith(name + '='));
-            return cookieValue ? decodeURIComponent(cookieValue.split('=')[1]) : '';
-        }
-
-        function showLoading(show) {
-            const overlay = document.getElementById('listingLoadingOverlay');
-            if (!overlay) return;
-            overlay.style.display = show ? 'flex' : 'none';
-        }
-
-        function showToast(message, type) {
-            if (window.showNotification) {
-                window.showNotification(message, type || 'info');
-            } else {
-                console.log(message);
-            }
-        }
-
-        function getFiltersFromUI() {
-            return {
-                shop_name: document.getElementById('shopNameFilter').value.trim(),
-                shop_owner: document.getElementById('shopOwnerFilter').value.trim(),
-                asin: document.getElementById('asinFilter').value.trim(),
-                infringement: document.getElementById('infringementFilter').value.trim()
-            };
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text || '';
-            return div.innerHTML;
-        }
-
-        function normalizeTitle(text) {
-            if (!text) return '';
-            return String(text).trim().replace(/"/g, '').replace(/''/g, "'").toLowerCase();
-        }
-
-        function renderRiskBadge(level) {
-            if (level === 'high') return '<span class="risk-badge risk-high">高风险</span>';
-            if (level === 'medium') return '<span class="risk-badge risk-medium">中风险</span>';
-            if (level === 'low') return '<span class="risk-badge">低风险</span>';
-            return '<span class="risk-badge">-</span>';
-        }
-
-        function renderWordTags(words, level) {
-            if (!words || words.length === 0) {
-                return '<span style="color: var(--text-secondary);">-</span>';
-            }
-            const css = level === 'high' ? 'high' : 'medium';
-            return `<div class="word-tags">${words.map(word => `<span class="word-tag ${css}">${escapeHtml(word)}</span>`).join('')}</div>`;
-        }
-
-        function renderStats(stats) {
-            const safeStats = stats || {};
-            document.getElementById('totalCount').textContent = safeStats.total_count || 0;
-            document.getElementById('highCount').textContent = safeStats.high_count == null ? '-' : safeStats.high_count;
-            document.getElementById('mediumCount').textContent = safeStats.medium_count == null ? '-' : safeStats.medium_count;
-        }
-
-        function renderListingTable(rows) {
-            const tbody = document.getElementById('listingTableBody');
-            pageTitles = new Set();
-            if (!rows || rows.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="9" class="empty-state">
-                            <i class="fas fa-inbox"></i>
-                            <p>暂无匹配的 Listing</p>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = rows.map(row => {
-                const title = row.title || '';
-                if (title) pageTitles.add(title);
-                const encodedTitle = encodeURIComponent(title);
-                return `
-                <tr data-title="${encodedTitle}">
-                    <td>${escapeHtml(row.amazon_shop_name || '-')}</td>
-                    <td>${escapeHtml(row.shop_name || '-')}</td>
-                    <td>${escapeHtml(row.shop_owner || '-')}</td>
-                    <td>${escapeHtml(row.asin || '-')}</td>
-                    <td class="cell-truncate" title="${escapeHtml(title)}">${escapeHtml(title || '-')}</td>
-                    <td><span class="loading-level" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
-                    <td><span class="loading-risk-high" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
-                    <td><span class="loading-risk-medium" data-title="${encodedTitle}"><i class="fas fa-spinner fa-spin text-muted"></i></span></td>
-                    <td>
-                        <button class="btn-view" onclick="viewWordSources(${row.id}, event)">
-                            <i class="fas fa-eye"></i> 查看
-                        </button>
-                    </td>
-                </tr>
-            `;
-            }).join('');
-
-            if (pageTitles.size > 0) {
-                fetchRiskData(Array.from(pageTitles));
-            }
-        }
-
-        async function fetchRiskData(titles) {
-            try {
-                const csrfToken = getCookie('csrftoken');
-                const response = await fetch('/api/amazon-listing-management/batch-risk-check/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({ titles: titles })
-                });
-
-                const result = await response.json();
-                if (response.ok && result.success && result.data) {
-                    updateRiskCells(result.data);
-                }
-            } catch (error) {
-                console.error('batch risk check failed', error);
-            }
-        }
-
-        function updateRiskCells(riskData) {
-            let highCount = 0;
-            let mediumCount = 0;
-
-            document.querySelectorAll('.loading-level').forEach(el => {
-                const title = decodeURIComponent(el.getAttribute('data-title') || '');
-                let data = riskData[title];
-                if (!data) {
-                    const norm = normalizeTitle(title);
-                    for (const key in riskData) {
-                        if (normalizeTitle(key) === norm) {
-                            data = riskData[key];
-                            break;
-                        }
-                    }
-                }
-                const level = (data && data.theme_risk_level) ? data.theme_risk_level : 'low';
-                if (level === 'high') highCount += 1;
-                else if (level === 'medium') mediumCount += 1;
-                const row = el.closest('tr');
-                if (row) row.setAttribute('data-risk-level', level);
-                el.outerHTML = renderRiskBadge(level);
-            });
-
-            document.querySelectorAll('.loading-risk-high').forEach(el => {
-                const title = decodeURIComponent(el.getAttribute('data-title') || '');
-                let data = riskData[title];
-                if (!data) {
-                    const norm = normalizeTitle(title);
-                    for (const key in riskData) {
-                        if (normalizeTitle(key) === norm) {
-                            data = riskData[key];
-                            break;
-                        }
-                    }
-                }
-                const words = (data && data.high_risk_words) ? data.high_risk_words : [];
-                el.outerHTML = renderWordTags(words, 'high');
-            });
-
-            document.querySelectorAll('.loading-risk-medium').forEach(el => {
-                const title = decodeURIComponent(el.getAttribute('data-title') || '');
-                let data = riskData[title];
-                if (!data) {
-                    const norm = normalizeTitle(title);
-                    for (const key in riskData) {
-                        if (normalizeTitle(key) === norm) {
-                            data = riskData[key];
-                            break;
-                        }
-                    }
-                }
-                const words = (data && data.medium_risk_words) ? data.medium_risk_words : [];
-                el.outerHTML = renderWordTags(words, 'medium');
-            });
-
-            document.getElementById('highCount').textContent = highCount;
-            document.getElementById('mediumCount').textContent = mediumCount;
-            applyCurrentRiskFilterOnPage();
-        }
-
-        function applyCurrentRiskFilterOnPage() {
-            const levelFilter = (currentFilters.infringement || '').trim().toLowerCase();
-            if (!levelFilter) {
-                document.querySelectorAll('#listingTableBody tr').forEach(row => {
-                    row.style.display = '';
-                });
-                return;
-            }
-
-            document.querySelectorAll('#listingTableBody tr').forEach(row => {
-                const rowLevel = (row.getAttribute('data-risk-level') || '').toLowerCase();
-                row.style.display = rowLevel === levelFilter ? '' : 'none';
-            });
-        }
-
-        function renderPagination() {
-            const container = document.getElementById('paginationContainer');
-            const buttons = document.getElementById('paginationButtons');
-            const stats = document.getElementById('paginationStats');
-            const { page, page_size, total, total_pages } = listPagination;
-
-            if (!total || !total_pages) {
-                container.style.display = 'none';
-                buttons.innerHTML = '';
-                stats.textContent = '0';
-                return;
-            }
-
-            container.style.display = 'flex';
-            const start = (page - 1) * page_size + 1;
-            const end = Math.min(page * page_size, total);
-            stats.textContent = `${start}-${end} / ${total}`;
-
-            let html = '';
-            html += `<button class="pagination-btn" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
-
-            const maxButtons = 7;
-            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
-            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-            }
-
-            html += `<button class="pagination-btn" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
-            buttons.innerHTML = html;
-        }
-
-        async function loadListings() {
-            showLoading(true);
-            try {
-                const csrfToken = getCookie('csrftoken');
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 20000);
-                let response;
-                try {
-                    response = await fetch('/api/amazon-listing-management/list/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        },
-                        signal: controller.signal,
-                        body: JSON.stringify({
-                            ...currentFilters,
-                            page: listPagination.page,
-                            page_size: listPagination.page_size
-                        })
-                    });
-                } finally {
-                    clearTimeout(timeoutId);
-                }
-
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Request failed');
-                }
-
-                const data = result.data || {};
-                if (data.server_timing_ms) {
-                    console.info('listing list api timing(ms):', data.server_timing_ms);
-                }
-                listPagination.total = data.total || 0;
-                listPagination.total_pages = data.total_pages || 0;
-                listPagination.page = data.page || 1;
-
-                renderStats(data.stats);
-                renderListingTable(data.listings || []);
-                renderPagination();
-            } catch (error) {
-                renderListingTable([]);
-                renderPagination();
-                if (error.name === 'AbortError') {
-                    showToast('列表请求超时（20秒），请重试或缩小筛选范围。', 'error');
-                } else {
-                    showToast('加载 Listing 失败：' + error.message, 'error');
-                }
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function applyFilters() {
-            currentFilters = getFiltersFromUI();
-            listPagination.page = 1;
-            await loadListings();
-        }
-
-        async function refreshData(event) {
-            const btn = event.currentTarget;
-            const icon = btn.querySelector('i');
-            icon.className = 'fas fa-spinner fa-spin';
-            await loadListings();
-            icon.className = 'fas fa-sync-alt';
-        }
-
-        async function resetFilters(event) {
-            event.preventDefault();
-            document.getElementById('shopNameFilter').value = '';
-            document.getElementById('shopOwnerFilter').value = '';
-            document.getElementById('asinFilter').value = '';
-            document.getElementById('infringementFilter').value = '';
-            currentFilters = {
-                shop_name: '',
-                shop_owner: '',
-                asin: '',
-                infringement: ''
-            };
-            listPagination.page = 1;
-            await loadListings();
-        }
-
-        async function viewWordSources(listingId, event) {
-            const btn = event.currentTarget;
-            const icon = btn.querySelector('i');
-            icon.className = 'fas fa-spinner fa-spin';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch(`/api/amazon-listing-management/${listingId}/word-sources/`);
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    throw new Error(result.message || '加载来源详情失败');
-                }
-                renderSourceModal(result.data || {});
-                document.getElementById('wordSourceModal').style.display = 'flex';
-            } catch (error) {
-                showToast('加载来源失败：' + error.message, 'error');
-            } finally {
-                btn.disabled = false;
-                icon.className = 'fas fa-eye';
-            }
-        }
-
-        function renderSourceBadge(sourceName) {
-            if (sourceName === 'tro_words') {
-                return '<span class="source-badge tro">来源：侵权词库</span>';
-            }
-            if (sourceName === 'trademarks') {
-                return '<span class="source-badge tm">来源：美标网</span>';
-            }
-            return '<span class="source-badge none">来源：未匹配</span>';
-        }
-
-        function renderSourceModal(data) {
-            document.getElementById('sourceModalAsin').textContent = data.asin || '-';
-            document.getElementById('sourceModalTitle').textContent = data.title || '-';
-
-            const rows = data.word_sources || [];
-            const tbody = document.getElementById('sourceTableBody');
-            if (!rows.length) {
-                tbody.innerHTML = `<tr><td colspan="3" class="empty-state">该 Listing 暂无风险词。</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = rows.map(row => {
-                const sources = row.sources && row.sources.length
-                    ? row.sources.map(renderSourceBadge).join('')
-                    : renderSourceBadge('');
-                const level = row.risk_level === 'high'
-                    ? '<span class="risk-badge risk-high">高风险</span>'
-                    : '<span class="risk-badge risk-medium">中风险</span>';
-                return `
-                    <tr>
-                        <td>${escapeHtml(row.word || '-')}</td>
-                        <td>${level}</td>
-                        <td>${sources}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function closeWordSourceModal() {
-            document.getElementById('wordSourceModal').style.display = 'none';
-            document.getElementById('sourceModalAsin').textContent = '';
-            document.getElementById('sourceModalTitle').textContent = '';
-            document.getElementById('sourceTableBody').innerHTML = '<tr><td colspan="3" class="empty-state">暂无来源数据</td></tr>';
-        }
-
-        function goToPage(targetPage) {
-            if (targetPage < 1 || targetPage > listPagination.total_pages || targetPage === listPagination.page) {
-                return;
-            }
-            listPagination.page = targetPage;
-            loadListings();
-        }
-
-        function changePageSize() {
-            const size = parseInt(document.getElementById('pageSizeSelect').value, 10) || 20;
-            listPagination.page_size = size;
-            listPagination.page = 1;
-            loadListings();
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            document.getElementById('shopNameFilter').addEventListener('keyup', function (event) {
-                if (event.key === 'Enter') applyFilters();
-            });
-            document.getElementById('shopOwnerFilter').addEventListener('keyup', function (event) {
-                if (event.key === 'Enter') applyFilters();
-            });
-            document.getElementById('asinFilter').addEventListener('keyup', function (event) {
-                if (event.key === 'Enter') applyFilters();
-            });
-
-            const modal = document.getElementById('wordSourceModal');
-            modal.addEventListener('click', function (event) {
-                if (event.target === modal) closeWordSourceModal();
-            });
-
-            loadListings();
-        });
-    </script>
+    <script src="{% static 'js/amazon_listing_management_page.js' %}"></script>
 {% endblock %}

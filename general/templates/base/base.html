@@ -734,7 +734,7 @@
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_listing_management' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
                    href="{% url 'amazon:amazon_order_management' %}">
                     Amazon
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -742,6 +742,9 @@
                 <div class="nav-dropdown">
                     <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-item">
                         <i class="fas fa-shopping-cart"></i> 订单管理
+                    </a>
+                    <a href="{% url 'amazon:amazon_listing_management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-search"></i> Listing侵权检测
                     </a>
                     <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-item">
                         <i class="fas fa-bell"></i> 绩效通知
