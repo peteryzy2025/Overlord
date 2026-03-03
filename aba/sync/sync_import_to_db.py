@@ -391,6 +391,6 @@ def main(report_date: str = "2026-02-15"):
 if __name__ == '__main__':
     # 默认导入 2026-02-15 的数据
     # 如需导入其他日期，修改参数即可：main("2026-02-08")
-    result = main("2026-02-15")
+    result = main("2026-02-22")
     if not result:
         sys.exit(1)

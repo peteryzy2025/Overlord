@@ -138,6 +138,6 @@ async def down_aba(data_start_time: str):
 
 
 if __name__ == "__main__":
-    result = asyncio.run(down_aba("2026-02-15"))
+    result = asyncio.run(down_aba("2026-02-08"))
     if not result:
         exit(1)

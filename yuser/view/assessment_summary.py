@@ -1,23 +1,21 @@
 # yuser/view/assessment_summary.py
 
 import io
-from datetime import datetime
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Prefetch, Sum
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from yuser.view_assessment_management import AssessmentManagementView
 from yuser.models import PerformanceAssessment
-from general.models import User
 
 
 @method_decorator(login_required, name='dispatch')
-class AssessmentSummaryView(View):
+class AssessmentSummaryView(AssessmentManagementView, View):
     """考核成绩汇总页面"""
 
     def get_weight(self, assess_type):
@@ -30,46 +28,36 @@ class AssessmentSummaryView(View):
             return Decimal('0.3'), Decimal('0.7')
 
     def calculate_weighted_scores(self, assessment):
-        """计算加权后的分数"""
+        """按详情页同口径拆分三项分数"""
         kpi_weight, behavior_weight = self.get_weight(assessment.assess_type)
+        details_dict = {d.item_key: Decimal(str(d.score_value)) for d in assessment.score_details.all()}
 
-        performance_raw = 0
-        accident_score = 0
-        behavior_raw = 0
-        bonus_score = 0
+        # 与 /assessment/<int>/ 一致：业绩分由 achievement_rate 动态计算，而不是读取 detail.performance_score
+        performance_raw = Decimal(str(self.calculate_performance_score(assessment)))
+        accident_score = details_dict.get('accident_score', Decimal('0'))
 
-        for detail in assessment.score_details.all():
-            if detail.item_key == 'performance_score':
-                performance_raw = float(detail.score_value)
-            elif detail.item_key == 'accident_score':
-                accident_score = float(detail.score_value)
-            elif detail.item_key in ['extra_bonus', 'shop_activation']:
-                bonus_score += float(detail.score_value)
-            else:
-                behavior_raw += float(detail.score_value)
+        behavior_raw = sum(
+            score for key, score in details_dict.items()
+            if key not in {'performance_score', 'accident_score', 'extra_bonus', 'shop_activation'}
+        )
 
-        performance_weighted = (performance_raw + accident_score) * float(kpi_weight)
-        behavior_weighted = behavior_raw * float(behavior_weight)
+        extra_bonus = details_dict.get('extra_bonus', Decimal('0'))
+        shop_activation = details_dict.get('shop_activation', Decimal('0'))
+        bonus_score = extra_bonus + shop_activation
+
+        performance_weighted = (performance_raw + accident_score) * kpi_weight
+        behavior_weighted = behavior_raw * behavior_weight
 
         return {
-            'performance_score': round(performance_weighted, 2),
-            'behavior_score': round(behavior_weighted, 2),
-            'bonus_score': round(bonus_score, 2),
+            'performance_score': round(float(performance_weighted), 2),
+            'behavior_score': round(float(behavior_weighted), 2),
+            'bonus_score': round(float(bonus_score), 2),
         }
 
-    def get(self, request):
-        """渲染汇总页面"""
-        # 权限检查：只有555管理员可以访问
-        if not request.user.permission_configs.filter(code=555).exists():
-            return JsonResponse({'success': False, 'message': '无权限访问'}, status=403)
-
-        month = request.GET.get('month', '')
-
+    def _get_assessments_queryset(self, request, month=''):
         assessments = PerformanceAssessment.objects.select_related(
             'employee', 'employee__operational_account'
-        ).prefetch_related(
-            Prefetch('score_details', to_attr='score_details_list')
-        ).filter(
+        ).prefetch_related('score_details').filter(
             employee__company=request.user.company,
             status=PerformanceAssessment.STATUS_CONFIRMED
         )
@@ -77,47 +65,41 @@ class AssessmentSummaryView(View):
         if month:
             assessments = assessments.filter(month=month)
 
-        # 按小组、姓名排序
-        assessments = assessments.order_by(
+        return assessments.order_by(
             'employee__operational_account__ops_group',
             'employee__first_name',
             'assess_type'
         )
 
-        # 按小组分组处理
+    def _group_assessments(self, assessments):
         grouped_data = {}
         for assessment in assessments:
             ops_group = assessment.employee.operational_account.ops_group if hasattr(
                 assessment.employee, 'operational_account') and assessment.employee.operational_account else '未分组'
 
             if ops_group not in grouped_data:
-                grouped_data[ops_group] = {
-                    'leader': None,
-                    'members': []
-                }
+                grouped_data[ops_group] = {'leader': None, 'members': []}
 
-            # 判断是否是组长
             if assessment.employee.role == '运营组长':
                 grouped_data[ops_group]['leader'] = assessment
             else:
                 grouped_data[ops_group]['members'].append(assessment)
+        return grouped_data
 
-        # 构建最终数据列表（包含组长汇总行）
+    def _build_summary_rows(self, grouped_data):
         data_list = []
         for ops_group, group_data in grouped_data.items():
             leader = group_data['leader']
             members = group_data['members']
 
-            # 计算组汇总数据
             group_target = sum(m.target_orders for m in members) if members else 0
             group_actual = sum(m.actual_orders for m in members) if members else 0
             group_rate = (group_actual / group_target * 100) if group_target > 0 else 0
             group_achieved = '是' if group_rate >= 100 else '否'
 
-            # 添加组长汇总行
             data_list.append({
                 'id': None,
-                'is_leader_row': True,  # 标记为组长行
+                'is_leader_row': True,
                 'employee_name': leader.employee.first_name if leader else ops_group,
                 'role': '运营组长',
                 'ops_group': ops_group,
@@ -132,7 +114,6 @@ class AssessmentSummaryView(View):
                 'bonus_score': '-',
             })
 
-            # 添加组员明细行
             for assessment in members:
                 scores = self.calculate_weighted_scores(assessment)
                 is_achieved = '是' if assessment.actual_orders >= assessment.target_orders else '否'
@@ -154,9 +135,7 @@ class AssessmentSummaryView(View):
                     'bonus_score': scores['bonus_score'],
                 })
 
-            # 如果组长本身也有个人考核（非组长身份），单独显示
             if leader and leader.employee.role == '运营组长':
-                # 检查是否已经在members中（通过ID判断）
                 leader_in_members = any(m.id == leader.id for m in members)
                 if not leader_in_members:
                     scores = self.calculate_weighted_scores(leader)
@@ -177,6 +156,19 @@ class AssessmentSummaryView(View):
                         'behavior_score': scores['behavior_score'],
                         'bonus_score': scores['bonus_score'],
                     })
+        return data_list
+
+    def get(self, request):
+        """渲染汇总页面"""
+        # 权限检查：只有555管理员可以访问
+        if not request.user.permission_configs.filter(code=555).exists():
+            return JsonResponse({'success': False, 'message': '无权限访问'}, status=403)
+
+        month = request.GET.get('month', '')
+
+        assessments = self._get_assessments_queryset(request, month=month)
+        grouped_data = self._group_assessments(assessments)
+        data_list = self._build_summary_rows(grouped_data)
 
         context = {
             'active_page': 'assessment_summary',
@@ -205,31 +197,9 @@ class AssessmentSummaryView(View):
         file_name = f"{year}年{mon}月运营部kpi考核成绩汇总.xlsx"
         big_title = f"{year}年{mon}月考核成绩汇总"
 
-        assessments = PerformanceAssessment.objects.select_related(
-            'employee', 'employee__operational_account'
-        ).prefetch_related('score_details').filter(
-            employee__company=request.user.company,
-            status=PerformanceAssessment.STATUS_CONFIRMED,
-            month=month
-        ).order_by(
-            'employee__operational_account__ops_group',
-            'employee__first_name',
-            'assess_type'
-        )
-
-        # 按小组分组处理
-        grouped_data = {}
-        for assessment in assessments:
-            ops_group = assessment.employee.operational_account.ops_group if hasattr(
-                assessment.employee, 'operational_account') and assessment.employee.operational_account else '未分组'
-
-            if ops_group not in grouped_data:
-                grouped_data[ops_group] = {'leader': None, 'members': []}
-
-            if assessment.employee.role == '运营组长':
-                grouped_data[ops_group]['leader'] = assessment
-            else:
-                grouped_data[ops_group]['members'].append(assessment)
+        assessments = self._get_assessments_queryset(request, month=month)
+        grouped_data = self._group_assessments(assessments)
+        data_list = self._build_summary_rows(grouped_data)
 
         wb = Workbook()
         ws = wb.active
@@ -313,122 +283,46 @@ class AssessmentSummaryView(View):
         # ========== 填充数据（从第4行开始） ==========
         row = 4
         idx = 1
-        for ops_group, group_data in grouped_data.items():
-            leader = group_data['leader']
-            members = group_data['members']
+        for item in data_list:
+            is_leader_row = item['is_leader_row']
+            final_score_val = item['final_score']
 
-            # 组长汇总行
-            group_target = sum(m.target_orders for m in members) if members else 0
-            group_actual = sum(m.actual_orders for m in members) if members else 0
-            group_achieved = '是' if group_actual >= group_target else '否'
-
-            leader_data = [
+            data = [
                 idx,
-                leader.employee.first_name if leader else ops_group,
-                '运营组长',
-                '-',
-                group_target,
-                group_actual,
-                group_achieved,
-                '-', '-', '-'
+                item['employee_name'],
+                item['role'],
+                final_score_val,
+                item['target_orders'],
+                item['actual_orders'],
+                item['is_achieved'],
+                item['performance_score'],
+                item['behavior_score'],
+                item['bonus_score'],
             ]
 
-            for col, value in enumerate(leader_data, 1):
+            for col, value in enumerate(data, 1):
                 cell = ws.cell(row=row, column=col)
                 cell.value = value
-                cell.font = leader_font
-                cell.fill = leader_fill
                 cell.alignment = center_align
                 cell.border = thin_border
 
-                # 是否达标是=红
+                if is_leader_row:
+                    cell.font = leader_font
+                    cell.fill = leader_fill
+                else:
+                    cell.font = data_font
+
+                if col == 4 and isinstance(final_score_val, (int, float, Decimal)):
+                    if final_score_val < 60:
+                        cell.font = green_font
+                    elif final_score_val > 150:
+                        cell.font = red_font
+
                 if col == 7 and value == '是':
                     cell.font = red_font
 
             row += 1
             idx += 1
-
-            # 组员行
-            for assessment in members:
-                scores = self.calculate_weighted_scores(assessment)
-                is_achieved = '是' if assessment.actual_orders >= assessment.target_orders else '否'
-                final_score_val = assessment.final_score or 0
-
-                data = [
-                    idx,
-                    assessment.employee.first_name,
-                    assessment.employee.role or '-',
-                    final_score_val,  # D列 考核成绩
-                    assessment.target_orders,
-                    assessment.actual_orders,
-                    is_achieved,  # G列 是否达标
-                    scores['performance_score'],
-                    scores['behavior_score'],
-                    scores['bonus_score']
-                ]
-
-                for col, value in enumerate(data, 1):
-                    cell = ws.cell(row=row, column=col)
-                    cell.value = value
-                    cell.font = data_font
-                    cell.alignment = center_align
-                    cell.border = thin_border
-
-                    # ===== 修正：Decimal 类型也包含进来 =====
-                    if col == 4 and isinstance(final_score_val, (int, float, Decimal)):
-                        if final_score_val < 60:
-                            cell.font = green_font
-                        elif final_score_val > 150:
-                            cell.font = red_font
-
-                    # 是否达标是=红
-                    if col == 7 and value == '是':
-                        cell.font = red_font
-
-                row += 1
-                idx += 1
-
-            # 组长个人行
-            if leader:
-                leader_in_members = any(m.id == leader.id for m in members)
-                if not leader_in_members:
-                    scores = self.calculate_weighted_scores(leader)
-                    is_achieved = '是' if leader.actual_orders >= leader.target_orders else '否'
-                    final_score_val = leader.final_score or 0
-
-                    data = [
-                        idx,
-                        leader.employee.first_name + '（个人）',
-                        leader.employee.role or '-',
-                        final_score_val,
-                        leader.target_orders,
-                        leader.actual_orders,
-                        is_achieved,
-                        scores['performance_score'],
-                        scores['behavior_score'],
-                        scores['bonus_score']
-                    ]
-
-                    for col, value in enumerate(data, 1):
-                        cell = ws.cell(row=row, column=col)
-                        cell.value = value
-                        cell.font = data_font
-                        cell.alignment = center_align
-                        cell.border = thin_border
-
-                        # 修正：Decimal 类型也包含进来
-                        if col == 4 and isinstance(final_score_val, (int, float, Decimal)):
-                            if final_score_val < 60:
-                                cell.font = green_font
-                            elif final_score_val > 150:
-                                cell.font = red_font
-
-                        # 是否达标是=红
-                        if col == 7 and value == '是':
-                            cell.font = red_font
-
-                    row += 1
-                    idx += 1
 
         # 设置列宽
         column_widths = [6, 12, 12, 12, 12, 12, 10, 12, 12, 12]

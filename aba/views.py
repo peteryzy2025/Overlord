@@ -14,7 +14,7 @@ def aba_data_page(request):
     """
     ABA 数据管理页面
     """
-    return render(request, 'aba/aba_data.html')
+    return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
 
 
 @require_http_methods(["GET"])
@@ -55,9 +55,17 @@ def get_aba_data_api(request):
             if latest_week:
                 queryset = queryset.filter(report_week=latest_week)
         
-        # 按搜索词模糊筛选
+        # 按搜索词筛选（支持不同匹配模式）
+        search_mode = request.GET.get('search_mode', '0')
         if search_term:
-            queryset = queryset.filter(search_term__term__icontains=search_term)
+            if search_mode == '0':  # 精准查询
+                queryset = queryset.filter(search_term__term__iexact=search_term)
+            elif search_mode == '2':  # 广泛匹配（关键词匹配，空格分隔）
+                keywords = search_term.split()
+                for keyword in keywords:
+                    queryset = queryset.filter(search_term__term__icontains=keyword)
+            else:  # 默认模糊查询
+                queryset = queryset.filter(search_term__term__icontains=search_term)
         
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
@@ -76,10 +84,10 @@ def get_aba_data_api(request):
         # 获取趋势数据（最近4周）
         metrics_with_trend = []
         for metric in page_obj:
-            # 查询该搜索词最近4周的趋势
+            # 查询该搜索词最近13周的趋势（共14周数据）
             trend_data = SearchTermMetric.objects.using('aba_db').filter(
                 search_term=metric.search_term,
-                report_week__gte=metric.report_week - timedelta(days=21)
+                report_week__gte=metric.report_week - timedelta(days=91)
             ).order_by('report_week').values('report_week', 'search_frequency_rank')
             
             trend_list = [
@@ -153,10 +161,24 @@ def get_aba_data_api(request):
 def get_available_weeks_api(request):
     """
     获取可用的周期（周）列表
+    格式：2026年第8周 (02.22-02.28)
     """
     try:
         weeks = SearchTermMetric.objects.using('aba_db').values_list('report_week', flat=True).distinct().order_by('-report_week')
-        week_list = [{'value': w.strftime('%Y-%m-%d'), 'label': w.strftime('%Y-%m-%d')} for w in weeks]
+        
+        week_list = []
+        for w in weeks:
+            # 计算年度第几周
+            week_number = w.isocalendar()[1]
+            # 计算周期结束日期（周六）
+            end_date = w + timedelta(days=6)
+            # 格式化标签
+            label = f"{w.year}年第{week_number}周 ({w.strftime('%m.%d')}-{end_date.strftime('%m.%d')})"
+            
+            week_list.append({
+                'value': w.strftime('%Y-%m-%d'),
+                'label': label
+            })
         
         return JsonResponse({
             'success': True,
