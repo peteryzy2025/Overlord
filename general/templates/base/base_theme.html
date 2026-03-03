@@ -1,67 +1,40 @@
 {% extends 'base/base_r.html' %}
 
-{% block layout_css %}
-    {{ block.super }}
-    
-    /* 侧边栏导航样式 */
-    .sidebar-nav {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .sidebar-nav-item {
-        margin: 0.25rem 0;
-    }
-    
-    .sidebar-nav-link {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.875rem 1.5rem;
-        color: var(--text-secondary);
-        text-decoration: none;
-        border-radius: 0 8px 8px 0;
-        margin-right: 1rem;
-        transition: all 0.2s ease;
-        font-size: 0.9375rem;
-    }
-    
-    .sidebar-nav-link:hover {
-        color: var(--text-primary);
-        background-color: var(--bg-secondary);
-    }
-    
-    .sidebar-nav-link.active {
-        color: var(--accent-color);
-        background-color: var(--accent-color-transparent, rgba(59, 130, 246, 0.1));
-        font-weight: 500;
-    }
-    
-    .sidebar-nav-link i {
-        width: 20px;
-        text-align: center;
-        font-size: 1rem;
-    }
-    
-    /* 侧边栏标题 */
-    .sidebar-section-title {
-        padding: 1.5rem 1.5rem 0.5rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-tertiary);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-{% endblock %}
-
-{% block sidebar_content %}
-    <div class="sidebar-section-title">主题分析</div>
-    <ul class="sidebar-nav">
-        <li class="sidebar-nav-item">
-            <a href="{% url 'aba:aba_data' %}" class="sidebar-nav-link {% if request.resolver_match.url_name == 'aba_data' %}active{% endif %}">
-                <i class="fas fa-chart-line"></i>
+{% block sidebar %}
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'theme:theme_product_list' %}"
+               class="sidebar-link {% if active_page == 'theme_product_list' %}active{% endif %}">
+                <i class="fas fa-list sidebar-icon"></i>
+                <span>新奇特</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'aba:aba_data' %}"
+               class="sidebar-link {% if active_page == 'aba_data' %}active{% endif %}">
+                <i class="fas fa-chart-line sidebar-icon"></i>
                 <span>ABA数据</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:trend_page' %}"
+               class="sidebar-link {% if active_page == 'trend_page' %}active{% endif %}">
+                <i class="fas fa-search sidebar-icon"></i>
+                <span>侵权词判断</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:tro_table_page' %}"
+               class="sidebar-link {% if active_page == 'tro_table_page' %}active{% endif %}">
+                <i class="fas fa-gavel sidebar-icon"></i>
+                <span>侵权词库</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:trademark_info_page' %}"
+               class="sidebar-link {% if active_page == 'trademark_info_page' %}active{% endif %}">
+                <i class="fas fa-registered sidebar-icon"></i>
+                <span>美标网词库</span>
             </a>
         </li>
     </ul>

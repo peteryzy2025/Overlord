@@ -1,7 +1,7 @@
 {% extends 'base/base_theme.html' %}
 {% load static %}
 
-{% block title %}ABA数据 - Overlord{% endblock %}
+{% block title %}ABA数据 - Divi智管{% endblock %}
 
 {% block extra_css %}
     <style>
@@ -137,7 +137,10 @@
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">搜索词</label>
-                    <input type="text" class="form-control" id="searchTermInput" placeholder="模糊搜索搜索词">
+                    <div style="position: relative; width: 550px;">
+                        <input type="text" class="form-control" id="searchTermInput" placeholder="请输入搜索词" onkeypress="handleSearchKeypress(event)" style="padding-left: 90px; width: 100%;">
+                        <button type="button" id="searchModeBtn" onclick="toggleSearchMode()" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); padding: 2px 10px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">模糊查询</button>
+                    </div>
                 </div>
                 <div class="filter-actions">
                     <button class="btn" onclick="filterData()" title="搜索"><i class="fas fa-search"></i></button>
@@ -161,8 +164,8 @@
                 <tr>
                     <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                     <th>搜索词</th>
+                    <th>排名</th>
                     <th>周排行趋势</th>
-                    <th>排名变化</th>
                     <th>前三商品总点击份额</th>
                     <th>前三商品总转化份额</th>
                     <th>操作</th>
@@ -218,10 +221,26 @@
         // SearchableSelect 实例
         let weekSelect = null;
         
+        // 搜索模式：0=精准查询, 1=模糊查询, 2=广泛匹配
+        let searchMode = 1;
+        const searchModeLabels = ['精准查询', '模糊查询', '广泛匹配'];
+        const searchModePlaceholders = ['请输入完整搜索词', '请输入搜索词', '请输入关键词（多个用空格分隔）'];
+        const searchModeColors = [
+            { bg: '#dbeafe', border: '#3b82f6', color: '#1d4ed8' },  // 蓝色 - 精准
+            { bg: '#dcfce7', border: '#22c55e', color: '#15803d' },  // 绿色 - 模糊
+            { bg: '#fef3c7', border: '#f59e0b', color: '#b45309' }   // 橙色 - 广泛
+        ];
+        
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', function() {
             initSearchableSelects();
             loadAvailableWeeks();
+            // 初始化搜索模式按钮颜色
+            const btn = document.getElementById('searchModeBtn');
+            const colors = searchModeColors[searchMode];
+            btn.style.backgroundColor = colors.bg;
+            btn.style.borderColor = colors.border;
+            btn.style.color = colors.color;
             loadData();
         });
         
@@ -239,7 +258,7 @@
         // ==================== 数据加载 ====================
         async function loadAvailableWeeks() {
             try {
-                const response = await fetch('/aba/api/available-weeks/');
+                const response = await fetch('/api/available-weeks/');
                 const result = await response.json();
                 
                 if (result.success) {
@@ -255,15 +274,22 @@
         }
         
         async function loadData() {
+            // 显示加载动画
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
             try {
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
                     week: weekSelect ? weekSelect.getValue() : '',
-                    search_term: document.getElementById('searchTermInput').value
+                    search_term: document.getElementById('searchTermInput').value,
+                    search_mode: searchMode
                 });
                 
-                const response = await fetch(`/aba/api/data/?${params}`);
+                const response = await fetch(`/api/data/?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -279,6 +305,11 @@
             } catch (error) {
                 console.error('加载数据失败:', error);
                 showNotification('加载数据失败', 'error');
+            } finally {
+                // 隐藏加载动画
+                if (loadingOverlay) {
+                    loadingOverlay.classList.add('hidden');
+                }
             }
         }
         
@@ -286,10 +317,8 @@
         function renderTable(data) {
             const tbody = document.getElementById('abaTableBody');
             tbody.innerHTML = data.map(item => {
-                // 排名样式
-                let rankClass = '';
-                if (item.search_frequency_rank <= 10) rankClass = 'top-10';
-                else if (item.search_frequency_rank <= 50) rankClass = 'top-50';
+                // 排名样式 - 统一橙色
+                let rankClass = 'top-10';
                 
                 // 排名变化
                 let changeHtml = '<span class="rank-change neutral">-</span>';
@@ -301,14 +330,53 @@
                     }
                 }
                 
-                // 趋势图
+                // 趋势图 - SVG 折线图
                 let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
                 if (item.trend && item.trend.length > 0) {
-                    const maxRank = Math.max(...item.trend.map(t => t.rank), 1);
-                    trendHtml = `<div class="trend-chart">${item.trend.map(t => {
-                        const height = Math.max(10, 100 - (t.rank / maxRank * 90));
-                        return `<div class="trend-bar" style="height: ${height}%;" data-rank="${t.rank}"></div>`;
-                    }).join('')}</div>`;
+                    const ranks = item.trend.map(t => t.rank);
+                    const maxRank = Math.max(...ranks);
+                    const minRank = Math.min(...ranks);
+                    const range = maxRank - minRank || 1;
+                    
+                    // SVG 尺寸
+                    const width = 120;
+                    const height = 40;
+                    const padding = 5;
+                    
+                    // 计算坐标点
+                    const points = item.trend.map((t, i) => {
+                        const x = padding + (i / (item.trend.length - 1)) * (width - 2 * padding);
+                        // Y 轴反向：排名越小（越好）越靠上
+                        const y = padding + (1 - (t.rank - minRank) / range) * (height - 2 * padding);
+                        return { x, y, rank: t.rank, week: t.week };
+                    });
+                    
+                    // 生成贝塞尔曲线路径
+                    let pathD = `M ${points[0].x} ${points[0].y}`;
+                    for (let i = 0; i < points.length - 1; i++) {
+                        const p0 = points[i];
+                        const p1 = points[i + 1];
+                        const cp1x = p0.x + (p1.x - p0.x) / 3;
+                        const cp1y = p0.y;
+                        const cp2x = p1.x - (p1.x - p0.x) / 3;
+                        const cp2y = p1.y;
+                        pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+                    }
+                    
+                    // 找出最高和最低点
+                    const minPoint = points.find(p => p.rank === minRank);
+                    const maxPoint = points.find(p => p.rank === maxRank);
+                    
+                    trendHtml = `
+                        <div style="position: relative; width: ${width}px; height: ${height + 16}px;">
+                            <svg width="${width}" height="${height}" style="overflow: visible;">
+                                <path d="${pathD}" fill="none" stroke="var(--accent-color)" stroke-width="2" stroke-linecap="round"/>
+                                ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2" fill="var(--accent-color)" opacity="0.5"/>`).join('')}
+                            </svg>
+                            ${minPoint ? `<span style="position: absolute; left: ${minPoint.x - 10}px; top: -2px; font-size: 10px; color: var(--accent-color); font-weight: 600;">${minRank}</span>` : ''}
+                            ${maxPoint && maxPoint !== minPoint ? `<span style="position: absolute; left: ${maxPoint.x - 10}px; top: ${height - 10}px; font-size: 10px; color: var(--text-secondary);">${maxRank}</span>` : ''}
+                        </div>
+                    `;
                 }
                 
                 return `
@@ -318,12 +386,14 @@
                            onchange="toggleSelectItem(${item.id})"></td>
                     <td>
                         <div style="font-weight: 500;">${item.search_term}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
-                            排名: <span class="rank-number ${rankClass}">#${item.search_frequency_rank}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="display: inline-flex; align-items: center; gap: 0.25rem;">
+                            <span class="rank-number ${rankClass}" style="font-size: 1.25rem;">#${item.search_frequency_rank}</span>
+                            ${changeHtml !== '<span class="rank-change neutral">-</span>' ? changeHtml.replace('rank-change', 'rank-change').replace('<i class="fas fa-arrow-up"></i>', '<i class="fas fa-arrow-up" style="font-size: 0.625rem;"></i>').replace('<i class="fas fa-arrow-down"></i>', '<i class="fas fa-arrow-down" style="font-size: 0.625rem;"></i>') : ''}
                         </div>
                     </td>
                     <td>${trendHtml}</td>
-                    <td>${changeHtml}</td>
                     <td><span class="share-value">${item.total_click_share}%</span></td>
                     <td><span class="share-value">${item.total_conversion_share}%</span></td>
                     <td>
@@ -495,6 +565,27 @@
         function filterData() {
             currentPage = 1;
             loadData();
+        }
+        
+        function handleSearchKeypress(event) {
+            if (event.key === 'Enter') {
+                filterData();
+            }
+        }
+        
+        function toggleSearchMode() {
+            searchMode = (searchMode + 1) % 3;
+            const btn = document.getElementById('searchModeBtn');
+            const input = document.getElementById('searchTermInput');
+            const colors = searchModeColors[searchMode];
+            
+            btn.textContent = searchModeLabels[searchMode];
+            input.placeholder = searchModePlaceholders[searchMode];
+            
+            // 更新按钮颜色
+            btn.style.backgroundColor = colors.bg;
+            btn.style.borderColor = colors.border;
+            btn.style.color = colors.color;
         }
         
         function resetFilters() {
