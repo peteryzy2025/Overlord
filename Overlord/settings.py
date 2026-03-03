@@ -137,7 +137,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "HOST": "192.168.110.54",
         "PORT": "5432",
-        "NAME": os.getenv('ABA_DB_NAME', 'aba_db'),
+        "NAME": "aba_db",
         "USER": os.getenv('DB_USER', 'track'),
         "PASSWORD": os.getenv('DB_PASSWORD'),
         "CONN_MAX_AGE": 60,

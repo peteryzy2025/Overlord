@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.db import IntegrityError
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -230,22 +231,70 @@ def api_create_tro_record(request):
         except ValueError:
             return JsonResponse({'success': False, 'message': '类型码必须为数字'}, status=400)
 
-        # 创建记录
         replacement_word = data.get('replacement_word')
         replacement_word = replacement_word.strip() if replacement_word else None
         category = data.get('category')
         category = int(category) if category else None
-        record = TroTable.objects.create(
-            theme_name=theme_name,
-            replacement_word=replacement_word,
-            name_type=name_type,
-            category=category,
-            creator=request.user,
-            shop_id=data.get('shop_id') or None
-        )
-        
-        # 设置国际类关联（传入空列表则清空）
         intl_class_codes = data.get('international_classes')
+        force_replace = bool(data.get('force_replace'))
+        shop_id = data.get('shop_id') or None
+
+        existing_record = TroTable.objects.filter(theme_name__iexact=theme_name).first()
+        if existing_record and not force_replace:
+            existing_name_type_desc = NAME_TYPE_MAPPING.get(existing_record.name_type, str(existing_record.name_type))
+            return JsonResponse({
+                'success': False,
+                'code': 'duplicate_theme_name',
+                'need_confirm': True,
+                'message': f'{existing_record.theme_name}已存在，类型码为{existing_name_type_desc}。是否仍要替换。',
+                'data': {
+                    'id': existing_record.id,
+                    'theme_name': existing_record.theme_name,
+                    'name_type': existing_record.name_type,
+                    'name_type_desc': existing_name_type_desc,
+                }
+            }, status=409)
+
+        replaced = False
+        try:
+            if existing_record and force_replace:
+                # 按用户确认结果覆盖现有记录（theme_name 唯一）
+                existing_record.theme_name = theme_name
+                existing_record.replacement_word = replacement_word
+                existing_record.name_type = name_type
+                existing_record.category = category
+                existing_record.shop_id = shop_id
+                existing_record.save()
+                record = existing_record
+                replaced = True
+            else:
+                record = TroTable.objects.create(
+                    theme_name=theme_name,
+                    replacement_word=replacement_word,
+                    name_type=name_type,
+                    category=category,
+                    creator=request.user,
+                    shop_id=shop_id
+                )
+        except IntegrityError:
+            duplicate = TroTable.objects.filter(theme_name__iexact=theme_name).first()
+            if duplicate:
+                duplicate_name_type_desc = NAME_TYPE_MAPPING.get(duplicate.name_type, str(duplicate.name_type))
+                return JsonResponse({
+                    'success': False,
+                    'code': 'duplicate_theme_name',
+                    'need_confirm': True,
+                    'message': f'{duplicate.theme_name}已存在，类型码为{duplicate_name_type_desc}。是否仍要替换。',
+                    'data': {
+                        'id': duplicate.id,
+                        'theme_name': duplicate.theme_name,
+                        'name_type': duplicate.name_type,
+                        'name_type_desc': duplicate_name_type_desc,
+                    }
+                }, status=409)
+            raise
+
+        # 设置国际类关联（传入空列表则清空）
         if intl_class_codes is not None:
             record.international_classes.set(intl_class_codes)
 
@@ -253,8 +302,9 @@ def api_create_tro_record(request):
         try:
             UserOperationLog.objects.create(
                 user=request.user,
-                operation_type=UserOperationLog.OperationType.TRO_CREATE,
-                operation_record=f'新增侵权词: {theme_name}',
+                operation_type=UserOperationLog.OperationType.TRO_UPDATE if replaced else UserOperationLog.OperationType.TRO_CREATE,
+                operation_record=(f'替换侵权词: {theme_name}(ID:{record.id})'
+                                  if replaced else f'新增侵权词: {theme_name}'),
                 company=getattr(request.user, 'company', None)
             )
         except Exception as log_error:
@@ -262,7 +312,11 @@ def api_create_tro_record(request):
 
         return JsonResponse({
             'success': True,
-            'message': '创建成功'
+            'message': '替换成功' if replaced else '创建成功',
+            'data': {
+                'replaced': replaced,
+                'id': record.id,
+            }
         })
 
     except Exception as e:

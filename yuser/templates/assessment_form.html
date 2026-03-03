@@ -228,6 +228,17 @@
             font-size: 1.1rem;
         }
 
+        .score-cell {
+            text-align: center;
+        }
+
+        .score-cell .form-select,
+        .score-cell .score-input {
+            display: block;
+            margin: 0 auto;
+        }
+
+
         .highlight-value {
             color: var(--accent-color);
             font-weight: 600;
@@ -536,7 +547,7 @@
 
                                 <td class="highlight-value">{{ config.max_score }}</td>
 
-                                <td>
+                                <td class="score-cell">
                                     {% with score_value=scores|default_if_none:0|get_item:config.item_key|default:0 %}
                                         {% if config.item_key == 'performance_score' %}
                                             <!-- 业绩得分（后端已计算） -->

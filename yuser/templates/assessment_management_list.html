@@ -461,10 +461,10 @@
                 <button class="btn btn-secondary ms-2" onclick="resetFilters()" title="重置">
                     <i class="fas fa-redo"></i>
                 </button>
-                <!-- 新增：批量刷新订单按钮（仅管理员可见） -->
+                <!-- 批量刷新订单按钮（仅管理员可见） -->
                 {% if is_admin %}
-                <button class="btn btn-warning ms-2" onclick="batchRefreshOrders()">
-                    <i class="fas fa-sync-alt" style="margin-right: 0.5rem;"></i>刷新订单
+                <button class="btn btn-warning ms-2" onclick="batchRefreshOrders()" title="批量刷新订单" aria-label="批量刷新订单">
+                    <i class="fas fa-sync-alt"></i>
                 </button>
                 {% endif %}
             </div>
@@ -504,8 +504,8 @@
                         </span>
                     </td>
                     <td>
-                        {% if assessment.final_score %}
-                        <strong class="text-warning">{{ assessment.final_score }}</strong>
+                        {% if assessment.calculated_final_score is not None %}
+                        <strong class="text-warning">{{ assessment.calculated_final_score }}</strong>
                         {% else %}
                         <span class="text-muted">-</span>
                         {% endif %}
@@ -584,40 +584,18 @@
                 <li class="page-item active">
                     <span class="page-link">{{ num }}</span>
                 </li>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li class="page-item">
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
                     <a class="page-link"
-                        href="?page=
-
-
-
-
-
-
-
-
-
-
-                                            {{ num }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{
-                        num }}</a>
-                    </li>
-                    {% endif %}
-                    {% endfor %}
+                        href="?page={{ num }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
+                </li>
+                {% endif %}
+                {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
                         <a class="page-link"
-                            href="?page=
-
-
-
-
-
-
-
-
-
-
-                                        {{ page_obj.next_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">下一页</a>
+                            href="?page={{ page_obj.next_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">下一页</a>
                     </li>
                     {% else %}
                     <li class="page-item disabled">
@@ -1113,7 +1091,7 @@
         // 显示加载状态
         const btn = document.querySelector('[onclick="batchRefreshOrders()"]');
         const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 刷新中...';
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         btn.disabled = true;
 
         try {
