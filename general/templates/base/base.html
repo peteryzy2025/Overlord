@@ -783,7 +783,7 @@
             <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' %}active{% endif %}"
                    href="{% url 'theme:theme_product_list' %}">
                     主题
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -791,6 +791,9 @@
                 <div class="nav-dropdown">
                     <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
                         <i class="fas fa-list"></i> 新奇特
+                    </a>
+                    <a href="{% url 'aba:aba_data' %}" class="nav-dropdown-item">
+                        <i class="fas fa-chart-line"></i> ABA数据
                     </a>
                     <a href="{% url 'theme:trend_page' %}" class="nav-dropdown-item">
                         <i class="fas fa-search"></i> 侵权词判断

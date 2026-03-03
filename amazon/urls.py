@@ -9,6 +9,7 @@ from amazon.view import views_dashboard
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
 
+
 app_name = 'amazon'
 
 urlpatterns = [
@@ -113,4 +114,5 @@ urlpatterns = [
         views_amazon_listing_management.get_amazon_listing_word_sources_api,
         name='api_amazon_listing_word_sources'
     ),
+    
 ]

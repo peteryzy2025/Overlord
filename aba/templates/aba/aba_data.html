@@ -1,0 +1,526 @@
+{% extends 'base/base_theme.html' %}
+{% load static %}
+
+{% block title %}ABA数据 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .table-container table {
+            min-width: 1200px;
+        }
+        
+        /* 搜索词列宽度 */
+        #abaTable th:nth-child(2),
+        #abaTable td:nth-child(2) {
+            min-width: 200px;
+            max-width: 300px;
+        }
+        
+        /* 趋势图列 */
+        #abaTable th:nth-child(3),
+        #abaTable td:nth-child(3) {
+            min-width: 150px;
+        }
+        
+        /* 排名变化 */
+        .rank-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-weight: 500;
+        }
+        
+        .rank-change.up {
+            color: #10b981;
+        }
+        
+        .rank-change.down {
+            color: #ef4444;
+        }
+        
+        .rank-change.neutral {
+            color: var(--text-secondary);
+        }
+        
+        /* 趋势图 */
+        .trend-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 30px;
+            padding: 4px;
+        }
+        
+        .trend-bar {
+            flex: 1;
+            background-color: var(--accent-color);
+            border-radius: 2px;
+            min-height: 2px;
+            position: relative;
+        }
+        
+        .trend-bar:hover::after {
+            content: attr(data-rank);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
+        /* 份额显示 */
+        .share-value {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        
+        /* ASIN 列表 */
+        .asin-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .asin-item {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+        
+        .asin-item:hover {
+            color: var(--accent-color);
+        }
+        
+        /* 排名数字 */
+        .rank-number {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+        
+        .rank-number.top-10 {
+            color: #f59e0b;
+        }
+        
+        .rank-number.top-50 {
+            color: var(--accent-color);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="aba-data-tab" class="tab-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-chart-line" style="color: var(--accent-color);"></i>
+                    ABA数据
+                </h1>
+                <p class="page-subtitle">亚马逊品牌分析搜索词数据管理</p>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">周期</label>
+                    <div id="weekFilter" class="searchable-select single" data-placeholder="选择周期"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">搜索词</label>
+                    <input type="text" class="form-control" id="searchTermInput" placeholder="模糊搜索搜索词">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="filterData()" title="搜索"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 项</span>
+            <button class="btn btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                <span>取消选择</span>
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="abaTable">
+                <thead id="abaTableHead">
+                <tr>
+                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                    <th>搜索词</th>
+                    <th>周排行趋势</th>
+                    <th>排名变化</th>
+                    <th>前三商品总点击份额</th>
+                    <th>前三商品总转化份额</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="abaTableBody">
+                <!-- 动态生成内容 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">50条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option selected" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script>
+        // ==================== 全局变量 ====================
+        let currentPage = 1;
+        let pageSize = 50;
+        let totalItems = 0;
+        let totalPages = 1;
+        let selectedIds = new Set();
+        let allData = [];
+        
+        // SearchableSelect 实例
+        let weekSelect = null;
+        
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            initSearchableSelects();
+            loadAvailableWeeks();
+            loadData();
+        });
+        
+        // ==================== SearchableSelect 初始化 ====================
+        function initSearchableSelects() {
+            // 周期筛选器
+            weekSelect = new SearchableSelect('#weekFilter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择周期'
+            });
+            weekSelect.onChange = () => filterData();
+        }
+        
+        // ==================== 数据加载 ====================
+        async function loadAvailableWeeks() {
+            try {
+                const response = await fetch('/aba/api/available-weeks/');
+                const result = await response.json();
+                
+                if (result.success) {
+                    weekSelect.setOptions(result.data);
+                    // 默认选中第一个（最新周期）
+                    if (result.data.length > 0) {
+                        weekSelect.setValue(result.data[0].value);
+                    }
+                }
+            } catch (error) {
+                console.error('加载周期列表失败:', error);
+            }
+        }
+        
+        async function loadData() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: pageSize,
+                    week: weekSelect ? weekSelect.getValue() : '',
+                    search_term: document.getElementById('searchTermInput').value
+                });
+                
+                const response = await fetch(`/aba/api/data/?${params}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    allData = result.data;
+                    totalItems = result.total;
+                    totalPages = result.total_pages;
+                    renderTable(allData);
+                    renderPagination();
+                    updatePaginationStats();
+                } else {
+                    showNotification(result.error || '加载失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showNotification('加载数据失败', 'error');
+            }
+        }
+        
+        // ==================== 渲染表格 ====================
+        function renderTable(data) {
+            const tbody = document.getElementById('abaTableBody');
+            tbody.innerHTML = data.map(item => {
+                // 排名样式
+                let rankClass = '';
+                if (item.search_frequency_rank <= 10) rankClass = 'top-10';
+                else if (item.search_frequency_rank <= 50) rankClass = 'top-50';
+                
+                // 排名变化
+                let changeHtml = '<span class="rank-change neutral">-</span>';
+                if (item.rank_change !== null) {
+                    if (item.rank_change > 0) {
+                        changeHtml = `<span class="rank-change up"><i class="fas fa-arrow-up"></i> ${item.rank_change}</span>`;
+                    } else if (item.rank_change < 0) {
+                        changeHtml = `<span class="rank-change down"><i class="fas fa-arrow-down"></i> ${Math.abs(item.rank_change)}</span>`;
+                    }
+                }
+                
+                // 趋势图
+                let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
+                if (item.trend && item.trend.length > 0) {
+                    const maxRank = Math.max(...item.trend.map(t => t.rank), 1);
+                    trendHtml = `<div class="trend-chart">${item.trend.map(t => {
+                        const height = Math.max(10, 100 - (t.rank / maxRank * 90));
+                        return `<div class="trend-bar" style="height: ${height}%;" data-rank="${t.rank}"></div>`;
+                    }).join('')}</div>`;
+                }
+                
+                return `
+                <tr data-id="${item.id}">
+                    <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
+                           ${selectedIds.has(item.id) ? 'checked' : ''}
+                           onchange="toggleSelectItem(${item.id})"></td>
+                    <td>
+                        <div style="font-weight: 500;">${item.search_term}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+                            排名: <span class="rank-number ${rankClass}">#${item.search_frequency_rank}</span>
+                        </div>
+                    </td>
+                    <td>${trendHtml}</td>
+                    <td>${changeHtml}</td>
+                    <td><span class="share-value">${item.total_click_share}%</span></td>
+                    <td><span class="share-value">${item.total_conversion_share}%</span></td>
+                    <td>
+                        <button class="btn btn-sm" onclick="viewDetail(${item.search_term_id})" title="查看详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `}).join('');
+            
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+        
+        // ==================== 分页 ====================
+        function renderPagination() {
+            const pagination = document.getElementById('paginationNew');
+            let html = '';
+            
+            // 上一页
+            html += `<button class="pagination-btn-new ${currentPage === 1 ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>`;
+            
+            // 页码
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" 
+                               onclick="goToPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // 下一页
+            html += `<button class="pagination-btn-new ${currentPage === totalPages ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>`;
+            
+            pagination.innerHTML = html;
+        }
+        
+        function updatePaginationStats() {
+            const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            document.getElementById('pageSizeText').textContent = pageSize + '条';
+            
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                statsEl.style.marginLeft = '1rem';
+                statsEl.style.color = 'var(--text-secondary)';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条`;
+        }
+        
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadData();
+        }
+        
+        function changePageSize(size) {
+            pageSize = size;
+            currentPage = 1;
+            document.getElementById('pageSizeText').textContent = size + '条';
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            loadData();
+        }
+        
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+        
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= totalPages) {
+                    goToPage(page);
+                }
+                event.target.value = '';
+            }
+        }
+        
+        // ==================== 选择操作 ====================
+        function toggleSelectItem(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateBulkActionBar();
+            updateSelectAllCheckbox();
+        }
+        
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            
+            rowCheckboxes.forEach((cb, index) => {
+                const id = allData[index].id;
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedIds.add(id);
+                } else {
+                    selectedIds.delete(id);
+                }
+            });
+            
+            updateBulkActionBar();
+        }
+        
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleIds = allData.map(d => d.id);
+            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+            checkbox.checked = allSelected;
+        }
+        
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const countText = document.getElementById('selectedCountText');
+            
+            countText.textContent = `已选择 ${selectedIds.size} 项`;
+            
+            if (selectedIds.size > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+        
+        function clearSelection() {
+            selectedIds.clear();
+            document.getElementById('selectAll').checked = false;
+            renderTable(allData);
+            updateBulkActionBar();
+        }
+        
+        // ==================== 筛选操作 ====================
+        function filterData() {
+            currentPage = 1;
+            loadData();
+        }
+        
+        function resetFilters() {
+            document.getElementById('searchTermInput').value = '';
+            if (weekSelect) {
+                loadAvailableWeeks(); // 重新加载并选中最新
+            }
+            currentPage = 1;
+            loadData();
+        }
+        
+        // ==================== 详情查看 ====================
+        function viewDetail(searchTermId) {
+            // TODO: 实现查看详情功能
+            console.log('查看搜索词详情:', searchTermId);
+            showNotification('详情功能开发中...', 'info');
+        }
+        
+        // ==================== 通知提示 ====================
+        function showNotification(message, type = 'info') {
+            // 使用全局通知函数（如果存在）
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type);
+            } else {
+                alert(message);
+            }
+        }
+    </script>
+{% endblock %}
