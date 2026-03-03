@@ -939,15 +939,15 @@
                     return shopOpsId === ownerId || shopOpsId === currentUserId;
                 })
                 .map(shop => ({
-                    value: shop.shop_name || shop.name,
-                    label: shop.shop_name || shop.name
+                    value: shop.raw_name || shop.shop_name || shop.name,
+                    label: shop.raw_name || shop.shop_name || shop.name
                 }));
 
             // 如果没有过滤出来的店铺，显示所有Amazon店铺
             if (shopOptions.length === 0) {
                 shopOptions = availableShops.amazon.map(shop => ({
-                    value: shop.shop_name || shop.name,
-                    label: shop.shop_name || shop.name
+                    value: shop.raw_name || shop.shop_name || shop.name,
+                    label: shop.raw_name || shop.shop_name || shop.name
                 }));
             }
 
