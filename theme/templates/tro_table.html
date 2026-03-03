@@ -1112,19 +1112,46 @@
                     payload.id = recordId;
                 }
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify(payload)
-                });
+                const sendRequest = async (requestPayload) => {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify(requestPayload)
+                    });
+                    let result = {};
+                    try {
+                        result = await response.json();
+                    } catch (e) {
+                        result = {success: false, message: `请求失败（HTTP ${response.status}）`};
+                    }
+                    return {response, result};
+                };
 
-                const result = await response.json();
+                let {result} = await sendRequest(payload);
+
+                if (!recordId && !result.success && result.code === 'duplicate_theme_name' && result.need_confirm) {
+                    const existsThemeName = result.data && result.data.theme_name ? result.data.theme_name : themeName;
+                    const existsNameTypeDesc = result.data && result.data.name_type_desc ? result.data.name_type_desc : '';
+                    const existsNameTypeText = existsNameTypeDesc || '-';
+                    const shouldReplace = window.confirm(`${existsThemeName}已存在，类型码为${existsNameTypeText}。是否仍要替换？`);
+
+                    if (!shouldReplace) {
+                        showNotification('已取消替换', 'info');
+                        return;
+                    }
+
+                    const replacePayload = {
+                        ...payload,
+                        force_replace: true
+                    };
+                    ({result} = await sendRequest(replacePayload));
+                }
 
                 if (result.success) {
-                    showNotification(recordId ? '更新成功' : '创建成功', 'success');
+                    showNotification(result.message || (recordId ? '更新成功' : '创建成功'), 'success');
                     closeCreateModal();
 
                     if (!recordId) {

@@ -460,11 +460,16 @@ class AssessmentListView(AssessmentManagementView, ListView):
         context['active_page'] = 'assessment_list'
         context['active_nav'] = 'management'
 
+        # 列表页最终得分与详情页保持同一算法口径（实时计算）
+        assessments_page = context.get('assessments') or context.get('object_list') or []
+        for assessment in assessments_page:
+            calculated_final_score, _ = self.calculate_final_score(assessment)
+            assessment.calculated_final_score = calculated_final_score
+
         try:
             current_user = self.request.user
             perms_raw = getattr(current_user, 'permission', '') or ''
             perms_list = [p.strip() for p in str(perms_raw).split(',') if p.strip()]
-            assessments_page = context.get('assessments') or context.get('object_list') or []
             status_counts = {}
             for a in assessments_page:
                 status_counts[a.status] = status_counts.get(a.status, 0) + 1
@@ -1068,6 +1073,11 @@ class RefreshOrderDataView(AssessmentManagementView):
                 defaults={'score_value': extra_bonus}
             )
 
+            # 同步回写最终得分，避免列表页读取旧库值
+            assessment.performance_score = performance_score
+            assessment.final_score = final_score
+            assessment.save(update_fields=['performance_score', 'final_score'])
+
             # 4. 获取shop_activation的值（仅Temu有）
             shop_activation = 0
             if assessment.assess_type == 'temu_operation':
@@ -1152,6 +1162,7 @@ class BatchRefreshOrdersView(AssessmentManagementView):
 
                 # 2. 关键新增：计算extra_bonus并保存
                 # 重新计算业绩得分和最终得分
+                performance_score = self.calculate_performance_score(assessment)
                 final_score, extra_bonus = self.calculate_final_score(assessment)
 
                 # 保存extra_bonus到数据库
@@ -1160,6 +1171,11 @@ class BatchRefreshOrdersView(AssessmentManagementView):
                     item_key='extra_bonus',
                     defaults={'score_value': extra_bonus}
                 )
+
+                # 同步回写最终得分，避免列表页读取旧库值
+                assessment.performance_score = performance_score
+                assessment.final_score = final_score
+                assessment.save(update_fields=['performance_score', 'final_score'])
 
                 success_count += 1
             except Exception as e:
