@@ -17,4 +17,4 @@ MarsCodeWorkspaceAppSettings.xml
 # 强行忽略任何叫 nul 的文件或文件夹
 **/nul
 **/NUL
-
+**/media/
