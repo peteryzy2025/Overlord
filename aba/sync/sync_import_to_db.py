@@ -379,7 +379,7 @@ def main(report_date: str = "2026-02-15"):
     # 开始导入
     start_time = time.time()
     
-    importer = ABAImporter(report_week=report_date, batch_size=5000)
+    importer = ABAImporter(report_week=report_date, batch_size=5000) # 批次大小
     importer.import_file(str(filepath))
     
     elapsed = time.time() - start_time
