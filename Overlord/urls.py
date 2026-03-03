@@ -15,6 +15,7 @@ urlpatterns = [
     path('', include('theme.urls')),  # 包含 Theme app 的路由
     path('', include('zother.urls')),  # 添加这一行
     path('', include('task.urls')),
+    path('', include('aba.urls')),
     path('shop_guard/', include('shop_guard.urls')),
     path('inventory/', include('inventory.urls')),
     path('data_req/', include('data_req.urls')),
