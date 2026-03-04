@@ -234,6 +234,198 @@
             { bg: '#fef3c7', border: '#f59e0b', color: '#b45309' }   // 橙色 - 广泛
         ];
         
+        // 获取ISO周数（辅助函数）
+        function getISOWeek(dateStr) {
+            const date = new Date(dateStr);
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        // 初始化趋势图 - 智能交互版
+        function initTrendChart(chartId, data, minRank, maxRank, range) {
+            const container = document.getElementById(chartId);
+            if (!container) return;
+            
+            const svg = container.querySelector('svg');
+            const tooltip = container.querySelector('.trend-tooltip');
+            const width = 160;
+            const height = 60;
+            const padding = { top: 10, bottom: 10, left: 5, right: 5 };
+            const chartHeight = height - padding.top - padding.bottom;
+            const chartWidth = width - padding.left - padding.right;
+            
+            // 计算坐标点 - 排名越小越靠上
+            const points = data.map((d, i) => {
+                const x = padding.left + (i / (data.length - 1)) * chartWidth;
+                const normalizedRank = (d.rank - minRank) / range;
+                const y = padding.top + normalizedRank * chartHeight;
+                return { x, y, ...d };
+            });
+            
+            // 生成曲线路径
+            let pathD = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i];
+                const p1 = points[i + 1];
+                const cp1x = p0.x + (p1.x - p0.x) / 2;
+                const cp1y = p0.y;
+                const cp2x = p0.x + (p1.x - p0.x) / 2;
+                const cp2y = p1.y;
+                pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+            }
+            
+            // 绘制曲线 - 先只画线
+            svg.innerHTML = `<path d="${pathD}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>`;
+            
+            // 找出极值点索引
+            const extremeIndices = new Set();
+            const minIdx = points.findIndex(p => p.rank === minRank);
+            const maxIdx = points.findIndex(p => p.rank === maxRank);
+            if (minIdx >= 0) extremeIndices.add(minIdx);
+            if (maxIdx >= 0 && maxIdx !== minIdx) extremeIndices.add(maxIdx);
+            
+            // 添加极值点（默认可见）
+            extremeIndices.forEach(idx => {
+                const p = points[idx];
+                const isMin = p.rank === minRank;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('class', 'extreme-point');
+                circle.setAttribute('data-index', idx);
+                circle.setAttribute('cx', p.x);
+                circle.setAttribute('cy', p.y);
+                circle.setAttribute('r', isMin ? '4' : '3.5');
+                circle.setAttribute('fill', isMin ? '#10b981' : '#f59e0b');
+                circle.setAttribute('stroke', 'white');
+                circle.setAttribute('stroke-width', '2');
+                svg.appendChild(circle);
+            });
+            
+            // 创建普通点（默认隐藏，悬停时显示）
+            points.forEach((p, i) => {
+                if (extremeIndices.has(i)) return;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('class', 'hover-point');
+                circle.setAttribute('data-index', i);
+                circle.setAttribute('cx', p.x);
+                circle.setAttribute('cy', p.y);
+                circle.setAttribute('r', '3');
+                circle.setAttribute('fill', '#3b82f6');
+                circle.setAttribute('stroke', 'white');
+                circle.setAttribute('stroke-width', '1.5');
+                circle.setAttribute('opacity', '0');
+                circle.style.transition = 'opacity 0.2s';
+                svg.appendChild(circle);
+            });
+            
+            // 添加极值标签
+            const minPoint = points.find(p => p.rank === minRank);
+            const maxPoint = points.find(p => p.rank === maxRank);
+            
+            if (minPoint) {
+                const label = document.createElement('div');
+                label.style.cssText = `position:absolute;left:${minPoint.x-8}px;top:${minPoint.y-16}px;font-size:10px;color:#3b82f6;font-weight:600;`;
+                label.textContent = minRank;
+                container.appendChild(label);
+            }
+            
+            if (maxPoint && maxPoint !== minPoint) {
+                const label = document.createElement('div');
+                label.style.cssText = `position:absolute;left:${maxPoint.x-8}px;top:${maxPoint.y+6}px;font-size:10px;color:#6b7280;`;
+                label.textContent = maxRank;
+                container.appendChild(label);
+            }
+            
+            // 鼠标移动事件 - 智能吸附
+            container.addEventListener('mousemove', (e) => {
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                
+                // 找到最近的点
+                let closest = points[0];
+                let minDist = Math.abs(mouseX - points[0].x);
+                
+                for (const p of points) {
+                    const dist = Math.abs(mouseX - p.x);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = p;
+                    }
+                }
+                
+                // 绘制指示线
+                const existingLine = svg.querySelector('.indicator-line');
+                if (existingLine) existingLine.remove();
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('class', 'indicator-line');
+                line.setAttribute('x1', closest.x);
+                line.setAttribute('y1', padding.top);
+                line.setAttribute('x2', closest.x);
+                line.setAttribute('y2', height - padding.bottom);
+                line.setAttribute('stroke', '#9ca3af');
+                line.setAttribute('stroke-width', '1');
+                line.setAttribute('stroke-dasharray', '3,3');
+                svg.appendChild(line);
+                
+                // 高亮当前点 - 显示悬停点或放大极值点
+                const hoverPoint = svg.querySelector(`.hover-point[data-index="${closest.index}"]`);
+                const extremePoint = svg.querySelector(`.extreme-point[data-index="${closest.index}"]`);
+                
+                // 先隐藏所有普通点
+                svg.querySelectorAll('.hover-point').forEach(c => c.setAttribute('opacity', '0'));
+                // 恢复极值点大小
+                svg.querySelectorAll('.extreme-point').forEach(c => {
+                    const idx = parseInt(c.getAttribute('data-index'));
+                    const isMin = points[idx].rank === minRank;
+                    c.setAttribute('r', isMin ? '4' : '3.5');
+                });
+                
+                if (hoverPoint) {
+                    // 显示并放大悬停的普通点
+                    hoverPoint.setAttribute('opacity', '1');
+                    hoverPoint.setAttribute('r', '4.5');
+                } else if (extremePoint) {
+                    // 放大极值点
+                    extremePoint.setAttribute('r', '5.5');
+                }
+                
+                // 显示tooltip
+                tooltip.style.display = 'block';
+                tooltip.style.left = (e.clientX + 10) + 'px';
+                tooltip.style.top = (e.clientY - 40) + 'px';
+                
+                // 提取年份
+                const weekDate = new Date(closest.week);
+                const year = weekDate.getFullYear();
+                const isoWeek = closest.isoWeek;
+                
+                tooltip.innerHTML = `${year}年 W${isoWeek}<br/>排行: ${closest.rank.toLocaleString()}`;
+            });
+            
+            // 鼠标离开 - 隐藏提示和悬停点
+            container.addEventListener('mouseleave', () => {
+                tooltip.style.display = 'none';
+                const line = svg.querySelector('.indicator-line');
+                if (line) line.remove();
+                
+                // 隐藏所有普通点
+                svg.querySelectorAll('.hover-point').forEach(c => {
+                    c.setAttribute('opacity', '0');
+                    c.setAttribute('r', '3');
+                });
+                
+                // 恢复极值点大小
+                svg.querySelectorAll('.extreme-point').forEach(c => {
+                    const idx = parseInt(c.getAttribute('data-index'));
+                    const isMin = points[idx].rank === minRank;
+                    c.setAttribute('r', isMin ? '4' : '3.5');
+                });
+            });
+        }
+
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', function() {
             initSearchableSelects();
@@ -362,51 +554,32 @@
                     }
                 }
                 
-                // 趋势图 - SVG 折线图
+                // 趋势图 - 智能交互版（参考图2样式）
                 let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
                 if (item.trend && item.trend.length > 0) {
+                    const chartId = `trend-${item.id}`;
                     const ranks = item.trend.map(t => t.rank);
                     const maxRank = Math.max(...ranks);
                     const minRank = Math.min(...ranks);
                     const range = maxRank - minRank || 1;
                     
-                    // SVG 尺寸
-                    const width = 120;
-                    const height = 40;
-                    const padding = 5;
+                    // 准备数据
+                    const trendData = item.trend.map((t, i) => ({
+                        index: i,
+                        rank: t.rank,
+                        week: t.week,
+                        // 计算ISO周数
+                        isoWeek: getISOWeek(t.week)
+                    }));
                     
-                    // 计算坐标点
-                    const points = item.trend.map((t, i) => {
-                        const x = padding + (i / (item.trend.length - 1)) * (width - 2 * padding);
-                        // Y 轴反向：排名越小（越好）越靠上
-                        const y = padding + (1 - (t.rank - minRank) / range) * (height - 2 * padding);
-                        return { x, y, rank: t.rank, week: t.week };
-                    });
-                    
-                    // 生成贝塞尔曲线路径
-                    let pathD = `M ${points[0].x} ${points[0].y}`;
-                    for (let i = 0; i < points.length - 1; i++) {
-                        const p0 = points[i];
-                        const p1 = points[i + 1];
-                        const cp1x = p0.x + (p1.x - p0.x) / 3;
-                        const cp1y = p0.y;
-                        const cp2x = p1.x - (p1.x - p0.x) / 3;
-                        const cp2y = p1.y;
-                        pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-                    }
-                    
-                    // 找出最高和最低点
-                    const minPoint = points.find(p => p.rank === minRank);
-                    const maxPoint = points.find(p => p.rank === maxRank);
+                    // 存储数据供后续JS使用
+                    setTimeout(() => initTrendChart(chartId, trendData, minRank, maxRank, range), 0);
                     
                     trendHtml = `
-                        <div style="position: relative; width: ${width}px; height: ${height + 16}px;">
-                            <svg width="${width}" height="${height}" style="overflow: visible;">
-                                <path d="${pathD}" fill="none" stroke="var(--accent-color)" stroke-width="2" stroke-linecap="round"/>
-                                ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="2" fill="var(--accent-color)" opacity="0.5"/>`).join('')}
-                            </svg>
-                            ${minPoint ? `<span style="position: absolute; left: ${minPoint.x - 10}px; top: -2px; font-size: 10px; color: var(--accent-color); font-weight: 600;">${minRank}</span>` : ''}
-                            ${maxPoint && maxPoint !== minPoint ? `<span style="position: absolute; left: ${maxPoint.x - 10}px; top: ${height - 10}px; font-size: 10px; color: var(--text-secondary);">${maxRank}</span>` : ''}
+                        <div class="trend-chart-container" id="${chartId}" 
+                             style="position: relative; width: 160px; height: 60px; cursor: pointer;">
+                            <svg width="160" height="60" style="overflow: visible;"></svg>
+                            <div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div>
                         </div>
                     `;
                 }

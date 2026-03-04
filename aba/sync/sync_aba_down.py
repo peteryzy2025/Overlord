@@ -137,7 +137,20 @@ async def down_aba(data_start_time: str):
         return None
 
 
+def download_aba_report(data_start_time: str) -> str:
+    """
+    同步调用：下载 ABA 报告
+    
+    参数:
+        data_start_time: 日期字符串 (YYYY-MM-DD)
+    
+    返回:
+        json 文件路径，失败返回 None
+    """
+    return asyncio.run(down_aba(data_start_time))
+
+
 if __name__ == "__main__":
-    result = asyncio.run(down_aba("2026-02-08"))
+    result = asyncio.run(down_aba("2026-02-01"))
     if not result:
         exit(1)

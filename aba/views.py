@@ -58,13 +58,17 @@ def get_aba_data_api(request):
         # 按搜索词筛选（支持不同匹配模式）
         search_mode = request.GET.get('search_mode', '0')
         if search_term:
-            if search_mode == '0':  # 精准查询
+            if search_mode == '0':  # 精准查询 - 完全匹配
                 queryset = queryset.filter(search_term__term__iexact=search_term)
-            elif search_mode == '2':  # 广泛匹配（关键词匹配，空格分隔）
-                keywords = search_term.split()
-                for keyword in keywords:
-                    queryset = queryset.filter(search_term__term__icontains=keyword)
-            else:  # 默认模糊查询
+            elif search_mode == '2':  # 广泛匹配 - 空格分隔关键词，AND关系，整词匹配
+                keywords = search_term.strip().split()
+                if keywords:
+                    # 必须同时包含所有关键词（AND关系），每个都是整词匹配
+                    for keyword in keywords:
+                        # 使用正则表达式实现整词匹配
+                        # \y 是 PostgreSQL 的单词边界，匹配独立单词
+                        queryset = queryset.filter(search_term__term__iregex=rf'\y{keyword}\y')
+            else:  # 默认模糊查询 - 子串匹配
                 queryset = queryset.filter(search_term__term__icontains=search_term)
         
         # 排序：按排名升序
@@ -92,7 +96,7 @@ def get_aba_data_api(request):
             
             trend_list = [
                 {
-                    'week': t['report_week'].strftime('%m-%d'),
+                    'week': t['report_week'].strftime('%Y-%m-%d'),  # 传递完整日期，包含年份
                     'rank': t['search_frequency_rank']
                 }
                 for t in trend_data
