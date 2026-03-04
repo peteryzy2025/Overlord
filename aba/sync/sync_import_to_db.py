@@ -8,12 +8,14 @@ ABA 数据导入脚本
 - 自动聚合：搜索词 -> Top 3 ASIN
 - 环比排名计算
 - 进度条显示
+- 支持先下载后导入
 
 使用方法：
-    python sync_import_to_db.py <报告日期>
+    python sync_import_to_db.py
 
-示例：
-    python sync_import_to_db.py 2026-02-15
+交互式操作：
+    1. 下载最新数据并导入
+    2. 直接导入现有数据
 """
 
 import os
@@ -36,6 +38,10 @@ django.setup()
 from tqdm import tqdm
 from django.db import transaction
 from aba.models import SearchTerm, SearchTermMetric
+
+# 导入下载模块
+sys.path.insert(0, str(Path(__file__).parent))
+from sync_aba_down import download_aba_report, JSON_DIR
 
 
 class ABAImporter:
@@ -349,48 +355,195 @@ class ABAImporter:
         print("="*60)
 
 
-def main(report_date: str = "2026-02-15"):
+def generate_weeks(start_year: int = 2025) -> List[Tuple[str, int, str, str]]:
     """
-    主入口函数
+    生成从指定年份到当前日期的所有周日列表
     
-    参数:
-        report_date: 报告日期 (YYYY-MM-DD)，默认 2026-02-15
+    返回: [(日期字符串, 年度第几周, 开始日期MM.DD, 结束日期MM.DD), ...]
     """
-    # 验证日期格式
-    try:
-        datetime.strptime(report_date, "%Y-%m-%d")
-    except ValueError:
-        print("❌ 日期格式错误，请使用 YYYY-MM-DD")
-        return False
+    weeks = []
+    today = datetime.now().date()
     
-    # 自动查找 json 文件
-    json_dir = Path(__file__).parent / "json"
-    filepath = json_dir / f"{report_date}.json"
+    # 找到2025年第一个周日
+    start_date = datetime(start_year, 1, 1).date()
+    while start_date.weekday() != 6:  # 6 = Sunday
+        start_date += timedelta(days=1)
     
-    if not filepath.exists():
-        print(f"❌ 文件不存在: {filepath}")
-        print(f"   请先运行: python sync_aba_down.py")
-        print(f"   或检查日期是否正确")
-        return False
+    # 生成所有周日直到当前日期后一周
+    current = start_date
+    while current <= today + timedelta(days=7):
+        # 计算年度第几周
+        week_number = current.isocalendar()[1]
+        # 计算该周结束日期（周六）
+        end_date = current + timedelta(days=6)
+        
+        weeks.append((
+            current.strftime("%Y-%m-%d"),  # 2026-02-15
+            week_number,                    # 第7周
+            current.strftime("%m.%d"),      # 02.15
+            end_date.strftime("%m.%d")      # 02.21
+        ))
+        current += timedelta(days=7)
     
-    print(f"📁 找到 JSON 文件: {filepath}")
+    return weeks
+
+
+def show_week_selection_menu() -> List[str]:
+    """
+    显示周期选择菜单，返回用户选择的日期列表
+    """
+    weeks = generate_weeks(2025)
+    
+    print("\n" + "="*60)
+    print("📅 请选择要下载的周期（支持多选）：")
+    print("="*60)
     print()
     
-    # 开始导入
-    start_time = time.time()
+    for i, (date_str, week_num, start, end) in enumerate(weeks, 1):
+        year = datetime.strptime(date_str, "%Y-%m-%d").year
+        print(f"{i:2d}. {year}年第{week_num}周 ({start}-{end})")
     
-    importer = ABAImporter(report_week=report_date, batch_size=5000) # 批次大小
-    importer.import_file(str(filepath))
+    print()
+    print("提示：")
+    print("  - 输入单个数字，如: 5")
+    print("  - 输入多个数字（逗号分隔），如: 5,6,7")
+    print("  - 输入 'all' 下载所有")
+    print("  - 输入 'q' 取消")
+    print()
     
-    elapsed = time.time() - start_time
-    print(f"\n⏱️  总耗时: {elapsed:.1f}秒 ({elapsed/60:.1f} 分钟)")
+    while True:
+        choice = input("请输入编号: ").strip().lower()
+        
+        if choice == 'q':
+            return []
+        
+        if choice == 'all':
+            return [w[0] for w in weeks]
+        
+        try:
+            indices = [int(x.strip()) for x in choice.split(',')]
+            selected = []
+            for idx in indices:
+                if 1 <= idx <= len(weeks):
+                    selected.append(weeks[idx-1][0])
+                else:
+                    print(f"❌ 编号 {idx} 超出范围，请重新输入")
+                    break
+            else:
+                return selected
+        except ValueError:
+            print("❌ 输入格式错误，请重新输入")
+
+
+def main():
+    """
+    主入口函数 - 交互式操作
+    """
+    print("="*60)
+    print("📦 ABA 数据导入工具")
+    print("="*60)
+    print()
+    print("请选择操作：")
+    print("  1. 下载最新数据并导入")
+    print("  2. 直接导入现有数据")
+    print()
     
-    return True
+    while True:
+        choice = input("请选择 (1/2): ").strip()
+        
+        if choice == '1':
+            # 下载并导入
+            selected_dates = show_week_selection_menu()
+            if not selected_dates:
+                print("❌ 已取消")
+                return False
+            
+            print(f"\n🚀 共选择 {len(selected_dates)} 个周期，开始下载...\n")
+            
+            # 逐个下载并导入
+            for date_str in selected_dates:
+                print(f"\n{'='*60}")
+                print(f"📅 处理周期: {date_str}")
+                print(f"{'='*60}")
+                
+                # 下载
+                json_path = download_aba_report(date_str)
+                if not json_path:
+                    print(f"❌ {date_str} 下载失败，跳过")
+                    continue
+                
+                # 导入
+                print(f"\n📥 开始导入 {date_str}...")
+                start_time = time.time()
+                importer = ABAImporter(report_week=date_str, batch_size=5000)
+                importer.import_file(json_path)
+                elapsed = time.time() - start_time
+                print(f"⏱️  导入耗时: {elapsed:.1f}秒")
+            
+            print(f"\n{'='*60}")
+            print("✅ 所有周期处理完成！")
+            print(f"{'='*60}")
+            return True
+        
+        elif choice == '2':
+            # 直接导入现有数据
+            json_dir = Path(__file__).parent / "json"
+            
+            if not json_dir.exists():
+                print(f"❌ 目录不存在: {json_dir}")
+                return False
+            
+            # 列出所有 json 文件
+            json_files = sorted(json_dir.glob("*.json"))
+            if not json_files:
+                print(f"❌ 未找到 JSON 文件，请先下载数据")
+                return False
+            
+            print(f"\n📁 找到 {len(json_files)} 个文件：")
+            for i, f in enumerate(json_files, 1):
+                size_mb = f.stat().st_size / 1024 / 1024
+                print(f"  {i}. {f.name} ({size_mb:.1f} MB)")
+            print()
+            
+            # 选择文件导入
+            while True:
+                file_choice = input("请输入要导入的文件编号（或文件名如 2026-02-15）: ").strip()
+                
+                # 尝试作为编号解析
+                try:
+                    idx = int(file_choice)
+                    if 1 <= idx <= len(json_files):
+                        selected_file = json_files[idx - 1]
+                    else:
+                        print("❌ 编号超出范围")
+                        continue
+                except ValueError:
+                    # 作为文件名解析
+                    selected_file = json_dir / f"{file_choice}.json"
+                    if not selected_file.exists():
+                        print(f"❌ 文件不存在: {selected_file}")
+                        continue
+                
+                # 提取日期
+                date_str = selected_file.stem
+                
+                print(f"\n📥 开始导入 {selected_file.name}...")
+                start_time = time.time()
+                importer = ABAImporter(report_week=date_str, batch_size=5000)
+                importer.import_file(str(selected_file))
+                elapsed = time.time() - start_time
+                print(f"\n⏱️  总耗时: {elapsed:.1f}秒 ({elapsed/60:.1f} 分钟)")
+                return True
+        
+        else:
+            print("❌ 无效选择，请重新输入")
 
 
 if __name__ == '__main__':
-    # 默认导入 2026-02-15 的数据
-    # 如需导入其他日期，修改参数即可：main("2026-02-08")
-    result = main("2026-02-22")
-    if not result:
+    try:
+        result = main()
+        if not result:
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n❌ 用户取消")
         sys.exit(1)
