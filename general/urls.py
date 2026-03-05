@@ -83,7 +83,7 @@ urlpatterns = [
     path('api/customers/', views_amazon_management.get_customers_api, name='get_customers_api'),
 
     # ========== Temu管理 ==========
-    path('management/temu/', views_user_management.temu_management_view, name='temu_management'),  # 移到人员管理下避免循环导入问题
+    path('management/temu/', views_temu_management.temu_management_view, name='temu_management'),  # 移到人员管理下避免循环导入问题
     # ⚠️ URL冲突注意：下面这行与Amazon的'api/operators/'冲突，建议保留一个或改名
     # path('api/operators/', views_temu_management.get_all_operators_api, name='get_operators'),
     path('api/temu-customers/', views_temu_management.get_customers_api, name='get_temu_customers'),
@@ -91,6 +91,7 @@ urlpatterns = [
     path('api/temu-shops/create/', views_temu_management.create_temu_shop_api, name='create_temu_shop'),
     path('api/temu-shops/<int:shop_id>/update/', views_temu_management.update_temu_shop_api, name='update_temu_shop'),
     path('api/temu-shops/bulk-update-project/', views_temu_management.bulk_update_project_api, name='temu_bulk_update_project'),
+    path('api/temu-shops/bulk-update-operator/', views_temu_management.bulk_update_operator_api, name='temu_bulk_update_operator'),
 
     # ========== 绩效管理 ==========
     path('performance/', views_performance.performance_targets_view, name='performance_targets'),
@@ -120,3 +121,4 @@ urlpatterns = [
     path('api/profile/basic-info/', views_profile.update_basic_info_api, name='profile_update_basic_info'),
     path('api/profile/password/', views_profile.change_password_api, name='profile_change_password'),
 ]
+

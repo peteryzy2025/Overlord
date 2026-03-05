@@ -1,0 +1,49 @@
+{% extends 'base/base_r.html' %}
+
+{% block layout_css %}
+    {{ block.super }}
+
+    body {
+        overflow: hidden;
+    }
+
+    .main-container {
+        height: calc(100vh - 80px);
+        min-height: calc(100vh - 80px);
+        overflow: hidden;
+    }
+
+    .content {
+        height: calc(100vh - 80px);
+        overflow-y: auto;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            overflow: auto;
+        }
+
+        .main-container {
+            height: auto;
+            min-height: calc(100vh - 80px);
+            overflow: visible;
+        }
+
+        .content {
+            height: auto;
+            overflow: visible;
+        }
+    }
+{% endblock %}
+
+{% block sidebar %}
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'temu:temu_order_management' %}"
+               class="sidebar-link {% if active_page == 'temu_orders' %}active{% endif %}">
+                <i class="fas fa-shopping-cart sidebar-icon"></i>
+                <span>订单管理</span>
+            </a>
+        </li>
+    </ul>
+{% endblock %}

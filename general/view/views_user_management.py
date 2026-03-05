@@ -784,11 +784,3 @@ def get_departments_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
-
-
-# ============ 占位视图（防止urls.py引用报错） ============
-@login_required
-def temu_management_view(request):
-    """Temu店铺管理页面 - 占位"""
-    context = {'active_page': 'temu_management'}
-    return render(request, 'management/temu_shop_management.html', context)

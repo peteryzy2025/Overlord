@@ -90,9 +90,20 @@ def sync_temu_orders(data_dict):
                         continue
 
                     # ========== 准备订单数据 ==========
+                    # 从 platform_info 提取 Temu 平台订单号
+                    platform_info_list = raw_order.get('platform_info', [])
+                    platform_order_no = None
+                    if platform_info_list and isinstance(platform_info_list, list) and len(platform_info_list) > 0:
+                        platform_order_no = platform_info_list[0].get('platform_order_no')
+                    # 如果 platform_info 中没有，则尝试从商品明细中获取
+                    if not platform_order_no:
+                        item_info = raw_order.get('item_info', [])
+                        if item_info and isinstance(item_info, list) and len(item_info) > 0:
+                            platform_order_no = item_info[0].get('platform_order_no')
+                    
                     defaults = {
                         'lingxing_shop': lingxing_shop,
-                        'reference_no': raw_order.get('reference_no'),
+                        'reference_no': platform_order_no or raw_order.get('reference_no'),
                         'order_from_name': raw_order.get('order_from_name'),
                         'delivery_type': raw_order.get('delivery_type'),
                         'split_type': raw_order.get('split_type'),

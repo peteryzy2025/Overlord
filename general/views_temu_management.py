@@ -26,7 +26,12 @@ def has_perm_code(user, code):
 
 
 def can_access_shop_management(user):
-    """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
+    """店铺管理页面权限：555(超管) 或 552(店铺管理) 或 Django超级管理员"""
+    if not user or not user.is_authenticated:
+        return False
+    # Django超级管理员自动拥有所有权限
+    if user.is_superuser:
+        return True
     return has_perm_code(user, '555') or has_perm_code(user, '552')
 
 
@@ -75,6 +80,9 @@ def temu_management_view(request):
     
     import json
     user_perms = list(user.permission_configs.values_list('code', flat=True))
+    # 如果是Django超级管理员，自动添加555权限码
+    if user.is_superuser and 555 not in user_perms:
+        user_perms.append(555)
     user_perms_str = [str(p) for p in user_perms]
     context = {
         'active_page': 'temu_management',
@@ -636,6 +644,57 @@ def bulk_update_project_api(request):
 
     except Exception as e:
         print(f"批量更新项目错误: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def bulk_update_operator_api(request):
+    """
+    批量设置Temu店铺的运营人员（仅管理员）
+    """
+    try:
+        # 权限检查：仅管理员（555/552）
+        if not can_access_shop_management(request.user):
+            return JsonResponse({'success': False, 'error': '无权限进行批量操作，仅管理员可用'}, status=403)
+
+        data = json.loads(request.body)
+        shop_ids = data.get('shop_ids', [])
+        operator_id = data.get('operator_id')
+
+        if not shop_ids:
+            return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
+
+        if not operator_id:
+            return JsonResponse({'success': False, 'error': '未选择运营人员'}, status=400)
+
+        # 验证运营人员是否存在
+        try:
+            operator = User.objects.get(id=int(operator_id), company=request.user.company)
+        except (User.DoesNotExist, ValueError):
+            return JsonResponse({'success': False, 'error': '运营人员不存在'}, status=404)
+
+        with transaction.atomic():
+            # 更新店铺的运营人员（只更新本公司店铺）
+            updated_count = TemuShop.objects.filter(
+                id__in=shop_ids, 
+                company=request.user.company
+            ).update(ops_id=operator.id)
+
+        return JsonResponse({
+            'success': True,
+            'message': '批量设置运营人员成功',
+            'updated_count': updated_count
+        })
+
+    except Exception as e:
+        print(f"批量更新运营人员错误: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
