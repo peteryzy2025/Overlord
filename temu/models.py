@@ -52,10 +52,6 @@ class LingXingTemuShop(models.Model):
         return f"{self.store_name} ({self.store_id})"
 
 
-
-
-
-
 class TemuOrder(models.Model):
     """
     Temu 订单主表

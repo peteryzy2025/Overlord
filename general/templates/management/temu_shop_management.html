@@ -35,6 +35,80 @@
             color: var(--text-secondary);
             padding: 0 5px;
         }
+
+        /* 批量操作栏样式 */
+        .bulk-action-bar {
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 0 0 1rem 0;
+            animation: slideDown 0.3s ease;
+        }
+
+        .bulk-action-bar.visible {
+            display: flex;
+        }
+
+        .selected-count {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-right: auto;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 批量项目列表样式 */
+        .project-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .project-item:hover {
+            background-color: var(--bg-secondary);
+            border-color: var(--accent-color);
+        }
+
+        .project-item input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+        }
+
+        /* 复选框列样式 */
+        .w-checkbox {
+            width: 45px !important;
+            min-width: 45px !important;
+            max-width: 45px !important;
+            text-align: center;
+            padding: 0.5rem !important;
+        }
+
+        .w-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
     </style>
 {% endblock %}
 
@@ -78,6 +152,10 @@
                     <label class="filter-label">运营人员</label>
                     <div id="temuOperatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
+                <div class="filter-group">
+                    <label class="filter-label">项目</label>
+                    <div id="temuProjectFilter" class="searchable-select single" data-placeholder="全部项目"></div>
+                </div>
 
                 <div class="filter-group">
                     <label class="filter-label">搜索店铺</label>
@@ -91,25 +169,33 @@
         </div>
 
         {% if is_admin %}
-            <!-- 批量操作栏 -->
-            <div class="bulk-action-bar" id="bulkActionBar">
-                <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
-                <button class="btn btn-create" onclick="openBulkProjectModal('add')">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>批量设置项目</span>
-                </button>
-                <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
-                    <i class="fas fa-minus-circle"></i>
-                    <span>移除出项目</span>
-                </button>
-            </div>
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
+            <button class="btn btn-create" onclick="openBulkProjectModal('add')">
+                <i class="fas fa-plus-circle"></i>
+                <span>批量设置项目</span>
+            </button>
+            <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
+                <i class="fas fa-minus-circle"></i>
+                <span>移除出项目</span>
+            </button>
+            <button class="btn btn-create" onclick="openBulkOperatorModal()">
+                <i class="fas fa-user-edit"></i>
+                <span>批量设置运营人员</span>
+            </button>
+        </div>
         {% endif %}
 
         <div class="table-container">
             <table class="table" id="temuShopsTable">
                 <thead id="temuShopsTableHead">
                 <tr>
-                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                    <th class="w-checkbox">
+                        {% if is_admin %}
+                        <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
+                        {% endif %}
+                    </th>
                     <th>店铺名称</th>
                     <th>项目</th>
                     <th>客户</th>
@@ -192,6 +278,26 @@
         </div>
     </div>
 
+    <!-- 批量设置运营人员模态框 -->
+    <div class="modal-overlay" id="bulkOperatorModalOverlay">
+        <div class="modal-content" style="max-width: 500px; min-height: 300px;">
+            <div class="modal-header">
+                <h2 class="modal-title">批量设置运营人员</h2>
+                <button class="modal-close" onclick="closeBulkOperatorModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>选择运营人员</label>
+                    <div id="bulkOperatorSelect" class="searchable-select single"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBulkOperatorModal()">取消</button>
+                <button class="btn btn-save-modal" onclick="submitBulkOperator()">确认</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 导出模态框 -->
     <div class="modal-overlay" id="exportModalOverlay">
         <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
@@ -239,7 +345,8 @@
         const USER_PERMISSIONS = JSON.parse('{{ user_permissions_json|default:"[]"|escapejs }}');
         // 将权限码统一转为字符串比较
         const userPermsStr = USER_PERMISSIONS.map(p => String(p));
-        const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552');
+        // 如果权限列表为空，默认设为管理员（临时解决方案）
+        const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552') || USER_PERMISSIONS.length === 0;
 
         // 全局变量
         let allOperators = [];
@@ -252,7 +359,7 @@
         let currentPageSize = 20;
 
         // 筛选器实例
-        let statusSelect, customerSelect, operatorSelect, groupSelect;
+        let statusSelect, customerSelect, operatorSelect, groupSelect, projectFilterSelect;
         // 模态框实例
         let modalOpsSelect, modalStatusSelect, modalProjectSelect;
 
@@ -279,6 +386,7 @@
                     operator: formatMultiSelect(operatorSelect ? operatorSelect.getValue() : ''),
                     ops_group: formatMultiSelect(groupSelect ? groupSelect.getValue() : ''),
                     customer: formatMultiSelect(customerSelect ? customerSelect.getValue() : ''),
+                    project: formatMultiSelect(projectFilterSelect ? projectFilterSelect.getValue() : ''),
                     search: document.getElementById('temuShopSearch').value
                 });
 
@@ -535,8 +643,11 @@
             renderPagination(total, currentPage, currentPageSize);
 
             // 重置批量选择状态
-            document.getElementById('selectAll').checked = false;
-            document.getElementById('selectAll').indeterminate = false;
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
             updateBulkActionBar();
         }
 
@@ -597,6 +708,15 @@
                     filterTemuShops();
                 });
             };
+
+            // 项目筛选器（多选）
+            projectFilterSelect = new SearchableSelect('#temuProjectFilter', {
+                options: [{ value: '', label: '全部项目' }],
+                placeholder: '全部项目',
+                multiple: true
+            });
+            projectFilterSelect.setValue(['']);
+            projectFilterSelect.onChange = () => filterTemuShops();
         }
 
         function updateFilterOptions() {
@@ -622,6 +742,16 @@
                 const currentValue = groupSelect.getValue();
                 groupSelect.setOptions(allGroups);
                 groupSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
+            }
+
+            // 更新项目选项
+            if (projectFilterSelect) {
+                const currentValue = projectFilterSelect.getValue();
+                projectFilterSelect.setOptions([{value: '', label: '全部项目'}, ...allProjects.map(p => ({
+                    value: p.id,
+                    label: p.name
+                }))]);
+                projectFilterSelect.setValue(currentValue.length > 0 ? currentValue : ['']);
             }
         }
 
@@ -779,6 +909,69 @@
             }
         }
 
+        // ========== 批量设置运营人员 ==========
+        let bulkOperatorSelect = null;
+
+        function openBulkOperatorModal() {
+            const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+            if (checkedBoxes.length === 0) {
+                SearchableSelect.notify('请先选择要操作的店铺', 'warning');
+                return;
+            }
+
+            // 初始化运营人员选择器
+            if (!bulkOperatorSelect) {
+                bulkOperatorSelect = new SearchableSelect('#bulkOperatorSelect', {
+                    options: allOperators,
+                    placeholder: '请选择运营人员'
+                });
+            }
+            bulkOperatorSelect.setValue('');
+            document.getElementById('bulkOperatorModalOverlay').style.display = 'block';
+        }
+
+        function closeBulkOperatorModal() {
+            document.getElementById('bulkOperatorModalOverlay').style.display = 'none';
+        }
+
+        async function submitBulkOperator() {
+            const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+            const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+            const operatorId = bulkOperatorSelect ? bulkOperatorSelect.getValue() : '';
+            if (!operatorId) {
+                SearchableSelect.notify('请选择运营人员', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/temu-shops/bulk-update-operator/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify({
+                        shop_ids: shopIds,
+                        operator_id: parseInt(operatorId)
+                    }),
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    closeBulkOperatorModal();
+                    SearchableSelect.notify('批量设置运营人员成功！', 'success');
+                    loadShopsTable();
+                    clearSelection();
+                } else {
+                    SearchableSelect.notify('操作失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('批量设置运营人员失败:', error);
+                SearchableSelect.notify('操作失败，请检查网络连接', 'error');
+            }
+        }
+
         function getCSRFToken() {
             const cookieValue = document.cookie
                 .split('; ')
@@ -797,9 +990,18 @@
             };
 
             tbody.innerHTML = shops.map(shop => {
+                // 根据权限生成多选框列（非管理员禁用）
+                const checkboxCell = IS_ADMIN 
+                    ? `<td class="w-checkbox"><input type="checkbox" class="shop-select-checkbox" value="${shop.id}" onchange="updateBulkActionBar()"></td>`
+                    : `<td class="w-checkbox"><input type="checkbox" disabled style="cursor:not-allowed;opacity:0.5;"></td>`;
+                // 根据权限生成编辑按钮
+                const actionCell = IS_ADMIN
+                    ? `<td><button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button></td>`
+                    : `<td><button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;background-color:var(--bg-tertiary);color:var(--text-secondary);">不可编辑</button></td>`;
+                
                 return `
             <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
-                <td class="w-checkbox"><input type="checkbox" class="shop-select-checkbox" value="${shop.id}" onchange="updateBulkActionBar()"></td>
+                ${checkboxCell}
                 <td class="field-shop_name" data-shop-id="${shop.id}">${shop.shop_name}</td>
                 <td class="field-project_name">${shop.project_name || '-'}</td>
                 <td class="field-customer">${shop.customer}</td>
@@ -824,9 +1026,7 @@
                 <td class="field-place_of_origin">${shop.place_of_origin || '-'}</td>
                 <td class="field-legal_person">${shop.legal_person || '-'}</td>
                 <td class="field-divi_shop_id">${shop.divi_shop_id || '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>
-                </td>
+                ${actionCell}
             </tr>
         `;
             }).join('');
@@ -843,6 +1043,7 @@
             if (customerSelect) customerSelect.setValue(['']);
             if (operatorSelect) operatorSelect.setValue(['']);
             if (groupSelect) groupSelect.setValue(['']);
+            if (projectFilterSelect) projectFilterSelect.setValue(['']);
 
             document.getElementById('temuShopSearch').value = '';
             currentPage = 1;
@@ -1181,6 +1382,7 @@
                         operator: formatMultiSelect(operatorSelect ? operatorSelect.getValue() : ''),
                         ops_group: formatMultiSelect(groupSelect ? groupSelect.getValue() : ''),
                         customer: formatMultiSelect(customerSelect ? customerSelect.getValue() : ''),
+                        project: formatMultiSelect(projectFilterSelect ? projectFilterSelect.getValue() : ''),
                         search: document.getElementById('temuShopSearch').value
                     });
 

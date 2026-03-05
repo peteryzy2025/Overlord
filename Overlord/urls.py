@@ -9,7 +9,7 @@ urlpatterns = [
     path('', include('general.urls')),  # 包含 General app 的所有路由
     path('', include('amazon.urls')),  # 包含 Amazon app 的所有路由
     path('', include('advertisement.urls')),  # 包含 Advertisement app 的所有路由
-    # path('', include('temu.urls')),
+    path('', include('temu.urls')),
     path('', include('track.urls')),
     path('', include('yuser.urls')),  # 添加这一行
     path('', include('theme.urls')),  # 包含 Theme app 的路由

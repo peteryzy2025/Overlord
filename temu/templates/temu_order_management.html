@@ -1,0 +1,1831 @@
+{% extends 'base/base_temu.html' %}
+{% load static %}
+
+{% block title %}Temu订单管理 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <style>
+        :root {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        [data-theme="dark"] {
+            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .temu-order-main {
+            margin: 20px;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .control-panel {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            min-width: 140px;
+        }
+
+        .filter-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-control, .form-select {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+        }
+
+        .form-select::-ms-expand {
+            display: none;
+        }
+
+        .form-control:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--border-color);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        select.form-select {
+            padding-right: 40px;
+            width: 100%;
+        }
+
+        .select-arrow, .btn-clear-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.3s ease;
+        }
+
+        .select-arrow {
+            color: var(--text-secondary);
+            pointer-events: none;
+            font-size: 0.875rem;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .btn-clear-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.875rem;
+            opacity: 0;
+            visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-clear-toggle:hover {
+            color: var(--text-primary);
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .select-wrapper.has-value .select-arrow {
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        .select-wrapper.has-value .btn-clear-toggle {
+            opacity: 0.7 !important;
+            visibility: visible !important;
+        }
+
+        .data-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            max-height: 700px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* 横向滚动控制 */
+        .table-container table {
+            min-width: 1500px;
+        }
+        #ordersTable td {
+            white-space: nowrap;
+        }
+
+        .table {
+            width: 100%;
+            margin: 0;
+            color: var(--text-primary);
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 11;
+            background-color: var(--bg-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .table tbody tr:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        /* 单元格内部布局样式 */
+        .order-id-cell, .shop-name-cell, .product-info-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .sub-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 订单状态标签样式 */
+        .tag-order-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background-color: #E9D8FD;
+            color: #553C9A;
+        }
+
+        /* 订单状态不同颜色的样式 */
+        .tag-order-status.status-syncing {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .tag-order-status.status-synced {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+
+        .tag-order-status.status-processing {
+            background-color: #FEF3C7;
+            color: #92400E;
+        }
+
+        .tag-order-status.status-reviewing {
+            background-color: #E0E7FF;
+            color: #3730A3;
+        }
+
+        .tag-order-status.status-shipping {
+            background-color: #FED7AA;
+            color: #9A3412;
+        }
+
+        .tag-order-status.status-shipped {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .tag-order-status.status-cancelled {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .tag-order-status.status-hidden {
+            background-color: #F3F4F6;
+            color: #4B5563;
+        }
+
+        .tag-order-status.status-platform-shipped {
+            background-color: #A5F3FC;
+            color: #155E75;
+        }
+
+        /* 店铺状态标签样式 */
+        .tag-shop-status {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .tag-shop-status.status-normal {
+            background-color: #C6F6D5;
+            color: #22543D;
+        }
+
+        .tag-shop-status.status-suspended {
+            background-color: #FEEBC8;
+            color: #744210;
+        }
+
+        .tag-shop-status.status-cancelled {
+            background-color: #FED7D7;
+            color: #742A2A;
+        }
+
+        /* DIVI导单状态图标 */
+        .tag-divi-status {
+            font-size: 0.875rem;
+        }
+
+        .tag-divi-status.exported {
+            color: #10B981;
+        }
+
+        .tag-divi-status.not-exported {
+            color: #EF4444;
+        }
+
+        .tag-divi-status.disabled {
+            color: #9CA3AF;
+        }
+
+        /* 运营分组/人员合并显示样式 */
+        .ops-info-cell {
+            line-height: 1.4;
+        }
+
+        .ops-group-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: block;
+        }
+
+        .ops-operator-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            display: block;
+        }
+
+        .divi-details-cell div {
+            margin-bottom: 2px;
+        }
+
+        /* 分页样式 */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .pagination-new {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+        }
+
+        .pagination-btn-new {
+            min-width: 40px;
+            padding: 0 10px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .pagination-btn-new:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-btn-new.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-btn-new:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-ellipsis {
+            color: var(--text-secondary);
+            padding: 0 5px;
+        }
+
+        .page-size-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-size-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .page-size-dropdown-wrapper {
+            position: relative;
+        }
+
+        .page-size-trigger {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-size-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-shadow: var(--shadow-medium);
+            display: none;
+            z-index: 100;
+            min-width: 100%;
+        }
+
+        .page-size-dropdown.open {
+            display: block;
+        }
+
+        .page-size-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .page-size-option:hover {
+            background-color: var(--bg-secondary);
+        }
+
+        .page-size-option.selected {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .pagination-jump {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .page-jump-input {
+            width: 60px;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        .pagination-stats {
+            margin-left: 1rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* 批量操作栏 */
+        .bulk-action-bar {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--bg-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .bulk-action-bar.visible {
+            display: flex;
+        }
+
+        .bulk-info {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .bulk-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .bulk-btn-primary {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .bulk-btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .bulk-btn:not(.bulk-btn-primary) {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .bulk-btn:not(.bulk-btn-primary):hover {
+            background-color: var(--border-color);
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .empty-state p {
+            margin: 0.5rem 0;
+        }
+
+        .empty-state p:last-child {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        /* 加载遮罩 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-content {
+            background: var(--bg-primary);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: var(--shadow-heavy);
+        }
+
+        .spinner {
+            border: 3px solid var(--bg-secondary);
+            border-top: 3px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 操作按钮样式 */
+        .action-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+
+        .btn-action {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
+
+        .btn-divi {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        .btn-divi:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-divi:disabled {
+            background-color: var(--bg-tertiary);
+        }
+
+        @media (max-width: 992px) {
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .temu-order-main {
+                margin: 10px;
+            }
+
+            .filter-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .table-container {
+                max-height: 500px;
+            }
+
+            .table th, .table td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="tab-content">
+        <!-- 页面标题区 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-shopping-cart" style="color: var(--accent-color);"></i>
+                    Temu订单管理
+                </h1>
+                <p class="page-subtitle">查看和管理Temu订单，支持DIVI导单</p>
+            </div>
+            <div>
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="control-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">日期范围</label>
+                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div id="groupFilter" class="searchable-select multiple" data-placeholder="全部分组"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <div id="operatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">订单号</label>
+                    <input type="text" class="form-control" id="orderIdFilter"
+                           placeholder="输入订单号（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺名称</label>
+                    <input type="text" class="form-control" id="shopNameFilter"
+                           placeholder="输入店铺名称（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺状态</label>
+                    <div id="shopStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">订单状态</label>
+                    <div id="orderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">DIVI导单情况</label>
+                    <div id="diviExportFilter" class="searchable-select multiple" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">DIVI订单状态</label>
+                    <div id="diviOrderStatusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn" onclick="applyFilters()" title="筛选"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetFilters(event)" title="重置"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="bulk-info">已选择 <span id="selectedCount">0</span> 项</span>
+            <div class="bulk-actions">
+                <button class="bulk-btn bulk-btn-primary" onclick="batchExportToDivi()">
+                    <i class="fas fa-file-export"></i> 批量导单
+                </button>
+                <button class="bulk-btn" onclick="clearSelection()">
+                    <i class="fas fa-times"></i> 取消选择
+                </button>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="data-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 class="section-title">订单详情</h3>
+                <div style="display: flex; gap: 0.5rem; margin-left: auto;">
+                    <button class="btn btn-secondary" onclick="exportOrdersToExcel(event)">
+                        <i class="fas fa-download"></i> 导出Excel
+                    </button>
+                    <button class="btn" onclick="updateDiviExportStatus()">
+                        <i class="fas fa-sync-alt"></i> 更新DIVI导单情况
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container" id="ordersTableContainer">
+                <table class="table" id="ordersTable">
+                    <thead>
+                    <tr>
+                        <th class="w-checkbox">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll()">
+                        </th>
+                        <th>订单ID</th>
+                        <th>店铺名称</th>
+                        <th>运营分组/人员</th>
+                        <th>DIVI详情</th>
+                        <th>商品详情</th>
+                        <th>下单时间</th>
+                        <th>配送类型</th>
+                        <th class="w-actions">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="ordersTableBody">
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"应用筛选"</p>
+                            <p>订单数据将在此处显示</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页控件 -->
+            <div class="pagination-container" id="paginationControls" style="display: none;">
+                <div class="pagination-info" id="paginationInfo">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper" style="position: relative;">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                                <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
+                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                            </div>
+                        </div>
+                        <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                    </div>
+                </div>
+                <div class="pagination-new" id="paginationButtons">
+                    <!-- 动态生成 -->
+                </div>
+                <div class="pagination-jump" id="paginationJump" style="display: none;">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script>
+        let allOperators = [];
+        let allGroups = [];
+        let currentFilters = {
+            date_range: 'last30days',
+            start_date: '',
+            end_date: '',
+            operator_id: '',
+            group: '',
+            order_id: '',
+            shop_name: '',
+            shop_status: '',
+            order_status: '',
+            divi_export: '',
+            divi_order_status: ''
+        };
+        let ordersPagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+        }
+
+        // DIVI状态映射
+        const diviStatusMap = {
+            0: '取消订单',
+            1: '未付货款',
+            2: '未审核',
+            3: '排单中',
+            4: '生产中',
+            5: '已发货'
+        };
+
+        // Temu订单状态映射
+        const orderStatusMap = {
+            1: {text: '同步中', class: 'status-syncing'},
+            2: {text: '已同步', class: 'status-synced'},
+            3: {text: '未付款', class: 'status-processing'},
+            4: {text: '待审核', class: 'status-reviewing'},
+            5: {text: '待发货', class: 'status-shipping'},
+            6: {text: '已发货', class: 'status-shipped'},
+            7: {text: '已取消', class: 'status-cancelled'},
+            8: {text: '不显示', class: 'status-hidden'},
+            9: {text: '平台发货', class: 'status-platform-shipped'}
+        };
+
+        // 店铺状态映射
+        const shopStatusMap = {
+            '正常': {text: '正常', class: 'status-normal'},
+            '停用': {text: '停用', class: 'status-suspended'},
+            '注销': {text: '注销', class: 'status-cancelled'}
+        };
+
+        let dateRangeSelect, dateRangeController, groupSelect, operatorSelect, shopStatusSelect, orderStatusSelect;
+        let diviExportSelect, diviOrderStatusSelect;
+
+        async function loadOperatorsFromAPI(opsGroups) {
+            try {
+                const params = new URLSearchParams({platform: 'temu'});
+                if (opsGroups && opsGroups.length > 0 && !(opsGroups.length === 1 && opsGroups[0] === '')) {
+                    params.set('ops_group', opsGroups.join(','));
+                }
+
+                const response = await fetch(`/api/general/operators/?${params}`);
+                const result = await response.json();
+                if (result.success) {
+                    allOperators = result.data || [{value: '', label: '全部人员'}];
+                    if (operatorSelect) {
+                        operatorSelect.setOptions(allOperators);
+                    }
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('运营人员API请求错误:', error);
+                return false;
+            }
+        }
+
+        async function loadGroupsFromAPI() {
+            try {
+                const response = await fetch('/api/general/ops-groups/?platform=temu');
+                const result = await response.json();
+                if (result.success) {
+                    allGroups = result.data || [{value: '', label: '全部分组'}];
+                    if (groupSelect) {
+                        groupSelect.setOptions(allGroups);
+                    }
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('分组API请求错误:', error);
+                return false;
+            }
+        }
+
+        function syncDateRangeVisibility() {
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
+
+            const dateRange = dateRangeSelect ? dateRangeSelect.getValue() : 'last30days';
+            const customDateGroup = document.getElementById('customDateGroup');
+            const customDateGroup2 = document.getElementById('customDateGroup2');
+            if (dateRange === 'custom') {
+                customDateGroup.style.display = 'flex';
+                customDateGroup2.style.display = 'flex';
+            } else {
+                customDateGroup.style.display = 'none';
+                customDateGroup2.style.display = 'none';
+            }
+        }
+
+        function getCurrentFilters() {
+            const formatMultiSelect = (select) => {
+                if (!select) return '';
+                const value = select.getValue();
+                if (!value || value.length === 0) return '';
+                if (value.length === 1 && value[0] === '') return '';
+                return value.join(',');
+            };
+
+            const currentDateRange = dateRangeController
+                ? dateRangeController.getValue()
+                : (dateRangeSelect ? dateRangeSelect.getValue() : 'last30days');
+            const useCustomDate = dateRangeController ? dateRangeController.isCustom() : currentDateRange === 'custom';
+
+            return {
+                date_range: currentDateRange,
+                start_date: useCustomDate ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value) : '',
+                end_date: useCustomDate ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value) : '',
+                operator_id: formatMultiSelect(operatorSelect),
+                group: formatMultiSelect(groupSelect),
+                order_id: document.getElementById('orderIdFilter').value.trim(),
+                shop_name: document.getElementById('shopNameFilter').value.trim(),
+                shop_status: formatMultiSelect(shopStatusSelect),
+                order_status: formatMultiSelect(orderStatusSelect),
+                divi_export: formatMultiSelect(diviExportSelect),
+                divi_order_status: formatMultiSelect(diviOrderStatusSelect)
+            };
+        }
+
+        function initSearchableSelects() {
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRange',
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    defaultValue: 'last30days',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup', '#customDateGroup2'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    onChange: () => {
+                        ordersPagination.page = 1;
+                    }
+                })
+                : null;
+
+            if (dateRangeController) {
+                dateRangeSelect = dateRangeController.select;
+            } else {
+                dateRangeSelect = new SearchableSelect('#dateRange', {
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    multiple: false
+                });
+                dateRangeSelect.setValue('last30days');
+                dateRangeSelect.onChange = () => {
+                    syncDateRangeVisibility();
+                    ordersPagination.page = 1;
+                };
+                syncDateRangeVisibility();
+            }
+
+            shopStatusSelect = new SearchableSelect('#shopStatusFilter', {
+                options: [
+                    {value: '', label: '全部'},
+                    {value: '正常', label: '正常'},
+                    {value: '停用', label: '停用'},
+                    {value: '注销', label: '注销'}
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            shopStatusSelect.setValue(['']);
+            shopStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            orderStatusSelect = new SearchableSelect('#orderStatusFilter', {
+                options: [
+                    {value: '', label: '全部状态'},
+                    {value: '1', label: '同步中'},
+                    {value: '2', label: '已同步'},
+                    {value: '3', label: '未付款'},
+                    {value: '4', label: '待审核'},
+                    {value: '5', label: '待发货'},
+                    {value: '6', label: '已发货'},
+                    {value: '7', label: '已取消'},
+                    {value: '8', label: '不显示'},
+                    {value: '9', label: '平台发货'}
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            orderStatusSelect.setValue(['']);
+            orderStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            diviExportSelect = new SearchableSelect('#diviExportFilter', {
+                options: [
+                    {value: '', label: '全部'},
+                    {value: 'true', label: '已导单'},
+                    {value: 'false', label: '未导单'}
+                ],
+                placeholder: '全部',
+                multiple: true
+            });
+            diviExportSelect.setValue(['']);
+            diviExportSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            diviOrderStatusSelect = new SearchableSelect('#diviOrderStatusFilter', {
+                options: [
+                    {value: '', label: '全部状态'},
+                    {value: '0', label: '取消订单'},
+                    {value: '1', label: '未付货款'},
+                    {value: '2', label: '未审核'},
+                    {value: '3', label: '排单中'},
+                    {value: '4', label: '生产中'},
+                    {value: '5', label: '已发货'}
+                ],
+                placeholder: '全部状态',
+                multiple: true
+            });
+            diviOrderStatusSelect.setValue(['']);
+            diviOrderStatusSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+
+            groupSelect = new SearchableSelect('#groupFilter', {
+                options: [],
+                placeholder: '全部分组',
+                multiple: true
+            });
+            groupSelect.setValue(['']);
+            groupSelect.onChange = () => {
+                const selectedGroups = groupSelect.getValue();
+                loadOperatorsFromAPI(selectedGroups).then(() => {
+                    if (operatorSelect) {
+                        operatorSelect.setOptions(allOperators);
+                        operatorSelect.setValue(['']);
+                    }
+                });
+                ordersPagination.page = 1;
+            };
+
+            operatorSelect = new SearchableSelect('#operatorFilter', {
+                options: [],
+                placeholder: '全部人员',
+                multiple: true
+            });
+            operatorSelect.setValue(['']);
+            operatorSelect.onChange = () => {
+                ordersPagination.page = 1;
+            };
+        }
+
+        function setDefaultFilters() {
+            if (dateRangeController) {
+                dateRangeController.setValue('last30days');
+                dateRangeController.clearCustomDates();
+            } else {
+                if (dateRangeSelect) dateRangeSelect.setValue('last30days');
+                syncDateRangeVisibility();
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+            }
+            document.getElementById('orderIdFilter').value = '';
+            document.getElementById('shopNameFilter').value = '';
+        }
+
+        async function resetFilters(event) {
+            const icon = event?.target?.querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+
+            showLoading(true);
+
+            try {
+                if (allOperators.length === 0 || allGroups.length === 0) {
+                    await Promise.all([loadOperatorsFromAPI(), loadGroupsFromAPI()]);
+                }
+
+                if (dateRangeController) {
+                    dateRangeController.setValue('last30days');
+                    dateRangeController.clearCustomDates();
+                } else {
+                    dateRangeSelect.setValue('last30days');
+                    syncDateRangeVisibility();
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                }
+
+                shopStatusSelect.setValue(['']);
+                orderStatusSelect.setValue(['']);
+                diviExportSelect.setValue(['']);
+                diviOrderStatusSelect.setValue(['']);
+                groupSelect.setValue(['']);
+                operatorSelect.setValue(['']);
+
+                document.getElementById('orderIdFilter').value = '';
+                document.getElementById('shopNameFilter').value = '';
+
+                await loadOperatorsFromAPI([]);
+                operatorSelect.setOptions(allOperators);
+
+                ordersPagination.page = 1;
+                ordersPagination.page_size = 20;
+
+                document.getElementById('pageSizeText').textContent = '20条';
+                document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                    if (parseInt(opt.dataset.value) === 20) {
+                        opt.classList.add('selected');
+                    }
+                });
+
+                await applyFilters();
+                showNotification('筛选条件已重置为默认值', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            }
+        }
+
+        function refreshData(event) {
+            const icon = event.target.closest('button').querySelector('i');
+            icon.style.animation = 'spin 1s linear infinite';
+            applyFilters().finally(() => {
+                icon.style.animation = '';
+            });
+        }
+
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+
+            try {
+                await loadOrdersTable();
+                showNotification('订单数据已更新', 'success');
+            } catch (error) {
+                showNotification('数据请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function loadOrdersTable() {
+            const tbody = document.getElementById('ordersTableBody');
+            const paginationControls = document.getElementById('paginationControls');
+
+            showLoading(true);
+
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const requestData = {
+                    ...currentFilters,
+                    page: ordersPagination.page,
+                    page_size: ordersPagination.page_size
+                };
+
+                const response = await fetch('/api/temu-orders-list/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    ordersPagination.total = data.total;
+                    ordersPagination.total_pages = data.total_pages;
+
+                    renderOrdersTable(data.orders);
+                    renderPagination();
+
+                    if (data.total > 0) {
+                        paginationControls.style.display = 'flex';
+                    } else {
+                        paginationControls.style.display = 'none';
+                    }
+                } else {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <p>加载失败: ${result.message || '未知错误'}</p>
+                            </td>
+                        </tr>
+                    `;
+                    paginationControls.style.display = 'none';
+                }
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败</p>
+                            <p>${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationControls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 渲染DIVI导单状态（行内标签形式）
+        function renderDiviExportStatusInline(isExported) {
+            if (isExported) {
+                return `<span class="tag-divi-status exported" title="已导单"><i class="fas fa-check-circle"></i></span>`;
+            } else {
+                return `<span class="tag-divi-status not-exported" title="未导单"><i class="fas fa-times-circle"></i></span>`;
+            }
+        }
+
+        function renderOrdersTable(orders) {
+            const tbody = document.getElementById('ordersTableBody');
+            if (!tbody) return;
+
+            if (!orders || orders.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无订单数据</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = orders.map(order => {
+                // 1. 订单状态
+                const statusInfo = orderStatusMap[order.status] || {text: order.status || '-', class: ''};
+                const orderStatusHtml = `<span class="tag-order-status ${statusInfo.class}">${statusInfo.text}</span>`;
+
+                // 2. DIVI导单状态
+                const diviStatusHtml = renderDiviExportStatusInline(order.is_exported_to_divi);
+
+                // 3. 店铺状态
+                const shopStatusInfo = shopStatusMap[order.shop_status] || {
+                    text: order.shop_status || '-',
+                    class: 'status-normal'
+                };
+
+                // 4. 运营信息
+                const opsInfoHtml = `
+                    <div class="ops-info-cell">
+                        <span class="ops-group-text">${order.group || '-'}</span>
+                        <span class="ops-operator-text">${order.operator_name || '-'}</span>
+                    </div>
+                `;
+
+                // 5. DIVI详情
+                const diviStatusText = order.divi_order_status === null || order.divi_order_status === undefined
+                    ? '-'
+                    : (diviStatusMap[order.divi_order_status] || order.divi_order_status);
+
+                const diviDetailsHtml = `
+                    <div class="divi-details-cell">
+                        <div>状态：${diviStatusText}</div>
+                        <div>物流：${order.divi_logistics_method || '-'}</div>
+                        <div>跟踪号：${order.divi_tracking_number || '-'}</div>
+                    </div>
+                `;
+
+                // 6. 商品详情
+                const quantity = order.quantity || 0;
+                const amount = parseFloat(order.order_total_amount || 0).toFixed(2);
+                const productInfoHtml = `
+                    <div class="product-info-cell">
+                        <div>数量：${quantity}</div>
+                        <div>金额：$${amount}</div>
+                    </div>
+                `;
+
+                // 7. 配送类型
+                const deliveryTypeMap = {
+                    1: '标准配送',
+                    2: '快速配送'
+                };
+                const deliveryTypeText = deliveryTypeMap[order.delivery_type] || (order.delivery_type || '-');
+
+                // 8. 导单按钮逻辑
+                let canExportToDivi = true;
+                let exportTooltip = '导单到 DIVI';
+                if (order.is_exported_to_divi) {
+                    canExportToDivi = false;
+                    exportTooltip = '已导单';
+                } else if (order.shop_status !== '正常') {
+                    canExportToDivi = false;
+                    exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
+                }
+
+                // 9. 组装行HTML
+                return `
+                    <tr data-order-id="${order.global_order_no}">
+                        <td class="w-checkbox">
+                            <input type="checkbox" class="row-checkbox" data-order-id="${order.global_order_no}" onchange="updateSelectAllState()">
+                        </td>
+                        <td>
+                            <div class="order-id-cell">
+                                <div class="primary-text">${order.global_order_no || '-'}</div>
+                                <div class="secondary-text" style="font-size: 0.8rem; color: var(--text-secondary);">${order.reference_no || '-'}</div>
+                                <div class="sub-tags">
+                                    ${orderStatusHtml}
+                                    ${diviStatusHtml}
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="shop-name-cell">
+                                <div class="primary-text">${order.shop_name || '-'}</div>
+                                <div class="sub-tags">
+                                    <span class="tag-shop-status ${shopStatusInfo.class}">${shopStatusInfo.text}</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${opsInfoHtml}</td>
+                        <td>${diviDetailsHtml}</td>
+                        <td>${productInfoHtml}</td>
+                        <td>${order.purchase_time || '-'}</td>
+                        <td>${deliveryTypeText}</td>
+                        <td class="w-actions">
+                            <div class="action-buttons">
+                                <button class="btn-action btn-divi"
+                                        onclick="exportOrderToDivi('${order.global_order_no}', event)"
+                                        data-sid="${order.sid || ''}"
+                                        data-divi-shop-id="${order.divi_shop_id || ''}"
+                                        title="${exportTooltip}"
+                                        ${!canExportToDivi ? 'disabled' : ''}>
+                                    <i class="fas fa-file-export"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const statsContainer = document.getElementById('paginationStats');
+            const jumpContainer = document.getElementById('paginationJump');
+
+            const {page, page_size, total, total_pages} = ordersPagination;
+
+            const start = total > 0 ? (page - 1) * page_size + 1 : 0;
+            const end = Math.min(page * page_size, total);
+            statsContainer.textContent = `${start}-${end} / 共 ${total} 条`;
+
+            let buttonsHTML = '';
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
+
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})">${total_pages}</button>`;
+            }
+
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
+            buttonsContainer.innerHTML = buttonsHTML;
+
+            if (total_pages > 7) {
+                jumpContainer.style.display = 'flex';
+                document.getElementById('pageJumpInput').max = total_pages;
+                document.getElementById('pageJumpInput').value = '';
+            } else {
+                jumpContainer.style.display = 'none';
+            }
+        }
+
+        function changePage(newPage) {
+            if (newPage < 1 || newPage > ordersPagination.total_pages) return;
+
+            ordersPagination.page = newPage;
+            loadOrdersTable();
+            document.getElementById('ordersTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+
+        function togglePageSizeDropdown() {
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
+        }
+
+        document.addEventListener('click', function (e) {
+            const wrapper = document.getElementById('pageSizeWrapper');
+            const dropdown = document.getElementById('pageSizeDropdown');
+            if (wrapper && dropdown && !wrapper.contains(e.target)) {
+                dropdown.style.display = 'none';
+            }
+        });
+
+        function changePageSize(newSize) {
+            ordersPagination.page_size = newSize;
+            ordersPagination.page = 1;
+
+            document.getElementById('pageSizeText').textContent = newSize + '条';
+
+            document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (parseInt(opt.dataset.value) === newSize) {
+                    opt.classList.add('selected');
+                }
+            });
+
+            document.getElementById('pageSizeDropdown').style.display = 'none';
+
+            loadOrdersTable();
+        }
+
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') return;
+
+            const input = document.getElementById('pageJumpInput');
+            const page = parseInt(input.value);
+            const maxPage = ordersPagination.total_pages;
+
+            if (isNaN(page) || page < 1) {
+                showNotification('请输入有效的页码', 'warning');
+                return;
+            }
+            if (page > maxPage) {
+                showNotification(`最大页码为 ${maxPage}`, 'warning');
+                return;
+            }
+
+            changePage(page);
+        }
+
+        async function updateDiviExportStatus() {
+            showLoading(true);
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/update-temu-divi-export-status/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        ...currentFilters,
+                        page: ordersPagination.page,
+                        page_size: ordersPagination.page_size
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    await loadOrdersTable();
+                    showNotification('DIVI导单状态已更新', 'success');
+                } else {
+                    showNotification('更新失败: ' + (result.message || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // 导单成功后更新订单ID列内的导单状态图标
+        function updateOrderIdDiviStatus(orderId, isExported) {
+            const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
+            if (!row) return;
+
+            const orderIdCell = row.cells[1];
+            const subTags = orderIdCell.querySelector('.sub-tags');
+            if (!subTags) return;
+
+            // 移除旧的导单状态图标
+            const oldDiviStatus = subTags.querySelector('.tag-divi-status');
+            if (oldDiviStatus) {
+                oldDiviStatus.remove();
+            }
+
+            // 添加新的导单状态图标
+            const newDiviStatusHtml = renderDiviExportStatusInline(isExported);
+            subTags.insertAdjacentHTML('beforeend', newDiviStatusHtml);
+        }
+
+        async function exportOrderToDivi(orderId, event) {
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (button.disabled) return;
+
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+            button.style.opacity = '0.7';
+
+            try {
+                // 导单功能占位 - 后续实现
+                showNotification(`订单 ${orderId} 导单功能开发中...`, 'info');
+                
+                // 模拟成功后更新状态
+                setTimeout(() => {
+                    icon.className = 'fas fa-check-circle';
+                    button.style.color = '#10B981';
+                    button.style.opacity = '1';
+                    updateOrderIdDiviStatus(orderId, true);
+                }, 1000);
+
+            } catch (error) {
+                showNotification(`请求失败: ${error.message}`, 'error');
+                icon.className = 'fas fa-share-square';
+                button.style.color = '';
+                button.style.opacity = '1';
+                button.disabled = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            showLoading(true);
+            try {
+                initSearchableSelects();
+                await Promise.all([loadGroupsFromAPI(), loadOperatorsFromAPI()]);
+                setDefaultFilters();
+            } catch (error) {
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            const isChecked = selectAllCheckbox.checked;
+
+            rowCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+
+            updateBulkActionBar();
+        }
+
+        function updateSelectAllState() {
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+
+            if (rowCheckboxes.length === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === rowCheckboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+
+            updateBulkActionBar();
+        }
+
+        function getSelectedOrderIds() {
+            return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.dataset.orderId);
+        }
+
+        function updateBulkActionBar() {
+            const selectedCount = document.querySelectorAll('.row-checkbox:checked').length;
+            const bulkBar = document.getElementById('bulkActionBar');
+
+            if (selectedCount > 0) {
+                bulkBar.classList.add('visible');
+                document.getElementById('selectedCount').textContent = selectedCount;
+            } else {
+                bulkBar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            document.getElementById('selectAllCheckbox').checked = false;
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActionBar();
+        }
+
+        async function batchExportToDivi() {
+            const selectedIds = getSelectedOrderIds();
+            if (selectedIds.length === 0) return;
+
+            showLoading(true);
+            try {
+                showNotification(`已选择 ${selectedIds.length} 个订单，批量导单功能开发中...`, 'info');
+            } catch (error) {
+                showNotification('批量导单失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        async function exportOrdersToExcel(event) {
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (button.disabled) return;
+
+            button.disabled = true;
+            icon.className = 'fas fa-spinner fa-spin';
+
+            try {
+                showLoading(true);
+
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const exportData = {
+                    ...currentFilters
+                };
+
+                const response = await fetch('/api/export-temu-orders-excel/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(exportData)
+                });
+
+                if (response.ok) {
+                    let filename = 'Temu订单.xlsx';
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    if (contentDisposition) {
+                        const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                        if (filenameMatch && filenameMatch[1]) {
+                            filename = filenameMatch[1];
+                        }
+                    }
+
+                    if (!filename || filename === 'undefined') {
+                        const timestamp = new Date().toISOString()
+                            .slice(0, 19)
+                            .replace(/[-:]/g, '')
+                            .replace('T', '_');
+                        filename = `Temu订单_${timestamp}.xlsx`;
+                    }
+
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+
+                    setTimeout(() => {
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    }, 100);
+
+                    showNotification('导出成功！', 'success');
+                } else {
+                    const error = await response.json();
+                    showNotification('导出失败: ' + (error.message || '未知错误'), 'error');
+                }
+            } catch (error) {
+                showNotification('请求失败: ' + error.message, 'error');
+            } finally {
+                button.disabled = false;
+                icon.className = 'fas fa-download';
+                showLoading(false);
+            }
+        }
+
+        function showNotification(message, type = 'info', duration = 3000) {
+            if (typeof SearchableSelect !== 'undefined' && SearchableSelect.notify) {
+                SearchableSelect.notify(message, type, duration);
+            } else {
+                alert(message);
+            }
+        }
+    </script>
+{% endblock %}
