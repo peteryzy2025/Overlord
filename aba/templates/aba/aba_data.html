@@ -427,16 +427,35 @@
         }
 
         // ==================== 初始化 ====================
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 显示初始加载动画
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
             initSearchableSelects();
-            loadAvailableWeeks();
+            
             // 初始化搜索模式按钮颜色
             const btn = document.getElementById('searchModeBtn');
             const colors = searchModeColors[searchMode];
             btn.style.backgroundColor = colors.bg;
             btn.style.borderColor = colors.border;
             btn.style.color = colors.color;
-            loadData();
+            
+            // 先加载周期列表
+            await loadAvailableWeeks();
+            
+            // 再加载表格数据
+            await loadData();
+            
+            // 数据加载完成后隐藏 loading
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+            
+            // 标记初始加载完成
+            isInitialLoad = false;
         });
         
         // ==================== SearchableSelect 初始化 ====================
@@ -468,10 +487,13 @@
             }
         }
         
+        // 初始加载标志
+        let isInitialLoad = true;
+        
         async function loadData() {
-            // 显示加载动画
+            // 显示加载动画（分页切换时）
             const loadingOverlay = document.getElementById('loadingOverlay');
-            if (loadingOverlay) {
+            if (loadingOverlay && !isInitialLoad) {
                 loadingOverlay.classList.remove('hidden');
             }
             
@@ -501,8 +523,8 @@
                 console.error('加载数据失败:', error);
                 showNotification('加载数据失败', 'error');
             } finally {
-                // 隐藏加载动画
-                if (loadingOverlay) {
+                // 隐藏加载动画（分页切换时）
+                if (loadingOverlay && !isInitialLoad) {
                     loadingOverlay.classList.add('hidden');
                 }
             }
@@ -521,15 +543,15 @@
             return `
                 <td>
                     <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
-                        <div style="width: 40px; height: 40px; background: var(--bg-tertiary); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-tertiary);">
+                        <div style="width: 36px; height: 36px; background: var(--bg-tertiary); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-tertiary);">
                             <i class="fas fa-image"></i>
                         </div>
-                        <div style="min-width: 0;">
-                            <div style="font-size: 0.75rem; color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;" title="${title}">${shortTitle}</div>
-                            <div style="font-size: 0.625rem; color: var(--text-secondary); margin-top: 2px;">
-                                <span style="font-family: monospace;">${asin.code}</span>
-                                <span style="color: var(--accent-color); margin-left: 4px;">${clickShare}%</span>
-                                <span style="color: var(--text-tertiary);">${convShare}%</span>
+                        <div style="min-width: 0; flex: 1;">
+                            <div style="font-size: 14px; color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; text-align: left;" title="${title}">${shortTitle}</div>
+                            <div style="font-size: 14px; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 8px; justify-content: flex-start;">
+                                <a href="https://www.amazon.com/dp/${asin.code}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-size: 14px;" onclick="event.stopPropagation();">${asin.code}</a>
+                                <span style="color: var(--text-primary);">${clickShare}%</span>
+                                <span style="color: var(--text-primary);">${convShare}%</span>
                             </div>
                         </div>
                     </div>
@@ -590,7 +612,7 @@
                            ${selectedIds.has(item.id) ? 'checked' : ''}
                            onchange="toggleSelectItem(${item.id})"></td>
                     <td>
-                        <div style="font-weight: 500;">${item.search_term}</div>
+                        <a href="https://www.amazon.com/s?k=${encodeURIComponent(item.search_term)}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-weight: 500;" onclick="event.stopPropagation();">${item.search_term}</a>
                     </td>
                     <td style="text-align: center;">
                         <div style="display: inline-flex; align-items: center; gap: 0.25rem;">
