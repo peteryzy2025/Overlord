@@ -5,27 +5,27 @@ from general.models import User
 from django.utils import timezone
 
 
+class TaskStatus(models.TextChoices):
+    """任务状态"""
+    DRAFT = 'draft', '草稿'
+    PENDING = 'pending', '待执行'
+    IN_PROGRESS = 'in_progress', '进行中'
+    COMPLETED = 'completed', '已完成'
+    FAILED = 'failed', '执行失败'
+    CANCELLED = 'cancelled', '已取消'
+
+
+class TaskType(models.TextChoices):
+    """任务类型"""
+    STANDARD = 'standard', '标准任务'
+    PRODUCT_REQUIREMENT = 'product_requirement', '产品需求'
+
+
 class Task(models.Model):
     """
     主任务表
     存储任务的基本信息和状态
     """
-    # 状态定义
-    STATUS_DRAFT = 'draft'
-    STATUS_PENDING = 'pending'
-    STATUS_IN_PROGRESS = 'in_progress'
-    STATUS_COMPLETED = 'completed'
-    STATUS_FAILED = 'failed'
-    STATUS_CANCELLED = 'cancelled'
-
-    STATUS_CHOICES = [
-        (STATUS_DRAFT, '草稿'),
-        (STATUS_PENDING, '待执行'),
-        (STATUS_IN_PROGRESS, '进行中'),
-        (STATUS_COMPLETED, '已完成'),
-        (STATUS_FAILED, '执行失败'),
-        (STATUS_CANCELLED, '已取消'),
-    ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='任务主键ID')
 
@@ -37,25 +37,17 @@ class Task(models.Model):
     status = models.CharField(
         '任务状态',
         max_length=20,
-        choices=STATUS_CHOICES,
-        default=STATUS_DRAFT,
+        choices=TaskStatus.choices,
+        default=TaskStatus.DRAFT,
         db_comment='任务当前状态'
     )
 
     # 任务类型
-    TYPE_STANDARD = 'standard'
-    TYPE_PRODUCT = 'product_requirement'
-
-    TYPE_CHOICES = [
-        (TYPE_STANDARD, '标准任务'),
-        (TYPE_PRODUCT, '产品需求'),
-    ]
-
     task_type = models.CharField(
         '任务类型',
         max_length=50,
-        choices=TYPE_CHOICES,
-        default=TYPE_STANDARD,
+        choices=TaskType.choices,
+        default=TaskType.STANDARD,
         db_comment='任务类型：standard/product_requirement'
     )
 
@@ -81,7 +73,7 @@ class Task(models.Model):
     submitted_at = models.DateTimeField('提交时间', null=True, blank=True, db_comment='任务提交时间（非草稿状态）')
 
     class Meta:
-        db_table = 'task_tasks'  # 数据库表名
+        db_table = 'task_tasks'
         verbose_name = '任务'
         verbose_name_plural = '任务列表'
         ordering = ['-created_at']
@@ -102,7 +94,7 @@ class Task(models.Model):
         # 状态变更时更新时间
         if self.status != getattr(self, '_original_status', None):
             self.updated_at = timezone.now()
-            if self.status in ['pending', 'in_progress'] and not self.submitted_at:
+            if self.status in [TaskStatus.PENDING, TaskStatus.IN_PROGRESS] and not self.submitted_at:
                 self.submitted_at = timezone.now()
 
         super().save(*args, **kwargs)
@@ -112,28 +104,38 @@ class Task(models.Model):
         self._original_status = self.status
 
 
+
+class SubTaskType(models.TextChoices):
+    """子任务类型"""
+    CUSTOM_UPLOAD = 'custom_upload', '定制上架'
+    TEMU_EXPORT = 'temu_export', 'Temu导单'
+    PRINT_EXTERNAL = 'print_external', '印花外采'
+    MULTI_SIDE_CUSTOM = 'multi_side_custom', '多面定制'
+    AMAZON_UPLOAD = 'amazon_upload', 'Amazon上架'
+    DIVI_AUTO_UPLOAD = 'divi_auto_upload', 'Divi自动上架'
+
+
+class SubTaskStatus(models.TextChoices):
+    """子任务状态"""
+    DRAFT = 'draft', '草稿'
+    PENDING = 'pending', '待执行'
+    IN_PROGRESS = 'in_progress', '进行中'
+    COMPLETED = 'completed', '已完成'
+    FAILED = 'failed', '执行失败'
+    CANCELLED = 'cancelled', '已取消'
+
+
 class SubTask(models.Model):
     """
     子任务表
     存储任务的子任务详情和参数
     """
-    # 子任务类型定义
-    TYPE_CUSTOM_UPLOAD = 'custom_upload'
-    TYPE_TEMU_EXPORT = 'temu_export'
-    TYPE_PRINT_EXTERNAL = 'print_external'
-
-    TYPE_CHOICES = [
-        (TYPE_CUSTOM_UPLOAD, '定制上架'),
-        (TYPE_TEMU_EXPORT, 'Temu导单'),
-        (TYPE_PRINT_EXTERNAL, '印花外采'),
-        ('embroidery', '刺绣'),
-    ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')
 
     # 关联主任务
     task = models.ForeignKey(
-        Task,
+        'Task',  # 建议用字符串引用，避免循环导入
         on_delete=models.CASCADE,
         related_name='subtasks',
         verbose_name='所属任务',
@@ -144,8 +146,18 @@ class SubTask(models.Model):
     subtask_type = models.CharField(
         '子任务类型',
         max_length=20,
-        choices=TYPE_CHOICES,
-        db_comment='子任务类型：custom_upload/temu_export'
+        choices=SubTaskType.choices,
+        default=SubTaskType.CUSTOM_UPLOAD,
+        db_comment='子任务类型'
+    )
+
+    # 子任务状态
+    subtask_status = models.CharField(
+        '任务状态',
+        max_length=20,
+        choices=SubTaskStatus.choices,
+        default=SubTaskStatus.DRAFT,
+        db_comment='任务当前状态'
     )
 
     # 执行顺序
@@ -161,24 +173,6 @@ class SubTask(models.Model):
         default=dict,
         db_comment='子任务的具体参数（不同类型结构不同）'
     )
-    """
-    custom_upload参数示例：
-    {
-        "product_ids": ["1715", "1561"],      # 产品ID列表
-        "mode": "adapt",                      # 模式：adapt/fill
-        "gallery_account": "侯益山",          # 图库账号
-        "gallery_path": "/path/to/gallery",   # 图库目录
-        "craft_type": "print",                # 工艺类型：print/emboss/laser
-        "recognize_theme": false,             # 是否识别主题
-        "export_quantity": 50,                # 汇出数量
-        "export_shop_ids": [1, 2, 3]          # 汇出店铺ID列表
-    }
-
-    temu_export参数示例：
-    {
-        "export_shop_ids": [101, 102]         # 导单店铺ID列表
-    }
-    """
 
     # 执行状态
     is_executed = models.BooleanField(
@@ -205,7 +199,7 @@ class SubTask(models.Model):
     updated_at = models.DateTimeField('更新时间', auto_now=True, db_comment='子任务最后更新时间')
 
     class Meta:
-        db_table = 'task_subtasks'  # 数据库表名
+        db_table = 'task_subtasks'
         verbose_name = '子任务'
         verbose_name_plural = '子任务列表'
         ordering = ['order', 'id']
@@ -217,17 +211,14 @@ class SubTask(models.Model):
     def __str__(self):
         return f"{self.task.task_no} - {self.get_subtask_type_display()} #{self.order + 1}"
 
-    def save(self, *args, **kwargs):
-        """
-        保存时自动更新主任务时间
-        """
-        super().save(*args, **kwargs)
-
-        # 更新主任务更新时间
-        if self.task:
-            self.task.updated_at = timezone.now()
-            self.task.save(update_fields=['updated_at'])
-
+    # 便捷方法示例
+    def mark_as_executed(self):
+        """标记为已执行"""
+        from django.utils import timezone
+        self.is_executed = True
+        self.executed_at = timezone.now()
+        self.subtask_status = SubTaskStatus.COMPLETED
+        self.save(update_fields=['is_executed', 'executed_at', 'subtask_status', 'updated_at'])
 
 class TaskTemplate(models.Model):
     """
