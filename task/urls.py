@@ -36,6 +36,12 @@ urlpatterns = [
     path('api/tasks/gallery-paths/suggest/', task_api_views.suggest_gallery_paths_api, name='suggest_gallery_paths'),
 
     # 任务管理
+    path('api/external/tasks/update-status/', task_api_views.external_update_task_status_api,
+         name='external_update_task_status'),
+    path('api/external/tasks/detail/', task_api_views.external_get_task_detail_api,
+         name='external_get_task_detail'),
+    path('api/external/tasks/subtasks/update-status/', task_api_views.external_update_subtask_status_api,
+         name='external_update_subtask_status'),
     path('api/tasks/list/', task_api_views.get_tasks_list_api, name='get_tasks_list'),
     path('api/tasks/stats/', task_api_views.get_task_stats_api, name='get_task_stats'),
     path('api/tasks/creators/', task_api_views.get_task_creators_api, name='get_task_creators'),

@@ -8,12 +8,13 @@ from datetime import datetime
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
 
 from general.models import User, AmazonShop, TemuShop
-from task.models import Task, SubTask, TaskTemplate, ProductRequirement
+from task.models import Task, TaskStatus, TaskType, SubTask, TaskTemplate, ProductRequirement
 from task.utils import (
     generate_task_no,
     get_visible_shops,
@@ -22,6 +23,293 @@ from task.utils import (
 )
 from api.wc.crawler_wc import get_ykartwood_product
 from task.view.task_upload_views import process_amazon_upload_files
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def external_update_task_status_api(request):
+    """
+    对外主任务状态更新接口（无需登录）
+    POST /api/external/tasks/update-status/
+
+    支持 JSON 或 form-data：
+    {
+        "id": 1,              # 或 task_no
+        "task_no": "TK001",
+        "status": "completed"
+    }
+    """
+    try:
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                data = {}
+
+        if not data:
+            data = request.POST.dict()
+
+        task_id = data.get('id')
+        task_no = (data.get('task_no') or '').strip()
+        status = (data.get('status') or '').strip()
+
+        if not status:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: status'
+            }, status=400)
+
+        if not task_id and not task_no:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: id 或 task_no'
+            }, status=400)
+
+        valid_statuses = [choice.value for choice in TaskStatus]
+        if status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
+            }, status=400)
+
+        queryset = Task.objects.all()
+        if task_id:
+            task = queryset.filter(id=task_id).first()
+        else:
+            task = queryset.filter(task_no=task_no).first()
+
+        if not task:
+            return JsonResponse({
+                'success': False,
+                'message': '任务不存在'
+            }, status=404)
+
+        task.status = status
+        task.save()
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'task_no': task.task_no,
+                'task_name': task.title,
+                'status': task.status
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'更新任务状态失败: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def external_get_task_detail_api(request):
+    """
+    对外主任务详情接口（无需登录）
+    GET/POST /api/external/tasks/detail/
+
+    支持 query / JSON / form-data：
+    {
+        "id": 1,              # 或 task_no
+        "task_no": "TK001"
+    }
+    """
+    try:
+        data = {}
+
+        if request.method == "GET":
+            data = request.GET.dict()
+        else:
+            if request.body:
+                try:
+                    data = json.loads(request.body)
+                except json.JSONDecodeError:
+                    data = {}
+            if not data:
+                data = request.POST.dict()
+
+        task_id = data.get('id')
+        task_no = (data.get('task_no') or '').strip()
+
+        if not task_id and not task_no:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: id 或 task_no'
+            }, status=400)
+
+        queryset = Task.objects.select_related('created_by', 'owner').prefetch_related(
+            'subtasks',
+            'subtasks__amazon_upload_files',
+            'subtasks__amazon_upload_files__amazon_shop'
+        )
+
+        if task_id:
+            task = queryset.filter(id=task_id).first()
+        else:
+            task = queryset.filter(task_no=task_no).first()
+
+        if not task:
+            return JsonResponse({
+                'success': False,
+                'message': '任务不存在'
+            }, status=404)
+
+        task_data = {
+            'id': task.id,
+            'task_no': task.task_no,
+            'task_name': task.title,
+            'title': task.title,
+            'status': task.status,
+            'status_display': task.get_status_display(),
+            'task_type': task.task_type,
+            'task_type_display': dict(TaskType.choices).get(task.task_type, task.task_type),
+            'created_by_id': task.created_by_id,
+            'created_by_name': task.created_by.first_name or task.created_by.username,
+            'owner_id': task.owner_id,
+            'owner_name': task.owner.first_name or task.owner.username,
+            'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': task.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'submitted_at': task.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if task.submitted_at else None,
+        }
+
+        subtasks_data = []
+        subtasks = task.subtasks.all().order_by('order')
+
+        for subtask in subtasks:
+            subtask_status = subtask.sync_amazon_upload_status(save=False) \
+                if subtask.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else subtask.subtask_status
+
+            subtask_info = {
+                'id': subtask.id,
+                'type': subtask.subtask_type,
+                'type_display': subtask.get_subtask_type_display(),
+                'status': subtask_status,
+                'status_display': dict(SubTask.STATUS_CHOICES).get(subtask_status, subtask_status),
+                'order': subtask.order,
+                'params': subtask.params,
+                'is_executed': subtask.is_executed,
+                'executed_at': subtask.executed_at.strftime('%Y-%m-%d %H:%M:%S') if subtask.executed_at else None,
+                'execution_result': subtask.execution_result,
+                'created_at': subtask.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'updated_at': subtask.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            }
+
+            if subtask.subtask_type == SubTask.TYPE_AMAZON_UPLOAD:
+                files = subtask.amazon_upload_files.all().order_by('created_at')
+                subtask_info['files'] = [{
+                    'id': upload_file.id,
+                    'shop_name': upload_file.amazon_shop.shop_name if upload_file.amazon_shop else upload_file.shop_name_suffix,
+                    'shop_name_suffix': upload_file.shop_name_suffix,
+                    'filename': upload_file.excel_filename,
+                    'target_path': upload_file.target_path,
+                    'status': upload_file.status,
+                    'status_display': upload_file.get_status_display(),
+                    'success_sku': upload_file.success_sku,
+                    'total_sku': upload_file.total_sku,
+                    'progress': f"{upload_file.success_sku}/{upload_file.total_sku}" if upload_file.success_sku is not None and upload_file.total_sku is not None else "-/-",
+                    'created_at': upload_file.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'uploaded_at': upload_file.uploaded_at.strftime('%Y-%m-%d %H:%M:%S') if upload_file.uploaded_at else None,
+                } for upload_file in files]
+
+            subtasks_data.append(subtask_info)
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'task': task_data,
+                'subtasks': subtasks_data
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取任务详情失败: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def external_update_subtask_status_api(request):
+    """
+    对外子任务状态更新接口（无需登录）
+    POST /api/external/tasks/subtasks/update-status/
+
+    支持 JSON 或 form-data：
+    {
+        "task_id": 1,
+        "subtask_id": 2,
+        "status": "completed"
+    }
+    """
+    try:
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                data = {}
+
+        if not data:
+            data = request.POST.dict()
+
+        task_id = data.get('task_id')
+        subtask_id = data.get('subtask_id')
+        status = (data.get('status') or '').strip()
+
+        if not task_id or not subtask_id or not status:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: task_id、subtask_id、status'
+            }, status=400)
+
+        valid_statuses = [choice[0] for choice in SubTask.STATUS_CHOICES]
+        if status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
+            }, status=400)
+
+        subtask = SubTask.objects.filter(id=subtask_id, task_id=task_id).first()
+        if not subtask:
+            return JsonResponse({
+                'success': False,
+                'message': '子任务不存在，或不属于该主任务'
+            }, status=404)
+
+        subtask.subtask_status = status
+        update_fields = ['subtask_status']
+
+        if status in {SubTask.STATUS_COMPLETED, SubTask.STATUS_FAILED}:
+            if not subtask.is_executed:
+                subtask.is_executed = True
+                update_fields.append('is_executed')
+            if not subtask.executed_at:
+                subtask.executed_at = timezone.now()
+                update_fields.append('executed_at')
+        elif status in {SubTask.STATUS_DRAFT, SubTask.STATUS_PENDING, SubTask.STATUS_IN_PROGRESS, SubTask.STATUS_CANCELLED}:
+            if subtask.is_executed:
+                subtask.is_executed = False
+                update_fields.append('is_executed')
+
+        subtask.save(update_fields=update_fields)
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'subtask_id': subtask.id,
+                'status': subtask.subtask_status
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'更新子任务状态失败: {str(e)}'
+        }, status=500)
 
 
 @login_required
@@ -46,7 +334,9 @@ def get_tasks_list_api(request):
         current_user = request.user
         permissions = parse_permissions(getattr(current_user, 'permission', ''))
         
-        queryset = Task.objects.exclude(task_type=Task.TYPE_PRODUCT).select_related('created_by', 'owner').prefetch_related('subtasks')
+        queryset = Task.objects.exclude(task_type=TaskType.PRODUCT_REQUIREMENT).select_related(
+            'created_by', 'owner'
+        ).prefetch_related('subtasks', 'subtasks__amazon_upload_files')
 
         if 'ops_all' not in permissions:
             if 'ops_group' in permissions and hasattr(current_user, 'operational_account'):
@@ -96,6 +386,18 @@ def get_tasks_list_api(request):
 
         tasks_data = []
         for task in page_obj:
+            subtasks_data = []
+            for st in task.subtasks.all():
+                subtask_status = st.sync_amazon_upload_status(save=False) \
+                    if st.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else st.subtask_status
+                subtasks_data.append({
+                    'id': st.id,
+                    'type': st.subtask_type,
+                    'type_display': st.get_subtask_type_display(),
+                    'status': subtask_status,
+                    'status_display': dict(SubTask.STATUS_CHOICES).get(subtask_status, subtask_status)
+                })
+
             tasks_data.append({
                 'id': task.id,
                 'task_no': task.task_no,
@@ -105,10 +407,7 @@ def get_tasks_list_api(request):
                 'created_by_name': task.created_by.first_name or task.created_by.username,
                 'owner_name': task.owner.first_name or task.owner.username,
                 'creator_name': task.created_by.first_name or task.created_by.username, # Frontend expects creator_name
-                'subtasks': [{
-                    'id': st.id,
-                    'type': st.subtask_type
-                } for st in task.subtasks.all()]
+                'subtasks': subtasks_data
             })
 
         return JsonResponse({
@@ -170,7 +469,7 @@ def get_task_stats_api(request):
         current_user = request.user
         permissions = parse_permissions(getattr(current_user, 'permission', ''))
         
-        queryset = Task.objects.exclude(task_type=Task.TYPE_PRODUCT)
+        queryset = Task.objects.exclude(task_type=TaskType.PRODUCT_REQUIREMENT)
 
         # 权限过滤
         if 'ops_all' not in permissions:
@@ -461,7 +760,7 @@ def create_task_api(request):
         task_no = generate_task_no(current_user)
 
         # 获取任务类型
-        task_type = data.get('task_type', Task.TYPE_STANDARD)
+        task_type = data.get('task_type', TaskType.STANDARD)
         is_draft = data.get('is_draft', False)
 
         # 特殊处理产品需求：每个子任务创建一个独立的 ProductRequirement (不创建 Task)
@@ -656,10 +955,10 @@ def create_task_api(request):
             title=title,
             task_no=task_no,
             task_type=task_type,
-            status='draft' if is_draft else 'pending',
+            status=TaskStatus.DRAFT if is_draft else TaskStatus.PENDING,
             created_by=current_user,
             owner=owner,
-            submitted_at=None if is_draft else timezone.now()
+                submitted_at=None if is_draft else timezone.now()
         )
 
         # 创建子任务
@@ -676,6 +975,7 @@ def create_task_api(request):
                 subtask = SubTask.objects.create(
                     task=task,
                     subtask_type=subtask_type,
+                    subtask_status=SubTask.get_initial_status(is_draft=is_draft),
                     order=idx,
                     params=params
                 )
@@ -684,7 +984,7 @@ def create_task_api(request):
                                                 subtask_instance=subtask)
 
                 # 自动化铺货类型发送 webhook
-                if subtask_type == 'diwei_auto_upload' and not is_draft:
+                if subtask_type == 'divi_auto_upload' and not is_draft:
                     try:
                         # 构造 webhook 数据
                         diwei_params = subtask_data.get('params', {})
@@ -692,7 +992,7 @@ def create_task_api(request):
                             'task_id': task.id,
                             'task_no': task_no,
                             'subtask_id': subtask.id,
-                            'subtask_type': 'diwei_auto_upload',
+                            'subtask_type': 'divi_auto_upload',
                             'diwei_account': diwei_params.get('diwei_account', ''),
                             'operation': diwei_params.get('operation', ''),
                             'created_by_id': current_user.id,
@@ -822,7 +1122,7 @@ def save_draft_api(request):
 
         # 获取或创建主任务
         task_id = data.get('task_id')
-        task_type = data.get('task_type', Task.TYPE_STANDARD)
+        task_type = data.get('task_type', TaskType.STANDARD)
 
         if task_id:
             # 更新现有草稿
@@ -843,7 +1143,7 @@ def save_draft_api(request):
                 title=title,
                 task_no=task_no,
                 task_type=task_type,
-                status='draft',
+                status=TaskStatus.DRAFT,
                 created_by=current_user,
                 owner=owner
             )
@@ -863,6 +1163,7 @@ def save_draft_api(request):
             SubTask.objects.create(
                 task=task,
                 subtask_type=subtask_type,
+                subtask_status=SubTask.get_initial_status(is_draft=True),
                 order=idx,
                 params=params
             )
@@ -922,7 +1223,7 @@ def get_latest_draft_api(request):
     GET /api/tasks/drafts/latest/?task_type=standard|product_requirement
     """
     try:
-        task_type = request.GET.get('task_type', Task.TYPE_STANDARD)
+        task_type = request.GET.get('task_type', TaskType.STANDARD)
 
         draft = Task.objects.filter(
             created_by=request.user,
@@ -983,16 +1284,22 @@ def get_task_templates_api(request):
     GET /api/tasks/templates/
     """
     try:
-        templates = TaskTemplate.objects.filter(
-            created_by=request.user
-        ).order_by('-created_at')
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        templates = TaskTemplate.objects.select_related('created_by')
+
+        if 'ops_all' not in permissions:
+            templates = templates.filter(created_by=request.user)
+
+        templates = templates.order_by('-created_at')
 
         templates_data = [{
             'id': template.id,
             'name': template.name,
             'description': template.description,
+            'creator_name': template.created_by.first_name or template.created_by.username,
             'created_at': template.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'subtask_count': len(template.content) if isinstance(template.content, list) else 0
+            'subtask_count': len(template.content) if isinstance(template.content, list) else 0,
+            'can_delete': template.created_by_id == request.user.id
         } for template in templates]
 
         return JsonResponse({
@@ -1065,7 +1372,13 @@ def load_template_api(request, template_id):
     GET /api/tasks/templates/<template_id>/load/
     """
     try:
-        template = TaskTemplate.objects.get(id=template_id, created_by=request.user)
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        queryset = TaskTemplate.objects.all()
+
+        if 'ops_all' not in permissions:
+            queryset = queryset.filter(created_by=request.user)
+
+        template = queryset.get(id=template_id)
 
         return JsonResponse({
             'success': True,

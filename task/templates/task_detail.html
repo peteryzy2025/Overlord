@@ -5,230 +5,631 @@
 
 {% block extra_css %}
 <style>
-    .detail-container {
-        padding: 1.5rem;
-        max-width: 1400px;
-        margin: 0 auto;
+    .detail-page {
+        width: 100%;
+        padding: 2rem;
+        margin: 0;
     }
-    
-    .detail-card {
-        background: var(--bg-secondary);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+
+    .page-toolbar {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--bg-primary);
         border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
     }
-    
-    .detail-header {
+
+    .back-btn:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+
+    .state-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 3rem 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    .state-card.error {
+        border-color: rgba(239, 68, 68, 0.28);
+    }
+
+    .empty-state {
+        text-align: center;
+        color: var(--text-secondary);
+    }
+
+    .empty-state i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    .detail-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .hero-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.6rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    .hero-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 999px;
+        color: var(--text-secondary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+    }
+
+    .hero-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--border-color);
+        gap: 1rem;
+        margin-bottom: 1.1rem;
     }
-    
-    .detail-title {
-        font-size: 1.5rem;
+
+    .hero-title {
+        margin: 0;
+        font-size: 1.75rem;
         font-weight: 600;
+        line-height: 1.2;
         color: var(--text-primary);
-        margin: 0 0 0.5rem 0;
     }
-    
-    .detail-meta {
-        display: flex;
-        gap: 2rem;
+
+    .hero-subtitle {
+        margin-top: 0.55rem;
         color: var(--text-secondary);
         font-size: 0.9rem;
     }
-    
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
+
     .status-badge {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
+        gap: 0.35rem;
+        padding: 0.3rem 0.75rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
         font-weight: 500;
+        white-space: nowrap;
+        border: 1px solid transparent;
     }
-    
-    .status-draft { background: rgba(160, 174, 192, 0.2); color: #a0aec0; }
-    .status-pending { background: rgba(246, 173, 85, 0.2); color: #f6ad55; }
-    .status-in_progress { background: rgba(66, 153, 225, 0.2); color: #4299e1; }
-    .status-completed { background: rgba(72, 187, 120, 0.2); color: #48bb78; }
-    .status-failed { background: rgba(245, 101, 101, 0.2); color: #f56565; }
-    
-    .section-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 1rem 0;
+
+    .hero-status {
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+    }
+
+    .status-draft { background: var(--bg-tertiary); color: var(--text-tertiary); border-color: var(--border-color); }
+    .status-pending { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.18); }
+    .status-in_progress { background: rgba(72, 187, 120, 0.1); color: #48bb78; border-color: rgba(72, 187, 120, 0.18); }
+    .status-completed { background: rgba(72, 187, 120, 0.1); color: #48bb78; border-color: rgba(72, 187, 120, 0.18); }
+    .status-failed { background: rgba(229, 62, 62, 0.1); color: var(--danger-color); border-color: rgba(229, 62, 62, 0.18); }
+    .status-cancelled { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); border-color: rgba(107, 114, 128, 0.18); }
+
+    .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.8rem;
+    }
+
+    .meta-chip {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
+        align-items: flex-start;
+        gap: 0.7rem;
+        min-width: 0;
+        padding: 0.85rem 0.95rem;
+        border-radius: 10px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
     }
-    
+
+    .meta-chip i {
+        margin-top: 0.15rem;
+        color: var(--text-secondary);
+    }
+
+    .meta-label {
+        display: block;
+        margin-bottom: 0.22rem;
+        font-size: 0.74rem;
+        color: var(--text-secondary);
+    }
+
+    .meta-value {
+        display: block;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .summary-card {
+        padding: 1.1rem 1.15rem;
+        border-radius: 12px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-light);
+    }
+
+    .summary-label {
+        font-size: 0.78rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        margin-bottom: 0.55rem;
+    }
+
+    .summary-value {
+        font-size: clamp(1.55rem, 2.1vw, 2.15rem);
+        font-weight: 700;
+        line-height: 1;
+        color: var(--text-primary);
+        margin-bottom: 0.35rem;
+    }
+
+    .summary-note {
+        font-size: 0.86rem;
+        color: var(--text-secondary);
+    }
+
+    .subtasks-panel {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.35rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 1rem;
+        margin-bottom: 1.1rem;
+    }
+
+    .panel-title {
+        margin: 0;
+        font-size: 1.18rem;
+        color: var(--text-primary);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+    }
+
+    .panel-subtitle {
+        margin-top: 0.35rem;
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .panel-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.8rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+    }
+
+    .subtasks-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 1rem;
+    }
+
+    .subtask-card {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        min-width: 0;
+        padding: 1.2rem;
+        border-radius: 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        box-shadow: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .subtask-card:hover {
+        border-color: var(--accent-color);
+        box-shadow: var(--shadow-light);
+    }
+
+    .subtask-card.status-draft {
+        background: linear-gradient(180deg, rgba(148, 163, 184, 0.08), var(--bg-secondary));
+        border-color: rgba(148, 163, 184, 0.22);
+    }
+
+    .subtask-card.status-pending {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.12), var(--bg-secondary));
+        border-color: rgba(59, 130, 246, 0.26);
+    }
+
+    .subtask-card.status-in_progress {
+        background: linear-gradient(180deg, rgba(72, 187, 120, 0.14), var(--bg-secondary));
+        border-color: rgba(72, 187, 120, 0.28);
+    }
+
+    .subtask-card.status-completed {
+        background: linear-gradient(180deg, rgba(72, 187, 120, 0.18), var(--bg-secondary));
+        border-color: rgba(72, 187, 120, 0.34);
+    }
+
+    .subtask-card.status-failed {
+        background: linear-gradient(180deg, rgba(229, 62, 62, 0.14), var(--bg-secondary));
+        border-color: rgba(229, 62, 62, 0.3);
+    }
+
+    .subtask-card.status-cancelled {
+        background: linear-gradient(180deg, rgba(107, 114, 128, 0.12), var(--bg-secondary));
+        border-color: rgba(107, 114, 128, 0.26);
+    }
+
+    .subtask-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .subtask-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.26rem 0.6rem;
+        margin-bottom: 0.55rem;
+        border-radius: 999px;
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        font-size: 0.74rem;
+        border: 1px solid var(--border-color);
+    }
+
+    .subtask-type {
+        margin: 0;
+        font-size: 1.18rem;
+        line-height: 1.15;
+        color: var(--text-primary);
+    }
+
+    .subtask-code {
+        margin-top: 0.35rem;
+        color: var(--text-secondary);
+        font-size: 0.84rem;
+        word-break: break-word;
+    }
+
+    .quick-facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.55rem;
+    }
+
+    .fact-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.45rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    .subtask-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 10px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+    }
+
+    .block-title {
+        font-size: 0.84rem;
+        color: var(--text-secondary);
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .detail-item {
+        min-width: 0;
+        padding: 0.82rem 0.9rem;
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .detail-item.wide {
+        grid-column: 1 / -1;
+    }
+
+    .detail-label {
+        display: block;
+        margin-bottom: 0.34rem;
+        font-size: 0.76rem;
+        color: var(--text-secondary);
+    }
+
+    .detail-value {
+        display: block;
+        color: var(--text-primary);
+        font-size: 0.92rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .collection-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .collection-card {
+        min-width: 0;
+        padding: 0.85rem 0.9rem;
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+    }
+
+    .collection-title {
+        display: block;
+        margin-bottom: 0.35rem;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+
+    .collection-body {
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .table-shell {
+        overflow-x: auto;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-primary);
+    }
+
     .files-table {
         width: 100%;
+        min-width: 640px;
         border-collapse: collapse;
     }
-    
-    .files-table th {
-        text-align: left;
-        padding: 0.75rem;
-        color: var(--text-secondary);
-        font-weight: 500;
-        font-size: 0.85rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
+
+    .files-table th,
     .files-table td {
-        padding: 0.75rem;
+        padding: 0.78rem 0.9rem;
+        text-align: left;
+    }
+
+    .files-table thead th {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+        font-weight: 600;
         border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+    }
+
+    .files-table tbody tr + tr td {
+        border-top: 1px solid var(--border-color);
+    }
+
+    .files-table td {
         color: var(--text-primary);
+        font-size: 0.9rem;
     }
-    
-    .files-table tr:hover {
-        background: rgba(255, 255, 255, 0.02);
-    }
-    
+
     .file-status {
         display: inline-flex;
         align-items: center;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 500;
+        gap: 0.35rem;
+        padding: 0.35rem 0.72rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        border: 1px solid transparent;
     }
-    
-    .status-pending-file { background: rgba(246, 173, 85, 0.15); color: #f6ad55; }
-    .status-uploading-file { background: rgba(66, 153, 225, 0.15); color: #4299e1; }
-    .status-completed-file { background: rgba(72, 187, 120, 0.15); color: #48bb78; }
-    .status-failed-file { background: rgba(245, 101, 101, 0.15); color: #f56565; }
-    
+
+    .status-pending-file { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.18); }
+    .status-uploading-file { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.18); }
+    .status-completed-file { background: rgba(72, 187, 120, 0.1); color: #48bb78; border-color: rgba(72, 187, 120, 0.18); }
+    .status-failed-file { background: rgba(229, 62, 62, 0.1); color: var(--danger-color); border-color: rgba(229, 62, 62, 0.18); }
+
     .progress-text {
         font-family: 'Courier New', monospace;
+        color: #e2e8f0;
         font-weight: 600;
-        color: var(--accent-color);
     }
-    
-    .subtask-card {
-        background: rgba(255, 255, 255, 0.03);
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border-left: 3px solid var(--accent-color);
+
+    @media (max-width: 1100px) {
+        .summary-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
     }
-    
-    .subtask-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
+
+    @media (max-width: 820px) {
+        .detail-page {
+            padding: 1rem;
+        }
+
+        .hero-card,
+        .subtasks-panel,
+        .state-card {
+            border-radius: 12px;
+        }
+
+        .hero-header,
+        .panel-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .hero-status {
+            align-self: flex-start;
+        }
     }
-    
-    .subtask-type {
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-    
-    .subtask-order {
-        color: var(--text-secondary);
-        font-size: 0.85rem;
-    }
-    
-    .empty-state {
-        text-align: center;
-        padding: 3rem;
-        color: var(--text-secondary);
-    }
-    
-    .back-btn {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        color: var(--text-secondary);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .back-btn:hover {
-        color: var(--text-primary);
-        border-color: var(--accent-color);
+
+    @media (max-width: 640px) {
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .subtasks-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .meta-grid,
+        .detail-grid,
+        .collection-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .subtask-card,
+        .hero-card,
+        .subtasks-panel {
+            padding: 1rem;
+        }
+
+        .subtasks-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .files-table {
+            min-width: 560px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="detail-container">
-    <!-- 返回按钮 -->
-    <button class="back-btn" onclick="window.location.href='/task/list/'" style="margin-bottom: 1rem;">
-        <i class="fas fa-arrow-left"></i> 返回列表
-    </button>
+<div class="detail-page">
+    <div class="page-toolbar">
+        <button class="back-btn" onclick="window.location.href='/task/list/'">
+            <i class="fas fa-arrow-left"></i>
+            返回任务列表
+        </button>
+    </div>
 
-    <!-- 加载中 -->
-    <div id="loadingState" class="detail-card">
+    <div id="loadingState" class="state-card">
         <div class="empty-state">
-            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-            <p>加载中...</p>
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>正在加载任务详情...</p>
         </div>
     </div>
 
-    <!-- 任务详情内容 -->
-    <div id="taskDetail" style="display: none;">
-        <!-- 任务基本信息 -->
-        <div class="detail-card">
-            <div class="detail-header">
+    <div id="taskDetail" class="detail-layout" style="display: none;">
+        <section class="hero-card">
+            <div class="hero-eyebrow">
+                <i class="fas fa-layer-group"></i>
+                任务详情
+            </div>
+            <div class="hero-header">
                 <div>
-                    <h1 class="detail-title" id="taskTitle">--</h1>
-                    <div class="detail-meta">
-                        <span class="meta-item">
-                            <i class="fas fa-hashtag"></i>
-                            <span id="taskNo">--</span>
-                        </span>
-                        <span class="meta-item">
-                            <i class="fas fa-user"></i>
-                            <span id="taskCreator">--</span>
-                        </span>
-                        <span class="meta-item">
-                            <i class="fas fa-calendar"></i>
-                            <span id="taskDate">--</span>
-                        </span>
+                    <h1 class="hero-title" id="taskTitle">--</h1>
+                    <div class="hero-subtitle" id="taskSubtitle">任务信息加载中</div>
+                </div>
+                <span class="status-badge hero-status" id="taskStatus">--</span>
+            </div>
+            <div class="meta-grid">
+                <div class="meta-chip">
+                    <i class="fas fa-hashtag"></i>
+                    <div>
+                        <span class="meta-label">任务单号</span>
+                        <span class="meta-value" id="taskNo">--</span>
                     </div>
                 </div>
-                <div>
-                    <span class="status-badge" id="taskStatus">--</span>
+                <div class="meta-chip">
+                    <i class="fas fa-user-edit"></i>
+                    <div>
+                        <span class="meta-label">创建人</span>
+                        <span class="meta-value" id="taskCreator">--</span>
+                    </div>
+                </div>
+                <div class="meta-chip">
+                    <i class="fas fa-user-check"></i>
+                    <div>
+                        <span class="meta-label">负责人</span>
+                        <span class="meta-value" id="taskOwner">--</span>
+                    </div>
+                </div>
+                <div class="meta-chip">
+                    <i class="fas fa-clock"></i>
+                    <div>
+                        <span class="meta-label">创建时间</span>
+                        <span class="meta-value" id="taskCreatedAt">--</span>
+                    </div>
+                </div>
+                <div class="meta-chip">
+                    <i class="fas fa-paper-plane"></i>
+                    <div>
+                        <span class="meta-label">提交时间</span>
+                        <span class="meta-value" id="taskSubmittedAt">--</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Amazon上传文件列表 -->
-        <div class="detail-card" id="uploadFilesSection" style="display: none;">
-            <h2 class="section-title">
-                <i class="fas fa-cloud-upload-alt"></i>
-                Amazon上传文件进度
-            </h2>
-            <div id="filesListContainer">
-                <!-- 动态填充 -->
-            </div>
-        </div>
+        <section class="summary-grid" id="summaryGrid"></section>
 
-        <!-- 其他子任务 -->
-        <div class="detail-card" id="otherSubtasksSection">
-            <h2 class="section-title">
-                <i class="fas fa-list-check"></i>
-                子任务列表
-            </h2>
-            <div id="subtasksList">
-                <!-- 动态填充 -->
+        <section class="subtasks-panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">
+                        <i class="fas fa-border-all"></i>
+                        子任务矩阵
+                    </h2>
+                    <div class="panel-subtitle">按卡片排布所有子任务，优先展示关键状态与类型信息。</div>
+                </div>
+                <div class="panel-meta" id="subtaskCount">0 个子任务</div>
             </div>
-        </div>
+            <div id="subtasksGrid" class="subtasks-grid"></div>
+        </section>
     </div>
 </div>
 {% endblock %}
@@ -236,130 +637,499 @@
 {% block extra_js %}
 <script>
     const taskId = {{ task_id }};
-    
-    document.addEventListener('DOMContentLoaded', function() {
+
+    document.addEventListener('DOMContentLoaded', () => {
         loadTaskDetail();
     });
-    
+
     async function loadTaskDetail() {
         try {
             const response = await fetch(`/api/tasks/${taskId}/detail/`);
             const result = await response.json();
-            
+
             if (!result.success) {
-                throw new Error(result.message);
+                throw new Error(result.message || '加载失败');
             }
-            
+
             renderTaskDetail(result.data);
-            
         } catch (error) {
-            console.error('加载失败:', error);
+            console.error('loadTaskDetail failed:', error);
+            document.getElementById('loadingState').classList.add('error');
             document.getElementById('loadingState').innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; color: var(--danger-color); margin-bottom: 1rem;"></i>
-                    <p>加载失败: ${error.message}</p>
+                    <i class="fas fa-exclamation-circle" style="color: #f87171;"></i>
+                    <p>加载失败：${escapeHtml(error.message || '未知错误')}</p>
                 </div>
             `;
         }
     }
-    
+
     function renderTaskDetail(data) {
-        const task = data.task;
-        const subtasks = data.subtasks;
-        
-        // 填充基本信息
-        document.getElementById('taskTitle').textContent = task.title || '无标题';
-        document.getElementById('taskNo').textContent = task.task_no;
-        document.getElementById('taskCreator').textContent = task.created_by_name;
-        document.getElementById('taskDate').textContent = task.created_at;
-        
-        // 状态标签
+        const task = data.task || {};
+        const subtasks = Array.isArray(data.subtasks) ? data.subtasks : [];
+
+        document.getElementById('taskTitle').textContent = task.title || '无标题任务';
+        document.getElementById('taskSubtitle').textContent = buildTaskSubtitle(task, subtasks);
+        document.getElementById('taskNo').textContent = task.task_no || '--';
+        document.getElementById('taskCreator').textContent = task.created_by_name || '--';
+        document.getElementById('taskOwner').textContent = task.owner_name || '--';
+        document.getElementById('taskCreatedAt').textContent = task.created_at || '--';
+        document.getElementById('taskSubmittedAt').textContent = task.submitted_at || '--';
+
         const statusEl = document.getElementById('taskStatus');
-        statusEl.textContent = task.status_display;
-        statusEl.className = `status-badge status-${task.status}`;
-        
-        // 渲染子任务
+        statusEl.textContent = task.status_display || getStatusDisplay(task.status);
+        statusEl.className = `status-badge hero-status status-${task.status || 'draft'}`;
+
+        renderSummaryCards(subtasks);
         renderSubtasks(subtasks);
-        
-        // 显示内容
+
         document.getElementById('loadingState').style.display = 'none';
-        document.getElementById('taskDetail').style.display = 'block';
+        document.getElementById('taskDetail').style.display = 'flex';
     }
-    
+
+    function buildTaskSubtitle(task, subtasks) {
+        const taskTypeMap = {
+            standard: '标准任务',
+            product_requirement: '产品需求'
+        };
+        const taskType = taskTypeMap[task.task_type] || formatDisplayValue(task.task_type);
+        return `${taskType} · 共 ${subtasks.length} 个子任务 · 当前状态 ${task.status_display || getStatusDisplay(task.status)}`;
+    }
+
+    function renderSummaryCards(subtasks) {
+        const total = subtasks.length;
+        const completed = subtasks.filter(item => item.status === 'completed').length;
+        const active = subtasks.filter(item => ['pending', 'in_progress'].includes(item.status)).length;
+        const attention = subtasks.filter(item => ['failed', 'cancelled'].includes(item.status)).length;
+
+        const cards = [
+            { label: '子任务总数', value: total, note: total > 0 ? `${total} 个卡片项` : '暂无子任务' },
+            { label: '已完成', value: completed, note: total > 0 ? `${getRatio(completed, total)} 已完成` : '等待任务生成' },
+            { label: '进行中 / 待执行', value: active, note: active > 0 ? '需要继续处理' : '当前无活跃任务' },
+            { label: '需关注', value: attention, note: attention > 0 ? '存在失败或取消项' : '当前无异常项' }
+        ];
+
+        document.getElementById('summaryGrid').innerHTML = cards.map(card => `
+            <div class="summary-card">
+                <div class="summary-label">${card.label}</div>
+                <div class="summary-value">${card.value}</div>
+                <div class="summary-note">${card.note}</div>
+            </div>
+        `).join('');
+    }
+
     function renderSubtasks(subtasks) {
-        const container = document.getElementById('subtasksList');
-        let hasAmazonUpload = false;
-        
-        // 分离Amazon上传和其他类型
-        const amazonUploads = subtasks.filter(s => s.type === 'amazon_upload');
-        const others = subtasks.filter(s => s.type !== 'amazon_upload');
-        
-        // 渲染Amazon上传文件表格
-        if (amazonUploads.length > 0) {
-            hasAmazonUpload = true;
-            const filesSection = document.getElementById('uploadFilesSection');
-            const filesContainer = document.getElementById('filesListContainer');
-            
-            filesSection.style.display = 'block';
-            
-            let html = '<table class="files-table"><thead><tr>';
-            html += '<th>所属店铺</th>';
-            html += '<th>文件名</th>';
-            html += '<th>状态</th>';
-            html += '<th>SKU进度</th>';
-            html += '<th>创建时间</th>';
-            html += '<th>完成时间</th>';
-            html += '</tr></thead><tbody>';
-            
-            amazonUploads.forEach(subtask => {
-                if (subtask.files && subtask.files.length > 0) {
-                    subtask.files.forEach(file => {
-                        html += `<tr>
-                            <td>${file.shop_name}</td>
-                            <td>${file.filename}</td>
-                            <td><span class="file-status status-${file.status}-file">${file.status_display}</span></td>
-                            <td class="progress-text">${file.progress}</td>
-                            <td>${file.created_at}</td>
-                            <td>${file.uploaded_at || '-'}</td>
-                        </tr>`;
-                    });
-                }
-            });
-            
-            html += '</tbody></table>';
-            filesContainer.innerHTML = html;
-        }
-        
-        // 渲染其他子任务（简化展示）
-        if (others.length === 0 && !hasAmazonUpload) {
+        const container = document.getElementById('subtasksGrid');
+        document.getElementById('subtaskCount').textContent = `${subtasks.length} 个子任务`;
+
+        if (subtasks.length === 0) {
             container.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>暂无子任务</p>
+                <div class="state-card">
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>当前任务下还没有子任务</p>
+                    </div>
                 </div>
             `;
             return;
         }
-        
-        let html = '';
-        others.forEach((subtask, index) => {
-            html += `
-                <div class="subtask-card">
-                    <div class="subtask-header">
-                        <span class="subtask-type">${subtask.type_display}</span>
-                        <span class="subtask-order">#${index + 1}</span>
+
+        container.innerHTML = subtasks.map((subtask, index) => renderSubtaskCard(subtask, index)).join('');
+    }
+
+    function renderSubtaskCard(subtask, index) {
+        const status = subtask.status || 'draft';
+        return `
+            <article class="subtask-card status-${status}">
+                <div class="subtask-top">
+                    <div>
+                        <div class="subtask-kicker">
+                            <i class="fas fa-cubes"></i>
+                            子任务 ${String(index + 1).padStart(2, '0')}
+                        </div>
+                        <h3 class="subtask-type">${escapeHtml(subtask.type_display || getSubtaskTypeDisplay(subtask.type))}</h3>
+                        <div class="subtask-code">${escapeHtml(getSubtaskTypeDisplay(subtask.type))}</div>
                     </div>
-                    <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                        ${subtask.is_executed ? 
-                            `<i class="fas fa-check-circle" style="color: #48bb78;"></i> 已执行 (${subtask.executed_at})` : 
-                            '<i class="fas fa-clock"></i> 未执行'
-                        }
+                    <span class="status-badge status-${status}">
+                        ${escapeHtml(subtask.status_display || getStatusDisplay(status))}
+                    </span>
+                </div>
+
+                <div class="quick-facts">
+                    ${renderFactPill('排序', formatDisplayValue((subtask.order ?? 0) + 1))}
+                    ${renderFactPill('执行', subtask.is_executed ? '已执行' : '未执行')}
+                    ${getQuickTypeFact(subtask)}
+                </div>
+
+                <div class="subtask-block">
+                    <div class="block-title">通用信息</div>
+                    <div class="detail-grid">
+                        ${renderFieldCard('子任务 ID', subtask.id)}
+                        ${renderFieldCard('类型名称', subtask.type_display || getSubtaskTypeDisplay(subtask.type))}
+                        ${renderFieldCard('执行状态', subtask.is_executed ? '已执行' : '未执行')}
+                        ${renderFieldCard('执行时间', subtask.executed_at || '--')}
+                    </div>
+                </div>
+
+                ${renderTypeSpecificSection(subtask)}
+                ${renderAmazonFilesSection(subtask)}
+            </article>
+        `;
+    }
+
+    function renderFactPill(label, value) {
+        return `
+            <span class="fact-pill">
+                <strong>${escapeHtml(label)}:</strong>
+                <span>${escapeHtml(formatDisplayValue(value))}</span>
+            </span>
+        `;
+    }
+
+    function getQuickTypeFact(subtask) {
+        const params = subtask.params || {};
+        switch (subtask.type) {
+            case 'multi_side_custom':
+            case 'custom_upload':
+                return renderFactPill('产品', Array.isArray(params.product_ids) ? params.product_ids.length : 0);
+            case 'temu_export':
+                return renderFactPill('店铺', Array.isArray(params.export_shop_ids) ? params.export_shop_ids.length : 0);
+            case 'amazon_upload':
+                return renderFactPill('文件', Array.isArray(params.file_list) ? params.file_list.length : 0);
+            case 'divi_auto_upload':
+                return renderFactPill('操作', getDiviOperationDisplay(params.operation));
+            default:
+                return '';
+        }
+    }
+
+    function renderTypeSpecificSection(subtask) {
+        const params = subtask.params || {};
+        let title = '任务参数';
+        let content = '';
+
+        switch (subtask.type) {
+            case 'multi_side_custom':
+                title = '多面定制配置';
+                content = renderFieldGrid([
+                    field('模式', getModeDisplay(params.mode)),
+                    field('图库账号', params.gallery_account),
+                    field('工艺类型', getCraftTypeDisplay(params.craft_type)),
+                    field('定制方式', getCustomMethodDisplay(params.custom_method)),
+                    field('加黑边', params.add_black_border),
+                    field('识别主题', params.recognize_theme),
+                    field('启用定制坐标', params.add_custom_coords),
+                    field('定制坐标', params.custom_coords),
+                    field('启用背景色', params.add_background_color),
+                    field('背景色', params.background_color),
+                    field('产品 ID', joinList(params.product_ids), true),
+                    field('图库目录', joinList(params.gallery_path), true),
+                    field('汇出店铺', joinList(params.export_shop_ids), true),
+                    field('汇出数量', params.export_quantity)
+                ]);
+                break;
+            case 'custom_upload':
+                title = '定制上架配置';
+                content = renderFieldGrid([
+                    field('模式', getModeDisplay(params.mode)),
+                    field('图库账号', params.gallery_account),
+                    field('工艺类型', getCraftTypeDisplay(params.craft_type)),
+                    field('定制方式', getCustomMethodDisplay(params.custom_method)),
+                    field('加黑边', params.add_black_border),
+                    field('识别主题', params.recognize_theme),
+                    field('汇出数量', params.export_quantity),
+                    field('启用定制坐标', params.add_custom_coords),
+                    field('定制坐标', params.custom_coords),
+                    field('启用背景色', params.add_background_color),
+                    field('背景色', params.background_color),
+                    field('产品 ID', joinList(params.product_ids), true),
+                    field('图库目录', joinList(params.gallery_path), true),
+                    field('汇出店铺', joinList(params.export_shop_ids), true)
+                ]);
+                break;
+            case 'temu_export':
+                title = 'Temu 导单配置';
+                content = renderFieldGrid([
+                    field('导单店铺', joinList(params.export_shop_ids), true)
+                ]);
+                break;
+            case 'amazon_upload':
+                title = 'Amazon 上传配置';
+                content = renderFieldGrid([
+                    field('成功文件数', countSuccessfulFiles(params.file_list)),
+                    field('失败文件数', countFailedFiles(params.file_list)),
+                    field('待处理路径', joinList(params.file_paths), true),
+                    field('上传结果', renderFileSummaryList(params.file_list), true, true)
+                ]);
+                break;
+            case 'divi_auto_upload':
+                title = 'Divi 自动上架配置';
+                content = renderFieldGrid([
+                    field('迪唯账号', params.diwei_account),
+                    field('操作类型', getDiviOperationDisplay(params.operation)),
+                    field('图库目录', joinList(params.gallery_path), true),
+                    field('本地图库路径', params.local_gallery_path, true),
+                    field('定制行', renderRowCollection(params.custom_rows, '定制行', row => ({
+                        '产品 ID': row.product_id,
+                        '模式': getModeDisplay(row.mode),
+                        '背景图': row.use_background,
+                        '背景色': row.background_color
+                    })), true, true),
+                    field('汇出行', renderRowCollection(params.export_rows, '汇出行', row => ({
+                        '产品 ID': row.product_id,
+                        '尺码': joinList(row.sizes),
+                        '颜色': joinList(row.colors),
+                        '店铺': joinList(row.shops)
+                    })), true, true)
+                ]);
+                break;
+            default:
+                content = renderFieldGrid([
+                    field('原始参数', renderRawParams(params), true, true)
+                ]);
+                break;
+        }
+
+        return `
+            <div class="subtask-block">
+                <div class="block-title">${escapeHtml(title)}</div>
+                <div class="detail-grid">
+                    ${content}
+                </div>
+            </div>
+        `;
+    }
+
+    function renderAmazonFilesSection(subtask) {
+        if (subtask.type !== 'amazon_upload') {
+            return '';
+        }
+
+        const files = Array.isArray(subtask.files) ? subtask.files : [];
+        if (files.length === 0) {
+            return `
+                <div class="subtask-block">
+                    <div class="block-title">文件进度</div>
+                    <div class="detail-item wide">
+                        <span class="detail-value">暂无待上传文件</span>
                     </div>
                 </div>
             `;
-        });
-        
-        container.innerHTML = html;
+        }
+
+        return `
+            <div class="subtask-block">
+                <div class="block-title">文件进度</div>
+                <div class="table-shell">
+                    <table class="files-table">
+                        <thead>
+                            <tr>
+                                <th>所属店铺</th>
+                                <th>文件名</th>
+                                <th>状态</th>
+                                <th>SKU 进度</th>
+                                <th>创建时间</th>
+                                <th>完成时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${files.map(file => `
+                                <tr>
+                                    <td>${escapeHtml(file.shop_name || '--')}</td>
+                                    <td>${escapeHtml(file.filename || '--')}</td>
+                                    <td>
+                                        <span class="file-status status-${file.status || 'pending'}-file">
+                                            ${escapeHtml(file.status_display || formatDisplayValue(file.status))}
+                                        </span>
+                                    </td>
+                                    <td class="progress-text">${escapeHtml(file.progress || '-/-')}</td>
+                                    <td>${escapeHtml(file.created_at || '--')}</td>
+                                    <td>${escapeHtml(file.uploaded_at || '--')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    }
+
+    function field(label, value, wide = false, isHtml = false) {
+        return { label, value, wide, isHtml };
+    }
+
+    function renderFieldGrid(items) {
+        return items.map(item => renderFieldCard(item.label, item.value, item.wide, item.isHtml)).join('');
+    }
+
+    function renderFieldCard(label, value, wide = false, isHtml = false) {
+        return `
+            <div class="detail-item ${wide ? 'wide' : ''}">
+                <span class="detail-label">${escapeHtml(label)}</span>
+                <span class="detail-value">${isHtml ? value : escapeHtml(formatDisplayValue(value))}</span>
+            </div>
+        `;
+    }
+
+    function renderFileSummaryList(files) {
+        if (!Array.isArray(files) || files.length === 0) {
+            return escapeHtml('--');
+        }
+
+        return `
+            <div class="collection-grid">
+                ${files.map((file, index) => `
+                    <div class="collection-card">
+                        <span class="collection-title">文件 ${index + 1}</span>
+                        <div class="collection-body">${escapeHtml([
+                            `文件名: ${formatDisplayValue(file.filename)}`,
+                            `是否成功: ${formatDisplayValue(file.success)}`,
+                            `店铺: ${formatDisplayValue(file.shop_name)}`,
+                            `临时路径: ${formatDisplayValue(file.temp_path)}`,
+                            `错误信息: ${formatDisplayValue(file.error)}`
+                        ].join('\n'))}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderRowCollection(rows, title, mapper) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+            return escapeHtml('--');
+        }
+
+        return `
+            <div class="collection-grid">
+                ${rows.map((row, index) => `
+                    <div class="collection-card">
+                        <span class="collection-title">${escapeHtml(`${title} ${index + 1}`)}</span>
+                        <div class="collection-body">${escapeHtml(formatMappedRow(mapper(row || {})))}</div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function renderRawParams(params) {
+        if (!params || Object.keys(params).length === 0) {
+            return escapeHtml('--');
+        }
+        return escapeHtml(JSON.stringify(params, null, 2));
+    }
+
+    function formatMappedRow(row) {
+        return Object.entries(row)
+            .map(([key, value]) => `${key}: ${formatDisplayValue(value)}`)
+            .join('\n');
+    }
+
+    function countSuccessfulFiles(files) {
+        return Array.isArray(files) ? files.filter(item => item && item.success).length : 0;
+    }
+
+    function countFailedFiles(files) {
+        return Array.isArray(files) ? files.filter(item => item && item.success === false).length : 0;
+    }
+
+    function getRatio(value, total) {
+        if (!total) {
+            return '0%';
+        }
+        return `${Math.round((value / total) * 100)}%`;
+    }
+
+    function joinList(value) {
+        if (Array.isArray(value)) {
+            return value.length > 0 ? value.join('，') : '--';
+        }
+        return formatDisplayValue(value);
+    }
+
+    function getStatusDisplay(status) {
+        const statusMap = {
+            draft: '草稿',
+            pending: '待执行',
+            in_progress: '进行中',
+            completed: '已完成',
+            failed: '执行失败',
+            cancelled: '已取消'
+        };
+        return statusMap[status] || formatDisplayValue(status);
+    }
+
+    function getSubtaskTypeDisplay(type) {
+        const typeMap = {
+            custom_upload: '定制上架',
+            temu_export: 'Temu导单',
+            print_external: '印花外采',
+            multi_side_custom: '多面定制',
+            amazon_upload: 'Amazon上架',
+            divi_auto_upload: 'Divi自动上架'
+        };
+        return typeMap[type] || formatDisplayValue(type);
+    }
+
+    function getModeDisplay(mode) {
+        const modeMap = {
+            adapt: '适应',
+            fill: '填充'
+        };
+        return modeMap[mode] || formatDisplayValue(mode);
+    }
+
+    function getCraftTypeDisplay(craftType) {
+        const craftTypeMap = {
+            print: '印花',
+            emboss: '压花',
+            laser: '激光'
+        };
+        return craftTypeMap[craftType] || formatDisplayValue(craftType);
+    }
+
+    function getCustomMethodDisplay(method) {
+        const methodMap = {
+            batch: '批量定制',
+            single: '单个定制'
+        };
+        return methodMap[method] || formatDisplayValue(method);
+    }
+
+    function getDiviOperationDisplay(operation) {
+        const operationMap = {
+            custom: '定制',
+            export: '汇出'
+        };
+        return operationMap[operation] || formatDisplayValue(operation);
+    }
+
+    function formatDisplayValue(value) {
+        if (value === null || value === undefined || value === '') {
+            return '--';
+        }
+        if (typeof value === 'boolean') {
+            return value ? '是' : '否';
+        }
+        if (Array.isArray(value)) {
+            return value.length > 0 ? value.join('，') : '--';
+        }
+        if (typeof value === 'object') {
+            try {
+                return JSON.stringify(value, null, 2);
+            } catch (error) {
+                return String(value);
+            }
+        }
+        return String(value);
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 </script>
 {% endblock %}

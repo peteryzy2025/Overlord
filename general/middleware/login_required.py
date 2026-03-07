@@ -27,6 +27,10 @@ class LoginRequiredMiddleware:
         if request.path_info in self.white_list:
             return self.get_response(request)
 
+        # 对外开放接口：允许匿名访问
+        if request.path_info.startswith('/api/external/tasks/'):
+            return self.get_response(request)
+
         # 检查静态文件和 media 文件
         if request.path_info.startswith(('/static/', '/media/')):
             return self.get_response(request)
