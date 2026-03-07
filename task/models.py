@@ -130,6 +130,39 @@ class SubTask(models.Model):
     子任务表
     存储任务的子任务详情和参数
     """
+    # 子任务类型定义
+    TYPE_CUSTOM_UPLOAD = 'custom_upload'
+    TYPE_TEMU_EXPORT = 'temu_export'
+    TYPE_PRINT_EXTERNAL = 'print_external'
+    TYPE_MULTI_SIDE_CUSTOM = 'multi_side_custom'
+    TYPE_AMAZON_UPLOAD = 'amazon_upload'
+    TYPE_DIVI_AUTO_UPLOAD = 'divi_auto_upload'
+
+    # 子任务状态定义
+    STATUS_DRAFT = 'draft'
+    STATUS_PENDING = 'pending'
+    STATUS_IN_PROGRESS = 'in_progress'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT, '草稿'),
+        (STATUS_PENDING, '待执行'),
+        (STATUS_IN_PROGRESS, '进行中'),
+        (STATUS_COMPLETED, '已完成'),
+        (STATUS_FAILED, '执行失败'),
+        (STATUS_CANCELLED, '已取消'),
+    ]
+
+    TYPE_CHOICES = [
+        (TYPE_CUSTOM_UPLOAD, '定制上架'),
+        (TYPE_TEMU_EXPORT, 'Temu导单'),
+        (TYPE_PRINT_EXTERNAL, '印花外采'),
+        (TYPE_MULTI_SIDE_CUSTOM, '多面定制'),
+        (TYPE_AMAZON_UPLOAD, 'Amazon上架'),
+        (TYPE_DIVI_AUTO_UPLOAD, 'Divi自动上架'),
+    ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')
 
@@ -146,17 +179,16 @@ class SubTask(models.Model):
     subtask_type = models.CharField(
         '子任务类型',
         max_length=20,
-        choices=SubTaskType.choices,
-        default=SubTaskType.CUSTOM_UPLOAD,
-        db_comment='子任务类型'
+        choices=TYPE_CHOICES,
+        db_comment='子任务类型：custom_upload/temu_export'
     )
 
     # 子任务状态
     subtask_status = models.CharField(
         '任务状态',
         max_length=20,
-        choices=SubTaskStatus.choices,
-        default=SubTaskStatus.DRAFT,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
         db_comment='任务当前状态'
     )
 
@@ -211,14 +243,55 @@ class SubTask(models.Model):
     def __str__(self):
         return f"{self.task.task_no} - {self.get_subtask_type_display()} #{self.order + 1}"
 
-    # 便捷方法示例
-    def mark_as_executed(self):
-        """标记为已执行"""
-        from django.utils import timezone
-        self.is_executed = True
-        self.executed_at = timezone.now()
-        self.subtask_status = SubTaskStatus.COMPLETED
-        self.save(update_fields=['is_executed', 'executed_at', 'subtask_status', 'updated_at'])
+    @classmethod
+    def get_initial_status(cls, is_draft=False):
+        return cls.STATUS_DRAFT if is_draft else cls.STATUS_PENDING
+
+    def sync_amazon_upload_status(self, save=True):
+        """
+        根据 Amazon 文件上传进度汇总子任务状态。
+        """
+        if self.subtask_type != self.TYPE_AMAZON_UPLOAD:
+            return self.subtask_status
+
+        file_statuses = list(self.amazon_upload_files.values_list('status', flat=True))
+        if not file_statuses:
+            next_status = self.get_initial_status(is_draft=self.task.status == TaskStatus.DRAFT)
+        elif all(status == AmazonUploadFile.STATUS_COMPLETED for status in file_statuses):
+            next_status = self.STATUS_COMPLETED
+        elif any(status == AmazonUploadFile.STATUS_FAILED for status in file_statuses):
+            next_status = self.STATUS_FAILED
+        elif any(status in {AmazonUploadFile.STATUS_UPLOADING, AmazonUploadFile.STATUS_COMPLETED} for status in file_statuses):
+            next_status = self.STATUS_IN_PROGRESS
+        else:
+            next_status = self.STATUS_PENDING
+
+        if not save or next_status == self.subtask_status:
+            return next_status
+
+        update_fields = ['subtask_status']
+        self.subtask_status = next_status
+        if next_status in {self.STATUS_COMPLETED, self.STATUS_FAILED}:
+            if not self.is_executed:
+                self.is_executed = True
+                update_fields.append('is_executed')
+            if not self.executed_at:
+                self.executed_at = timezone.now()
+                update_fields.append('executed_at')
+        self.save(update_fields=update_fields)
+        return next_status
+
+    def save(self, *args, **kwargs):
+        """
+        保存时自动更新主任务时间
+        """
+        super().save(*args, **kwargs)
+
+        # 更新主任务更新时间
+        if self.task:
+            self.task.updated_at = timezone.now()
+            self.task.save(update_fields=['updated_at'])
+
 
 class TaskTemplate(models.Model):
     """
