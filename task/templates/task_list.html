@@ -877,9 +877,14 @@
         }
     }
 
-    function showNotification(message, type = 'info', duration = 3000) {
-        if (window.showNotification) {
-            window.showNotification(message, type, duration);
+    function showTaskNotification(message, type = 'info', duration = 3000) {
+        // 检查是否有全局的通知组件（如 Element Plus）
+        if (window.ElementPlus && window.ElementPlus.ElNotification) {
+            window.ElementPlus.ElNotification({
+                message: message,
+                type: type,
+                duration: duration
+            });
         } else {
             console.log(`[${type}] ${message}`);
         }
@@ -1066,7 +1071,7 @@
             }
 
         } catch (error) {
-            showNotification('加载任务列表失败: ' + error.message, 'error');
+            showTaskNotification('加载任务列表失败: ' + error.message, 'error');
         } finally {
             showLoading(false);
         }
@@ -1433,7 +1438,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showNotification('任务已删除', 'success');
+                    showTaskNotification('任务已删除', 'success');
                     // 手动从列表中移除被删除的任务，确保表格立即更新
                     taskData.list = taskData.list.filter(task => task.id !== deleteTargetId);
                     // 重新渲染表格
@@ -1448,7 +1453,7 @@
                 }
                 
             } catch (error) {
-                showNotification('删除失败: ' + error.message, 'error');
+                showTaskNotification('删除失败: ' + error.message, 'error');
             } finally {
                 closeDeleteModal();
                 showLoading(false);
