@@ -317,6 +317,7 @@ def _build_list_cache_key(payload):
         'operator_ids': sorted(_normalize_int_list(payload.get('operator_ids'))),
         'shop_owner': (payload.get('shop_owner') or '').strip(),
         'shop_owners': sorted(_normalize_text_list(payload.get('shop_owners'))),
+        'search_type': (payload.get('search_type') or 'asin').strip().lower(),
         'asin': (payload.get('asin') or '').strip(),
         'infringement': (payload.get('infringement') or '').strip().lower(),
         'infringements': sorted(_normalize_text_list(payload.get('infringements'), lower=True)),
@@ -337,6 +338,7 @@ def _build_stats_cache_key(payload):
         'operator_ids': sorted(_normalize_int_list(payload.get('operator_ids'))),
         'shop_owner': (payload.get('shop_owner') or '').strip(),
         'shop_owners': sorted(_normalize_text_list(payload.get('shop_owners'))),
+        'search_type': (payload.get('search_type') or 'asin').strip().lower(),
         'asin': (payload.get('asin') or '').strip(),
         'infringement': (payload.get('infringement') or '').strip().lower(),
         'infringements': sorted(_normalize_text_list(payload.get('infringements'), lower=True)),
@@ -391,6 +393,7 @@ def _build_filtered_listing_queryset(payload):
     operator_id_filters = _normalize_int_list(payload.get('operator_ids'))
     shop_owner_filter = (payload.get('shop_owner') or '').strip()
     shop_owner_filters = _normalize_text_list(payload.get('shop_owners'))
+    search_type = (payload.get('search_type') or 'asin').strip().lower()
     asin_filter = (payload.get('asin') or '').strip()
     infringement_filter = (payload.get('infringement') or '').strip().lower()
     infringement_filters = set(_normalize_text_list(payload.get('infringements'), lower=True))
@@ -434,8 +437,14 @@ def _build_filtered_listing_queryset(payload):
             Q(lingxing_shop__amazon_shop__ops__first_name__icontains=shop_owner_filter)
             | Q(lingxing_shop__amazon_shop__ops__username__icontains=shop_owner_filter)
         )
+    if search_type not in {'asin', 'title'}:
+        search_type = 'asin'
+
     if asin_filter:
-        queryset = queryset.filter(asin__icontains=asin_filter)
+        if search_type == 'title':
+            queryset = queryset.filter(title__icontains=asin_filter)
+        else:
+            queryset = queryset.filter(asin__iexact=asin_filter)
     if infringement_filters:
         selected_levels = {item for item in infringement_filters if item in {'high', 'medium', 'low', 'unknown'}}
         if selected_levels:

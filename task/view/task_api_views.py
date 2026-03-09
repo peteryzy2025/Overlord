@@ -983,18 +983,16 @@ def create_task_api(request):
                     process_amazon_upload_files(subtask_data.get('params', {}), task_no, task_instance=task,
                                                 subtask_instance=subtask)
 
-                # 自动化铺货类型发送 webhook
-                if subtask_type == 'divi_auto_upload' and not is_draft:
+                # Divi 类型发送 webhook
+                if subtask_type in ['divi_auto_upload', 'divi_gallery_upload'] and not is_draft:
                     try:
-                        # 构造 webhook 数据
                         diwei_params = subtask_data.get('params', {})
                         diwei_webhook_data = {
                             'task_id': task.id,
                             'task_no': task_no,
                             'subtask_id': subtask.id,
-                            'subtask_type': 'divi_auto_upload',
+                            'subtask_type': subtask_type,
                             'diwei_account': diwei_params.get('diwei_account', ''),
-                            'operation': diwei_params.get('operation', ''),
                             'created_by_id': current_user.id,
                             'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
                             'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
@@ -1002,31 +1000,37 @@ def create_task_api(request):
                             'status': 'pending'
                         }
 
-                        # 根据操作类型添加路径信息
-                        operation = diwei_params.get('operation', '')
-                        if operation == 'custom':
-                            gallery_path_raw = diwei_params.get('gallery_path', '')
-                            if isinstance(gallery_path_raw, list):
-                                gallery_path = ' '.join(gallery_path_raw).strip()
-                            else:
-                                gallery_path = str(gallery_path_raw).strip()
-                            local_gallery_path = diwei_params.get('local_gallery_path', '').strip()
+                        gallery_path_raw = diwei_params.get('gallery_path', '')
+                        if isinstance(gallery_path_raw, list):
+                            gallery_path = ' '.join(gallery_path_raw).strip()
+                        else:
+                            gallery_path = str(gallery_path_raw).strip()
+                        local_gallery_path = diwei_params.get('local_gallery_path', '').strip()
+
+                        if subtask_type == 'divi_auto_upload':
+                            operation = diwei_params.get('operation', '')
+                            diwei_webhook_data['operation'] = operation
+
+                            if operation == 'custom':
+                                if gallery_path:
+                                    diwei_webhook_data['gallery_source'] = 'gallery'
+                                    diwei_webhook_data['gallery_path'] = gallery_path
+                                elif local_gallery_path:
+                                    diwei_webhook_data['gallery_source'] = 'local'
+                                    diwei_webhook_data['local_gallery_path'] = local_gallery_path
+
+                                custom_rows = diwei_params.get('custom_rows', [])
+                                if custom_rows:
+                                    diwei_webhook_data['custom_rows'] = custom_rows
+                            elif operation == 'export':
+                                export_rows = diwei_params.get('export_rows', [])
+                                if export_rows:
+                                    diwei_webhook_data['export_rows'] = export_rows
+                        else:
                             if gallery_path:
-                                diwei_webhook_data['gallery_source'] = 'gallery'
                                 diwei_webhook_data['gallery_path'] = gallery_path
-                            elif local_gallery_path:
-                                diwei_webhook_data['gallery_source'] = 'local'
+                            if local_gallery_path:
                                 diwei_webhook_data['local_gallery_path'] = local_gallery_path
-                            
-                            # 定制模式：添加产品行数据
-                            custom_rows = diwei_params.get('custom_rows', [])
-                            if custom_rows:
-                                diwei_webhook_data['custom_rows'] = custom_rows
-                        elif operation == 'export':
-                            # 汇出模式：添加产品行数据
-                            export_rows = diwei_params.get('export_rows', [])
-                            if export_rows:
-                                diwei_webhook_data['export_rows'] = export_rows
 
                         def send_diwei_webhook(payload):
                             url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/918309922287583232"

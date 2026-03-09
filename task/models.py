@@ -113,6 +113,7 @@ class SubTaskType(models.TextChoices):
     MULTI_SIDE_CUSTOM = 'multi_side_custom', '多面定制'
     AMAZON_UPLOAD = 'amazon_upload', 'Amazon上架'
     DIVI_AUTO_UPLOAD = 'divi_auto_upload', 'Divi自动上架'
+    DIVI_GALLERY_UPLOAD = 'divi_gallery_upload', 'DIVI图库上传'
 
 
 class SubTaskStatus(models.TextChoices):
@@ -137,6 +138,7 @@ class SubTask(models.Model):
     TYPE_MULTI_SIDE_CUSTOM = 'multi_side_custom'
     TYPE_AMAZON_UPLOAD = 'amazon_upload'
     TYPE_DIVI_AUTO_UPLOAD = 'divi_auto_upload'
+    TYPE_DIVI_GALLERY_UPLOAD = 'divi_gallery_upload'
 
     # 子任务状态定义
     STATUS_DRAFT = 'draft'
@@ -162,6 +164,7 @@ class SubTask(models.Model):
         (TYPE_MULTI_SIDE_CUSTOM, '多面定制'),
         (TYPE_AMAZON_UPLOAD, 'Amazon上架'),
         (TYPE_DIVI_AUTO_UPLOAD, 'Divi自动上架'),
+        (TYPE_DIVI_GALLERY_UPLOAD, 'DIVI图库上传'),
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')

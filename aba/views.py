@@ -25,6 +25,7 @@ def get_aba_data_api(request):
     参数:
         week: 周期（日期，如 2026-02-15）
         search_term: 搜索词（模糊搜索）
+        category: 品类英文关键词（按搜索词子串匹配）
         page: 页码，默认 1
         page_size: 每页条数，默认 50
     """
@@ -32,6 +33,7 @@ def get_aba_data_api(request):
         # 获取参数
         week = request.GET.get('week', '')
         search_term = request.GET.get('search_term', '').strip()
+        category = request.GET.get('category', '').strip()
         page = int(request.GET.get('page', 1))
         page_size = int(request.GET.get('page_size', 50))
         
@@ -70,6 +72,9 @@ def get_aba_data_api(request):
                         queryset = queryset.filter(search_term__term__iregex=rf'\y{keyword}\y')
             else:  # 默认模糊查询 - 子串匹配
                 queryset = queryset.filter(search_term__term__icontains=search_term)
+
+        if category:
+            queryset = queryset.filter(search_term__term__icontains=category)
         
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
