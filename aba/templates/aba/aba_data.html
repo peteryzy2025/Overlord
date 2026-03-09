@@ -114,6 +114,48 @@
         .rank-number.top-50 {
             color: var(--accent-color);
         }
+
+        .aba-filter-row {
+            flex-wrap: nowrap;
+            align-items: flex-end;
+        }
+
+        .aba-filter-row .filter-group {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .aba-filter-week-group,
+        .aba-filter-category-group {
+            flex: 0 0 220px;
+            max-width: 220px;
+        }
+
+        .aba-filter-search-group {
+            flex: 1 1 420px;
+            max-width: none;
+        }
+
+        .aba-search-input-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        @media (max-width: 1400px) {
+            .aba-filter-row {
+                flex-wrap: wrap;
+            }
+
+            .aba-filter-week-group,
+            .aba-filter-category-group {
+                flex: 1 1 220px;
+                max-width: none;
+            }
+
+            .aba-filter-search-group {
+                flex: 1 1 100%;
+            }
+        }
     </style>
 {% endblock %}
 
@@ -130,14 +172,18 @@
         </div>
 
         <div class="filter-section">
-            <div class="filter-row">
-                <div class="filter-group">
+            <div class="filter-row aba-filter-row">
+                <div class="filter-group aba-filter-week-group">
                     <label class="filter-label">周期</label>
                     <div id="weekFilter" class="searchable-select single" data-placeholder="选择周期"></div>
                 </div>
-                <div class="filter-group">
+                <div class="filter-group aba-filter-category-group">
+                    <label class="filter-label">品类</label>
+                    <div id="categoryFilter" class="searchable-select single" data-placeholder="选择品类"></div>
+                </div>
+                <div class="filter-group aba-filter-search-group">
                     <label class="filter-label">搜索词</label>
-                    <div style="position: relative; width: 550px;">
+                    <div class="aba-search-input-wrap">
                         <input type="text" class="form-control" id="searchTermInput" placeholder="请输入搜索词" onkeypress="handleSearchKeypress(event)" style="padding-left: 90px; width: 100%;">
                         <button type="button" id="searchModeBtn" onclick="toggleSearchMode()" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); padding: 2px 10px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">模糊查询</button>
                     </div>
@@ -223,6 +269,23 @@
         
         // SearchableSelect 实例
         let weekSelect = null;
+        let categorySelect = null;
+
+        const categoryOptions = [
+            { value: 'sticker', label: 'sticker(贴纸)' },
+            { value: 'banner', label: 'banner(挂旗)' },
+            { value: 'flag', label: 'flag(花园旗)' },
+            { value: 'blanket', label: 'blanket(毛毯)' },
+            { value: 'hat', label: 'hat(帽子)' },
+            { value: 'shirt', label: 'shirt(T恤)' },
+            { value: 'sock', label: 'sock(袜子)' },
+            { value: 'apron', label: 'apron(围裙)' },
+            { value: 'Badge', label: 'Badge(胸章)' },
+            { value: 'makeup bag', label: 'makeup bag(化妆包)' },
+            { value: 'canvas bag', label: 'canvas bag(帆布包)' },
+            { value: 'Sign', label: 'Sign(铁皮画)' },
+            { value: 'tapestry', label: 'tapestry(挂毯)' }
+        ];
         
         // 搜索模式：0=精准查询, 1=模糊查询, 2=广泛匹配
         let searchMode = 1;
@@ -466,7 +529,12 @@
                 multiple: false,
                 placeholder: '选择周期'
             });
-            weekSelect.onChange = () => filterData();
+
+            categorySelect = new SearchableSelect('#categoryFilter', {
+                options: categoryOptions,
+                multiple: false,
+                placeholder: '选择品类'
+            });
         }
         
         // ==================== 数据加载 ====================
@@ -502,6 +570,7 @@
                     page: currentPage,
                     page_size: pageSize,
                     week: weekSelect ? weekSelect.getValue() : '',
+                    category: categorySelect ? categorySelect.getValue() : '',
                     search_term: document.getElementById('searchTermInput').value,
                     search_mode: searchMode
                 });
@@ -542,17 +611,12 @@
             
             return `
                 <td>
-                    <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
-                        <div style="width: 36px; height: 36px; background: var(--bg-tertiary); border-radius: 4px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--text-tertiary);">
-                            <i class="fas fa-image"></i>
-                        </div>
-                        <div style="min-width: 0; flex: 1;">
-                            <div style="font-size: 14px; color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; text-align: left;" title="${title}">${shortTitle}</div>
-                            <div style="font-size: 14px; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 8px; justify-content: flex-start;">
-                                <a href="https://www.amazon.com/dp/${asin.code}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-size: 14px;" onclick="event.stopPropagation();">${asin.code}</a>
-                                <span style="color: var(--text-primary);">${clickShare}%</span>
-                                <span style="color: var(--text-primary);">${convShare}%</span>
-                            </div>
+                    <div style="min-width: 0;">
+                        <div style="font-size: 14px; color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; text-align: left;" title="${title}">${shortTitle}</div>
+                        <div style="font-size: 14px; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 8px; justify-content: flex-start; flex-wrap: wrap;">
+                            <a href="https://www.amazon.com/dp/${asin.code}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-size: 14px;" onclick="event.stopPropagation();">${asin.code}</a>
+                            <span style="color: var(--text-primary);">${clickShare}%</span>
+                            <span style="color: var(--text-primary);">${convShare}%</span>
                         </div>
                     </div>
                 </td>
@@ -799,7 +863,7 @@
         
         function handleSearchKeypress(event) {
             if (event.key === 'Enter') {
-                filterData();
+                event.preventDefault();
             }
         }
         
@@ -820,6 +884,9 @@
         
         function resetFilters() {
             document.getElementById('searchTermInput').value = '';
+            if (categorySelect) {
+                categorySelect.setValue('');
+            }
             if (weekSelect) {
                 loadAvailableWeeks(); // 重新加载并选中最新
             }

@@ -212,7 +212,7 @@ def validate_subtask_params(subtask_type, params, user):
 
             return {'valid': True, 'message': ''}
 
-        elif subtask_type == 'diwei_auto_upload':
+        elif subtask_type == 'divi_auto_upload':
             # 自动化铺货验证
             diwei_account = params.get('diwei_account', '').strip()
             if not diwei_account:
@@ -232,6 +232,23 @@ def validate_subtask_params(subtask_type, params, user):
                 local_gallery_path = params.get('local_gallery_path', '').strip()
                 if not gallery_path and not local_gallery_path:
                     return {'valid': False, 'message': '选择定制操作时，必须填写图库或本地图库路径'}
+
+            return {'valid': True, 'message': ''}
+
+        elif subtask_type == 'divi_gallery_upload':
+            diwei_account = params.get('diwei_account', '').strip()
+            if not diwei_account:
+                return {'valid': False, 'message': '迪唯账号不能为空'}
+
+            gallery_path_raw = params.get('gallery_path', '')
+            if isinstance(gallery_path_raw, list):
+                gallery_path = ' '.join(gallery_path_raw).strip()
+            else:
+                gallery_path = str(gallery_path_raw).strip()
+
+            local_gallery_path = params.get('local_gallery_path', '').strip()
+            if not gallery_path or not local_gallery_path:
+                return {'valid': False, 'message': 'DIVI图库上传必须同时填写图库路径和本地路径'}
 
             return {'valid': True, 'message': ''}
 

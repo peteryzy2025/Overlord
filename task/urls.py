@@ -76,4 +76,5 @@ urlpatterns = [
     path('api/tasks/amazon-upload/pending-files/', task_detail_views.get_pending_files_api, name='get_pending_files'),
     path('api/tasks/amazon-upload/update-status/', task_detail_views.update_upload_status_api,
          name='update_upload_status'),
+    
 ]

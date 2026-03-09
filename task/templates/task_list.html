@@ -877,14 +877,9 @@
         }
     }
 
-    function showTaskNotification(message, type = 'info', duration = 3000) {
-        // 检查是否有全局的通知组件（如 Element Plus）
-        if (window.ElementPlus && window.ElementPlus.ElNotification) {
-            window.ElementPlus.ElNotification({
-                message: message,
-                type: type,
-                duration: duration
-            });
+    function showNotification(message, type = 'info', duration = 3000) {
+        if (window.showNotification) {
+            window.showNotification(message, type, duration);
         } else {
             console.log(`[${type}] ${message}`);
         }
@@ -1071,7 +1066,7 @@
             }
 
         } catch (error) {
-            showTaskNotification('加载任务列表失败: ' + error.message, 'error');
+            showNotification('加载任务列表失败: ' + error.message, 'error');
         } finally {
             showLoading(false);
         }
@@ -1170,7 +1165,8 @@
             'print_external': 'fa-print',
             'multi_side_custom': 'fa-clone',
             'amazon_upload': 'fa-store',
-            'divi_auto_upload': 'fa-rocket'
+            'divi_auto_upload': 'fa-rocket',
+            'divi_gallery_upload': 'fa-images'
         };
         return iconMap[type] || 'fa-tasks';
     }
@@ -1182,7 +1178,8 @@
             'print_external': '印花外采',
             'multi_side_custom': '多面定制',
             'amazon_upload': 'Amazon上架',
-            'divi_auto_upload': 'Divi自动上架'
+            'divi_auto_upload': 'Divi自动上架',
+            'divi_gallery_upload': 'DIVI图库上传'
         };
         return typeMap[type] || type;
     }
@@ -1438,7 +1435,7 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    showTaskNotification('任务已删除', 'success');
+                    showNotification('任务已删除', 'success');
                     // 手动从列表中移除被删除的任务，确保表格立即更新
                     taskData.list = taskData.list.filter(task => task.id !== deleteTargetId);
                     // 重新渲染表格
@@ -1453,7 +1450,7 @@
                 }
                 
             } catch (error) {
-                showTaskNotification('删除失败: ' + error.message, 'error');
+                showNotification('删除失败: ' + error.message, 'error');
             } finally {
                 closeDeleteModal();
                 showLoading(false);

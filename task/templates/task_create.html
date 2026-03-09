@@ -160,6 +160,13 @@
                         <h4>自动化铺货</h4>
                         <p>VIP专用</p>
                     </div>
+                    <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-images"></i>
+                        </div>
+                        <h4>DIVI图库上传</h4>
+                        <p>上传DIVI图库路径</p>
+                    </div>
                 </div>
                 <button class="btn btn-primary" id="confirmAddSubtaskBtn" onclick="confirmAddSubtask()"
                         style="width: 100%; margin-top: 1.5rem;" disabled>
@@ -1131,7 +1138,7 @@
             }
         });
 
-        // ===== 处理迪唯图库输入互斥 =====
+        // ===== 处理迪唯图库输入 =====
         function handleDiweiGalleryInput(element, subtaskId, fieldName) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             if (!subtask) return;
@@ -1139,43 +1146,38 @@
             const value = element.value.trim();
             updateSubtaskParam(subtaskId, fieldName, value);
 
-            // 互斥逻辑：如果填写了当前字段，清空另一个字段
-            if (value) {
+            if (subtask.type === 'divi_auto_upload' && value) {
                 const otherFieldName = fieldName === 'gallery_path' ? 'local_gallery_path' : 'gallery_path';
                 const otherInput = document.getElementById(`${otherFieldName === 'gallery_path' ? 'gallery-path' : 'local-gallery-path'}-${subtaskId}`);
                 if (otherInput) {
                     otherInput.value = '';
                 }
                 subtask.params[otherFieldName] = '';
-                
-                // 如果清空的是图库目录，同时隐藏预览
+
                 if (otherFieldName === 'gallery_path') {
                     const previewContainer = document.getElementById(`gallery-path-preview-${subtaskId}`);
                     if (previewContainer) {
                         previewContainer.style.display = 'none';
+                        previewContainer.innerHTML = '';
                     }
                 }
             }
         }
 
-        // ===== 迪唯图库目录输入处理（结合多面定制预览和互斥逻辑） =====
+        // ===== 迪唯图库目录输入处理（结合多面定制预览逻辑） =====
         function handleDiweiGalleryPathInput(element, subtaskId) {
-            // 先执行互斥逻辑（在 handleGalleryPathInput 之前，避免 auto-save 时数据不一致）
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             if (!subtask) return;
 
             const value = element.value.trim();
-            
-            // 互斥逻辑：如果填写了图库目录，清空本地图库路径
-            if (value) {
+            if (subtask.type === 'divi_auto_upload' && value) {
                 const otherInput = document.getElementById(`local-gallery-path-${subtaskId}`);
                 if (otherInput) {
                     otherInput.value = '';
                 }
                 subtask.params.local_gallery_path = '';
             }
-            
-            // 再调用多面定制的图库目录处理（自动切割分级预览）
+
             handleGalleryPathInput(element, subtaskId);
         }
 
@@ -1392,6 +1394,12 @@
                     export_rows: [],
                     custom_rows: []
                 };
+            } else if (type === 'divi_gallery_upload') {
+                defaultParams = {
+                    diwei_account: '测试',
+                    gallery_path: '',
+                    local_gallery_path: ''
+                };
             }
 
             // 合并参数（优先使用传入的params，缺失的使用defaultParams）
@@ -1413,6 +1421,10 @@
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
                 if (!params.export_rows) mergedParams.export_rows = [];
                 if (!params.custom_rows) mergedParams.custom_rows = [];
+            } else if (type === 'divi_gallery_upload') {
+                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.gallery_path) mergedParams.gallery_path = '';
+                if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
 
             const subtask = {
@@ -1535,9 +1547,12 @@
                 refreshFileList(subtask.id);
             }
 
+            if (subtask.type === 'divi_auto_upload' || subtask.type === 'divi_gallery_upload') {
+                initDiweiAccountSelect(subtask);
+            }
+
             // 如果是divi_auto_upload类型，初始化SearchableSelect
             if (subtask.type === 'divi_auto_upload') {
-                initDiweiAccountSelect(subtask);
                 initDiweiOperationSelect(subtask);
                 
                 // 初始化图库目录预览（如果操作是定制）
@@ -1568,6 +1583,13 @@
                             initExportRowShopSelect(subtask.id, index, row.shops || []);
                         });
                     }, 0);
+                }
+            } else if (subtask.type === 'divi_gallery_upload' && subtask.params.gallery_path) {
+                const input = document.querySelector(`#gallery-path-${subtask.id}`);
+                if (input) {
+                    const val = Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path;
+                    input.value = val;
+                    handleDiweiGalleryPathInput(input, subtask.id);
                 }
             }
 
@@ -2022,26 +2044,29 @@
 
                         <!-- 定制模式：多行产品数据输入 -->
                         <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'};">
-                            <div class="form-group has-autocomplete" style="grid-column: 1 / -1;">
-                                <label class="form-label">图库 / 本地路径</label>
-                                <div style="display: flex; gap: 0.5rem; position: relative; max-width: 1010px;">
+                            <div class="form-group has-autocomplete">
+                                <label class="form-label">图库路径</label>
+                                <div style="position: relative;">
                                     <input type="text" class="form-control gallery-path-input"
                                            id="gallery-path-${subtask.id}"
                                            placeholder="图库目录"
-                                           value="${subtask.params.gallery_path || ''}"
+                                           value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
                                            data-subtask-id="${subtask.id}"
                                            oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
                                            onfocus="showPathSuggestions(this)"
-                                           style="flex: 1; max-width: 500px;">
-                                    <input type="text" class="form-control"
-                                           id="local-gallery-path-${subtask.id}"
-                                           placeholder="本地路径"
-                                           value="${subtask.params.local_gallery_path || ''}"
-                                           oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')"
-                                           style="flex: 1; max-width: 500px;">
+                                           style="width: 100%;">
                                     <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
-                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 50%; z-index: 100;"></div>
+                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
                                 </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">本地路径</label>
+                                <input type="text" class="form-control"
+                                       id="local-gallery-path-${subtask.id}"
+                                       placeholder="本地路径"
+                                       value="${subtask.params.local_gallery_path || ''}"
+                                       oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
                             </div>
 
                             <div style="grid-column: 1 / -1; margin-top: 1rem;">
@@ -2062,6 +2087,41 @@
                             <button type="button" class="btn btn-secondary" onclick="addExportRow(${subtask.id})" style="width: 100%;">
                                 <i class="fas fa-plus"></i> 添加产品
                             </button>
+                        </div>
+                    </div>
+                `;
+            } else if (subtask.type === 'divi_gallery_upload') {
+                return `
+                    <div class="dynamic-fields diwei-fields">
+                        <div class="form-group">
+                            <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择迪唯账号"></div>
+                        </div>
+
+                        <div class="form-group has-autocomplete">
+                            <label class="form-label">图库路径 <span style="color: var(--danger-color);">*</span></label>
+                            <div style="position: relative;">
+                                <input type="text" class="form-control gallery-path-input"
+                                       id="gallery-path-${subtask.id}"
+                                       placeholder="图库路径"
+                                       value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
+                                       data-subtask-id="${subtask.id}"
+                                       oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
+                                       onfocus="showPathSuggestions(this)"
+                                       style="width: 100%;">
+                                <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
+                                <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">本地路径 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="text" class="form-control"
+                                   id="local-gallery-path-${subtask.id}"
+                                   placeholder="本地路径"
+                                   value="${subtask.params.local_gallery_path || ''}"
+                                   oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
                         </div>
                     </div>
                 `;
@@ -2137,7 +2197,8 @@
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
                 'amazon_upload': 'Amazon上传商品',
-                'divi_auto_upload': '自动化铺货'
+                'divi_auto_upload': '自动化铺货',
+                'divi_gallery_upload': 'DIVI图库上传'
             };
             return typeMap[type] || type;
         }
@@ -2202,7 +2263,9 @@
                     previewContainer.innerHTML = paths.map(path => `
                         <span class="product-id-tag" style="background: var(--info-color);">
                             ${path}
-                            <span class="remove-product-id" onclick="removeGalleryPath('${path.replace(/'/g, "\\'")}', ${subtaskId})">×</span>
+                            <span class="remove-product-id"
+                                  data-path="${encodeURIComponent(path)}"
+                                  onclick="event.stopPropagation(); removeGalleryPath(decodeURIComponent(this.dataset.path), ${subtaskId})">×</span>
                         </span>
                     `).join('');
                     previewContainer.style.display = 'flex';
@@ -2219,10 +2282,17 @@
             if (subtask && subtask.params.gallery_path) {
                 subtask.params.gallery_path = subtask.params.gallery_path.filter(p => p !== path);
 
-                const input = document.getElementById(`gallery-path-input-${subtaskId}`);
+                const input = document.getElementById(`gallery-path-input-${subtaskId}`)
+                    || document.getElementById(`gallery-path-${subtaskId}`);
                 if (input) {
                     input.value = subtask.params.gallery_path.join(' ');
                     handleGalleryPathInput(input, subtaskId);
+                } else {
+                    const previewContainer = document.getElementById(`gallery-path-preview-${subtaskId}`);
+                    if (previewContainer && subtask.params.gallery_path.length === 0) {
+                        previewContainer.style.display = 'none';
+                        previewContainer.innerHTML = '';
+                    }
                 }
                 triggerAutoSave();
             }
@@ -2786,6 +2856,20 @@
                             showNotification(`子任务 #${subtask.order + 1} 选择了定制操作，必须填写图库或本地图库路径`, 'warning');
                             return false;
                         }
+                    }
+                } else if (subtask.type === 'divi_gallery_upload') {
+                    if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
+                        return false;
+                    }
+
+                    const galleryPath = Array.isArray(subtask.params.gallery_path)
+                        ? subtask.params.gallery_path.join(' ')
+                        : (subtask.params.gallery_path || '');
+                    const localGalleryPath = subtask.params.local_gallery_path || '';
+                    if (galleryPath.trim() === '' || localGalleryPath.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的图库路径和本地路径都必须填写`, 'warning');
+                        return false;
                     }
                 }
             }
