@@ -91,6 +91,51 @@
             margin-top: 0.5rem;
         }
 
+        .trend-toolbar {
+            width: 75vw;
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: -0.5rem;
+        }
+
+        .trend-toolbar .compound-search {
+            display: flex;
+            align-items: stretch;
+            width: 170px;
+            gap: 0;
+        }
+
+        .trend-toolbar .compound-search .searchable-select {
+            flex: 1 1 auto;
+            min-width: 170px;
+        }
+
+        .trend-toolbar .compound-search-select {
+            width: 100%;
+        }
+
+        .trend-toolbar .compound-search .searchable-select .select-trigger {
+            height: 42px;
+            border-radius: 0;
+            box-shadow: var(--shadow-light);
+            padding-right: 2rem;
+        }
+
+        .trend-toolbar .compound-search .searchable-select .selected-text {
+            font-weight: 600;
+        }
+
+        .trend-toolbar .compound-search .searchable-select .dropdown-panel {
+            border-radius: 0;
+        }
+
+        .trend-toolbar .compound-search .searchable-select.is-active .select-trigger,
+        /* .trend-toolbar .compound-search .searchable-select.is-active.open .select-trigger {
+            color: #f97316;
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.08);
+        } */
+
         .trend-card {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
@@ -158,10 +203,166 @@
         }
 
         /* 特殊国际分类橙色边框样式 - 用于商标详情卡片 */
-        .detail-group.special-intl-class {
+        .detail-group.special-intl-class,
+        .detail-group.highlight-intl-class {
             border-color: #f97316 !important;
             border-width: 2px;
             box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.1);
+        }
+
+        .trend-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            padding: 1rem;
+        }
+
+        .trend-modal-overlay.open {
+            display: flex;
+        }
+
+        .trend-modal {
+            width: min(720px, 100%);
+            max-height: min(80vh, 720px);
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .trend-modal-header {
+            padding: 1rem 1.2rem 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .trend-modal-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .trend-modal-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .trend-modal-reset-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .trend-modal-reset-btn:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+            transform: rotate(-20deg);
+        }
+
+        .trend-modal-subtitle {
+            margin-top: 0.35rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .intl-class-list {
+            padding: 1rem 1.2rem;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .intl-class-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            padding: 0.8rem 0.9rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--bg-secondary);
+            cursor: pointer;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .intl-class-item:hover {
+            border-color: var(--accent-color);
+            background: rgba(102, 126, 234, 0.06);
+        }
+
+        .intl-class-item input {
+            margin-top: 0.15rem;
+            accent-color: var(--accent-color);
+        }
+
+        .intl-class-text {
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .intl-class-code {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .intl-class-name {
+            font-size: 0.86rem;
+            color: var(--text-secondary);
+        }
+
+        .trend-modal-actions {
+            padding: 0.9rem 1.2rem 1.2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: center;
+            gap: 0.9rem;
+        }
+
+        .trend-modal-btn {
+            min-width: 110px;
+            height: 40px;
+            border-radius: 9999px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .trend-modal-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .trend-modal-btn.primary {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .trend-modal-btn.primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+            color: #fff;
         }
 
         /* 状态码悬浮提示样式 */
@@ -478,9 +679,14 @@
             .trend-searchbar {
                 height: 50px;
             }
+            .trend-toolbar,
             .trend-search,
             .trend-results {
                 width: 90vw;
+            }
+
+            .intl-class-list {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -488,6 +694,12 @@
 
 {% block page_content %}
     <div class="trend-page" style="margin-top: 70px;">
+        <div class="trend-toolbar">
+            <div class="compound-search">
+                <div id="intlDisplayModeSelect" class="searchable-select single compound-search-select" data-placeholder="模式1"></div>
+            </div>
+        </div>
+
         <div style="text-align: center;">
             <div class="trend-title">DIVI智管侵权检测</div>
             <div class="trend-subtitle">输入关键词，查看风险等级与命中词库占位展示</div>
@@ -574,9 +786,35 @@
             </div>
         </div>
     </div>
+
+    <div class="trend-modal-overlay" id="intlClassModal" onclick="handleIntlClassModalOverlay(event)">
+        <div class="trend-modal" role="dialog" aria-modal="true" aria-labelledby="intlClassModalTitle">
+            <div class="trend-modal-header">
+                <div class="trend-modal-title-row">
+                    <div class="trend-modal-title" id="intlClassModalTitle">国际类筛选</div>
+                    <button type="button" class="trend-modal-reset-btn" title="清空筛选项" aria-label="清空筛选项" onclick="resetIntlClassSelection()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 2v6h-6"></path>
+                            <path d="M20.5 15a9 9 0 1 1-2.13-9.36L21 8"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="trend-modal-subtitle">勾选需要重点查看的国际类。确认后仅调整当前结果的风险展示和橙色边框。</div>
+            </div>
+            <div class="intl-class-list" id="intlClassList"></div>
+            <div class="trend-modal-actions">
+                <button type="button" class="trend-modal-btn primary" onclick="confirmIntlClassSelection()">确认</button>
+                <button type="button" class="trend-modal-btn" onclick="closeIntlClassModal()">取消</button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    {{ nice_classifications|json_script:"niceClassificationsData" }}
+    {{ special_intl_classes|json_script:"specialIntlClassesData" }}
+    {{ medium_risk_status_codes|json_script:"mediumRiskStatusCodesData" }}
     <script>
         // ===== 搜索模式切换 =====
         const SEARCH_MODES = {
@@ -818,13 +1056,278 @@ const STATUS_CODE_MAPPING = {
     '973': '暂停等待行政审查'
 };
 
+        const NICE_CLASSIFICATIONS = JSON.parse(document.getElementById('niceClassificationsData').textContent || '[]');
+        const SPECIAL_INTL_CLASSES = new Set(JSON.parse(document.getElementById('specialIntlClassesData').textContent || '[]'));
+        const MEDIUM_RISK_STATUS_CODES = new Set(
+            JSON.parse(document.getElementById('mediumRiskStatusCodesData').textContent || '[]').map(code => Number(code))
+        );
+        const HIGH_RISK_NAME_TYPES = new Set([4, 5, 6, 7, 10, 11]);
+
         // 全局变量：存储商标详情数据和侵权词库详情数据
+        let intlDisplayModeSelect = null;
         let usptoDetailsData = {};
         let troDetailsData = {};
+        let latestTrendData = null;
+        let currentIntlDisplayMode = 'mode1';
+        let selectedIntlClasses = new Set();
+        let pendingIntlClasses = new Set();
+        let activeDetailKeyword = '';
 
         // 历史记录相关函数
         const HISTORY_KEY = 'trend_search_history';
         const MAX_HISTORY = 8;
+
+        function normalizeIntlClassCode(code) {
+            const digits = String(code || '').replace(/\D/g, '');
+            if (!digits) return '';
+            return digits.padStart(3, '0');
+        }
+
+        function extractIntlClassCodes(value) {
+            const matches = String(value || '').match(/\d{1,3}/g) || [];
+            return matches.map(normalizeIntlClassCode).filter(Boolean);
+        }
+
+        function hasSelectedIntlClass(intlClassValue, filterSet = selectedIntlClasses) {
+            if (!filterSet.size) return false;
+            const classCodes = extractIntlClassCodes(intlClassValue);
+            return classCodes.some(code => filterSet.has(code));
+        }
+
+        function isMediumRiskStatusCode(statusCode) {
+            const normalized = Number(statusCode);
+            return Number.isFinite(normalized) && MEDIUM_RISK_STATUS_CODES.has(normalized);
+        }
+
+        function findCaseInsensitiveEntry(source, key) {
+            if (!source || !key) return null;
+            const target = String(key).toLowerCase();
+            for (const [entryKey, entryValue] of Object.entries(source)) {
+                if (entryKey.toLowerCase() === target) {
+                    return { key: entryKey, value: entryValue };
+                }
+            }
+            return null;
+        }
+
+        function getWordRiskEntry(word) {
+            return findCaseInsensitiveEntry(latestTrendData?.word_risk_map || {}, word)?.value || null;
+        }
+
+        function getTroNameType(word) {
+            const entry = findCaseInsensitiveEntry(troDetailsData, word);
+            return entry ? Number(entry.value) : null;
+        }
+
+        function getTrademarkDetails(word) {
+            const entry = findCaseInsensitiveEntry(usptoDetailsData, word);
+            return entry ? entry.value : [];
+        }
+
+        function isIntlFilterMode() {
+            return currentIntlDisplayMode === 'mode2';
+        }
+
+        function getDisplayRiskLevel(word) {
+            const baseRiskEntry = getWordRiskEntry(word);
+            const baseRiskLevel = baseRiskEntry ? baseRiskEntry[0] : 'low';
+            const nameType = getTroNameType(word);
+
+            if (HIGH_RISK_NAME_TYPES.has(nameType)) {
+                return 'high';
+            }
+
+            if (!isIntlFilterMode() || !selectedIntlClasses.size) {
+                return baseRiskLevel;
+            }
+
+            const details = getTrademarkDetails(word);
+            if (!details.length) {
+                return 'low';
+            }
+
+            const matchedDetails = details.filter(item => hasSelectedIntlClass(item.intl_class));
+            if (!matchedDetails.length) {
+                return 'low';
+            }
+
+            return matchedDetails.some(item => isMediumRiskStatusCode(item.status_code)) ? 'medium' : 'low';
+        }
+
+        function updateRiskLevelCard() {
+            const riskLevelText = document.getElementById('riskLevelText');
+            if (!riskLevelText || !latestTrendData) return;
+
+            let themeRiskLevel = 'low';
+            let themeRiskText = '低风险';
+
+            const troWords = latestTrendData.tro_keywords || [];
+            const usptoWords = latestTrendData.uspto_keywords || [];
+
+            if (troWords.some(word => getDisplayRiskLevel(word) === 'high')) {
+                themeRiskLevel = 'high';
+                themeRiskText = '高风险';
+            } else if ([...troWords, ...usptoWords].some(word => getDisplayRiskLevel(word) === 'medium')) {
+                themeRiskLevel = 'medium';
+                themeRiskText = '中风险';
+            }
+
+            riskLevelText.textContent = themeRiskText;
+            riskLevelText.classList.remove('risk-low', 'risk-medium', 'risk-high');
+            riskLevelText.classList.add(`risk-${themeRiskLevel}`);
+        }
+
+        function renderUsptoKeywords() {
+            const usptoKeywords = document.getElementById('usptoKeywords');
+            if (!usptoKeywords || !latestTrendData) return;
+
+            if (latestTrendData.uspto_keywords && latestTrendData.uspto_keywords.length > 0) {
+                usptoKeywords.innerHTML = latestTrendData.uspto_keywords
+                    .map(keyword => {
+                        const riskLevel = getDisplayRiskLevel(keyword);
+                        const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                        return `<li class="trend-keyword ${riskClass}" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                    })
+                    .join('');
+            } else {
+                usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
+            }
+        }
+
+        function renderTroKeywords() {
+            const riskKeywords = document.getElementById('riskKeywords');
+            if (!riskKeywords || !latestTrendData) return;
+
+            if (latestTrendData.tro_keywords && latestTrendData.tro_keywords.length > 0) {
+                riskKeywords.innerHTML = latestTrendData.tro_keywords
+                    .map(keyword => {
+                        const riskLevel = getDisplayRiskLevel(keyword);
+                        const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
+                        return `<li class="trend-keyword ${riskClass}" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
+                    })
+                    .join('');
+            } else {
+                riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
+            }
+        }
+
+        function renderTrendData(data) {
+            latestTrendData = data || null;
+            usptoDetailsData = data?.uspto_details || {};
+            troDetailsData = data?.tro_details || {};
+
+            updateRiskLevelCard();
+            renderUsptoKeywords();
+            renderTroKeywords();
+
+            if (activeDetailKeyword) {
+                showTrademarkDetail(activeDetailKeyword);
+            }
+        }
+
+        function initIntlDisplayModeControl() {
+            if (typeof SearchableSelect !== 'function') return;
+
+            intlDisplayModeSelect = new SearchableSelect('#intlDisplayModeSelect', {
+                options: [
+                    { value: 'mode1', label: '全量模式' },
+                    { value: 'mode2', label: '自定义国际类' }
+                ],
+                multiple: false,
+                searchable: false,
+                clearable: false,
+                placeholder: '全量模式'
+            });
+            intlDisplayModeSelect.setValue(currentIntlDisplayMode);
+            intlDisplayModeSelect.onChange = (value) => {
+                handleIntlDisplayModeChange(value);
+            };
+        }
+
+        function updateIntlDisplayModeControl() {
+            const select = document.getElementById('intlDisplayModeSelect');
+            if (!select) return;
+
+            if (intlDisplayModeSelect) {
+                intlDisplayModeSelect.setValue(currentIntlDisplayMode);
+            }
+            const mode2Active = isIntlFilterMode() && selectedIntlClasses.size > 0;
+            select.classList.toggle('is-active', mode2Active);
+            select.title = mode2Active
+                ? `国际类展示模式（模式2，已选 ${selectedIntlClasses.size} 类）`
+                : '国际类展示模式';
+        }
+
+        function renderIntlClassOptions() {
+            const list = document.getElementById('intlClassList');
+            if (!list) return;
+
+            list.innerHTML = NICE_CLASSIFICATIONS.map(item => {
+                const displayCode = String(item.code || '').padStart(2, '0');
+                const normalizedCode = normalizeIntlClassCode(item.code);
+                const checked = pendingIntlClasses.has(normalizedCode) ? 'checked' : '';
+                return `
+                    <label class="intl-class-item">
+                        <input type="checkbox" value="${escapeHtml(normalizedCode)}" ${checked}>
+                        <span class="intl-class-text">
+                            <span class="intl-class-code">${escapeHtml(displayCode)}类</span>
+                            <span class="intl-class-name">${escapeHtml(item.name || '')}</span>
+                        </span>
+                    </label>
+                `;
+            }).join('');
+
+            list.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', function(event) {
+                    const code = event.target.value;
+                    if (event.target.checked) {
+                        pendingIntlClasses.add(code);
+                    } else {
+                        pendingIntlClasses.delete(code);
+                    }
+                });
+            });
+        }
+
+        function openIntlClassModal() {
+            pendingIntlClasses = new Set(selectedIntlClasses);
+            renderIntlClassOptions();
+            document.getElementById('intlClassModal')?.classList.add('open');
+        }
+
+        function closeIntlClassModal() {
+            pendingIntlClasses = new Set(selectedIntlClasses);
+            document.getElementById('intlClassModal')?.classList.remove('open');
+        }
+
+        function confirmIntlClassSelection() {
+            selectedIntlClasses = new Set(pendingIntlClasses);
+            updateIntlDisplayModeControl();
+            renderTrendData(latestTrendData);
+            closeIntlClassModal();
+        }
+
+        function resetIntlClassSelection() {
+            pendingIntlClasses = new Set();
+            renderIntlClassOptions();
+        }
+
+        function handleIntlClassModalOverlay(event) {
+            if (event.target?.id === 'intlClassModal') {
+                closeIntlClassModal();
+            }
+        }
+
+        function handleIntlDisplayModeChange(value) {
+            const nextMode = value || 'mode1';
+            currentIntlDisplayMode = nextMode;
+            updateIntlDisplayModeControl();
+            renderTrendData(latestTrendData);
+
+            if (nextMode === 'mode2') {
+                openIntlClassModal();
+            }
+        }
 
         function getSearchHistory() {
             try {
@@ -893,6 +1396,13 @@ const STATUS_CODE_MAPPING = {
         // 页面加载时渲染历史记录
         document.addEventListener('DOMContentLoaded', function() {
             renderSearchHistory();
+            initIntlDisplayModeControl();
+            updateIntlDisplayModeControl();
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    closeIntlClassModal();
+                }
+            });
         });
 
         async function handleTrendSearch(event) {
@@ -919,6 +1429,7 @@ const STATUS_CODE_MAPPING = {
             // 重置商标详情卡片状态（默认收起，隐藏按钮）
             const detailCard = document.getElementById('trademarkDetailCard');
             const toggleBtn = document.querySelector('.detail-toggle-btn');
+            activeDetailKeyword = '';
             if (detailCard) detailCard.style.display = 'none';
             if (toggleBtn) {
                 toggleBtn.classList.add('collapsed');
@@ -947,69 +1458,13 @@ const STATUS_CODE_MAPPING = {
                     throw new Error(data?.error || `请求失败 (${resp.status})`);
                 }
 
-                // 更新风险等级卡片
-                if (riskLevelText) {
-                    riskLevelText.textContent = data?.theme_risk_text || '低风险';
-
-                    // 更新风险等级颜色类
-                    riskLevelText.classList.remove('risk-low', 'risk-medium', 'risk-high');
-                    const riskLevelClass = `risk-${data?.theme_risk_level || 'low'}`;
-                    riskLevelText.classList.add(riskLevelClass);
-                }
-
-                // 存储商标详情数据和侵权词库详情数据
-                usptoDetailsData = data.uspto_details || {};
-                troDetailsData = data.tro_details || {};
-
-                // 辅助函数：查找词的风险等级（忽略大小写）
-                function getRiskLevel(word) {
-                    if (!data?.word_risk_map) return 'low';
-                    const wordLower = word.toLowerCase();
-                    // word_risk_map 格式: [riskLevel, statusCodes, intlClasses, hasSpecialClass]
-                    for (const [key, wordData] of Object.entries(data.word_risk_map)) {
-                        if (key.toLowerCase() === wordLower) {
-                            return wordData[0]; // 返回风险等级
-                        }
-                    }
-                    return 'low';
-                }
+                renderTrendData(data);
 
                 // 重置侵权词库风险类型显示
                 const troRiskTypeDisplay = document.getElementById('troRiskTypeDisplay');
                 if (troRiskTypeDisplay) troRiskTypeDisplay.style.display = 'none';
-
-                // 渲染美标网关键词（添加点击事件）
-                const usptoKeywords = document.getElementById('usptoKeywords');
-                if (usptoKeywords) {
-                    if (data.uspto_keywords && data.uspto_keywords.length > 0) {
-                        usptoKeywords.innerHTML = data.uspto_keywords
-                            .map(keyword => {
-                                const riskLevel = getRiskLevel(keyword);
-                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
-                                return `<li class="trend-keyword ${riskClass}" onclick="showTrademarkDetail('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
-                            })
-                            .join('');
-                    } else {
-                        usptoKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
-                    }
-                }
-
-                // 渲染侵权词库关键词（TroTable，添加点击事件）
-                const riskKeywords = document.getElementById('riskKeywords');
-                if (riskKeywords) {
-                    if (data.tro_keywords && data.tro_keywords.length > 0) {
-                        riskKeywords.innerHTML = data.tro_keywords
-                            .map(keyword => {
-                                const riskLevel = getRiskLevel(keyword);
-                                const riskClass = riskLevel !== 'low' ? `risk-${riskLevel}` : '';
-                                return `<li class="trend-keyword ${riskClass}" onclick="showTroRiskType('${escapeHtml(keyword)}')">${escapeHtml(keyword)}</li>`;
-                            })
-                            .join('');
-                    } else {
-                        riskKeywords.innerHTML = '<li class="trend-keyword" style="color: var(--text-tertiary);">无匹配</li>';
-                    }
-                }
             } catch (err) {
+                latestTrendData = null;
                 if (riskLevelText) riskLevelText.textContent = err?.message || '请求失败';
 
                 // 查询失败时清空关键词列表和重置商标详情卡片
@@ -1068,9 +1523,7 @@ const STATUS_CODE_MAPPING = {
             const detailTitle = document.getElementById('detailTitle');
             const detailContent = document.getElementById('detailContent');
             const toggleBtn = document.querySelector('.detail-toggle-btn');
-
-            // 特殊国际分类集合（与后端保持一致）
-            const SPECIAL_INTL_CLASSES = ['006', '015', '016', '018', '024', '025', '027', '035'];
+            activeDetailKeyword = keyword;
 
             // 第一次点击时显示按钮
             toggleBtn.classList.add('visible');
@@ -1085,17 +1538,18 @@ const STATUS_CODE_MAPPING = {
                 detailContent.innerHTML = details.map(item => {
                     const usptoUrl = `https://tsdr.uspto.gov/#caseNumber=${escapeHtml(item.serial_number)}&caseSearchType=US_APPLICATION&caseType=DEFAULT&searchType=statusSearch`;
 
-                    // 检查国际分类是否包含特殊分类
-                    const intlClassStr = String(item.intl_class || '');
-                    const hasSpecialClass = SPECIAL_INTL_CLASSES.some(cls => intlClassStr.includes(cls));
-                    const specialClass = hasSpecialClass ? 'special-intl-class' : '';
+                    const intlClassCodes = extractIntlClassCodes(item.intl_class);
+                    const shouldHighlight = isIntlFilterMode() && selectedIntlClasses.size
+                        ? intlClassCodes.some(code => selectedIntlClasses.has(code))
+                        : intlClassCodes.some(code => SPECIAL_INTL_CLASSES.has(code));
+                    const highlightClass = shouldHighlight ? 'highlight-intl-class' : '';
 
                     // 获取状态码说明
                     const statusCode = String(item.status_code || '');
                     const statusCodeDesc = STATUS_CODE_MAPPING[statusCode] || '未知状态';
 
                     return `
-                    <div class="detail-group ${specialClass}">
+                    <div class="detail-group ${highlightClass}">
                         <div class="detail-row">
                             <span class="detail-label">注册号</span>
                             <span class="detail-value"><a href="${usptoUrl}" target="_blank" rel="noopener noreferrer" class="detail-link">${escapeHtml(item.serial_number)}</a></span>
@@ -1125,7 +1579,7 @@ const STATUS_CODE_MAPPING = {
             const troRiskTypeText = document.getElementById('troRiskTypeText');
 
             if (troRiskTypeDisplay && troRiskTypeText) {
-                const nameType = troDetailsData[keyword];
+                const nameType = getTroNameType(keyword);
                 const riskTypeName = NAME_TYPE_MAPPING[nameType] || '未知类型';
                 troRiskTypeText.textContent = riskTypeName;
                 troRiskTypeDisplay.style.display = 'block';

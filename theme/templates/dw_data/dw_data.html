@@ -1,0 +1,557 @@
+{% extends 'base/base_theme.html' %}
+{% load static %}
+
+{% block title %}迪唯产业大数据模型 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .table-container table {
+            min-width: 1000px;
+        }
+        
+        /* 细分市场列宽度 */
+        #dwTable th:nth-child(2),
+        #dwTable td:nth-child(2) {
+            min-width: 200px;
+            max-width: 350px;
+        }
+        
+        /* 月总销量列 */
+        #dwTable th:nth-child(3),
+        #dwTable td:nth-child(3) {
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        /* 月均销售额列 */
+        #dwTable th:nth-child(4),
+        #dwTable td:nth-child(4) {
+            min-width: 180px;
+            text-align: center;
+        }
+        
+        /* 完整市场路径列 */
+        #dwTable th:nth-child(5),
+        #dwTable td:nth-child(5) {
+            min-width: 300px;
+        }
+        
+        /* 细分市场名称样式 */
+        .market-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+            line-height: 1.4;
+        }
+        
+        .market-name-cn {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            word-break: break-word;
+        }
+        
+        /* 销量和销售额数值 */
+        .sales-value {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        
+        .revenue-value {
+            font-weight: 600;
+            color: #10b981;
+            font-size: 1rem;
+        }
+        
+        /* 市场路径样式 */
+        .market-path {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+        
+        .market-path-item {
+            display: inline;
+        }
+        
+        .market-path-separator {
+            color: var(--text-tertiary);
+            margin: 0 4px;
+        }
+
+        .dw-filter-row {
+            flex-wrap: nowrap;
+            align-items: flex-end;
+        }
+
+        .dw-filter-row .filter-group {
+            min-width: 0;
+            max-width: none;
+        }
+
+        .dw-filter-category-group {
+            flex: 0 0 250px;
+            max-width: 250px;
+        }
+
+        .dw-filter-search-group {
+            flex: 1 1 420px;
+            max-width: none;
+        }
+
+        .dw-search-input-wrap {
+            position: relative;
+            width: 100%;
+        }
+
+        @media (max-width: 1400px) {
+            .dw-filter-row {
+                flex-wrap: wrap;
+            }
+
+            .dw-filter-category-group {
+                flex: 1 1 250px;
+                max-width: none;
+            }
+
+            .dw-filter-search-group {
+                flex: 1 1 100%;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="dw-data-tab" class="tab-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-industry" style="color: var(--accent-color);"></i>
+                    迪唯产业大数据模型
+                </h1>
+                <p class="page-subtitle">市场分类与细分市场数据管理</p>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row dw-filter-row">
+                <div class="filter-group dw-filter-category-group">
+                    <label class="filter-label">市场分类</label>
+                    <div id="categoryFilter" class="searchable-select single" data-placeholder="选择分类"></div>
+                </div>
+                <div class="filter-group dw-filter-search-group">
+                    <label class="filter-label">细分市场</label>
+                    <div class="dw-search-input-wrap">
+                        <input type="text" class="form-control" id="searchInput" placeholder="请输入细分市场名称" onkeypress="handleSearchKeypress(event)" style="width: 100%;">
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn" onclick="filterData()" title="搜索"><i class="fas fa-search"></i></button>
+                    <button class="btn btn-secondary" onclick="resetFilters()" title="重置"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 项</span>
+            <button class="btn btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                <span>取消选择</span>
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="dwTable">
+                <thead id="dwTableHead">
+                <tr>
+                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                    <th>细分市场</th>
+                    <th>月总销量</th>
+                    <th>月均销售额-头部商品($)</th>
+                    <th>完整市场路径</th>
+                </tr>
+                </thead>
+                <tbody id="dwTableBody">
+                <!-- 动态生成内容 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">50条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option selected" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script>
+        // ==================== 全局变量 ====================
+        let currentPage = 1;
+        let pageSize = 50;
+        let totalItems = 0;
+        let totalPages = 1;
+        let selectedIds = new Set();
+        let allData = [];
+        
+        // SearchableSelect 实例
+        let categorySelect = null;
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 显示初始加载动画
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
+            initSearchableSelects();
+            
+            // 先加载分类列表
+            await loadCategories();
+            
+            // 再加载表格数据
+            await loadData();
+            
+            // 数据加载完成后隐藏 loading
+            if (loadingOverlay) {
+                loadingOverlay.classList.add('hidden');
+            }
+            
+            // 标记初始加载完成
+            isInitialLoad = false;
+        });
+        
+        // ==================== SearchableSelect 初始化 ====================
+        function initSearchableSelects() {
+            categorySelect = new SearchableSelect('#categoryFilter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择分类'
+            });
+            
+            // 监听分类变化
+            categorySelect.onChange = function(value) {
+                currentPage = 1;
+                loadData();
+            };
+        }
+        
+        // ==================== 数据加载 ====================
+        async function loadCategories() {
+            try {
+                const response = await fetch('/theme/api/market-categories/');
+                const result = await response.json();
+                
+                if (result.success) {
+                    categorySelect.setOptions(result.data);
+                }
+            } catch (error) {
+                console.error('加载分类列表失败:', error);
+            }
+        }
+        
+        // 初始加载标志
+        let isInitialLoad = true;
+        
+        async function loadData() {
+            // 显示加载动画（分页切换时）
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (loadingOverlay && !isInitialLoad) {
+                loadingOverlay.classList.remove('hidden');
+            }
+            
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: pageSize,
+                    category: categorySelect ? categorySelect.getValue() : '',
+                    search: document.getElementById('searchInput').value.trim()
+                });
+                
+                const response = await fetch(`/theme/api/niche-markets/?${params}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    allData = result.data;
+                    totalItems = result.total;
+                    totalPages = result.total_pages;
+                    renderTable(allData);
+                    renderPagination();
+                    updatePaginationStats();
+                } else {
+                    showNotification(result.error || '加载失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                showNotification('加载数据失败', 'error');
+            } finally {
+                // 隐藏加载动画（分页切换时）
+                if (loadingOverlay && !isInitialLoad) {
+                    loadingOverlay.classList.add('hidden');
+                }
+            }
+        }
+        
+        // ==================== 渲染表格 ====================
+        function renderTable(data) {
+            const tbody = document.getElementById('dwTableBody');
+            tbody.innerHTML = data.map(item => {
+                // 格式化销售额
+                const revenueFormatted = item.monthly_revenue 
+                    ? `$${parseFloat(item.monthly_revenue).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                    : '-';
+                
+                // 格式化销量
+                const salesFormatted = item.monthly_sales 
+                    ? parseInt(item.monthly_sales).toLocaleString('en-US')
+                    : '-';
+                
+                // 构建市场路径HTML
+                let pathHtml = '-';
+                if (item.category_path && item.category_path.length > 0) {
+                    pathHtml = item.category_path.map((cat, idx) => {
+                        const separator = idx < item.category_path.length - 1 
+                            ? '<span class="market-path-separator">›</span>' 
+                            : '';
+                        return `<span class="market-path-item">${cat}</span>${separator}`;
+                    }).join('');
+                }
+                
+                return `
+                <tr data-id="${item.id}">
+                    <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
+                           ${selectedIds.has(item.id) ? 'checked' : ''}
+                           onchange="toggleSelectItem(${item.id})"></td>
+                    <td>
+                        <div class="market-name">${item.market_name}</div>
+                        ${item.market_name_cn ? `<div class="market-name-cn">${item.market_name_cn}</div>` : ''}
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="sales-value">${salesFormatted}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="revenue-value">${revenueFormatted}</span>
+                    </td>
+                    <td>
+                        <div class="market-path">${pathHtml}</div>
+                    </td>
+                </tr>
+            `}).join('');
+            
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+        
+        // ==================== 分页 ====================
+        function renderPagination() {
+            const pagination = document.getElementById('paginationNew');
+            let html = '';
+            
+            // 上一页
+            html += `<button class="pagination-btn-new ${currentPage === 1 ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>`;
+            
+            // 页码
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" 
+                               onclick="goToPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // 下一页
+            html += `<button class="pagination-btn-new ${currentPage === totalPages ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>`;
+            
+            pagination.innerHTML = html;
+        }
+        
+        function updatePaginationStats() {
+            const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            document.getElementById('pageSizeText').textContent = pageSize + '条';
+            
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                statsEl.style.marginLeft = '1rem';
+                statsEl.style.color = 'var(--text-secondary)';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条`;
+        }
+        
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadData();
+        }
+        
+        function changePageSize(size) {
+            pageSize = size;
+            currentPage = 1;
+            document.getElementById('pageSizeText').textContent = size + '条';
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            loadData();
+        }
+        
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+        
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= totalPages) {
+                    goToPage(page);
+                }
+                event.target.value = '';
+            }
+        }
+        
+        // ==================== 选择操作 ====================
+        function toggleSelectItem(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateBulkActionBar();
+            updateSelectAllCheckbox();
+        }
+        
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            
+            rowCheckboxes.forEach((cb, index) => {
+                const id = allData[index].id;
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedIds.add(id);
+                } else {
+                    selectedIds.delete(id);
+                }
+            });
+            
+            updateBulkActionBar();
+        }
+        
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleIds = allData.map(d => d.id);
+            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+            checkbox.checked = allSelected;
+        }
+        
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const countText = document.getElementById('selectedCountText');
+            
+            countText.textContent = `已选择 ${selectedIds.size} 项`;
+            
+            if (selectedIds.size > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+        
+        function clearSelection() {
+            selectedIds.clear();
+            document.getElementById('selectAll').checked = false;
+            renderTable(allData);
+            updateBulkActionBar();
+        }
+        
+        // ==================== 筛选操作 ====================
+        function filterData() {
+            currentPage = 1;
+            loadData();
+        }
+        
+        function handleSearchKeypress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                filterData();
+            }
+        }
+        
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            if (categorySelect) {
+                categorySelect.setValue('');
+            }
+            currentPage = 1;
+            loadData();
+        }
+        
+        // ==================== 通知提示 ====================
+        function showNotification(message, type = 'info') {
+            // 使用全局通知函数（如果存在）
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type);
+            } else {
+                alert(message);
+            }
+        }
+    </script>
+{% endblock %}

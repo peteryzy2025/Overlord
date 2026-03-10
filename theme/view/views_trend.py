@@ -28,7 +28,15 @@ SPECIAL_INTL_CLASSES = {'006', '015', '016', '018', '024', '025', '027', '035'}
 
 @login_required
 def trend_page(request):
-    return render(request, 'trend_v2.html', {'active_nav': 'theme_products'})
+    nice_classifications = list(
+        NiceClassification.objects.all().order_by('code').values('code', 'name')
+    )
+    return render(request, 'trend_v2.html', {
+        'active_nav': 'theme_products',
+        'nice_classifications': nice_classifications,
+        'special_intl_classes': sorted(SPECIAL_INTL_CLASSES),
+        'medium_risk_status_codes': sorted(MEDIUM_RISK_STATUS_CODES),
+    })
 
 
 @require_POST
@@ -530,11 +538,11 @@ def words_split(theme):
 
 
 # ====更新过滤函数===================#
-AMAZON_NOISE_WORDS = {
-    'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
-    'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
-    'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
-}
+# AMAZON_NOISE_WORDS = {
+#     'tshirt', 't-shirt', 'shirt', 'clothing', 'apparel', 'gift', 'size',
+#     'small', 'large', 'unisex', 'men', 'women', 'kids', 'adult', 'set',
+#     'pack', 'pcs', 'color', 'black', 'white', 'soft', 'vintage', 'retro'
+# }
 
 
 def should_skip_word(word):
