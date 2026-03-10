@@ -234,6 +234,61 @@ def get_customers_api(request):
         }, status=500)
 
 
+@csrf_exempt
+def external_amazon_shops_api(request):
+    """
+    对外免登录的 Amazon 店铺查询接口
+
+    可选参数:
+        - customer: 客户名称，支持模糊匹配
+
+    返回:
+        [
+            {
+                "店铺名称": "...",
+                "状态": "...",
+                "客户": "...",
+                "亚马逊名称": "..."
+            }
+        ]
+    """
+    if request.method != 'GET':
+        return JsonResponse(
+            {'error': '只支持GET请求'},
+            status=405,
+            json_dumps_params={'ensure_ascii': False}
+        )
+
+    try:
+        customer = (request.GET.get('customer') or '').strip()
+
+        query = AmazonShop.objects.all().order_by('id')
+        if customer:
+            query = query.filter(customer__icontains=customer)
+
+        shops = query.values('shop_name', 'shop_status', 'customer', 'amazon_shop_name')
+        data = [
+            {
+                '店铺名称': shop.get('shop_name') or '',
+                '状态': shop.get('shop_status') or '',
+                '客户': shop.get('customer') or '',
+                '亚马逊名称': shop.get('amazon_shop_name') or '',
+            }
+            for shop in shops
+        ]
+
+        return JsonResponse(data, safe=False, json_dumps_params={'ensure_ascii': False})
+
+    except Exception as e:
+        print(f"对外Amazon店铺查询错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse(
+            {'error': f'服务器错误: {str(e)}'},
+            status=500,
+            json_dumps_params={'ensure_ascii': False}
+        )
+
+
 # 获取Amazon店铺列表API（支持分页和筛选，含 id 精准查询）
 @require_GET
 @login_required

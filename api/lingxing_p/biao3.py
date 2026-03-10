@@ -34,7 +34,7 @@ async def get_order_transaction(sids=None, start_date=None, end_date=None):
         end_date = datetime.now().strftime('%Y-%m-%d')
     if sids is None:
         sids = [522034]
-    
+
     all_records = []
     offset = 0
     length = 1000
@@ -46,25 +46,36 @@ async def get_order_transaction(sids=None, start_date=None, end_date=None):
     while True:
         req_body = {
             "sids": sids,
+            "searchDateField":"accounting_time",
             "startDate": start_date,
             "endDate": end_date,
             "offset": offset,
             "length": length,
+            # "eventSource": [
+            #     "Transfer",
+                # "Adjustment",
+                # "Debt",
+                # "Refund",
+                # "FBA Inventory Fee",
+                # "Service Fee",
+                # "Order"
+            # ],
         }
+        print(req_body)
         resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/finance/profitReport/order/transcation/list")
-        
+
         # 获取总数（仅在第一页）
         if total is None:
             total = resp.data.get("total", 0)
             print(f"总记录数: {total}")
-        
+
         # 获取数据列表
         records = resp.data.get("records", [])
-        
+
         if records and len(records) > 0:
             all_records.extend(records)
             print(f"  已获取 {len(all_records)} / {total} 条数据")
-            
+
             # 如果获取的数据已经达到总数，或者本次获取不足length条（说明是最后一页），则结束
             if len(all_records) >= total or len(records) < length:
                 break
@@ -85,32 +96,32 @@ def export_to_excel(records, output_file=None):
     if not records:
         print("没有数据可导出")
         return
-    
+
     if output_file is None:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = f"订单交易明细_{timestamp}.xlsx"
-    
+        output_file = f"海边-19叶进发-US - 查询利润报表-订单维度transaction视图_{timestamp}.xlsx"
+
     df = pd.DataFrame(records)
-    
+
     # 导出Excel
     df.to_excel(output_file, index=False, engine='openpyxl')
     print(f"\n📊 数据已导出到: {output_file}")
     print(f"   共 {len(df)} 行，{len(df.columns)} 列")
-    
+
     return output_file
 
 
 async def main():
     """主函数"""
     # ========== 配置区域 ==========
-    sids = [522034]  # 店铺ID列表
+    sids = [518148]  #
     start_date = "2026-01-01"
-    end_date = "2026-02-28"
+    end_date = "2026-01-31"
     # =============================
-    
+
     # 获取订单交易明细
     records = await get_order_transaction(sids, start_date, end_date)
-    
+
     # 导出Excel
     if records:
         export_to_excel(records)

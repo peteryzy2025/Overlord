@@ -72,6 +72,8 @@ urlpatterns = [
 
     # ========== Amazon店铺管理 ==========
     path('amazon-management/', views_amazon_management.amazon_management_view, name='amazon_management'),
+    path('api/external/amazon-shops/', views_amazon_management.external_amazon_shops_api,
+         name='external_amazon_shops_api'),
     path('api/amazon-shops/', views_amazon_management.get_amazon_shops_api, name='get_amazon_shops_api'),
     path('api/amazon-shops/create/', views_amazon_management.create_amazon_shop_api, name='create_amazon_shop_api'),
     path('api/amazon-shops/bulk-update-project/', views_amazon_management.bulk_update_project_api, name='bulk_update_project_api'),
