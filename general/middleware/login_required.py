@@ -30,6 +30,8 @@ class LoginRequiredMiddleware:
         # 对外开放接口：允许匿名访问
         if request.path_info.startswith('/api/external/tasks/'):
             return self.get_response(request)
+        if request.path_info.startswith('/api/external/amazon-shops/'):
+            return self.get_response(request)
 
         # 检查静态文件和 media 文件
         if request.path_info.startswith(('/static/', '/media/')):
