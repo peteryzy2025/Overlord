@@ -1096,8 +1096,8 @@
             // 保存数据到全局，供initModalSelects使用
             window._modalData = data;
             window._modalOperatorOptions = allOperators.map(op => ({
-                value: op.id,
-                label: `${op.first_name} (${op.group})`
+                value: op.value,
+                label: op.label
             }));
             window._modalStatusOptions = [
                 {value: '1', label: '正常'},
@@ -1237,7 +1237,7 @@
                 placeholder: '请选择运营人员'
             });
             modalOpsSelect.onChange = (val) => {
-                const op = allOperators.find(o => o.id == val);
+                const op = allOperators.find(o => o.value == val);
                 if (op) document.getElementById('modal-ops_group').value = op.group || '';
             };
             if (data.ops_id) modalOpsSelect.setValue(data.ops_id);
