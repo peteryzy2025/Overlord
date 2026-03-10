@@ -421,3 +421,55 @@ class NiceClassification(models.Model):
         super().save(*args, **kwargs)
 
 
+class MarketCategory(models.Model):
+    """市场分类树"""
+    name = models.CharField(max_length=255, verbose_name="分类名称")
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
+        verbose_name="父分类"
+    )
+    level = models.PositiveSmallIntegerField(default=1, verbose_name="层级")
+    path = models.CharField(max_length=500, blank=True, verbose_name="路径ID链", db_index=True)
+
+    class Meta:
+        db_table = 'theme_market_category'
+        unique_together = [['name', 'parent']]
+        indexes = [
+            models.Index(fields=['path']),
+        ]
+        verbose_name = "市场分类"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{'›' * self.level} {self.name}"
+
+
+class NicheMarket(models.Model):
+    """细分市场数据"""
+    market_name = models.CharField(max_length=255, verbose_name="细分市场名称")
+    market_name_cn = models.CharField(max_length=255, blank=True, verbose_name="中文翻译")
+    monthly_sales = models.BigIntegerField(null=True, blank=True, verbose_name="月总销量")
+    monthly_revenue = models.DecimalField(
+        max_digits=15, decimal_places=2,
+        null=True, blank=True,
+        verbose_name="月均销售额"
+    )
+    leaf_category = models.ForeignKey(
+        MarketCategory,
+        on_delete=models.CASCADE,
+        related_name='niche_markets',
+        verbose_name="所属叶子分类"
+    )
+
+    class Meta:
+        db_table = 'theme_niche_market'
+        unique_together = [['market_name', 'leaf_category']]
+        verbose_name = "细分市场"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.market_name_cn or self.market_name}"

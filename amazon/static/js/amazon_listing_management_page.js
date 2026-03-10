@@ -3,12 +3,14 @@ let groupSelect = null;
 let operatorSelect = null;
 let infringementSelect = null;
 let activeStatusSelect = null;
+let asinSearchTypeSelect = null;
 let allOperators = [];
 
 let currentFilters = {
     shop_names: [],
     ops_groups: [],
     operator_ids: [],
+    search_type: 'title',
     asin: '',
     infringements: [],
     listing_date_range: 'all',
@@ -262,6 +264,21 @@ async function initSearchableSelects() {
         placeholder: '选择在售状态'
     });
     activeStatusSelect.setValue(['all']);
+
+    asinSearchTypeSelect = new SearchableSelect('#asinSearchTypeFilter', {
+        options: [
+            { value: 'asin', label: 'ASIN' },
+            { value: 'title', label: '标题' }
+        ],
+        multiple: false,
+        searchable: false,
+        clearable: false,
+        placeholder: '标题'
+    });
+    asinSearchTypeSelect.setValue('title');
+    asinSearchTypeSelect.onChange = () => {
+        updateSearchPlaceholder();
+    };
 }
 
 function getFiltersFromUI() {
@@ -269,11 +286,22 @@ function getFiltersFromUI() {
         shop_names: normalizeMultiValues(shopNameSelect ? shopNameSelect.getValue() : []),
         ops_groups: normalizeMultiValues(groupSelect ? groupSelect.getValue() : []),
         operator_ids: normalizeMultiNumberValues(operatorSelect ? operatorSelect.getValue() : []),
+        search_type: asinSearchTypeSelect ? asinSearchTypeSelect.getValue() : 'title',
         asin: document.getElementById('asinFilter').value.trim(),
         infringements: normalizeMultiValues(infringementSelect ? infringementSelect.getValue() : [], true),
         listing_date_range: 'all',
         active_statuses: normalizeMultiValues(activeStatusSelect ? activeStatusSelect.getValue() : [], true)
     };
+}
+
+function updateSearchPlaceholder() {
+    const asinInput = document.getElementById('asinFilter');
+    const searchType = asinSearchTypeSelect ? asinSearchTypeSelect.getValue() : 'title';
+    if (!asinInput) return;
+
+    asinInput.placeholder = searchType === 'title'
+        ? '输入标题进行搜索'
+        : '输入ASIN进行搜索';
 }
 
 function escapeHtml(text) {
@@ -361,7 +389,7 @@ function renderListingTable(rows) {
     if (!rows || rows.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="10" class="empty-state">
+                <td colspan="9" class="empty-state">
                     <i class="fas fa-inbox"></i>
                     <p>暂无匹配的 Listing</p>
                 </td>
@@ -387,7 +415,6 @@ function renderListingTable(rows) {
                        onclick="toggleSelectRow(${listingId}, this.checked)">
             </td>
             <td>${escapeHtml(row.amazon_shop_name || '-')}</td>
-            <td>${escapeHtml(row.shop_name || '-')}</td>
             <td>
                 <div class="ops-info-cell">
                     <span class="ops-group-text">${escapeHtml(row.ops_group || '-')}</span>
@@ -415,6 +442,7 @@ function renderListingTable(rows) {
 }
 
 async function fetchRiskData(listingIds, renderVersion) {
+    const tbody = document.getElementById('listingTableBody');
     try {
         const csrfToken = getCookie('csrftoken');
         const response = await fetch('/api/amazon-listing-management/batch-risk-check/', {
@@ -427,13 +455,18 @@ async function fetchRiskData(listingIds, renderVersion) {
         });
 
         const result = await safeParseJson(response);
+        if (!tbody || String(renderVersion) !== tbody.dataset.renderVersion) return;
+
         if (response.ok && result.success && result.data) {
-            const tbody = document.getElementById('listingTableBody');
-            if (!tbody || String(renderVersion) !== tbody.dataset.renderVersion) return;
             updateRiskCells(result.data, renderVersion);
+            return;
         }
+
+        updateRiskCells({}, renderVersion);
     } catch (error) {
         console.error('Batch risk check failed:', error);
+        if (!tbody || String(renderVersion) !== tbody.dataset.renderVersion) return;
+        updateRiskCells({}, renderVersion);
     }
 }
 
@@ -535,6 +568,10 @@ async function refreshData(event) {
 async function resetFilters(event) {
     event.preventDefault();
     document.getElementById('asinFilter').value = '';
+    if (asinSearchTypeSelect) {
+        asinSearchTypeSelect.setValue('title');
+    }
+    updateSearchPlaceholder();
     if (shopNameSelect) shopNameSelect.setValue(['all']);
     if (groupSelect) groupSelect.setValue(['all']);
     if (operatorSelect) {
@@ -549,6 +586,7 @@ async function resetFilters(event) {
         shop_names: [],
         ops_groups: [],
         operator_ids: [],
+        search_type: 'title',
         asin: '',
         infringements: [],
         listing_date_range: 'all',
@@ -759,7 +797,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         console.error('initSearchableSelects failed', error);
     }
 
-    document.getElementById('asinFilter').addEventListener('keyup', function (event) {
+    const asinFilterInput = document.getElementById('asinFilter');
+    updateSearchPlaceholder();
+
+    asinFilterInput.addEventListener('keyup', function (event) {
         if (event.key === 'Enter') applyFilters();
     });
 

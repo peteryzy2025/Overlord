@@ -155,6 +155,45 @@
             width: 100%;
         }
 
+        .amazon-listing-main .compound-search {
+            display: flex;
+            align-items: stretch;
+            width: 100%;
+            gap: 0;
+        }
+
+        .amazon-listing-main .compound-search .searchable-select {
+            flex: 0 0 96px;
+            min-width: 96px;
+        }
+
+        .amazon-listing-main .compound-search-select {
+            width: 100%;
+        }
+
+        .amazon-listing-main .compound-search .searchable-select .select-trigger {
+            height: 100%;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .amazon-listing-main .compound-search .searchable-select .select-trigger::after {
+            display: none;
+        }
+
+        .amazon-listing-main .compound-search-input {
+            margin-left: -1px;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            flex: 1 1 auto;
+        }
+
+        .amazon-listing-main .compound-search .searchable-select.open .select-trigger,
+        .amazon-listing-main .compound-search-input:focus {
+            position: relative;
+            z-index: 1;
+        }
+
         .amazon-listing-main .table-container {
             overflow-x: auto;
             max-height: 700px;
@@ -163,7 +202,7 @@
         }
 
         #listingTable {
-            min-width: 1685px;
+            min-width: 1565px;
             table-layout: fixed;
         }
 
@@ -192,27 +231,27 @@
 
         #listingTable th:nth-child(4),
         #listingTable td:nth-child(4) {
-            width: 180px;
-            min-width: 180px;
-        }
-
-        #listingTable th:nth-child(5),
-        #listingTable td:nth-child(5) {
             width: 120px;
             min-width: 120px;
         }
 
-        #listingTable th:nth-child(6),
-        #listingTable td:nth-child(6) {
+        #listingTable th:nth-child(5),
+        #listingTable td:nth-child(5) {
             width: 380px;
             min-width: 380px;
             text-align: left;
         }
 
-        #listingTable th:nth-child(7),
-        #listingTable td:nth-child(7) {
+        #listingTable th:nth-child(6),
+        #listingTable td:nth-child(6) {
             width: 110px;
             min-width: 110px;
+        }
+
+        #listingTable th:nth-child(7),
+        #listingTable td:nth-child(7) {
+            width: 220px;
+            min-width: 220px;
         }
 
         #listingTable th:nth-child(8),
@@ -223,12 +262,6 @@
 
         #listingTable th:nth-child(9),
         #listingTable td:nth-child(9) {
-            width: 220px;
-            min-width: 220px;
-        }
-
-        #listingTable th:nth-child(10),
-        #listingTable td:nth-child(10) {
             width: 110px;
             min-width: 110px;
         }
@@ -483,8 +516,11 @@
                     <div id="operatorFilter" class="searchable-select multiple" data-placeholder="&#36873;&#25321;&#36816;&#33829;&#20154;&#21592;"></div>
                 </div>
                 <div class="filter-group">
-                    <label class="filter-label">ASIN</label>
-                    <input type="text" class="form-control" id="asinFilter" placeholder="&#36755;&#20837; ASIN &#20851;&#38190;&#23383;">
+                    <label class="filter-label">ASIN/标题搜索</label>
+                    <div class="compound-search">
+                        <div id="asinSearchTypeFilter" class="searchable-select single compound-search-select" data-placeholder="标题"></div>
+                        <input type="text" class="form-control compound-search-input" id="asinFilter" placeholder="输入标题进行搜索">
+                    </div>
                 </div>
                 <div class="filter-group">
                     <label class="filter-label">&#39118;&#38505;&#31561;&#32423;</label>
@@ -511,7 +547,6 @@
                     <tr>
                         <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                         <th>Amazon&#24215;&#38138;</th>
-                        <th>&#39046;&#26143;&#24215;&#38138;</th>
                         <th>&#36816;&#33829;&#20998;&#32452;/&#20154;&#21592;</th>
                         <th>ASIN</th>
                         <th>&#26631;&#39064;</th>
@@ -523,7 +558,7 @@
                 </thead>
                 <tbody id="listingTableBody">
                     <tr>
-                        <td colspan="10" class="empty-state">
+                        <td colspan="9" class="empty-state">
                             <i class="fas fa-info-circle"></i>
                             <p>&#28857;&#20987;&#26597;&#35810;&#21518;&#21152;&#36733; Listing &#25968;&#25454;</p>
                         </td>

@@ -40,6 +40,63 @@
             color: var(--text-secondary);
         }
 
+        .products-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            gap: 1rem;
+        }
+
+        .products-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .products-header-legend {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+
+        .products-header-legend i {
+            margin: 0 0.08rem;
+        }
+
+        @media (max-width: 1200px) {
+            .products-header-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .products-header-left {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+
+            .products-header-legend {
+                position: static;
+                transform: none;
+                order: 2;
+                white-space: normal;
+                text-align: center;
+                pointer-events: auto;
+            }
+        }
+
         .pagination-buttons {
             display: flex;
             gap: 6px;
@@ -1189,8 +1246,8 @@
 
         <!-- 数据表格 -->
         <div class="data-section">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <div style="display: flex; align-items: center;">
+            <div class="products-header-row">
+                <div class="products-header-left">
                     <h3 class="section-title" style="margin-bottom: 0;">产品列表</h3>
                     
                     <!-- 三段式开关 -->
@@ -1206,6 +1263,13 @@
                             未举报
                         </div>
                     </div>
+                </div>
+
+                <div class="products-header-legend">
+                    <i class="fas fa-check-circle text-success" aria-hidden="true"></i>
+                    <span>：最新成交，</span>
+                    <i class="fas fa-arrow-alt-circle-up text-primary" aria-hidden="true"></i>
+                    <span>：最新上架</span>
                 </div>
 
                 <label class="form-switch">

@@ -147,11 +147,12 @@ async def step2_update_order_binding_v2(store_id: str, items: list, app_id: str 
     print(f"   → store_id = {store_id}")
     print(f"   → pair_multi_platform_list = [")
     for it in items:
-        print(f"       {{ msku: {it['msku']}, store_id: {store_id}, sku: {it['sku']} }}")
+        # msku_id = await get_msku_id(msku=)
+        print(f"       {{ msku: 95799756246, store_id: {store_id}, sku: {it['sku']} }}")
     print(f"   ]")
 
     pair_list = [
-        {"msku": it['msku'], "store_id": f"{store_id}", "sku": it['sku']} for it in items]
+        {"msku": "95799756246", "store_id": f"{store_id}", "sku": it['sku']} for it in items]
     req_body = {"pair_multi_platform_list": pair_list}
     print(req_body)
     resp = await get_api_resp(
@@ -163,13 +164,42 @@ async def step2_update_order_binding_v2(store_id: str, items: list, app_id: str 
     print(f"   → 配对结果 = {resp}")
     return resp
 
+async def demo3(global_order_no,sku):
+    # 编辑/更新自发货订单
+    req_body = {
+    "order_list": [
+        {
+            "global_order_no": global_order_no,
+            "order_item_list": [
+                {
+                    "sku": sku,
+                }
+            ]
+        }
+    ]
+}
+    print(req_body)
 
 
+    resp = await get_api_resp(
+        req_body=req_body,
+        api_path="/pb/mp/order/v2/updateOrder",
+    )
+    print(resp)
 
+async def get_msku_id(msku):
+    req_body ={
+        "searchField":9,
+        "searchValues":[msku]
+    }
+    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/multiplatform/temu/list")
+    print(resp)
+    print(resp.data[0].get("mskuId"))
+    return resp.data[0].get("mskuId")
 # ==================== 测试入口 ====================
 async def test_step1():
     """测试 step1 - 使用真实订单数据"""
-    global_order_no = '103676040012121290'  # 替换为你的测试订单号
+    global_order_no = '103677135006050063'  # 替换为你的测试订单号
 
     print(f"\n{'=' * 60}")
     print(f"测试 Step1: 新建/编辑产品")
@@ -213,16 +243,9 @@ async def test_step1():
     # 构建配对列表：sku和msku都用msku
     binding_items = [{"sku": item.msku, "msku": item.msku} for item in items]
     print(f"\n绑定商品列表: {binding_items}")
-    
-    # 先调用旧接口（查看报错）
-    print("\n>>> 调用旧接口...")
-    await step2_update_order_binding(
-        global_order_no=order.global_order_no,
-        items=binding_items,
-        app_id=app_id,
-        app_secret=app_secret
-    )
-    
+
+
+
     # 再调用新接口（v2多平台配对）
     print("\n>>> 调用新接口...")
     await step2_update_order_binding_v2(
@@ -231,6 +254,8 @@ async def test_step1():
         app_id=app_id,
         app_secret=app_secret
     )
+
+    await demo3(global_order_no, items[0].msku)
 
 async def demo():
     req_body = {
