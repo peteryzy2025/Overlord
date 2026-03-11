@@ -152,27 +152,36 @@ def export_orders_to_excel(orders, output_file=None):
     return output_file
 
 
+
+
 def get_month_date_range(year, month):
     """
-    获取指定月份的起止日期
-    逻辑：从1月1日开始，到指定月份的最后一天
-    例如：要2月的数据，返回 (2026-01-01, 2026-02-28)
+    获取指定月份的起止日期（从前一个月1号到当前月最后一天）
+    例如：选2月，返回 ("2026-01-01", "2026-02-28")
+          选1月，返回 ("2025-12-01", "2026-01-31")
     :param year: 年份
     :param month: 月份（1-12）
-    :return: (start_date, end_date)
+    :return: (start_date, end_date) 格式：YYYY-MM-DD
     """
-    start_date = f"{year}-01-01"
-    
-    # 计算指定月份的最后一天
+    # 计算上个月的年份和月份（处理1月跨年）
+    if month == 1:
+        start_year = year - 1
+        start_month = 12
+    else:
+        start_year = year
+        start_month = month - 1
+
+    # 开始日期：上个月1号
+    start_date = datetime(start_year, start_month, 1).strftime('%Y-%m-%d')
+
+    # 结束日期：当前月最后一天（下个月1号减1天）
     if month == 12:
         next_month = datetime(year + 1, 1, 1)
     else:
         next_month = datetime(year, month + 1, 1)
-    
-    # 最后一天 = 下个月1号 - 1天
-    last_day = next_month - timedelta(days=1)
-    end_date = last_day.strftime('%Y-%m-%d')
-    
+
+    end_date = (next_month - timedelta(days=1)).strftime('%Y-%m-%d')
+
     return start_date, end_date
 
 
