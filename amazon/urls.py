@@ -5,7 +5,7 @@ from amazon import (
     amazon_views_jc,
     views_ranking,
 )
-from amazon.view import views_dashboard
+from amazon.view import views_dashboard, views_amazon_listing_management
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
 

@@ -191,6 +191,90 @@
             color: var(--text-secondary);
             padding: 0 5px;
         }
+
+        /* Amazon 顶部筛选卡片使用紧凑换行布局，避免字段溢出卡片 */
+        #amazon-shops-tab .filter-section {
+            overflow: visible;
+        }
+
+        #amazon-shops-tab .filter-row-main {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.875rem 1rem;
+            align-items: flex-end;
+            padding-right: 0;
+        }
+
+        #amazon-shops-tab .filter-row-secondary {
+            display: none;
+            flex-wrap: wrap;
+            gap: 0.875rem 1rem;
+            align-items: flex-end;
+            padding-right: 0;
+        }
+
+        #amazon-shops-tab .filter-row-secondary.expanded {
+            display: flex;
+        }
+
+        #amazon-shops-tab .filter-group {
+            flex: 1 1 220px;
+            min-width: 220px;
+            max-width: none;
+        }
+
+        #amazon-shops-tab .filter-group .form-control,
+        #amazon-shops-tab .filter-group .searchable-select,
+        #amazon-shops-tab .filter-group .searchable-select-trigger,
+        #amazon-shops-tab .date-range-group {
+            width: 100%;
+            max-width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        #amazon-shops-tab .date-range-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #amazon-shops-tab .date-range-group input {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+
+        #amazon-shops-tab .expand-toggle {
+            flex: 0 0 auto;
+            align-self: flex-end;
+        }
+
+        #amazon-shops-tab .filter-actions {
+            margin-left: 0;
+            flex: 0 0 auto;
+            align-self: flex-end;
+        }
+
+        @media (max-width: 900px) {
+            #amazon-shops-tab .filter-group {
+                flex-basis: 200px;
+                min-width: 200px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            #amazon-shops-tab .filter-group,
+            #amazon-shops-tab .filter-actions,
+            #amazon-shops-tab .expand-toggle {
+                flex-basis: 100%;
+                min-width: 0;
+            }
+
+            #amazon-shops-tab .filter-actions {
+                justify-content: flex-end;
+            }
+        }
+
     </style>
 {% endblock %}
 
@@ -297,10 +381,11 @@
                     </div>
                 </div>
 
-                <!-- 第二行的筛选和重置按钮 -->
+            </div>
+            <div class="filter-actions-row">
                 <div class="filter-actions">
-                    <button class="btn" onclick="filterAmazonShops()" title="筛选"><i class="fas fa-search"></i></button>
-                    <button class="btn btn-secondary" onclick="resetAmazonShopFilters()" title="重置"><i class="fas fa-redo"></i></button>
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAmazonShops()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAmazonShopFilters()" title="重置"></button>
                 </div>
             </div>
         </div>
@@ -1087,12 +1172,36 @@
                     <input type="text" id="modal-credit_card_cvv" value="${data.credit_card_cvv || ''}" maxlength="3">
                 </div>
                 <div class="form-group">
+                    <label>是否归集</label>
+                    <input type="text" id="modal-is_consolidated" value="${data.is_consolidated || ''}">
+                </div>
+                <div class="form-group">
+                    <label>绑定收款</label>
+                    <input type="text" id="modal-bind_collection" value="${data.bind_collection || ''}">
+                </div>
+                <div class="form-group">
+                    <label>收款渠道</label>
+                    <input type="text" id="modal-collection_channel" value="${data.collection_channel || ''}">
+                </div>
+                <div class="form-group">
                     <label>寻汇登录账号</label>
                     <input type="text" id="modal-xunhui_login_account" value="${data.xunhui_login_account || ''}">
                 </div>
                 <div class="form-group">
                     <label>登录密码</label>
                     <input type="text" id="modal-login_password" value="${data.login_password || ''}">
+                </div>
+                <div class="form-group">
+                    <label>绑定手机</label>
+                    <input type="text" id="modal-bind_phone" value="${data.bind_phone || ''}">
+                </div>
+                <div class="form-group">
+                    <label>收款卡号</label>
+                    <input type="text" id="modal-collection_card_number" value="${data.collection_card_number || ''}">
+                </div>
+                <div class="form-group">
+                    <label>支付密码</label>
+                    <input type="text" id="modal-payment_password" value="${data.payment_password || ''}">
                 </div>
                 <div class="form-group">
                     <label>身份证号</label>
@@ -1105,6 +1214,26 @@
                 <div class="form-group">
                     <label>公司名称</label>
                     <input type="text" id="modal-company_name" value="${data.company_name || ''}">
+                </div>
+                <div class="form-group">
+                    <label>执照号</label>
+                    <input type="text" id="modal-license_number" value="${data.license_number || ''}">
+                </div>
+                <div class="form-group">
+                    <label>执照日期</label>
+                    <input type="date" id="modal-business_license_date" value="${data.business_license_date || ''}">
+                </div>
+                <div class="form-group">
+                    <label>出生日期</label>
+                    <input type="date" id="modal-birth_date" value="${data.birth_date || ''}">
+                </div>
+                <div class="form-group">
+                    <label>身份证到期</label>
+                    <input type="text" id="modal-id_expiry_date" value="${data.id_expiry_date || ''}">
+                </div>
+                <div class="form-group" style="grid-column: span 3;">
+                    <label>图片1</label>
+                    <input type="text" id="modal-img1" value="${data.img1 || ''}">
                 </div>
                 <div class="form-group" style="grid-column: span 3;">
                     <label>备注</label>
@@ -1133,7 +1262,6 @@
             qu_dao: v('modal-qu_dao'),
             ip_address: v('modal-ip_address'),
             whitelist: v('modal-whitelist'),
-            remark: v('modal-remark'),
             email_account: v('modal-email_account'),
             email_password: v('modal-email_password'),
             shop_password: v('modal-shop_password'),
@@ -1148,12 +1276,24 @@
             credit_card_number: v('modal-credit_card_number'),
             credit_card_expiry: v('modal-credit_card_expiry'),
             credit_card_cvv: v('modal-credit_card_cvv'),
+            is_consolidated: v('modal-is_consolidated'),
+            bind_collection: v('modal-bind_collection'),
+            collection_channel: v('modal-collection_channel'),
             xunhui_login_account: v('modal-xunhui_login_account'),
             login_password: v('modal-login_password'),
+            bind_phone: v('modal-bind_phone'),
+            collection_card_number: v('modal-collection_card_number'),
+            payment_password: v('modal-payment_password'),
             id_number: v('modal-id_number'),
             legal_person_phone: v('modal-legal_person_phone'),
             company_name: v('modal-company_name'),
-            additional_remark: v('modal-additional_remark')
+            license_number: v('modal-license_number'),
+            business_license_date: v('modal-business_license_date'),
+            birth_date: v('modal-birth_date'),
+            id_expiry_date: v('modal-id_expiry_date'),
+            remark: v('modal-remark'),
+            additional_remark: v('modal-additional_remark'),
+            img1: v('modal-img1')
         };
 
         if (!formData.shop_name) {

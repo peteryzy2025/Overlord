@@ -58,7 +58,14 @@ def get_task_detail_api(request, task_id):
     GET /api/tasks/<task_id>/detail/
     """
     try:
-        task = get_object_or_404(Task, id=task_id)
+        task = get_object_or_404(
+            Task.objects.select_related('created_by', 'owner').prefetch_related(
+                'subtasks',
+                'subtasks__amazon_upload_files',
+                'subtasks__amazon_upload_files__amazon_shop'
+            ),
+            id=task_id
+        )
         current_user = request.user
         permissions = parse_permissions(getattr(current_user, 'permission', ''))
 
@@ -100,10 +107,14 @@ def get_task_detail_api(request, task_id):
         subtasks = task.subtasks.all().order_by('order')
 
         for subtask in subtasks:
+            subtask_status = subtask.sync_amazon_upload_status(save=False) \
+                if subtask.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else subtask.subtask_status
             subtask_info = {
                 'id': subtask.id,
                 'type': subtask.subtask_type,
                 'type_display': subtask.get_subtask_type_display(),
+                'status': subtask_status,
+                'status_display': dict(SubTask.STATUS_CHOICES).get(subtask_status, subtask_status),
                 'order': subtask.order,
                 'params': subtask.params,
                 'is_executed': subtask.is_executed,
@@ -244,6 +255,7 @@ def update_upload_status_api(request):
             upload_file.uploaded_at = timezone.now()
 
         upload_file.save()
+        subtask_status = upload_file.subtask.sync_amazon_upload_status()
 
         return JsonResponse({
             'success': True,
@@ -251,7 +263,9 @@ def update_upload_status_api(request):
             'data': {
                 'file_id': upload_file.id,
                 'status': upload_file.status,
-                'progress': f"{upload_file.success_sku}/{upload_file.total_sku}" if upload_file.success_sku is not None else "-/-"
+                'progress': f"{upload_file.success_sku}/{upload_file.total_sku}" if upload_file.success_sku is not None else "-/-",
+                'subtask_status': subtask_status,
+                'subtask_status_display': dict(SubTask.STATUS_CHOICES).get(subtask_status, subtask_status)
             }
         })
 
