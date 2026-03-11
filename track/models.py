@@ -178,6 +178,10 @@ class PlatformChoice(models.TextChoices):
     S2B = "s2b", "S2B"
     YJL = "yjl", "艺捷乐"
     ZW = "zw", "指纹"
+class ProcessTypeChoice(models.TextChoices):
+    Embroidery = "embroidery","刺绣"
+    Printing = "printing","印花"
+    Laser = "laser","镭射"
 
 class ExternalProcurementProduct(models.Model):
     """外采平台产品总表"""
@@ -192,6 +196,7 @@ class ExternalProcurementProduct(models.Model):
     purchase_unit_origin_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, db_comment="采购原单价")
     purchase_unit_now_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_comment="采购现单价")
     platform = models.CharField(max_length=20, choices=PlatformChoice.choices, db_comment="外采平台")
+    process_type = models.CharField(max_length=20,choices=ProcessTypeChoice.choices,default=ProcessTypeChoice.Printing,db_comment="工艺类型")
 
     class Meta:
         db_table = "Track_external_procurement_products"
@@ -201,6 +206,7 @@ class ExternalProcurementProduct(models.Model):
             models.Index(fields=['platform', 'product_id']),
             models.Index(fields=['platform', 'is_listed']),
             models.Index(fields=['platform', 'color', 'size']),
+            models.Index(fields=['process_type']),
         ]
 
     def __str__(self):
