@@ -41,13 +41,13 @@ CSRF_TRUSTED_ORIGINS = [
     'https://ztzf.cpolar.cn',
     'https://divi.cpolar.cn',
     'http://192.168.110.54:5555',
-    'http://192.168.110.131:5550',
+    'http://192.168.110.55:5555',
     'http://192.168.110.196:8000',
     'http://localhost',
 ]
 
 ALLOWED_HOSTS = [
-    '192.168.110.131',
+    '192.168.110.55',
     '192.168.110.54',
     'localhost',
     '127.0.0.1',
