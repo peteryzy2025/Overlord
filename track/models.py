@@ -169,3 +169,40 @@ class TrackingDetail(models.Model):
         indexes = [
             models.Index(fields=['event_time']),
         ]
+
+
+class PlatformChoice(models.TextChoices):
+    YZG = "yzg", "艺之冠"
+    SDS = "sds", "SDS"
+    FN = "fn", "蜂鸟"
+    S2B = "s2b", "S2B"
+    YJL = "yjl", "艺捷乐"
+    ZW = "zw", "指纹"
+
+class ExternalProcurementProduct(models.Model):
+    """外采平台产品总表"""
+    product_id = models.PositiveIntegerField(blank=True, null=True, db_comment="产品编号")
+    product_name = models.CharField(max_length=255, null=True, blank=True, db_comment="产品名称")
+    is_listed = models.BooleanField(default=False, db_comment="是否上架")
+    color = models.CharField(max_length=50, null=True, blank=True, db_comment="颜色")
+    size = models.CharField(max_length=255, null=True, blank=True, db_comment="规格")
+    divi_color = models.CharField(max_length=50, null=True, blank=True, db_comment="divi颜色")
+    divi_size = models.CharField(max_length=255, null=True, blank=True, db_comment="divi尺码")
+    min_order_qty = models.CharField(max_length=100, null=True, blank=True, db_comment="起批量")
+    purchase_unit_origin_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, db_comment="采购原单价")
+    purchase_unit_now_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_comment="采购现单价")
+    platform = models.CharField(max_length=20, choices=PlatformChoice.choices, db_comment="外采平台")
+
+    class Meta:
+        db_table = "Track_external_procurement_products"
+        verbose_name = "外采平台产品"
+        verbose_name_plural = "外采平台产品"
+        indexes = [
+            models.Index(fields=['platform', 'product_id']),
+            models.Index(fields=['platform', 'is_listed']),
+            models.Index(fields=['platform', 'color', 'size']),
+        ]
+
+    def __str__(self):
+        return self.product_name or f"{self.get_platform_display()}-{self.product_id or self.pk or 'unknown'}"
+
