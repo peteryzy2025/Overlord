@@ -249,6 +249,7 @@ def external_amazon_shops_api(request):
                 "状态": "...",
                 "客户": "...",
                 "亚马逊名称": "..."
+                "浏览器":"..."
             }
         ]
     """
@@ -266,13 +267,14 @@ def external_amazon_shops_api(request):
         if customer:
             query = query.filter(customer__icontains=customer)
 
-        shops = query.values('shop_name', 'shop_status', 'customer', 'amazon_shop_name')
+        shops = query.values('shop_name', 'shop_status', 'customer', 'amazon_shop_name','browser')
         data = [
             {
                 '店铺名称': shop.get('shop_name') or '',
                 '状态': shop.get('shop_status') or '',
                 '客户': shop.get('customer') or '',
                 '亚马逊名称': shop.get('amazon_shop_name') or '',
+                '浏览器': shop.get('browser') or '',
             }
             for shop in shops
         ]
