@@ -170,6 +170,105 @@
     background-color: var(--border-color);
 }
 
+/* 筛选动作语义类：用通用类决定图标，不在模板里手写 fa-* */
+.gs-btn-iconized,
+.gs-filter-search-btn,
+.gs-filter-reset-btn,
+.gs-btn-notify {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.gs-btn-iconized::before,
+.gs-filter-search-btn::before,
+.gs-filter-reset-btn::before,
+.gs-btn-notify::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+}
+
+.gs-btn-search::before,
+.gs-filter-search-btn::before {
+    content: "\f002";
+}
+
+.gs-btn-reset::before,
+.gs-filter-reset-btn::before {
+    content: "\f2f9";
+}
+
+.gs-btn-notify::before {
+    content: "\f0f3";
+}
+
+.gs-btn-search > i,
+.gs-btn-reset > i,
+.gs-btn-notify > i,
+.gs-filter-search-btn > i,
+.gs-filter-reset-btn > i {
+    display: none !important;
+}
+
+.btn.gs-btn-icon-only,
+a.btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    font-size: 0;
+}
+
+.btn.gs-btn-icon-only::before,
+a.btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only),
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only),
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only) {
+    width: auto;
+    min-width: 42px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only)::before,
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only)::before,
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only)::before {
+    font-size: 0.95rem;
+}
+
+.filter-actions .btn.gs-btn-icon-only,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    font-size: 0;
+}
+
+.filter-actions .btn.gs-btn-icon-only::before,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.btn.gs-btn-notify {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-notify:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #ffffff;
+}
+
 .filter-actions-main {
     position: absolute;
     right: 0;
@@ -183,6 +282,18 @@
     gap: 0.5rem;
     align-self: flex-end;
     margin-left: auto;
+}
+
+/* 可复用：当筛选按钮需要独占一行时，放在该容器内即可右对齐显示 */
+.filter-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.875rem;
+}
+
+.filter-actions-row .filter-actions {
+    margin-left: 0;
+    align-self: auto;
 }
 
 .filter-label {
