@@ -455,12 +455,8 @@
                 <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
             </div>
             <div class="filter-actions">
-                <button class="btn" onclick="filterAssessments()" title="筛选">
-                    <i class="fas fa-search"></i>
-                </button>
-                <button class="btn btn-secondary ms-2" onclick="resetFilters()" title="重置">
-                    <i class="fas fa-redo"></i>
-                </button>
+                <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAssessments()" title="筛选"></button>
+                <button class="btn btn-secondary ms-2 gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
                 <!-- 批量刷新订单按钮（仅管理员可见） -->
                 {% if is_admin %}
                 <button class="btn btn-warning ms-2" onclick="batchRefreshOrders()" title="批量刷新订单" aria-label="批量刷新订单">

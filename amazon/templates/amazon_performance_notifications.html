@@ -193,9 +193,7 @@
                 <p class="page-subtitle">查看和管理店铺绩效通知，支持批量筛选和状态更新</p>
             </div>
             <div style="display: flex; gap: 0.5rem;">
-                <button class="btn btn-create" id="notifyBtn" onclick="handleNotifyOperators()" style="display: none;">
-                    <i class="fas fa-bell"></i> 通知运营
-                </button>
+                <button class="btn gs-btn-notify gs-btn-iconized gs-btn-icon-only" id="notifyBtn" onclick="handleNotifyOperators()" style="display: none;" title="通知运营" aria-label="通知运营"></button>
                 <button class="btn" onclick="refreshData(event)">
                     <i class="fas fa-sync-alt"></i> 刷新数据
                 </button>
@@ -251,16 +249,10 @@
                 </div>
 
                 <div class="filter-actions">
-                    <button class="btn" onclick="applyFilters()" title="应用筛选">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <button class="btn btn-secondary" onclick="resetFilters(event)" title="重置条件">
-                        <i class="fas fa-redo"></i>
-                    </button>
-                    <button class="btn btn-create" id="notifyOperatorsBtn" onclick="handleNotifyOperators()"
-                            style="display: none;" title="通知待处理绩效的运营">
-                        <i class="fas fa-bell"></i> 
-                    </button>
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置条件"></button>
+                    <button class="btn gs-btn-notify gs-btn-iconized gs-btn-icon-only" id="notifyOperatorsBtn" onclick="handleNotifyOperators()" 
+                            style="display: none;" title="通知待处理绩效的运营" aria-label="通知待处理绩效的运营"></button>
                 </div>
             </div>
         </div>

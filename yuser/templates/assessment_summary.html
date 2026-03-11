@@ -330,12 +330,8 @@
                     </div>
                 </div>
                 <div class="filter-group d-flex align-items-end" style="flex-direction: row !important;">
-                    <button type="submit" class="btn" title="筛选">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <a href="{% url 'yuser:assessment_summary' %}" class="btn btn-secondary ms-2" title="重置">
-                        <i class="fas fa-redo"></i>
-                    </a>
+                    <button type="submit" class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" title="筛选"></button>
+                    <a href="{% url 'yuser:assessment_summary' %}" class="btn btn-secondary ms-2 gs-btn-reset gs-btn-iconized gs-btn-icon-only" title="重置"></a>
                 </div>
             </div>
         </form>
