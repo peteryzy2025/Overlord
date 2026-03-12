@@ -607,6 +607,29 @@
             box-shadow: var(--shadow-heavy);
         }
 
+        /* 分页栏与 amazon-management 保持一致，独立于表格卡片区域显示 */
+        #paginationControls.pagination-container {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        #paginationControls .pagination-new {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+
+        #paginationControls .pagination-jump {
+            margin-left: auto;
+        }
+
         .spinner {
             border: 3px solid var(--bg-secondary);
             border-top: 3px solid var(--accent-color);
@@ -642,6 +665,15 @@
             .filter-row {
                 flex-direction: column;
                 align-items: stretch;
+            }
+
+            #paginationControls .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #paginationControls .pagination-jump {
+                margin-left: 0;
             }
 
 
@@ -1671,7 +1703,7 @@
 
             buttonsContainer.innerHTML = buttonsHTML;
 
-            if (total_pages > 7) {
+            if (total_pages > 0) {
                 jumpContainer.style.display = 'flex';
                 document.getElementById('pageJumpInput').max = total_pages;
                 document.getElementById('pageJumpInput').value = '';

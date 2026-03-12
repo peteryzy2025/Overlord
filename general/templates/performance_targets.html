@@ -221,12 +221,37 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 0.5rem;
+        margin-top: 1.5rem;
         padding: 1rem;
         background-color: var(--bg-primary);
         border-radius: 12px;
         box-shadow: var(--shadow-light);
         border: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .pagination-new {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    .pagination-btn-new {
+        min-width: 40px;
+        padding: 0 10px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .pagination-ellipsis {
+        color: var(--text-secondary);
+        padding: 0 5px;
+    }
+
+    .pagination-jump {
+        margin-left: auto;
     }
 
     /* 模态框样式 - 与Amazon店铺管理完全一致 */
@@ -445,6 +470,17 @@
         color: #742A2A;
         border: 1px solid #FC8181;
     }
+
+    @media (max-width: 768px) {
+        .pagination-new {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .pagination-jump {
+            margin-left: 0;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -544,21 +580,31 @@
             </table>
         </div>
 
-        <div class="pagination-container">
-            <div class="pagination-info" data-total="0">
-                显示第 1 到 10 条，共 0 条记录
-                <select id="groupPageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changeGroupPageSize(this.value)">
-                    <option value="10">10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                    <option value="100">100条/页</option>
-                </select>
+        <div class="pagination-container" id="groupPaginationContainer">
+            <div class="pagination-info" id="groupPaginationInfo" data-total="0">
+                <div class="page-size-wrapper" id="groupPageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="groupPageSizeTrigger" onclick="togglePageSizeDropdown('group', event)">
+                            <span id="groupPageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="groupPageSizeDropdown">
+                            <div class="page-size-option selected" data-value="20" onclick="changeGroupPageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changeGroupPageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changeGroupPageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changeGroupPageSize(200)">200条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="groupPaginationStats">0-0 / 共 0 条</span>
+                </div>
             </div>
-            <nav>
-                <ul class="pagination" id="groupPagination">
-                    <!-- 动态生成 -->
-                </ul>
-            </nav>
+            <div class="pagination-new" id="groupPaginationNew"></div>
+            <div class="pagination-jump" id="groupPaginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="groupPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleGroupPageJump(event)">
+                <span>页</span>
+            </div>
         </div>
     </div>
 
@@ -660,21 +706,31 @@
             </table>
         </div>
 
-        <div class="pagination-container">
-            <div class="pagination-info" data-total="0">
-                显示第 1 到 10 条，共 0 条记录
-                <select id="personalPageSizeSelect" style="margin-left:1rem;padding:0.25rem 0.5rem;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-secondary);color:var(--text-primary);" onchange="changePersonalPageSize(this.value)">
-                    <option value="10">10条/页</option>
-                    <option value="20">20条/页</option>
-                    <option value="50">50条/页</option>
-                    <option value="100">100条/页</option>
-                </select>
+        <div class="pagination-container" id="personalPaginationContainer">
+            <div class="pagination-info" id="personalPaginationInfo" data-total="0">
+                <div class="page-size-wrapper" id="personalPageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="personalPageSizeTrigger" onclick="togglePageSizeDropdown('personal', event)">
+                            <span id="personalPageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="personalPageSizeDropdown">
+                            <div class="page-size-option selected" data-value="20" onclick="changePersonalPageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePersonalPageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePersonalPageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePersonalPageSize(200)">200条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="personalPaginationStats">0-0 / 共 0 条</span>
+                </div>
             </div>
-            <nav>
-                <ul class="pagination" id="personalPagination">
-                    <!-- 动态生成 -->
-                </ul>
-            </nav>
+            <div class="pagination-new" id="personalPaginationNew"></div>
+            <div class="pagination-jump" id="personalPaginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="personalPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePersonalPageJump(event)">
+                <span>页</span>
+            </div>
         </div>
     </div>
 </div>
@@ -720,8 +776,8 @@
 <script>
 // ========== 全局变量 ==========
 let currentTab = 'group';
-let groupCurrentPage = 1, groupPageSize = 10;
-let personalCurrentPage = 1, personalPageSize = 10;
+let groupCurrentPage = 1, groupPageSize = 20;
+let personalCurrentPage = 1, personalPageSize = 20;
 let allOpsGroups = [], allOperators = [];
 let groupOpsGroupSelect = null;
 let personalOpsGroupSelect = null;
@@ -838,9 +894,10 @@ async function loadGroupTargets() {
         renderGroupRows(result.data);
         renderGroupPagination(result.total, result.page, result.page_size);
 
-        const info = document.querySelector('#group-tab .pagination-info');
-        info.textContent = `显示第 ${(result.page-1)*result.page_size + 1} 到 ${(result.page-1)*result.page_size + result.data.length} 条，共 ${result.total} 条记录`;
+        const info = document.getElementById('groupPaginationInfo');
         info.dataset.total = result.total;
+        updatePaginationStats('group', result.total, result.page, result.page_size, result.data.length);
+        setPageSizeState('group', result.page_size);
 
     } catch (error) {
         console.error('加载组目标失败:', error);
@@ -877,27 +934,57 @@ function renderGroupRows(targets) {
 }
 
 function renderGroupPagination(total, page, pageSize) {
+    const buttonsContainer = document.getElementById('groupPaginationNew');
+    const jumpContainer = document.getElementById('groupPaginationJump');
     const totalPages = Math.ceil(total / pageSize);
-    const html = [];
 
-    const prevDisabled = page === 1 ? 'disabled' : '';
-    html.push(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" onclick="changeGroupPage(${page - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a></li>`);
-
-    const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, start + 4);
-    for (let i = start; i <= end; i++) {
-        const active = i === page ? 'active' : '';
-        html.push(`<li class="page-item ${active}"><a class="page-link" href="#" onclick="changeGroupPage(${i})">${i}</a></li>`);
+    if (total === 0) {
+        buttonsContainer.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
+        jumpContainer.style.display = 'none';
+        return;
     }
 
-    const nextDisabled = page === totalPages ? 'disabled' : '';
-    html.push(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" onclick="changeGroupPage(${page + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a></li>`);
+    let html = '';
+    html += `<button class="pagination-btn-new" onclick="changeGroupPage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+    html += `<button class="pagination-btn-new" onclick="changeGroupPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
-    document.getElementById('groupPagination').innerHTML = html.join('');
+    const maxButtons = 7;
+    let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    if (startPage > 1) {
+        html += `<button class="pagination-btn-new" onclick="changeGroupPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="pagination-ellipsis">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changeGroupPage(${i})">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="pagination-ellipsis">...</span>`;
+        }
+        html += `<button class="pagination-btn-new" onclick="changeGroupPage(${totalPages})">${totalPages}</button>`;
+    }
+
+    html += `<button class="pagination-btn-new" onclick="changeGroupPage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>下一页</button>`;
+    html += `<button class="pagination-btn-new" onclick="changeGroupPage(${totalPages})" ${page === totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
+    buttonsContainer.innerHTML = html;
+    jumpContainer.style.display = totalPages > 0 ? 'flex' : 'none';
+    document.getElementById('groupPageJumpInput').max = totalPages;
+    document.getElementById('groupPageJumpInput').value = '';
 }
 
 async function changeGroupPage(page) {
-    const total = parseInt(document.querySelector('#group-tab .pagination-info').dataset.total || '0');
+    const total = parseInt(document.getElementById('groupPaginationInfo')?.dataset.total || '0', 10);
     const totalPages = Math.ceil(total / groupPageSize);
     if (page < 1 || page > totalPages) return;
     groupCurrentPage = page;
@@ -905,8 +992,10 @@ async function changeGroupPage(page) {
 }
 
 function changeGroupPageSize(size) {
-    groupPageSize = parseInt(size);
+    groupPageSize = parseInt(size, 10);
     groupCurrentPage = 1;
+    setPageSizeState('group', groupPageSize);
+    closePageSizeDropdowns();
     loadGroupTargets();
 }
 
@@ -946,9 +1035,10 @@ async function loadPersonalTargets() {
         renderPersonalRows(result.data);
         renderPersonalPagination(result.total, result.page, result.page_size);
 
-        const info = document.querySelector('#personal-tab .pagination-info');
-        info.textContent = `显示第 ${(result.page-1)*result.page_size + 1} 到 ${(result.page-1)*result.page_size + result.data.length} 条，共 ${result.total} 条记录`;
+        const info = document.getElementById('personalPaginationInfo');
         info.dataset.total = result.total;
+        updatePaginationStats('personal', result.total, result.page, result.page_size, result.data.length);
+        setPageSizeState('personal', result.page_size);
 
     } catch (error) {
         console.error('加载个人目标失败:', error);
@@ -979,27 +1069,57 @@ function renderPersonalRows(targets) {
 }
 
 function renderPersonalPagination(total, page, pageSize) {
+    const buttonsContainer = document.getElementById('personalPaginationNew');
+    const jumpContainer = document.getElementById('personalPaginationJump');
     const totalPages = Math.ceil(total / pageSize);
-    const html = [];
 
-    const prevDisabled = page === 1 ? 'disabled' : '';
-    html.push(`<li class="page-item ${prevDisabled}"><a class="page-link" href="#" onclick="changePersonalPage(${page - 1})" ${prevDisabled ? 'tabindex="-1"' : ''}>上一页</a></li>`);
-
-    const start = Math.max(1, page - 2);
-    const end = Math.min(totalPages, start + 4);
-    for (let i = start; i <= end; i++) {
-        const active = i === page ? 'active' : '';
-        html.push(`<li class="page-item ${active}"><a class="page-link" href="#" onclick="changePersonalPage(${i})">${i}</a></li>`);
+    if (total === 0) {
+        buttonsContainer.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
+        jumpContainer.style.display = 'none';
+        return;
     }
 
-    const nextDisabled = page === totalPages ? 'disabled' : '';
-    html.push(`<li class="page-item ${nextDisabled}"><a class="page-link" href="#" onclick="changePersonalPage(${page + 1})" ${nextDisabled ? 'tabindex="-1"' : ''}>下一页</a></li>`);
+    let html = '';
+    html += `<button class="pagination-btn-new" onclick="changePersonalPage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+    html += `<button class="pagination-btn-new" onclick="changePersonalPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
-    document.getElementById('personalPagination').innerHTML = html.join('');
+    const maxButtons = 7;
+    let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+    let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+    if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+    }
+
+    if (startPage > 1) {
+        html += `<button class="pagination-btn-new" onclick="changePersonalPage(1)">1</button>`;
+        if (startPage > 2) {
+            html += `<span class="pagination-ellipsis">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePersonalPage(${i})">${i}</button>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            html += `<span class="pagination-ellipsis">...</span>`;
+        }
+        html += `<button class="pagination-btn-new" onclick="changePersonalPage(${totalPages})">${totalPages}</button>`;
+    }
+
+    html += `<button class="pagination-btn-new" onclick="changePersonalPage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>下一页</button>`;
+    html += `<button class="pagination-btn-new" onclick="changePersonalPage(${totalPages})" ${page === totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
+    buttonsContainer.innerHTML = html;
+    jumpContainer.style.display = totalPages > 0 ? 'flex' : 'none';
+    document.getElementById('personalPageJumpInput').max = totalPages;
+    document.getElementById('personalPageJumpInput').value = '';
 }
 
 async function changePersonalPage(page) {
-    const total = parseInt(document.querySelector('#personal-tab .pagination-info').dataset.total || '0');
+    const total = parseInt(document.getElementById('personalPaginationInfo')?.dataset.total || '0', 10);
     const totalPages = Math.ceil(total / personalPageSize);
     if (page < 1 || page > totalPages) return;
     personalCurrentPage = page;
@@ -1007,8 +1127,10 @@ async function changePersonalPage(page) {
 }
 
 function changePersonalPageSize(size) {
-    personalPageSize = parseInt(size);
+    personalPageSize = parseInt(size, 10);
     personalCurrentPage = 1;
+    setPageSizeState('personal', personalPageSize);
+    closePageSizeDropdowns();
     loadPersonalTargets();
 }
 
@@ -1024,6 +1146,85 @@ function resetPersonalFilters() {
     document.getElementById('personalSearch').value = '';
     personalCurrentPage = 1;
     loadPersonalTargets();
+}
+
+function updatePaginationStats(scope, total, page, pageSize, currentCount) {
+    const statsEl = document.getElementById(`${scope}PaginationStats`);
+    if (!statsEl) return;
+
+    if (total === 0 || currentCount === 0) {
+        statsEl.textContent = '0-0 / 共 0 条';
+        return;
+    }
+
+    const start = (page - 1) * pageSize + 1;
+    const end = start + currentCount - 1;
+    statsEl.textContent = `${start}-${end} / 共 ${total} 条`;
+}
+
+function setPageSizeState(scope, size) {
+    const text = document.getElementById(`${scope}PageSizeText`);
+    const dropdown = document.getElementById(`${scope}PageSizeDropdown`);
+
+    if (text) {
+        text.textContent = `${size}条`;
+    }
+
+    if (dropdown) {
+        dropdown.querySelectorAll('.page-size-option').forEach(option => {
+            option.classList.toggle('selected', parseInt(option.dataset.value, 10) === size);
+        });
+    }
+}
+
+function togglePageSizeDropdown(scope, event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById(`${scope}PageSizeDropdown`);
+    if (!dropdown) return;
+
+    const shouldOpen = !dropdown.classList.contains('open');
+    closePageSizeDropdowns();
+    if (shouldOpen) {
+        dropdown.classList.add('open');
+    }
+}
+
+function closePageSizeDropdowns() {
+    document.querySelectorAll('.page-size-dropdown').forEach(dropdown => {
+        dropdown.classList.remove('open');
+    });
+}
+
+function handleGroupPageJump(event) {
+    if (event.key !== 'Enter') return;
+
+    const input = document.getElementById('groupPageJumpInput');
+    const total = parseInt(document.getElementById('groupPaginationInfo')?.dataset.total || '0', 10);
+    const totalPages = Math.ceil(total / groupPageSize);
+    const targetPage = parseInt(input.value, 10);
+
+    if (!targetPage || targetPage < 1 || targetPage > totalPages) {
+        alert(`请输入 1 到 ${totalPages} 之间的有效页码`);
+        return;
+    }
+
+    changeGroupPage(targetPage);
+}
+
+function handlePersonalPageJump(event) {
+    if (event.key !== 'Enter') return;
+
+    const input = document.getElementById('personalPageJumpInput');
+    const total = parseInt(document.getElementById('personalPaginationInfo')?.dataset.total || '0', 10);
+    const totalPages = Math.ceil(total / personalPageSize);
+    const targetPage = parseInt(input.value, 10);
+
+    if (!targetPage || targetPage < 1 || targetPage > totalPages) {
+        alert(`请输入 1 到 ${totalPages} 之间的有效页码`);
+        return;
+    }
+
+    changePersonalPage(targetPage);
 }
 
 // ========== 模态框操作 - 组目标 ==========
@@ -1338,6 +1539,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         window.GeneralStyleYearMonthPicker.initAll(document);
     }
     initOpsGroupFilterSelects();
+    setPageSizeState('group', groupPageSize);
+    setPageSizeState('personal', personalPageSize);
     await loadFilterOptions();
     loadGroupTargets();
 
@@ -1366,6 +1569,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
     document.getElementById('batchPersonalModalOverlay').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeBatchPersonalModal();
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.page-size-dropdown-wrapper')) {
+            closePageSizeDropdowns();
+        }
     });
 
     // 页面动画

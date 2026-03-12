@@ -122,6 +122,33 @@ Divi智管{% endblock %} {% block extra_css %}
     margin-top: 0.25rem;
   }
 
+  /* 分页栏与 amazon-management 保持一致，独立于表格卡片区域显示 */
+  #paginationControls.pagination-container {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-light);
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  #paginationControls .pagination-new {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  #paginationControls .pagination-info {
+    flex: 0 0 auto;
+  }
+
+  #paginationControls .pagination-jump {
+    margin-left: auto;
+  }
+
   /* ===== 响应式调整 ===== */
   @media (max-width: 768px) {
     .stats-grid {
@@ -141,6 +168,15 @@ Divi智管{% endblock %} {% block extra_css %}
 
     .stat-content p {
       font-size: 1.5rem;
+    }
+
+    #paginationControls .pagination-new {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    #paginationControls .pagination-jump {
+      margin-left: 0;
     }
   }
 </style>
@@ -392,7 +428,7 @@ Divi智管{% endblock %} {% block extra_css %}
     </div>
 
     <div class="pagination-container" id="paginationControls" style="display: none">
-      <div class="pagination-info" id="paginationInfo">
+      <div class="pagination-info" data-total="0">
         <div class="page-size-wrapper" id="pageSizeWrapper">
           <span class="page-size-label">每页显示：</span>
           <div class="page-size-dropdown-wrapper" style="position: relative">
@@ -1054,7 +1090,7 @@ Divi智管{% endblock %} {% block extra_css %}
 
     buttonsContainer.innerHTML = buttonsHTML;
 
-    if (total_pages > 7) {
+    if (total_pages > 0) {
       jumpContainer.style.display = "flex";
       const jumpInput = document.getElementById("pageJumpInput");
       jumpInput.max = total_pages;

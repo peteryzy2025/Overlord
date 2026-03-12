@@ -247,7 +247,7 @@
             <div class="pagination-new" id="paginationNew">
                 <!-- 动态生成 -->
             </div>
-            <div class="pagination-jump">
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
                 <span>跳至</span>
                 <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                 <span>页</span>
@@ -705,45 +705,44 @@
         // ==================== 分页 ====================
         function renderPagination() {
             const pagination = document.getElementById('paginationNew');
+            const paginationJump = document.getElementById('paginationJump');
             let html = '';
-            
-            // 上一页
-            html += `<button class="pagination-btn-new ${currentPage === 1 ? 'disabled' : ''}" 
-                           onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-left"></i>
-                    </button>`;
-            
-            // 页码
-            const maxVisible = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            
-            if (endPage - startPage < maxVisible - 1) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
+
+            if (!totalItems || !totalPages) {
+                pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页</span>';
+                paginationJump.style.display = 'none';
+                return;
             }
-            
-            if (startPage > 1) {
-                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
-                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+
+            html += `<button class="pagination-btn-new" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+            html += `<button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
+
+            if (totalPages > 1) {
+                let startPage = Math.max(1, currentPage - 2);
+                let endPage = Math.min(totalPages, currentPage + 2);
+
+                if (startPage > 1) {
+                    html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                    if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+                }
+
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                    html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+                }
+            } else {
+                html += '<button class="pagination-btn-new active" disabled>1</button>';
             }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" 
-                               onclick="goToPage(${i})">${i}</button>`;
-            }
-            
-            if (endPage < totalPages) {
-                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
-                html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
-            }
-            
-            // 下一页
-            html += `<button class="pagination-btn-new ${currentPage === totalPages ? 'disabled' : ''}" 
-                           onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
-                        <i class="fas fa-chevron-right"></i>
-                    </button>`;
-            
+
+            html += `<button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
+            html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
             pagination.innerHTML = html;
+            paginationJump.style.display = 'inline-flex';
         }
         
         function updatePaginationStats() {
@@ -799,6 +798,14 @@
                 event.target.value = '';
             }
         }
+
+        document.addEventListener('click', function(event) {
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            const pageSizeDropdown = document.getElementById('pageSizeDropdown');
+            if (pageSizeWrapper && pageSizeDropdown && !pageSizeWrapper.contains(event.target)) {
+                pageSizeDropdown.classList.remove('open');
+            }
+        });
         
         // ==================== 选择操作 ====================
         function toggleSelectItem(id) {

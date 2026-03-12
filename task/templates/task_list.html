@@ -45,6 +45,39 @@
         box-shadow: var(--shadow-light);
     }
 
+    #paginationContainer.pagination-container {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    #paginationContainer .pagination-new {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    #paginationContainer .pagination-jump {
+        margin-left: auto;
+    }
+
+    @media (max-width: 768px) {
+        #paginationContainer .pagination-new {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        #paginationContainer .pagination-jump {
+            margin-left: 0;
+        }
+    }
+
     /* 统计看板 - 复用 tracking_management 样式 */
     .stats-dashboard {
         display: grid;
@@ -1278,7 +1311,7 @@
 
         buttonsContainer.innerHTML = buttonsHtml;
 
-        if (total_pages > 7) {
+        if (total_pages > 0) {
             jumpContainer.style.display = 'flex';
             const jumpInput = document.getElementById('pageJumpInput');
             jumpInput.max = total_pages;
