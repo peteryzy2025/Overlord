@@ -183,7 +183,7 @@ class ProcessTypeChoice(models.TextChoices):
     Printing = "printing","印花"
     Laser = "laser","镭射"
 
-class TrackingList(models.Model):
+class ExternalProcurementProduct(models.Model):
     product_id = models.PositiveIntegerField(blank=True, null=True, db_comment="产品编号")
     product_name = models.CharField(max_length=255, null=True, blank=True, db_comment="产品名称")
     is_listed = models.BooleanField(default=False, db_comment="是否上架")
@@ -195,7 +195,7 @@ class TrackingList(models.Model):
     purchase_unit_origin_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, db_comment="采购原单价")
     purchase_unit_now_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, db_comment="采购现单价")
     platform = models.CharField(max_length=20, choices=PlatformChoice.choices, db_comment="外采平台")
-    process_type = models.CharField(max_length=20,choices=ProcessTypeChoice,db_comment="工艺类型")
+    process_type = models.CharField(max_length=20, choices=ProcessTypeChoice.choices, db_comment="工艺类型")
     class Meta:
         db_table = "Track_external_procurement_products"
         verbose_name = "外采平台产品总表"
@@ -210,6 +210,9 @@ class TrackingList(models.Model):
 
     def __str__(self):
         return self.product_name or f"{self.get_platform_display()}-{self.product_id or self.pk or 'unknown'}"
+
+
+TrackingList = ExternalProcurementProduct
 
 
 
