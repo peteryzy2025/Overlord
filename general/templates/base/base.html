@@ -791,7 +791,21 @@
                     </a>
                 </div>
             </div>
-            <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'tracking-management' or active_nav == 'external-procurement-management' %}active{% endif %}"
+                   href="{% url 'track:tracking-management' %}">
+                    供应链
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'track:tracking-management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-shipping-fast"></i> 物流管理
+                    </a>
+                    <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-box-open"></i> 外采产品管理
+                    </a>
+                </div>
+            </div>
 
             <div class="nav-item-wrapper">
                 <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' or active_nav == 'dw_data' %}active{% endif %}"
