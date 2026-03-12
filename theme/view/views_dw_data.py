@@ -144,9 +144,11 @@ def api_niche_markets(request):
         # 基础查询
         queryset = NicheMarket.objects.select_related('leaf_category')
         
-        # 按分类筛选
+        # 按分类筛选（包含该分类及其所有子分类）
         if category_id:
-            queryset = queryset.filter(leaf_category_id=category_id)
+            # 获取该分类及其所有子孙分类的ID列表
+            category_ids = get_all_descendant_category_ids(int(category_id))
+            queryset = queryset.filter(leaf_category_id__in=category_ids)
         
         # 按搜索词筛选
         if search:
@@ -172,8 +174,8 @@ def api_niche_markets(request):
         # 构建返回数据
         data_list = []
         for item in page_obj:
-            # 构建分类路径
-            category_path = []
+            # 构建带ID的完整路径
+            full_path_with_ids = []
             if item.leaf_category:
                 cat = item.leaf_category
                 if cat.path:
@@ -182,16 +184,24 @@ def api_niche_markets(request):
                     for pid in path_ids:
                         try:
                             parent = MarketCategory.objects.get(id=int(pid))
-                            category_path.append(parent.name)
+                            full_path_with_ids.append({
+                                'id': str(parent.id),
+                                'name': parent.name
+                            })
                         except (MarketCategory.DoesNotExist, ValueError):
                             continue
-                category_path.append(cat.name)
+                # 添加叶子分类
+                full_path_with_ids.append({
+                    'id': str(cat.id),
+                    'name': cat.name
+                })
             
-            # 构建完整市场路径：一级 › 二级 › 三级 › 市场名称
-            # 如果叶子分类名和市场名相同，避免重复
-            full_market_path = category_path.copy() if category_path else []
-            if not full_market_path or full_market_path[-1] != item.market_name:
-                full_market_path.append(item.market_name)
+            # 如果市场名和叶子分类名不同，添加市场
+            if not full_path_with_ids or full_path_with_ids[-1]['name'] != item.market_name:
+                full_path_with_ids.append({
+                    'id': None,  # 市场没有ID
+                    'name': item.market_name
+                })
             
             data_list.append({
                 'id': item.id,
@@ -199,8 +209,7 @@ def api_niche_markets(request):
                 'market_name_cn': item.market_name_cn,
                 'monthly_sales': item.monthly_sales,
                 'monthly_revenue': str(item.monthly_revenue) if item.monthly_revenue else None,
-                'category_path': category_path,  # 纯分类路径
-                'full_market_path': full_market_path,  # 完整路径（含市场名）
+                'full_path_with_ids': full_path_with_ids,  # 带ID的完整路径
                 'leaf_category_id': item.leaf_category_id,
             })
         
@@ -218,3 +227,19 @@ def api_niche_markets(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+def get_all_descendant_category_ids(category_id):
+    """
+    获取指定分类及其所有子孙分类的ID列表
+    """
+    result = set([category_id])
+    
+    # 获取直接子分类
+    children = MarketCategory.objects.filter(parent_id=category_id).values_list('id', flat=True)
+    
+    for child_id in children:
+        # 递归获取孙分类
+        result.update(get_all_descendant_category_ids(child_id))
+    
+    return list(result)
