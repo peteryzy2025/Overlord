@@ -528,19 +528,43 @@
         function selectCategoryById(categoryId, categoryName) {
             selectedCategoryId = categoryId;
             
-            // 更新树形选择器显示
-            const valueEl = document.getElementById('treeSelectValue');
-            const placeholderEl = document.getElementById('treeSelectPlaceholder');
-            
-            // 构建显示路径（简化版）
-            valueEl.textContent = categoryName;
-            placeholderEl.style.display = 'none';
+            // 从树形数据中找到该节点，构建完整路径
+            const fullPath = findNodePathInTree(treeData, categoryId);
+            if (fullPath && fullPath.length > 0) {
+                // 更新树形选择器显示完整路径
+                const valueEl = document.getElementById('treeSelectValue');
+                const placeholderEl = document.getElementById('treeSelectPlaceholder');
+                
+                valueEl.textContent = fullPath.map(n => n.name).join(' › ');
+                placeholderEl.style.display = 'none';
+                
+                // 更新选中的节点对象
+                treeSelectedNode = fullPath[fullPath.length - 1];
+                
+                // 展开路径上的所有节点
+                fullPath.forEach(node => treeExpandedNodes.add(node.id));
+            }
             
             document.getElementById('selectedCategoryId').value = categoryId;
             
             // 刷新数据
             currentPage = 1;
             loadData();
+        }
+        
+        // 在树中查找节点的完整路径
+        function findNodePathInTree(nodes, targetId, currentPath = []) {
+            for (const node of nodes) {
+                const path = [...currentPath, node];
+                if (node.id === targetId) {
+                    return path;
+                }
+                if (node.children && node.children.length > 0) {
+                    const found = findNodePathInTree(node.children, targetId, path);
+                    if (found) return found;
+                }
+            }
+            return null;
         }
         
         // ==================== 树形选择器交互 ====================
@@ -589,10 +613,10 @@
         }
         
         function selectTreeNode(node, path) {
-            treeSelectedNode = node;
             selectedCategoryId = node.id;
+            treeSelectedNode = node;
             
-            // 更新显示值
+            // 更新显示值 - 显示完整路径
             const valueEl = document.getElementById('treeSelectValue');
             const placeholderEl = document.getElementById('treeSelectPlaceholder');
             
@@ -610,9 +634,6 @@
             closeTreeDropdown();
             currentPage = 1;
             loadData();
-            
-            // 重新渲染以更新选中状态
-            renderTree();
         }
         
         // ==================== 渲染树形结构 ====================
