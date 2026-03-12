@@ -45,7 +45,6 @@ def api_market_categories(request):
             for cat in categories:
                 path_names = []
                 if cat.path:
-                    # path 格式是逗号分隔的 ID 列表，如 '18,52,53,68'
                     path_ids = cat.path.split(',')
                     for pid in path_ids:
                         try:
@@ -92,7 +91,7 @@ def api_market_categories(request):
         }, status=500)
 
 
-def build_category_tree():
+def build_category_tree(parent_id=None):
     """
     构建分类树 - 优化版（一次性查询所有数据）
     """
@@ -141,13 +140,13 @@ def api_niche_markets(request):
         if page_size not in [20, 50, 100, 200]:
             page_size = 50
         
-        # 基础查询
+        # 基础查询 - 使用select_related避免N+1
         queryset = NicheMarket.objects.select_related('leaf_category')
         
         # 按分类筛选（包含该分类及其所有子分类）
         if category_id:
-            # 获取该分类及其所有子孙分类的ID列表
-            category_ids = get_all_descendant_category_ids(int(category_id))
+            # 获取该分类及其所有子孙分类的ID列表（优化版）
+            category_ids = get_all_descendant_category_ids_optimized(int(category_id))
             queryset = queryset.filter(leaf_category_id__in=category_ids)
         
         # 按搜索词筛选
@@ -171,37 +170,13 @@ def api_niche_markets(request):
             page_obj = paginator.page(1)
             page = 1
         
+        # 预加载所有需要的分类数据，避免N+1
+        category_cache = preload_category_cache()
+        
         # 构建返回数据
         data_list = []
         for item in page_obj:
-            # 构建带ID的完整路径
-            full_path_with_ids = []
-            if item.leaf_category:
-                cat = item.leaf_category
-                if cat.path:
-                    # path 格式是逗号分隔的 ID 列表，如 '18,52,53,68'
-                    path_ids = cat.path.split(',')
-                    for pid in path_ids:
-                        try:
-                            parent = MarketCategory.objects.get(id=int(pid))
-                            full_path_with_ids.append({
-                                'id': str(parent.id),
-                                'name': parent.name
-                            })
-                        except (MarketCategory.DoesNotExist, ValueError):
-                            continue
-                # 添加叶子分类
-                full_path_with_ids.append({
-                    'id': str(cat.id),
-                    'name': cat.name
-                })
-            
-            # 如果市场名和叶子分类名不同，添加市场
-            if not full_path_with_ids or full_path_with_ids[-1]['name'] != item.market_name:
-                full_path_with_ids.append({
-                    'id': None,  # 市场没有ID
-                    'name': item.market_name
-                })
+            full_path_with_ids = build_full_path_with_cache(item, category_cache)
             
             data_list.append({
                 'id': item.id,
@@ -209,7 +184,7 @@ def api_niche_markets(request):
                 'market_name_cn': item.market_name_cn,
                 'monthly_sales': item.monthly_sales,
                 'monthly_revenue': str(item.monthly_revenue) if item.monthly_revenue else None,
-                'full_path_with_ids': full_path_with_ids,  # 带ID的完整路径
+                'full_path_with_ids': full_path_with_ids,
                 'leaf_category_id': item.leaf_category_id,
             })
         
@@ -229,17 +204,84 @@ def api_niche_markets(request):
         }, status=500)
 
 
-def get_all_descendant_category_ids(category_id):
+def preload_category_cache():
     """
-    获取指定分类及其所有子孙分类的ID列表
+    预加载所有分类数据到内存缓存，避免N+1查询
     """
+    all_categories = MarketCategory.objects.all().values('id', 'name', 'path', 'parent_id')
+    return {cat['id']: cat for cat in all_categories}
+
+
+def build_full_path_with_cache(item, category_cache):
+    """
+    使用缓存构建完整路径，避免数据库查询
+    """
+    full_path_with_ids = []
+    
+    if item.leaf_category:
+        cat_id = item.leaf_category_id
+        cat = category_cache.get(cat_id)
+        
+        if cat and cat.get('path'):
+            # path 格式是逗号分隔的 ID 列表
+            path_ids = cat['path'].split(',')
+            for pid in path_ids:
+                try:
+                    pid_int = int(pid)
+                    # 跳过叶子分类自己
+                    if pid_int == cat_id:
+                        continue
+                    parent = category_cache.get(pid_int)
+                    if parent:
+                        full_path_with_ids.append({
+                            'id': str(parent['id']),
+                            'name': parent['name']
+                        })
+                except ValueError:
+                    continue
+        
+        # 添加叶子分类
+        if cat:
+            full_path_with_ids.append({
+                'id': str(cat_id),
+                'name': cat['name']
+            })
+    
+    # 如果市场名和叶子分类名不同，添加市场
+    if not full_path_with_ids or full_path_with_ids[-1]['name'] != item.market_name:
+        full_path_with_ids.append({
+            'id': None,
+            'name': item.market_name
+        })
+    
+    return full_path_with_ids
+
+
+def get_all_descendant_category_ids_optimized(category_id):
+    """
+    优化版：获取指定分类及其所有子孙分类的ID列表（一次性查询）
+    """
+    # 一次性加载所有分类
+    all_cats = MarketCategory.objects.all().values('id', 'parent_id')
+    
+    # 构建 parent_id -> children 映射
+    children_map = {}
+    for cat in all_cats:
+        pid = cat.get('parent_id')
+        if pid not in children_map:
+            children_map[pid] = []
+        children_map[pid].append(cat['id'])
+    
+    # BFS遍历获取所有子孙
     result = set([category_id])
+    queue = [category_id]
     
-    # 获取直接子分类
-    children = MarketCategory.objects.filter(parent_id=category_id).values_list('id', flat=True)
-    
-    for child_id in children:
-        # 递归获取孙分类
-        result.update(get_all_descendant_category_ids(child_id))
+    while queue:
+        current_id = queue.pop(0)
+        children = children_map.get(current_id, [])
+        for child_id in children:
+            if child_id not in result:
+                result.add(child_id)
+                queue.append(child_id)
     
     return list(result)

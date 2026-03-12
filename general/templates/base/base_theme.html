@@ -37,5 +37,12 @@
                 <span>美标网词库</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:dw_data_page' %}"
+               class="sidebar-link {% if active_page == 'dw_data' %}active{% endif %}">
+                <i class="fas fa-industry sidebar-icon"></i>
+                <span>迪唯产业大数据模型</span>
+            </a>
+        </li>
     </ul>
 {% endblock %}
