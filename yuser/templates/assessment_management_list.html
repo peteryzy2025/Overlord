@@ -228,12 +228,14 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-top: 0.5rem;
+        margin-top: 1.5rem;
         padding: 1rem;
         background-color: var(--bg-primary);
         border-radius: 12px;
         box-shadow: var(--shadow-light);
         border: 1px solid var(--border-color);
+        flex-wrap: wrap;
+        gap: 1rem;
     }
 
     .pagination-info {
@@ -241,44 +243,38 @@
         font-size: 0.875rem;
     }
 
-    .pagination {
-        display: flex;
-        gap: 0.25rem;
-        margin: 0;
-        padding: 0;
-        list-style: none;
+    .pagination-new {
+        flex: 1 1 auto;
+        justify-content: center;
     }
 
-    .page-item {
-        margin: 0;
+    .pagination-btn-new {
+        min-width: 40px;
+        padding: 0 10px;
+        height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .page-link {
-        display: block;
-        padding: 0.5rem 0.75rem;
-        color: var(--text-primary);
-        text-decoration: none;
-        border: 1px solid var(--border-color);
-        background-color: var(--bg-secondary);
-        transition: all 0.3s ease;
-        cursor: pointer;
+    .pagination-ellipsis {
+        color: var(--text-secondary);
+        padding: 0 5px;
     }
 
-    .page-link:hover {
-        background-color: var(--bg-tertiary);
-        color: var(--accent-color);
+    .pagination-jump {
+        margin-left: auto;
     }
 
-    .page-item.active .page-link {
-        background-color: var(--accent-color);
-        color: white;
-        border-color: var(--accent-color);
-    }
+    @media (max-width: 768px) {
+        .pagination-new {
+            width: 100%;
+            justify-content: flex-start;
+        }
 
-    .page-item.disabled .page-link {
-        color: var(--text-tertiary);
-        cursor: not-allowed;
-        pointer-events: none;
+        .pagination-jump {
+            margin-left: 0;
+        }
     }
 
     /* ========== 统一样式：模态框基类 ========== */
@@ -556,50 +552,36 @@
     </div>
 
     <!-- 分页 -->
-    {% if is_paginated %}
-    <div class="pagination-container">
-        <div class="pagination-info">
-            显示第 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ page_obj.paginator.count }}
-            条记录
+    {% if page_obj and page_obj.paginator.count > 0 %}
+    <div class="pagination-container" id="paginationContainer">
+        <div class="pagination-info" id="paginationInfo"
+             data-total="{{ page_obj.paginator.count }}"
+             data-page="{{ page_obj.number }}"
+             data-total-pages="{{ page_obj.paginator.num_pages }}"
+             data-page-size="{{ current_page_size }}">
+            <div class="page-size-wrapper" id="pageSizeWrapper">
+                <span class="page-size-label">每页显示：</span>
+                <div class="page-size-dropdown-wrapper" style="position: relative;">
+                    <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown(event)">
+                        <span id="pageSizeText">{{ current_page_size }}条</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="page-size-dropdown" id="pageSizeDropdown">
+                        <div class="page-size-option {% if current_page_size == 20 %}selected{% endif %}" data-value="20" onclick="changePageSize(20)">20条</div>
+                        <div class="page-size-option {% if current_page_size == 50 %}selected{% endif %}" data-value="50" onclick="changePageSize(50)">50条</div>
+                        <div class="page-size-option {% if current_page_size == 100 %}selected{% endif %}" data-value="100" onclick="changePageSize(100)">100条</div>
+                        <div class="page-size-option {% if current_page_size == 200 %}selected{% endif %}" data-value="200" onclick="changePageSize(200)">200条</div>
+                    </div>
+                </div>
+                <span class="pagination-stats" id="paginationStats">{{ page_obj.start_index }}-{{ page_obj.end_index }} / 共 {{ page_obj.paginator.count }} 条</span>
+            </div>
         </div>
-        <nav>
-            <ul class="pagination" id="pagination">
-                {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link"
-                        href="?page={{ page_obj.previous_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">上一页</a>
-                </li>
-                {% else %}
-                <li class="page-item disabled">
-                    <span class="page-link">上一页</span>
-                </li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}
-                <li class="page-item active">
-                    <span class="page-link">{{ num }}</span>
-                </li>
-                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <li class="page-item">
-                    <a class="page-link"
-                        href="?page={{ num }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">{{ num }}</a>
-                </li>
-                {% endif %}
-                {% endfor %}
-
-                    {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link"
-                            href="?page={{ page_obj.next_page_number }}{% if request.GET.month %}&month={{ request.GET.month }}{% endif %}{% if request.GET.employee %}&employee={{ request.GET.employee }}{% endif %}{% if request.GET.assess_type %}&assess_type={{ request.GET.assess_type }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}">下一页</a>
-                    </li>
-                    {% else %}
-                    <li class="page-item disabled">
-                        <span class="page-link">下一页</span>
-                    </li>
-                    {% endif %}
-            </ul>
-        </nav>
+        <div class="pagination-new" id="paginationNew"></div>
+        <div class="pagination-jump" id="paginationJump">
+            <span>跳至</span>
+            <input type="number" id="pageJumpInput" class="page-jump-input" min="1" max="{{ page_obj.paginator.num_pages }}" placeholder="页码" onkeypress="handlePageJump(event)">
+            <span>页</span>
+        </div>
     </div>
     {% endif %}
 </div>
@@ -887,12 +869,121 @@
         }
     }
 
-    // ========== 原有函数（保持不变） ==========
+    function getAssessmentListUrl(page = null, pageSize = null) {
+        const url = new URL('{% url "yuser:assessment_list" %}', window.location.origin);
+        const params = new URLSearchParams(window.location.search);
+
+        if (pageSize !== null) {
+            params.set('page_size', pageSize);
+            params.set('page', '1');
+        }
+
+        if (page !== null) {
+            params.set('page', page);
+        }
+
+        const query = params.toString();
+        return query ? `${url.pathname}?${query}` : url.pathname;
+    }
+
+    function renderPagination() {
+        const info = document.getElementById('paginationInfo');
+        const buttonsContainer = document.getElementById('paginationNew');
+        const jumpContainer = document.getElementById('paginationJump');
+
+        if (!info || !buttonsContainer || !jumpContainer) return;
+
+        const page = parseInt(info.dataset.page || '1', 10);
+        const totalPages = parseInt(info.dataset.totalPages || '1', 10);
+        const total = parseInt(info.dataset.total || '0', 10);
+
+        if (total === 0) {
+            buttonsContainer.innerHTML = '<span style="color:var(--text-tertiary);font-size:0.875rem;">暂无分页</span>';
+            jumpContainer.style.display = 'none';
+            return;
+        }
+
+        let html = '';
+        html += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+        html += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
+
+        const maxButtons = 7;
+        let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+
+        if (startPage > 1) {
+            html += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
+            if (startPage > 2) {
+                html += `<span class="pagination-ellipsis">...</span>`;
+            }
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                html += `<span class="pagination-ellipsis">...</span>`;
+            }
+            html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})">${totalPages}</button>`;
+        }
+
+        html += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page === totalPages ? 'disabled' : ''}>下一页</button>`;
+        html += `<button class="pagination-btn-new" onclick="changePage(${totalPages})" ${page === totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+
+        buttonsContainer.innerHTML = html;
+        jumpContainer.style.display = totalPages > 0 ? 'flex' : 'none';
+    }
+
+    function changePage(page) {
+        const info = document.getElementById('paginationInfo');
+        if (!info) return;
+
+        const totalPages = parseInt(info.dataset.totalPages || '1', 10);
+        if (page < 1 || page > totalPages) return;
+        window.location.href = getAssessmentListUrl(page);
+    }
+
+    function togglePageSizeDropdown(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById('pageSizeDropdown');
+        if (!dropdown) return;
+        dropdown.classList.toggle('open');
+    }
+
+    function changePageSize(size) {
+        window.location.href = getAssessmentListUrl(1, size);
+    }
+
+    function handlePageJump(event) {
+        if (event.key !== 'Enter') return;
+
+        const input = document.getElementById('pageJumpInput');
+        const info = document.getElementById('paginationInfo');
+        if (!input || !info) return;
+
+        const targetPage = parseInt(input.value, 10);
+        const totalPages = parseInt(info.dataset.totalPages || '1', 10);
+
+        if (!targetPage || targetPage < 1 || targetPage > totalPages) {
+            alert(`请输入 1 到 ${totalPages} 之间的有效页码`);
+            return;
+        }
+
+        changePage(targetPage);
+    }
+
     function filterAssessments() {
         const month = document.getElementById('monthFilter').value;
         const employee = formatMultiSelect(employeeSelect ? employeeSelect.getValue() : '');
         const assess_type = typeSelect ? typeSelect.getValue() : '';
         const status = statusSelect ? statusSelect.getValue() : '';
+        const pageSize = document.getElementById('paginationInfo')?.dataset.pageSize || '{{ current_page_size|default:20 }}';
 
         let url = '{% url "yuser:assessment_list" %}';
         const params = [];
@@ -900,6 +991,7 @@
         if (employee) params.push('employee=' + employee);
         if (assess_type) params.push('assess_type=' + assess_type);
         if (status) params.push('status=' + status);
+        if (pageSize) params.push('page_size=' + pageSize);
 
         if (params.length > 0) {
             url += '?' + params.join('&');
@@ -1052,6 +1144,7 @@
         initEmployeeFilterSelect();
         initTypeFilterSelect();
         initStatusFilterSelect();
+        renderPagination();
         const filterSection = document.querySelector('.filter-section');
         if (filterSection) {
             filterSection.addEventListener('keydown', function (e) {
@@ -1061,6 +1154,14 @@
                 }
             });
         }
+
+        document.addEventListener('click', function (e) {
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const trigger = document.getElementById('pageSizeTrigger');
+            if (dropdown && trigger && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+                dropdown.classList.remove('open');
+            }
+        });
     });
 
     // ===== 批量刷新订单数据（管理员专用）=====

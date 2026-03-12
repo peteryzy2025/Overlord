@@ -398,6 +398,17 @@ class AssessmentListView(AssessmentManagementView, ListView):
     context_object_name = 'assessments'
     paginate_by = 20
 
+    def get_paginate_by(self, queryset):
+        raw_page_size = self.request.GET.get('page_size')
+        allowed_sizes = {20, 50, 100, 200}
+
+        try:
+            page_size = int(raw_page_size)
+        except (TypeError, ValueError):
+            page_size = self.paginate_by
+
+        return page_size if page_size in allowed_sizes else self.paginate_by
+
     def get_queryset(self):
         """根据权限过滤可查看的考核"""
         user = self.request.user
@@ -459,6 +470,7 @@ class AssessmentListView(AssessmentManagementView, ListView):
         context['status_choices'] = PerformanceAssessment.STATUS_CHOICES
         context['active_page'] = 'assessment_list'
         context['active_nav'] = 'management'
+        context['current_page_size'] = self.get_paginate_by(None)
 
         # 列表页最终得分与详情页保持同一算法口径（实时计算）
         assessments_page = context.get('assessments') or context.get('object_list') or []
