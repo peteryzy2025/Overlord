@@ -75,6 +75,12 @@
             display: inline;
         }
         
+        .market-path-market {
+            display: inline;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+        
         .market-path-separator {
             color: var(--text-tertiary);
             margin: 0 4px;
@@ -90,14 +96,22 @@
             max-width: none;
         }
 
-        .dw-filter-category-group {
-            flex: 0 0 250px;
-            max-width: 250px;
+        .dw-filter-level-group {
+            flex: 0 0 160px;
+            max-width: 160px;
+            min-width: 120px;
         }
 
         .dw-filter-search-group {
-            flex: 1 1 420px;
+            flex: 1 1 280px;
             max-width: none;
+            min-width: 180px;
+        }
+
+        /* 级联选择器禁用状态 */
+        .dw-filter-level-group .searchable-select.disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         .dw-search-input-wrap {
@@ -110,8 +124,8 @@
                 flex-wrap: wrap;
             }
 
-            .dw-filter-category-group {
-                flex: 1 1 250px;
+            .dw-filter-level-group {
+                flex: 1 1 140px;
                 max-width: none;
             }
 
@@ -136,9 +150,20 @@
 
         <div class="filter-section">
             <div class="filter-row dw-filter-row">
-                <div class="filter-group dw-filter-category-group">
-                    <label class="filter-label">市场分类</label>
-                    <div id="categoryFilter" class="searchable-select single" data-placeholder="选择分类"></div>
+                <!-- 一级分类 -->
+                <div class="filter-group dw-filter-level-group">
+                    <label class="filter-label">一级分类</label>
+                    <div id="level1Filter" class="searchable-select single" data-placeholder="选择大类"></div>
+                </div>
+                <!-- 二级分类 -->
+                <div class="filter-group dw-filter-level-group">
+                    <label class="filter-label">二级分类</label>
+                    <div id="level2Filter" class="searchable-select single" data-placeholder="选择中类"></div>
+                </div>
+                <!-- 三级分类（叶子） -->
+                <div class="filter-group dw-filter-level-group">
+                    <label class="filter-label">三级分类</label>
+                    <div id="level3Filter" class="searchable-select single" data-placeholder="选择小类"></div>
                 </div>
                 <div class="filter-group dw-filter-search-group">
                     <label class="filter-label">细分市场</label>
@@ -221,7 +246,13 @@
         let allData = [];
         
         // SearchableSelect 实例
-        let categorySelect = null;
+        // 三级级联选择器实例
+        let level1Select = null;
+        let level2Select = null;
+        let level3Select = null;
+        
+        // 当前选中的分类ID
+        let selectedCategoryId = '';
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async function() {
@@ -233,8 +264,8 @@
             
             initSearchableSelects();
             
-            // 先加载分类列表
-            await loadCategories();
+            // 先加载一级分类
+            await loadLevel1Categories();
             
             // 再加载表格数据
             await loadData();
@@ -250,30 +281,108 @@
         
         // ==================== SearchableSelect 初始化 ====================
         function initSearchableSelects() {
-            categorySelect = new SearchableSelect('#categoryFilter', {
+            // 一级分类
+            level1Select = new SearchableSelect('#level1Filter', {
                 options: [],
                 multiple: false,
-                placeholder: '选择分类'
+                placeholder: '选择大类'
             });
             
-            // 监听分类变化
-            categorySelect.onChange = function(value) {
+            // 二级分类
+            level2Select = new SearchableSelect('#level2Filter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择中类'
+            });
+            
+            // 三级分类
+            level3Select = new SearchableSelect('#level3Filter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择小类'
+            });
+            
+            // 监听一级分类变化
+            level1Select.onChange = async function(value) {
                 currentPage = 1;
+                selectedCategoryId = value;
+                
+                // 清空二级和三级
+                level2Select.setOptions([]);
+                level2Select.setValue('');
+                level3Select.setOptions([]);
+                level3Select.setValue('');
+                
+                if (value) {
+                    // 加载二级分类
+                    await loadLevel2Categories(value);
+                }
+                
+                loadData();
+            };
+            
+            // 监听二级分类变化
+            level2Select.onChange = async function(value) {
+                currentPage = 1;
+                selectedCategoryId = value || level1Select.getValue();
+                
+                // 清空三级
+                level3Select.setOptions([]);
+                level3Select.setValue('');
+                
+                if (value) {
+                    // 加载三级分类
+                    await loadLevel3Categories(value);
+                }
+                
+                loadData();
+            };
+            
+            // 监听三级分类变化
+            level3Select.onChange = function(value) {
+                currentPage = 1;
+                selectedCategoryId = value || level2Select.getValue() || level1Select.getValue();
                 loadData();
             };
         }
         
-        // ==================== 数据加载 ====================
-        async function loadCategories() {
+        // ==================== 级联分类数据加载 ====================
+        async function loadLevel1Categories() {
             try {
-                const response = await fetch('/theme/api/market-categories/');
+                const response = await fetch('/api/market-categories/');
                 const result = await response.json();
                 
                 if (result.success) {
-                    categorySelect.setOptions(result.data);
+                    level1Select.setOptions(result.data);
                 }
             } catch (error) {
-                console.error('加载分类列表失败:', error);
+                console.error('加载一级分类失败:', error);
+            }
+        }
+        
+        async function loadLevel2Categories(parentId) {
+            try {
+                const response = await fetch(`/api/market-categories/?parent_id=${parentId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    level2Select.setOptions(result.data);
+                }
+            } catch (error) {
+                console.error('加载二级分类失败:', error);
+            }
+        }
+        
+        async function loadLevel3Categories(parentId) {
+            try {
+                const response = await fetch(`/api/market-categories/?parent_id=${parentId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    level3Select.setOptions(result.data);
+                }
+            } catch (error) {
+                console.error('加载三级分类失败:', error);
             }
         }
         
@@ -291,11 +400,11 @@
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
-                    category: categorySelect ? categorySelect.getValue() : '',
+                    category: selectedCategoryId,
                     search: document.getElementById('searchInput').value.trim()
                 });
                 
-                const response = await fetch(`/theme/api/niche-markets/?${params}`);
+                const response = await fetch(`/api/niche-markets/?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -333,14 +442,18 @@
                     ? parseInt(item.monthly_sales).toLocaleString('en-US')
                     : '-';
                 
-                // 构建市场路径HTML
+                // 构建完整市场路径HTML：一级 › 二级 › 三级 › 市场名称
                 let pathHtml = '-';
-                if (item.category_path && item.category_path.length > 0) {
-                    pathHtml = item.category_path.map((cat, idx) => {
-                        const separator = idx < item.category_path.length - 1 
+                const fullPath = item.full_market_path || [];
+                if (fullPath.length > 0) {
+                    pathHtml = fullPath.map((name, idx) => {
+                        const isLast = idx === fullPath.length - 1;
+                        const separator = !isLast 
                             ? '<span class="market-path-separator">›</span>' 
                             : '';
-                        return `<span class="market-path-item">${cat}</span>${separator}`;
+                        // 最后一个是市场名称，用不同样式
+                        const className = isLast ? 'market-path-market' : 'market-path-item';
+                        return `<span class="${className}">${name}</span>${separator}`;
                     }).join('');
                 }
                 
@@ -537,17 +650,27 @@
         
         function resetFilters() {
             document.getElementById('searchInput').value = '';
-            if (categorySelect) {
-                categorySelect.setValue('');
+            
+            // 清空三级选择器
+            if (level1Select) level1Select.setValue('');
+            if (level2Select) {
+                level2Select.setOptions([]);
+                level2Select.setValue('');
             }
+            if (level3Select) {
+                level3Select.setOptions([]);
+                level3Select.setValue('');
+            }
+            
+            selectedCategoryId = '';
             currentPage = 1;
             loadData();
         }
         
         // ==================== 通知提示 ====================
         function showNotification(message, type = 'info') {
-            // 使用全局通知函数（如果存在）
-            if (typeof window.showNotification === 'function') {
+            // 使用全局通知函数（如果存在且不是当前函数自身）
+            if (typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
                 window.showNotification(message, type);
             } else {
                 alert(message);

@@ -22,32 +22,65 @@ def api_market_categories(request):
     """
     获取市场分类列表 API
     
-    返回所有叶子分类（有细分市场的分类）
+    参数:
+        parent_id: 父分类ID，不传则返回顶级分类（level=1）
+        all: 传1返回所有有细分市场的叶子分类（兼容旧逻辑）
     """
     try:
-        # 获取所有有细分市场的分类
-        categories = MarketCategory.objects.filter(
-            niche_markets__isnull=False
-        ).distinct().order_by('path', 'name')
+        # 兼容旧逻辑：返回所有叶子分类
+        if request.GET.get('all') == '1':
+            categories = MarketCategory.objects.filter(
+                niche_markets__isnull=False
+            ).distinct().order_by('path', 'name')
+            
+            category_list = []
+            for cat in categories:
+                path_names = []
+                if cat.path:
+                    path_ids = cat.path.strip('/').split('/')
+                    for pid in path_ids:
+                        try:
+                            parent = MarketCategory.objects.get(id=int(pid))
+                            path_names.append(parent.name)
+                        except (MarketCategory.DoesNotExist, ValueError):
+                            continue
+                path_names.append(cat.name)
+                full_path = ' › '.join(path_names)
+                
+                category_list.append({
+                    'value': str(cat.id),
+                    'label': full_path
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'data': category_list
+            })
+        
+        # 新逻辑：级联加载
+        parent_id = request.GET.get('parent_id', '').strip()
+        
+        if parent_id:
+            # 返回指定父分类的子分类
+            categories = MarketCategory.objects.filter(
+                parent_id=int(parent_id)
+            ).order_by('name')
+        else:
+            # 返回顶级分类（level=1）
+            categories = MarketCategory.objects.filter(
+                level=1
+            ).order_by('name')
         
         category_list = []
         for cat in categories:
-            # 构建完整路径名称
-            path_names = []
-            if cat.path:
-                path_ids = cat.path.strip('/').split('/')
-                for pid in path_ids:
-                    try:
-                        parent = MarketCategory.objects.get(id=int(pid))
-                        path_names.append(parent.name)
-                    except (MarketCategory.DoesNotExist, ValueError):
-                        continue
-            path_names.append(cat.name)
-            full_path = ' › '.join(path_names)
+            # 检查是否有子分类
+            has_children = MarketCategory.objects.filter(parent=cat).exists()
             
             category_list.append({
                 'value': str(cat.id),
-                'label': full_path
+                'label': cat.name,
+                'has_children': has_children,
+                'level': cat.level
             })
         
         return JsonResponse({
@@ -128,13 +161,18 @@ def api_niche_markets(request):
                             continue
                 category_path.append(cat.name)
             
+            # 构建完整市场路径：一级 › 二级 › 三级 › 市场名称
+            full_market_path = category_path.copy() if category_path else []
+            full_market_path.append(item.market_name)
+            
             data_list.append({
                 'id': item.id,
                 'market_name': item.market_name,
                 'market_name_cn': item.market_name_cn,
                 'monthly_sales': item.monthly_sales,
                 'monthly_revenue': str(item.monthly_revenue) if item.monthly_revenue else None,
-                'category_path': category_path,
+                'category_path': category_path,  # 纯分类路径
+                'full_market_path': full_market_path,  # 完整路径（含市场名）
                 'leaf_category_id': item.leaf_category_id,
             })
         
