@@ -791,10 +791,24 @@
                     </a>
                 </div>
             </div>
-            <a class="nav-link" href="{% url 'track:tracking-management' %}">物流管理</a>
+            <div class="nav-item-wrapper">
+                <a class="nav-link {% if active_nav == 'tracking-management' or active_nav == 'external-procurement-management' %}active{% endif %}"
+                   href="{% url 'track:tracking-management' %}">
+                    供应链
+                    <i class="fas fa-chevron-down dropdown-arrow"></i>
+                </a>
+                <div class="nav-dropdown">
+                    <a href="{% url 'track:tracking-management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-shipping-fast"></i> 物流管理
+                    </a>
+                    <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-item">
+                        <i class="fas fa-box-open"></i> 外采产品管理
+                    </a>
+                </div>
+            </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' or active_nav == 'dw_data' %}active{% endif %}"
                    href="{% url 'theme:theme_product_list' %}">
                     主题
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -815,6 +829,9 @@
                     <a href="{% url 'theme:trademark_info_page' %}" class="nav-dropdown-item">
                         <i class="fas fa-registered"></i> 美标网词库
                     </a>
+                    <a href="{% url 'theme:dw_data_page' %}" class="nav-dropdown-item">
+                        <i class="fas fa-industry"></i> 迪唯产业大数据
+                    </a>
                     <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
                         <i class="fas fa-chart-line"></i> 主题趋势
                     </a>
@@ -832,7 +849,7 @@
             <!-- 用户菜单 -->
             <div class="user-menu">
                 <div class="user-avatar-wrapper" onclick="toggleUserMenu()">
-                    <span class="username">{{ request.user.first_name|default:request.user.username }}</span>
+                    <span class="username">{% if request.user.is_authenticated %}{{ request.user.first_name|default:request.user.username }}{% else %}访客{% endif %}</span>
                     <img src="{% if request.user.avatar %}{{ request.user.avatar.url }}{% else %}{% static 'img/y/avatar.png' %}{% endif %}" alt="用户头像" class="user-avatar" id="userAvatar">
                 </div>
 
