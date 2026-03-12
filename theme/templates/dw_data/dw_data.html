@@ -75,10 +75,14 @@
             display: inline;
         }
         
-        .market-path-market {
+        .market-path-item:hover {
+            color: var(--accent-color);
+        }
+        
+        .market-path-active {
             display: inline;
             font-weight: 600;
-            color: var(--accent-color);
+            color: #f97316;  /* 橙色 */
         }
         
         .market-path-separator {
@@ -520,6 +524,25 @@
             }
         }
         
+        // ==================== 点击路径中的分类 ====================
+        function selectCategoryById(categoryId, categoryName) {
+            selectedCategoryId = categoryId;
+            
+            // 更新树形选择器显示
+            const valueEl = document.getElementById('treeSelectValue');
+            const placeholderEl = document.getElementById('treeSelectPlaceholder');
+            
+            // 构建显示路径（简化版）
+            valueEl.textContent = categoryName;
+            placeholderEl.style.display = 'none';
+            
+            document.getElementById('selectedCategoryId').value = categoryId;
+            
+            // 刷新数据
+            currentPage = 1;
+            loadData();
+        }
+        
         // ==================== 树形选择器交互 ====================
         function selectTreeNodeFromElement(element) {
             const nodeId = element.getAttribute('data-id');
@@ -752,18 +775,21 @@
                     ? parseInt(item.monthly_sales).toLocaleString('en-US')
                     : '-';
                 
-                // 构建完整市场路径HTML：一级 › 二级 › 三级 › 市场名称
+                // 构建完整市场路径HTML，带ID可点击
                 let pathHtml = '-';
-                const fullPath = item.full_market_path || [];
+                const fullPath = item.full_path_with_ids || [];
                 if (fullPath.length > 0) {
-                    pathHtml = fullPath.map((name, idx) => {
+                    pathHtml = fullPath.map((node, idx) => {
                         const isLast = idx === fullPath.length - 1;
                         const separator = !isLast 
                             ? '<span class="market-path-separator">›</span>' 
                             : '';
-                        // 最后一个是市场名称，用不同样式
-                        const className = isLast ? 'market-path-market' : 'market-path-item';
-                        return `<span class="${className}">${name}</span>${separator}`;
+                        // 当前选中的筛选项高亮橙色
+                        const isActive = node.id && node.id === selectedCategoryId;
+                        const className = isActive ? 'market-path-active' : 'market-path-item';
+                        // 可点击的项（有ID的分类）
+                        const clickAttr = node.id ? `onclick="selectCategoryById('${node.id}', '${node.name.replace(/'/g, "\\'")}')" style="cursor:pointer;"` : '';
+                        return `<span class="${className}" ${clickAttr}>${node.name}</span>${separator}`;
                     }).join('');
                 }
                 
