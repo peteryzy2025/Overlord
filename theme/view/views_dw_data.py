@@ -23,10 +23,18 @@ def api_market_categories(request):
     获取市场分类列表 API
     
     参数:
-        parent_id: 父分类ID，不传则返回顶级分类（level=1）
+        tree: 传1返回完整树形结构（支持无限层级）
         all: 传1返回所有有细分市场的叶子分类（兼容旧逻辑）
     """
     try:
+        # 树形结构：返回完整分类树
+        if request.GET.get('tree') == '1':
+            tree_data = build_category_tree()
+            return JsonResponse({
+                'success': True,
+                'data': tree_data
+            })
+        
         # 兼容旧逻辑：返回所有叶子分类
         if request.GET.get('all') == '1':
             categories = MarketCategory.objects.filter(
@@ -37,7 +45,8 @@ def api_market_categories(request):
             for cat in categories:
                 path_names = []
                 if cat.path:
-                    path_ids = cat.path.strip('/').split('/')
+                    # path 格式是逗号分隔的 ID 列表，如 '18,52,53,68'
+                    path_ids = cat.path.split(',')
                     for pid in path_ids:
                         try:
                             parent = MarketCategory.objects.get(id=int(pid))
@@ -57,25 +66,14 @@ def api_market_categories(request):
                 'data': category_list
             })
         
-        # 新逻辑：级联加载
-        parent_id = request.GET.get('parent_id', '').strip()
-        
-        if parent_id:
-            # 返回指定父分类的子分类
-            categories = MarketCategory.objects.filter(
-                parent_id=int(parent_id)
-            ).order_by('name')
-        else:
-            # 返回顶级分类（level=1）
-            categories = MarketCategory.objects.filter(
-                level=1
-            ).order_by('name')
+        # 默认：返回顶级分类
+        categories = MarketCategory.objects.filter(
+            level=1
+        ).order_by('name')
         
         category_list = []
         for cat in categories:
-            # 检查是否有子分类
             has_children = MarketCategory.objects.filter(parent=cat).exists()
-            
             category_list.append({
                 'value': str(cat.id),
                 'label': cat.name,
@@ -92,6 +90,33 @@ def api_market_categories(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+def build_category_tree():
+    """
+    构建分类树 - 优化版（一次性查询所有数据）
+    """
+    # 一次性查询所有分类数据
+    all_categories = list(MarketCategory.objects.all().order_by('name').values('id', 'name', 'parent_id', 'level'))
+    
+    # 构建 id -> category 的映射
+    category_map = {cat['id']: {**cat, 'children': []} for cat in all_categories}
+    
+    # 构建树结构
+    tree = []
+    for cat in all_categories:
+        parent_id = cat.get('parent_id')
+        node = category_map[cat['id']]
+        node['id'] = str(node['id'])  # id 转字符串
+        
+        if parent_id is None or parent_id not in category_map:
+            # 顶级分类
+            tree.append(node)
+        else:
+            # 添加到父节点的 children
+            category_map[parent_id]['children'].append(node)
+    
+    return tree
 
 
 @require_http_methods(["GET"])
@@ -152,7 +177,8 @@ def api_niche_markets(request):
             if item.leaf_category:
                 cat = item.leaf_category
                 if cat.path:
-                    path_ids = cat.path.strip('/').split('/')
+                    # path 格式是逗号分隔的 ID 列表，如 '18,52,53,68'
+                    path_ids = cat.path.split(',')
                     for pid in path_ids:
                         try:
                             parent = MarketCategory.objects.get(id=int(pid))
@@ -162,8 +188,10 @@ def api_niche_markets(request):
                 category_path.append(cat.name)
             
             # 构建完整市场路径：一级 › 二级 › 三级 › 市场名称
+            # 如果叶子分类名和市场名相同，避免重复
             full_market_path = category_path.copy() if category_path else []
-            full_market_path.append(item.market_name)
+            if not full_market_path or full_market_path[-1] != item.market_name:
+                full_market_path.append(item.market_name)
             
             data_list.append({
                 'id': item.id,
