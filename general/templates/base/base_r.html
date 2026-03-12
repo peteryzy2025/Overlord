@@ -295,8 +295,8 @@
     const sidebarToggle = document.getElementById('sidebarToggle');
     
     if (sidebar && sidebarToggle) {
-        // 从 localStorage 读取状态
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+        // 从 localStorage 读取状态，默认为收缩
+        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') !== 'false';
         if (sidebarCollapsed) {
             sidebar.classList.add('collapsed');
             updateTogglePosition(true);

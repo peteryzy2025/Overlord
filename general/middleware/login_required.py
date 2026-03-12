@@ -20,6 +20,9 @@ class LoginRequiredMiddleware:
             '/admin/',  # 保留 admin 的独立认证
             '/inventory/api/import/',  # 库存上传接口白名单
             '/api/trend/search/', # 查侵权
+            '/dw-data/',  # 迪唯产业大数据模型页面
+            '/api/market-categories/',  # 迪唯分类API
+            '/api/niche-markets/',  # 迪唯市场数据API
         ]
 
     def __call__(self, request):

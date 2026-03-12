@@ -75,6 +75,16 @@
             display: inline;
         }
         
+        .market-path-item:hover {
+            color: var(--accent-color);
+        }
+        
+        .market-path-active {
+            display: inline;
+            font-weight: 600;
+            color: #f97316;  /* 橙色 */
+        }
+        
         .market-path-separator {
             color: var(--text-tertiary);
             margin: 0 4px;
@@ -90,14 +100,233 @@
             max-width: none;
         }
 
-        .dw-filter-category-group {
-            flex: 0 0 250px;
-            max-width: 250px;
+        .dw-filter-tree-group {
+            flex: 0 0 280px;
+            max-width: 280px;
+            min-width: 200px;
         }
 
         .dw-filter-search-group {
-            flex: 1 1 420px;
+            flex: 1 1 280px;
             max-width: none;
+            min-width: 180px;
+        }
+
+        /* ========== 树形选择器样式 ========== */
+        .tree-select-container {
+            position: relative;
+        }
+        
+        .tree-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 38px;
+        }
+        
+        .tree-select-trigger:hover {
+            border-color: var(--accent-color);
+        }
+        
+        .tree-select-trigger.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .tree-select-value {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-primary);
+        }
+        
+        #treeSelectPlaceholder {
+            color: var(--text-tertiary);
+            flex: 1;
+        }
+        
+        .tree-select-value:not(:empty) ~ #treeSelectPlaceholder {
+            display: none;
+        }
+        
+        .tree-select-arrow {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            transition: transform 0.3s ease;
+            margin-left: 8px;
+        }
+        
+        .tree-select-trigger.active .tree-select-arrow {
+            transform: rotate(180deg);
+        }
+        
+        /* 下拉框 */
+        .tree-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-medium);
+            z-index: 1000;
+            max-height: 400px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tree-dropdown.hidden {
+            display: none;
+        }
+        
+        /* 搜索框 */
+        .tree-search-box {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 0.5rem;
+        }
+        
+        .tree-search-box i {
+            color: var(--text-tertiary);
+        }
+        
+        .tree-search-box input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            outline: none;
+        }
+        
+        .tree-search-box input::placeholder {
+            color: var(--text-tertiary);
+        }
+        
+        /* 树形内容区 */
+        .tree-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+            max-height: 300px;
+        }
+        
+        .tree-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .tree-content::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: 3px;
+        }
+        
+        /* 树节点 */
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        
+        .tree-node:hover {
+            background-color: var(--bg-secondary);
+        }
+        
+        .tree-node.selected {
+            background-color: rgba(102, 126, 234, 0.15);
+        }
+        
+        .tree-node.matched {
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        /* 展开/折叠图标 */
+        .tree-toggle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 0.625rem;
+            transition: transform 0.2s ease;
+        }
+        
+        .tree-toggle:hover {
+            color: var(--text-primary);
+        }
+        
+        .tree-toggle.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .tree-toggle.leaf {
+            visibility: hidden;
+        }
+        
+        /* 节点内容 */
+        .tree-node-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow: hidden;
+        }
+        
+        .tree-node-icon {
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+        }
+        
+        .tree-node-icon.folder {
+            color: #fbbf24;
+        }
+        
+        .tree-node-icon.leaf {
+            color: var(--accent-color);
+        }
+        
+        .tree-node-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+        
+        .tree-node-label .highlight {
+            background-color: rgba(255, 193, 7, 0.3);
+            color: var(--text-primary);
+        }
+        
+        /* 层级缩进 */
+        .tree-node[data-level="0"] { padding-left: 0.75rem; }
+        .tree-node[data-level="1"] { padding-left: 1.75rem; }
+        .tree-node[data-level="2"] { padding-left: 2.75rem; }
+        .tree-node[data-level="3"] { padding-left: 3.75rem; }
+        .tree-node[data-level="4"] { padding-left: 4.75rem; }
+        .tree-node[data-level="5"] { padding-left: 5.75rem; }
+        
+        /* 空状态 */
+        .tree-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-tertiary);
         }
 
         .dw-search-input-wrap {
@@ -110,8 +339,8 @@
                 flex-wrap: wrap;
             }
 
-            .dw-filter-category-group {
-                flex: 1 1 250px;
+            .dw-filter-tree-group {
+                flex: 1 1 200px;
                 max-width: none;
             }
 
@@ -136,9 +365,27 @@
 
         <div class="filter-section">
             <div class="filter-row dw-filter-row">
-                <div class="filter-group dw-filter-category-group">
+                <!-- 树形分类选择器 -->
+                <div class="filter-group dw-filter-tree-group">
                     <label class="filter-label">市场分类</label>
-                    <div id="categoryFilter" class="searchable-select single" data-placeholder="选择分类"></div>
+                    <div id="categoryTreeFilter" class="tree-select-container">
+                        <div class="tree-select-trigger" onclick="toggleTreeDropdown()">
+                            <span id="treeSelectPlaceholder">选择分类</span>
+                            <span id="treeSelectValue" class="tree-select-value"></span>
+                            <i class="fas fa-chevron-down tree-select-arrow"></i>
+                        </div>
+                        <div id="treeDropdown" class="tree-dropdown hidden">
+                            <div class="tree-search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="treeSearchInput" placeholder="搜索分类..." oninput="searchTreeNodes(this.value)">
+                            </div>
+                            <div class="tree-content" id="treeContent">
+                                <!-- 树形内容动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 隐藏的分类ID输入 -->
+                    <input type="hidden" id="selectedCategoryId" value="">
                 </div>
                 <div class="filter-group dw-filter-search-group">
                     <label class="filter-label">细分市场</label>
@@ -221,7 +468,11 @@
         let allData = [];
         
         // SearchableSelect 实例
-        let categorySelect = null;
+        // 树形选择器数据
+        let treeData = [];
+        let treeExpandedNodes = new Set();
+        let treeSelectedNode = null;
+        let selectedCategoryId = '';
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async function() {
@@ -231,10 +482,8 @@
                 loadingOverlay.classList.remove('hidden');
             }
             
-            initSearchableSelects();
-            
-            // 先加载分类列表
-            await loadCategories();
+            // 先加载树形分类数据
+            await loadTreeCategories();
             
             // 再加载表格数据
             await loadData();
@@ -246,35 +495,249 @@
             
             // 标记初始加载完成
             isInitialLoad = false;
+            
+            // 点击外部关闭下拉框
+            document.addEventListener('click', function(e) {
+                const container = document.getElementById('categoryTreeFilter');
+                if (container && !container.contains(e.target)) {
+                    closeTreeDropdown();
+                }
+            });
         });
         
-        // ==================== SearchableSelect 初始化 ====================
-        function initSearchableSelects() {
-            categorySelect = new SearchableSelect('#categoryFilter', {
-                options: [],
-                multiple: false,
-                placeholder: '选择分类'
-            });
-            
-            // 监听分类变化
-            categorySelect.onChange = function(value) {
-                currentPage = 1;
-                loadData();
-            };
-        }
-        
-        // ==================== 数据加载 ====================
-        async function loadCategories() {
+        // ==================== 树形选择器数据加载 ====================
+        async function loadTreeCategories() {
             try {
-                const response = await fetch('/theme/api/market-categories/');
+                // 获取完整的树形结构
+                const response = await fetch('/api/market-categories/?tree=1');
                 const result = await response.json();
                 
                 if (result.success) {
-                    categorySelect.setOptions(result.data);
+                    treeData = result.data || [];
+                    renderTree();
+                } else {
+                    document.getElementById('treeContent').innerHTML = '<div class="tree-empty">加载失败: ' + (result.error || '未知错误') + '</div>';
                 }
             } catch (error) {
-                console.error('加载分类列表失败:', error);
+                console.error('加载分类树失败:', error);
+                document.getElementById('treeContent').innerHTML = '<div class="tree-empty">加载失败: ' + error.message + '</div>';
             }
+        }
+        
+        // ==================== 点击路径中的分类 ====================
+        function selectCategoryById(categoryId, categoryName) {
+            selectedCategoryId = categoryId;
+            
+            // 从树形数据中找到该节点，构建完整路径
+            const fullPath = findNodePathInTree(treeData, categoryId);
+            if (fullPath && fullPath.length > 0) {
+                // 更新树形选择器显示完整路径
+                const valueEl = document.getElementById('treeSelectValue');
+                const placeholderEl = document.getElementById('treeSelectPlaceholder');
+                
+                valueEl.textContent = fullPath.map(n => n.name).join(' › ');
+                placeholderEl.style.display = 'none';
+                
+                // 更新选中的节点对象
+                treeSelectedNode = fullPath[fullPath.length - 1];
+                
+                // 展开路径上的所有节点
+                fullPath.forEach(node => treeExpandedNodes.add(node.id));
+            }
+            
+            document.getElementById('selectedCategoryId').value = categoryId;
+            
+            // 刷新数据
+            currentPage = 1;
+            loadData();
+        }
+        
+        // 在树中查找节点的完整路径
+        function findNodePathInTree(nodes, targetId, currentPath = []) {
+            for (const node of nodes) {
+                const path = [...currentPath, node];
+                if (node.id === targetId) {
+                    return path;
+                }
+                if (node.children && node.children.length > 0) {
+                    const found = findNodePathInTree(node.children, targetId, path);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+        
+        // ==================== 树形选择器交互 ====================
+        function selectTreeNodeFromElement(element) {
+            const nodeId = element.getAttribute('data-id');
+            const nodeName = element.getAttribute('data-name');
+            const pathJson = element.getAttribute('data-path');
+            
+            try {
+                const path = JSON.parse(pathJson);
+                selectTreeNode({id: nodeId, name: nodeName}, path);
+            } catch (e) {
+                console.error('解析路径失败:', e);
+                selectTreeNode({id: nodeId, name: nodeName}, [nodeName]);
+            }
+        }
+        
+        function toggleTreeDropdown() {
+            const dropdown = document.getElementById('treeDropdown');
+            const trigger = document.querySelector('.tree-select-trigger');
+            
+            if (dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                trigger.classList.add('active');
+                // 聚焦搜索框
+                setTimeout(() => document.getElementById('treeSearchInput')?.focus(), 100);
+            } else {
+                closeTreeDropdown();
+            }
+        }
+        
+        function closeTreeDropdown() {
+            const dropdown = document.getElementById('treeDropdown');
+            const trigger = document.querySelector('.tree-select-trigger');
+            dropdown.classList.add('hidden');
+            trigger.classList.remove('active');
+        }
+        
+        function toggleTreeNode(nodeId) {
+            if (treeExpandedNodes.has(nodeId)) {
+                treeExpandedNodes.delete(nodeId);
+            } else {
+                treeExpandedNodes.add(nodeId);
+            }
+            renderTree();
+        }
+        
+        function selectTreeNode(node, path) {
+            selectedCategoryId = node.id;
+            treeSelectedNode = node;
+            
+            // 更新显示值 - 显示完整路径
+            const valueEl = document.getElementById('treeSelectValue');
+            const placeholderEl = document.getElementById('treeSelectPlaceholder');
+            
+            if (node.id) {
+                valueEl.textContent = path.join(' › ');
+                placeholderEl.style.display = 'none';
+            } else {
+                valueEl.textContent = '';
+                placeholderEl.style.display = 'block';
+            }
+            
+            document.getElementById('selectedCategoryId').value = node.id;
+            
+            // 关闭下拉框并刷新数据
+            closeTreeDropdown();
+            currentPage = 1;
+            loadData();
+        }
+        
+        // ==================== 渲染树形结构 ====================
+        function renderTree(searchKeyword = '') {
+            const container = document.getElementById('treeContent');
+            
+            if (!treeData || treeData.length === 0) {
+                container.innerHTML = `
+                    <div class="tree-empty">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📂</div>
+                        <div>暂无分类数据</div>
+                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.7;">
+                            请先前往后台添加市场分类数据
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // 如果有搜索关键词，展开所有节点并高亮匹配
+            if (searchKeyword) {
+                const matchedIds = findMatchedNodes(treeData, searchKeyword);
+                matchedIds.forEach(id => treeExpandedNodes.add(id));
+            }
+            
+            container.innerHTML = renderTreeNodes(treeData, 0, [], searchKeyword);
+        }
+        
+        function renderTreeNodes(nodes, level, parentPath, searchKeyword = '') {
+            if (!nodes || nodes.length === 0) return '';
+            
+            return nodes.map(node => {
+                const nodeId = node.id;
+                const nodePath = [...parentPath, node.name];
+                const isExpanded = treeExpandedNodes.has(nodeId);
+                const isSelected = treeSelectedNode && treeSelectedNode.id === nodeId;
+                const hasChildren = node.children && node.children.length > 0;
+                
+                // 搜索高亮
+                let displayName = node.name;
+                if (searchKeyword) {
+                    const regex = new RegExp(`(${escapeRegex(searchKeyword)})`, 'gi');
+                    displayName = node.name.replace(regex, '<span class="highlight">$1</span>');
+                }
+                
+                // 安全处理节点名称中的特殊字符
+                const safeNodeName = node.name.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                const pathJson = JSON.stringify(nodePath).replace(/"/g, '&quot;');
+                
+                // 当前节点HTML
+                const nodeHtml = `
+                    <div class="tree-node ${isSelected ? 'selected' : ''}" 
+                         data-id="${nodeId}" 
+                         data-level="${Math.min(level, 5)}"
+                         data-name="${safeNodeName}"
+                         data-path="${pathJson}"
+                         onclick="selectTreeNodeFromElement(this)">
+                        <span class="tree-toggle ${hasChildren ? '' : 'leaf'} ${isExpanded ? 'expanded' : ''}"
+                              onclick="event.stopPropagation(); toggleTreeNode('${nodeId}')">
+                            <i class="fas fa-chevron-right"></i>
+                        </span>
+                        <span class="tree-node-content">
+                            <i class="fas ${hasChildren ? 'fa-folder tree-node-icon folder' : 'fa-tag tree-node-icon leaf'}"></i>
+                            <span class="tree-node-label">${displayName}</span>
+                        </span>
+                    </div>
+                `;
+                
+                // 子节点HTML
+                let childrenHtml = '';
+                if (hasChildren && isExpanded) {
+                    childrenHtml = `<div class="tree-children">${renderTreeNodes(node.children, level + 1, nodePath, searchKeyword)}</div>`;
+                }
+                
+                return nodeHtml + childrenHtml;
+            }).join('');
+        }
+        
+        function findMatchedNodes(nodes, keyword) {
+            const matched = new Set();
+            const keywordLower = keyword.toLowerCase();
+            
+            function traverse(nodes, parentIds = []) {
+                nodes.forEach(node => {
+                    const currentIds = [...parentIds, node.id];
+                    if (node.name.toLowerCase().includes(keywordLower)) {
+                        currentIds.forEach(id => matched.add(id));
+                    }
+                    if (node.children) {
+                        traverse(node.children, currentIds);
+                    }
+                });
+            }
+            
+            traverse(nodes);
+            return matched;
+        }
+        
+        function searchTreeNodes(keyword) {
+            renderTree(keyword.trim());
+        }
+        
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
         
         // 初始加载标志
@@ -291,11 +754,11 @@
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
-                    category: categorySelect ? categorySelect.getValue() : '',
+                    category: selectedCategoryId,
                     search: document.getElementById('searchInput').value.trim()
                 });
                 
-                const response = await fetch(`/theme/api/niche-markets/?${params}`);
+                const response = await fetch(`/api/niche-markets/?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -333,14 +796,21 @@
                     ? parseInt(item.monthly_sales).toLocaleString('en-US')
                     : '-';
                 
-                // 构建市场路径HTML
+                // 构建完整市场路径HTML，带ID可点击
                 let pathHtml = '-';
-                if (item.category_path && item.category_path.length > 0) {
-                    pathHtml = item.category_path.map((cat, idx) => {
-                        const separator = idx < item.category_path.length - 1 
+                const fullPath = item.full_path_with_ids || [];
+                if (fullPath.length > 0) {
+                    pathHtml = fullPath.map((node, idx) => {
+                        const isLast = idx === fullPath.length - 1;
+                        const separator = !isLast 
                             ? '<span class="market-path-separator">›</span>' 
                             : '';
-                        return `<span class="market-path-item">${cat}</span>${separator}`;
+                        // 当前选中的筛选项高亮橙色
+                        const isActive = node.id && node.id === selectedCategoryId;
+                        const className = isActive ? 'market-path-active' : 'market-path-item';
+                        // 可点击的项（有ID的分类）
+                        const clickAttr = node.id ? `onclick="selectCategoryById('${node.id}', '${node.name.replace(/'/g, "\\'")}')" style="cursor:pointer;"` : '';
+                        return `<span class="${className}" ${clickAttr}>${node.name}</span>${separator}`;
                     }).join('');
                 }
                 
@@ -537,17 +1007,28 @@
         
         function resetFilters() {
             document.getElementById('searchInput').value = '';
-            if (categorySelect) {
-                categorySelect.setValue('');
-            }
+            
+            // 清空树形选择器
+            treeSelectedNode = null;
+            selectedCategoryId = '';
+            treeExpandedNodes.clear();
+            
+            // 重置显示
+            document.getElementById('treeSelectValue').textContent = '';
+            document.getElementById('treeSelectPlaceholder').style.display = 'block';
+            document.getElementById('selectedCategoryId').value = '';
+            document.getElementById('treeSearchInput').value = '';
+            
+            // 重新渲染树
+            renderTree();
             currentPage = 1;
             loadData();
         }
         
         // ==================== 通知提示 ====================
         function showNotification(message, type = 'info') {
-            // 使用全局通知函数（如果存在）
-            if (typeof window.showNotification === 'function') {
+            // 使用全局通知函数（如果存在且不是当前函数自身）
+            if (typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
                 window.showNotification(message, type);
             } else {
                 alert(message);

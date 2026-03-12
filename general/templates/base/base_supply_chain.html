@@ -1,0 +1,20 @@
+{% extends 'base/base_r.html' %}
+
+{% block sidebar %}
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'track:tracking-management' %}"
+               class="sidebar-link {% if active_page == 'tracking-management' %}active{% endif %}">
+                <i class="fas fa-truck sidebar-icon"></i>
+                <span>物流管理</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'track:external-procurement-management' %}"
+               class="sidebar-link {% if active_page == 'external-procurement-management' %}active{% endif %}">
+                <i class="fas fa-box-open sidebar-icon"></i>
+                <span>外采产品管理</span>
+            </a>
+        </li>
+    </ul>
+{% endblock %}

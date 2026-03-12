@@ -1,7 +1,6 @@
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
-from theme.view import views, views_vocabulary, views_trend
-from theme.views_dw_data import dw_data_page, api_market_categories, api_niche_markets
+from theme.view import views, views_vocabulary, views_trend, views_dw_data
 
 
 app_name = 'theme'
@@ -64,7 +63,7 @@ urlpatterns = [
     path('api/trend/search/', views_trend.trend_search, name='trend_search'),
 
     # 迪唯产业大数据模型
-    path('dw-data/', dw_data_page, name='dw_data_page'),
-    path('api/market-categories/', api_market_categories, name='api_market_categories'),
-    path('api/niche-markets/', api_niche_markets, name='api_niche_markets'),
+    path('dw-data/', views_dw_data.dw_data_page, name='dw_data_page'),
+    path('api/market-categories/', views_dw_data.api_market_categories, name='api_market_categories'),
+    path('api/niche-markets/', views_dw_data.api_niche_markets, name='api_niche_markets'),
 ]
