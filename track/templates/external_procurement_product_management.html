@@ -1,0 +1,735 @@
+{% extends 'base/base_supply_chain.html' %}
+{% load static %}
+
+{% block title %}外采产品管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .table-container table {
+            min-width: 1500px;
+        }
+        
+        /* 第二列产品ID宽度 */
+        #productTable th:nth-child(2),
+        #productTable td:nth-child(2) {
+            min-width: 100px;
+        }
+
+        /* 平台标签 */
+        .platform-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: var(--accent-color);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* 工艺标签 */
+        .process-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background-color: #e0f2fe;
+            color: #0369a1;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* 状态徽章 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background-color: rgba(34, 197, 94, 0.1);
+            color: #16a34a;
+        }
+
+        .status-inactive {
+            background-color: rgba(156, 163, 175, 0.1);
+            color: #6b7280;
+        }
+
+        /* 必填标记 */
+        .required {
+            color: #ef4444;
+        }
+
+        /* 表单网格 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="product-management-tab" class="tab-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-box-open" style="color: var(--accent-color);"></i>
+                    外采产品管理
+                </h1>
+                <p class="page-subtitle">管理外采平台产品信息</p>
+            </div>
+            <div>
+                <button class="btn btn-create" onclick="openCreateModal()">
+                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新增产品
+                </button>
+                <button class="btn btn-export" onclick="exportExcel()">
+                    <i class="fas fa-download" style="margin-right: 0.5rem;"></i>导出
+                </button>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">平台</label>
+                    <div id="platformFilter" class="searchable-select single" data-placeholder="全部平台"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">工艺</label>
+                    <div id="processFilter" class="searchable-select single" data-placeholder="全部工艺"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="产品ID/名称/颜色">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="loadTable()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 个</span>
+            <button class="btn btn-secondary" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                <span>取消选择</span>
+            </button>
+            <button class="btn btn-create" onclick="batchListing(true)">
+                <i class="fas fa-check-circle"></i>
+                <span>批量上架</span>
+            </button>
+            <button class="btn btn-secondary" onclick="batchListing(false)">
+                <i class="fas fa-times-circle"></i>
+                <span>批量下架</span>
+            </button>
+            <button class="btn btn-secondary" onclick="batchDelete()">
+                <i class="fas fa-trash-alt"></i>
+                <span>批量删除</span>
+            </button>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="productTable">
+                <thead id="productTableHead">
+                <tr>
+                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                    <th>产品ID</th>
+                    <th>产品名称</th>
+                    <th>平台</th>
+                    <th>工艺</th>
+                    <th>状态</th>
+                    <th>颜色</th>
+                    <th>规格</th>
+                    <th>起批量</th>
+                    <th>原价</th>
+                    <th>现价</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="productTableBody">
+                <!-- 动态生成内容 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">100条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown">
+                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option selected" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建/编辑产品模态框 -->
+    <div class="modal-overlay" id="productModalOverlay">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="productModalTitle">新增产品</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>产品编号 <span class="required">*</span></label>
+                            <input type="number" id="editProductId" required>
+                        </div>
+                        <div class="form-group">
+                            <label>产品名称 <span class="required">*</span></label>
+                            <input type="text" id="editProductName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>平台 <span class="required">*</span></label>
+                            <div id="editPlatform" class="searchable-select single"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>工艺 <span class="required">*</span></label>
+                            <div id="editProcess" class="searchable-select single"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>颜色</label>
+                            <input type="text" id="editColor">
+                        </div>
+                        <div class="form-group">
+                            <label>规格</label>
+                            <input type="text" id="editSize">
+                        </div>
+                        <div class="form-group">
+                            <label>起批量</label>
+                            <input type="text" id="editMinQty">
+                        </div>
+                        <div class="form-group">
+                            <label>上架状态</label>
+                            <div id="editStatus" class="searchable-select single"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>原价</label>
+                            <input type="number" step="0.01" id="editOriginPrice">
+                        </div>
+                        <div class="form-group">
+                            <label>现价</label>
+                            <input type="number" step="0.01" id="editNowPrice">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button type="button" class="btn btn-save-modal" onclick="saveProduct()">保存</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script>
+        // ==================== 全局变量 ====================
+        let currentPage = 1;
+        let pageSize = 100;
+        let totalItems = 0;
+        let totalPages = 1;
+        let selectedIds = new Set();
+        let allProducts = [];
+        
+        // SearchableSelect 实例
+        let platformSelect = null;
+        let processSelect = null;
+        let statusSelect = null;
+        
+        // 模态框中的select实例
+        let editPlatformSelect = null;
+        let editProcessSelect = null;
+        let editStatusSelect = null;
+
+        const PLATFORM_OPTIONS = [
+            { value: 'yzg', label: '艺之冠' },
+            { value: 'sds', label: 'SDS' },
+            { value: 'fn', label: '蜂鸟' },
+            { value: 's2b', label: 'S2B' },
+            { value: 'yjl', label: '艺捷乐' },
+            { value: 'zw', label: '指纹' }
+        ];
+
+        const PROCESS_OPTIONS = [
+            { value: 'embroidery', label: '刺绣' },
+            { value: 'printing', label: '印花' },
+            { value: 'laser', label: '镭射' }
+        ];
+
+        const STATUS_OPTIONS = [
+            { value: 'true', label: '已上架' },
+            { value: 'false', label: '未上架' }
+        ];
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            initSearchableSelects();
+            loadTable();
+        });
+
+        // ==================== SearchableSelect 初始化 ====================
+        function initSearchableSelects() {
+            // 筛选器
+            platformSelect = new SearchableSelect('#platformFilter', {
+                options: [{ value: '', label: '全部平台' }, ...PLATFORM_OPTIONS],
+                multiple: false,
+                placeholder: '全部平台'
+            });
+            platformSelect.onChange = () => loadTable();
+
+            processSelect = new SearchableSelect('#processFilter', {
+                options: [{ value: '', label: '全部工艺' }, ...PROCESS_OPTIONS],
+                multiple: false,
+                placeholder: '全部工艺'
+            });
+            processSelect.onChange = () => loadTable();
+
+            statusSelect = new SearchableSelect('#statusFilter', {
+                options: [{ value: '', label: '全部状态' }, ...STATUS_OPTIONS],
+                multiple: false,
+                placeholder: '全部状态'
+            });
+            statusSelect.onChange = () => loadTable();
+        }
+
+        function initModalSelects() {
+            editPlatformSelect = new SearchableSelect('#editPlatform', {
+                options: PLATFORM_OPTIONS,
+                multiple: false,
+                placeholder: '选择平台'
+            });
+
+            editProcessSelect = new SearchableSelect('#editProcess', {
+                options: PROCESS_OPTIONS,
+                multiple: false,
+                placeholder: '选择工艺'
+            });
+
+            editStatusSelect = new SearchableSelect('#editStatus', {
+                options: STATUS_OPTIONS,
+                multiple: false,
+                placeholder: '选择状态'
+            });
+        }
+
+        // ==================== 数据加载 ====================
+        async function loadTable() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: pageSize,
+                    platform: platformSelect ? platformSelect.getValue() : '',
+                    process_type: processSelect ? processSelect.getValue() : '',
+                    is_listed: statusSelect ? statusSelect.getValue() : '',
+                    search: document.getElementById('searchInput').value
+                });
+
+                const response = await fetch(`/api/external-procurement-products/?${params}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    allProducts = result.data;
+                    totalItems = result.total;
+                    totalPages = Math.ceil(totalItems / pageSize);
+                    renderTable(allProducts);
+                    renderPagination();
+                    updatePaginationStats();
+                } else {
+                    showNotification(result.message || '加载失败', 'error');
+                }
+            } catch (error) {
+                console.error('加载失败:', error);
+                showNotification('加载失败', 'error');
+            }
+        }
+
+        // ==================== 渲染 ====================
+        function renderTable(products) {
+            const tbody = document.getElementById('productTableBody');
+            tbody.innerHTML = products.map(product => {
+                const platformName = PLATFORM_OPTIONS.find(p => p.value === product.platform)?.label || product.platform;
+                const processName = PROCESS_OPTIONS.find(p => p.value === product.process_type)?.label || product.process_type;
+                const statusHtml = product.is_listed 
+                    ? '<span class="status-badge status-active"><span class="status-dot"></span>已上架</span>'
+                    : '<span class="status-badge status-inactive"><span class="status-dot"></span>未上架</span>';
+                
+                return `
+                <tr data-product-id="${product.id}">
+                    <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
+                           ${selectedIds.has(product.id) ? 'checked' : ''}
+                           onchange="toggleSelect(${product.id})"></td>
+                    <td>${product.product_id || '-'}</td>
+                    <td>${product.product_name || '-'}</td>
+                    <td><span class="platform-tag">${platformName}</span></td>
+                    <td><span class="process-tag">${processName}</span></td>
+                    <td>${statusHtml}</td>
+                    <td>${product.color || '-'}</td>
+                    <td>${product.size || '-'}</td>
+                    <td>${product.min_order_qty || '-'}</td>
+                    <td style="font-family: monospace;">${product.purchase_unit_origin_price || '-'}</td>
+                    <td style="font-family: monospace;">${product.purchase_unit_now_price || '-'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-edit" onclick="openEditModal(${product.id})">编辑</button>
+                    </td>
+                </tr>
+            `}).join('');
+
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('paginationNew');
+            let html = '';
+            
+            // 上一页
+            html += `<button class="pagination-btn-new ${currentPage === 1 ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-left"></i>
+                    </button>`;
+            
+            // 页码
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+            
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" 
+                               onclick="goToPage(${i})">${i}</button>`;
+            }
+            
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+            
+            // 下一页
+            html += `<button class="pagination-btn-new ${currentPage === totalPages ? 'disabled' : ''}" 
+                           onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                        <i class="fas fa-chevron-right"></i>
+                    </button>`;
+            
+            pagination.innerHTML = html;
+        }
+
+        function updatePaginationStats() {
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            document.getElementById('pageSizeText').textContent = pageSize + '条';
+            
+            const paginationInfo = document.querySelector('.pagination-info');
+            if (paginationInfo) {
+                paginationInfo.setAttribute('data-total', totalItems);
+            }
+            
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                statsEl.style.marginLeft = '1rem';
+                statsEl.style.color = 'var(--text-secondary)';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            const displayTotal = totalItems === 0 ? '0' : `${start}-${end} / 共 ${totalItems} 条`;
+            statsEl.textContent = displayTotal;
+        }
+
+        // ==================== 选择操作 ====================
+        function toggleSelect(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateBulkActionBar();
+            updateSelectAllCheckbox();
+        }
+
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            
+            rowCheckboxes.forEach((cb, index) => {
+                const id = allProducts[index].id;
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedIds.add(id);
+                } else {
+                    selectedIds.delete(id);
+                }
+            });
+            
+            updateBulkActionBar();
+        }
+
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleIds = allProducts.map(p => p.id);
+            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+            checkbox.checked = allSelected;
+        }
+
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const countText = document.getElementById('selectedCountText');
+            
+            countText.textContent = `已选择 ${selectedIds.size} 个`;
+            
+            if (selectedIds.size > 0) {
+                bar.classList.add('visible');
+            } else {
+                bar.classList.remove('visible');
+            }
+        }
+
+        function clearSelection() {
+            selectedIds.clear();
+            document.getElementById('selectAll').checked = false;
+            renderTable(allProducts);
+            updateBulkActionBar();
+        }
+
+        // ==================== 分页操作 ====================
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadTable();
+        }
+
+        function changePageSize(size) {
+            pageSize = size;
+            currentPage = 1;
+            document.getElementById('pageSizeText').textContent = size + '条';
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+            
+            loadTable();
+        }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= totalPages) {
+                    goToPage(page);
+                }
+                event.target.value = '';
+            }
+        }
+
+        // ==================== 筛选操作 ====================
+        function resetFilters() {
+            document.getElementById('searchInput').value = '';
+            if (platformSelect) platformSelect.setValue('');
+            if (processSelect) processSelect.setValue('');
+            if (statusSelect) statusSelect.setValue('');
+            currentPage = 1;
+            loadTable();
+        }
+
+        // ==================== 模态框操作 ====================
+        function openCreateModal() {
+            document.getElementById('productModalTitle').textContent = '新增产品';
+            document.getElementById('productId').value = '';
+            document.getElementById('editProductId').value = '';
+            document.getElementById('editProductName').value = '';
+            document.getElementById('editColor').value = '';
+            document.getElementById('editSize').value = '';
+            document.getElementById('editMinQty').value = '';
+            document.getElementById('editOriginPrice').value = '';
+            document.getElementById('editNowPrice').value = '';
+            
+            initModalSelects();
+            editPlatformSelect.setValue('yzg');
+            editProcessSelect.setValue('printing');
+            editStatusSelect.setValue('false');
+            
+            document.getElementById('productModalOverlay').style.display = 'block';
+        }
+
+        function openEditModal(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+
+            document.getElementById('productModalTitle').textContent = '编辑产品';
+            document.getElementById('productId').value = product.id;
+            document.getElementById('editProductId').value = product.product_id || '';
+            document.getElementById('editProductName').value = product.product_name || '';
+            document.getElementById('editColor').value = product.color || '';
+            document.getElementById('editSize').value = product.size || '';
+            document.getElementById('editMinQty').value = product.min_order_qty || '';
+            document.getElementById('editOriginPrice').value = product.purchase_unit_origin_price || '';
+            document.getElementById('editNowPrice').value = product.purchase_unit_now_price || '';
+            
+            initModalSelects();
+            editPlatformSelect.setValue(product.platform || 'yzg');
+            editProcessSelect.setValue(product.process_type || 'printing');
+            editStatusSelect.setValue(product.is_listed ? 'true' : 'false');
+            
+            document.getElementById('productModalOverlay').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('productModalOverlay').style.display = 'none';
+        }
+
+        function saveProduct() {
+            const id = document.getElementById('productId').value;
+            const data = {
+                product_id: document.getElementById('editProductId').value,
+                product_name: document.getElementById('editProductName').value,
+                platform: editPlatformSelect ? editPlatformSelect.getValue() : 'yzg',
+                process_type: editProcessSelect ? editProcessSelect.getValue() : 'printing',
+                color: document.getElementById('editColor').value,
+                size: document.getElementById('editSize').value,
+                min_order_qty: document.getElementById('editMinQty').value,
+                is_listed: editStatusSelect ? editStatusSelect.getValue() === 'true' : false,
+                purchase_unit_origin_price: document.getElementById('editOriginPrice').value,
+                purchase_unit_now_price: document.getElementById('editNowPrice').value
+            };
+
+            if (!data.product_id || !data.product_name) {
+                alert('请填写必填项');
+                return;
+            }
+
+            const url = id ? `/api/external-procurement-products/${id}/` : '/api/external-procurement-products/';
+            const method = id ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.success) {
+                    closeModal();
+                    loadTable();
+                } else {
+                    alert(result.message || '保存失败');
+                }
+            });
+        }
+
+        // ==================== 批量操作 ====================
+        function batchListing(listing) {
+            if (selectedIds.size === 0) return;
+            if (!confirm(`确定要${listing ? '上架' : '下架'}选中的 ${selectedIds.size} 个产品吗？`)) return;
+
+            fetch('/api/external-procurement-products/batch-update/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+                body: JSON.stringify({ids: Array.from(selectedIds), is_listed: listing})
+            })
+            .then(r => r.json())
+            .then(() => {
+                clearSelection();
+                loadTable();
+            });
+        }
+
+        function batchDelete() {
+            if (selectedIds.size === 0) return;
+            if (!confirm(`确定要删除选中的 ${selectedIds.size} 个产品吗？`)) return;
+
+            fetch('/api/external-procurement-products/batch-delete/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken()},
+                body: JSON.stringify({ids: Array.from(selectedIds)})
+            })
+            .then(r => r.json())
+            .then(() => {
+                clearSelection();
+                loadTable();
+            });
+        }
+
+        // ==================== 导出 ====================
+        function exportExcel() {
+            fetch('/api/external-procurement-products/?page_size=9999')
+                .then(r => r.json())
+                .then(result => {
+                    if (!result.success) return;
+                    const data = result.data.map(item => ({
+                        '产品ID': item.product_id,
+                        '产品名称': item.product_name,
+                        '平台': PLATFORM_OPTIONS.find(p => p.value === item.platform)?.label || item.platform,
+                        '工艺': PROCESS_OPTIONS.find(p => p.value === item.process_type)?.label || item.process_type,
+                        '上架状态': item.is_listed ? '已上架' : '未上架',
+                        '颜色': item.color,
+                        '规格': item.size,
+                        '起批量': item.min_order_qty,
+                        '原价': item.purchase_unit_origin_price,
+                        '现价': item.purchase_unit_now_price
+                    }));
+                    const ws = XLSX.utils.json_to_sheet(data);
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, '产品');
+                    XLSX.writeFile(wb, '外采产品.xlsx');
+                });
+        }
+
+        function getCsrfToken() {
+            return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+    </script>
+{% endblock %}
