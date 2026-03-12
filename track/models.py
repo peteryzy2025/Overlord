@@ -197,7 +197,7 @@ class TrackingList(models.Model):
     platform = models.CharField(max_length=20, choices=PlatformChoice.choices, db_comment="外采平台")
     process_type = models.CharField(max_length=20,choices=ProcessTypeChoice,db_comment="工艺类型")
     class Meta:
-        db_table = "Track_external_procurement"
+        db_table = "Track_external_procurement_products"
         verbose_name = "外采平台产品总表"
         verbose_name_plural = "外采平台产品总表"
 

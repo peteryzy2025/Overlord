@@ -4,6 +4,7 @@
 {% block title %}深渊 - 风险关键词管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
     <style>
         /* 统计卡片 */
         .stats-card-wrapper {
@@ -382,7 +383,7 @@
 
         <!-- 分页控件 -->
         <div class="pagination-container" id="paginationContainer" style="display: none;">
-            <div class="pagination-info" data-total="0">
+            <div class="pagination-info" id="paginationInfo">
                 <div class="page-size-wrapper" id="pageSizeWrapper">
                     <span class="page-size-label">每页显示：</span>
                     <div class="page-size-dropdown-wrapper" style="position: relative;">
@@ -390,20 +391,20 @@
                             <span id="pageSizeText">20条</span>
                             <i class="fas fa-chevron-down"></i>
                         </button>
-                        <div class="page-size-dropdown" id="pageSizeDropdown">
-                            <div class="page-size-option selected" onclick="changePageSize(10)">10条</div>
-                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
-                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
                         </div>
                     </div>
-                    <span class="pagination-stats" id="paginationStats"></span>
+                    <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
                 </div>
             </div>
-            <div class="pagination-new" id="paginationNew">
+            <div class="pagination-new" id="paginationButtons">
                 <!-- 动态生成 -->
             </div>
-            <div class="pagination-jump">
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
                 <span>跳至</span>
                 <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                 <span>页</span>
@@ -845,51 +846,56 @@
 
         // ===== 分页 =====
         function renderPagination() {
-            const paginationEl = document.getElementById('paginationNew');
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const jumpContainer = document.getElementById('paginationJump');
             const { page, page_size, total, total_pages } = pagination;
 
-            // 更新统计信息
-            const start = (page - 1) * page_size + 1;
+            const start = total > 0 ? (page - 1) * page_size + 1 : 0;
             const end = Math.min(page * page_size, total);
-            const statsText = total === 0 ? '0' : `${start}-${end} / 共 ${total} 条`;
-            document.getElementById('paginationStats').textContent = statsText;
+            document.getElementById('paginationStats').textContent = `${start}-${end} / 共 ${total} 条`;
 
-            let html = '';
+            let buttonsHTML = '';
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
-            // 上一页
-            html += `<button class="pagination-btn-new ${page === 1 ? 'disabled' : ''}" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
-                <i class="fas fa-chevron-left"></i>
-            </button>`;
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
 
-            // 页码
-            const maxVisible = 5;
-            let startPage = Math.max(1, page - Math.floor(maxVisible / 2));
-            let endPage = Math.min(total_pages, startPage + maxVisible - 1);
-
-            if (endPage - startPage < maxVisible - 1) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
             }
 
             if (startPage > 1) {
-                html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
-                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+                buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+                buttonsHTML += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
             }
 
             if (endPage < total_pages) {
-                if (endPage < total_pages - 1) html += `<span class="pagination-ellipsis">...</span>`;
-                html += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})">${total_pages}</button>`;
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})">${total_pages}</button>`;
             }
 
-            // 下一页
-            html += `<button class="pagination-btn-new ${page === total_pages ? 'disabled' : ''}" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-                <i class="fas fa-chevron-right"></i>
-            </button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
+            buttonsContainer.innerHTML = buttonsHTML;
 
-            paginationEl.innerHTML = html;
+            if (total_pages > 7) {
+                jumpContainer.style.display = 'flex';
+                const jumpInput = document.getElementById('pageJumpInput');
+                jumpInput.max = total_pages;
+                jumpInput.value = '';
+            } else {
+                jumpContainer.style.display = 'none';
+            }
         }
 
         function goToPage(newPage) {
@@ -903,31 +909,37 @@
             pagination.page_size = size;
             pagination.page = 1;
             updatePageSizeDisplay();
-            document.getElementById('pageSizeDropdown').classList.remove('open');
+            document.getElementById('pageSizeDropdown').style.display = 'none';
             loadKeywords();
         }
 
         function updatePageSizeDisplay() {
             document.getElementById('pageSizeText').textContent = pagination.page_size + '条';
-            document.querySelectorAll('.page-size-option').forEach(option => {
+            document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(option => {
                 option.classList.remove('selected');
+                option.classList.toggle('selected', parseInt(option.dataset.value, 10) === pagination.page_size);
             });
-            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${pagination.page_size})"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
-            }
         }
 
         function togglePageSizeDropdown() {
-            document.getElementById('pageSizeDropdown').classList.toggle('open');
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
         }
 
         function handlePageJump(event) {
             if (event.key === 'Enter') {
-                const page = parseInt(event.target.value);
-                if (page && page >= 1 && page <= pagination.total_pages) {
-                    goToPage(page);
+                const page = parseInt(event.target.value, 10);
+                const maxPage = pagination.total_pages;
+                if (Number.isNaN(page) || page < 1) {
+                    showNotification('请输入有效的页码', 'warning');
+                    return;
                 }
+                if (page > maxPage) {
+                    showNotification(`最大页码为 ${maxPage}`, 'warning');
+                    return;
+                }
+                goToPage(page);
                 event.target.value = '';
             }
         }
@@ -1119,7 +1131,7 @@
             const dropdown = document.getElementById('pageSizeDropdown');
             const trigger = document.getElementById('pageSizeTrigger');
             if (!dropdown.contains(e.target) && !trigger.contains(e.target)) {
-                dropdown.classList.remove('open');
+                dropdown.style.display = 'none';
             }
         });
     </script>
