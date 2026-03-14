@@ -299,9 +299,11 @@ class OperationalAccount(models.Model):
         related_name='operational_account'
     )
     ops_group = models.CharField('分组', max_length=255, blank=True, null=True)
+
     class Platform(models.TextChoices):
         AMAZON = 'amazon', 'Amazon'
         TEMU = 'temu', 'Temu'
+
     platform = models.CharField(
         '平台',
         max_length=50,
@@ -309,6 +311,7 @@ class OperationalAccount(models.Model):
         blank=True,
         null=True
     )
+
     class Role(models.TextChoices):
         LEADER = 'leader', '运营组长'
         STAFF = 'staff', '运营'
@@ -422,7 +425,7 @@ class AmazonShop(models.Model):
     additional_remark = models.TextField(blank=True, null=True, db_comment='备注')
     created_at = models.DateTimeField(db_comment='创建时间')
     updated_at = models.DateTimeField(db_comment='更新时间')
-    qu_dao = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺渠道') # 旧字段，后续代码请勿使用该字段
+    qu_dao = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺渠道')  # 旧字段，后续代码请勿使用该字段
     channel_risk = models.ForeignKey(
         'ShopChannelRisk',
         on_delete=models.SET_NULL,
@@ -460,6 +463,7 @@ class AmazonShop(models.Model):
             raise ValueError('不能跨公司迁移项目')
         self.project = new_project
         self.save(update_fields=['project'])
+
 
 class TemuShop(models.Model):
     id = models.BigIntegerField(primary_key=True, db_comment='主键')
@@ -888,7 +892,7 @@ class ShopChannelRisk(models.Model):
         ('high', '高'),
         ('none', '无'),
     ]
-    channel_name = models.CharField(max_length=50, unique=True,verbose_name='店铺渠道', blank=True)
+    channel_name = models.CharField(max_length=50, unique=True, verbose_name='店铺渠道', blank=True)
 
     risk_level = models.CharField(
         max_length=20,
@@ -900,6 +904,7 @@ class ShopChannelRisk(models.Model):
     )
 
     channel_remark = models.CharField(max_length=100, verbose_name='渠道备注', blank=True, null=True)
+
     class Meta:
         db_table = 'amazon_channel_risk'
         verbose_name = '店铺渠道风险'
@@ -910,3 +915,5 @@ class ShopChannelRisk(models.Model):
 
     def __str__(self):
         return f"{self.channel_name}"
+
+
