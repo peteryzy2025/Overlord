@@ -153,8 +153,10 @@
                     <th>平台</th>
                     <th>工艺</th>
                     <th>状态</th>
-                    <th>颜色</th>
-                    <th>规格</th>
+                    <th>外采颜色</th>
+                    <th>外采规格</th>
+                    <th>Divi颜色</th>
+                    <th>Divi尺码</th>
                     <th>起批量</th>
                     <th>原价</th>
                     <th>现价</th>
@@ -230,6 +232,14 @@
                         <div class="form-group">
                             <label>规格</label>
                             <input type="text" id="editSize">
+                        </div>
+                        <div class="form-group">
+                            <label>Divi颜色</label>
+                            <input type="text" id="editDiviColor">
+                        </div>
+                        <div class="form-group">
+                            <label>Divi尺码</label>
+                            <input type="text" id="editDiviSize">
                         </div>
                         <div class="form-group">
                             <label>起批量</label>
@@ -403,6 +413,8 @@
                     <td>${statusHtml}</td>
                     <td>${product.color || '-'}</td>
                     <td>${product.size || '-'}</td>
+                    <td>${product.divi_color || '-'}</td>
+                    <td>${product.divi_size || '-'}</td>
                     <td>${product.min_order_qty || '-'}</td>
                     <td style="font-family: monospace;">${product.purchase_unit_origin_price || '-'}</td>
                     <td style="font-family: monospace;">${product.purchase_unit_now_price || '-'}</td>
@@ -593,6 +605,8 @@
             document.getElementById('editProductName').value = '';
             document.getElementById('editColor').value = '';
             document.getElementById('editSize').value = '';
+            document.getElementById('editDiviColor').value = '';
+            document.getElementById('editDiviSize').value = '';
             document.getElementById('editMinQty').value = '';
             document.getElementById('editOriginPrice').value = '';
             document.getElementById('editNowPrice').value = '';
@@ -615,6 +629,8 @@
             document.getElementById('editProductName').value = product.product_name || '';
             document.getElementById('editColor').value = product.color || '';
             document.getElementById('editSize').value = product.size || '';
+            document.getElementById('editDiviColor').value = product.divi_color || '';
+            document.getElementById('editDiviSize').value = product.divi_size || '';
             document.getElementById('editMinQty').value = product.min_order_qty || '';
             document.getElementById('editOriginPrice').value = product.purchase_unit_origin_price || '';
             document.getElementById('editNowPrice').value = product.purchase_unit_now_price || '';
@@ -640,6 +656,8 @@
                 process_type: editProcessSelect ? editProcessSelect.getValue() : 'printing',
                 color: document.getElementById('editColor').value,
                 size: document.getElementById('editSize').value,
+                divi_color: document.getElementById('editDiviColor').value,
+                divi_size: document.getElementById('editDiviSize').value,
                 min_order_qty: document.getElementById('editMinQty').value,
                 is_listed: editStatusSelect ? editStatusSelect.getValue() === 'true' : false,
                 purchase_unit_origin_price: document.getElementById('editOriginPrice').value,
@@ -717,6 +735,8 @@
                         '上架状态': item.is_listed ? '已上架' : '未上架',
                         '颜色': item.color,
                         '规格': item.size,
+                        'Divi颜色': item.divi_color,
+                        'Divi尺码': item.divi_size,
                         '起批量': item.min_order_qty,
                         '原价': item.purchase_unit_origin_price,
                         '现价': item.purchase_unit_now_price
