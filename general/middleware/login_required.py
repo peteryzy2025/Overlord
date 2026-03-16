@@ -35,6 +35,10 @@ class LoginRequiredMiddleware:
             return self.get_response(request)
         if request.path_info.startswith('/api/external/amazon-shops/'):
             return self.get_response(request)
+        
+        # 放行 amazon/api 路径（影刀调用巡店接口）
+        if request.path_info.startswith('/amazon/api/'):
+            return self.get_response(request)
 
         # 检查静态文件和 media 文件
         if request.path_info.startswith(('/static/', '/media/')):
