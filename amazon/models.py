@@ -414,6 +414,22 @@ class AmazonShopDailyCheck(models.Model):
         null=True,
         db_comment='店铺状况'
     )
+    
+    # 店铺受限状态
+    is_restricted = models.BooleanField(
+        default=False,
+        null=True,
+        blank=True,
+        db_comment='是否受限'
+    )
+    
+    restricted_regions = models.JSONField(
+        default=list,
+        null=True,
+        blank=True,
+        db_comment='受限地区列表，如["加拿大", "美国", "墨西哥"]'
+    )
+    
     # 记录时间
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -1499,3 +1515,84 @@ class AmazonListing(models.Model):
         return f"{shop_name} - {self.asin}"
 
 
+
+
+
+class AmazonShopUploadRecord(models.Model):
+    """
+    亚马逊店铺上货记录
+    记录每次批量上货的情况
+    """
+    
+    class UploadStatus(models.TextChoices):
+        """上货状态枚举"""
+        PROCESSING = 'processing', '进行中'
+        COMPLETED = 'completed', '完成'
+        NEEDS_ACTION = 'needs_action', '需操作'
+        DRAFT = 'draft', '已保存为草稿'
+        PUBLISHED = 'published', '已发布'
+        FAILED = 'failed', '失败'
+    
+    # 主键：批次编号
+    batch_id = models.CharField(
+        max_length=20,
+        primary_key=True,
+        db_comment='批次编号（主键）'
+    )
+    
+    # 文件名
+    file_name = models.CharField(
+        max_length=255,
+        db_comment='上传的文件名'
+    )
+    
+    # 状态
+    status = models.CharField(
+        max_length=20,
+        choices=UploadStatus.choices,
+        default=UploadStatus.PROCESSING,
+        db_comment='上货状态'
+    )
+    
+    # 上传时间（精确到年月日时分）
+    upload_time = models.DateTimeField(
+        db_comment='上传时间（年月日时分）'
+    )
+    
+    # 关联店铺
+    shop = models.ForeignKey(
+        'general.AmazonShop',
+        on_delete=models.CASCADE,
+        related_name='upload_records',
+        db_comment='关联的亚马逊店铺'
+    )
+    
+    # SKU数量统计
+    sku_success = models.IntegerField(
+        null=True,
+        blank=True,
+        db_comment='SKU成功数量'
+    )
+    
+    submitted = models.IntegerField(
+        null=True,
+        blank=True,
+        db_comment='已提交数量'
+    )
+    
+    class Meta:
+        db_table = 'amazon_shop_upload_record'
+        db_table_comment = '亚马逊店铺上货记录表'
+        verbose_name = '店铺上货记录'
+        verbose_name_plural = verbose_name
+        
+        # 索引优化
+        indexes = [
+            models.Index(fields=['shop', 'upload_time'], name='idx_upload_shop_time'),
+            models.Index(fields=['status'], name='idx_upload_status'),
+            models.Index(fields=['upload_time'], name='idx_upload_time'),
+        ]
+    
+    def __str__(self):
+        shop_name = self.shop.shop_name if self.shop else '未知店铺'
+        return f"{shop_name} - {self.batch_id} ({self.get_status_display()})"

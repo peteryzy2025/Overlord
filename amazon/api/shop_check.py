@@ -291,6 +291,8 @@ def update_daily_check(request):
         - withdrawal_amount (float, 可选): 提现金额
         - last_restock_date (str, 可选): 最后上货日期，格式 "YYYY-MM-DD"
         - shop_status (str, 可选): 店铺状况
+        - is_restricted (bool, 可选): 是否受限
+        - restricted_regions (list, 可选): 受限地区列表，如 ["加拿大", "美国", "墨西哥"]
     
     返回示例:
         {
@@ -361,6 +363,20 @@ def update_daily_check(request):
             record.shop_status = body["shop_status"] or ""
             update_fields.append("shop_status")
         
+        if "is_restricted" in body:
+            record.is_restricted = bool(body["is_restricted"])
+            update_fields.append("is_restricted")
+        
+        if "restricted_regions" in body:
+            regions = body["restricted_regions"]
+            if regions is None:
+                record.restricted_regions = None
+            elif isinstance(regions, list):
+                record.restricted_regions = regions
+            else:
+                return json_response(False, message="restricted_regions 必须是列表格式", status_code=400)
+            update_fields.append("restricted_regions")
+        
         # 3. 保存更新
         if update_fields:
             record.save(update_fields=update_fields)
@@ -375,10 +391,165 @@ def update_daily_check(request):
             "withdrawal_processed": record.withdrawal_processed,
             "withdrawal_amount": record.withdrawal_amount,
             "last_restock_date": record.last_restock_date.isoformat() if record.last_restock_date else None,
-            "shop_status": record.shop_status or ""
+            "shop_status": record.shop_status or "",
+            "is_restricted": record.is_restricted,
+            "restricted_regions": record.restricted_regions
         }
         
         return json_response(True, data=result_data, message="更新成功")
+        
+    except Exception as e:
+        return json_response(False, message=f"服务器错误: {str(e)}", status_code=500)
+
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def save_upload_record(request):
+    """
+    保存亚马逊店铺上货记录（新建或更新）
+    
+    请求参数（JSON 格式）:
+        - batch_id (str, 必填): 批次编号，如 "UP20250316001"
+        - file_name (str, 必填): 文件名，如 "products.xlsx"
+        - status (str, 必填): 中文状态，如 "需操作"、"完成" 等
+        - upload_time (str, 必填): 中文时间，如 "2026年2月28日 上午10:56"
+        - shop_id (int, 必填): 店铺ID
+        - sku_success (int, 可选): SKU成功数量
+        - submitted (int, 可选): 已提交数量
+    
+    返回示例:
+        {
+            "success": true,
+            "message": "保存成功",
+            "data": {
+                "batch_id": "UP20250316001",
+                "operation": "created"  // 或 "updated"
+            }
+        }
+    """
+    
+    # 状态映射：中文 → 英文
+    STATUS_MAP = {
+        '进行中': 'processing',
+        '完成': 'completed',
+        '需操作': 'needs_action',
+        '已保存为草稿': 'draft',
+        '已发布': 'published',
+        '失败': 'failed',
+    }
+    
+    try:
+        # 1. 解析请求参数
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return json_response(False, message="请求体必须是有效的 JSON 格式", status_code=400)
+        
+        batch_id = body.get("batch_id", "").strip()
+        file_name = body.get("file_name", "").strip()
+        status_cn = body.get("status", "").strip()
+        upload_time_str = body.get("upload_time", "").strip()
+        shop_id = body.get("shop_id")
+        sku_success = body.get("sku_success")
+        submitted = body.get("submitted")
+        
+        # 2. 校验必填参数
+        missing_fields = []
+        if not batch_id:
+            missing_fields.append("batch_id")
+        if not file_name:
+            missing_fields.append("file_name")
+        if not status_cn:
+            missing_fields.append("status")
+        if not upload_time_str:
+            missing_fields.append("upload_time")
+        if shop_id is None:
+            missing_fields.append("shop_id")
+        
+        if missing_fields:
+            return json_response(False, message=f"缺少必填参数: {', '.join(missing_fields)}", status_code=400)
+        
+        # 3. 转换状态（中文 → 英文）
+        if status_cn not in STATUS_MAP:
+            valid_status = '、'.join(STATUS_MAP.keys())
+            return json_response(False, message=f"无效的状态值 '{status_cn}'，可选: {valid_status}", status_code=400)
+        status_en = STATUS_MAP[status_cn]
+        
+        # 4. 解析上传时间（中文格式 → datetime）
+        # 格式示例: "2026年2月28日 上午10:56" 或 "2026年2月18日 下午5:51"
+        import re
+        time_pattern = r'(\d{4})年(\d{1,2})月(\d{1,2})日\s+(上午|下午)(\d{1,2}):(\d{2})'
+        match = re.match(time_pattern, upload_time_str)
+        
+        if not match:
+            return json_response(
+                False, 
+                message="时间格式错误，正确格式如: '2026年2月28日 上午10:56' 或 '2026年2月18日 下午5:51'", 
+                status_code=400
+            )
+        
+        year, month, day, period, hour, minute = match.groups()
+        year, month, day = int(year), int(month), int(day)
+        hour, minute = int(hour), int(minute)
+        
+        # 下午时间 +12
+        if period == '下午' and hour != 12:
+            hour += 12
+        # 上午12点应该是0点（凌晨）
+        elif period == '上午' and hour == 12:
+            hour = 0
+        
+        try:
+            upload_time = datetime(year, month, day, hour, minute)
+        except ValueError as e:
+            return json_response(False, message=f"无效的日期时间: {e}", status_code=400)
+        
+        # 5. 检查店铺是否存在
+        try:
+            shop = AmazonShop.objects.get(id=shop_id)
+        except AmazonShop.DoesNotExist:
+            return json_response(False, message=f"店铺不存在: shop_id={shop_id}", status_code=404)
+        
+        # 6. 保存记录（UPSERT：存在则更新，不存在则创建）
+        from amazon.models import AmazonShopUploadRecord
+        
+        # 构建 defaults 字典
+        defaults = {
+            'file_name': file_name,
+            'status': status_en,
+            'upload_time': upload_time,
+            'shop': shop
+        }
+        
+        # 添加可选字段（如果有值）
+        if sku_success is not None:
+            try:
+                defaults['sku_success'] = int(sku_success)
+            except (ValueError, TypeError):
+                return json_response(False, message="sku_success 必须是整数", status_code=400)
+        
+        if submitted is not None:
+            try:
+                defaults['submitted'] = int(submitted)
+            except (ValueError, TypeError):
+                return json_response(False, message="submitted 必须是整数", status_code=400)
+        
+        record, created = AmazonShopUploadRecord.objects.update_or_create(
+            batch_id=batch_id,
+            defaults=defaults
+        )
+        
+        # 7. 返回结果
+        operation = 'created' if created else 'updated'
+        return json_response(
+            True,
+            data={
+                'batch_id': batch_id,
+                'operation': operation
+            },
+            message=f"保存成功，{'新建' if created else '更新'}记录"
+        )
         
     except Exception as e:
         return json_response(False, message=f"服务器错误: {str(e)}", status_code=500)
