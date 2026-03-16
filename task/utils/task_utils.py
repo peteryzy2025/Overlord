@@ -136,8 +136,8 @@ def validate_subtask_params(subtask_type, params, user):
                 if shop_id not in visible_shop_ids:
                     return {'valid': False, 'message': f'无权操作店铺ID: {shop_id}'}
 
-        elif subtask_type == 'multi_side_custom':
-            # 多面定制验证逻辑
+        elif subtask_type == 'divi_multi_side_custom':
+            # 迪唯多面定制验证逻辑
             required_fields = ['product_ids', 'mode', 'gallery_account',
                                'gallery_path', 'craft_type']
 
@@ -212,26 +212,29 @@ def validate_subtask_params(subtask_type, params, user):
 
             return {'valid': True, 'message': ''}
 
-        elif subtask_type == 'divi_auto_upload':
-            # 自动化铺货验证
+        elif subtask_type == 'divi_custom':
+            # 迪唯定制验证
             diwei_account = params.get('diwei_account', '').strip()
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
 
-            operation = params.get('operation', '')
-            if operation not in ['distribution', 'export', 'custom']:
-                return {'valid': False, 'message': '操作类型必须是"铺货"、"汇出"或"定制"'}
+            # 必须填写图库或本地图库路径之一
+            gallery_path_raw = params.get('gallery_path', '')
+            if isinstance(gallery_path_raw, list):
+                gallery_path = ' '.join(gallery_path_raw).strip()
+            else:
+                gallery_path = str(gallery_path_raw).strip()
+            local_gallery_path = params.get('local_gallery_path', '').strip()
+            if not gallery_path and not local_gallery_path:
+                return {'valid': False, 'message': '必须填写图库或本地图库路径'}
 
-            # 如果操作是定制，必须填写图库或本地图库路径之一
-            if operation == 'custom':
-                gallery_path_raw = params.get('gallery_path', '')
-                if isinstance(gallery_path_raw, list):
-                    gallery_path = ' '.join(gallery_path_raw).strip()
-                else:
-                    gallery_path = str(gallery_path_raw).strip()
-                local_gallery_path = params.get('local_gallery_path', '').strip()
-                if not gallery_path and not local_gallery_path:
-                    return {'valid': False, 'message': '选择定制操作时，必须填写图库或本地图库路径'}
+            return {'valid': True, 'message': ''}
+
+        elif subtask_type == 'divi_export':
+            # 迪唯汇出验证
+            diwei_account = params.get('diwei_account', '').strip()
+            if not diwei_account:
+                return {'valid': False, 'message': '迪唯账号不能为空'}
 
             return {'valid': True, 'message': ''}
 
