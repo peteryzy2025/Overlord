@@ -829,15 +829,16 @@
     function getQuickTypeFact(subtask) {
         const params = subtask.params || {};
         switch (subtask.type) {
-            case 'multi_side_custom':
-            case 'custom_upload':
+            case 'divi_multi_side_custom':
                 return renderFactPill('产品', Array.isArray(params.product_ids) ? params.product_ids.length : 0);
             case 'temu_export':
                 return renderFactPill('店铺', Array.isArray(params.export_shop_ids) ? params.export_shop_ids.length : 0);
             case 'amazon_upload':
                 return renderFactPill('文件', Array.isArray(params.file_list) ? params.file_list.length : 0);
-            case 'divi_auto_upload':
-                return renderFactPill('操作', getDiviOperationDisplay(params.operation));
+            case 'divi_custom':
+                return renderFactPill('定制行', Array.isArray(params.custom_rows) ? params.custom_rows.length : 0);
+            case 'divi_export':
+                return renderFactPill('汇出行', Array.isArray(params.export_rows) ? params.export_rows.length : 0);
             case 'divi_gallery_upload':
                 return renderFactPill('路径', hasDisplayValue(params.gallery_path) || hasDisplayValue(params.local_gallery_path) ? '已填写' : '未填写');
             default:
@@ -851,8 +852,8 @@
         let content = '';
 
         switch (subtask.type) {
-            case 'multi_side_custom':
-                title = '多面定制配置';
+            case 'divi_multi_side_custom':
+                title = '迪唯多面定制配置';
                 content = renderFieldGrid([
                     field('模式', getModeDisplay(params.mode)),
                     field('图库账号', params.gallery_account),
@@ -904,11 +905,10 @@
                     field('上传结果', renderFileSummaryList(params.file_list), true, true)
                 ]);
                 break;
-            case 'divi_auto_upload':
-                title = 'Divi 自动上架配置';
+            case 'divi_custom':
+                title = '迪唯定制配置';
                 content = renderFieldGrid([
                     field('迪唯账号', params.diwei_account),
-                    field('操作类型', getDiviOperationDisplay(params.operation)),
                     field('图库目录', joinList(params.gallery_path), true),
                     field('本地图库路径', params.local_gallery_path, true),
                     field('定制行', renderGroupedProductRows(params.custom_rows, [
@@ -916,7 +916,13 @@
                         { key: 'mode', label: '模式', getValue: row => getModeDisplay(row.mode) },
                         { key: 'use_background', label: '背景图', getValue: row => row.use_background ? '是' : '否' },
                         { key: 'background_color', label: '背景色' }
-                    ]), true, true),
+                    ]), true, true)
+                ]);
+                break;
+            case 'divi_export':
+                title = '迪唯汇出配置';
+                content = renderFieldGrid([
+                    field('迪唯账号', params.diwei_account),
                     field('汇出行', renderGroupedProductRows(params.export_rows, [
                         { key: 'product_id', label: '产品 ID' },
                         { key: 'sizes', label: '尺码' },
@@ -1215,10 +1221,11 @@
             custom_upload: '定制上架',
             temu_export: 'Temu导单',
             print_external: '印花外采',
-            multi_side_custom: '多面定制',
-            amazon_upload: 'Amazon上架',
-            divi_auto_upload: 'Divi自动上架',
-            divi_gallery_upload: 'DIVI图库上传'
+            divi_multi_side_custom: '迪唯多面定制',
+            divi_custom: '迪唯批量定制',
+            divi_export: '迪唯汇出',
+            divi_gallery_upload: 'DIVI图库上传',
+            amazon_upload: 'Amazon上架'
         };
         return typeMap[type] || formatDisplayValue(type);
     }

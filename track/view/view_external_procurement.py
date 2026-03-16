@@ -12,11 +12,16 @@ from track.models import ExternalProcurementProduct
 @login_required
 def external_procurement_management(request):
     """外采产品管理主页"""
-    # 权限检查：只有permission包含555或556的用户可以访问
+    # 权限检查：只有permission包含555或557的用户可以访问
+    # 兼容老权限字段和新权限系统
     user_permission = request.user.permission or ''
     permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
+    
+    # 同时检查新权限系统（permission_configs）
+    permission_codes = [str(pc.code) for pc in request.user.permission_configs.all()]
+    all_permissions = list(set(permission_list + permission_codes))
 
-    if not any(p in permission_list for p in ['555', '556']):
+    if not any(p in all_permissions for p in ['555', '557']):
         from django.shortcuts import redirect
         return redirect('general:main')
 

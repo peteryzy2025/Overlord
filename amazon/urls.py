@@ -8,6 +8,7 @@ from amazon import (
 from amazon.view import views_dashboard, views_amazon_listing_management
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
+from amazon.api.shop_check import init_daily_shop_check, get_daily_check_list, update_daily_check, save_upload_record
 
 
 app_name = 'amazon'
@@ -115,4 +116,13 @@ urlpatterns = [
         name='api_amazon_listing_word_sources'
     ),
     
+    # ========== 巡店外部 API 接口（供影刀调用） ==========
+    # 初始化当日巡店记录
+    path('amazon/api/shop-check/init/', init_daily_shop_check, name='api_shop_check_init'),
+    # 获取巡店日报列表
+    path('amazon/api/shop-check/list/', get_daily_check_list, name='api_shop_check_list'),
+    # 更新巡店日报记录
+    path('amazon/api/shop-check/update/', update_daily_check, name='api_shop_check_update'),
+    # 保存店铺上货记录（新建/更新）
+    path('amazon/api/upload-record/save/', save_upload_record, name='api_upload_record_save'),
 ]

@@ -110,10 +110,12 @@ class SubTaskType(models.TextChoices):
     CUSTOM_UPLOAD = 'custom_upload', '定制上架'
     TEMU_EXPORT = 'temu_export', 'Temu导单'
     PRINT_EXTERNAL = 'print_external', '印花外采'
-    MULTI_SIDE_CUSTOM = 'multi_side_custom', '多面定制'
+    DIVI_MULTI_SIDE_CUSTOM = 'divi_multi_side_custom', '迪唯多面定制'
     AMAZON_UPLOAD = 'amazon_upload', 'Amazon上架'
-    DIVI_AUTO_UPLOAD = 'divi_auto_upload', 'Divi自动上架'
+    DIVI_AUTO_UPLOAD = 'divi_auto_upload', 'Divi自动上架'  # 兼容旧数据
     DIVI_GALLERY_UPLOAD = 'divi_gallery_upload', 'DIVI图库上传'
+    DIVI_CUSTOM = 'divi_custom', '迪唯定制'
+    DIVI_EXPORT = 'divi_export', '迪唯汇出'
 
 
 class SubTaskStatus(models.TextChoices):
@@ -135,10 +137,12 @@ class SubTask(models.Model):
     TYPE_CUSTOM_UPLOAD = 'custom_upload'
     TYPE_TEMU_EXPORT = 'temu_export'
     TYPE_PRINT_EXTERNAL = 'print_external'
-    TYPE_MULTI_SIDE_CUSTOM = 'multi_side_custom'
+    TYPE_DIVI_MULTI_SIDE_CUSTOM = 'divi_multi_side_custom'
     TYPE_AMAZON_UPLOAD = 'amazon_upload'
     TYPE_DIVI_AUTO_UPLOAD = 'divi_auto_upload'
     TYPE_DIVI_GALLERY_UPLOAD = 'divi_gallery_upload'
+    TYPE_DIVI_CUSTOM = 'divi_custom'
+    TYPE_DIVI_EXPORT = 'divi_export'
 
     # 子任务状态定义
     STATUS_DRAFT = 'draft'
@@ -158,13 +162,15 @@ class SubTask(models.Model):
     ]
 
     TYPE_CHOICES = [
+        (TYPE_DIVI_MULTI_SIDE_CUSTOM, '迪唯多面定制'),
+        (TYPE_DIVI_CUSTOM, '迪唯批量定制'),
+        (TYPE_DIVI_EXPORT, '迪唯汇出'),
+        (TYPE_DIVI_GALLERY_UPLOAD, 'DIVI图库上传'),
         (TYPE_CUSTOM_UPLOAD, '定制上架'),
         (TYPE_TEMU_EXPORT, 'Temu导单'),
         (TYPE_PRINT_EXTERNAL, '印花外采'),
-        (TYPE_MULTI_SIDE_CUSTOM, '多面定制'),
         (TYPE_AMAZON_UPLOAD, 'Amazon上架'),
-        (TYPE_DIVI_AUTO_UPLOAD, 'Divi自动上架'),
-        (TYPE_DIVI_GALLERY_UPLOAD, 'DIVI图库上传'),
+        (TYPE_DIVI_AUTO_UPLOAD, 'Divi自动上架'),  # 兼容旧数据
     ]
 
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID', db_comment='子任务主键ID')
@@ -181,9 +187,9 @@ class SubTask(models.Model):
     # 子任务基本信息
     subtask_type = models.CharField(
         '子任务类型',
-        max_length=20,
+        max_length=30,
         choices=TYPE_CHOICES,
-        db_comment='子任务类型：custom_upload/temu_export'
+        db_comment='子任务类型：divi_multi_side_custom/divi_custom/divi_export/divi_gallery_upload'
     )
 
     # 子任务状态

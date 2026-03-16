@@ -125,12 +125,33 @@
             </div>
             <div class="modal-body">
                 <div class="subtask-type-options">
-                    <div class="subtask-type-card" data-type="multi_side_custom" onclick="selectSubtaskType(this)">
+                    <div class="subtask-type-card" data-type="divi_multi_side_custom" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-layer-group"></i>
                         </div>
-                        <h4>多面定制</h4>
+                        <h4>迪唯多面定制</h4>
                         <p>多面定制产品上架</p>
+                    </div>
+                    <div class="subtask-type-card" data-type="divi_custom" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-paint-brush"></i>
+                        </div>
+                        <h4>迪唯批量定制</h4>
+                        <p>批量定制产品图片</p>
+                    </div>
+                    <div class="subtask-type-card" data-type="divi_export" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-file-export"></i>
+                        </div>
+                        <h4>迪唯汇出</h4>
+                        <p>汇出产品数据</p>
+                    </div>
+                    <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-images"></i>
+                        </div>
+                        <h4>DIVI图库上传</h4>
+                        <p>上传DIVI图库路径</p>
                     </div>
                     <div class="subtask-type-card disabled" data-type="custom_upload">
                         <div class="type-icon">
@@ -146,26 +167,12 @@
                         <h4>Temu导单</h4>
                         <p>导出Temu订单数据</p>
                     </div>
-                    <div class="subtask-type-card" data-type="amazon_upload" onclick="selectSubtaskType(this)">
+                    <div class="subtask-type-card disabled" data-type="amazon_upload">
                         <div class="type-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
                         <h4>Amazon上传商品</h4>
                         <p>上传Excel文件到Amazon</p>
-                    </div>
-                    <div class="subtask-type-card" data-type="divi_auto_upload" onclick="selectSubtaskType(this)">
-                        <div class="type-icon">
-                            <i class="fas fa-robot"></i>
-                        </div>
-                        <h4>自动化铺货</h4>
-                        <p>VIP专用</p>
-                    </div>
-                    <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
-                        <div class="type-icon">
-                            <i class="fas fa-images"></i>
-                        </div>
-                        <h4>DIVI图库上传</h4>
-                        <p>上传DIVI图库路径</p>
                     </div>
                 </div>
                 <button class="btn btn-primary" id="confirmAddSubtaskBtn" onclick="confirmAddSubtask()"
@@ -462,7 +469,7 @@
 
         // ===== 初始化子任务中的SearchableSelect =====
         function initSubtaskSearchableSelects(subtask) {
-            if (subtask.type === 'multi_side_custom' || subtask.type === 'custom_upload') {
+            if (subtask.type === 'divi_multi_side_custom' || subtask.type === 'divi_custom') {
                 // 模式选择
                 const modeSelectEl = document.querySelector(`#mode-select-${subtask.id}`);
                 if (modeSelectEl && !modeSelectEl.dataset.initialized) {
@@ -571,59 +578,6 @@
             };
 
             accountSelectEl.dataset.initialized = 'true';
-        }
-
-        // ===== 初始化迪唯操作选择器 =====
-        function initDiweiOperationSelect(subtask) {
-            const operationSelectEl = document.querySelector(`#operation-select-${subtask.id}`);
-            if (!operationSelectEl || operationSelectEl.dataset.initialized) return;
-
-            const operationSelect = new SearchableSelect(`#operation-select-${subtask.id}`, {
-                options: [
-                    { value: 'custom', label: '定制' },
-                    { value: 'export', label: '汇出' },
-                    { value: 'distribution', label: '铺货' }
-                ],
-                multiple: false,
-                placeholder: '选择操作'
-            });
-
-            operationSelect.setValue(subtask.params.operation || 'custom');
-            operationSelect.onChange = (value) => {
-                updateSubtaskParam(subtask.id, 'operation', value);
-                toggleDiweiCustomFields(subtask.id, value === 'custom');
-                toggleDiweiExportFields(subtask.id, value === 'export');
-            };
-
-            operationSelectEl.dataset.initialized = 'true';
-        }
-
-        // ===== 切换迪唯定制字段显示 =====
-        function toggleDiweiCustomFields(subtaskId, show) {
-            const customFields = document.getElementById(`custom-fields-${subtaskId}`);
-            if (customFields) {
-                customFields.style.display = show ? 'contents' : 'none';
-            }
-        }
-
-        // ===== 切换迪唯定制产品行显示 =====
-        function toggleDiweiCustomRows(subtaskId, show) {
-            const customRowsContainer = document.getElementById(`custom-rows-container-${subtaskId}`);
-            const addButton = customRowsContainer ? customRowsContainer.nextElementSibling : null;
-            if (customRowsContainer) {
-                customRowsContainer.style.display = show ? 'block' : 'none';
-            }
-            if (addButton && addButton.tagName === 'BUTTON') {
-                addButton.style.display = show ? 'block' : 'none';
-            }
-        }
-
-        // ===== 切换迪唯汇出字段显示 =====
-        function toggleDiweiExportFields(subtaskId, show) {
-            const exportFields = document.getElementById(`export-fields-${subtaskId}`);
-            if (exportFields) {
-                exportFields.style.display = show ? 'block' : 'none';
-            }
         }
 
         // ===== 渲染定制产品行 =====
@@ -1146,7 +1100,7 @@
             const value = element.value.trim();
             updateSubtaskParam(subtaskId, fieldName, value);
 
-            if (subtask.type === 'divi_auto_upload' && value) {
+            if ((subtask.type === 'divi_custom' || subtask.type === 'divi_gallery_upload') && value) {
                 const otherFieldName = fieldName === 'gallery_path' ? 'local_gallery_path' : 'gallery_path';
                 const otherInput = document.getElementById(`${otherFieldName === 'gallery_path' ? 'gallery-path' : 'local-gallery-path'}-${subtaskId}`);
                 if (otherInput) {
@@ -1170,7 +1124,7 @@
             if (!subtask) return;
 
             const value = element.value.trim();
-            if (subtask.type === 'divi_auto_upload' && value) {
+            if ((subtask.type === 'divi_custom' || subtask.type === 'divi_gallery_upload') && value) {
                 const otherInput = document.getElementById(`local-gallery-path-${subtaskId}`);
                 if (otherInput) {
                     otherInput.value = '';
@@ -1359,7 +1313,7 @@
 
             // 定义默认参数（确保包含所有可能需要的字段）
             let defaultParams = {};
-            if (type === 'multi_side_custom' || type === 'custom_upload') {
+            if (type === 'divi_multi_side_custom') {
                 defaultParams = {
                     mode: 'adapt',
                     gallery_account: '侯益山',
@@ -1371,28 +1325,21 @@
                     custom_coords: '',
                     add_background_color: false,
                     background_color: '#ffffff',
-                    export_quantity: 400,
                     product_ids: [],
                     gallery_path: [],
                     export_shop_ids: []
                 };
-            } else if (type === 'temu_export') {
-                defaultParams = {
-                    export_shop_ids: []
-                };
-            } else if (type === 'amazon_upload') {
-                defaultParams = {
-                    file_list: [],
-                    file_paths: []
-                };
-            } else if (type === 'divi_auto_upload') {
+            } else if (type === 'divi_custom') {
                 defaultParams = {
                     diwei_account: '测试',
-                    operation: 'custom',
                     gallery_path: '',
                     local_gallery_path: '',
-                    export_rows: [],
                     custom_rows: []
+                };
+            } else if (type === 'divi_export') {
+                defaultParams = {
+                    diwei_account: '测试',
+                    export_rows: []
                 };
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
@@ -1406,21 +1353,30 @@
             const mergedParams = {...defaultParams, ...params};
 
             // 确保数组字段是独立的实例，避免引用共享
-            if (type === 'multi_side_custom' || type === 'custom_upload') {
+            if (type === 'divi_multi_side_custom') {
                 if (!params.product_ids) mergedParams.product_ids = [];
                 if (!params.gallery_path) mergedParams.gallery_path = [];
                 if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
                 if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
+            } else if (type === 'divi_custom') {
+                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.gallery_path) mergedParams.gallery_path = '';
+                if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
+                if (!params.custom_rows) mergedParams.custom_rows = [];
+            } else if (type === 'divi_export') {
+                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'amazon_upload') {
                 if (!params.file_list) mergedParams.file_list = [];
                 if (!params.file_paths) mergedParams.file_paths = [];
-            } else if (type === 'divi_auto_upload') {
+            } else if (type === 'divi_custom') {
                 if (!params.diwei_account) mergedParams.diwei_account = '测试';
-                if (!params.operation) mergedParams.operation = 'custom';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
-                if (!params.export_rows) mergedParams.export_rows = [];
                 if (!params.custom_rows) mergedParams.custom_rows = [];
+            } else if (type === 'divi_export') {
+                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_gallery_upload') {
                 if (!params.diwei_account) mergedParams.diwei_account = '测试';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
@@ -1547,16 +1503,14 @@
                 refreshFileList(subtask.id);
             }
 
-            if (subtask.type === 'divi_auto_upload' || subtask.type === 'divi_gallery_upload') {
+            if (subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_gallery_upload') {
                 initDiweiAccountSelect(subtask);
             }
 
-            // 如果是divi_auto_upload类型，初始化SearchableSelect
-            if (subtask.type === 'divi_auto_upload') {
-                initDiweiOperationSelect(subtask);
-                
-                // 初始化图库目录预览（如果操作是定制）
-                if (subtask.params.operation === 'custom' && subtask.params.gallery_path) {
+            // 如果是divi_custom类型，初始化定制行
+            if (subtask.type === 'divi_custom') {
+                // 初始化图库目录预览
+                if (subtask.params.gallery_path) {
                     const input = document.querySelector(`#gallery-path-${subtask.id}`);
                     if (input) {
                         const val = Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path;
@@ -1565,17 +1519,19 @@
                     }
                 }
 
-                // 初始化定制行模式选择器（如果操作是定制）
-                if (subtask.params.operation === 'custom' && subtask.params.custom_rows) {
+                // 初始化定制行模式选择器
+                if (subtask.params.custom_rows) {
                     setTimeout(() => {
                         subtask.params.custom_rows.forEach((row, index) => {
                             initCustomRowModeSelect(subtask.id, index, row.mode || 'fill');
                         });
                     }, 0);
                 }
+            }
 
-                // 初始化汇出行尺码、颜色和店铺选择器（如果操作是汇出）
-                if (subtask.params.operation === 'export' && subtask.params.export_rows) {
+            // 如果是divi_export类型，初始化汇出行
+            if (subtask.type === 'divi_export') {
+                if (subtask.params.export_rows) {
                     setTimeout(() => {
                         subtask.params.export_rows.forEach((row, index) => {
                             initExportRowSizeSelect(subtask.id, index, row.sizes || []);
@@ -1741,7 +1697,7 @@
 
         // ===== 子任务表单渲染 =====
         function renderSubtaskEditForm(subtask) {
-            if (subtask.type === 'multi_side_custom') {
+            if (subtask.type === 'divi_multi_side_custom') {
                 return `
                     <div class="dynamic-fields">
                         <div class="form-group">
@@ -2024,10 +1980,7 @@
                         </div>
                     </div>
                 `;
-            } else if (subtask.type === 'divi_auto_upload') {
-                const isCustom = subtask.params.operation === 'custom';
-                const isExport = subtask.params.operation === 'export';
-                const exportRows = subtask.params.export_rows || [];
+            } else if (subtask.type === 'divi_custom') {
                 return `
                     <div class="dynamic-fields diwei-fields">
                         <div class="form-group">
@@ -2036,53 +1989,53 @@
                                  data-placeholder="选择迪唯账号"></div>
                         </div>
 
+                        <div class="form-group has-autocomplete">
+                            <label class="form-label">图库路径</label>
+                            <div style="position: relative;">
+                                <input type="text" class="form-control gallery-path-input"
+                                       id="gallery-path-${subtask.id}"
+                                       placeholder="图库目录"
+                                       value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
+                                       data-subtask-id="${subtask.id}"
+                                       oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
+                                       onfocus="showPathSuggestions(this)"
+                                       style="width: 100%;">
+                                <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
+                                <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
+                            </div>
+                        </div>
+
                         <div class="form-group">
-                            <label class="form-label">操作 <span style="color: var(--danger-color);">*</span></label>
-                            <div id="operation-select-${subtask.id}" class="searchable-select single"
-                                 data-placeholder="选择操作"></div>
+                            <label class="form-label">本地路径</label>
+                            <input type="text" class="form-control"
+                                   id="local-gallery-path-${subtask.id}"
+                                   placeholder="本地路径"
+                                   value="${subtask.params.local_gallery_path || ''}"
+                                   oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
                         </div>
 
-                        <!-- 定制模式：多行产品数据输入 -->
-                        <div id="custom-fields-${subtask.id}" style="display: ${isCustom ? 'contents' : 'none'};">
-                            <div class="form-group has-autocomplete">
-                                <label class="form-label">图库路径</label>
-                                <div style="position: relative;">
-                                    <input type="text" class="form-control gallery-path-input"
-                                           id="gallery-path-${subtask.id}"
-                                           placeholder="图库目录"
-                                           value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
-                                           data-subtask-id="${subtask.id}"
-                                           oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
-                                           onfocus="showPathSuggestions(this)"
-                                           style="width: 100%;">
-                                    <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
-                                    <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
-                                </div>
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="custom-rows-container" id="custom-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
+                                ${(subtask.params.custom_rows || []).map((row, index) => renderCustomRow(subtask.id, index, row)).join('')}
                             </div>
-
-                            <div class="form-group">
-                                <label class="form-label">本地路径</label>
-                                <input type="text" class="form-control"
-                                       id="local-gallery-path-${subtask.id}"
-                                       placeholder="本地路径"
-                                       value="${subtask.params.local_gallery_path || ''}"
-                                       oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
-                            </div>
-
-                            <div style="grid-column: 1 / -1; margin-top: 1rem;">
-                                <div class="custom-rows-container" id="custom-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
-                                    ${(subtask.params.custom_rows || []).map((row, index) => renderCustomRow(subtask.id, index, row)).join('')}
-                                </div>
-                                <button type="button" class="btn btn-secondary" onclick="addCustomRow(${subtask.id})" style="width: 100%;">
-                                    <i class="fas fa-plus"></i> 添加产品
-                                </button>
-                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addCustomRow(${subtask.id})" style="width: 100%;">
+                                <i class="fas fa-plus"></i> 添加产品
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (subtask.type === 'divi_export') {
+                return `
+                    <div class="dynamic-fields diwei-fields">
+                        <div class="form-group">
+                            <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择迪唯账号"></div>
                         </div>
 
-                        <!-- 汇出模式：多行产品数据输入 -->
-                        <div id="export-fields-${subtask.id}" style="display: ${isExport ? 'block' : 'none'}; grid-column: 1 / -1; margin-top: 1rem;">
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
                             <div class="export-rows-container" id="export-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
-                                ${exportRows.map((row, index) => renderExportRow(subtask.id, index, row)).join('')}
+                                ${(subtask.params.export_rows || []).map((row, index) => renderExportRow(subtask.id, index, row)).join('')}
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="addExportRow(${subtask.id})" style="width: 100%;">
                                 <i class="fas fa-plus"></i> 添加产品
@@ -2193,12 +2146,13 @@
 
         function getSubtaskTypeDisplay(type) {
             const typeMap = {
-                'multi_side_custom': '多面定制',
+                'divi_multi_side_custom': '迪唯多面定制',
+                'divi_custom': '迪唯批量定制',
+                'divi_export': '迪唯汇出',
+                'divi_gallery_upload': 'DIVI图库上传',
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
-                'amazon_upload': 'Amazon上传商品',
-                'divi_auto_upload': '自动化铺货',
-                'divi_gallery_upload': 'DIVI图库上传'
+                'amazon_upload': 'Amazon上传商品'
             };
             return typeMap[type] || type;
         }
@@ -2785,7 +2739,7 @@
             }
 
             for (let subtask of data.subtasks) {
-                if (subtask.type === 'multi_side_custom') {
+                if (subtask.type === 'divi_multi_side_custom') {
                     if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
                         showNotification(`子任务 #${subtask.order + 1} 的产品ID不能为空`, 'warning');
                         return false;
@@ -2835,27 +2789,26 @@
                         showNotification(`子任务 #${subtask.order + 1} 必须上传至少一个有效的Excel文件`, 'warning');
                         return false;
                     }
-                } else if (subtask.type === 'divi_auto_upload') {
+                } else if (subtask.type === 'divi_custom') {
                     if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
                         showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
                         return false;
                     }
-                    if (!subtask.params.operation) {
-                        showNotification(`子任务 #${subtask.order + 1} 的操作类型不能为空`, 'warning');
+                    // 必须填写图库或本地图库路径之一
+                    const galleryPath = Array.isArray(subtask.params.gallery_path) 
+                        ? subtask.params.gallery_path.join(' ') 
+                        : (subtask.params.gallery_path || '');
+                    const localGalleryPath = subtask.params.local_gallery_path || '';
+                    const hasGallery = galleryPath.trim() !== '';
+                    const hasLocalGallery = localGalleryPath.trim() !== '';
+                    if (!hasGallery && !hasLocalGallery) {
+                        showNotification(`子任务 #${subtask.order + 1} 必须填写图库或本地图库路径`, 'warning');
                         return false;
                     }
-                    // 如果操作是定制，必须填写图库或本地图库路径之一
-                    if (subtask.params.operation === 'custom') {
-                        const galleryPath = Array.isArray(subtask.params.gallery_path) 
-                            ? subtask.params.gallery_path.join(' ') 
-                            : (subtask.params.gallery_path || '');
-                        const localGalleryPath = subtask.params.local_gallery_path || '';
-                        const hasGallery = galleryPath.trim() !== '';
-                        const hasLocalGallery = localGalleryPath.trim() !== '';
-                        if (!hasGallery && !hasLocalGallery) {
-                            showNotification(`子任务 #${subtask.order + 1} 选择了定制操作，必须填写图库或本地图库路径`, 'warning');
-                            return false;
-                        }
+                } else if (subtask.type === 'divi_export') {
+                    if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
+                        return false;
                     }
                 } else if (subtask.type === 'divi_gallery_upload') {
                     if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {

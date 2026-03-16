@@ -917,21 +917,21 @@ def create_task_api(request):
                 
                 # 发送 webhook (针对每个任务发送)
                 try:
-                    webhook_data = data.copy()
-                    webhook_data.update({
-                        'task_id': req.id, # 使用 Requirement ID
-                        'task_no': req.requirement_no,
-                        # 'title': sub_title,
-                        'created_by_id': current_user.id,
-                        'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
-                        'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
-                        'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
-                        'status': 'pending',
-                        'product_url': params.get('url')
-                    })
+                    webhook_data = {
+                        '事件类型': '产品需求创建',
+                        '任务ID': req.id,  # 使用 Requirement ID
+                        '任务单号': req.requirement_no,
+                        '创建人ID': current_user.id,
+                        '创建人': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
+                        '所有者': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
+                        '创建时间': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                        '状态': '待处理',
+                        '产品链接': params.get('url'),
+                        '参数': params
+                    }
 
                     def send_webhook_task(payload):
-                        url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/873825669915136000"
+                        url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/929623248793497600"
                         try:
                             requests.post(url, json=payload, timeout=10)
                         except Exception as e:
@@ -983,67 +983,6 @@ def create_task_api(request):
                     process_amazon_upload_files(subtask_data.get('params', {}), task_no, task_instance=task,
                                                 subtask_instance=subtask)
 
-                # Divi 类型发送 webhook
-                if subtask_type in ['divi_auto_upload', 'divi_gallery_upload'] and not is_draft:
-                    try:
-                        diwei_params = subtask_data.get('params', {})
-                        diwei_webhook_data = {
-                            'task_id': task.id,
-                            'task_no': task_no,
-                            'subtask_id': subtask.id,
-                            'subtask_type': subtask_type,
-                            'diwei_account': diwei_params.get('diwei_account', ''),
-                            'created_by_id': current_user.id,
-                            'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
-                            'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
-                            'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
-                            'status': 'pending'
-                        }
-
-                        gallery_path_raw = diwei_params.get('gallery_path', '')
-                        if isinstance(gallery_path_raw, list):
-                            gallery_path = ' '.join(gallery_path_raw).strip()
-                        else:
-                            gallery_path = str(gallery_path_raw).strip()
-                        local_gallery_path = diwei_params.get('local_gallery_path', '').strip()
-
-                        if subtask_type == 'divi_auto_upload':
-                            operation = diwei_params.get('operation', '')
-                            diwei_webhook_data['operation'] = operation
-
-                            if operation == 'custom':
-                                if gallery_path:
-                                    diwei_webhook_data['gallery_source'] = 'gallery'
-                                    diwei_webhook_data['gallery_path'] = gallery_path
-                                elif local_gallery_path:
-                                    diwei_webhook_data['gallery_source'] = 'local'
-                                    diwei_webhook_data['local_gallery_path'] = local_gallery_path
-
-                                custom_rows = diwei_params.get('custom_rows', [])
-                                if custom_rows:
-                                    diwei_webhook_data['custom_rows'] = custom_rows
-                            elif operation == 'export':
-                                export_rows = diwei_params.get('export_rows', [])
-                                if export_rows:
-                                    diwei_webhook_data['export_rows'] = export_rows
-                        else:
-                            if gallery_path:
-                                diwei_webhook_data['gallery_path'] = gallery_path
-                            if local_gallery_path:
-                                diwei_webhook_data['local_gallery_path'] = local_gallery_path
-
-                        def send_diwei_webhook(payload):
-                            url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/918309922287583232"
-                            try:
-                                requests.post(url, json=payload, timeout=10)
-                            except Exception as e:
-                                print(f"Diwei webhook send failed: {e}")
-
-                        # 事务提交后异步发送
-                        transaction.on_commit(lambda data=diwei_webhook_data: threading.Thread(target=send_diwei_webhook, args=(data,)).start())
-                    except Exception as e:
-                        print(f"Error preparing diwei webhook: {e}")
-
             except Exception as e:
                 # 回滚事务
                 raise ValueError(f"子任务 #{idx + 1} 验证失败: {str(e)}")
@@ -1051,20 +990,107 @@ def create_task_api(request):
         # 发送 Webhook 通知 (仅正式任务)
         if not is_draft:
             try:
-                # 构造完整的通知数据
-                webhook_data = data.copy()
-                webhook_data.update({
-                    'task_id': task.id,
-                    'task_no': task_no,
-                    'created_by_id': current_user.id,
-                    'created_by_name': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
-                    'owner_name': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
-                    'created_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'status': 'pending'
-                })
+                # 构造完整的子任务数据（全中文格式）
+                subtasks_for_webhook = []
+                for st in task.subtasks.all().order_by('order'):
+                    params = st.params or {}
+                    
+                    # 根据子任务类型转换参数为中文
+                    if st.subtask_type == 'divi_custom':
+                        # 迪唯批量定制 - 转换定制行数据
+                        custom_rows_cn = []
+                        for row in params.get('custom_rows', []):
+                            custom_rows_cn.append({
+                                '产品ID': row.get('product_id', ''),
+                                '模式': '填充' if row.get('mode') == 'fill' else '适应',
+                                '使用背景图': row.get('use_background', False),
+                                '背景颜色': row.get('background_color', '')
+                            })
+                        
+                        subtask_params = {
+                            '迪唯账号': params.get('diwei_account', ''),
+                            '图库路径': params.get('gallery_path', []),
+                            '本地路径': params.get('local_gallery_path', ''),
+                            '定制行列表': custom_rows_cn
+                        }
+                    elif st.subtask_type == 'divi_export':
+                        # 迪唯汇出 - 转换汇出行数据
+                        export_rows_cn = []
+                        for row in params.get('export_rows', []):
+                            export_rows_cn.append({
+                                '产品ID': row.get('product_id', ''),
+                                '尺码列表': row.get('sizes', []),
+                                '颜色列表': row.get('colors', []),
+                                '店铺列表': row.get('shops', [])
+                            })
+                        
+                        subtask_params = {
+                            '迪唯账号': params.get('diwei_account', ''),
+                            '汇出行列表': export_rows_cn
+                        }
+                    elif st.subtask_type == 'divi_gallery_upload':
+                        subtask_params = {
+                            '迪唯账号': params.get('diwei_account', ''),
+                            '图库路径': params.get('gallery_path', []),
+                            '本地路径': params.get('local_gallery_path', '')
+                        }
+                    elif st.subtask_type == 'divi_multi_side_custom':
+                        subtask_params = {
+                            '产品ID列表': params.get('product_ids', []),
+                            '模式': '适应' if params.get('mode') == 'adapt' else '填充',
+                            '图库账号': params.get('gallery_account', ''),
+                            '图库路径': params.get('gallery_path', []),
+                            '工艺类型': {
+                                'print': '印花',
+                                'emboss': '刺绣',
+                                'laser': '镭射'
+                            }.get(params.get('craft_type'), params.get('craft_type', '')),
+                            '定制方式': '批量定制' if params.get('custom_method') == 'batch' else '单个定制',
+                            '添加黑边': params.get('add_black_border', False),
+                            '识别主题': params.get('recognize_theme', False),
+                            '添加定制坐标': params.get('add_custom_coords', False),
+                            '定制坐标': params.get('custom_coords', ''),
+                            '添加背景色': params.get('add_background_color', False),
+                            '背景颜色': params.get('background_color', '')
+                        }
+                    else:
+                        # 其他类型保持原参数
+                        subtask_params = params
+                    
+                    # 类型映射为中文显示名
+                    type_display_map = {
+                        'divi_custom': '迪唯批量定制',
+                        'divi_export': '迪唯汇出',
+                        'divi_gallery_upload': 'DIVI图库上传',
+                        'divi_multi_side_custom': '迪唯多面定制',
+                        'custom_upload': 'Temu定制上架',
+                        'temu_export': 'Temu导单',
+                        'amazon_upload': 'Amazon上传商品',
+                        'print_external': '印花外采'
+                    }
+                    
+                    subtasks_for_webhook.append({
+                        '子任务ID': st.id,
+                        '子任务类型': type_display_map.get(st.subtask_type, st.subtask_type),
+                        '子任务参数': subtask_params
+                    })
+
+                # 构造统一的通知数据（全中文格式）
+                webhook_data = {
+                    '事件类型': '任务创建',
+                    '任务ID': task.id,
+                    '任务单号': task_no,
+                    '任务标题': title,
+                    '任务状态': '待处理',
+                    '创建人ID': current_user.id,
+                    '创建人姓名': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
+                    '所有者姓名': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
+                    '创建时间': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    '子任务列表': subtasks_for_webhook
+                }
 
                 def send_webhook_task(payload):
-                    url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/873825669915136000"
+                    url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/929623248793497600"
                     try:
                         requests.post(url, json=payload, timeout=10)
                     except Exception as e:
