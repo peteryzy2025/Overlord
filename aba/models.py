@@ -27,7 +27,11 @@ class SearchTerm(models.Model):
         auto_now_add=True,
         verbose_name="创建时间"
     )
-    
+    denoising = models.BooleanField(
+        default=False,
+        verbose_name="是否已降噪",
+        help_text="人工标记已降噪的搜索词，后续导入"
+    )
     class Meta:
         db_table = 'search_terms'
         verbose_name = "搜索词"
