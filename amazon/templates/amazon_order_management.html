@@ -4,6 +4,7 @@
 {% block title %}亚马逊订单管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
     <style>
         :root {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -506,138 +507,6 @@
 
 
 
-        /* 分页样式 */
-        .pagination-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .pagination-new {
-            display: flex;
-            gap: 0.25rem;
-            align-items: center;
-        }
-
-        .pagination-btn-new {
-            min-width: 40px;
-            padding: 0 10px;
-            height: 40px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .pagination-btn-new:hover:not(:disabled) {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .pagination-btn-new.active {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .pagination-btn-new:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .pagination-ellipsis {
-            color: var(--text-secondary);
-            padding: 0 5px;
-        }
-
-        .page-size-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .page-size-label {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
-        .page-size-dropdown-wrapper {
-            position: relative;
-        }
-
-        .page-size-trigger {
-            background-color: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .page-size-dropdown {
-            position: absolute;
-            bottom: 100%;
-            left: 0;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            box-shadow: var(--shadow-medium);
-            display: none;
-            z-index: 100;
-            min-width: 100%;
-        }
-
-        .page-size-dropdown.open {
-            display: block;
-        }
-
-        .page-size-option {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .page-size-option:hover {
-            background-color: var(--bg-secondary);
-        }
-
-        .page-size-option.selected {
-            background-color: var(--accent-color);
-            color: white;
-        }
-
-        .pagination-jump {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .page-jump-input {
-            width: 60px;
-            padding: 0.5rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            text-align: center;
-        }
-
-        .pagination-stats {
-            margin-left: 1rem;
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-        }
-
         /* 批量操作栏 */
         .bulk-action-bar {
             display: none;
@@ -738,6 +607,29 @@
             box-shadow: var(--shadow-heavy);
         }
 
+        /* 分页栏与 amazon-management 保持一致，独立于表格卡片区域显示 */
+        #paginationControls.pagination-container {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow-light);
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        #paginationControls .pagination-new {
+            flex: 1 1 auto;
+            justify-content: center;
+        }
+
+        #paginationControls .pagination-jump {
+            margin-left: auto;
+        }
+
         .spinner {
             border: 3px solid var(--bg-secondary);
             border-top: 3px solid var(--accent-color);
@@ -773,6 +665,15 @@
             .filter-row {
                 flex-direction: column;
                 align-items: stretch;
+            }
+
+            #paginationControls .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #paginationControls .pagination-jump {
+                margin-left: 0;
             }
 
 
@@ -1802,7 +1703,7 @@
 
             buttonsContainer.innerHTML = buttonsHTML;
 
-            if (total_pages > 7) {
+            if (total_pages > 0) {
                 jumpContainer.style.display = 'flex';
                 document.getElementById('pageJumpInput').max = total_pages;
                 document.getElementById('pageJumpInput').value = '';

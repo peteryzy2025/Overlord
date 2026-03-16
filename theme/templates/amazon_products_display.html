@@ -16,28 +16,92 @@
             --border-color: #e2e8f0;
         }
 
-        /* 分页控件样式 - 从第二段代码中提取 */
-        .pagination-controls {
+        /* 分页栏与 amazon-management 保持一致，独立于表格卡片区域显示 */
+        #paginationControls.pagination-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 8px;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #fff;
             border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            gap: 1rem;
+            flex-wrap: wrap;
         }
 
-        .page-size-selector {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .page-size-selector label {
-            font-size: 0.875rem;
+        #paginationControls .pagination-info {
             color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationControls .page-size-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        #paginationControls .page-size-label,
+        #paginationControls .pagination-stats {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationControls .page-size-dropdown-wrapper {
+            position: relative;
+        }
+
+        #paginationControls .page-size-trigger {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        #paginationControls .page-size-trigger:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        #paginationControls .page-size-dropdown {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            left: 0;
+            min-width: 100%;
+            padding: 0.35rem;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+            display: none;
+            z-index: 20;
+        }
+
+        #paginationControls .page-size-dropdown.open {
+            display: block;
+        }
+
+        #paginationControls .page-size-option {
+            padding: 0.45rem 0.7rem;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        #paginationControls .page-size-option:hover,
+        #paginationControls .page-size-option.selected {
+            background-color: #eff6ff;
+            color: var(--accent-color);
         }
 
         .products-header-row {
@@ -95,53 +159,83 @@
                 text-align: center;
                 pointer-events: auto;
             }
+
+            #paginationControls .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #paginationControls .pagination-jump {
+                margin-left: 0;
+            }
         }
 
-        .pagination-buttons {
+        #paginationControls .pagination-new {
             display: flex;
-            gap: 6px;
+            gap: 0.5rem;
             align-items: center;
+            justify-content: center;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
         }
 
-        .pagination-btn {
-            padding: 6px 12px;
+        #paginationControls .pagination-btn-new {
+            background-color: #fff;
             border: 1px solid var(--border-color);
-            background: white;
             color: var(--text-primary);
-            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
             cursor: pointer;
+            transition: all 0.3s ease;
             font-size: 0.875rem;
-            transition: all 0.2s;
-            min-width: 36px;
-            text-align: center;
         }
 
-        .pagination-btn:hover {
-            background: var(--bg-secondary);
+        #paginationControls .pagination-btn-new:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: #fff;
             border-color: var(--accent-color);
         }
 
-        .pagination-btn.active {
-            background: var(--accent-color);
-            color: white;
-            border-color: var(--accent-color);
-        }
-
-        .pagination-btn:disabled {
+        #paginationControls .pagination-btn-new:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        .pagination-btn.ellipsis {
-            border: none;
-            background: none;
-            cursor: default;
-            min-width: auto;
+        #paginationControls .pagination-btn-new.active {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
         }
 
-        .pagination-info {
-            font-size: 0.875rem;
+        #paginationControls .pagination-ellipsis {
             color: var(--text-secondary);
+            padding: 0.5rem 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        #paginationControls .pagination-jump {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: auto;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationControls .page-jump-input {
+            width: 4.5rem;
+            height: 2.25rem;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            text-align: center;
+        }
+
+        #paginationControls .page-jump-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
         }
 
         /* 仅保留筛选控件兼容样式（避免引入 general_style_1.css 全局表格规则） */
@@ -1309,23 +1403,34 @@
             </div>
 
             <!-- 分页控件 -->
-            <div class="pagination-controls" id="paginationControls">
-                <div class="page-size-selector">
-                    <label for="pageSize">每页显示：</label>
-                    <select class="form-select" id="pageSize" onchange="changePageSize()">
-                        <option value="10">10条</option>
-                        <option value="20" selected>20条</option>
-                        <option value="50">50条</option>
-                        <option value="100">100条</option>
-                    </select>
+            <div class="pagination-container" id="paginationControls" style="display: none;">
+                <div class="pagination-info" data-total="0">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown">
+                                <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                            </div>
+                        </div>
+                        <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                    </div>
                 </div>
 
-                <div class="pagination-buttons" id="paginationButtons">
+                <div class="pagination-new" id="paginationButtons">
                     <!-- 动态生成 -->
                 </div>
 
-                <div class="pagination-info" id="paginationInfo">
-                    <!-- 动态生成 -->
+                <div class="pagination-jump" id="paginationJump" style="display: none;">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
                 </div>
             </div>
         </div>
@@ -1928,7 +2033,8 @@
                 document.getElementById('customCrawlEndDate').value = '';
             }
 
-            document.getElementById('pageSize').value = '20';
+            productsPagination.page_size = 20;
+            updatePageSizeSelection(20);
         }
 
         async function resetFilters(event) {
@@ -2465,51 +2571,72 @@
         }
 
         // ===== 分页逻辑 =====
+        function updatePageSizeSelection(size) {
+            document.getElementById('pageSizeText').textContent = `${size}条`;
+            document.querySelectorAll('#paginationControls .page-size-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            const selectedOption = document.querySelector(`#paginationControls .page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+        }
+
+        function updatePaginationStats() {
+            const {page, page_size, total} = productsPagination;
+            const start = total === 0 ? 0 : (page - 1) * page_size + 1;
+            const end = total === 0 ? 0 : Math.min(page * page_size, total);
+            document.getElementById('paginationStats').textContent = `${start}-${end} / 共 ${total} 条`;
+        }
+
         function renderPagination() {
             const buttonsContainer = document.getElementById('paginationButtons');
-            const infoContainer = document.getElementById('paginationInfo');
-
+            const paginationJump = document.getElementById('paginationJump');
             const {page, page_size, total, total_pages} = productsPagination;
 
-            infoContainer.textContent = `共 ${total} 条，第 ${page}/${total_pages} 页`;
+            updatePageSizeSelection(page_size);
+            updatePaginationStats();
+
+            if (!total || !total_pages) {
+                buttonsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页</span>';
+                paginationJump.style.display = 'none';
+                return;
+            }
 
             let buttonsHTML = '';
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
-            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>
-                <i class="fas fa-chevron-left"></i> 上一页
-            </button>`;
+            if (total_pages > 1) {
+                let startPage = Math.max(1, page - 2);
+                let endPage = Math.min(total_pages, page + 2);
 
-            const maxButtons = 7;
-            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
-            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
-
-            if (endPage - startPage < maxButtons - 1) {
-                startPage = Math.max(1, endPage - maxButtons + 1);
-            }
-
-            if (startPage > 1) {
-                buttonsHTML += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
-                if (startPage > 2) {
-                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                if (startPage > 1) {
+                    buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(1)">1</button>`;
+                    if (startPage > 2) {
+                        buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                    }
                 }
-            }
 
-            for (let i = startPage; i <= endPage; i++) {
-                buttonsHTML += `<button class="pagination-btn ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
-            }
-
-            if (endPage < total_pages) {
-                if (endPage < total_pages - 1) {
-                    buttonsHTML += `<span class="pagination-btn ellipsis">...</span>`;
+                for (let i = startPage; i <= endPage; i++) {
+                    buttonsHTML += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
                 }
-                buttonsHTML += `<button class="pagination-btn" onclick="changePage(${total_pages})">${total_pages}</button>`;
+
+                if (endPage < total_pages) {
+                    if (endPage < total_pages - 1) {
+                        buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                    }
+                    buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})">${total_pages}</button>`;
+                }
+            } else {
+                buttonsHTML += '<button class="pagination-btn-new active" disabled>1</button>';
             }
 
-            buttonsHTML += `<button class="pagination-btn" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>
-                下一页 <i class="fas fa-chevron-right"></i>
-            </button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="changePage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
 
             buttonsContainer.innerHTML = buttonsHTML;
+            paginationJump.style.display = 'inline-flex';
         }
 
         document.addEventListener('click', function (event) {
@@ -2527,12 +2654,34 @@
             document.getElementById('productsTableContainer').scrollIntoView({behavior: 'smooth', block: 'start'});
         }
 
-        function changePageSize() {
-            const newSize = parseInt(document.getElementById('pageSize').value);
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function changePageSize(newSize) {
             productsPagination.page_size = newSize;
             productsPagination.page = 1;
+            updatePageSizeSelection(newSize);
+            document.getElementById('pageSizeDropdown').classList.remove('open');
             loadProductsTable();
         }
+
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') return;
+            const page = parseInt(event.target.value, 10);
+            if (page && page >= 1 && page <= productsPagination.total_pages) {
+                changePage(page);
+            }
+            event.target.value = '';
+        }
+
+        document.addEventListener('click', function (event) {
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            const pageSizeDropdown = document.getElementById('pageSizeDropdown');
+            if (pageSizeWrapper && pageSizeDropdown && !pageSizeWrapper.contains(event.target)) {
+                pageSizeDropdown.classList.remove('open');
+            }
+        });
 
         // ===== 举报功能 =====
         // 获取 CSRF token 的函数
