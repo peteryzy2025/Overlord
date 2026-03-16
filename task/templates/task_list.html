@@ -45,6 +45,39 @@
         box-shadow: var(--shadow-light);
     }
 
+    #paginationContainer.pagination-container {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    #paginationContainer .pagination-new {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    #paginationContainer .pagination-jump {
+        margin-left: auto;
+    }
+
+    @media (max-width: 768px) {
+        #paginationContainer .pagination-new {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        #paginationContainer .pagination-jump {
+            margin-left: 0;
+        }
+    }
+
     /* 统计看板 - 复用 tracking_management 样式 */
     .stats-dashboard {
         display: grid;
@@ -790,9 +823,31 @@
         </div>
 
         <!-- 分页控件 -->
-        <div class="pagination-container" id="paginationContainer" style="display: none;">
-            <div class="pagination-info" id="paginationInfo"></div>
+        <div class="pagination-container pagination-toolbar" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                </div>
+            </div>
             <div class="pagination-new" id="paginationButtons"></div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
         </div>
     </div>
 </div>
@@ -899,6 +954,15 @@
         setupDateFilter();
         loadTasks();
         loadStats();
+    });
+
+    document.addEventListener('click', function (event) {
+        const wrapper = document.getElementById('pageSizeWrapper');
+        const dropdown = document.getElementById('pageSizeDropdown');
+
+        if (wrapper && dropdown && !wrapper.contains(event.target)) {
+            dropdown.style.display = 'none';
+        }
     });
 
     function getMultiSelectValues(selectInstance) {
@@ -1183,19 +1247,34 @@
     // ===== 分页渲染 =====
     function renderPagination() {
         const { page, page_size, total, total_pages } = taskData.pagination;
+        const buttonsContainer = document.getElementById('paginationButtons');
+        const statsContainer = document.getElementById('paginationStats');
+        const jumpContainer = document.getElementById('paginationJump');
+        const pageSizeText = document.getElementById('pageSizeText');
 
-        document.getElementById('paginationInfo').textContent =
-            `共 ${total} 条，第 ${page}/${total_pages} 页`;
+        if (pageSizeText) {
+            pageSizeText.textContent = `${page_size}条`;
+        }
+
+        document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
+            opt.classList.toggle('selected', parseInt(opt.dataset.value, 10) === page_size);
+        });
+
+        if (!total || !total_pages) {
+            statsContainer.textContent = '0-0 / 共 0 条';
+            buttonsContainer.innerHTML = '';
+            jumpContainer.style.display = 'none';
+            return;
+        }
+
+        const start = total > 0 ? (page - 1) * page_size + 1 : 0;
+        const end = Math.min(page * page_size, total);
+        statsContainer.textContent = `${start}-${end} / 共 ${total} 条`;
 
         let buttonsHtml = '';
 
-        // 上一页
-        buttonsHtml += `
-                <button class="pagination-btn-new" onclick="changePage(${page - 1})" 
-                        ${page === 1 ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-            `;
+        buttonsHtml += `<button class="pagination-btn-new" onclick="changePage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+        buttonsHtml += `<button class="pagination-btn-new" onclick="changePage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
 
         // 页码按钮
         const maxButtons = 7;
@@ -1227,15 +1306,19 @@
             buttonsHtml += `<button class="pagination-btn-new" onclick="changePage(${total_pages})">${total_pages}</button>`;
         }
 
-        // 下一页
-        buttonsHtml += `
-                <button class="pagination-btn-new" onclick="changePage(${page + 1})" 
-                        ${page === total_pages ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            `;
+        buttonsHtml += `<button class="pagination-btn-new" onclick="changePage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
+        buttonsHtml += `<button class="pagination-btn-new" onclick="changePage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
 
-        document.getElementById('paginationButtons').innerHTML = buttonsHtml;
+        buttonsContainer.innerHTML = buttonsHtml;
+
+        if (total_pages > 0) {
+            jumpContainer.style.display = 'flex';
+            const jumpInput = document.getElementById('pageJumpInput');
+            jumpInput.max = total_pages;
+            jumpInput.value = '';
+        } else {
+            jumpContainer.style.display = 'none';
+        }
     }
 
     function changePage(newPage) {
@@ -1243,6 +1326,56 @@
 
         taskData.pagination.page = newPage;
         loadTasks();
+    }
+
+    function togglePageSizeDropdown() {
+        const dropdown = document.getElementById('pageSizeDropdown');
+        if (!dropdown) return;
+
+        const isOpen = dropdown.style.display === 'block';
+        dropdown.style.display = isOpen ? 'none' : 'block';
+    }
+
+    function changePageSize(newSize) {
+        const safeSize = Number(newSize) || 20;
+        taskData.pagination.page_size = safeSize;
+        taskData.pagination.page = 1;
+
+        const pageSizeText = document.getElementById('pageSizeText');
+        if (pageSizeText) {
+            pageSizeText.textContent = `${safeSize}条`;
+        }
+
+        document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
+            opt.classList.toggle('selected', parseInt(opt.dataset.value, 10) === safeSize);
+        });
+
+        const dropdown = document.getElementById('pageSizeDropdown');
+        if (dropdown) {
+            dropdown.style.display = 'none';
+        }
+
+        loadTasks();
+    }
+
+    function handlePageJump(event) {
+        if (event.key !== 'Enter') return;
+
+        const input = document.getElementById('pageJumpInput');
+        const targetPage = parseInt(input.value, 10);
+        const maxPage = taskData.pagination.total_pages;
+
+        if (Number.isNaN(targetPage) || targetPage < 1) {
+            showNotification('请输入有效页码', 'warning');
+            return;
+        }
+
+        if (targetPage > maxPage) {
+            showNotification(`最大页码为 ${maxPage}`, 'warning');
+            return;
+        }
+
+        changePage(targetPage);
     }
 
     function toggleSelectAllTasks() {
