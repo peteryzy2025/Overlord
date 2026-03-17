@@ -312,6 +312,192 @@ def external_update_subtask_status_api(request):
         }, status=500)
 
 
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def external_get_subtask_detail_api(request):
+    """
+    对外获取子任务详情接口（无需登录）
+    GET/POST /api/external/tasks/subtasks/detail/
+
+    支持 query / JSON / form-data：
+    {
+        "subtask_id": 123
+    }
+    """
+    try:
+        data = {}
+
+        if request.method == "GET":
+            data = request.GET.dict()
+        else:
+            if request.body:
+                try:
+                    data = json.loads(request.body)
+                except json.JSONDecodeError:
+                    data = {}
+            if not data:
+                data = request.POST.dict()
+
+        subtask_id = data.get('subtask_id')
+
+        if not subtask_id:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: subtask_id'
+            }, status=400)
+
+        try:
+            subtask_id = int(subtask_id)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'subtask_id 必须是数字'
+            }, status=400)
+
+        # 查询子任务
+        subtask = SubTask.objects.filter(id=subtask_id).first()
+        if not subtask:
+            return JsonResponse({
+                'success': False,
+                'message': '子任务不存在'
+            }, status=404)
+
+        # 构造响应数据
+        subtask_data = {
+            'id': subtask.id,
+            'task_id': subtask.task_id,
+            'type': subtask.subtask_type,
+            'type_display': subtask.get_subtask_type_display(),
+            'status': subtask.subtask_status,
+            'status_display': dict(SubTask.STATUS_CHOICES).get(subtask.subtask_status, subtask.subtask_status),
+            'order': subtask.order,
+            'params': subtask.params,
+            'is_executed': subtask.is_executed,
+            'executed_at': subtask.executed_at.strftime('%Y-%m-%d %H:%M:%S') if subtask.executed_at else None,
+            'execution_result': subtask.execution_result,
+            'created_at': subtask.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'updated_at': subtask.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+        return JsonResponse({
+            'success': True,
+            'data': subtask_data
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取子任务详情失败: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def external_update_subtask_detail_api(request):
+    """
+    对外更新子任务详情接口（无需登录）
+    POST /api/external/tasks/subtasks/update-detail/
+
+    支持 JSON 或 form-data：
+    {
+        "subtask_id": 123,
+        "params": {
+            "diwei_account": "测试",
+            "local_gallery_path": "\\\path\\\to\\\folder",
+            ...
+        },
+        "status": "completed"  // 可选，不传则不修改状态
+    }
+    """
+    try:
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                data = {}
+        if not data:
+            data = request.POST.dict()
+
+        subtask_id = data.get('subtask_id')
+        new_params = data.get('params')
+        new_status = (data.get('status') or '').strip()
+
+        if not subtask_id:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: subtask_id'
+            }, status=400)
+
+        try:
+            subtask_id = int(subtask_id)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'message': 'subtask_id 必须是数字'
+            }, status=400)
+
+        # 查询子任务
+        subtask = SubTask.objects.filter(id=subtask_id).first()
+        if not subtask:
+            return JsonResponse({
+                'success': False,
+                'message': '子任务不存在'
+            }, status=404)
+
+        # 验证状态值（如果提供了）
+        if new_status:
+            valid_statuses = [choice[0] for choice in SubTask.STATUS_CHOICES]
+            if new_status not in valid_statuses:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
+                }, status=400)
+
+        # 更新 params（如果提供了）
+        if new_params is not None:
+            if not isinstance(new_params, dict):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'params 必须是对象类型'
+                }, status=400)
+            subtask.params = new_params
+
+        # 更新状态（如果提供了）
+        update_fields = ['params', 'updated_at']
+        if new_status:
+            subtask.subtask_status = new_status
+            update_fields.append('subtask_status')
+
+            # 如果状态是完成或失败，更新执行标记
+            if new_status in {SubTask.STATUS_COMPLETED, SubTask.STATUS_FAILED}:
+                if not subtask.is_executed:
+                    subtask.is_executed = True
+                    update_fields.append('is_executed')
+                if not subtask.executed_at:
+                    subtask.executed_at = timezone.now()
+                    update_fields.append('executed_at')
+
+        subtask.save(update_fields=update_fields)
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'subtask_id': subtask.id,
+                'task_id': subtask.task_id,
+                'type': subtask.subtask_type,
+                'params': subtask.params,
+                'status': subtask.subtask_status
+            }
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'更新子任务详情失败: {str(e)}'
+        }, status=500)
+
+
 @login_required
 @require_http_methods(["GET"])
 def get_tasks_list_api(request):
