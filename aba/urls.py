@@ -9,5 +9,6 @@ urlpatterns = [
     
     # API 接口
     path('api/data/', views.get_aba_data_api, name='api_aba_data'),
+    path('api/update-denoising/', views.update_search_term_denoising_api, name='api_update_search_term_denoising'),
     path('api/available-weeks/', views.get_available_weeks_api, name='api_aba_available_weeks'),
 ]
