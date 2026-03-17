@@ -32,6 +32,11 @@ class SearchTerm(models.Model):
         verbose_name="是否已降噪",
         help_text="人工标记已降噪的搜索词，后续导入"
     )
+    translation_cn = models.CharField(
+        max_length=500,
+        null=True,
+        verbose_name="搜索词中文翻译"
+    )
     class Meta:
         db_table = 'search_terms'
         verbose_name = "搜索词"
