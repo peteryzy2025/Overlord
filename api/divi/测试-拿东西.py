@@ -24,7 +24,7 @@ def demo():
         data_dict={},
         timeout=15,
     )
-    print(resp.json())
+    print(json.dumps(resp.json(), ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
     demo()

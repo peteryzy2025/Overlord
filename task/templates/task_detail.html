@@ -106,29 +106,68 @@
         font-size: 0.9rem;
     }
 
+    /* 大状态标签样式 */
     .status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.3rem 0.75rem;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 500;
+        justify-content: center;
+        padding: 0.6rem 2rem;
+        border-radius: 50% / 100%;  /* 椭圆形边框 */
+        font-size: 2rem;
+        font-weight: 600;
         white-space: nowrap;
-        border: 1px solid transparent;
+        border: 3px solid;
+        min-width: 140px;
+        transform: skew(-5deg);  /* 整体倾斜 */
+    }
+    
+    /* 文字不倾斜 */
+    .status-badge span,
+    .status-badge {
+        font-style: normal;
     }
 
+    /* 主任务状态 - 紧挨着标题 */
     .hero-status {
         flex-shrink: 0;
-        margin-top: 0.15rem;
+        margin-left: 0.75rem;
+        align-self: center;
+        margin-top: 0.2rem;
     }
 
-    .status-draft { background: var(--bg-tertiary); color: var(--text-tertiary); border-color: var(--border-color); }
-    .status-pending { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); border-color: rgba(59, 130, 246, 0.18); }
-    .status-in_progress { background: rgba(72, 187, 120, 0.1); color: #48bb78; border-color: rgba(72, 187, 120, 0.18); }
-    .status-completed { background: rgba(72, 187, 120, 0.1); color: #48bb78; border-color: rgba(72, 187, 120, 0.18); }
-    .status-failed { background: rgba(229, 62, 62, 0.1); color: var(--danger-color); border-color: rgba(229, 62, 62, 0.18); }
-    .status-cancelled { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); border-color: rgba(107, 114, 128, 0.18); }
+
+
+    /* 状态颜色 */
+    .status-draft { 
+        background: transparent; 
+        color: #6b7280; 
+        border-color: #6b7280; 
+    }
+    .status-pending { 
+        background: transparent; 
+        color: #F5F5DC; 
+        border-color: #F5F5DC; 
+    }
+    .status-in_progress { 
+        background: transparent; 
+        color: #f97316; 
+        border-color: #f97316; 
+    }
+    .status-completed { 
+        background: transparent; 
+        color: #3b82f6; 
+        border-color: #3b82f6; 
+    }
+    .status-failed { 
+        background: transparent; 
+        color: #ef4444; 
+        border-color: #ef4444; 
+    }
+    .status-cancelled { 
+        background: transparent; 
+        color: #6b7280; 
+        border-color: #6b7280; 
+    }
 
     .meta-grid {
         display: grid;
@@ -610,11 +649,11 @@
                 任务详情
             </div>
             <div class="hero-header">
-                <div>
-                    <h1 class="hero-title" id="taskTitle">--</h1>
-                    <div class="hero-subtitle" id="taskSubtitle">任务信息加载中</div>
+                <div style="display: flex; align-items: center; flex-wrap: wrap;">
+                    <h1 class="hero-title" id="taskTitle" style="margin: 0;">--</h1>
+                    <span class="status-badge hero-status" id="taskStatus">--</span>
                 </div>
-                <span class="status-badge hero-status" id="taskStatus">--</span>
+                <div class="hero-subtitle" id="taskSubtitle" style="margin-top: 0.5rem;">任务信息加载中</div>
             </div>
             <div class="meta-grid">
                 <div class="meta-chip">
@@ -782,17 +821,19 @@
         return `
             <article class="subtask-card status-${status}">
                 <div class="subtask-top">
-                    <div>
+                    <div style="flex: 1;">
                         <div class="subtask-kicker">
                             <i class="fas fa-cubes"></i>
                             子任务 ${String(index + 1).padStart(2, '0')}
                         </div>
-                        <h3 class="subtask-type">${escapeHtml(subtask.type_display || getSubtaskTypeDisplay(subtask.type))}</h3>
-                        <div class="subtask-code">${escapeHtml(getSubtaskTypeDisplay(subtask.type))}</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <h3 class="subtask-type" style="margin: 0; line-height: 1;">${escapeHtml(subtask.type_display || getSubtaskTypeDisplay(subtask.type))}</h3>
+                            <span class="status-badge status-${status}" style="margin-left: 0.5rem;">
+                                ${escapeHtml(subtask.status_display || getStatusDisplay(status))}
+                            </span>
+                        </div>
+                        <div class="subtask-code" style="margin-top: 0.25rem;">${escapeHtml(getSubtaskTypeDisplay(subtask.type))}</div>
                     </div>
-                    <span class="status-badge status-${status}">
-                        ${escapeHtml(subtask.status_display || getStatusDisplay(status))}
-                    </span>
                 </div>
 
                 <div class="quick-facts">
@@ -935,8 +976,8 @@
                 title = 'DIVI 图库上传配置';
                 content = renderFieldGrid([
                     field('迪唯账号', params.diwei_account),
-                    field('图库路径', joinList(params.gallery_path), true),
-                    field('本地路径', params.local_gallery_path, true)
+                    field('本地路径', params.local_gallery_path, true),
+                    field('上传到的图库路径', joinList(params['上传到的图库路径']), true)
                 ]);
                 break;
             default:
@@ -1197,9 +1238,9 @@
         return `${Math.round((value / total) * 100)}%`;
     }
 
-    function joinList(value) {
+    function joinList(value, separator = ' ') {
         if (Array.isArray(value)) {
-            return value.length > 0 ? value.join('，') : '--';
+            return value.length > 0 ? value.join(separator) : '--';
         }
         return formatDisplayValue(value);
     }

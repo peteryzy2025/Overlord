@@ -183,13 +183,19 @@ def process_amazon_upload_files(subtask_params, task_no, task_instance=None, sub
                 else:
                     shop_suffix = matched_shop_name
 
-                # 新文件名：数字法人_任务号.xlsx
-                new_filename = f'{shop_suffix}_{task_no}.xlsx'
+                # 生成唯一文件名：数字法人_任务号_序号.xlsx
+                # 检查该店铺已处理的文件数，生成递增序号
+                existing_files_count = sum(1 for p in processed_files if p['shop'] == matched_shop_name)
+                sequence_num = existing_files_count + 1
+                
+                new_filename = f'{shop_suffix}_{task_no}_{sequence_num}.xlsx'
                 target_path = os.path.join(target_dir, new_filename)
 
-                # 如果目标文件已存在，直接覆盖
-                if os.path.exists(target_path):
-                    os.remove(target_path)
+                # 如果目标文件已存在（理论上不会发生），添加额外序号
+                while os.path.exists(target_path):
+                    sequence_num += 1
+                    new_filename = f'{shop_suffix}_{task_no}_{sequence_num}.xlsx'
+                    target_path = os.path.join(target_dir, new_filename)
 
                 # 移动文件
                 shutil.move(full_temp_path, target_path)
