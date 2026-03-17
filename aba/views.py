@@ -230,7 +230,8 @@ def get_aba_data_api(request):
             'error': str(e)
         }, status=500)
 
-
+#=========批量去噪接口====================
+@require_http_methods
 @require_http_methods(["POST"])
 def update_search_term_denoising_api(request):
     """
