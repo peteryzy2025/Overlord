@@ -1,11 +1,13 @@
 """
 ABA 数据管理视图
 """
+import json
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.core.paginator import Paginator
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 from aba.models import SearchTerm, SearchTermMetric
 
@@ -15,6 +17,42 @@ def aba_data_page(request):
     ABA 数据管理页面
     """
     return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
+
+
+def _normalize_search_term_ids(raw_ids):
+    """
+    将前端传入的 ID 列表标准化为去重后的整数列表
+    """
+    if not isinstance(raw_ids, list):
+        return []
+
+    normalized_ids = []
+    seen = set()
+    for raw_id in raw_ids:
+        try:
+            search_term_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+
+        if search_term_id in seen:
+            continue
+
+        seen.add(search_term_id)
+        normalized_ids.append(search_term_id)
+
+    return normalized_ids
+
+
+def _build_empty_aba_response(page, page_size, needs_week=False):
+    return {
+        'success': True,
+        'data': [],
+        'page': page,
+        'page_size': page_size,
+        'has_prev': page > 1,
+        'has_next': False,
+        'needs_week': needs_week,
+    }
 
 
 @require_http_methods(["GET"])
@@ -34,28 +72,24 @@ def get_aba_data_api(request):
         week = request.GET.get('week', '')
         search_term = request.GET.get('search_term', '').strip()
         category = request.GET.get('category', '').strip()
-        page = int(request.GET.get('page', 1))
+        noise_status = request.GET.get('noise_status', 'all').strip()
+        page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
         
         # 验证 page_size
         if page_size not in [20, 50, 100, 200]:
             page_size = 50
-        
+
+        if not week:
+            return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
+
+        try:
+            week_date = datetime.strptime(week, "%Y-%m-%d").date()
+        except ValueError:
+            return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
+
         # 基础查询 - 使用 aba_db 数据库
-        queryset = SearchTermMetric.objects.using('aba_db').select_related('search_term')
-        
-        # 按周期筛选
-        if week:
-            try:
-                week_date = datetime.strptime(week, "%Y-%m-%d").date()
-                queryset = queryset.filter(report_week=week_date)
-            except ValueError:
-                pass
-        else:
-            # 默认显示最新一周
-            latest_week = SearchTermMetric.objects.using('aba_db').order_by('-report_week').values_list('report_week', flat=True).first()
-            if latest_week:
-                queryset = queryset.filter(report_week=latest_week)
+        queryset = SearchTermMetric.objects.using('aba_db').select_related('search_term').filter(report_week=week_date)
         
         # 按搜索词筛选（支持不同匹配模式）
         search_mode = request.GET.get('search_mode', '0')
@@ -75,38 +109,43 @@ def get_aba_data_api(request):
 
         if category:
             queryset = queryset.filter(search_term__term__icontains=category)
+
+        if noise_status == 'noise':
+            queryset = queryset.filter(search_term__denoising=True)
+        elif noise_status == 'denoised':
+            queryset = queryset.filter(search_term__denoising=False)
         
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
-        
-        # 分页
-        paginator = Paginator(queryset, page_size)
-        total = paginator.count
-        total_pages = paginator.num_pages
-        
-        try:
-            page_obj = paginator.page(page)
-        except Exception:
-            page_obj = paginator.page(1)
-            page = 1
-        
-        # 获取趋势数据（最近4周）
+
+        offset = (page - 1) * page_size
+        page_metrics = list(queryset[offset:offset + page_size + 1])
+        has_next = len(page_metrics) > page_size
+        if has_next:
+            page_metrics = page_metrics[:page_size]
+
+        page_search_term_ids = [metric.search_term_id for metric in page_metrics]
+        trend_by_term_id = defaultdict(list)
+        if page_search_term_ids:
+            trend_start_week = week_date - timedelta(days=91)
+            trend_rows = SearchTermMetric.objects.using('aba_db').filter(
+                search_term_id__in=page_search_term_ids,
+                report_week__gte=trend_start_week,
+                report_week__lte=week_date
+            ).order_by('search_term_id', 'report_week').values(
+                'search_term_id',
+                'report_week',
+                'search_frequency_rank'
+            )
+
+            for trend_row in trend_rows:
+                trend_by_term_id[trend_row['search_term_id']].append({
+                    'week': trend_row['report_week'].strftime('%Y-%m-%d'),
+                    'rank': trend_row['search_frequency_rank'],
+                })
+
         metrics_with_trend = []
-        for metric in page_obj:
-            # 查询该搜索词最近13周的趋势（共14周数据）
-            trend_data = SearchTermMetric.objects.using('aba_db').filter(
-                search_term=metric.search_term,
-                report_week__gte=metric.report_week - timedelta(days=91)
-            ).order_by('report_week').values('report_week', 'search_frequency_rank')
-            
-            trend_list = [
-                {
-                    'week': t['report_week'].strftime('%Y-%m-%d'),  # 传递完整日期，包含年份
-                    'rank': t['search_frequency_rank']
-                }
-                for t in trend_data
-            ]
-            
+        for metric in page_metrics:
             # 计算前三商品总份额
             total_click_share = (
                 (metric.asin_1_click_share or 0) +
@@ -123,9 +162,10 @@ def get_aba_data_api(request):
                 'id': metric.id,
                 'search_term': metric.search_term.term,
                 'search_term_id': metric.search_term.id,
+                'denoising': metric.search_term.denoising,
                 'search_frequency_rank': metric.search_frequency_rank,
                 'rank_change': metric.rank_change,
-                'trend': trend_list,
+                'trend': trend_by_term_id.get(metric.search_term_id, []),
                 'total_click_share': round(total_click_share * 100, 2),  # 转为百分比
                 'total_conversion_share': round(total_conversion_share * 100, 2),
                 'report_week': metric.report_week.strftime('%Y-%m-%d'),
@@ -153,12 +193,62 @@ def get_aba_data_api(request):
         return JsonResponse({
             'success': True,
             'data': metrics_with_trend,
-            'total': total,
             'page': page,
-            'total_pages': total_pages,
-            'page_size': page_size
+            'page_size': page_size,
+            'has_prev': page > 1,
+            'has_next': has_next,
+            'needs_week': False,
         })
         
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def update_search_term_denoising_api(request):
+    """
+    更新搜索词的去噪状态
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+        search_term_ids = _normalize_search_term_ids(payload.get('search_term_ids', []))
+        single_search_term_id = payload.get('search_term_id')
+
+        if not search_term_ids and single_search_term_id is not None:
+            search_term_ids = _normalize_search_term_ids([single_search_term_id])
+
+        if not search_term_ids:
+            return JsonResponse({
+                'success': False,
+                'error': '缺少有效的 search_term_id'
+            }, status=400)
+
+        denoising = bool(payload.get('denoising', False))
+        updated_count = SearchTerm.objects.using('aba_db').filter(id__in=search_term_ids).update(denoising=denoising)
+
+        if updated_count == 0:
+            return JsonResponse({
+                'success': False,
+                'error': '搜索词不存在'
+            }, status=404)
+
+        return JsonResponse({
+            'success': True,
+            'message': f'已将 {updated_count} 条数据加入噪声页' if denoising else f'已将 {updated_count} 条数据恢复到去噪后页',
+            'data': {
+                'search_term_ids': search_term_ids,
+                'updated_count': updated_count,
+                'denoising': denoising,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '请求体不是合法 JSON'
+        }, status=400)
     except Exception as e:
         return JsonResponse({
             'success': False,
