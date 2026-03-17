@@ -1255,6 +1255,30 @@ def create_task_api(request):
                             '添加背景色': params.get('add_background_color', False),
                             '背景颜色': params.get('background_color', '')
                         }
+                    elif st.subtask_type == 'amazon_upload':
+                        # Amazon上传 - 从数据库获取实际目标路径
+                        from task.models import AmazonUploadFile
+                        
+                        upload_files = AmazonUploadFile.objects.filter(subtask=st).order_by('created_at')
+                        files_cn = []
+                        
+                        for uf in upload_files:
+                            files_cn.append({
+                                '文件名': uf.excel_filename,
+                                '店铺名': uf.amazon_shop.shop_name if uf.amazon_shop else uf.shop_name_suffix,
+                                '店铺后缀': uf.shop_name_suffix,
+                                '目标路径': uf.target_path,  # 实际的目标路径
+                                '状态': uf.get_status_display(),
+                                '成功SKU数': uf.success_sku or 0,
+                                '总SKU数': uf.total_sku or 0
+                            })
+                        
+                        subtask_params = {
+                            '文件数量': len(files_cn),
+                            '文件列表': files_cn,
+                            '成功文件数': sum(1 for f in files_cn if '成功' in f['状态'] or '完成' in f['状态']),
+                            '失败文件数': sum(1 for f in files_cn if '失败' in f['状态'])
+                        }
                     else:
                         # 其他类型保持原参数
                         subtask_params = params
@@ -1288,6 +1312,7 @@ def create_task_api(request):
                     '创建人姓名': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
                     '所有者姓名': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
                     '创建时间': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    '企业微信通知url': data.get('wx_url', ''),
                     '子任务列表': subtasks_for_webhook
                 }
 
