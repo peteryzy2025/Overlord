@@ -247,6 +247,140 @@
             line-height: 1;
         }
 
+        .bulk-action-bar {
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .selected-count {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .bulk-action-bar .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .btn-custom-denoise {
+            background-color: #e0f2fe;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+        }
+
+        .btn-custom-denoise:hover {
+            background-color: #bae6fd;
+        }
+
+        .custom-denoise-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+
+        .custom-denoise-modal.show {
+            display: flex;
+        }
+
+        .custom-denoise-dialog {
+            width: min(560px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            overflow: hidden;
+        }
+
+        .custom-denoise-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .custom-denoise-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .custom-denoise-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .custom-denoise-body {
+            padding: 1.25rem;
+        }
+
+        .custom-denoise-helper {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .custom-denoise-textarea {
+            width: 100%;
+            min-height: 220px;
+            resize: vertical;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .custom-denoise-textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .custom-denoise-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        #loadingOverlay {
+            flex-direction: column;
+            gap: 0.875rem;
+        }
+
+        #loadingOverlay .loading-progress-text {
+            display: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        #loadingOverlay.aba-task-active .loading-progress-text {
+            display: block;
+        }
+
+        #loadingOverlay.aba-task-active .loading-spinner {
+            animation-duration: 0.35s;
+        }
+
         #paginationContainer.pagination-container {
             display: flex;
             justify-content: space-between;
@@ -481,15 +615,41 @@
         </div>
 
         <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
+        <div class="bulk-action-bar visible" id="bulkActionBar">
             <span class="selected-count" id="selectedCountText">已选择 0 项</span>
             <button class="btn btn-sm btn-noise" id="bulkDenoisingBtn" onclick="executeBulkDenoising()">
                 批量去噪
             </button>
-            <button class="btn btn-secondary" onclick="clearSelection()">
+            <button class="btn btn-sm btn-custom-denoise" id="customDenoisingBtn" onclick="openCustomDenoisingModal()">
+                自定义去噪
+            </button>
+            <button class="btn btn-secondary" id="clearSelectionBtn" onclick="clearSelection()">
                 <i class="fas fa-times"></i>
                 <span>取消选择</span>
             </button>
+        </div>
+
+        <div class="custom-denoise-modal" id="customDenoisingModal" onclick="handleCustomDenoisingModalBackdrop(event)">
+            <div class="custom-denoise-dialog" role="dialog" aria-modal="true" aria-labelledby="customDenoisingTitle">
+                <div class="custom-denoise-header">
+                    <h4 class="custom-denoise-title" id="customDenoisingTitle">自定义去噪</h4>
+                    <button type="button" class="custom-denoise-close" id="customDenoisingCloseBtn" onclick="closeCustomDenoisingModal()" aria-label="关闭">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="custom-denoise-body">
+                    <div class="custom-denoise-helper">一行一个去噪词/词组</div>
+                    <textarea
+                        id="customDenoisingKeywordsInput"
+                        class="custom-denoise-textarea"
+                        placeholder="例如：&#10;free shipping&#10;template&#10;svg bundle"
+                    ></textarea>
+                    <div class="custom-denoise-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelCustomDenoisingBtn" onclick="closeCustomDenoisingModal()">取消</button>
+                        <button type="button" class="btn btn-noise" id="confirmCustomDenoisingBtn" onclick="submitCustomDenoising()">确认并去噪</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="table-container">
@@ -558,6 +718,9 @@
         let selectedSearchTermIds = new Set();
         let allData = [];
         let currentNoiseStatus = 'all';
+        let customDenoisingPollTimer = null;
+        let customDenoisingTaskId = '';
+        let isCustomDenoisingSubmitting = false;
         
         // SearchableSelect 实例
         let weekSelect = null;
@@ -601,6 +764,116 @@
 
         function getCSRFToken() {
             return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function ensureLoadingProgressElement() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (!loadingOverlay) {
+                return null;
+            }
+
+            let statusEl = loadingOverlay.querySelector('.loading-progress-text');
+            if (!statusEl) {
+                statusEl = document.createElement('div');
+                statusEl.className = 'loading-progress-text';
+                loadingOverlay.appendChild(statusEl);
+            }
+
+            return statusEl;
+        }
+
+        function showCustomDenoisingLoading(message) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const statusEl = ensureLoadingProgressElement();
+            if (!loadingOverlay || !statusEl) {
+                return;
+            }
+
+            statusEl.textContent = message || '目前已处理 0 条';
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('aba-task-active');
+        }
+
+        function hideCustomDenoisingLoading() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const statusEl = ensureLoadingProgressElement();
+            if (!loadingOverlay || !statusEl) {
+                return;
+            }
+
+            statusEl.textContent = '';
+            loadingOverlay.classList.remove('aba-task-active');
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function stopCustomDenoisingPolling() {
+            if (customDenoisingPollTimer) {
+                clearTimeout(customDenoisingPollTimer);
+                customDenoisingPollTimer = null;
+            }
+        }
+
+        function setCustomDenoisingSubmitting(submitting) {
+            isCustomDenoisingSubmitting = submitting;
+
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            const confirmBtn = document.getElementById('confirmCustomDenoisingBtn');
+            const cancelBtn = document.getElementById('cancelCustomDenoisingBtn');
+            const closeBtn = document.getElementById('customDenoisingCloseBtn');
+            const customBtn = document.getElementById('customDenoisingBtn');
+
+            if (textarea) {
+                textarea.disabled = submitting;
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = submitting;
+                confirmBtn.textContent = submitting ? '处理中...' : '确认并去噪';
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = submitting;
+            }
+            if (closeBtn) {
+                closeBtn.disabled = submitting;
+            }
+            if (customBtn) {
+                customBtn.disabled = submitting;
+            }
+
+            updateBulkActionBar();
+        }
+
+        function openCustomDenoisingModal() {
+            if (isCustomDenoisingSubmitting) {
+                return;
+            }
+
+            const modal = document.getElementById('customDenoisingModal');
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.add('show');
+            if (textarea) {
+                textarea.focus();
+            }
+        }
+
+        function closeCustomDenoisingModal(forceClose = false) {
+            if (isCustomDenoisingSubmitting && !forceClose) {
+                return;
+            }
+
+            const modal = document.getElementById('customDenoisingModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        function handleCustomDenoisingModalBackdrop(event) {
+            if (event.target === event.currentTarget) {
+                closeCustomDenoisingModal();
+            }
         }
 
         function getBulkActionConfig() {
@@ -668,6 +941,14 @@
                     indicator.style.width = option.offsetWidth + 'px';
                 }
             });
+
+            if (selectedSearchTermIds.size > 0) {
+                selectedSearchTermIds.clear();
+                const selectAll = document.getElementById('selectAll');
+                if (selectAll) {
+                    selectAll.checked = false;
+                }
+            }
 
             updateBulkActionBar();
 
@@ -867,6 +1148,7 @@
             if (loadingOverlay) {
                 loadingOverlay.classList.remove('hidden');
             }
+            ensureLoadingProgressElement();
             
             initSearchableSelects();
             
@@ -890,6 +1172,12 @@
             
             // 标记初始加载完成
             isInitialLoad = false;
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeCustomDenoisingModal();
+            }
         });
         
         // ==================== SearchableSelect 初始化 ====================
@@ -1322,18 +1610,25 @@
             const bar = document.getElementById('bulkActionBar');
             const countText = document.getElementById('selectedCountText');
             const bulkBtn = document.getElementById('bulkDenoisingBtn');
+            const customBtn = document.getElementById('customDenoisingBtn');
+            const clearBtn = document.getElementById('clearSelectionBtn');
             const actionConfig = getBulkActionConfig();
             
             countText.textContent = `已选择 ${selectedSearchTermIds.size} 项`;
             bulkBtn.textContent = actionConfig.label;
             bulkBtn.title = actionConfig.title;
             bulkBtn.className = `btn btn-sm ${actionConfig.className}`;
-            
-            if (selectedSearchTermIds.size > 0) {
-                bar.classList.add('visible');
-            } else {
-                bar.classList.remove('visible');
+            bulkBtn.disabled = selectedSearchTermIds.size === 0 || isCustomDenoisingSubmitting;
+
+            if (customBtn) {
+                customBtn.disabled = isCustomDenoisingSubmitting;
             }
+
+            if (clearBtn) {
+                clearBtn.disabled = selectedSearchTermIds.size === 0 || isCustomDenoisingSubmitting;
+            }
+
+            bar.classList.add('visible');
         }
         
         function clearSelection() {
@@ -1414,6 +1709,99 @@
 
             const actionConfig = getBulkActionConfig();
             await submitDenoisingUpdate(selectedIds, actionConfig.denoising);
+        }
+
+        async function submitCustomDenoising() {
+            if (isCustomDenoisingSubmitting) {
+                return;
+            }
+
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            const keywordsText = textarea ? textarea.value : '';
+            if (!keywordsText.trim()) {
+                showNotification('请输入至少一个去噪词或词组', 'info');
+                return;
+            }
+
+            try {
+                setCustomDenoisingSubmitting(true);
+                showCustomDenoisingLoading('目前已处理 0 条');
+                stopCustomDenoisingPolling();
+
+                const response = await fetch('/api/custom-denoising/start/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        keywords_text: keywordsText
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || '启动自定义去噪失败');
+                }
+
+                customDenoisingTaskId = result.data.task_id;
+                closeCustomDenoisingModal(true);
+                showCustomDenoisingLoading(result.data.message || '目前已处理 0 条');
+                customDenoisingPollTimer = setTimeout(() => pollCustomDenoisingProgress(customDenoisingTaskId), 400);
+            } catch (error) {
+                console.error('启动自定义去噪失败:', error);
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                showNotification(error.message || '启动自定义去噪失败', 'error');
+            }
+        }
+
+        async function pollCustomDenoisingProgress(taskId) {
+            try {
+                const response = await fetch(`/api/custom-denoising/progress/?task_id=${encodeURIComponent(taskId)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || '获取自定义去噪进度失败');
+                }
+
+                const progress = result.data || {};
+                const progressMessage = progress.message || `目前已处理 ${progress.processed_count || 0} 条`;
+                showCustomDenoisingLoading(progressMessage);
+
+                if (progress.status === 'pending' || progress.status === 'running') {
+                    customDenoisingPollTimer = setTimeout(() => pollCustomDenoisingProgress(taskId), 500);
+                    return;
+                }
+
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                customDenoisingTaskId = '';
+
+                if (progress.status === 'success') {
+                    const textarea = document.getElementById('customDenoisingKeywordsInput');
+                    if (textarea) {
+                        textarea.value = '';
+                    }
+                    clearSelection();
+                    showNotification(progress.message || '自定义去噪完成', 'success');
+                    if (weekSelect && weekSelect.getValue()) {
+                        resetPaginationCache();
+                        await loadData();
+                    }
+                    return;
+                }
+
+                throw new Error(progress.error || progress.message || '自定义去噪失败');
+            } catch (error) {
+                console.error('轮询自定义去噪进度失败:', error);
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                customDenoisingTaskId = '';
+                showNotification(error.message || '自定义去噪失败', 'error');
+            }
         }
 
         async function submitDenoisingUpdate(searchTermIds, denoising) {

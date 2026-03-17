@@ -2,7 +2,11 @@
 ABA 数据管理视图
 """
 import json
+import threading
+import uuid
 
+from django.core.cache import cache
+from django.db import close_old_connections
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -10,6 +14,12 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 
 from aba.models import AbaReportWeek, SearchTerm, SearchTermMetric
+
+
+CUSTOM_DENOISING_CACHE_PREFIX = 'aba:custom-denoising:'
+CUSTOM_DENOISING_CACHE_TTL = 60 * 60
+CUSTOM_DENOISING_SCAN_BATCH_SIZE = 200
+CUSTOM_DENOISING_UPDATE_BATCH_SIZE = 500
 
 
 def aba_data_page(request):
@@ -43,6 +53,26 @@ def _normalize_search_term_ids(raw_ids):
     return normalized_ids
 
 
+def _normalize_boolean_value(raw_value, default=False):
+    """
+    兼容 JSON 布尔值与常见字符串布尔值，避免 bool("false") 被误判为 True
+    """
+    if isinstance(raw_value, bool):
+        return raw_value
+
+    if isinstance(raw_value, str):
+        normalized = raw_value.strip().lower()
+        if normalized in {'true', '1', 'yes', 'y', 'on'}:
+            return True
+        if normalized in {'false', '0', 'no', 'n', 'off', ''}:
+            return False
+
+    if raw_value is None:
+        return default
+
+    return bool(raw_value)
+
+
 def _build_empty_aba_response(page, page_size, needs_week=False):
     return {
         'success': True,
@@ -55,6 +85,182 @@ def _build_empty_aba_response(page, page_size, needs_week=False):
         'has_next': False,
         'needs_week': needs_week,
     }
+
+
+def _normalize_custom_denoising_keywords(raw_text):
+    """
+    将多行文本标准化为去重后的关键词列表（按大小写不敏感去重）
+    """
+    if not isinstance(raw_text, str):
+        return []
+
+    normalized_keywords = []
+    seen = set()
+
+    for line in raw_text.splitlines():
+        keyword = line.strip()
+        if not keyword:
+            continue
+
+        dedupe_key = keyword.casefold()
+        if dedupe_key in seen:
+            continue
+
+        seen.add(dedupe_key)
+        normalized_keywords.append(keyword)
+
+    return normalized_keywords
+
+
+def _custom_denoising_cache_key(task_id):
+    return f'{CUSTOM_DENOISING_CACHE_PREFIX}{task_id}'
+
+
+def _build_custom_denoising_progress(
+    *,
+    status='pending',
+    processed_count=0,
+    matched_count=0,
+    updated_count=0,
+    total_terms=0,
+    keyword_count=0,
+    message='任务已创建，准备开始处理',
+    error='',
+):
+    return {
+        'status': status,
+        'processed_count': processed_count,
+        'matched_count': matched_count,
+        'updated_count': updated_count,
+        'total_terms': total_terms,
+        'keyword_count': keyword_count,
+        'message': message,
+        'error': error,
+    }
+
+
+def _get_custom_denoising_progress(task_id):
+    return cache.get(_custom_denoising_cache_key(task_id))
+
+
+def _set_custom_denoising_progress(task_id, **kwargs):
+    progress = _get_custom_denoising_progress(task_id) or _build_custom_denoising_progress()
+    progress.update(kwargs)
+    cache.set(_custom_denoising_cache_key(task_id), progress, CUSTOM_DENOISING_CACHE_TTL)
+    return progress
+
+
+def _flush_custom_denoising_updates(search_term_ids):
+    if not search_term_ids:
+        return 0
+
+    return SearchTerm.objects.using('aba_db').filter(
+        id__in=search_term_ids,
+        denoising=False
+    ).update(denoising=True)
+
+
+def _run_custom_denoising_task(task_id, keywords, total_terms):
+    keyword_patterns = [keyword.casefold() for keyword in keywords]
+    processed_count = 0
+    matched_count = 0
+    updated_count = 0
+    pending_update_ids = []
+
+    try:
+        close_old_connections()
+        _set_custom_denoising_progress(
+            task_id,
+            status='running',
+            processed_count=0,
+            matched_count=0,
+            updated_count=0,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            message='目前已处理 0 条',
+            error='',
+        )
+
+        search_terms = SearchTerm.objects.using('aba_db').order_by('id').values_list('id', 'term')
+        for search_term_id, term in search_terms.iterator(chunk_size=CUSTOM_DENOISING_SCAN_BATCH_SIZE):
+            processed_count += 1
+            normalized_term = (term or '').casefold()
+
+            if any(keyword in normalized_term for keyword in keyword_patterns):
+                matched_count += 1
+                pending_update_ids.append(search_term_id)
+
+            if len(pending_update_ids) >= CUSTOM_DENOISING_UPDATE_BATCH_SIZE:
+                updated_count += _flush_custom_denoising_updates(pending_update_ids)
+                pending_update_ids = []
+
+            if processed_count % CUSTOM_DENOISING_SCAN_BATCH_SIZE == 0:
+                _set_custom_denoising_progress(
+                    task_id,
+                    status='running',
+                    processed_count=processed_count,
+                    matched_count=matched_count,
+                    updated_count=updated_count,
+                    total_terms=total_terms,
+                    keyword_count=len(keywords),
+                    message=f'目前已处理 {processed_count} 条',
+                    error='',
+                )
+
+        if pending_update_ids:
+            updated_count += _flush_custom_denoising_updates(pending_update_ids)
+
+        _set_custom_denoising_progress(
+            task_id,
+            status='success',
+            processed_count=processed_count,
+            matched_count=matched_count,
+            updated_count=updated_count,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            message=f'处理完成，已处理 {processed_count} 条，命中 {matched_count} 条，更新 {updated_count} 条',
+            error='',
+        )
+    except Exception as exc:
+        _set_custom_denoising_progress(
+            task_id,
+            status='error',
+            processed_count=processed_count,
+            matched_count=matched_count,
+            updated_count=updated_count,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            message=f'自定义去噪失败：{exc}',
+            error=str(exc),
+        )
+    finally:
+        close_old_connections()
+
+
+def _launch_custom_denoising_task(keywords):
+    task_id = uuid.uuid4().hex
+    total_terms = SearchTerm.objects.using('aba_db').count()
+    initial_progress = _build_custom_denoising_progress(
+        status='pending',
+        processed_count=0,
+        matched_count=0,
+        updated_count=0,
+        total_terms=total_terms,
+        keyword_count=len(keywords),
+        message='任务已创建，准备开始处理',
+        error='',
+    )
+    cache.set(_custom_denoising_cache_key(task_id), initial_progress, CUSTOM_DENOISING_CACHE_TTL)
+
+    worker = threading.Thread(
+        target=_run_custom_denoising_task,
+        args=(task_id, keywords, total_terms),
+        daemon=True,
+        name=f'aba-custom-denoising-{task_id[:8]}',
+    )
+    worker.start()
+
+    return task_id, initial_progress
 
 
 @require_http_methods(["GET"])
@@ -231,7 +437,6 @@ def get_aba_data_api(request):
         }, status=500)
 
 #=========批量去噪接口====================
-@require_http_methods
 @require_http_methods(["POST"])
 def update_search_term_denoising_api(request):
     """
@@ -251,7 +456,7 @@ def update_search_term_denoising_api(request):
                 'error': '缺少有效的 search_term_id'
             }, status=400)
 
-        denoising = bool(payload.get('denoising', False))
+        denoising = _normalize_boolean_value(payload.get('denoising', False), default=False)
         updated_count = SearchTerm.objects.using('aba_db').filter(id__in=search_term_ids).update(denoising=denoising)
 
         if updated_count == 0:
@@ -279,6 +484,67 @@ def update_search_term_denoising_api(request):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@require_http_methods(["POST"])
+def start_custom_denoising_api(request):
+    """
+    启动自定义批量去噪任务
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+        keywords = _normalize_custom_denoising_keywords(payload.get('keywords_text', ''))
+
+        if not keywords:
+            return JsonResponse({
+                'success': False,
+                'error': '请输入至少一个有效的去噪词或词组'
+            }, status=400)
+
+        task_id, progress = _launch_custom_denoising_task(keywords)
+        return JsonResponse({
+            'success': True,
+            'message': '自定义去噪任务已启动',
+            'data': {
+                'task_id': task_id,
+                **progress,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '请求体不是合法 JSON'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_custom_denoising_progress_api(request):
+    """
+    获取自定义批量去噪任务进度
+    """
+    task_id = request.GET.get('task_id', '').strip()
+    if not task_id:
+        return JsonResponse({
+            'success': False,
+            'error': '缺少 task_id'
+        }, status=400)
+
+    progress = _get_custom_denoising_progress(task_id)
+    if not progress:
+        return JsonResponse({
+            'success': False,
+            'error': '任务不存在或已过期'
+        }, status=404)
+
+    return JsonResponse({
+        'success': True,
+        'data': progress,
+    })
 
 
 @require_http_methods(["GET"])
