@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-from aba.models import SearchTerm, SearchTermMetric
+from aba.models import AbaReportWeek, SearchTerm, SearchTermMetric
 
 
 def aba_data_page(request):
@@ -49,6 +49,8 @@ def _build_empty_aba_response(page, page_size, needs_week=False):
         'data': [],
         'page': page,
         'page_size': page_size,
+        'total': 0,
+        'total_pages': 0,
         'has_prev': page > 1,
         'has_next': False,
         'needs_week': needs_week,
@@ -73,6 +75,7 @@ def get_aba_data_api(request):
         search_term = request.GET.get('search_term', '').strip()
         category = request.GET.get('category', '').strip()
         noise_status = request.GET.get('noise_status', 'all').strip()
+        cached_total = request.GET.get('cached_total', '').strip()
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
         
@@ -114,7 +117,26 @@ def get_aba_data_api(request):
             queryset = queryset.filter(search_term__denoising=True)
         elif noise_status == 'denoised':
             queryset = queryset.filter(search_term__denoising=False)
-        
+
+        has_extra_filters = bool(search_term or category or noise_status != 'all')
+
+        if has_extra_filters:
+            if page == 1:
+                total = queryset.count()
+            else:
+                try:
+                    total = max(int(cached_total), 0)
+                except (TypeError, ValueError):
+                    total = queryset.count()
+        else:
+            total = AbaReportWeek.objects.using('aba_db').filter(
+                report_week=week_date,
+                is_active=True,
+                import_status='ready'
+            ).values_list('record_count', flat=True).first() or 0
+
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
 
@@ -195,6 +217,8 @@ def get_aba_data_api(request):
             'data': metrics_with_trend,
             'page': page,
             'page_size': page_size,
+            'total': total,
+            'total_pages': total_pages,
             'has_prev': page > 1,
             'has_next': has_next,
             'needs_week': False,
@@ -263,22 +287,19 @@ def get_available_weeks_api(request):
     格式：2026年第8周 (02.22-02.28)
     """
     try:
-        weeks = SearchTermMetric.objects.using('aba_db').values_list('report_week', flat=True).distinct().order_by('-report_week')
-        
-        week_list = []
-        for w in weeks:
-            # 计算年度第几周
-            week_number = w.isocalendar()[1]
-            # 计算周期结束日期（周六）
-            end_date = w + timedelta(days=6)
-            # 格式化标签
-            label = f"{w.year}年第{week_number}周 ({w.strftime('%m.%d')}-{end_date.strftime('%m.%d')})"
-            
-            week_list.append({
-                'value': w.strftime('%Y-%m-%d'),
-                'label': label
-            })
-        
+        weeks = AbaReportWeek.objects.using('aba_db').filter(
+            is_active=True,
+            import_status='ready'
+        ).order_by('-report_week').values('report_week', 'display_label')
+
+        week_list = [
+            {
+                'value': week['report_week'].strftime('%Y-%m-%d'),
+                'label': week['display_label']
+            }
+            for week in weeks
+        ]
+
         return JsonResponse({
             'success': True,
             'data': week_list

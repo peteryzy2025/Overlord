@@ -237,6 +237,165 @@
             flex-wrap: wrap;
         }
 
+        #paginationContainer.pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            gap: 1rem;
+            flex-wrap: wrap;
+            overflow: visible;
+        }
+
+        #paginationContainer .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-size-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        #paginationContainer .page-size-label,
+        #paginationContainer .pagination-stats {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-size-dropdown-wrapper {
+            position: relative;
+        }
+
+        #paginationContainer .page-size-trigger {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            min-width: 80px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        #paginationContainer .page-size-trigger:hover {
+            border-color: var(--accent-color);
+        }
+
+        #paginationContainer .page-size-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 100%;
+            min-width: 80px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px 8px 0 0;
+            box-shadow: var(--shadow-heavy);
+            display: none;
+            margin-bottom: 4px;
+            z-index: 1000;
+        }
+
+        #paginationContainer .page-size-dropdown.open {
+            display: block;
+        }
+
+        #paginationContainer .page-size-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        #paginationContainer .page-size-option:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        #paginationContainer .page-size-option.selected {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        #paginationContainer .pagination-new {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
+        }
+
+        #paginationContainer .pagination-btn-new {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .pagination-btn-new:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+
+        #paginationContainer .pagination-btn-new:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #paginationContainer .pagination-btn-new.active,
+        #paginationContainer .pagination-btn-new.active:disabled {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+            opacity: 1;
+        }
+
+        #paginationContainer .pagination-jump {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-jump-input {
+            width: 76px;
+            padding: 0.45rem 0.65rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #fff;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #paginationContainer .page-jump-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
         @media (max-width: 1400px) {
             .aba-filter-row {
                 flex-wrap: wrap;
@@ -250,6 +409,16 @@
 
             .aba-filter-search-group {
                 flex: 1 1 100%;
+            }
+
+            #paginationContainer .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #paginationContainer .pagination-jump {
+                width: 100%;
+                justify-content: flex-start;
             }
         }
     </style>
@@ -344,11 +513,11 @@
                             <span id="pageSizeText">50条</span>
                             <i class="fas fa-chevron-down"></i>
                         </button>
-                        <div class="page-size-dropdown" id="pageSizeDropdown">
-                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
-                            <div class="page-size-option selected" onclick="changePageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
-                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option selected" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
                         </div>
                     </div>
                 </div>
@@ -373,6 +542,9 @@
         let pageSize = 50;
         let hasLoadedData = false;
         let hasNextPage = false;
+        let totalItems = 0;
+        let totalPages = 0;
+        let paginationQuerySignature = '';
         let selectedSearchTermIds = new Set();
         let allData = [];
         let currentNoiseStatus = 'all';
@@ -439,6 +611,35 @@
             };
         }
 
+        function getCurrentFilters() {
+            return {
+                week: weekSelect ? weekSelect.getValue() : '',
+                category: categorySelect ? categorySelect.getValue() : '',
+                searchTerm: document.getElementById('searchTermInput').value.trim(),
+                searchMode: String(searchMode),
+                noiseStatus: currentNoiseStatus,
+                pageSize: String(pageSize)
+            };
+        }
+
+        function buildPaginationQuerySignature(filters = getCurrentFilters()) {
+            return JSON.stringify(filters);
+        }
+
+        function resetPaginationCache() {
+            totalItems = 0;
+            totalPages = 0;
+            hasNextPage = false;
+            paginationQuerySignature = '';
+        }
+
+        function shouldReuseCachedTotal(filters) {
+            return hasLoadedData
+                && currentPage > 1
+                && totalItems > 0
+                && paginationQuerySignature === buildPaginationQuerySignature(filters);
+        }
+
         function setNoiseStatus(status, shouldReload = true) {
             currentNoiseStatus = status;
 
@@ -462,6 +663,7 @@
 
             if (shouldReload && hasLoadedData) {
                 currentPage = 1;
+                resetPaginationCache();
                 loadData();
             }
         }
@@ -720,9 +922,9 @@
         function renderInitialTableState() {
             hasLoadedData = false;
             allData = [];
-            hasNextPage = false;
+            resetPaginationCache();
             clearSelection();
-            renderEmptyTableState('已预选最新周期，请点击搜索加载数据');
+            renderEmptyTableState('请选择筛选条件并点击"应用筛选"');
             renderPagination();
             updatePaginationStats();
         }
@@ -747,15 +949,20 @@
             }
             
             try {
+                const filters = getCurrentFilters();
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
-                    week: weekSelect ? weekSelect.getValue() : '',
-                    category: categorySelect ? categorySelect.getValue() : '',
-                    search_term: document.getElementById('searchTermInput').value,
-                    search_mode: searchMode,
-                    noise_status: currentNoiseStatus
+                    week: filters.week,
+                    category: filters.category,
+                    search_term: filters.searchTerm,
+                    search_mode: filters.searchMode,
+                    noise_status: filters.noiseStatus
                 });
+
+                if (shouldReuseCachedTotal(filters)) {
+                    params.set('cached_total', totalItems);
+                }
                 
                 const response = await fetch(`/api/data/?${params}`);
                 const result = await response.json();
@@ -764,11 +971,14 @@
                     hasLoadedData = true;
                     allData = result.data;
                     hasNextPage = !!result.has_next;
+                    totalItems = Math.max(parseInt(result.total || 0, 10), 0);
+                    totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
+                    paginationQuerySignature = buildPaginationQuerySignature(filters);
 
                     if (result.needs_week) {
                         hasLoadedData = false;
                         allData = [];
-                        hasNextPage = false;
+                        resetPaginationCache();
                         renderEmptyTableState('请选择周期后再搜索');
                     } else if (allData.length > 0) {
                         renderTable(allData);
@@ -919,17 +1129,62 @@
             const pagination = document.getElementById('paginationNew');
             const paginationJump = document.getElementById('paginationJump');
             if (!hasLoadedData) {
-                pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">等待搜索</span>';
+                //pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">等待搜索</span>';
                 paginationJump.style.display = 'none';
                 return;
             }
 
-            pagination.innerHTML = `
+            if (totalPages <= 0) {
+                pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页数据</span>';
+                paginationJump.style.display = 'none';
+                return;
+            }
+
+            const buttons = [];
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            buttons.push(`
+                <button class="pagination-btn-new" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
                 <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
-                <span class="pagination-btn-new active" style="cursor: default;">第 ${currentPage} 页</span>
-                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${hasNextPage ? '' : 'disabled'}>下一页</button>
-            `;
-            paginationJump.style.display = 'none';
+            `);
+
+            const visiblePages = [];
+            if (totalPages >= 1) {
+                visiblePages.push(1);
+            }
+            for (let page = startPage; page <= endPage; page++) {
+                visiblePages.push(page);
+            }
+            if (totalPages > 1) {
+                visiblePages.push(totalPages);
+            }
+
+            const uniquePages = [...new Set(visiblePages)].sort((a, b) => a - b);
+            let previousPage = null;
+            for (const page of uniquePages) {
+                if (previousPage !== null && page - previousPage > 1) {
+                    buttons.push('<span class="pagination-btn-new" style="cursor: default;" disabled>...</span>');
+                }
+
+                buttons.push(`
+                    <button class="pagination-btn-new ${page === currentPage ? 'active' : ''}" onclick="goToPage(${page})">${page}</button>
+                `);
+                previousPage = page;
+            }
+
+            buttons.push(`
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages || !hasNextPage ? 'disabled' : ''}>下一页</button>
+                <button class="pagination-btn-new" onclick="goToPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>尾页</button>
+            `);
+
+            pagination.innerHTML = buttons.join('');
+            paginationJump.style.display = totalPages > 1 ? 'inline-flex' : 'none';
         }
         
         function updatePaginationStats() {
@@ -944,12 +1199,25 @@
                 statsEl.style.color = 'var(--text-secondary)';
                 pageSizeWrapper.appendChild(statsEl);
             }
-            statsEl.textContent = hasLoadedData ? `第 ${currentPage} 页，本页 ${allData.length} 条` : '尚未加载数据';
+            if (!hasLoadedData) {
+                statsEl.textContent = '尚未加载数据';
+                return;
+            }
+
+            if (totalItems === 0 || allData.length === 0) {
+                statsEl.textContent = '0-0 / 共 0 条';
+                return;
+            }
+
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = start + allData.length - 1;
+            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条，第 ${currentPage}/${Math.max(totalPages, 1)} 页`;
         }
         
         function goToPage(page) {
             if (!hasLoadedData || page < 1) return;
-            if (page > currentPage && !hasNextPage) return;
+            if (totalPages > 0 && page > totalPages) return;
+            if (page === currentPage) return;
             currentPage = page;
             loadData();
         }
@@ -958,17 +1226,17 @@
             pageSize = size;
             currentPage = 1;
             document.getElementById('pageSizeText').textContent = size + '条';
-            document.getElementById('pageSizeDropdown').classList.remove('open');
+            document.getElementById('pageSizeDropdown').style.display = 'none';
             
-            document.querySelectorAll('.page-size-option').forEach(option => {
+            document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(option => {
                 option.classList.remove('selected');
+                if (parseInt(option.dataset.value, 10) === size) {
+                    option.classList.add('selected');
+                }
             });
-            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
-            }
 
             if (hasLoadedData) {
+                resetPaginationCache();
                 loadData();
             } else {
                 updatePaginationStats();
@@ -976,18 +1244,32 @@
         }
         
         function togglePageSizeDropdown() {
-            document.getElementById('pageSizeDropdown').classList.toggle('open');
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
         }
 
-        function handlePageJump() {
-            // 轻量分页模式下保留空实现，避免隐藏输入框的内联事件报错
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            const input = event.target;
+            const targetPage = parseInt(input.value, 10);
+            if (!Number.isInteger(targetPage) || targetPage < 1 || targetPage > totalPages) {
+                input.value = '';
+                return;
+            }
+
+            input.value = '';
+            goToPage(targetPage);
         }
         
         document.addEventListener('click', function(event) {
             const pageSizeWrapper = document.getElementById('pageSizeWrapper');
             const pageSizeDropdown = document.getElementById('pageSizeDropdown');
             if (pageSizeWrapper && pageSizeDropdown && !pageSizeWrapper.contains(event.target)) {
-                pageSizeDropdown.classList.remove('open');
+                pageSizeDropdown.style.display = 'none';
             }
         });
         
@@ -1056,8 +1338,8 @@
             const selectedWeek = weekSelect ? weekSelect.getValue() : '';
             if (!selectedWeek) {
                 hasLoadedData = false;
-                hasNextPage = false;
                 allData = [];
+                resetPaginationCache();
                 clearSelection();
                 showNotification('请先选择周期', 'info');
                 renderEmptyTableState('请选择周期后再搜索');
@@ -1066,6 +1348,7 @@
                 return;
             }
             currentPage = 1;
+            resetPaginationCache();
             loadData();
         }
         
@@ -1096,6 +1379,7 @@
             if (categorySelect) {
                 categorySelect.setValue('');
             }
+            resetPaginationCache();
             resetWeekAndReload();
         }
 
@@ -1144,6 +1428,8 @@
                 searchTermIds.forEach(id => selectedSearchTermIds.delete(id));
                 showNotification(result.message || '状态更新成功', 'success');
                 if (hasLoadedData) {
+                    currentPage = 1;
+                    resetPaginationCache();
                     await loadData();
                 }
                 updateBulkActionBar();
