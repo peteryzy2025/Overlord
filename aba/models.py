@@ -186,3 +186,43 @@ class SearchTermMetric(models.Model):
                 name='asin_week_idx'
             ),
         ]
+
+class AbaReportWeek(models.Model):
+    report_week = models.DateField(
+        unique=True,
+        db_index=True,
+        verbose_name="数据周"
+    )
+    display_label = models.CharField(
+        max_length=64,
+        verbose_name="展示文案"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name="是否启用"
+    )
+    import_status = models.CharField(
+        max_length=20,
+        default='ready',
+        db_index=True,
+        verbose_name="导入状态"
+    )
+    record_count = models.IntegerField(
+        default=0,
+        verbose_name="数据条数"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="创建时间"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="更新时间"
+    )
+
+    class Meta:
+        db_table = 'aba_report_weeks'
+        verbose_name = "ABA数据周期"
+        verbose_name_plural = "ABA数据周期"
+        ordering = ['-report_week']
