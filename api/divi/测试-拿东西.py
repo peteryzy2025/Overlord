@@ -17,8 +17,17 @@ django.setup()
 from api.divi.divi_order_service import get_divi_api_resp
 
 
-# async def demo():
-#     try:
+def demo():
+
+    resp = get_divi_api_resp(
+        endpoint_path="/partnerProduct/listProductColorSize",
+        data_dict={},
+        timeout=15,
+    )
+    print(resp.json())
+
+if __name__ == "__main__":
+    demo()
 
 
 
