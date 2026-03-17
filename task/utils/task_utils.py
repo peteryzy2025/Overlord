@@ -243,15 +243,9 @@ def validate_subtask_params(subtask_type, params, user):
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
 
-            gallery_path_raw = params.get('gallery_path', '')
-            if isinstance(gallery_path_raw, list):
-                gallery_path = ' '.join(gallery_path_raw).strip()
-            else:
-                gallery_path = str(gallery_path_raw).strip()
-
             local_gallery_path = params.get('local_gallery_path', '').strip()
-            if not gallery_path or not local_gallery_path:
-                return {'valid': False, 'message': 'DIVI图库上传必须同时填写图库路径和本地路径'}
+            if not local_gallery_path:
+                return {'valid': False, 'message': 'DIVI图库上传的本地路径不能为空'}
 
             return {'valid': True, 'message': ''}
 

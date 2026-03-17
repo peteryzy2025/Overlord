@@ -187,7 +187,6 @@ class SearchTermMetric(models.Model):
             ),
         ]
 
-
 class AbaReportWeek(models.Model):
     report_week = models.DateField(
         unique=True,

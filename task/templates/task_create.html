@@ -1344,7 +1344,6 @@
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
                     diwei_account: '测试',
-                    gallery_path: '',
                     local_gallery_path: ''
                 };
             }
@@ -1379,7 +1378,6 @@
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_gallery_upload') {
                 if (!params.diwei_account) mergedParams.diwei_account = '测试';
-                if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
 
@@ -1540,12 +1538,10 @@
                         });
                     }, 0);
                 }
-            } else if (subtask.type === 'divi_gallery_upload' && subtask.params.gallery_path) {
-                const input = document.querySelector(`#gallery-path-${subtask.id}`);
+            } else if (subtask.type === 'divi_gallery_upload' && subtask.params.local_gallery_path) {
+                const input = document.getElementById(`local-gallery-path-${subtask.id}`);
                 if (input) {
-                    const val = Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path;
-                    input.value = val;
-                    handleDiweiGalleryPathInput(input, subtask.id);
+                    input.value = subtask.params.local_gallery_path;
                 }
             }
 
@@ -2050,22 +2046,6 @@
                             <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
                             <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
                                  data-placeholder="选择迪唯账号"></div>
-                        </div>
-
-                        <div class="form-group has-autocomplete">
-                            <label class="form-label">图库路径 <span style="color: var(--danger-color);">*</span></label>
-                            <div style="position: relative;">
-                                <input type="text" class="form-control gallery-path-input"
-                                       id="gallery-path-${subtask.id}"
-                                       placeholder="图库路径"
-                                       value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
-                                       data-subtask-id="${subtask.id}"
-                                       oninput="handleDiweiGalleryPathInput(this, ${subtask.id})"
-                                       onfocus="showPathSuggestions(this)"
-                                       style="width: 100%;">
-                                <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
-                                <div class="path-suggestions" id="path-suggestions-${subtask.id}" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 100;"></div>
-                            </div>
                         </div>
 
                         <div class="form-group">
@@ -2635,10 +2615,11 @@
                 task_type: 'standard', // 明确任务类型
                 title: document.getElementById('taskTitle').value.trim() || taskData.title,
                 owner_id: document.getElementById('taskOwner').value,
-                subtasks: taskData.subtasks.map(subtask => ({
+                subtasks: taskData.subtasks.map((subtask, index) => ({
                     id: subtask.id,
                     type: subtask.type,
-                    params: subtask.params
+                    params: subtask.params,
+                    order: subtask.order !== undefined ? subtask.order : index
                 }))
             };
         }
@@ -2816,12 +2797,9 @@
                         return false;
                     }
 
-                    const galleryPath = Array.isArray(subtask.params.gallery_path)
-                        ? subtask.params.gallery_path.join(' ')
-                        : (subtask.params.gallery_path || '');
                     const localGalleryPath = subtask.params.local_gallery_path || '';
-                    if (galleryPath.trim() === '' || localGalleryPath.trim() === '') {
-                        showNotification(`子任务 #${subtask.order + 1} 的图库路径和本地路径都必须填写`, 'warning');
+                    if (localGalleryPath.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的本地路径不能为空`, 'warning');
                         return false;
                     }
                 }
