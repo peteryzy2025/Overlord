@@ -318,6 +318,19 @@ def api_amazon_products(request):
         
         # 移除同步批量分析，改为前端异步加载
         # batch_risk_analysis = {}
+        # 构造数据，批量返回每个ASIN的分数序列集合
+        score_trend_row = ThemeDailyData.objects.filter(
+            product_id__in=all_asins,
+        ).order_by('product_id', 'crawl_date').values('product_id', 'crawl_date', 'score')
+        score_trend_lookup = {}
+        for row in score_trend_row:
+            asin = row['product_id']
+            if asin not in score_trend_lookup:
+                score_trend_lookup[asin] = []
+            score_trend_lookup[asin].append({
+                'date': row['crawl_date'].strftime('%Y-%m-%d') if row['crawl_date'] else None,
+                'score': row['score']
+            })
 
         for history in current_page:
             product = history.product
@@ -331,7 +344,7 @@ def api_amazon_products(request):
             theme_data = theme_lookup.get(product.asin, {})
             theme_record = theme_data.get('theme_record')
             daily_data = theme_data.get('daily_data')
-            
+
             # 异步加载不再需要在后端处理风险分析
             # risk_analysis = batch_risk_analysis.get(product.subject, {})
 
@@ -375,6 +388,7 @@ def api_amazon_products(request):
                     'appear_count': daily_data.appear_count if daily_data else None,
                 } if daily_data else None,
                 # NEW: 举报状态
+                'score_trend': score_trend_lookup.get(product.asin, []),
                 'is_reported_by_current_user': is_reported_by_current_user,
                 'all_reporters': all_reporters,
             })

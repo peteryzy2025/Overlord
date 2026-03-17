@@ -141,6 +141,405 @@
             width: 100%;
         }
 
+        .aba-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .aba-table-title {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .tri-state-toggle {
+            display: inline-flex;
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            padding: 4px;
+            position: relative;
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-option {
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            z-index: 1;
+            position: relative;
+            transition: color 0.3s;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .toggle-option.active {
+            color: var(--text-primary);
+        }
+
+        .toggle-indicator {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            left: 4px;
+            background-color: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), background-color 0.3s ease;
+            z-index: 0;
+        }
+
+        .tri-state-toggle[data-state="noise"] .toggle-indicator {
+            background-color: #fee2e2;
+        }
+
+        .tri-state-toggle[data-state="noise"] .toggle-option[data-value="noise"] {
+            color: #b91c1c;
+        }
+
+        .tri-state-toggle[data-state="denoised"] .toggle-indicator {
+            background-color: #d1fae5;
+        }
+
+        .tri-state-toggle[data-state="denoised"] .toggle-option[data-value="denoised"] {
+            color: #047857;
+        }
+
+        .btn-noise {
+            background-color: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+        }
+
+        .btn-noise:hover {
+            background-color: #fecaca;
+        }
+
+        .btn-restore {
+            background-color: #dcfce7;
+            border: 1px solid #bbf7d0;
+            color: #047857;
+        }
+
+        .btn-restore:hover {
+            background-color: #bbf7d0;
+        }
+
+        .aba-action-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .bulk-action-bar .btn {
+            min-height: 32px;
+            padding: 0.375rem 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            line-height: 1;
+        }
+
+        .bulk-action-bar {
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .selected-count {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .bulk-action-bar .btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .btn-custom-denoise {
+            background-color: #e0f2fe;
+            border: 1px solid #bae6fd;
+            color: #0369a1;
+        }
+
+        .btn-custom-denoise:hover {
+            background-color: #bae6fd;
+        }
+
+        .custom-denoise-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 1rem;
+        }
+
+        .custom-denoise-modal.show {
+            display: flex;
+        }
+
+        .custom-denoise-dialog {
+            width: min(560px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+            border: 1px solid rgba(148, 163, 184, 0.22);
+            overflow: hidden;
+        }
+
+        .custom-denoise-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .custom-denoise-title {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .custom-denoise-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 50%;
+            background: #f8fafc;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .custom-denoise-body {
+            padding: 1.25rem;
+        }
+
+        .custom-denoise-helper {
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .custom-denoise-textarea {
+            width: 100%;
+            min-height: 220px;
+            resize: vertical;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.875rem 1rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+            background: #fff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .custom-denoise-textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .custom-denoise-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        #loadingOverlay {
+            flex-direction: column;
+            gap: 0.875rem;
+        }
+
+        #loadingOverlay .loading-progress-text {
+            display: none;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+        }
+
+        #loadingOverlay.aba-task-active .loading-progress-text {
+            display: block;
+        }
+
+        #loadingOverlay.aba-task-active .loading-spinner {
+            animation-duration: 0.35s;
+        }
+
+        #paginationContainer.pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            gap: 1rem;
+            flex-wrap: wrap;
+            overflow: visible;
+        }
+
+        #paginationContainer .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-size-wrapper {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        #paginationContainer .page-size-label,
+        #paginationContainer .pagination-stats {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-size-dropdown-wrapper {
+            position: relative;
+        }
+
+        #paginationContainer .page-size-trigger {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            min-width: 80px;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        #paginationContainer .page-size-trigger:hover {
+            border-color: var(--accent-color);
+        }
+
+        #paginationContainer .page-size-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 100%;
+            min-width: 80px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--accent-color);
+            border-radius: 8px 8px 0 0;
+            box-shadow: var(--shadow-heavy);
+            display: none;
+            margin-bottom: 4px;
+            z-index: 1000;
+        }
+
+        #paginationContainer .page-size-dropdown.open {
+            display: block;
+        }
+
+        #paginationContainer .page-size-option {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        #paginationContainer .page-size-option:hover {
+            background-color: var(--accent-color);
+            color: white;
+        }
+
+        #paginationContainer .page-size-option.selected {
+            background-color: var(--accent-color);
+            color: white;
+            font-weight: 600;
+        }
+
+        #paginationContainer .pagination-new {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
+        }
+
+        #paginationContainer .pagination-btn-new {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .pagination-btn-new:hover:not(:disabled) {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+
+        #paginationContainer .pagination-btn-new:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #paginationContainer .pagination-btn-new.active,
+        #paginationContainer .pagination-btn-new.active:disabled {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+            opacity: 1;
+        }
+
+        #paginationContainer .pagination-jump {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        #paginationContainer .page-jump-input {
+            width: 76px;
+            padding: 0.45rem 0.65rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            background-color: #fff;
+            font-size: 0.875rem;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #paginationContainer .page-jump-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
         @media (max-width: 1400px) {
             .aba-filter-row {
                 flex-wrap: wrap;
@@ -154,6 +553,16 @@
 
             .aba-filter-search-group {
                 flex: 1 1 100%;
+            }
+
+            #paginationContainer .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            #paginationContainer .pagination-jump {
+                width: 100%;
+                justify-content: flex-start;
             }
         }
     </style>
@@ -195,13 +604,52 @@
             </div>
         </div>
 
+        <div class="aba-table-header">
+            <h3 class="aba-table-title">搜索词列表</h3>
+            <div class="tri-state-toggle" id="noiseStatusToggle" data-state="all">
+                <div class="toggle-indicator"></div>
+                <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
+                <div class="toggle-option active" data-value="all" onclick="setNoiseStatus('all')">全部</div>
+                <div class="toggle-option" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
+            </div>
+        </div>
+
         <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
+        <div class="bulk-action-bar visible" id="bulkActionBar">
             <span class="selected-count" id="selectedCountText">已选择 0 项</span>
-            <button class="btn btn-secondary" onclick="clearSelection()">
+            <button class="btn btn-sm btn-noise" id="bulkDenoisingBtn" onclick="executeBulkDenoising()">
+                批量去噪
+            </button>
+            <button class="btn btn-sm btn-custom-denoise" id="customDenoisingBtn" onclick="openCustomDenoisingModal()">
+                自定义去噪
+            </button>
+            <button class="btn btn-secondary" id="clearSelectionBtn" onclick="clearSelection()">
                 <i class="fas fa-times"></i>
                 <span>取消选择</span>
             </button>
+        </div>
+
+        <div class="custom-denoise-modal" id="customDenoisingModal" onclick="handleCustomDenoisingModalBackdrop(event)">
+            <div class="custom-denoise-dialog" role="dialog" aria-modal="true" aria-labelledby="customDenoisingTitle">
+                <div class="custom-denoise-header">
+                    <h4 class="custom-denoise-title" id="customDenoisingTitle">自定义去噪</h4>
+                    <button type="button" class="custom-denoise-close" id="customDenoisingCloseBtn" onclick="closeCustomDenoisingModal()" aria-label="关闭">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="custom-denoise-body">
+                    <div class="custom-denoise-helper">一行一个去噪词/词组</div>
+                    <textarea
+                        id="customDenoisingKeywordsInput"
+                        class="custom-denoise-textarea"
+                        placeholder="例如：&#10;free shipping&#10;template&#10;svg bundle"
+                    ></textarea>
+                    <div class="custom-denoise-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelCustomDenoisingBtn" onclick="closeCustomDenoisingModal()">取消</button>
+                        <button type="button" class="btn btn-noise" id="confirmCustomDenoisingBtn" onclick="submitCustomDenoising()">确认并去噪</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="table-container">
@@ -235,11 +683,11 @@
                             <span id="pageSizeText">50条</span>
                             <i class="fas fa-chevron-down"></i>
                         </button>
-                        <div class="page-size-dropdown" id="pageSizeDropdown">
-                            <div class="page-size-option" onclick="changePageSize(20)">20条</div>
-                            <div class="page-size-option selected" onclick="changePageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
-                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option selected" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
                         </div>
                     </div>
                 </div>
@@ -262,10 +710,17 @@
         // ==================== 全局变量 ====================
         let currentPage = 1;
         let pageSize = 50;
+        let hasLoadedData = false;
+        let hasNextPage = false;
         let totalItems = 0;
-        let totalPages = 1;
-        let selectedIds = new Set();
+        let totalPages = 0;
+        let paginationQuerySignature = '';
+        let selectedSearchTermIds = new Set();
         let allData = [];
+        let currentNoiseStatus = 'all';
+        let customDenoisingPollTimer = null;
+        let customDenoisingTaskId = '';
+        let isCustomDenoisingSubmitting = false;
         
         // SearchableSelect 实例
         let weekSelect = null;
@@ -305,6 +760,203 @@
             d.setUTCDate(d.getUTCDate() + 4 - dayNum);
             const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
             return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+
+        function getCSRFToken() {
+            return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function ensureLoadingProgressElement() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (!loadingOverlay) {
+                return null;
+            }
+
+            let statusEl = loadingOverlay.querySelector('.loading-progress-text');
+            if (!statusEl) {
+                statusEl = document.createElement('div');
+                statusEl.className = 'loading-progress-text';
+                loadingOverlay.appendChild(statusEl);
+            }
+
+            return statusEl;
+        }
+
+        function showCustomDenoisingLoading(message) {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const statusEl = ensureLoadingProgressElement();
+            if (!loadingOverlay || !statusEl) {
+                return;
+            }
+
+            statusEl.textContent = message || '目前已处理 0 条';
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('aba-task-active');
+        }
+
+        function hideCustomDenoisingLoading() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const statusEl = ensureLoadingProgressElement();
+            if (!loadingOverlay || !statusEl) {
+                return;
+            }
+
+            statusEl.textContent = '';
+            loadingOverlay.classList.remove('aba-task-active');
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function stopCustomDenoisingPolling() {
+            if (customDenoisingPollTimer) {
+                clearTimeout(customDenoisingPollTimer);
+                customDenoisingPollTimer = null;
+            }
+        }
+
+        function setCustomDenoisingSubmitting(submitting) {
+            isCustomDenoisingSubmitting = submitting;
+
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            const confirmBtn = document.getElementById('confirmCustomDenoisingBtn');
+            const cancelBtn = document.getElementById('cancelCustomDenoisingBtn');
+            const closeBtn = document.getElementById('customDenoisingCloseBtn');
+            const customBtn = document.getElementById('customDenoisingBtn');
+
+            if (textarea) {
+                textarea.disabled = submitting;
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = submitting;
+                confirmBtn.textContent = submitting ? '处理中...' : '确认并去噪';
+            }
+            if (cancelBtn) {
+                cancelBtn.disabled = submitting;
+            }
+            if (closeBtn) {
+                closeBtn.disabled = submitting;
+            }
+            if (customBtn) {
+                customBtn.disabled = submitting;
+            }
+
+            updateBulkActionBar();
+        }
+
+        function openCustomDenoisingModal() {
+            if (isCustomDenoisingSubmitting) {
+                return;
+            }
+
+            const modal = document.getElementById('customDenoisingModal');
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.add('show');
+            if (textarea) {
+                textarea.focus();
+            }
+        }
+
+        function closeCustomDenoisingModal(forceClose = false) {
+            if (isCustomDenoisingSubmitting && !forceClose) {
+                return;
+            }
+
+            const modal = document.getElementById('customDenoisingModal');
+            if (modal) {
+                modal.classList.remove('show');
+            }
+        }
+
+        function handleCustomDenoisingModalBackdrop(event) {
+            if (event.target === event.currentTarget) {
+                closeCustomDenoisingModal();
+            }
+        }
+
+        function getBulkActionConfig() {
+            if (currentNoiseStatus === 'noise') {
+                return {
+                    denoising: false,
+                    label: '批量还原',
+                    className: 'btn-restore',
+                    title: '将选中数据恢复到去噪后页'
+                };
+            }
+
+            return {
+                denoising: true,
+                label: '批量去噪',
+                className: 'btn-noise',
+                title: '将选中数据加入噪声页'
+            };
+        }
+
+        function getCurrentFilters() {
+            return {
+                week: weekSelect ? weekSelect.getValue() : '',
+                category: categorySelect ? categorySelect.getValue() : '',
+                searchTerm: document.getElementById('searchTermInput').value.trim(),
+                searchMode: String(searchMode),
+                noiseStatus: currentNoiseStatus,
+                pageSize: String(pageSize)
+            };
+        }
+
+        function buildPaginationQuerySignature(filters = getCurrentFilters()) {
+            return JSON.stringify(filters);
+        }
+
+        function resetPaginationCache() {
+            totalItems = 0;
+            totalPages = 0;
+            hasNextPage = false;
+            paginationQuerySignature = '';
+        }
+
+        function shouldReuseCachedTotal(filters) {
+            return hasLoadedData
+                && currentPage > 1
+                && totalItems > 0
+                && paginationQuerySignature === buildPaginationQuerySignature(filters);
+        }
+
+        function setNoiseStatus(status, shouldReload = true) {
+            currentNoiseStatus = status;
+
+            const toggle = document.getElementById('noiseStatusToggle');
+            if (!toggle) return;
+
+            const options = toggle.querySelectorAll('.toggle-option');
+            const indicator = toggle.querySelector('.toggle-indicator');
+            toggle.setAttribute('data-state', status);
+
+            options.forEach(option => {
+                const isActive = option.dataset.value === status;
+                option.classList.toggle('active', isActive);
+                if (isActive && indicator) {
+                    indicator.style.left = option.offsetLeft + 'px';
+                    indicator.style.width = option.offsetWidth + 'px';
+                }
+            });
+
+            if (selectedSearchTermIds.size > 0) {
+                selectedSearchTermIds.clear();
+                const selectAll = document.getElementById('selectAll');
+                if (selectAll) {
+                    selectAll.checked = false;
+                }
+            }
+
+            updateBulkActionBar();
+
+            if (shouldReload && hasLoadedData) {
+                currentPage = 1;
+                resetPaginationCache();
+                loadData();
+            }
         }
 
         // 初始化趋势图 - 智能交互版
@@ -496,6 +1148,7 @@
             if (loadingOverlay) {
                 loadingOverlay.classList.remove('hidden');
             }
+            ensureLoadingProgressElement();
             
             initSearchableSelects();
             
@@ -505,12 +1158,12 @@
             btn.style.backgroundColor = colors.bg;
             btn.style.borderColor = colors.border;
             btn.style.color = colors.color;
+
+            setNoiseStatus('all', false);
             
             // 先加载周期列表
             await loadAvailableWeeks();
-            
-            // 再加载表格数据
-            await loadData();
+            renderInitialTableState();
             
             // 数据加载完成后隐藏 loading
             if (loadingOverlay) {
@@ -519,6 +1172,12 @@
             
             // 标记初始加载完成
             isInitialLoad = false;
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeCustomDenoisingModal();
+            }
         });
         
         // ==================== SearchableSelect 初始化 ====================
@@ -557,6 +1216,28 @@
         
         // 初始加载标志
         let isInitialLoad = true;
+
+        function renderInitialTableState() {
+            hasLoadedData = false;
+            allData = [];
+            resetPaginationCache();
+            clearSelection();
+            renderEmptyTableState('请选择筛选条件并点击"应用筛选"');
+            renderPagination();
+            updatePaginationStats();
+        }
+
+        function renderEmptyTableState(message) {
+            const tbody = document.getElementById('abaTableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="padding: 3rem 1rem; text-align: center; color: var(--text-secondary);">
+                        ${message}
+                    </td>
+                </tr>
+            `;
+            document.getElementById('selectAll').checked = false;
+        }
         
         async function loadData() {
             // 显示加载动画（分页切换时）
@@ -566,23 +1247,43 @@
             }
             
             try {
+                const filters = getCurrentFilters();
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
-                    week: weekSelect ? weekSelect.getValue() : '',
-                    category: categorySelect ? categorySelect.getValue() : '',
-                    search_term: document.getElementById('searchTermInput').value,
-                    search_mode: searchMode
+                    week: filters.week,
+                    category: filters.category,
+                    search_term: filters.searchTerm,
+                    search_mode: filters.searchMode,
+                    noise_status: filters.noiseStatus
                 });
+
+                if (shouldReuseCachedTotal(filters)) {
+                    params.set('cached_total', totalItems);
+                }
                 
                 const response = await fetch(`/api/data/?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {
+                    hasLoadedData = true;
                     allData = result.data;
-                    totalItems = result.total;
-                    totalPages = result.total_pages;
-                    renderTable(allData);
+                    hasNextPage = !!result.has_next;
+                    totalItems = Math.max(parseInt(result.total || 0, 10), 0);
+                    totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
+                    paginationQuerySignature = buildPaginationQuerySignature(filters);
+
+                    if (result.needs_week) {
+                        hasLoadedData = false;
+                        allData = [];
+                        resetPaginationCache();
+                        renderEmptyTableState('请选择周期后再搜索');
+                    } else if (allData.length > 0) {
+                        renderTable(allData);
+                    } else {
+                        renderEmptyTableState('当前筛选条件下暂无数据');
+                    }
+
                     renderPagination();
                     updatePaginationStats();
                 } else {
@@ -627,6 +1328,20 @@
         function renderTable(data) {
             const tbody = document.getElementById('abaTableBody');
             tbody.innerHTML = data.map(item => {
+                const noiseAction = item.denoising
+                    ? {
+                        label: '恢复',
+                        title: '移出去噪声页',
+                        className: 'btn-restore',
+                        nextValue: 'false'
+                    }
+                    : {
+                        label: '去噪',
+                        title: '加入噪声页',
+                        className: 'btn-noise',
+                        nextValue: 'true'
+                    };
+
                 // 排名样式 - 统一橙色
                 let rankClass = 'top-10';
                 
@@ -673,8 +1388,8 @@
                 return `
                 <tr data-id="${item.id}">
                     <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
-                           ${selectedIds.has(item.id) ? 'checked' : ''}
-                           onchange="toggleSelectItem(${item.id})"></td>
+                           ${selectedSearchTermIds.has(item.search_term_id) ? 'checked' : ''}
+                           onchange="toggleSelectItem(${item.search_term_id})"></td>
                     <td>
                         <a href="https://www.amazon.com/s?k=${encodeURIComponent(item.search_term)}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-weight: 500;" onclick="event.stopPropagation();">${item.search_term}</a>
                     </td>
@@ -691,9 +1406,14 @@
                     ${renderAsinCell(item.asin_2)}
                     ${renderAsinCell(item.asin_3)}
                     <td>
-                        <button class="btn btn-sm" onclick="viewDetail(${item.search_term_id})" title="查看详情">
-                            <i class="fas fa-eye"></i>
-                        </button>
+                        <div class="aba-action-cell">
+                            <button class="btn btn-sm ${noiseAction.className}" onclick="updateDenoisingStatus(${item.search_term_id}, ${noiseAction.nextValue})" title="${noiseAction.title}">
+                                ${noiseAction.label}
+                            </button>
+                            {#<button class="btn btn-sm" onclick="viewDetail(${item.search_term_id})" title="查看详情">#}
+                            {#    <i class="fas fa-eye"></i>#}
+                            {#</button>#}
+                        </div>
                     </td>
                 </tr>
             `}).join('');
@@ -706,48 +1426,66 @@
         function renderPagination() {
             const pagination = document.getElementById('paginationNew');
             const paginationJump = document.getElementById('paginationJump');
-            let html = '';
-
-            if (!totalItems || !totalPages) {
-                pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页</span>';
+            if (!hasLoadedData) {
+                //pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">等待搜索</span>';
                 paginationJump.style.display = 'none';
                 return;
             }
 
-            html += `<button class="pagination-btn-new" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''} title="首页">首页</button>`;
-            html += `<button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
-
-            if (totalPages > 1) {
-                let startPage = Math.max(1, currentPage - 2);
-                let endPage = Math.min(totalPages, currentPage + 2);
-
-                if (startPage > 1) {
-                    html += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
-                    if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
-                }
-
-                for (let i = startPage; i <= endPage; i++) {
-                    html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
-                }
-
-                if (endPage < totalPages) {
-                    if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
-                    html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})">${totalPages}</button>`;
-                }
-            } else {
-                html += '<button class="pagination-btn-new active" disabled>1</button>';
+            if (totalPages <= 0) {
+                pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页数据</span>';
+                paginationJump.style.display = 'none';
+                return;
             }
 
-            html += `<button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
-            html += `<button class="pagination-btn-new" onclick="goToPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''} title="尾页">尾页</button>`;
+            const buttons = [];
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - 2);
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-            pagination.innerHTML = html;
-            paginationJump.style.display = 'inline-flex';
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            buttons.push(`
+                <button class="pagination-btn-new" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+            `);
+
+            const visiblePages = [];
+            if (totalPages >= 1) {
+                visiblePages.push(1);
+            }
+            for (let page = startPage; page <= endPage; page++) {
+                visiblePages.push(page);
+            }
+            if (totalPages > 1) {
+                visiblePages.push(totalPages);
+            }
+
+            const uniquePages = [...new Set(visiblePages)].sort((a, b) => a - b);
+            let previousPage = null;
+            for (const page of uniquePages) {
+                if (previousPage !== null && page - previousPage > 1) {
+                    buttons.push('<span class="pagination-btn-new" style="cursor: default;" disabled>...</span>');
+                }
+
+                buttons.push(`
+                    <button class="pagination-btn-new ${page === currentPage ? 'active' : ''}" onclick="goToPage(${page})">${page}</button>
+                `);
+                previousPage = page;
+            }
+
+            buttons.push(`
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages || !hasNextPage ? 'disabled' : ''}>下一页</button>
+                <button class="pagination-btn-new" onclick="goToPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>尾页</button>
+            `);
+
+            pagination.innerHTML = buttons.join('');
+            paginationJump.style.display = totalPages > 1 ? 'inline-flex' : 'none';
         }
         
         function updatePaginationStats() {
-            const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-            const end = Math.min(currentPage * pageSize, totalItems);
             document.getElementById('pageSizeText').textContent = pageSize + '条';
             
             const pageSizeWrapper = document.getElementById('pageSizeWrapper');
@@ -759,11 +1497,25 @@
                 statsEl.style.color = 'var(--text-secondary)';
                 pageSizeWrapper.appendChild(statsEl);
             }
-            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条`;
+            if (!hasLoadedData) {
+                statsEl.textContent = '尚未加载数据';
+                return;
+            }
+
+            if (totalItems === 0 || allData.length === 0) {
+                statsEl.textContent = '0-0 / 共 0 条';
+                return;
+            }
+
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = start + allData.length - 1;
+            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条，第 ${currentPage}/${Math.max(totalPages, 1)} 页`;
         }
         
         function goToPage(page) {
-            if (page < 1 || page > totalPages) return;
+            if (!hasLoadedData || page < 1) return;
+            if (totalPages > 0 && page > totalPages) return;
+            if (page === currentPage) return;
             currentPage = page;
             loadData();
         }
@@ -772,47 +1524,59 @@
             pageSize = size;
             currentPage = 1;
             document.getElementById('pageSizeText').textContent = size + '条';
-            document.getElementById('pageSizeDropdown').classList.remove('open');
+            document.getElementById('pageSizeDropdown').style.display = 'none';
             
-            document.querySelectorAll('.page-size-option').forEach(option => {
+            document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(option => {
                 option.classList.remove('selected');
+                if (parseInt(option.dataset.value, 10) === size) {
+                    option.classList.add('selected');
+                }
             });
-            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
-            if (selectedOption) {
-                selectedOption.classList.add('selected');
+
+            if (hasLoadedData) {
+                resetPaginationCache();
+                loadData();
+            } else {
+                updatePaginationStats();
             }
-            
-            loadData();
         }
         
         function togglePageSizeDropdown() {
-            document.getElementById('pageSizeDropdown').classList.toggle('open');
-        }
-        
-        function handlePageJump(event) {
-            if (event.key === 'Enter') {
-                const page = parseInt(event.target.value);
-                if (page && page >= 1 && page <= totalPages) {
-                    goToPage(page);
-                }
-                event.target.value = '';
-            }
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
         }
 
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+
+            const input = event.target;
+            const targetPage = parseInt(input.value, 10);
+            if (!Number.isInteger(targetPage) || targetPage < 1 || targetPage > totalPages) {
+                input.value = '';
+                return;
+            }
+
+            input.value = '';
+            goToPage(targetPage);
+        }
+        
         document.addEventListener('click', function(event) {
             const pageSizeWrapper = document.getElementById('pageSizeWrapper');
             const pageSizeDropdown = document.getElementById('pageSizeDropdown');
             if (pageSizeWrapper && pageSizeDropdown && !pageSizeWrapper.contains(event.target)) {
-                pageSizeDropdown.classList.remove('open');
+                pageSizeDropdown.style.display = 'none';
             }
         });
         
         // ==================== 选择操作 ====================
-        function toggleSelectItem(id) {
-            if (selectedIds.has(id)) {
-                selectedIds.delete(id);
+        function toggleSelectItem(searchTermId) {
+            if (selectedSearchTermIds.has(searchTermId)) {
+                selectedSearchTermIds.delete(searchTermId);
             } else {
-                selectedIds.add(id);
+                selectedSearchTermIds.add(searchTermId);
             }
             updateBulkActionBar();
             updateSelectAllCheckbox();
@@ -823,12 +1587,12 @@
             const rowCheckboxes = document.querySelectorAll('.row-checkbox');
             
             rowCheckboxes.forEach((cb, index) => {
-                const id = allData[index].id;
+                const searchTermId = allData[index].search_term_id;
                 cb.checked = checkbox.checked;
                 if (checkbox.checked) {
-                    selectedIds.add(id);
+                    selectedSearchTermIds.add(searchTermId);
                 } else {
-                    selectedIds.delete(id);
+                    selectedSearchTermIds.delete(searchTermId);
                 }
             });
             
@@ -837,26 +1601,38 @@
         
         function updateSelectAllCheckbox() {
             const checkbox = document.getElementById('selectAll');
-            const visibleIds = allData.map(d => d.id);
-            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+            const visibleIds = allData.map(d => d.search_term_id);
+            const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedSearchTermIds.has(id));
             checkbox.checked = allSelected;
         }
         
         function updateBulkActionBar() {
             const bar = document.getElementById('bulkActionBar');
             const countText = document.getElementById('selectedCountText');
+            const bulkBtn = document.getElementById('bulkDenoisingBtn');
+            const customBtn = document.getElementById('customDenoisingBtn');
+            const clearBtn = document.getElementById('clearSelectionBtn');
+            const actionConfig = getBulkActionConfig();
             
-            countText.textContent = `已选择 ${selectedIds.size} 项`;
-            
-            if (selectedIds.size > 0) {
-                bar.classList.add('visible');
-            } else {
-                bar.classList.remove('visible');
+            countText.textContent = `已选择 ${selectedSearchTermIds.size} 项`;
+            bulkBtn.textContent = actionConfig.label;
+            bulkBtn.title = actionConfig.title;
+            bulkBtn.className = `btn btn-sm ${actionConfig.className}`;
+            bulkBtn.disabled = selectedSearchTermIds.size === 0 || isCustomDenoisingSubmitting;
+
+            if (customBtn) {
+                customBtn.disabled = isCustomDenoisingSubmitting;
             }
+
+            if (clearBtn) {
+                clearBtn.disabled = selectedSearchTermIds.size === 0 || isCustomDenoisingSubmitting;
+            }
+
+            bar.classList.add('visible');
         }
         
         function clearSelection() {
-            selectedIds.clear();
+            selectedSearchTermIds.clear();
             document.getElementById('selectAll').checked = false;
             renderTable(allData);
             updateBulkActionBar();
@@ -864,7 +1640,20 @@
         
         // ==================== 筛选操作 ====================
         function filterData() {
+            const selectedWeek = weekSelect ? weekSelect.getValue() : '';
+            if (!selectedWeek) {
+                hasLoadedData = false;
+                allData = [];
+                resetPaginationCache();
+                clearSelection();
+                showNotification('请先选择周期', 'info');
+                renderEmptyTableState('请选择周期后再搜索');
+                renderPagination();
+                updatePaginationStats();
+                return;
+            }
             currentPage = 1;
+            resetPaginationCache();
             loadData();
         }
         
@@ -890,23 +1679,172 @@
         }
         
         function resetFilters() {
+            setNoiseStatus('all', false);
             document.getElementById('searchTermInput').value = '';
             if (categorySelect) {
                 categorySelect.setValue('');
             }
+            resetPaginationCache();
+            resetWeekAndReload();
+        }
+
+        async function resetWeekAndReload() {
             if (weekSelect) {
-                loadAvailableWeeks(); // 重新加载并选中最新
+                await loadAvailableWeeks();
             }
             currentPage = 1;
-            loadData();
+            renderInitialTableState();
+        }
+
+        async function updateDenoisingStatus(searchTermId, denoising) {
+            await submitDenoisingUpdate([searchTermId], denoising);
+        }
+
+        async function executeBulkDenoising() {
+            const selectedIds = Array.from(selectedSearchTermIds);
+            if (selectedIds.length === 0) {
+                showNotification('请先选择数据', 'info');
+                return;
+            }
+
+            const actionConfig = getBulkActionConfig();
+            await submitDenoisingUpdate(selectedIds, actionConfig.denoising);
+        }
+
+        async function submitCustomDenoising() {
+            if (isCustomDenoisingSubmitting) {
+                return;
+            }
+
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            const keywordsText = textarea ? textarea.value : '';
+            if (!keywordsText.trim()) {
+                showNotification('请输入至少一个去噪词或词组', 'info');
+                return;
+            }
+
+            try {
+                setCustomDenoisingSubmitting(true);
+                showCustomDenoisingLoading('目前已处理 0 条');
+                stopCustomDenoisingPolling();
+
+                const response = await fetch('/api/custom-denoising/start/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        keywords_text: keywordsText
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || '启动自定义去噪失败');
+                }
+
+                customDenoisingTaskId = result.data.task_id;
+                closeCustomDenoisingModal(true);
+                showCustomDenoisingLoading(result.data.message || '目前已处理 0 条');
+                customDenoisingPollTimer = setTimeout(() => pollCustomDenoisingProgress(customDenoisingTaskId), 400);
+            } catch (error) {
+                console.error('启动自定义去噪失败:', error);
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                showNotification(error.message || '启动自定义去噪失败', 'error');
+            }
+        }
+
+        async function pollCustomDenoisingProgress(taskId) {
+            try {
+                const response = await fetch(`/api/custom-denoising/progress/?task_id=${encodeURIComponent(taskId)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || '获取自定义去噪进度失败');
+                }
+
+                const progress = result.data || {};
+                const progressMessage = progress.message || `目前已处理 ${progress.processed_count || 0} 条`;
+                showCustomDenoisingLoading(progressMessage);
+
+                if (progress.status === 'pending' || progress.status === 'running') {
+                    customDenoisingPollTimer = setTimeout(() => pollCustomDenoisingProgress(taskId), 500);
+                    return;
+                }
+
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                customDenoisingTaskId = '';
+
+                if (progress.status === 'success') {
+                    const textarea = document.getElementById('customDenoisingKeywordsInput');
+                    if (textarea) {
+                        textarea.value = '';
+                    }
+                    clearSelection();
+                    showNotification(progress.message || '自定义去噪完成', 'success');
+                    if (weekSelect && weekSelect.getValue()) {
+                        resetPaginationCache();
+                        await loadData();
+                    }
+                    return;
+                }
+
+                throw new Error(progress.error || progress.message || '自定义去噪失败');
+            } catch (error) {
+                console.error('轮询自定义去噪进度失败:', error);
+                stopCustomDenoisingPolling();
+                hideCustomDenoisingLoading();
+                setCustomDenoisingSubmitting(false);
+                customDenoisingTaskId = '';
+                showNotification(error.message || '自定义去噪失败', 'error');
+            }
+        }
+
+        async function submitDenoisingUpdate(searchTermIds, denoising) {
+            try {
+                const response = await fetch('/api/update-denoising/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        search_term_ids: searchTermIds,
+                        denoising: denoising
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || result.message || '状态更新失败');
+                }
+
+                searchTermIds.forEach(id => selectedSearchTermIds.delete(id));
+                showNotification(result.message || '状态更新成功', 'success');
+                if (hasLoadedData) {
+                    currentPage = 1;
+                    resetPaginationCache();
+                    await loadData();
+                }
+                updateBulkActionBar();
+                return true;
+            } catch (error) {
+                console.error('更新去噪状态失败:', error);
+                showNotification(error.message || '更新去噪状态失败', 'error');
+                return false;
+            }
         }
         
         // ==================== 详情查看 ====================
-        function viewDetail(searchTermId) {
+        //function viewDetail(searchTermId) {
             // TODO: 实现查看详情功能
-            console.log('查看搜索词详情:', searchTermId);
-            showNotification('详情功能开发中...', 'info');
-        }
+          //  console.log('查看搜索词详情:', searchTermId);
+        //    showNotification('详情功能开发中...', 'info');
+        //}
         
         // ==================== 通知提示 ====================
         function showNotification(message, type = 'info') {
