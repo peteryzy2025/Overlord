@@ -1031,7 +1031,6 @@ def create_task_api(request):
                     elif st.subtask_type == 'divi_gallery_upload':
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
-                            '图库路径': params.get('gallery_path', []),
                             '本地路径': params.get('local_gallery_path', '')
                         }
                     elif st.subtask_type == 'divi_multi_side_custom':
