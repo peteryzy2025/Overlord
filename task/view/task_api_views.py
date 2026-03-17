@@ -454,6 +454,9 @@ def external_update_subtask_detail_api(request):
                     'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
                 }, status=400)
 
+        # 标记是否有修改
+        has_changes = False
+        
         # 更新 params（如果提供了）
         if new_params is not None:
             if not isinstance(new_params, dict):
@@ -461,24 +464,38 @@ def external_update_subtask_detail_api(request):
                     'success': False,
                     'message': 'params 必须是对象类型'
                 }, status=400)
+            # 打印调试信息
+            print(f"[DEBUG] 更新子任务 {subtask_id} 的 params:")
+            print(f"[DEBUG] 旧值: {subtask.params}")
+            print(f"[DEBUG] 新值: {new_params}")
+            # 直接替换 params
             subtask.params = new_params
+            has_changes = True
 
         # 更新状态（如果提供了）
-        update_fields = ['params', 'updated_at']
         if new_status:
             subtask.subtask_status = new_status
-            update_fields.append('subtask_status')
+            has_changes = True
 
             # 如果状态是完成或失败，更新执行标记
             if new_status in {SubTask.STATUS_COMPLETED, SubTask.STATUS_FAILED}:
                 if not subtask.is_executed:
                     subtask.is_executed = True
-                    update_fields.append('is_executed')
+                    has_changes = True
                 if not subtask.executed_at:
                     subtask.executed_at = timezone.now()
-                    update_fields.append('executed_at')
+                    has_changes = True
 
-        subtask.save(update_fields=update_fields)
+        # 保存修改
+        if has_changes:
+            subtask.save()
+            subtask.refresh_from_db()
+            print(f"[DEBUG] 保存后 params: {subtask.params}")
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '没有提供任何要修改的数据（params 或 status）'
+            }, status=400)
 
         return JsonResponse({
             'success': True,
@@ -1238,6 +1255,30 @@ def create_task_api(request):
                             '添加背景色': params.get('add_background_color', False),
                             '背景颜色': params.get('background_color', '')
                         }
+                    elif st.subtask_type == 'amazon_upload':
+                        # Amazon上传 - 从数据库获取实际目标路径
+                        from task.models import AmazonUploadFile
+                        
+                        upload_files = AmazonUploadFile.objects.filter(subtask=st).order_by('created_at')
+                        files_cn = []
+                        
+                        for uf in upload_files:
+                            files_cn.append({
+                                '文件名': uf.excel_filename,
+                                '店铺名': uf.amazon_shop.shop_name if uf.amazon_shop else uf.shop_name_suffix,
+                                '店铺后缀': uf.shop_name_suffix,
+                                '目标路径': uf.target_path,  # 实际的目标路径
+                                '状态': uf.get_status_display(),
+                                '成功SKU数': uf.success_sku or 0,
+                                '总SKU数': uf.total_sku or 0
+                            })
+                        
+                        subtask_params = {
+                            '文件数量': len(files_cn),
+                            '文件列表': files_cn,
+                            '成功文件数': sum(1 for f in files_cn if '成功' in f['状态'] or '完成' in f['状态']),
+                            '失败文件数': sum(1 for f in files_cn if '失败' in f['状态'])
+                        }
                     else:
                         # 其他类型保持原参数
                         subtask_params = params
@@ -1271,6 +1312,7 @@ def create_task_api(request):
                     '创建人姓名': f"{current_user.first_name} {current_user.last_name}".strip() or current_user.username,
                     '所有者姓名': f"{owner.first_name} {owner.last_name}".strip() or owner.username,
                     '创建时间': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    '企业微信通知url': data.get('wx_url', ''),
                     '子任务列表': subtasks_for_webhook
                 }
 

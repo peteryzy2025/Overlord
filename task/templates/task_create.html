@@ -52,6 +52,15 @@
                         <i class="fas fa-spinner fa-spin"></i> 生成中...
                     </div>
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">企业微信通知 URL</label>
+                    <input type="text" class="form-control" id="wxUrlInput" 
+                           placeholder="请输入企业微信消息通知 URL"
+                           value="{{ request.user.wx_url|default:'' }}"
+                           style="width: 100%;">
+                    <small style="color: var(--text-tertiary);">用于接收任务执行结果通知</small>
+                </div>
             </div>
         </div>
 
@@ -125,21 +134,21 @@
             </div>
             <div class="modal-body">
                 <div class="subtask-type-options">
-                    <div class="subtask-type-card" data-type="divi_multi_side_custom" onclick="selectSubtaskType(this)">
+                    <div class="subtask-type-card disabled" data-type="divi_multi_side_custom">
                         <div class="type-icon">
                             <i class="fas fa-layer-group"></i>
                         </div>
                         <h4>迪唯多面定制</h4>
                         <p>多面定制产品上架</p>
                     </div>
-                    <div class="subtask-type-card" data-type="divi_custom" onclick="selectSubtaskType(this)">
+                    <div class="subtask-type-card disabled" data-type="divi_custom">
                         <div class="type-icon">
                             <i class="fas fa-paint-brush"></i>
                         </div>
                         <h4>迪唯批量定制</h4>
                         <p>批量定制产品图片</p>
                     </div>
-                    <div class="subtask-type-card" data-type="divi_export" onclick="selectSubtaskType(this)">
+                    <div class="subtask-type-card disabled" data-type="divi_export">
                         <div class="type-icon">
                             <i class="fas fa-file-export"></i>
                         </div>
@@ -167,7 +176,7 @@
                         <h4>Temu导单</h4>
                         <p>导出Temu订单数据</p>
                     </div>
-                    <div class="subtask-type-card disabled" data-type="amazon_upload">
+                    <div class="subtask-type-card" data-type="amazon_upload" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-cloud-upload-alt"></i>
                         </div>
@@ -2615,6 +2624,7 @@
                 task_type: 'standard', // 明确任务类型
                 title: document.getElementById('taskTitle').value.trim() || taskData.title,
                 owner_id: document.getElementById('taskOwner').value,
+                wx_url: document.getElementById('wxUrlInput').value.trim(),
                 subtasks: taskData.subtasks.map((subtask, index) => ({
                     id: subtask.id,
                     type: subtask.type,
