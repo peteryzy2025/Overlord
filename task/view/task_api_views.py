@@ -454,6 +454,9 @@ def external_update_subtask_detail_api(request):
                     'message': f'无效的状态值，必须是: {", ".join(valid_statuses)}'
                 }, status=400)
 
+        # 标记是否有修改
+        has_changes = False
+        
         # 更新 params（如果提供了）
         if new_params is not None:
             if not isinstance(new_params, dict):
@@ -461,24 +464,38 @@ def external_update_subtask_detail_api(request):
                     'success': False,
                     'message': 'params 必须是对象类型'
                 }, status=400)
+            # 打印调试信息
+            print(f"[DEBUG] 更新子任务 {subtask_id} 的 params:")
+            print(f"[DEBUG] 旧值: {subtask.params}")
+            print(f"[DEBUG] 新值: {new_params}")
+            # 直接替换 params
             subtask.params = new_params
+            has_changes = True
 
         # 更新状态（如果提供了）
-        update_fields = ['params', 'updated_at']
         if new_status:
             subtask.subtask_status = new_status
-            update_fields.append('subtask_status')
+            has_changes = True
 
             # 如果状态是完成或失败，更新执行标记
             if new_status in {SubTask.STATUS_COMPLETED, SubTask.STATUS_FAILED}:
                 if not subtask.is_executed:
                     subtask.is_executed = True
-                    update_fields.append('is_executed')
+                    has_changes = True
                 if not subtask.executed_at:
                     subtask.executed_at = timezone.now()
-                    update_fields.append('executed_at')
+                    has_changes = True
 
-        subtask.save(update_fields=update_fields)
+        # 保存修改
+        if has_changes:
+            subtask.save()
+            subtask.refresh_from_db()
+            print(f"[DEBUG] 保存后 params: {subtask.params}")
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': '没有提供任何要修改的数据（params 或 status）'
+            }, status=400)
 
         return JsonResponse({
             'success': True,
