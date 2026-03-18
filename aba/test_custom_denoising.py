@@ -1,5 +1,7 @@
 import json
 from datetime import date
+from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.core.cache import cache
@@ -132,3 +134,152 @@ class CustomDenoisingTests(TestCase):
         self.assertEqual(payload['data']['matched_count'], 3)
         self.assertEqual(payload['data']['updated_count'], 2)
         self.assertEqual(payload['data']['total_terms'], 50)
+
+    def test_new_words_window_defaults_to_13_weeks(self):
+        window_end = date(2026, 3, 22)
+        self.assertEqual(
+            views._get_new_words_window_start(window_end),
+            date(2025, 12, 28),
+        )
+
+    def test_build_new_words_row_uses_first_and_latest_metrics(self):
+        search_term = self._create_search_term('hydrogen water', denoising=False)
+        search_term.translation_cn = '氢水'
+        search_term.first_seen = date(2026, 1, 4)
+
+        first_metric = SimpleNamespace(
+            id=11,
+            report_week=date(2026, 1, 4),
+            search_frequency_rank=120,
+            asin_1_code='B001',
+            asin_1_title='First Product',
+            asin_1_click_share=Decimal('0.1200'),
+            asin_1_conversion_share=Decimal('0.0300'),
+            asin_2_code='B002',
+            asin_2_title='Second Product',
+            asin_2_click_share=Decimal('0.0500'),
+            asin_2_conversion_share=Decimal('0.0200'),
+            asin_3_code='B003',
+            asin_3_title='Third Product',
+            asin_3_click_share=Decimal('0.0200'),
+            asin_3_conversion_share=Decimal('0.0100'),
+        )
+        latest_metric = SimpleNamespace(
+            id=22,
+            report_week=date(2026, 3, 22),
+            search_frequency_rank=18,
+            asin_1_code='B101',
+            asin_1_title='Latest Product 1',
+            asin_1_click_share=Decimal('0.3000'),
+            asin_1_conversion_share=Decimal('0.1200'),
+            asin_2_code='B102',
+            asin_2_title='Latest Product 2',
+            asin_2_click_share=Decimal('0.1500'),
+            asin_2_conversion_share=Decimal('0.0800'),
+            asin_3_code='B103',
+            asin_3_title='Latest Product 3',
+            asin_3_click_share=Decimal('0.0500'),
+            asin_3_conversion_share=Decimal('0.0200'),
+        )
+
+        row = views._build_new_words_row(
+            search_term,
+            {
+                'first_report_week': date(2026, 1, 4),
+                'latest_report_week': date(2026, 3, 22),
+                'appearance_count': 4,
+                'window_start': date(2025, 12, 28),
+                'window_end': date(2026, 3, 22),
+            },
+            [first_metric, latest_metric],
+        )
+
+        self.assertEqual(row['first_seen'], '2026-01-04')
+        self.assertEqual(row['first_search_rank'], 120)
+        self.assertEqual(row['latest_seen'], '2026-03-22')
+        self.assertEqual(row['latest_search_rank'], 18)
+        self.assertEqual(row['appearance_count'], 4)
+        self.assertTrue(row['is_first_seen_in_window'])
+        self.assertEqual(row['total_click_share'], 50.0)
+        self.assertEqual(row['total_conversion_share'], 22.0)
+        self.assertEqual(row['asin_1']['code'], 'B101')
+        self.assertEqual(row['asin_2']['code'], 'B102')
+
+    def test_get_new_words_api_requires_week(self):
+        request = self.factory.get('/api/new-words/')
+        response = views.get_aba_new_words_api(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload['success'])
+        self.assertTrue(payload['needs_week'])
+        self.assertEqual(payload['data'], [])
+
+    def test_get_new_words_api_rejects_reversed_range(self):
+        request = self.factory.get('/api/new-words/', {
+            'start_week': '2026-03-22',
+            'end_week': '2026-01-04',
+        })
+        response = views.get_aba_new_words_api(request)
+        payload = json.loads(response.content)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(payload['success'])
+        self.assertIn('开始周期不能晚于结束周期', payload['error'])
+
+    def test_build_new_words_row_counts_term_metrics_in_selected_window(self):
+        search_term = self._create_search_term('term-a', denoising=False)
+        search_term.first_seen = date(2026, 1, 11)
+        search_term.translation_cn = '词A'
+
+        metric_1 = SimpleNamespace(
+            id=1,
+            report_week=date(2026, 1, 11),
+            search_frequency_rank=99,
+            asin_1_code='B201',
+            asin_1_title='P1',
+            asin_1_click_share=Decimal('0.1000'),
+            asin_1_conversion_share=Decimal('0.0200'),
+            asin_2_code='',
+            asin_2_title='',
+            asin_2_click_share=None,
+            asin_2_conversion_share=None,
+            asin_3_code='',
+            asin_3_title='',
+            asin_3_click_share=None,
+            asin_3_conversion_share=None,
+        )
+        metric_2 = SimpleNamespace(
+            id=2,
+            report_week=date(2026, 1, 18),
+            search_frequency_rank=88,
+            asin_1_code='B202',
+            asin_1_title='P2',
+            asin_1_click_share=Decimal('0.2000'),
+            asin_1_conversion_share=Decimal('0.0400'),
+            asin_2_code='',
+            asin_2_title='',
+            asin_2_click_share=None,
+            asin_2_conversion_share=None,
+            asin_3_code='',
+            asin_3_title='',
+            asin_3_click_share=None,
+            asin_3_conversion_share=None,
+        )
+
+        row = views._build_new_words_row(
+            search_term,
+            {
+                'first_report_week': date(2026, 1, 11),
+                'latest_report_week': date(2026, 1, 18),
+                'appearance_count': 2,
+                'window_start': date(2026, 1, 4),
+                'window_end': date(2026, 1, 25),
+            },
+            [metric_1, metric_2],
+        )
+
+        self.assertEqual(row['first_seen'], '2026-01-11')
+        self.assertEqual(row['appearance_count'], 2)
+        self.assertTrue(row['is_first_seen_in_window'])
+        self.assertEqual(row['latest_seen'], '2026-01-18')
