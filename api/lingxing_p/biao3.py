@@ -46,19 +46,19 @@ async def get_order_transaction(sids=None, start_date=None, end_date=None):
     while True:
         req_body = {
             "sids": sids,
-            "searchDateField":"accounting_time",
+            "searchDateField": "accounting_time",
             "startDate": start_date,
             "endDate": end_date,
             "offset": offset,
             "length": length,
             # "eventSource": [
             #     "Transfer",
-                # "Adjustment",
-                # "Debt",
-                # "Refund",
-                # "FBA Inventory Fee",
-                # "Service Fee",
-                # "Order"
+            # "Adjustment",
+            # "Debt",
+            # "Refund",
+            # "FBA Inventory Fee",
+            # "Service Fee",
+            # "Order"
             # ],
         }
         print(req_body)
@@ -131,3 +131,5 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
