@@ -179,8 +179,8 @@ def external_get_task_detail_api(request):
         subtasks = task.subtasks.all().order_by('order')
 
         for subtask in subtasks:
-            subtask_status = subtask.sync_amazon_upload_status(save=False) \
-                if subtask.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else subtask.subtask_status
+            # 所有子任务类型都直接使用数据库状态
+            subtask_status = subtask.subtask_status
 
             subtask_info = {
                 'id': subtask.id,
@@ -591,8 +591,8 @@ def get_tasks_list_api(request):
         for task in page_obj:
             subtasks_data = []
             for st in task.subtasks.all():
-                subtask_status = st.sync_amazon_upload_status(save=False) \
-                    if st.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else st.subtask_status
+                # 所有子任务类型都直接使用数据库状态
+                subtask_status = st.subtask_status
                 subtasks_data.append({
                     'id': st.id,
                     'type': st.subtask_type,

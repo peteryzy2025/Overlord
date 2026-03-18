@@ -118,7 +118,6 @@
         white-space: nowrap;
         border: 3px solid;
         min-width: 140px;
-        transform: skew(-5deg);  /* 整体倾斜 */
     }
     
     /* 文字不倾斜 */
@@ -562,7 +561,7 @@
 
     .progress-text {
         font-family: 'Courier New', monospace;
-        color: #e2e8f0;
+        color: var(--text-primary);
         font-weight: 600;
     }
 
@@ -1010,39 +1009,40 @@
                     <div class="detail-item wide">
                         <span class="detail-value">暂无待上传文件</span>
                     </div>
-                    ${extraContent}
                 </div>
             `;
         }
+
+        // 生成唯一的子任务ID用于DOM标识
+        const subtaskId = `amazon-files-${subtask.id || Math.random().toString(36).substr(2, 9)}`;
+
+        // 先渲染表格框架，数据异步加载
+        setTimeout(() => loadAmazonUploadRecords(files, subtaskId), 0);
 
         return `
             <div class="subtask-block">
                 <div class="block-title">文件进度</div>
                 <div class="table-shell">
-                    <table class="files-table">
+                    <table class="files-table" id="${subtaskId}">
                         <thead>
                             <tr>
                                 <th>所属店铺</th>
                                 <th>文件名</th>
-                                <th>状态</th>
+                                <th>批次号</th>
                                 <th>SKU 进度</th>
-                                <th>创建时间</th>
-                                <th>完成时间</th>
+                                <th>上传时间</th>
+                                <th>状态</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${files.map(file => `
-                                <tr>
+                            ${files.map((file, index) => `
+                                <tr id="${subtaskId}-row-${index}" data-filename="${escapeHtml(file.filename || '')}">
                                     <td>${escapeHtml(file.shop_name || '--')}</td>
                                     <td>${escapeHtml(file.filename || '--')}</td>
-                                    <td>
-                                        <span class="file-status status-${file.status || 'pending'}-file">
-                                            ${escapeHtml(file.status_display || formatDisplayValue(file.status))}
-                                        </span>
-                                    </td>
-                                    <td class="progress-text">${escapeHtml(file.progress || '-/-')}</td>
-                                    <td>${escapeHtml(file.created_at || '--')}</td>
-                                    <td>${escapeHtml(file.uploaded_at || '--')}</td>
+                                    <td>--</td>
+                                    <td class="progress-text">--</td>
+                                    <td>--</td>
+                                    <td><span class="file-status status-pending-file">加载中...</span></td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -1050,6 +1050,85 @@
                 </div>
             </div>
         `;
+    }
+
+    async function loadAmazonUploadRecords(files, tableId) {
+        for (let index = 0; index < files.length; index++) {
+            const file = files[index];
+            const rowId = `${tableId}-row-${index}`;
+            const filename = file.filename;
+
+            if (!filename) {
+                updateFileRow(rowId, { error: '文件名缺失' });
+                continue;
+            }
+
+            try {
+                const response = await fetch(`/api/amazon/upload-record/?file_name=${encodeURIComponent(filename)}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    updateFileRow(rowId, { data: result.data });
+                } else {
+                    updateFileRow(rowId, { error: result.message || '未找到记录' });
+                }
+            } catch (error) {
+                console.error('加载上货记录失败:', error);
+                updateFileRow(rowId, { error: '加载失败' });
+            }
+        }
+    }
+
+    function updateFileRow(rowId, { data, error }) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 6) return;
+
+        if (error) {
+            // 错误状态：显示错误信息在批次号列
+            cells[2].textContent = '--';
+            cells[3].textContent = '--';
+            cells[4].textContent = '--';
+            cells[5].innerHTML = `<span class="file-status status-failed-file">${escapeHtml(error)}</span>`;
+            return;
+        }
+
+        // 状态映射到样式类
+        const statusClassMap = {
+            'processing': 'status-uploading-file',
+            'completed': 'status-completed-file',
+            'needs_action': 'status-failed-file',
+            'draft': 'status-pending-file',
+            'published': 'status-completed-file',
+            'failed': 'status-failed-file'
+        };
+
+        const statusClass = statusClassMap[data.status] || 'status-pending-file';
+
+        // 更新各列数据 (注意：批次号和状态列已交换位置)
+        cells[2].textContent = data.batch_id || '--';
+        cells[3].innerHTML = `<span class="progress-text">${escapeHtml(data.sku_progress)}</span>`;
+        cells[4].textContent = data.upload_time ? formatDateTime(data.upload_time) : '--';
+        cells[5].innerHTML = `<span class="file-status ${statusClass}">${escapeHtml(data.status_display || data.status)}</span>`;
+    }
+
+    function formatDateTime(datetimeStr) {
+        if (!datetimeStr) return '--';
+        try {
+            const date = new Date(datetimeStr);
+            if (isNaN(date.getTime())) return datetimeStr;
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch {
+            return datetimeStr;
+        }
     }
 
     function field(label, value, wide = false, isHtml = false) {

@@ -109,3 +109,36 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
         results[store_id] = store_results
 
     return results
+
+async def get_lx_temu_orders_list(platform_order_nos:List[str]):
+    """
+        通过平台订单号列表获取订单详情（一次最多500个订单号）
+    :param platform_order_nos:
+    :return:
+    """
+    req_body = {
+        "platform_order_nos": platform_order_nos,
+        "offset": 0,
+        "length": 500,
+        "platform_code":["10024"]
+    }
+    print(req_body)
+    resp = await get_api_resp(req_body, api_path="/pb/mp/order/v2/list")
+    print(resp)
+
+async def temu_address_decrypt(decrypt_sn_list:List[str]):
+    """
+        批量TEMU地址解密 系统单号列表
+    :param decrypt_sn_list:
+    :return:
+    """
+    req_body = {
+        "decryptSnList": decrypt_sn_list,
+    }
+    print("入参：",req_body)
+    resp = await get_api_resp(req_body, api_path="/basicOpen/temu/temuAddressDecrypt")
+    print(resp)
+
+if __name__ == '__main__':
+    asyncio.run(get_lx_temu_orders_list(platform_order_nos=["PO-211-14658323825273284"]))
+    # asyncio.run(temu_address_decrypt(decrypt_sn_list=["103680050723201224"]))
