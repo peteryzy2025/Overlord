@@ -4,14 +4,14 @@ ABA 数据管理视图
 import json
 import threading
 import uuid
+from collections import defaultdict
+from datetime import datetime, timedelta
 
 from django.core.cache import cache
 from django.db import close_old_connections
-from django.shortcuts import render
 from django.http import JsonResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
-from datetime import datetime, timedelta
-from collections import defaultdict
 
 from aba.models import AbaReportWeek, SearchTerm, SearchTermMetric
 
@@ -87,6 +87,13 @@ def _build_empty_aba_response(page, page_size, needs_week=False):
     }
 
 
+def _build_empty_new_words_response(page, page_size, needs_week=False):
+    response = _build_empty_aba_response(page, page_size, needs_week=needs_week)
+    response['window_start'] = ''
+    response['window_end'] = ''
+    return response
+
+
 def _normalize_custom_denoising_keywords(raw_text):
     """
     将多行文本标准化为去重后的关键词列表（按大小写不敏感去重）
@@ -110,6 +117,129 @@ def _normalize_custom_denoising_keywords(raw_text):
         normalized_keywords.append(keyword)
 
     return normalized_keywords
+
+
+def _get_new_words_window_end(week_value):
+    if not week_value:
+        return None
+
+    try:
+        return datetime.strptime(week_value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _parse_week_value(week_value):
+    if not week_value:
+        return None
+
+    try:
+        return datetime.strptime(week_value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _get_new_words_window_start(window_end, weeks=13):
+    if not window_end:
+        return None
+
+    return window_end - timedelta(days=(weeks - 1) * 7)
+
+
+def _apply_search_term_filters(queryset, search_term, search_mode, term_field='search_term__term'):
+    if not search_term:
+        return queryset
+
+    if search_mode == '0':
+        return queryset.filter(**{f'{term_field}__iexact': search_term})
+
+    if search_mode == '2':
+        keywords = search_term.strip().split()
+        for keyword in keywords:
+            queryset = queryset.filter(**{f'{term_field}__iregex': rf'\y{keyword}\y'})
+        return queryset
+
+    return queryset.filter(**{f'{term_field}__icontains': search_term})
+
+
+def _serialize_metric_asin(metric, index):
+    code = getattr(metric, f'asin_{index}_code')
+    title = getattr(metric, f'asin_{index}_title')
+    click_share = getattr(metric, f'asin_{index}_click_share')
+    conversion_share = getattr(metric, f'asin_{index}_conversion_share')
+
+    if not code:
+        return {
+            'code': '',
+            'title': '',
+            'click_share': None,
+            'conversion_share': None,
+        }
+
+    return {
+        'code': code,
+        'title': title,
+        'click_share': round((click_share or 0) * 100, 2),
+        'conversion_share': round((conversion_share or 0) * 100, 2),
+    }
+
+
+def _empty_asin_payload():
+    return {
+        'code': '',
+        'title': '',
+        'click_share': None,
+        'conversion_share': None,
+    }
+
+
+def _serialize_top_share(metric, field_names):
+    return round(sum((getattr(metric, field_name) or 0) for field_name in field_names) * 100, 2)
+
+
+def _build_new_words_row(search_term, term_stats, metrics):
+    metrics_by_week = {metric.report_week: metric for metric in metrics}
+    first_seen = search_term.first_seen or term_stats['first_report_week']
+    latest_seen = term_stats['latest_report_week']
+    first_metric = metrics_by_week.get(first_seen)
+    latest_metric = metrics_by_week.get(latest_seen)
+
+    row_id = latest_metric.id if latest_metric else first_metric.id if first_metric else search_term.id
+    latest_rank = latest_metric.search_frequency_rank if latest_metric else None
+
+    return {
+        'id': row_id,
+        'search_term_id': search_term.id,
+        'search_term': search_term.term,
+        'search_term_translation_cn': search_term.translation_cn,
+        'denoising': search_term.denoising,
+        'first_seen': first_seen.strftime('%Y-%m-%d') if first_seen else '',
+        'first_search_rank': first_metric.search_frequency_rank if first_metric else None,
+        'is_first_seen_in_window': bool(
+            first_seen and term_stats['window_start'] <= first_seen <= term_stats['window_end']
+        ),
+        'appearance_count': term_stats['appearance_count'],
+        'trend': [
+            {
+                'week': metric.report_week.strftime('%Y-%m-%d'),
+                'rank': metric.search_frequency_rank,
+            }
+            for metric in metrics
+        ],
+        'latest_seen': latest_seen.strftime('%Y-%m-%d') if latest_seen else '',
+        'latest_search_rank': latest_rank,
+        'total_click_share': _serialize_top_share(
+            latest_metric,
+            ['asin_1_click_share', 'asin_2_click_share', 'asin_3_click_share'],
+        ) if latest_metric else 0,
+        'total_conversion_share': _serialize_top_share(
+            latest_metric,
+            ['asin_1_conversion_share', 'asin_2_conversion_share', 'asin_3_conversion_share'],
+        ) if latest_metric else 0,
+        'asin_1': _serialize_metric_asin(latest_metric, 1) if latest_metric else _empty_asin_payload(),
+        'asin_2': _serialize_metric_asin(latest_metric, 2) if latest_metric else _empty_asin_payload(),
+        'asin_3': _serialize_metric_asin(latest_metric, 3) if latest_metric else _empty_asin_payload(),
+    }
 
 
 def _custom_denoising_cache_key(task_id):
@@ -302,19 +432,7 @@ def get_aba_data_api(request):
         
         # 按搜索词筛选（支持不同匹配模式）
         search_mode = request.GET.get('search_mode', '0')
-        if search_term:
-            if search_mode == '0':  # 精准查询 - 完全匹配
-                queryset = queryset.filter(search_term__term__iexact=search_term)
-            elif search_mode == '2':  # 广泛匹配 - 空格分隔关键词，AND关系，整词匹配
-                keywords = search_term.strip().split()
-                if keywords:
-                    # 必须同时包含所有关键词（AND关系），每个都是整词匹配
-                    for keyword in keywords:
-                        # 使用正则表达式实现整词匹配
-                        # \y 是 PostgreSQL 的单词边界，匹配独立单词
-                        queryset = queryset.filter(search_term__term__iregex=rf'\y{keyword}\y')
-            else:  # 默认模糊查询 - 子串匹配
-                queryset = queryset.filter(search_term__term__icontains=search_term)
+        queryset = _apply_search_term_filters(queryset, search_term, search_mode)
 
         if category:
             queryset = queryset.filter(search_term__term__icontains=category)
@@ -431,6 +549,132 @@ def get_aba_data_api(request):
             'needs_week': False,
         })
         
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_aba_new_words_api(request):
+    """
+    获取 ABA 新词榜列表 API
+
+    优先使用显式的 start_week / end_week。
+    为兼容旧调用方式，当缺少 start_week 时回退到 end_week 向前 13 周。
+    """
+    try:
+        start_week_raw = request.GET.get('start_week', '').strip()
+        end_week_raw = request.GET.get('end_week', '').strip() or request.GET.get('week', '').strip()
+        search_term = request.GET.get('search_term', '').strip()
+        category = request.GET.get('category', '').strip()
+        search_mode = request.GET.get('search_mode', '0')
+        noise_status = request.GET.get('noise_status', 'all').strip()
+        page = max(int(request.GET.get('page', 1)), 1)
+        page_size = int(request.GET.get('page_size', 50))
+
+        if page_size not in [20, 50, 100, 200]:
+            page_size = 50
+
+        window_end = _parse_week_value(end_week_raw)
+        if not window_end:
+            return JsonResponse(_build_empty_new_words_response(page, page_size, needs_week=True))
+
+        window_start = _parse_week_value(start_week_raw) if start_week_raw else _get_new_words_window_start(window_end, weeks=13)
+        if not window_start:
+            return JsonResponse(_build_empty_new_words_response(page, page_size, needs_week=True))
+
+        if window_start > window_end:
+            return JsonResponse({
+                'success': False,
+                'error': '开始周期不能晚于结束周期'
+            }, status=400)
+
+        base_queryset = SearchTerm.objects.using('aba_db').filter(
+            first_seen__gte=window_start,
+            first_seen__lte=window_end,
+        )
+
+        base_queryset = _apply_search_term_filters(
+            base_queryset,
+            search_term,
+            search_mode,
+            term_field='term',
+        )
+        if category:
+            base_queryset = base_queryset.filter(term__icontains=category)
+
+        if noise_status == 'noise':
+            base_queryset = base_queryset.filter(denoising=True)
+        elif noise_status == 'denoised':
+            base_queryset = base_queryset.filter(denoising=False)
+
+        candidate_queryset = base_queryset.order_by('-first_seen', 'id')
+
+        total = candidate_queryset.count()
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+        offset = (page - 1) * page_size
+        page_terms = list(candidate_queryset[offset:offset + page_size + 1])
+        has_next = len(page_terms) > page_size
+        if has_next:
+            page_terms = page_terms[:page_size]
+
+        if not page_terms:
+            response = _build_empty_new_words_response(page, page_size, needs_week=False)
+            response['window_start'] = window_start.strftime('%Y-%m-%d')
+            response['window_end'] = window_end.strftime('%Y-%m-%d')
+            return JsonResponse(response)
+
+        term_ids = [term.id for term in page_terms]
+        page_terms_by_id = {term.id: term for term in page_terms}
+
+        metrics = SearchTermMetric.objects.using('aba_db').filter(
+            search_term_id__in=term_ids,
+            report_week__gte=window_start,
+            report_week__lte=window_end,
+        ).order_by('search_term_id', 'report_week')
+
+        metrics_by_term_id = defaultdict(list)
+        for metric in metrics:
+            metrics_by_term_id[metric.search_term_id].append(metric)
+
+        data = []
+        for term_id in term_ids:
+            search_term_obj = page_terms_by_id.get(term_id)
+            if not search_term_obj:
+                continue
+
+            term_metrics = metrics_by_term_id.get(term_id, [])
+            latest_report_week = term_metrics[-1].report_week if term_metrics else search_term_obj.first_seen
+            term_stats = {
+                'first_report_week': search_term_obj.first_seen,
+                'latest_report_week': latest_report_week,
+                'appearance_count': len(term_metrics),
+                'window_start': window_start,
+                'window_end': window_end,
+            }
+
+            data.append(_build_new_words_row(
+                search_term_obj,
+                term_stats,
+                term_metrics,
+            ))
+
+        return JsonResponse({
+            'success': True,
+            'data': data,
+            'page': page,
+            'page_size': page_size,
+            'total': total,
+            'total_pages': total_pages,
+            'has_prev': page > 1,
+            'has_next': has_next,
+            'needs_week': False,
+            'window_start': window_start.strftime('%Y-%m-%d'),
+            'window_end': window_end.strftime('%Y-%m-%d'),
+        })
     except Exception as e:
         return JsonResponse({
             'success': False,
