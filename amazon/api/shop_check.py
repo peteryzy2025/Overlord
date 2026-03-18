@@ -404,6 +404,84 @@ def update_daily_check(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def get_upload_record_by_filename(request):
+    """
+    根据文件名查询亚马逊店铺上货记录
+    
+    请求参数（Query String）:
+        - file_name (str, 必填): 文件名，如 "products.xlsx"
+    
+    返回示例:
+        {
+            "success": true,
+            "message": "",
+            "data": {
+                "batch_id": "UP20250316001",
+                "file_name": "products.xlsx",
+                "status": "completed",
+                "status_display": "完成",
+                "sku_success": 50,
+                "submitted": 100,
+                "sku_progress": "50/100",
+                "upload_time": "2026-02-28T10:56:00",
+                "shop_id": 123,
+                "shop_name": "店铺A"
+            }
+        }
+    """
+    try:
+        # 1. 获取文件名参数
+        file_name = request.GET.get("file_name", "").strip()
+        
+        if not file_name:
+            return json_response(False, message="缺少必填参数: file_name", status_code=400)
+        
+        # 2. 查询记录
+        from amazon.models import AmazonShopUploadRecord
+        
+        records = AmazonShopUploadRecord.objects.filter(file_name=file_name).select_related("shop")
+        count = records.count()
+        
+        # 3. 检查结果数量
+        if count == 0:
+            return json_response(
+                False, 
+                message=f"未找到文件名为 '{file_name}' 的上货记录", 
+                status_code=404
+            )
+        
+        if count > 1:
+            return json_response(
+                False, 
+                message=f"文件名 '{file_name}' 匹配到 {count} 条记录，数据异常", 
+                status_code=500
+            )
+        
+        # 4. 获取单条记录
+        record = records.first()
+        
+        # 5. 构建返回数据
+        data = {
+            "batch_id": record.batch_id,
+            "file_name": record.file_name,
+            "status": record.status,
+            "status_display": record.get_status_display(),
+            "sku_success": record.sku_success,
+            "submitted": record.submitted,
+            "sku_progress": f"{record.sku_success or 0}/{record.submitted or 0}",
+            "upload_time": record.upload_time,
+            "shop_id": record.shop_id,
+            "shop_name": record.shop.shop_name if record.shop else None
+        }
+        
+        return json_response(True, data=data)
+        
+    except Exception as e:
+        return json_response(False, message=f"服务器错误: {str(e)}", status_code=500)
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def save_upload_record(request):
     """
