@@ -30,8 +30,6 @@ django.setup()
 from amazon.models import AmazonOrders, LingXingAmazonShop
 from general.models import AmazonShop, Project
 
-# ============ 缓存：brand_id → 店铺信息映射 ============
-_BRAND_INFO_CACHE = {}
 from api.divi.divi_order_service import (
     query_divi_order,
     get_divi_brand_id_from_sid,
@@ -50,49 +48,34 @@ ENABLE_REIMPORT = True  # 修改这个值即可切换模式！
 # ============ 日期配置 ============
 TARGET_DATE = "2026-01-01"  # 同步/补导的起始日期
 
-# ============ 缓存：SID → BrandID 映射 ============
-_BRAND_ID_CACHE = {}
-
-# ============ 缓存：BrandID → 项目DIVI配置状态 ============
-_PROJECT_DIVI_CACHE = {}
+# 注意：本脚本被 sync_a_doing.py 7×24小时循环调用，不能使用缓存
+# 所有数据必须实时从数据库获取，确保数据一致性
 
 
 def check_project_divi_config(brand_id):
     """
     检查 brand_id 对应的项目是否配置了 DIVI 接口
     返回: (是否可导单, 项目信息字符串)
+    注意：实时查询，不使用缓存（因为被循环调用）
     """
-    if brand_id in _PROJECT_DIVI_CACHE:
-        return _PROJECT_DIVI_CACHE[brand_id]
-    
     try:
         # 通过 brand_id (divi_shop_id) 找到 AmazonShop
         shop = AmazonShop.objects.filter(divi_shop_id=brand_id).select_related('project').first()
         if not shop:
-            result = (False, f"brand_id={brand_id} 无对应店铺")
-            _PROJECT_DIVI_CACHE[brand_id] = result
-            return result
+            return (False, f"brand_id={brand_id} 无对应店铺")
         
         if not shop.project:
-            result = (False, f"店铺 {shop.name} 未绑定项目")
-            _PROJECT_DIVI_CACHE[brand_id] = result
-            return result
+            return (False, f"店铺 {shop.name} 未绑定项目")
         
         project = shop.project
         # 检查项目是否配置了 DIVI 凭证
         if not project.divi_partner_code or not project.divi_secret:
-            result = (False, f"项目 '{project.name}'(ID:{project.id}) 未配置 DIVI 凭证")
-            _PROJECT_DIVI_CACHE[brand_id] = result
-            return result
+            return (False, f"项目 '{project.name}'(ID:{project.id}) 未配置 DIVI 凭证")
         
-        result = (True, f"项目 '{project.name}'")
-        _PROJECT_DIVI_CACHE[brand_id] = result
-        return result
+        return (True, f"项目 '{project.name}'")
         
     except Exception as e:
-        result = (False, f"检查项目配置异常: {str(e)}")
-        _PROJECT_DIVI_CACHE[brand_id] = result
-        return result
+        return (False, f"检查项目配置异常: {str(e)}")
 
 
 # ==================================
@@ -122,7 +105,7 @@ def query_reimport_orders(start_datetime):
     for order in orders:
         sid = order.lingxing_shop.sid if order.lingxing_shop else None
         if sid:
-            brand_id = get_brand_id_with_cache(sid)
+            brand_id = get_brand_id(sid)
             if brand_id:
                 brand_ids_to_check.add(brand_id)
     
@@ -138,7 +121,7 @@ def query_reimport_orders(start_datetime):
     for order in orders:
         sid = order.lingxing_shop.sid if order.lingxing_shop else None
         if sid:
-            brand_id = get_brand_id_with_cache(sid)
+            brand_id = get_brand_id(sid)
             if brand_id in valid_brand_ids:
                 filtered_order_ids.append(order.id)
     
@@ -181,7 +164,7 @@ def reimport_orders(queryset, total):
                 error += 1
                 continue
 
-            brand_id = get_divi_brand_id_from_sid(sid)
+            brand_id = get_brand_id(sid)
             if not brand_id:
                 print(f"× sid={sid} 无对应divi品牌")
                 error += 1
@@ -212,33 +195,29 @@ def reimport_orders(queryset, total):
 
     return success, error
 
-def get_brand_id_with_cache(sid):
-    """带缓存的 SID 到 BrandID 映射（避免重复调用）"""
-    if sid not in _BRAND_ID_CACHE:
-        _BRAND_ID_CACHE[sid] = get_divi_brand_id_from_sid(sid)
-    return _BRAND_ID_CACHE[sid]
+def get_brand_id(sid):
+    """获取 SID 对应的 BrandID（实时查询，无缓存）"""
+    return get_divi_brand_id_from_sid(sid)
 
 
-def get_brand_info_with_cache(brand_id):
-    """带缓存的 brand_id → 店铺信息映射"""
-    if brand_id not in _BRAND_INFO_CACHE:
-        shop = AmazonShop.objects.filter(
-            divi_shop_id=brand_id
-        ).select_related('project').first()
-        
-        if shop:
-            _BRAND_INFO_CACHE[brand_id] = {
-                'shop_name': shop.shop_name or '未命名店铺',
-                'project_name': shop.project.name if shop.project else '未分配项目',
-                'sid': shop.id
-            }
-        else:
-            _BRAND_INFO_CACHE[brand_id] = {
-                'shop_name': '未知店铺',
-                'project_name': '未知项目',
-                'sid': None
-            }
-    return _BRAND_INFO_CACHE[brand_id]
+def get_brand_info(brand_id):
+    """获取 brand_id → 店铺信息映射（实时查询，无缓存）"""
+    shop = AmazonShop.objects.filter(
+        divi_shop_id=brand_id
+    ).select_related('project').first()
+    
+    if shop:
+        return {
+            'shop_name': shop.shop_name or '未命名店铺',
+            'project_name': shop.project.name if shop.project else '未分配项目',
+            'sid': shop.id
+        }
+    else:
+        return {
+            'shop_name': '未知店铺',
+            'project_name': '未知项目',
+            'sid': None
+        }
 
 
 def extract_unique_brand_ids(start_datetime):
@@ -268,7 +247,7 @@ def extract_unique_brand_ids(start_datetime):
     
     for row in orders_with_sid:
         sid = row['lingxing_shop__sid']
-        brand_id = get_brand_id_with_cache(sid)
+        brand_id = get_brand_id(sid)
         if brand_id:
             # ⭐ 新增：检查项目是否配置了 DIVI 凭证
             can_import, msg = check_project_divi_config(brand_id)
@@ -278,9 +257,9 @@ def extract_unique_brand_ids(start_datetime):
                 continue
             
             brand_ids.add(brand_id)
-            # 获取店铺详细信息
+            # 获取店铺详细信息（实时查询）
             if brand_id not in brand_info:
-                brand_info[brand_id] = get_brand_info_with_cache(brand_id)
+                brand_info[brand_id] = get_brand_info(brand_id)
 
     # 打印被跳过的品牌信息
     if skipped_brands:

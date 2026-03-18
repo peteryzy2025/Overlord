@@ -7,6 +7,12 @@ Amazon 同步主循环调度器（v2.0）
 
 import os
 import sys
+
+# ========== 先添加项目根目录到 Python 路径 ==========
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+sys.path.insert(0, PROJECT_ROOT)  # 使用 insert(0, ...) 确保在最前面
+
 import asyncio
 import time
 import logging
@@ -14,9 +20,6 @@ from datetime import datetime, timedelta
 from typing import List, Tuple, Callable, Any
 
 # ========== Django 环境初始化 ==========
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 import django
 django.setup()
