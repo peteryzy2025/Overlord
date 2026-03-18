@@ -389,6 +389,7 @@ def get_aba_data_api(request):
             metrics_with_trend.append({
                 'id': metric.id,
                 'search_term': metric.search_term.term,
+                'search_term_translation_cn': metric.search_term.translation_cn,
                 'search_term_id': metric.search_term.id,
                 'denoising': metric.search_term.denoising,
                 'search_frequency_rank': metric.search_frequency_rank,
