@@ -1,0 +1,759 @@
+{% extends 'base/base_amazon.html' %}
+{% load static %}
+
+{% block title %}Amazon店铺上货情况 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <style>
+        /* 状态标签样式 */
+        .status-badge.processing {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .status-badge.completed {
+            background-color: rgba(72, 187, 120, 0.1);
+            color: #48bb78;
+        }
+
+        .status-badge.needs_action {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .status-badge.draft {
+            background-color: rgba(156, 163, 175, 0.1);
+            color: #6b7280;
+        }
+
+        .status-badge.published {
+            background-color: rgba(168, 85, 247, 0.1);
+            color: #a855f7;
+        }
+
+        .status-badge.failed {
+            background-color: rgba(107, 114, 128, 0.1);
+            color: #6b7280;
+        }
+
+        /* 自定义日期输入框组 */
+        .date-range-inputs {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .date-range-inputs input {
+            flex: 1;
+        }
+
+        .date-range-inputs span {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* 自定义日期展开后占据足够空间 */
+        #customDateGroup {
+            min-width: 520px !important;
+            flex: 1.5 1 520px !important;
+        }
+
+        #customDateGroup .date-range-inputs {
+            flex-wrap: nowrap;
+        }
+
+        #customDateGroup .date-range-inputs .ymd-picker {
+            flex: 1 1 0;
+            min-width: 220px;
+        }
+
+        #customDateGroup .date-range-inputs > span {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 992px) {
+            #customDateGroup {
+                min-width: 100% !important;
+                flex-basis: 100% !important;
+            }
+        }
+
+        /* 表格容器最小宽度 */
+        .table-container {
+            min-width: 100%;
+        }
+
+        /* SKU进度样式 */
+        .progress-text {
+            font-family: 'Courier New', monospace;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <!-- 页面标题区 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-upload" style="color: var(--accent-color);"></i>
+                    Amazon店铺上货情况
+                </h1>
+                <p class="page-subtitle">查看和管理Amazon店铺上货记录，支持筛选和排序</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <!-- 筛选面板 -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">上传时间</label>
+                    <div id="dateRangeSelect" class="searchable-select single" data-placeholder="选择日期范围"></div>
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup" style="min-width: 280px;">
+                    <label class="filter-label">自定义日期</label>
+                    <div class="date-range-inputs">
+                        <input type="date" class="form-control" id="startDate">
+                        <span>至</span>
+                        <input type="date" class="form-control" id="endDate">
+                    </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">运营人员</label>
+                    <div id="operatorSelect" class="searchable-select multiple" data-placeholder="选择运营人员"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">店铺名称</label>
+                    <input type="text" class="form-control" id="shopNameFilter" placeholder="输入店铺名称（模糊查询）">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">文件名称</label>
+                    <input type="text" class="form-control" id="fileNameFilter" placeholder="输入文件名称">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">状态筛选</label>
+                    <div id="statusSelect" class="searchable-select single" data-placeholder="选择状态"></div>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置条件"></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-container" id="recordsTableContainer">
+            <table class="table" id="recordsTable">
+                <thead>
+                    <tr>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th class="sortable" data-field="file_name" onclick="handleSort('file_name')">文件名</th>
+                        <th class="sortable" data-field="shop_name" onclick="handleSort('shop_name')">店铺名称</th>
+                        <th class="sortable" data-field="operator_name" onclick="handleSort('operator_name')">运营人员</th>
+                        <th class="sortable" data-field="upload_time" onclick="handleSort('upload_time')">上传时间</th>
+                        <th class="sortable" data-field="batch_id" onclick="handleSort('batch_id')">批次号</th>
+                        <th>SKU进度</th>
+                        <th class="sortable" data-field="status" onclick="handleSort('status')">状态</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsTableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>请选择筛选条件并点击"应用筛选"</p>
+                            <p>上货记录数据将在此处显示</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationButtons">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script>
+        // ===== 全局变量定义 =====
+        let currentFilters = {
+            date_range: 'unlimited',
+            start_date: '',
+            end_date: '',
+            operator_ids: [],
+            shop_name: '',
+            file_name_keyword: '',
+            status_filter: '',
+            sort_field: 'upload_time',
+            sort_order: 'desc'
+        };
+
+        let recordsPagination = {
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        let currentRecords = [];
+
+        // SearchableSelect 实例
+        let dateRangeSelect = null;
+        let dateRangeController = null;
+        let operatorSelect = null;
+        let statusSelect = null;
+
+        // ===== 初始化 =====
+        document.addEventListener('DOMContentLoaded', async function() {
+            showLoading(true);
+            try {
+                initSearchableSelects();
+                await loadOperators();
+                initializeSortHeader();
+                // 初始加载数据
+                await applyFilters();
+            } catch (error) {
+                console.error('初始化错误:', error);
+                showNotification('初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        // ===== SearchableSelect 初始化 =====
+        function initSearchableSelects() {
+            const dateRangeOptions = [
+                { value: 'unlimited', label: '不限' },
+                { value: 'today', label: '今日' },
+                { value: 'last7days', label: '最近7天' },
+                { value: 'last30days', label: '最近30天' },
+                { value: 'custom', label: '自定义范围' }
+            ];
+            dateRangeController = window.GeneralStyleDateRangeFilter
+                ? window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRangeSelect',
+                    options: dateRangeOptions,
+                    placeholder: '选择日期范围',
+                    defaultValue: 'unlimited',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    customDisplay: 'block'
+                })
+                : null;
+            if (dateRangeController) {
+                dateRangeSelect = dateRangeController.select;
+            } else {
+                // 日期范围选择
+                dateRangeSelect = new SearchableSelect('#dateRangeSelect', {
+                    options: [
+                        { value: 'unlimited', label: '不限' },
+                        { value: 'today', label: '今日' },
+                        { value: 'last7days', label: '最近7天' },
+                        { value: 'last30days', label: '最近30天' },
+                        { value: 'custom', label: '自定义范围' }
+                    ],
+                    multiple: false,
+                    placeholder: '选择日期范围'
+                });
+                dateRangeSelect.setValue('unlimited');
+                dateRangeSelect.onChange = (value) => {
+                    handleDateRangeChange(value);
+                    if (value !== 'custom') {
+                        currentFilters.date_range = value;
+                        currentFilters.start_date = '';
+                        currentFilters.end_date = '';
+                    }
+                };
+            }
+
+            // 状态筛选
+            statusSelect = new SearchableSelect('#statusSelect', {
+                options: [
+                    { value: '', label: '全部' },
+                    { value: 'processing', label: '进行中' },
+                    { value: 'completed', label: '完成' },
+                    { value: 'needs_action', label: '需操作' },
+                    { value: 'draft', label: '已保存为草稿' },
+                    { value: 'published', label: '已发布' },
+                    { value: 'failed', label: '失败' }
+                ],
+                multiple: false,
+                placeholder: '选择状态'
+            });
+            statusSelect.onChange = (value) => {
+                currentFilters.status_filter = value;
+            };
+        }
+
+        // ===== 日期范围变化处理 =====
+        function handleDateRangeChange(value) {
+            if (dateRangeController) {
+                dateRangeController.syncVisibility();
+                return;
+            }
+            const customGroup = document.getElementById('customDateGroup');
+            if (value === 'custom') {
+                customGroup.style.display = 'block';
+            } else {
+                customGroup.style.display = 'none';
+                document.getElementById('startDate').value = '';
+                document.getElementById('endDate').value = '';
+            }
+        }
+
+        // ===== 加载运营人员 =====
+        async function loadOperators() {
+            try {
+                const response = await fetch('/api/amazon/performance/operators/');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    // 初始化运营人员下拉（多选）
+                    const options = [{ value: 'all', label: '全部人员' }, ...result.data.map(op => ({
+                        value: String(op.id),
+                        label: op.first_name
+                    }))];
+
+                    operatorSelect = new SearchableSelect('#operatorSelect', {
+                        options: options,
+                        multiple: true,
+                        placeholder: '选择运营人员'
+                    });
+                    operatorSelect.setValue(['all']);
+                    operatorSelect.onChange = (values) => {
+                        if (values.includes('all')) {
+                            currentFilters.operator_ids = [];
+                        } else {
+                            currentFilters.operator_ids = values;
+                        }
+                    };
+
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                console.error('加载运营人员失败:', error);
+                return false;
+            }
+        }
+
+        // ===== 获取当前筛选条件 =====
+        function getCurrentFilters() {
+            const dateRange = dateRangeController
+                ? dateRangeController.getValue()
+                : (dateRangeSelect ? dateRangeSelect.getValue() : 'unlimited');
+            const useCustomDate = dateRangeController
+                ? dateRangeController.isCustom()
+                : dateRange === 'custom';
+            return {
+                date_range: dateRange,
+                start_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getStartDate() : document.getElementById('startDate').value)
+                    : '',
+                end_date: useCustomDate
+                    ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value)
+                    : '',
+                operator_ids: currentFilters.operator_ids,
+                shop_name: document.getElementById('shopNameFilter').value.trim(),
+                file_name_keyword: document.getElementById('fileNameFilter').value.trim(),
+                status_filter: statusSelect ? statusSelect.getValue() : '',
+                sort_field: currentFilters.sort_field,
+                sort_order: currentFilters.sort_order
+            };
+        }
+
+        // ===== 应用筛选 =====
+        async function applyFilters() {
+            showLoading(true);
+            currentFilters = getCurrentFilters();
+            recordsPagination.page = 1;
+            try {
+                await loadRecordsTable();
+            } catch (error) {
+                showNotification('数据请求失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ===== 重置筛选 =====
+        async function resetFilters(event) {
+            showLoading(true);
+            try {
+                // 重置下拉框
+                if (dateRangeController) {
+                    dateRangeController.setValue('unlimited');
+                    dateRangeController.clearCustomDates();
+                } else if (dateRangeSelect) {
+                    dateRangeSelect.setValue('unlimited');
+                }
+                if (operatorSelect) operatorSelect.setValue(['all']);
+                if (statusSelect) statusSelect.setValue('');
+
+                // 重置输入框
+                document.getElementById('shopNameFilter').value = '';
+                document.getElementById('fileNameFilter').value = '';
+                if (!dateRangeController) {
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                    document.getElementById('customDateGroup').style.display = 'none';
+                }
+
+                // 重置分页
+                recordsPagination.page = 1;
+                recordsPagination.page_size = 20;
+                updatePageSizeDisplay();
+
+                currentFilters = getCurrentFilters();
+                await loadRecordsTable();
+                showNotification('筛选条件已重置', 'success');
+            } catch (error) {
+                showNotification('重置失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ===== 刷新数据 =====
+        function refreshData(event) {
+            const icon = event.target.closest('button').querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+            applyFilters().finally(() => {
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            });
+        }
+
+        // ===== 排序处理 =====
+        function handleSort(field) {
+            if (currentFilters.sort_field === field) {
+                currentFilters.sort_order = currentFilters.sort_order === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentFilters.sort_field = field;
+                currentFilters.sort_order = 'desc';
+            }
+
+            document.querySelectorAll('thead th.sortable').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.field === field) {
+                    th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+
+            recordsPagination.page = 1;
+            loadRecordsTable();
+        }
+
+        function initializeSortHeader() {
+            const th = document.querySelector(`thead th[data-field="${currentFilters.sort_field}"]`);
+            if (th) {
+                th.classList.add(currentFilters.sort_order === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+        }
+
+        // ===== 加载表格数据 =====
+        async function loadRecordsTable() {
+            const tbody = document.getElementById('recordsTableBody');
+            const paginationContainer = document.getElementById('paginationContainer');
+
+            try {
+                const csrfToken = getCookie('csrftoken');
+                const requestData = {
+                    ...currentFilters,
+                    page: recordsPagination.page,
+                    page_size: recordsPagination.page_size
+                };
+
+                const response = await fetch('/api/amazon/upload-records/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const data = result.data;
+                    recordsPagination.total = data.total;
+                    recordsPagination.total_pages = data.total_pages;
+                    currentRecords = data.records || [];
+
+                    renderRecordsTable(currentRecords);
+                    renderPagination();
+                    updateSelectAllCheckbox();
+
+                    paginationContainer.style.display = data.total > 0 ? 'flex' : 'none';
+                } else {
+                    throw new Error(result.message || '加载失败');
+                }
+            } catch (error) {
+                console.error('加载错误:', error);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationContainer.style.display = 'none';
+            }
+        }
+
+        // ===== 渲染状态标签 =====
+        function renderStatusBadge(status, statusDisplay) {
+            const statusClassMap = {
+                'processing': 'processing',
+                'completed': 'completed',
+                'needs_action': 'needs_action',
+                'draft': 'draft',
+                'published': 'published',
+                'failed': 'failed'
+            };
+            const statusClass = statusClassMap[status] || '';
+            return `<span class="status-badge ${statusClass}">${escapeHtml(statusDisplay || status)}</span>`;
+        }
+
+        // ===== 渲染表格 =====
+        function renderRecordsTable(records) {
+            const tbody = document.getElementById('recordsTableBody');
+            if (!records || records.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无上货记录数据</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = records.map(record => {
+                return `
+                    <tr data-batch-id="${escapeHtml(record.batch_id)}">
+                        <td class="w-checkbox">
+                            <input type="checkbox" class="row-checkbox" disabled>
+                        </td>
+                        <td title="${escapeHtml(record.file_name || '')}">${escapeHtml(record.file_name || '-')}</td>
+                        <td>${escapeHtml(record.shop_name || '-')}</td>
+                        <td>${escapeHtml(record.operator_name || '-')}</td>
+                        <td>${escapeHtml(record.upload_time || '-')}</td>
+                        <td>${escapeHtml(record.batch_id || '-')}</td>
+                        <td class="progress-text">${escapeHtml(record.sku_progress || '0/0')}</td>
+                        <td>${renderStatusBadge(record.status, record.status_display)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ===== 批量选择功能（占位） =====
+        function toggleSelectAll() {
+            // 多选框功能占位，暂不做实际操作
+            const checkbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            rowCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+        }
+
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleCheckboxes = document.querySelectorAll('.row-checkbox');
+            const allChecked = visibleCheckboxes.length > 0 && Array.from(visibleCheckboxes).every(cb => cb.checked);
+            checkbox.checked = allChecked;
+        }
+
+        // ===== 分页渲染 =====
+        function renderPagination() {
+            const buttonsContainer = document.getElementById('paginationButtons');
+            const jumpContainer = document.getElementById('paginationJump');
+            const { page, page_size, total, total_pages } = recordsPagination;
+
+            const start = total > 0 ? (page - 1) * page_size + 1 : 0;
+            const end = Math.min(page * page_size, total);
+            document.getElementById('paginationStats').textContent = `${start}-${end} / 共 ${total} 条`;
+
+            let buttonsHTML = '';
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(1)" ${page === 1 ? 'disabled' : ''} title="首页">首页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>上一页</button>`;
+
+            const maxButtons = 7;
+            let startPage = Math.max(1, page - Math.floor(maxButtons / 2));
+            let endPage = Math.min(total_pages, startPage + maxButtons - 1);
+
+            if (endPage - startPage < maxButtons - 1) {
+                startPage = Math.max(1, endPage - maxButtons + 1);
+            }
+
+            if (startPage > 1) {
+                buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                buttonsHTML += `<button class="pagination-btn-new ${i === page ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+
+            if (endPage < total_pages) {
+                if (endPage < total_pages - 1) {
+                    buttonsHTML += `<span class="pagination-ellipsis">...</span>`;
+                }
+                buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})">${total_pages}</button>`;
+            }
+
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${page + 1})" ${page === total_pages ? 'disabled' : ''}>下一页</button>`;
+            buttonsHTML += `<button class="pagination-btn-new" onclick="goToPage(${total_pages})" ${page === total_pages ? 'disabled' : ''} title="尾页">尾页</button>`;
+            buttonsContainer.innerHTML = buttonsHTML;
+
+            if (total_pages > 7) {
+                jumpContainer.style.display = 'flex';
+                const jumpInput = document.getElementById('pageJumpInput');
+                jumpInput.max = total_pages;
+                jumpInput.value = '';
+            } else {
+                jumpContainer.style.display = 'none';
+            }
+        }
+
+        function goToPage(newPage) {
+            if (newPage < 1 || newPage > recordsPagination.total_pages) return;
+            recordsPagination.page = newPage;
+            loadRecordsTable();
+            document.getElementById('recordsTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function changePageSize(size) {
+            recordsPagination.page_size = size;
+            recordsPagination.page = 1;
+            updatePageSizeDisplay();
+            document.getElementById('pageSizeDropdown').style.display = 'none';
+            loadRecordsTable();
+        }
+
+        function updatePageSizeDisplay() {
+            document.getElementById('pageSizeText').textContent = recordsPagination.page_size + '条';
+            document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(option => {
+                option.classList.remove('selected');
+                option.classList.toggle('selected', parseInt(option.dataset.value, 10) === recordsPagination.page_size);
+            });
+        }
+
+        function togglePageSizeDropdown() {
+            const dropdown = document.getElementById('pageSizeDropdown');
+            const isOpen = dropdown.style.display === 'block';
+            dropdown.style.display = isOpen ? 'none' : 'block';
+        }
+
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value, 10);
+                const maxPage = recordsPagination.total_pages;
+                if (Number.isNaN(page) || page < 1) {
+                    showNotification('请输入有效的页码', 'warning');
+                    return;
+                }
+                if (page > maxPage) {
+                    showNotification(`最大页码为 ${maxPage}`, 'warning');
+                    return;
+                }
+                goToPage(page);
+                event.target.value = '';
+            }
+        }
+
+        // ===== 工具函数 =====
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = show ? 'flex' : 'none';
+                overlay.style.visibility = show ? 'visible' : 'hidden';
+                overlay.style.opacity = show ? '1' : '0';
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 点击分页下拉外部关闭
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('pageSizeWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                const dropdown = document.getElementById('pageSizeDropdown');
+                if (dropdown) dropdown.style.display = 'none';
+            }
+        });
+    </script>
+{% endblock %}

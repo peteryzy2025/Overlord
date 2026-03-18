@@ -75,6 +75,14 @@
         </li>
         
         <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_upload_records' %}"
+               class="sidebar-link {% if active_page == 'amazon_upload_records' %}active{% endif %}">
+                <i class="fas fa-upload sidebar-icon"></i>
+                <span>店铺上货</span>
+            </a>
+        </li>
+        
+        <li class="sidebar-item">
             <a href="{% url 'amazon:amazon_daily_check_report_page' %}"
                class="sidebar-link {% if active_page == 'amazon_daily_check_report_page' %}active{% endif %}"
                onclick="showComingSoon()">
