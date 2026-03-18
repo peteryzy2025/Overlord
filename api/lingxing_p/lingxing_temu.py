@@ -1,7 +1,49 @@
+import os
+import sys
+import django
+import asyncio
+import datetime
+from decimal import Decimal, InvalidOperation
+from django.db import transaction
+
+# ====== Django 初始化（保持不变） ======
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+sys.path.append(PROJECT_ROOT)
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
+django.setup()
+
+
 from api.lingxing.Y_OpenApi import get_api_resp
 import datetime
 from typing import List, Dict, Any
 import asyncio
+from decimal import Decimal, InvalidOperation
+from asgiref.sync import sync_to_async
+
+
+def _to_decimal(value, default=Decimal('0.00')):
+    """安全地把字符串金额转成 Decimal"""
+    if value in (None, "", "0.00", "-￥0.00", "￥0.00"):
+        return default
+    try:
+        if isinstance(value, str):
+            value = value.replace('￥', '').replace('$', '').replace('€', '').strip()
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        print(f"警告: 金额转换失败: {value}")
+        return default
+
+
+def _timestamp_to_datetime(ts):
+    """将 Unix 时间戳转换为 UTC datetime"""
+    if not ts or ts == 0:
+        return None
+    try:
+        return datetime.datetime.fromtimestamp(int(ts), tz=datetime.timezone.utc)
+    except (ValueError, TypeError):
+        print(f"警告: 时间戳转换失败: {ts}")
+        return None
 
 
 async def get_lx_temu_shops():
@@ -110,21 +152,95 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
 
     return results
 
-async def get_lx_temu_orders_list(platform_order_nos:List[str]):
+async def get_lx_temu_orders_list(platform_order_nos: List[str]) -> Dict[str, List[Dict[str, Any]]]:
     """
-        通过平台订单号列表获取订单详情（一次最多500个订单号）
-    :param platform_order_nos:
-    :return:
+    通过平台订单号列表获取订单详情（一次最多500个订单号）
+    
+    Args:
+        platform_order_nos: 平台订单号列表
+        
+    Returns:
+        dict: { store_id: [order_dict, ...], ... }
     """
     req_body = {
         "platform_order_nos": platform_order_nos,
         "offset": 0,
         "length": 500,
-        "platform_code":["10024"]
+        "platform_code": ["10024"]
     }
-    print(req_body)
+    # print(req_body)
     resp = await get_api_resp(req_body, api_path="/pb/mp/order/v2/list")
-    print(resp)
+    
+    # 提取订单列表
+    order_list = []
+    try:
+        if resp is not None:
+            _data = getattr(resp, "data", None) or resp
+            if isinstance(_data, dict):
+                order_list = _data.get("list") or []
+    except Exception:
+        order_list = []
+    
+    # 按 store_id 分组
+    results: Dict[str, List[Dict[str, Any]]] = {}
+    for order in order_list:
+        store_id = order.get("store_id")
+        if store_id:
+            if store_id not in results:
+                results[store_id] = []
+            results[store_id].append(order)
+    print(results)
+    return results
+
+async def refresh_temu_order_by_sn(global_order_no: str):
+    """
+    通过系统单号刷新订单数据
+    
+    流程：
+    1. 从数据库找到该订单的平台单号（platform_order_no）
+    2. 调用 get_lx_temu_orders_list 获取最新数据
+    3. 调用 save_temu_orders_data 保存到数据库
+    
+    Args:
+        global_order_no: 系统单号（如 '103680050723201224'）
+        
+    Returns:
+        bool: 是否成功刷新
+    """
+    # 延迟导入 Django 模型
+    from temu.models import TemuOrder
+    from asgiref.sync import sync_to_async
+    
+    @sync_to_async
+    def get_platform_order_no(sn):
+        try:
+            order = TemuOrder.objects.get(global_order_no=sn)
+            # 优先从 reference_no 获取平台单号，这是存储 platform_order_no 的字段
+            return order.reference_no
+        except TemuOrder.DoesNotExist:
+            return None
+    
+    print(f"开始刷新订单: {global_order_no}")
+    
+    # 1. 获取平台单号
+    platform_order_no = await get_platform_order_no(global_order_no)
+    if not platform_order_no:
+        print(f"错误: 未找到系统单号 {global_order_no} 对应的订单或平台单号")
+        return False
+    
+    print(f"找到平台单号: {platform_order_no}")
+    
+    # 2. 调用 API 获取最新数据
+    results = await get_lx_temu_orders_list([platform_order_no])
+    if not results:
+        print(f"警告: API 未返回数据")
+        return False
+    
+    # 3. 保存数据
+    await save_temu_orders_data(results)
+    print(f"订单 {global_order_no} 刷新完成")
+    return True
+
 
 async def temu_address_decrypt(decrypt_sn_list:List[str]):
     """
@@ -135,10 +251,202 @@ async def temu_address_decrypt(decrypt_sn_list:List[str]):
     req_body = {
         "decryptSnList": decrypt_sn_list,
     }
-    print("入参：",req_body)
     resp = await get_api_resp(req_body, api_path="/basicOpen/temu/temuAddressDecrypt")
     print(resp)
+    if resp.message == "操作成功":
+        return True
+    else:
+        print("警告！警告！地址解密失败！")
+        return False
+
+async def save_temu_orders_data(data_dict: Dict[str, List[Dict[str, Any]]]):
+    """
+    将 Temu 订单数据批量写入数据库（新建或更新）
+    
+    Args:
+        data_dict: {store_id: [order_dict, ...], ...}
+    """
+    # 延迟导入 Django 模型
+    from django.db import transaction
+    from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
+    
+    # 将同步 ORM 操作包装为 async
+    @sync_to_async
+    def get_shops(store_ids):
+        shop_qs = LingXingTemuShop.objects.filter(store_id__in=store_ids)
+        return {shop.store_id: shop for shop in shop_qs}
+    
+    @sync_to_async
+    def save_order_with_items(global_order_no, defaults, item_list, lingxing_shop):
+        with transaction.atomic():
+            # 更新或创建订单主表
+            order, created = TemuOrder.objects.update_or_create(
+                global_order_no=global_order_no,
+                defaults=defaults
+            )
+            
+            # 处理订单明细
+            if item_list:
+                TemuOrderItem.objects.filter(order=order).delete()
+                items_to_create = []
+                seen_global_item_nos = set()
+                
+                for row in item_list:
+                    global_item_no = row.get('global_item_no') or row.get('globalItemNo')
+                    
+                    if not global_item_no or global_item_no in seen_global_item_nos:
+                        continue
+                    
+                    seen_global_item_nos.add(global_item_no)
+                    items_to_create.append(
+                        TemuOrderItem(
+                            order=order,
+                            global_item_no=global_item_no,
+                            platform_order_no=row.get('platform_order_no'),
+                            order_item_no=row.get('order_item_no'),
+                            item_from_name=row.get('item_from_name'),
+                            msku=row.get('msku'),
+                            local_sku=row.get('local_sku'),
+                            product_no=row.get('product_no'),
+                            title=row.get('title'),
+                            variant_attr=row.get('variant_attr'),
+                            unit_price_amount=_to_decimal(row.get('unit_price_amount')),
+                            item_price_amount=_to_decimal(row.get('item_price_amount')),
+                            quantity=row.get('quantity', 0),
+                            platform_status=row.get('platform_status'),
+                            type=row.get('type'),
+                            data_json=row.get('data_json'),
+                            item_custom_fields=row.get('item_custom_fields'),
+                            is_delete=row.get('is_delete', 0),
+                        )
+                    )
+                
+                if items_to_create:
+                    TemuOrderItem.objects.bulk_create(items_to_create)
+            
+            return created, len(items_to_create) if item_list else 0
+    
+    # 预加载所有店铺配置
+    store_ids = list(data_dict.keys())
+    shop_map = await get_shops(store_ids)
+    
+    print(f"预加载店铺数量: {len(shop_map)}")
+    
+    # 统计信息
+    total_orders = 0
+    created_orders = 0
+    updated_orders = 0
+    skipped_orders = 0
+    total_items = 0
+    
+    for store_id, orders in data_dict.items():
+        lingxing_shop = shop_map.get(store_id)
+        if not lingxing_shop:
+            print(f"错误: 未找到 store_id={store_id} 的店铺配置，跳过该店铺 {len(orders)} 条订单")
+            skipped_orders += len(orders)
+            continue
+        
+        # 店铺级统计初始化
+        shop_created_orders = 0
+        shop_updated_orders = 0
+        shop_total_items = 0
+        shop_name = getattr(lingxing_shop, 'name', store_id)
+        
+        for raw_order in orders:
+            try:
+                global_order_no = raw_order.get("global_order_no")
+                if not global_order_no:
+                    print(f"警告: 订单数据缺少 global_order_no，跳过: {raw_order}")
+                    skipped_orders += 1
+                    continue
+                
+                # 准备订单数据
+                # 从 platform_info 提取 Temu 平台订单号
+                platform_info_list = raw_order.get('platform_info', [])
+                platform_order_no = None
+                if platform_info_list and isinstance(platform_info_list, list) and len(platform_info_list) > 0:
+                    platform_order_no = platform_info_list[0].get('platform_order_no')
+                # 如果 platform_info 中没有，则尝试从商品明细中获取
+                if not platform_order_no:
+                    item_info = raw_order.get('item_info', [])
+                    if item_info and isinstance(item_info, list) and len(item_info) > 0:
+                        platform_order_no = item_info[0].get('platform_order_no')
+                
+                defaults = {
+                    'lingxing_shop': lingxing_shop,
+                    'reference_no': platform_order_no or raw_order.get('reference_no'),
+                    'order_from_name': raw_order.get('order_from_name'),
+                    'delivery_type': raw_order.get('delivery_type'),
+                    'split_type': raw_order.get('split_type'),
+                    'status': raw_order.get('status'),
+                    'wid': raw_order.get('wid'),
+                    'warehouse_name': raw_order.get('warehouse_name'),
+                    'amount_currency': raw_order.get('amount_currency'),
+                    'supplier_id': raw_order.get('supplier_id'),
+                    'is_delete': raw_order.get('is_delete', 0),
+                    'global_purchase_time': _timestamp_to_datetime(raw_order.get('global_purchase_time')),
+                    'global_payment_time': _timestamp_to_datetime(raw_order.get('global_payment_time')),
+                    'global_review_time': _timestamp_to_datetime(raw_order.get('global_review_time')),
+                    'global_distribution_time': _timestamp_to_datetime(raw_order.get('global_distribution_time')),
+                    'global_print_time': _timestamp_to_datetime(raw_order.get('global_print_time')),
+                    'global_mark_time': _timestamp_to_datetime(raw_order.get('global_mark_time')),
+                    'global_delivery_time': _timestamp_to_datetime(raw_order.get('global_delivery_time')),
+                    'global_create_time': raw_order.get('global_create_time'),
+                    'receiver_country_code': raw_order.get('address_info', {}).get('receiver_country_code'),
+                    'postal_code': raw_order.get('address_info', {}).get('postal_code'),
+                    'city': raw_order.get('address_info', {}).get('city'),
+                    'tracking_number': raw_order.get('logistics_info', {}).get('tracking_no'),
+                    'logistics_provider_name': raw_order.get('logistics_info', {}).get('logistics_provider_name'),
+                    'order_total_amount': _to_decimal(
+                        raw_order.get('transaction_info', [{}])[0].get('order_total_amount')
+                    ),
+                    'buyer_name_masked': raw_order.get('buyers_info', {}).get('buyer_name'),
+                    'buyer_email_masked': raw_order.get('buyers_info', {}).get('buyer_email'),
+                    'order_tag': raw_order.get('order_tag'),
+                    'pending_order_tag': raw_order.get('pending_order_tag'),
+                    'exception_order_tag': raw_order.get('exception_order_tag'),
+                    'buyers_info': raw_order.get('buyers_info'),
+                    'address_info': raw_order.get('address_info'),
+                    'platform_info': raw_order.get('platform_info'),
+                    'payment_info': raw_order.get('payment_info'),
+                    'logistics_info': raw_order.get('logistics_info'),
+                    'transaction_info': raw_order.get('transaction_info'),
+                    'order_custom_fields': raw_order.get('order_custom_fields'),
+                }
+                
+                item_list = raw_order.get('item_info') or []
+                created, items_count = await save_order_with_items(
+                    global_order_no, defaults, item_list, lingxing_shop
+                )
+                
+                if created:
+                    created_orders += 1
+                    shop_created_orders += 1
+                else:
+                    updated_orders += 1
+                    shop_updated_orders += 1
+                total_orders += 1
+                total_items += items_count
+                shop_total_items += items_count
+            
+            except Exception as e:
+                print(f"错误: 处理订单失败 - store_id: {store_id}, order_no: {raw_order.get('global_order_no')}, 错误: {e}")
+                skipped_orders += 1
+                continue
+        
+        # 打印店铺级统计
+        print(f"\n【店铺: {shop_name}】订单处理完成 - 新增: {shop_created_orders}条 | 更新: {shop_updated_orders}条 | 商品明细: {shop_total_items}条")
+    
+    # 同步统计
+    print(f"\n同步完成 - 订单总计: {total_orders}, 新增: {created_orders}, 更新: {updated_orders}, 跳过: {skipped_orders}, 商品明细总数: {total_items}")
+
+
+async def test():
+    # results = await get_lx_temu_orders_list(platform_order_nos=["PO-211-14658323825273284"])
+    # await save_temu_orders_data(results)
+    sn_no = "103680374441311872"
+    await temu_address_decrypt([sn_no])
+    success = await refresh_temu_order_by_sn(sn_no)
 
 if __name__ == '__main__':
-    asyncio.run(get_lx_temu_orders_list(platform_order_nos=["PO-211-14658323825273284"]))
-    # asyncio.run(temu_address_decrypt(decrypt_sn_list=["103680050723201224"]))
+    asyncio.run(test())
