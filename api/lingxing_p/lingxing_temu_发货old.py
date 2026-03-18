@@ -24,7 +24,7 @@ from asgiref.sync import async_to_sync
 async def _get_lingxing_credentials(order: TemuOrder) -> tuple[str, str]:
     """
     根据 Temu 订单获取对应项目的领星API凭证
-
+    
     Returns:
         (app_id, app_secret) 元组
     """
@@ -123,8 +123,7 @@ async def step1_set_sku(
     return resp
 
 
-async def step2_update_order_binding(global_order_no: str, list_mskus: list, app_id: str = None,
-                                     app_secret: str = None):
+async def step2_update_order_binding(global_order_no: str, list_mskus: list, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤2】批量绑定商品 updateOrder 传参：")
     order_item_list = []
     for msku in list_mskus:
@@ -134,24 +133,42 @@ async def step2_update_order_binding(global_order_no: str, list_mskus: list, app
                               app_secret=app_secret)
     print(f"   → 绑定结果 = {resp}")
 
-async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True, app_id: str = None, app_secret: str = None):
-    print(f"\n【步骤3】批量入库 add_warehousing 传参：")
-    print(f"   → sys_wid = 509522, type = 1")
-    print(f"   → product_list = [")
-    for it in items_with_qty_price:
-        print(f"       {{ sku: {it['sku']}, good_num: {it['quantity']}, price: {it['price_per_unit']} }}")
+
+async def step2_update_order_binding_v2(store_id: str, items: list, app_id: str = None, app_secret: str = None):
+    """
+    多平台Listing配对（支持Temu半托管）
+    API: /pb/mp/listing/v2/pairMultiPlatform
+    """
+    print(f"\n【步骤2】多平台Listing配对 pairMultiPlatform 传参：")
+    print(f"   → store_id = {store_id}")
+    print(f"   → pair_multi_platform_list = [")
     print(f"   ]")
-    if not execute:
-        print("   → [预览模式] 不执行")
-        return
-    product_list = [
-        {"sku": it['sku'], "good_num": it['quantity'], "bad_num": 0, "price": it['price_per_unit'], "fnsku": ""}
-        for it in items_with_qty_price
-    ]
-    req_body = {"sys_wid": 509522, "type": 1, "product_list": product_list}
-    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd", app_id=app_id, app_secret=app_secret)
-    # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
-    print(f"   → 入库结果 = {resp}")
+
+    pair_list = []
+    for it in items:
+        sku_id = await get_msku_id(it['msku'])
+        pair_list.append({"msku": sku_id, "store_id": f"{store_id}", "sku": it['sku']})
+    req_body = {"pair_multi_platform_list": pair_list}
+    print(req_body)
+    resp = await get_api_resp(
+        req_body=req_body,
+        api_path="/pb/mp/listing/v2/pairMultiPlatform",
+        app_id=app_id,
+        app_secret=app_secret
+    )
+    print(f"   → 配对结果 = {resp}")
+    return resp
+
+async def get_msku_id(msku):
+    req_body ={
+        "searchField":9,
+        "searchValues":[msku]
+    }
+    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/multiplatform/temu/list")
+    print(resp)
+    print(resp.data[0].get("mskuId"))
+    return resp.data[0].get("mskuId")
+
 # ==================== 测试入口 ====================
 async def test_step1():
     """测试 step1 - 使用真实订单数据"""
@@ -170,14 +187,6 @@ async def test_step1():
 
     # 获取商品列表（需要await因为prefetch_related在async中）
     items = await sync_to_async(list)(order.items.all())
-    print(f"\n===== 收货地址 =====")
-    print(f"  国家码: {order.receiver_country_code}")
-    print(f"  邮编: {order.postal_code}")
-    print(f"  城市: {order.city}")
-
-    # 完整地址在 address_info JSON 里
-    if order.address_info:
-        print(f"  完整地址信息: {order.address_info}")
     print(f"\n商品数量: {len(items)}")
     list_sku = []
     for idx, item in enumerate(items, 1):
@@ -198,18 +207,42 @@ async def test_step1():
             width_cm=11.81,
             height_cm=11.02,
             weight_kg=1.57
-        )  # 创建产品
+        )# 创建产品
 
     # 获取store_id（从lingxing_shop）
     lingxing_shop = await sync_to_async(lambda: order.lingxing_shop, thread_sensitive=True)()
     store_id = lingxing_shop.store_id if lingxing_shop else None
     if not store_id:
         raise ValueError("订单未关联领星店铺，无法获取store_id")
-    """产品匹配"""
-    # resp = await step2_update_order_binding(global_order_no, list_sku)
-    # print(resp)
+    resp = await step2_update_order_binding(global_order_no, list_sku)
+    print(resp)
 
+
+
+
+    # 构建配对列表：sku和msku都用msku
+    # binding_items = [{"sku": item.msku, "msku": item.msku} for item in items]
+    # print(f"\n绑定商品列表: {binding_items}")
+
+
+    # 再调用新接口（v2多平台配对）
+    # print("\n>>> 调用新接口...")
+    # await step2_update_order_binding_v2(
+    #     store_id=store_id,
+    #     items=binding_items,
+    #     app_id=app_id,
+    #     app_secret=app_secret
+    # )
+
+
+async def demo():
+    req_body = {
+        "platform_code":[10024]
+    }
+    resp = await get_api_resp(req_body=req_body,api_path="/pb/mp/shop/v2/getSellerList",)
+    print(resp)
 
 
 if __name__ == '__main__':
     asyncio.run(test_step1())
+    # asyncio.run(get_msku_id("#XIYHCjbCPALWMXRB-260210"))
