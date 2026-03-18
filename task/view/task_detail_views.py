@@ -107,8 +107,8 @@ def get_task_detail_api(request, task_id):
         subtasks = task.subtasks.all().order_by('order')
 
         for subtask in subtasks:
-            subtask_status = subtask.sync_amazon_upload_status(save=False) \
-                if subtask.subtask_type == SubTask.TYPE_AMAZON_UPLOAD else subtask.subtask_status
+            # 所有子任务类型都直接使用数据库状态
+            subtask_status = subtask.subtask_status
             subtask_info = {
                 'id': subtask.id,
                 'type': subtask.subtask_type,
