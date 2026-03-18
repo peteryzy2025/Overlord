@@ -540,20 +540,89 @@
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
         }
 
+        .search-term-cell {
+            min-width: 0;
+        }
+
         .search-term-main {
+            display: block;
             color: var(--accent-color);
             text-decoration: none;
             font-weight: 500;
-            word-break: break-word;
             line-height: 1.4;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .search-term-cn {
+            display: block;
             font-size: 0.85rem;
             color: var(--text-secondary);
             margin-top: 4px;
-            word-break: break-word;
             line-height: 1.4;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .tab-nav {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab-nav-item {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+        }
+
+        .tab-nav-item.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        .aba-table-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .aba-table-window-note {
+            display: none;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .aba-table-window-note.visible {
+            display: inline-flex;
+        }
+
+        .is-hidden {
+            display: none !important;
+        }
+
+        .aba-filter-group-hidden {
+            display: none !important;
         }
 
         @media (max-width: 1400px) {
@@ -596,11 +665,24 @@
             </div>
         </div>
 
+        <div class="tab-nav" role="tablist" aria-label="ABA 子页面切换">
+            <div class="tab-nav-item active" data-tab="hot" onclick="switchAbaTab('hot')">热门搜索词</div>
+            <div class="tab-nav-item" data-tab="new" onclick="switchAbaTab('new')">新词榜</div>
+        </div>
+
         <div class="filter-section">
             <div class="filter-row aba-filter-row">
-                <div class="filter-group aba-filter-week-group">
+                <div class="filter-group aba-filter-week-group" id="hotWeekFilterGroup">
                     <label class="filter-label">周期</label>
                     <div id="weekFilter" class="searchable-select single" data-placeholder="选择周期"></div>
+                </div>
+                <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsStartWeekGroup">
+                    <label class="filter-label">开始周期</label>
+                    <div id="startWeekFilter" class="searchable-select single" data-placeholder="选择开始周期"></div>
+                </div>
+                <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsEndWeekGroup">
+                    <label class="filter-label">结束周期</label>
+                    <div id="endWeekFilter" class="searchable-select single" data-placeholder="选择结束周期"></div>
                 </div>
                 <div class="filter-group aba-filter-category-group">
                     <label class="filter-label">品类</label>
@@ -621,7 +703,10 @@
         </div>
 
         <div class="aba-table-header">
-            <h3 class="aba-table-title">搜索词列表</h3>
+            <div class="aba-table-title-wrap">
+                <h3 class="aba-table-title" id="leaderboardTitle">搜索词列表</h3>
+                <span class="aba-table-window-note" id="newWordsWindowNote"></span>
+            </div>
             <div class="tri-state-toggle" id="noiseStatusToggle" data-state="all">
                 <div class="toggle-indicator"></div>
                 <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
@@ -737,10 +822,63 @@
         let customDenoisingPollTimer = null;
         let customDenoisingTaskId = '';
         let isCustomDenoisingSubmitting = false;
-        
+        let activeLeaderboard = 'hot';
+        let currentNewWordsWindow = { start: '', end: '' };
+        let availableWeeks = [];
+
         // SearchableSelect 实例
         let weekSelect = null;
+        let startWeekSelect = null;
+        let endWeekSelect = null;
         let categorySelect = null;
+
+        const leaderboardConfigs = {
+            hot: {
+                title: '搜索词列表',
+                endpoint: '/api/data/',
+                emptyMessage: '当前筛选条件下暂无数据',
+                headerHtml: `
+                    <tr>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>搜索词</th>
+                        <th>排名</th>
+                        <th>周排行趋势</th>
+                        <th>前三商品总点击份额</th>
+                        <th>前三商品总转化份额</th>
+                        <th>#1 前三商品详情/点击份额/转化份额</th>
+                        <th>#2 前三商品详情/点击份额/转化份额</th>
+                        <th>#3 前三商品详情/点击份额/转化份额</th>
+                        <th>操作</th>
+                    </tr>
+                `,
+                emptyColspan: 10,
+            },
+            new: {
+                title: '新词榜',
+                endpoint: '/api/new-words/',
+                emptyMessage: '当前时间窗口内暂无新词榜数据',
+                headerHtml: `
+                    <tr>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>搜索词</th>
+                        <th>首次出现时间</th>
+                        <th>首次搜索排名</th>
+                        <th>期内首次出现</th>
+                        <th>期内出现次数</th>
+                        <th>周排行趋势</th>
+                        <th>最新出现时间</th>
+                        <th>最新搜索排名</th>
+                        <th>前三商品总点击份额</th>
+                        <th>前三商品总转化份额</th>
+                        <th>#1 前三商品详情/点击份额/转化份额</th>
+                        <th>#2 前三商品详情/点击份额/转化份额</th>
+                        <th>#3 前三商品详情/点击份额/转化份额</th>
+                        <th>操作</th>
+                    </tr>
+                `,
+                emptyColspan: 14,
+            },
+        };
 
         const categoryOptions = [
             { value: 'sticker', label: 'sticker(贴纸)' },
@@ -780,6 +918,108 @@
 
         function getCSRFToken() {
             return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function getActiveLeaderboardConfig() {
+            return leaderboardConfigs[activeLeaderboard] || leaderboardConfigs.hot;
+        }
+
+        function getDefaultNewWordsStartWeek(endWeekValue) {
+            if (!availableWeeks.length) {
+                return '';
+            }
+
+            const endIndex = availableWeeks.findIndex(week => week.value === endWeekValue);
+            if (endIndex === -1) {
+                return availableWeeks[Math.min(availableWeeks.length - 1, 12)].value;
+            }
+
+            const startIndex = Math.min(availableWeeks.length - 1, endIndex + 12);
+            return availableWeeks[startIndex]?.value || availableWeeks[endIndex].value;
+        }
+
+        function syncNewWordsWeekDefaults(forceReset = false) {
+            if (!startWeekSelect || !endWeekSelect || !availableWeeks.length) {
+                return;
+            }
+
+            const currentEnd = forceReset ? '' : endWeekSelect.getValue();
+            const currentStart = forceReset ? '' : startWeekSelect.getValue();
+            const fallbackEnd = availableWeeks[0].value;
+            const endValue = currentEnd || fallbackEnd;
+            const startValue = currentStart || getDefaultNewWordsStartWeek(endValue);
+
+            endWeekSelect.setValue(endValue);
+            startWeekSelect.setValue(startValue);
+        }
+
+        function formatLeaderboardWeekWindow() {
+            if (!currentNewWordsWindow.start || !currentNewWordsWindow.end) {
+                return '';
+            }
+            return `时间窗 ${currentNewWordsWindow.start} 至 ${currentNewWordsWindow.end}`;
+        }
+
+        function updateLeaderboardChrome() {
+            const config = getActiveLeaderboardConfig();
+            const titleEl = document.getElementById('leaderboardTitle');
+            const noteEl = document.getElementById('newWordsWindowNote');
+            const noiseToggle = document.getElementById('noiseStatusToggle');
+            const tableHead = document.getElementById('abaTableHead');
+            const hotWeekFilterGroup = document.getElementById('hotWeekFilterGroup');
+            const newWordsStartWeekGroup = document.getElementById('newWordsStartWeekGroup');
+            const newWordsEndWeekGroup = document.getElementById('newWordsEndWeekGroup');
+
+            if (titleEl) {
+                titleEl.textContent = config.title;
+            }
+
+            if (tableHead) {
+                tableHead.innerHTML = config.headerHtml;
+            }
+
+            if (noteEl) {
+                if (activeLeaderboard === 'new' && currentNewWordsWindow.start && currentNewWordsWindow.end) {
+                    noteEl.textContent = formatLeaderboardWeekWindow();
+                    noteEl.classList.add('visible');
+                } else {
+                    noteEl.textContent = '';
+                    noteEl.classList.remove('visible');
+                }
+            }
+
+            if (hotWeekFilterGroup) {
+                hotWeekFilterGroup.classList.toggle('aba-filter-group-hidden', activeLeaderboard !== 'hot');
+            }
+
+            if (newWordsStartWeekGroup) {
+                newWordsStartWeekGroup.classList.toggle('aba-filter-group-hidden', activeLeaderboard !== 'new');
+            }
+
+            if (newWordsEndWeekGroup) {
+                newWordsEndWeekGroup.classList.toggle('aba-filter-group-hidden', activeLeaderboard !== 'new');
+            }
+
+            document.querySelectorAll('.tab-nav-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.tab === activeLeaderboard);
+            });
+        }
+
+        function setActiveLeaderboard(type) {
+            if (type === activeLeaderboard) {
+                return;
+            }
+
+            activeLeaderboard = type === 'new' ? 'new' : 'hot';
+            currentPage = 1;
+            currentNewWordsWindow = { start: '', end: '' };
+            resetPaginationCache();
+            selectedSearchTermIds.clear();
+            renderInitialTableState();
+        }
+
+        function switchAbaTab(tab) {
+            setActiveLeaderboard(tab);
         }
 
         function ensureLoadingProgressElement() {
@@ -911,8 +1151,12 @@
         }
 
         function getCurrentFilters() {
+            const selectedEndWeek = endWeekSelect ? endWeekSelect.getValue() : '';
+            const selectedStartWeek = startWeekSelect ? startWeekSelect.getValue() : '';
             return {
-                week: weekSelect ? weekSelect.getValue() : '',
+                week: activeLeaderboard === 'hot' ? (weekSelect ? weekSelect.getValue() : '') : selectedEndWeek,
+                startWeek: selectedStartWeek,
+                endWeek: selectedEndWeek,
                 category: categorySelect ? categorySelect.getValue() : '',
                 searchTerm: document.getElementById('searchTermInput').value.trim(),
                 searchMode: String(searchMode),
@@ -922,7 +1166,10 @@
         }
 
         function buildPaginationQuerySignature(filters = getCurrentFilters()) {
-            return JSON.stringify(filters);
+            return JSON.stringify({
+                leaderboard: activeLeaderboard,
+                ...filters,
+            });
         }
 
         function resetPaginationCache() {
@@ -1175,6 +1422,7 @@
             btn.style.borderColor = colors.border;
             btn.style.color = colors.color;
 
+            updateLeaderboardChrome();
             setNoiseStatus('all', false);
             
             // 先加载周期列表
@@ -1205,6 +1453,18 @@
                 placeholder: '选择周期'
             });
 
+            startWeekSelect = new SearchableSelect('#startWeekFilter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择开始周期'
+            });
+
+            endWeekSelect = new SearchableSelect('#endWeekFilter', {
+                options: [],
+                multiple: false,
+                placeholder: '选择结束周期'
+            });
+
             categorySelect = new SearchableSelect('#categoryFilter', {
                 options: categoryOptions,
                 multiple: false,
@@ -1219,10 +1479,14 @@
                 const result = await response.json();
                 
                 if (result.success) {
+                    availableWeeks = result.data || [];
                     weekSelect.setOptions(result.data);
+                    startWeekSelect.setOptions(result.data);
+                    endWeekSelect.setOptions(result.data);
                     // 默认选中第一个（最新周期）
                     if (result.data.length > 0) {
                         weekSelect.setValue(result.data[0].value);
+                        syncNewWordsWeekDefaults(true);
                     }
                 }
             } catch (error) {
@@ -1236,6 +1500,8 @@
         function renderInitialTableState() {
             hasLoadedData = false;
             allData = [];
+            currentNewWordsWindow = { start: '', end: '' };
+            updateLeaderboardChrome();
             resetPaginationCache();
             clearSelection();
             renderEmptyTableState('请选择筛选条件并点击"应用筛选"');
@@ -1245,14 +1511,18 @@
 
         function renderEmptyTableState(message) {
             const tbody = document.getElementById('abaTableBody');
+            const config = getActiveLeaderboardConfig();
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="10" style="padding: 3rem 1rem; text-align: center; color: var(--text-secondary);">
+                    <td colspan="${config.emptyColspan}" style="padding: 3rem 1rem; text-align: center; color: var(--text-secondary);">
                         ${message}
                     </td>
                 </tr>
             `;
-            document.getElementById('selectAll').checked = false;
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll) {
+                selectAll.checked = false;
+            }
         }
         
         async function loadData() {
@@ -1268,6 +1538,8 @@
                     page: currentPage,
                     page_size: pageSize,
                     week: filters.week,
+                    start_week: filters.startWeek,
+                    end_week: filters.endWeek,
                     category: filters.category,
                     search_term: filters.searchTerm,
                     search_mode: filters.searchMode,
@@ -1277,8 +1549,17 @@
                 if (shouldReuseCachedTotal(filters)) {
                     params.set('cached_total', totalItems);
                 }
-                
-                const response = await fetch(`/api/data/?${params}`);
+
+                const config = getActiveLeaderboardConfig();
+                if (activeLeaderboard !== 'hot') {
+                    params.delete('week');
+                    params.delete('cached_total');
+                } else {
+                    params.delete('start_week');
+                    params.delete('end_week');
+                }
+
+                const response = await fetch(`${config.endpoint}?${params}`);
                 const result = await response.json();
                 
                 if (result.success) {
@@ -1288,6 +1569,11 @@
                     totalItems = Math.max(parseInt(result.total || 0, 10), 0);
                     totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
                     paginationQuerySignature = buildPaginationQuerySignature(filters);
+                    currentNewWordsWindow = {
+                        start: result.window_start || '',
+                        end: result.window_end || '',
+                    };
+                    updateLeaderboardChrome();
 
                     if (result.needs_week) {
                         hasLoadedData = false;
@@ -1297,7 +1583,7 @@
                     } else if (allData.length > 0) {
                         renderTable(allData);
                     } else {
-                        renderEmptyTableState('当前筛选条件下暂无数据');
+                        renderEmptyTableState(config.emptyMessage);
                     }
 
                     renderPagination();
@@ -1340,24 +1626,75 @@
             `;
         }
 
+        function buildTrendHtml(item) {
+            let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
+            if (item.trend && item.trend.length > 0) {
+                const chartId = `trend-${activeLeaderboard}-${item.id}`;
+                const ranks = item.trend.map(t => t.rank);
+                const maxRank = Math.max(...ranks);
+                const minRank = Math.min(...ranks);
+                const range = maxRank - minRank || 1;
+
+                const trendData = item.trend.map((t, i) => ({
+                    index: i,
+                    rank: t.rank,
+                    week: t.week,
+                    isoWeek: getISOWeek(t.week)
+                }));
+
+                setTimeout(() => initTrendChart(chartId, trendData, minRank, maxRank, range), 0);
+
+                trendHtml = `
+                    <div class="trend-chart-container" id="${chartId}" 
+                         style="position: relative; width: 160px; height: 60px; cursor: pointer;">
+                        <svg width="160" height="60" style="overflow: visible;"></svg>
+                        <div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div>
+                    </div>
+                `;
+            }
+
+            return trendHtml;
+        }
+
+        function renderSearchTermCell(item) {
+            return `
+                <div class="search-term-cell">
+                    <a href="https://www.amazon.com/s?k=${encodeURIComponent(item.search_term)}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-weight: 500;" class="search-term-main" onclick="event.stopPropagation();">${item.search_term}</a>
+                    ${item.search_term_translation_cn ? `<div class="search-term-cn">${item.search_term_translation_cn}</div>` : ''}
+                </div>
+            `;
+        }
+
+        function renderRowActionCell(item) {
+            const noiseAction = item.denoising
+                ? {
+                    label: '恢复',
+                    title: '移出去噪声页',
+                    className: 'btn-restore',
+                    nextValue: 'false'
+                }
+                : {
+                    label: '去噪',
+                    title: '加入噪声页',
+                    className: 'btn-noise',
+                    nextValue: 'true'
+                };
+
+            return `
+                <td>
+                    <div class="aba-action-cell">
+                        <button class="btn btn-sm ${noiseAction.className}" onclick="updateDenoisingStatus(${item.search_term_id}, ${noiseAction.nextValue})" title="${noiseAction.title}">
+                            ${noiseAction.label}
+                        </button>
+                    </div>
+                </td>
+            `;
+        }
+
         // ==================== 渲染表格 ====================
-        function renderTable(data) {
+        function renderHotTable(data) {
             const tbody = document.getElementById('abaTableBody');
             tbody.innerHTML = data.map(item => {
-                const noiseAction = item.denoising
-                    ? {
-                        label: '恢复',
-                        title: '移出去噪声页',
-                        className: 'btn-restore',
-                        nextValue: 'false'
-                    }
-                    : {
-                        label: '去噪',
-                        title: '加入噪声页',
-                        className: 'btn-noise',
-                        nextValue: 'true'
-                    };
-
                 // 排名样式 - 统一橙色
                 let rankClass = 'top-10';
                 
@@ -1370,48 +1707,14 @@
                         changeHtml = `<span class="rank-change down"><i class="fas fa-arrow-down"></i> ${Math.abs(item.rank_change)}</span>`;
                     }
                 }
-                
-                // 趋势图 - 智能交互版（参考图2样式）
-                let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
-                if (item.trend && item.trend.length > 0) {
-                    const chartId = `trend-${item.id}`;
-                    const ranks = item.trend.map(t => t.rank);
-                    const maxRank = Math.max(...ranks);
-                    const minRank = Math.min(...ranks);
-                    const range = maxRank - minRank || 1;
-                    
-                    // 准备数据
-                    const trendData = item.trend.map((t, i) => ({
-                        index: i,
-                        rank: t.rank,
-                        week: t.week,
-                        // 计算ISO周数
-                        isoWeek: getISOWeek(t.week)
-                    }));
-                    
-                    // 存储数据供后续JS使用
-                    setTimeout(() => initTrendChart(chartId, trendData, minRank, maxRank, range), 0);
-                    
-                    trendHtml = `
-                        <div class="trend-chart-container" id="${chartId}" 
-                             style="position: relative; width: 160px; height: 60px; cursor: pointer;">
-                            <svg width="160" height="60" style="overflow: visible;"></svg>
-                            <div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div>
-                        </div>
-                    `;
-                }
+                const trendHtml = buildTrendHtml(item);
                 
                 return `
                 <tr data-id="${item.id}">
                     <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
                            ${selectedSearchTermIds.has(item.search_term_id) ? 'checked' : ''}
                            onchange="toggleSelectItem(${item.search_term_id})"></td>
-                    <td>
-                        <div>
-                            <a href="https://www.amazon.com/s?k=${encodeURIComponent(item.search_term)}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-weight: 500;" class="search-term-main" onclick="event.stopPropagation();">${item.search_term}</a>
-                            ${item.search_term_translation_cn ? `<div class="search-term-cn">${item.search_term_translation_cn}</div>` : ''}
-                        </div>
-                    </td>
+                    <td>${renderSearchTermCell(item)}</td>
                     <td style="text-align: center;">
                         <div style="display: inline-flex; align-items: center; gap: 0.25rem;">
                             <span class="rank-number ${rankClass}" style="font-size: 1.25rem;">#${item.search_frequency_rank}</span>
@@ -1424,21 +1727,57 @@
                     ${renderAsinCell(item.asin_1)}
                     ${renderAsinCell(item.asin_2)}
                     ${renderAsinCell(item.asin_3)}
-                    <td>
-                        <div class="aba-action-cell">
-                            <button class="btn btn-sm ${noiseAction.className}" onclick="updateDenoisingStatus(${item.search_term_id}, ${noiseAction.nextValue})" title="${noiseAction.title}">
-                                ${noiseAction.label}
-                            </button>
-                            {#<button class="btn btn-sm" onclick="viewDetail(${item.search_term_id})" title="查看详情">#}
-                            {#    <i class="fas fa-eye"></i>#}
-                            {#</button>#}
-                        </div>
-                    </td>
+                    ${renderRowActionCell(item)}
                 </tr>
             `}).join('');
             
             updateSelectAllCheckbox();
             updateBulkActionBar();
+        }
+
+        function renderNewWordsTable(data) {
+            const tbody = document.getElementById('abaTableBody');
+            tbody.innerHTML = data.map(item => {
+                const trendHtml = buildTrendHtml(item);
+                const firstRank = item.first_search_rank ? `#${item.first_search_rank}` : '-';
+                const latestRank = item.latest_search_rank ? `#${item.latest_search_rank}` : '-';
+                const firstSeenBadge = item.is_first_seen_in_window
+                    ? '<span class="rank-change up">是</span>'
+                    : '<span class="rank-change neutral">否</span>';
+
+                return `
+                <tr data-id="${item.id}">
+                    <td class="w-checkbox"><input type="checkbox" class="row-checkbox" 
+                           ${selectedSearchTermIds.has(item.search_term_id) ? 'checked' : ''}
+                           onchange="toggleSelectItem(${item.search_term_id})"></td>
+                    <td>${renderSearchTermCell(item)}</td>
+                    <td>${item.first_seen || '-'}</td>
+                    <td><span class="rank-number top-50">${firstRank}</span></td>
+                    <td>${firstSeenBadge}</td>
+                    <td><span class="share-value">${item.appearance_count || 0}</span></td>
+                    <td>${trendHtml}</td>
+                    <td>${item.latest_seen || '-'}</td>
+                    <td><span class="rank-number top-50">${latestRank}</span></td>
+                    <td><span class="share-value">${item.total_click_share}%</span></td>
+                    <td><span class="share-value">${item.total_conversion_share}%</span></td>
+                    ${renderAsinCell(item.asin_1)}
+                    ${renderAsinCell(item.asin_2)}
+                    ${renderAsinCell(item.asin_3)}
+                    ${renderRowActionCell(item)}
+                </tr>
+            `}).join('');
+            
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+
+        function renderTable(data) {
+            if (activeLeaderboard === 'new') {
+                renderNewWordsTable(data);
+                return;
+            }
+
+            renderHotTable(data);
         }
         
         // ==================== 分页 ====================
@@ -1660,7 +1999,10 @@
         // ==================== 筛选操作 ====================
         function filterData() {
             const selectedWeek = weekSelect ? weekSelect.getValue() : '';
-            if (!selectedWeek) {
+            const selectedStartWeek = startWeekSelect ? startWeekSelect.getValue() : '';
+            const selectedEndWeek = endWeekSelect ? endWeekSelect.getValue() : '';
+
+            if (activeLeaderboard === 'hot' && !selectedWeek) {
                 hasLoadedData = false;
                 allData = [];
                 resetPaginationCache();
@@ -1671,6 +2013,22 @@
                 updatePaginationStats();
                 return;
             }
+
+            if (activeLeaderboard === 'new') {
+                if (!selectedStartWeek || !selectedEndWeek) {
+                    showNotification('请先选择开始周期和结束周期', 'info');
+                    renderEmptyTableState('请选择开始周期和结束周期后再搜索');
+                    renderPagination();
+                    updatePaginationStats();
+                    return;
+                }
+
+                if (selectedStartWeek > selectedEndWeek) {
+                    showNotification('开始周期不能晚于结束周期', 'info');
+                    return;
+                }
+            }
+
             currentPage = 1;
             resetPaginationCache();
             loadData();
@@ -1703,6 +2061,7 @@
             if (categorySelect) {
                 categorySelect.setValue('');
             }
+            syncNewWordsWeekDefaults(true);
             resetPaginationCache();
             resetWeekAndReload();
         }
