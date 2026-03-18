@@ -28,15 +28,13 @@ from api.Y.y_tiem import Timer
 DAYS_BACK = 7  # 扫描近7天的订单
 DRY_RUN = False  # 设为True则只检测不修复（测试模式）
 
-# ========== 缓存：SID → BrandID 映射 ==========
-_BRAND_ID_CACHE = {}
+# 注意：本脚本被 sync_a_doing.py 7×24小时循环调用，不能使用缓存
+# 所有数据必须实时从数据库获取，确保数据一致性
 
 
-def get_brand_id_with_cache(sid):
-    """带缓存的 SID 到 BrandID 映射"""
-    if sid not in _BRAND_ID_CACHE:
-        _BRAND_ID_CACHE[sid] = get_divi_brand_id_from_sid(sid)
-    return _BRAND_ID_CACHE[sid]
+def get_brand_id(sid):
+    """获取 SID 对应的 BrandID（实时查询，无缓存）"""
+    return get_divi_brand_id_from_sid(sid)
 
 
 def extract_orphaned_orders_candidates(start_datetime):
@@ -72,7 +70,7 @@ def extract_orphaned_orders_candidates(start_datetime):
             continue
 
         sid = order.lingxing_shop.sid
-        brand_id = get_brand_id_with_cache(sid)
+        brand_id = get_brand_id(sid)
 
         if not brand_id:
             no_brand_id_orders.append((order.amazon_order_id, f"sid={sid} 无对应divi品牌"))
