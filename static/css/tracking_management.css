@@ -118,8 +118,8 @@
     color: var(--text-secondary);
 }
 
-/* 控制面板 - 与订单页完全一致 */
-.control-panel {
+/* 筛选区域 - 与 general_style_1.css 保持一致 */
+.filter-section {
     background-color: var(--bg-primary);
     border-radius: 12px;
     padding: 1.5rem;
@@ -139,7 +139,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    min-width: 200px;
+    min-width: 260px;
+    max-width: 300px;
+    flex: 1;
 }
 
 .filter-label {
@@ -662,6 +664,7 @@
     .filter-group {
         width: 100%;
         min-width: auto;
+        max-width: none;
     }
 
     .pagination-controls {

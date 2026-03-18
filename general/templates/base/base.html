@@ -734,7 +734,7 @@
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_listing_management' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'amazon_orders' or active_nav == 'amazon_listing_management' or active_nav == 'amazon_performance_notifications' or active_nav == 'amazon_store_reports' or active_nav == 'amazon_upload_records' %}active{% endif %}"
                    href="{% url 'amazon:amazon_order_management' %}">
                     Amazon
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -754,6 +754,9 @@
                     </a>
                     <a href="{% url 'amazon:amazon_risk_keywords' %}" class="nav-dropdown-item">
                         <i class="fas fa-skull-crossbones"></i> 深渊
+                    </a>
+                    <a href="{% url 'amazon:amazon_upload_records' %}" class="nav-dropdown-item">
+                        <i class="fas fa-upload"></i> 店铺上货
                     </a>
                     <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-item"
                        onclick="showComingSoon()">
