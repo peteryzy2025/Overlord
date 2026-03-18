@@ -797,6 +797,7 @@ class UserOperationLog(models.Model):
         EMAIL_MARK_PROCESSED = 4001, '标记邮件已处理'
         EMAIL_NOTIFY_OPERATORS = 4002, '批量通知运营邮件'
         DAILY_CHECK_RESET = 4011, '重置巡店'
+        PERFORMANCE_NOTIFY_OPERATORS = 4021, '绩效通知-批量通知运营'
 
         # 6xxx: 考核流程操作
         ASSESSMENT_BATCH_REFRESH = 6001, '绩效考核-批量刷新订单'
