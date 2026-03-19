@@ -5,7 +5,6 @@ from general import (
     views_amazon_management,
     views_temu_management,
     views_performance,
-    demo_view,
     views_announcement_management,
     views_profile
 )
@@ -54,7 +53,6 @@ urlpatterns = [
     path('management/', views.management_page, name='management'),
     path('csrf/', views.csrf_token_view, name='csrf_token'),
     path('api/update-theme/', views.update_theme, name='update_theme'),
-    path('demo1/', demo_view.demo_view),
     path('api/announcement/mark-as-read/', views.mark_announcement_as_read, name='mark_announcement_read'),
 
     # ========== 公告管理 ==========

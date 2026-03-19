@@ -200,12 +200,20 @@ def update_basic_info_api(request):
         first_name = data.get('first_name', '').strip()
         email = data.get('email', '').strip()
         phone = data.get('phone', '').strip()
+        wx_url = data.get('wx_url', '').strip()
         
         # 验证邮箱格式
         if email and '@' not in email:
             return JsonResponse({
                 'success': False,
                 'message': '邮箱格式不正确'
+            }, status=400)
+        
+        # 验证URL格式（如果填写了）
+        if wx_url and not wx_url.startswith(('http://', 'https://')):
+            return JsonResponse({
+                'success': False,
+                'message': '企业微信通知URL格式不正确，需以 http:// 或 https:// 开头'
             }, status=400)
         
         # 记录变更
@@ -222,8 +230,12 @@ def update_basic_info_api(request):
             changes.append(f'手机号: {user.phone} -> {phone}')
             user.phone = phone
         
+        if wx_url != (user.wx_url or ''):
+            changes.append(f'企业微信通知URL: 已{"设置" if wx_url else "清空"}')
+            user.wx_url = wx_url if wx_url else None
+        
         if changes:
-            user.save(update_fields=['first_name', 'email', 'phone'])
+            user.save(update_fields=['first_name', 'email', 'phone', 'wx_url'])
             
             # 记录操作日志
             UserOperationLog.objects.create(
