@@ -2,12 +2,15 @@
 ABA 数据管理视图
 """
 import json
+import re
 import threading
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 from django.core.cache import cache
+from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, FloatField, IntegerField, Max, OuterRef, Subquery, Value, When
+from django.db.models.functions import Cast, Coalesce
 from django.db import close_old_connections
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -20,6 +23,7 @@ CUSTOM_DENOISING_CACHE_PREFIX = 'aba:custom-denoising:'
 CUSTOM_DENOISING_CACHE_TTL = 60 * 60
 CUSTOM_DENOISING_SCAN_BATCH_SIZE = 200
 CUSTOM_DENOISING_UPDATE_BATCH_SIZE = 500
+HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 
 def aba_data_page(request):
@@ -83,6 +87,7 @@ def _build_empty_aba_response(page, page_size, needs_week=False):
         'total_pages': 0,
         'has_prev': page > 1,
         'has_next': False,
+        'pagination_mode': 'full',
         'needs_week': needs_week,
     }
 
@@ -119,6 +124,51 @@ def _normalize_custom_denoising_keywords(raw_text):
     return normalized_keywords
 
 
+def _normalize_custom_denoising_match_text(raw_text):
+    if not isinstance(raw_text, str):
+        return ''
+
+    return re.sub(r'\s+', ' ', raw_text.casefold()).strip()
+
+
+def _build_whole_word_regex(raw_text):
+    normalized_text = _normalize_custom_denoising_match_text(raw_text)
+    if not normalized_text:
+        return ''
+
+    escaped_text = re.escape(normalized_text)
+    return rf'(^|[^0-9a-z]){escaped_text}([^0-9a-z]|$)'
+
+
+def _build_custom_denoising_patterns(keywords):
+    patterns = []
+
+    for keyword in keywords:
+        pattern_text = _build_whole_word_regex(keyword)
+        if not pattern_text:
+            continue
+
+        patterns.append(re.compile(pattern_text))
+
+    return patterns
+
+
+def _matches_custom_denoising_term(term, keyword_patterns):
+    normalized_term = _normalize_custom_denoising_match_text(term)
+    if not normalized_term:
+        return False
+
+    return any(pattern.search(normalized_term) for pattern in keyword_patterns)
+
+
+def _apply_category_filter(queryset, category, term_field='search_term__term'):
+    pattern_text = _build_whole_word_regex(category)
+    if not pattern_text:
+        return queryset
+
+    return queryset.filter(**{f'{term_field}__iregex': pattern_text})
+
+
 def _get_new_words_window_end(week_value):
     if not week_value:
         return None
@@ -144,6 +194,177 @@ def _get_new_words_window_start(window_end, weeks=13):
         return None
 
     return window_end - timedelta(days=(weeks - 1) * 7)
+
+
+def _decimal_zero():
+    return Value(0, output_field=DecimalField(max_digits=8, decimal_places=4))
+
+
+def _sum_metric_share_expression(field_names):
+    expression = _decimal_zero()
+    for field_name in field_names:
+        expression = expression + Coalesce(F(field_name), _decimal_zero())
+
+    return ExpressionWrapper(
+        expression,
+        output_field=DecimalField(max_digits=8, decimal_places=4),
+    )
+
+
+def _rank_growth_percent_expression():
+    previous_rank = Cast(F('last_week_rank'), FloatField())
+    current_rank = Cast(F('search_frequency_rank'), FloatField())
+    growth_expression = ExpressionWrapper(
+        (previous_rank - current_rank) * Value(100.0) / previous_rank,
+        output_field=FloatField(),
+    )
+
+    return Case(
+        When(
+            last_week_rank__gt=0,
+            search_frequency_rank__gt=0,
+            then=growth_expression,
+        ),
+        default=Value(None, output_field=FloatField()),
+        output_field=FloatField(),
+    )
+
+
+def _calculate_rank_growth_percent(current_rank, previous_rank):
+    if not current_rank or not previous_rank or previous_rank <= 0:
+        return None
+
+    return ((previous_rank - current_rank) * 100.0) / previous_rank
+
+
+def _is_continuous_growth(rank_points):
+    ordered_ranks = [rank for rank in rank_points if isinstance(rank, int) and rank > 0]
+    if len(ordered_ranks) < 4:
+        return False
+
+    return all(current < previous for current, previous in zip(ordered_ranks[1:], ordered_ranks[:-1]))
+
+
+def _get_hot_word_categories(metric, trend_rows):
+    categories = []
+    growth_percent = _calculate_rank_growth_percent(
+        getattr(metric, 'search_frequency_rank', None),
+        getattr(metric, 'last_week_rank', None),
+    )
+    total_click_share = (
+        (getattr(metric, 'asin_1_click_share', None) or 0) +
+        (getattr(metric, 'asin_2_click_share', None) or 0) +
+        (getattr(metric, 'asin_3_click_share', None) or 0)
+    ) * 100
+    total_conversion_share = (
+        (getattr(metric, 'asin_1_conversion_share', None) or 0) +
+        (getattr(metric, 'asin_2_conversion_share', None) or 0) +
+        (getattr(metric, 'asin_3_conversion_share', None) or 0)
+    ) * 100
+
+    recent_trend = sorted(trend_rows, key=lambda row: row['week'])[-4:]
+    recent_ranks = [row['rank'] for row in recent_trend]
+
+    if _is_continuous_growth(recent_ranks):
+        categories.append('持续增长词')
+    if growth_percent is not None and growth_percent > 70:
+        categories.append('爆发词')
+    if growth_percent is not None and growth_percent >= 50:
+        categories.append('飙升词')
+    if growth_percent is not None and growth_percent >= 10:
+        categories.append('潜力词')
+    if total_click_share > 0 and total_conversion_share == 0:
+        categories.append('黄金词')
+    if total_click_share >= 70:
+        categories.append('竞争词')
+    if getattr(metric, 'search_frequency_rank', 0) >= HOT_WORD_PICKUP_RANK_THRESHOLD and total_conversion_share < 30:
+        categories.append('捡漏词')
+
+    return categories
+
+
+def _apply_hot_word_filter(
+    queryset,
+    week_date,
+    word_filter,
+    *,
+    search_term='',
+    search_mode='0',
+    category='',
+    noise_status='all',
+):
+    if not word_filter or word_filter == 'all':
+        return queryset
+
+    if word_filter in {'golden', 'competitive', 'pickup'}:
+        queryset = queryset.annotate(
+            total_click_share_ratio=_sum_metric_share_expression([
+                'asin_1_click_share',
+                'asin_2_click_share',
+                'asin_3_click_share',
+            ]),
+            total_conversion_share_ratio=_sum_metric_share_expression([
+                'asin_1_conversion_share',
+                'asin_2_conversion_share',
+                'asin_3_conversion_share',
+            ]),
+        )
+
+    if word_filter in {'burst', 'surging', 'potential'}:
+        queryset = queryset.annotate(rank_growth_percent=_rank_growth_percent_expression())
+
+    if word_filter == 'continuous_growth':
+        previous_week = week_date - timedelta(days=7)
+        previous_two_weeks = week_date - timedelta(days=14)
+        previous_three_weeks = week_date - timedelta(days=21)
+        history_queryset = SearchTermMetric.objects.using('aba_db').filter(
+            report_week__in=[week_date, previous_week, previous_two_weeks, previous_three_weeks],
+        )
+        history_queryset = _apply_search_term_filters(history_queryset, search_term, search_mode)
+        if category:
+            history_queryset = _apply_category_filter(history_queryset, category)
+        if noise_status == 'noise':
+            history_queryset = history_queryset.filter(search_term__denoising=True)
+        elif noise_status == 'denoised':
+            history_queryset = history_queryset.filter(search_term__denoising=False)
+
+        matching_term_ids = history_queryset.values('search_term_id').annotate(
+            week_count=Count('report_week', distinct=True),
+            current_rank=Max(Case(When(report_week=week_date, then=F('search_frequency_rank')), output_field=IntegerField())),
+            previous_week_rank=Max(Case(When(report_week=previous_week, then=F('search_frequency_rank')), output_field=IntegerField())),
+            previous_two_week_rank=Max(Case(When(report_week=previous_two_weeks, then=F('search_frequency_rank')), output_field=IntegerField())),
+            previous_three_week_rank=Max(Case(When(report_week=previous_three_weeks, then=F('search_frequency_rank')), output_field=IntegerField())),
+        ).filter(
+            week_count=4,
+            current_rank__isnull=False,
+            previous_week_rank__isnull=False,
+            previous_two_week_rank__isnull=False,
+            previous_three_week_rank__isnull=False,
+            current_rank__lt=F('previous_week_rank'),
+            previous_week_rank__lt=F('previous_two_week_rank'),
+            previous_two_week_rank__lt=F('previous_three_week_rank'),
+        )
+        queryset = queryset.filter(search_term_id__in=Subquery(matching_term_ids.values('search_term_id')))
+    elif word_filter == 'burst':
+        queryset = queryset.filter(rank_growth_percent__gt=70)
+    elif word_filter == 'surging':
+        queryset = queryset.filter(rank_growth_percent__gte=50)
+    elif word_filter == 'potential':
+        queryset = queryset.filter(rank_growth_percent__gte=10)
+    elif word_filter == 'golden':
+        queryset = queryset.filter(
+            total_click_share_ratio__gt=0,
+            total_conversion_share_ratio=0,
+        )
+    elif word_filter == 'competitive':
+        queryset = queryset.filter(total_click_share_ratio__gte=0.7)
+    elif word_filter == 'pickup':
+        queryset = queryset.filter(
+            search_frequency_rank__gte=HOT_WORD_PICKUP_RANK_THRESHOLD,
+            total_conversion_share_ratio__lt=0.3,
+        )
+
+    return queryset
 
 
 def _apply_search_term_filters(queryset, search_term, search_mode, term_field='search_term__term'):
@@ -246,6 +467,10 @@ def _custom_denoising_cache_key(task_id):
     return f'{CUSTOM_DENOISING_CACHE_PREFIX}{task_id}'
 
 
+def batch_denosing_api():
+    pass
+
+
 def _build_custom_denoising_progress(
     *,
     status='pending',
@@ -291,7 +516,7 @@ def _flush_custom_denoising_updates(search_term_ids):
 
 
 def _run_custom_denoising_task(task_id, keywords, total_terms):
-    keyword_patterns = [keyword.casefold() for keyword in keywords]
+    keyword_patterns = _build_custom_denoising_patterns(keywords)
     processed_count = 0
     matched_count = 0
     updated_count = 0
@@ -314,9 +539,8 @@ def _run_custom_denoising_task(task_id, keywords, total_terms):
         search_terms = SearchTerm.objects.using('aba_db').order_by('id').values_list('id', 'term')
         for search_term_id, term in search_terms.iterator(chunk_size=CUSTOM_DENOISING_SCAN_BATCH_SIZE):
             processed_count += 1
-            normalized_term = (term or '').casefold()
 
-            if any(keyword in normalized_term for keyword in keyword_patterns):
+            if _matches_custom_denoising_term(term, keyword_patterns):
                 matched_count += 1
                 pending_update_ids.append(search_term_id)
 
@@ -401,7 +625,7 @@ def get_aba_data_api(request):
     参数:
         week: 周期（日期，如 2026-02-15）
         search_term: 搜索词（模糊搜索）
-        category: 品类英文关键词（按搜索词子串匹配）
+        category: 品类英文关键词（按搜索词整词匹配）
         page: 页码，默认 1
         page_size: 每页条数，默认 50
     """
@@ -411,6 +635,7 @@ def get_aba_data_api(request):
         search_term = request.GET.get('search_term', '').strip()
         category = request.GET.get('category', '').strip()
         noise_status = request.GET.get('noise_status', 'all').strip()
+        word_filter = request.GET.get('word_filter', 'all').strip()
         cached_total = request.GET.get('cached_total', '').strip()
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
@@ -435,16 +660,31 @@ def get_aba_data_api(request):
         queryset = _apply_search_term_filters(queryset, search_term, search_mode)
 
         if category:
-            queryset = queryset.filter(search_term__term__icontains=category)
+            queryset = _apply_category_filter(queryset, category)
 
         if noise_status == 'noise':
             queryset = queryset.filter(search_term__denoising=True)
         elif noise_status == 'denoised':
             queryset = queryset.filter(search_term__denoising=False)
 
-        has_extra_filters = bool(search_term or category or noise_status != 'all')
+        queryset = _apply_hot_word_filter(
+            queryset,
+            week_date,
+            word_filter,
+            search_term=search_term,
+            search_mode=search_mode,
+            category=category,
+            noise_status=noise_status,
+        )
 
-        if has_extra_filters:
+        has_extra_filters = bool(search_term or category or noise_status != 'all' or word_filter != 'all')
+        # 去噪状态和词分类都改用轻分页，避免首屏先做一次重 count()
+        use_simple_pagination = word_filter != 'all' or noise_status != 'all'
+
+        if use_simple_pagination:
+            total = 0
+            total_pages = 0
+        elif has_extra_filters:
             if page == 1:
                 total = queryset.count()
             else:
@@ -459,7 +699,8 @@ def get_aba_data_api(request):
                 import_status='ready'
             ).values_list('record_count', flat=True).first() or 0
 
-        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+        if not use_simple_pagination:
+            total_pages = (total + page_size - 1) // page_size if total > 0 else 0
 
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
@@ -513,6 +754,10 @@ def get_aba_data_api(request):
                 'search_frequency_rank': metric.search_frequency_rank,
                 'rank_change': metric.rank_change,
                 'trend': trend_by_term_id.get(metric.search_term_id, []),
+                'word_categories': _get_hot_word_categories(
+                    metric,
+                    trend_by_term_id.get(metric.search_term_id, []),
+                ),
                 'total_click_share': round(total_click_share * 100, 2),  # 转为百分比
                 'total_conversion_share': round(total_conversion_share * 100, 2),
                 'report_week': metric.report_week.strftime('%Y-%m-%d'),
@@ -546,6 +791,7 @@ def get_aba_data_api(request):
             'total_pages': total_pages,
             'has_prev': page > 1,
             'has_next': has_next,
+            'pagination_mode': 'simple' if use_simple_pagination else 'full',
             'needs_week': False,
         })
         
@@ -603,7 +849,7 @@ def get_aba_new_words_api(request):
             term_field='term',
         )
         if category:
-            base_queryset = base_queryset.filter(term__icontains=category)
+            base_queryset = _apply_category_filter(base_queryset, category, term_field='term')
 
         if noise_status == 'noise':
             base_queryset = base_queryset.filter(denoising=True)

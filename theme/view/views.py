@@ -380,7 +380,7 @@ def api_amazon_products(request):
                     'low_risk_words': [],
                     'infringement_level': 'loading', # 标记为加载中
                     'ai_infringement_words': theme_record.ai_infringement_words if theme_record else None,
-                    'ai_infringement_level': theme_record.ai_infringement_level if theme_record else None,
+                    # 'ai_infringement_level': theme_record.ai_infringement_level if theme_record else None,
                 },
                 # NEW: ThemeDailyData 数据
                 'daily_data': {
