@@ -641,8 +641,6 @@ class AmazonPerformanceNotification(models.Model):
         return f"{self.shop.shop_name} - {self.subject[:50]} ({self.date})"
 
 
-
-
 class AmazonOrderFullDetail(models.Model):
     """
     亚马逊订单完整详情表（从 get_amazon_order_detail 接口获取）

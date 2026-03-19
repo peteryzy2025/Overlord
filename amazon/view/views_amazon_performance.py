@@ -8,7 +8,7 @@ from django.shortcuts import render
 from datetime import datetime, timedelta
 import json
 from amazon.models import AmazonPerformanceNotification
-from general.models import AmazonShop, User, OperationalAccount
+from general.models import AmazonShop, User, OperationalAccount, UserOperationLog
 from amazon.amazon_views import get_user_operation_permissions, determine_filter_type_and_value
 from amazon.amazon_order_views import get_date_range_from_option as base_get_date_range
 from amazon.amazon_order_views import get_shop_ids_by_filter

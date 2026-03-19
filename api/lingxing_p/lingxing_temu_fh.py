@@ -206,7 +206,7 @@ async def test_step1():
     if not store_id:
         raise ValueError("订单未关联领星店铺，无法获取store_id")
     """产品匹配"""
-    # resp = await step2_update_order_binding(global_order_no, list_sku)
+    resp = await step2_update_order_binding(global_order_no, list_sku)
     # print(resp)
 
 
