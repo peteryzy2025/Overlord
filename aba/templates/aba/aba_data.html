@@ -625,6 +625,52 @@
             display: none !important;
         }
 
+        .aba-quick-filter-row {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            margin: 1rem 0 0;
+            flex-wrap: wrap;
+        }
+
+        .aba-quick-filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .aba-quick-filter-options {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            flex-wrap: wrap;
+        }
+
+        .aba-quick-filter-chip {
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.875rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .aba-quick-filter-chip:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .aba-quick-filter-chip.active {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #047857;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.14);
+        }
+
         @media (max-width: 1400px) {
             .aba-filter-row {
                 flex-wrap: wrap;
@@ -700,6 +746,20 @@
                     <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
                 </div>
             </div>
+
+            <div class="aba-quick-filter-row" id="hotWordQuickFilterRow">
+                <div class="aba-quick-filter-label">快速筛选</div>
+                <div class="aba-quick-filter-options">
+                    <button type="button" class="aba-quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')">持续增长词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')">爆发词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')">飙升词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')">潜力词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')">黄金词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')">竞争词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')">捡漏词</button>
+                </div>
+            </div>
         </div>
 
         <div class="aba-table-header">
@@ -707,11 +767,11 @@
                 <h3 class="aba-table-title" id="leaderboardTitle">搜索词列表</h3>
                 <span class="aba-table-window-note" id="newWordsWindowNote"></span>
             </div>
-            <div class="tri-state-toggle" id="noiseStatusToggle" data-state="all">
+            <div class="tri-state-toggle" id="noiseStatusToggle" data-state="denoised">
                 <div class="toggle-indicator"></div>
                 <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
-                <div class="toggle-option active" data-value="all" onclick="setNoiseStatus('all')">全部</div>
-                <div class="toggle-option" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
+                <div class="toggle-option active" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
+                <div class="toggle-option" data-value="all" onclick="setNoiseStatus('all')">全部</div>
             </div>
         </div>
 
@@ -815,10 +875,12 @@
         let hasNextPage = false;
         let totalItems = 0;
         let totalPages = 0;
+        let paginationMode = 'full';
         let paginationQuerySignature = '';
         let selectedSearchTermIds = new Set();
         let allData = [];
-        let currentNoiseStatus = 'all';
+        let currentNoiseStatus = 'denoised';
+        let currentHotWordFilter = 'all';
         let customDenoisingPollTimer = null;
         let customDenoisingTaskId = '';
         let isCustomDenoisingSubmitting = false;
@@ -969,6 +1031,7 @@
             const hotWeekFilterGroup = document.getElementById('hotWeekFilterGroup');
             const newWordsStartWeekGroup = document.getElementById('newWordsStartWeekGroup');
             const newWordsEndWeekGroup = document.getElementById('newWordsEndWeekGroup');
+            const hotWordQuickFilterRow = document.getElementById('hotWordQuickFilterRow');
 
             if (titleEl) {
                 titleEl.textContent = config.title;
@@ -1000,8 +1063,16 @@
                 newWordsEndWeekGroup.classList.toggle('aba-filter-group-hidden', activeLeaderboard !== 'new');
             }
 
+            if (hotWordQuickFilterRow) {
+                hotWordQuickFilterRow.classList.toggle('aba-filter-group-hidden', activeLeaderboard !== 'hot');
+            }
+
             document.querySelectorAll('.tab-nav-item').forEach(item => {
                 item.classList.toggle('active', item.dataset.tab === activeLeaderboard);
+            });
+
+            document.querySelectorAll('.aba-quick-filter-chip').forEach(item => {
+                item.classList.toggle('active', item.dataset.value === currentHotWordFilter);
             });
         }
 
@@ -1020,6 +1091,17 @@
 
         function switchAbaTab(tab) {
             setActiveLeaderboard(tab);
+        }
+
+        function setHotWordFilter(filterValue, shouldReload = true) {
+            currentHotWordFilter = filterValue || 'all';
+            updateLeaderboardChrome();
+
+            if (shouldReload && activeLeaderboard === 'hot' && hasLoadedData) {
+                currentPage = 1;
+                resetPaginationCache();
+                loadData();
+            }
         }
 
         function ensureLoadingProgressElement() {
@@ -1098,6 +1180,53 @@
             updateBulkActionBar();
         }
 
+        function buildCustomDenoisingTextareaValue(existingText, additionalTerms) {
+            const mergedLines = [];
+            const seen = new Set();
+
+            [...String(existingText || '').split(/\r?\n/), ...(additionalTerms || [])].forEach(rawLine => {
+                const line = String(rawLine || '').trim();
+                if (!line) {
+                    return;
+                }
+
+                const dedupeKey = line.toLocaleLowerCase();
+                if (seen.has(dedupeKey)) {
+                    return;
+                }
+
+                seen.add(dedupeKey);
+                mergedLines.push(line);
+            });
+
+            return mergedLines.join('\n');
+        }
+
+        function getSelectedSearchTermsForCustomDenoising() {
+            if (!selectedSearchTermIds.size || !Array.isArray(allData) || !allData.length) {
+                return [];
+            }
+
+            return allData
+                .filter(item => selectedSearchTermIds.has(item.search_term_id))
+                .map(item => item.search_term)
+                .filter(Boolean);
+        }
+
+        function appendSelectedSearchTermsToCustomDenoisingInput() {
+            const textarea = document.getElementById('customDenoisingKeywordsInput');
+            if (!textarea) {
+                return;
+            }
+
+            const selectedTerms = getSelectedSearchTermsForCustomDenoising();
+            if (!selectedTerms.length) {
+                return;
+            }
+
+            textarea.value = buildCustomDenoisingTextareaValue(textarea.value, selectedTerms);
+        }
+
         function openCustomDenoisingModal() {
             if (isCustomDenoisingSubmitting) {
                 return;
@@ -1109,6 +1238,7 @@
                 return;
             }
 
+            appendSelectedSearchTermsToCustomDenoisingInput();
             modal.classList.add('show');
             if (textarea) {
                 textarea.focus();
@@ -1161,6 +1291,7 @@
                 searchTerm: document.getElementById('searchTermInput').value.trim(),
                 searchMode: String(searchMode),
                 noiseStatus: currentNoiseStatus,
+                wordFilter: currentHotWordFilter,
                 pageSize: String(pageSize)
             };
         }
@@ -1176,6 +1307,7 @@
             totalItems = 0;
             totalPages = 0;
             hasNextPage = false;
+            paginationMode = 'full';
             paginationQuerySignature = '';
         }
 
@@ -1423,7 +1555,7 @@
             btn.style.color = colors.color;
 
             updateLeaderboardChrome();
-            setNoiseStatus('all', false);
+            setNoiseStatus('denoised', false);
             
             // 先加载周期列表
             await loadAvailableWeeks();
@@ -1543,7 +1675,8 @@
                     category: filters.category,
                     search_term: filters.searchTerm,
                     search_mode: filters.searchMode,
-                    noise_status: filters.noiseStatus
+                    noise_status: filters.noiseStatus,
+                    word_filter: filters.wordFilter
                 });
 
                 if (shouldReuseCachedTotal(filters)) {
@@ -1554,6 +1687,7 @@
                 if (activeLeaderboard !== 'hot') {
                     params.delete('week');
                     params.delete('cached_total');
+                    params.delete('word_filter');
                 } else {
                     params.delete('start_week');
                     params.delete('end_week');
@@ -1568,6 +1702,7 @@
                     hasNextPage = !!result.has_next;
                     totalItems = Math.max(parseInt(result.total || 0, 10), 0);
                     totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
+                    paginationMode = result.pagination_mode || 'full';
                     paginationQuerySignature = buildPaginationQuerySignature(filters);
                     currentNewWordsWindow = {
                         start: result.window_start || '',
@@ -1790,6 +1925,16 @@
                 return;
             }
 
+            if (paginationMode === 'simple') {
+                pagination.innerHTML = `
+                    <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
+                    <button class="pagination-btn-new active" disabled>第 ${currentPage} 页</button>
+                    <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${!hasNextPage ? 'disabled' : ''}>下一页</button>
+                `;
+                paginationJump.style.display = 'none';
+                return;
+            }
+
             if (totalPages <= 0) {
                 pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页数据</span>';
                 paginationJump.style.display = 'none';
@@ -1857,6 +2002,18 @@
             }
             if (!hasLoadedData) {
                 statsEl.textContent = '尚未加载数据';
+                return;
+            }
+
+            if (paginationMode === 'simple') {
+                if (allData.length === 0) {
+                    statsEl.textContent = '当前筛选下暂无数据';
+                    return;
+                }
+
+                const start = (currentPage - 1) * pageSize + 1;
+                const end = start + allData.length - 1;
+                statsEl.textContent = `${start}-${end} / 第 ${currentPage} 页${hasNextPage ? '，可继续翻页' : ''}`;
                 return;
             }
 
@@ -2056,7 +2213,8 @@
         }
         
         function resetFilters() {
-            setNoiseStatus('all', false);
+            setNoiseStatus('denoised', false);
+            setHotWordFilter('all', false);
             document.getElementById('searchTermInput').value = '';
             if (categorySelect) {
                 categorySelect.setValue('');

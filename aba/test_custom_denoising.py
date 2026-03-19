@@ -32,6 +32,34 @@ class CustomDenoisingTests(TestCase):
         keywords = views._normalize_custom_denoising_keywords('  template  \nSVG Bundle\n\nsvg bundle\nTemplate\n')
         self.assertEqual(keywords, ['template', 'SVG Bundle'])
 
+    def test_custom_denoising_whole_word_matching_helpers(self):
+        patterns = views._build_custom_denoising_patterns(['eye', 'eye cream'])
+
+        self.assertTrue(views._matches_custom_denoising_term('eye cream', patterns))
+        self.assertTrue(views._matches_custom_denoising_term('best eye cream', patterns))
+        self.assertFalse(views._matches_custom_denoising_term('eyebrow pencil', patterns))
+        self.assertFalse(views._matches_custom_denoising_term('besteye cream', patterns))
+        self.assertFalse(views._matches_custom_denoising_term('dey elastic', patterns))
+
+    def test_apply_category_filter_uses_whole_word_matching(self):
+        matching_term = self._create_search_term('eye cream')
+        second_matching_term = self._create_search_term('best eye serum')
+        embedded_term = self._create_search_term('eyebrow pencil')
+        unrelated_term = self._create_search_term('dey elastic')
+
+        filtered_ids = list(
+            views._apply_category_filter(
+                SearchTerm.objects.using('aba_db').order_by('id'),
+                'eye',
+                term_field='term',
+            ).values_list('id', flat=True)
+        )
+
+        self.assertIn(matching_term.id, filtered_ids)
+        self.assertIn(second_matching_term.id, filtered_ids)
+        self.assertNotIn(embedded_term.id, filtered_ids)
+        self.assertNotIn(unrelated_term.id, filtered_ids)
+
     def test_normalize_boolean_value_handles_false_string(self):
         self.assertFalse(views._normalize_boolean_value('false'))
         self.assertFalse(views._normalize_boolean_value('0'))
@@ -108,6 +136,31 @@ class CustomDenoisingTests(TestCase):
         self.assertTrue(matching_term_1.denoising)
         self.assertTrue(matching_term_2.denoising)
         self.assertFalse(non_matching_term.denoising)
+
+    def test_run_custom_denoising_task_uses_whole_word_matching(self):
+        exact_word_term = self._create_search_term('eye cream')
+        phrase_term = self._create_search_term('best eye cream')
+        embedded_term = self._create_search_term('eyebrow pencil')
+        unrelated_term = self._create_search_term('dey elastic')
+        task_id = 'task-whole-word'
+
+        cache.set(
+            views._custom_denoising_cache_key(task_id),
+            views._build_custom_denoising_progress(total_terms=4, keyword_count=1),
+            views.CUSTOM_DENOISING_CACHE_TTL,
+        )
+
+        views._run_custom_denoising_task(task_id, ['eye'], total_terms=4)
+
+        exact_word_term.refresh_from_db(using='aba_db')
+        phrase_term.refresh_from_db(using='aba_db')
+        embedded_term.refresh_from_db(using='aba_db')
+        unrelated_term.refresh_from_db(using='aba_db')
+
+        self.assertTrue(exact_word_term.denoising)
+        self.assertTrue(phrase_term.denoising)
+        self.assertFalse(embedded_term.denoising)
+        self.assertFalse(unrelated_term.denoising)
 
     def test_custom_denoising_progress_api_returns_progress_structure(self):
         task_id = 'task-progress'
@@ -283,3 +336,42 @@ class CustomDenoisingTests(TestCase):
         self.assertEqual(row['appearance_count'], 2)
         self.assertTrue(row['is_first_seen_in_window'])
         self.assertEqual(row['latest_seen'], '2026-01-18')
+
+    def test_calculate_rank_growth_percent_uses_percentage_improvement(self):
+        self.assertEqual(views._calculate_rank_growth_percent(30, 100), 70.0)
+        self.assertEqual(views._calculate_rank_growth_percent(50, 100), 50.0)
+        self.assertEqual(views._calculate_rank_growth_percent(90, 100), 10.0)
+        self.assertIsNone(views._calculate_rank_growth_percent(30, 0))
+
+    def test_is_continuous_growth_requires_four_strictly_improving_points(self):
+        self.assertTrue(views._is_continuous_growth([120, 90, 50, 20]))
+        self.assertFalse(views._is_continuous_growth([120, 90, 90, 20]))
+        self.assertFalse(views._is_continuous_growth([120, 90, 50]))
+
+    def test_get_hot_word_categories_matches_updated_word_define(self):
+        metric = SimpleNamespace(
+            search_frequency_rank=35000,
+            last_week_rank=100000,
+            asin_1_click_share=Decimal('0.5000'),
+            asin_1_conversion_share=Decimal('0.0000'),
+            asin_2_click_share=Decimal('0.2500'),
+            asin_2_conversion_share=Decimal('0.0000'),
+            asin_3_click_share=Decimal('0.0500'),
+            asin_3_conversion_share=Decimal('0.0000'),
+        )
+        trend_rows = [
+            {'week': '2026-02-16', 'rank': 120000},
+            {'week': '2026-02-23', 'rank': 90000},
+            {'week': '2026-03-02', 'rank': 60000},
+            {'week': '2026-03-09', 'rank': 35000},
+        ]
+
+        categories = views._get_hot_word_categories(metric, trend_rows)
+
+        self.assertIn('持续增长词', categories)
+        self.assertIn('黄金词', categories)
+        self.assertIn('竞争词', categories)
+        self.assertIn('捡漏词', categories)
+        self.assertIn('爆发词', categories)
+        self.assertIn('飙升词', categories)
+        self.assertIn('潜力词', categories)
