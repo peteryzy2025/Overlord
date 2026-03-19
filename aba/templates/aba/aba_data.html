@@ -751,13 +751,13 @@
                 <div class="aba-quick-filter-label">快速筛选</div>
                 <div class="aba-quick-filter-options">
                     <button type="button" class="aba-quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')">持续增长词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')">爆发词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')">飙升词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')">潜力词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')">黄金词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')">竞争词</button>
-                    <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')">捡漏词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')" title="过去 3个周期内持续增长；重点是“连续”，阈值基本是只增长即可">持续增长词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')" title="单周期内明显飙升，大于70%的增长阈值">爆发词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')" title="单周期内明显飙升，至少达到50的增长阈值">飙升词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')" title="单周期有至少10%的增长幅度">潜力词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')" title="有曝光/点击份额，但前三商品总转化份额为 0">黄金词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')" title="前三商品总点击份额至少 70％，说明头部商品强垄断">竞争词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')" title="当前排名靠后且前三商品总转化份额低于30%">捡漏词</button>
                 </div>
             </div>
         </div>
@@ -1294,6 +1294,55 @@
                 wordFilter: currentHotWordFilter,
                 pageSize: String(pageSize)
             };
+        }
+
+        function applyLocalDenoisingUpdate(searchTermIds, denoising) {
+            const idSet = new Set((searchTermIds || []).map(id => Number(id)).filter(Number.isInteger));
+            if (!idSet.size) {
+                return;
+            }
+
+            let removedCount = 0;
+            const nextDenoising = denoising === true || denoising === 'true';
+
+            allData = (Array.isArray(allData) ? allData : []).reduce((nextItems, item) => {
+                if (!idSet.has(item.search_term_id)) {
+                    nextItems.push(item);
+                    return nextItems;
+                }
+
+                item.denoising = nextDenoising;
+
+                const shouldRemoveFromCurrentView =
+                    currentNoiseStatus === 'all'
+                    || (currentNoiseStatus === 'denoised' && nextDenoising)
+                    || (currentNoiseStatus === 'noise' && !nextDenoising);
+
+                if (shouldRemoveFromCurrentView) {
+                    removedCount += 1;
+                    return nextItems;
+                }
+
+                nextItems.push(item);
+                return nextItems;
+            }, []);
+
+            idSet.forEach(id => selectedSearchTermIds.delete(id));
+
+            if (paginationMode !== 'simple' && removedCount > 0) {
+                totalItems = Math.max(0, totalItems - removedCount);
+                totalPages = totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0;
+            }
+
+            if (allData.length > 0) {
+                renderTable(allData);
+            } else if (hasLoadedData) {
+                renderEmptyTableState(getActiveLeaderboardConfig().emptyMessage);
+                updateBulkActionBar();
+            }
+
+            renderPagination();
+            updatePaginationStats();
         }
 
         function buildPaginationQuerySignature(filters = getCurrentFilters()) {
@@ -2359,14 +2408,9 @@
                     throw new Error(result.error || result.message || '状态更新失败');
                 }
 
-                searchTermIds.forEach(id => selectedSearchTermIds.delete(id));
+                const updatedSearchTermIds = result?.data?.search_term_ids || searchTermIds;
+                applyLocalDenoisingUpdate(updatedSearchTermIds, denoising);
                 showNotification(result.message || '状态更新成功', 'success');
-                if (hasLoadedData) {
-                    currentPage = 1;
-                    resetPaginationCache();
-                    await loadData();
-                }
-                updateBulkActionBar();
                 return true;
             } catch (error) {
                 console.error('更新去噪状态失败:', error);
