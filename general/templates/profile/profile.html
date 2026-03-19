@@ -492,6 +492,11 @@
                         <label class="form-label">手机号</label>
                         <input type="tel" class="form-input" id="phone" value="{{ request.user.phone|default:'' }}" placeholder="请输入手机号">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">企业微信通知URL</label>
+                        <input type="url" class="form-input" id="wxUrl" value="{{ request.user.wx_url|default:'' }}" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...">
+                        <small style="color: var(--text-tertiary); font-size: 0.75rem;">用于接收企业微信机器人通知</small>
+                    </div>
                 </div>
             </div>
 
@@ -701,10 +706,19 @@
 
     // 保存基本信息
     function saveBasicInfo() {
+        const wxUrl = document.getElementById('wxUrl').value.trim();
+        
+        // 验证URL格式（如果填写了）
+        if (wxUrl && !wxUrl.match(/^https?:\/\/.+/)) {
+            showNotification('企业微信通知URL格式不正确，需以 http:// 或 https:// 开头', 'warning');
+            return;
+        }
+        
         const data = {
             first_name: document.getElementById('firstName').value,
             email: document.getElementById('email').value,
-            phone: document.getElementById('phone').value
+            phone: document.getElementById('phone').value,
+            wx_url: wxUrl
         };
 
         fetch('/api/profile/basic-info/', {

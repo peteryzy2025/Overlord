@@ -483,53 +483,280 @@ async def ck():
     resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/data/local_inventory/warehouse")
     print(resp)
 
-async def step3_add_warehousing(items_with_qty_price: list, execute: bool = True, app_id: str = None, app_secret: str = None):
-    print(f"\n【步骤3】批量入库 add_warehousing 传参：")
-    print(f"   → sys_wid = 509522, type = 1")
-    print(f"   → product_list = [")
+
+async def step3_add_warehousing_temu(items_with_qty_price: list, wid:str, app_id: str = None,
+                                app_secret: str = None):
+    product_list = []
     for it in items_with_qty_price:
-        print(f"       {{ sku: {it['sku']}, good_num: {it['quantity']}, price: {it['price_per_unit']} }}")
-    print(f"   ]")
-    if not execute:
-        print("   → [预览模式] 不执行")
-        return
-    product_list = [
-        {"sku": it['sku'], "good_num": it['quantity'], "bad_num": 0, "price": it['price_per_unit'], "fnsku": ""}
-        for it in items_with_qty_price
-    ]
-    req_body = {"sys_wid": 509522, "type": 1, "product_list": product_list}
-    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd", app_id=app_id, app_secret=app_secret)
-    # print(f"   → 返回结果 = {resp.dict().get('msg', 'OK')}")
+        product_item = {
+            "sku": it['sku'],
+            "good_num": it['quantity'],
+            "bad_num": 0,
+            "price": it['price_per_unit'],
+            "fnsku": ""
+        }
+        product_list.append(product_item)
+
+    req_body = {"sys_wid": wid, "type": 1, "product_list": product_list}
+    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd", app_id=app_id,
+                              app_secret=app_secret)
     print(f"   → 入库结果 = {resp}")
+
+
+def get_temu_wid(postal_code):
+    """根据邮编判断 Temu 仓库（美东/美西）"""
+    if postal_code:
+        first_digit = postal_code[0]
+        if first_digit in '0123':
+            print(f"根据邮编 {postal_code} 判断为美东仓库 (530524)")
+            return "530524"  # 美东
+        elif first_digit in '456789':
+            print(f"根据邮编 {postal_code} 判断为美西仓库 (530525)")
+            return "530525"  # 美西
+    raise "无法根据邮编判断仓库（美东/美西），请检查订单地址信息"
+
+
+async def temu_order_create_skus(global_order_no: str):
+    """
+    为 Temu 订单批量创建/编辑 SKU 到领星仓库
+
+    Args:
+        global_order_no: 系统单号
+    """
+    @sync_to_async
+    def get_order_skus_and_auth(sn):
+        from temu.models import TemuOrderItem, TemuOrder
+        try:
+            order = TemuOrder.objects.select_related(
+                'lingxing_shop__temu_shop__project'
+            ).get(global_order_no=sn)
+
+            # 获取所有商品 SKU
+            items = TemuOrderItem.objects.filter(order=order)
+            sku_list = [item.msku for item in items if item.msku]
+
+            # 获取 app_id/app_secret
+            app_id = None
+            app_secret = None
+            if order.lingxing_shop and order.lingxing_shop.temu_shop and order.lingxing_shop.temu_shop.project:
+                project = order.lingxing_shop.temu_shop.project
+                app_id = project.lingxing_app_id
+                app_secret = project.lingxing_app_secret
+
+            return sku_list, app_id, app_secret
+        except TemuOrder.DoesNotExist:
+            return [], None, None
+
+    sku_list, app_id, app_secret = await get_order_skus_and_auth(global_order_no)
+
+    if not sku_list:
+        print("没有可创建的 SKU")
+        return False
+
+    if not app_id or not app_secret:
+        print("缺少领星API认证信息")
+        return False
+
+    print(f"待创建 SKU 列表: {sku_list}")
+
+    # 循环创建/编辑 SKU
+    for sku in sku_list:
+        print(f"开始创建/编辑 SKU: {sku}")
+        await step1_set_sku(
+            sku=sku,
+            cg_price="10",  # 暂时写死
+            app_id=app_id,
+            app_secret=app_secret,
+            length_cm=0.13,   # 固定值
+            width_cm=11.81,   # 固定值
+            height_cm=11.02,  # 固定值
+            weight_kg=1.57    # 固定值
+        )
+
+    return True
+
+
+async def temu_order_binding(global_order_no: str):
+    """
+    为 Temu 订单批量绑定商品 SKU
+
+    Args:
+        global_order_no: 系统单号
+    """
+    @sync_to_async
+    def get_order_skus_and_auth(sn):
+        from temu.models import TemuOrderItem, TemuOrder
+        try:
+            order = TemuOrder.objects.select_related(
+                'lingxing_shop__temu_shop__project'
+            ).get(global_order_no=sn)
+
+            # 获取所有商品 SKU
+            items = TemuOrderItem.objects.filter(order=order)
+            sku_list = [item.msku for item in items if item.msku]
+
+            # 获取 app_id/app_secret
+            app_id = None
+            app_secret = None
+            if order.lingxing_shop and order.lingxing_shop.temu_shop and order.lingxing_shop.temu_shop.project:
+                project = order.lingxing_shop.temu_shop.project
+                app_id = project.lingxing_app_id
+                app_secret = project.lingxing_app_secret
+
+            return sku_list, app_id, app_secret
+        except TemuOrder.DoesNotExist:
+            return [], None, None
+
+    sku_list, app_id, app_secret = await get_order_skus_and_auth(global_order_no)
+
+    if not sku_list:
+        print("没有可绑定的 SKU")
+        return False
+
+    if not app_id or not app_secret:
+        print("缺少领星API认证信息")
+        return False
+
+    print(f"待绑定 SKU 列表: {sku_list}")
+
+    # 调用步骤2：绑定商品
+    await step2_update_order_binding(global_order_no, sku_list, app_id, app_secret)
+    return True
+
+
+async def temu_order_to_warehouse(global_order_no: str, wid: str):
+    """
+    将 Temu 订单商品入库到指定仓库
+
+    Args:
+        global_order_no: 系统单号
+        wid: 仓库ID
+    """
+    @sync_to_async
+    def get_order_items_and_auth(sn):
+        from temu.models import TemuOrderItem, TemuOrder
+        try:
+            order = TemuOrder.objects.select_related(
+                'lingxing_shop__temu_shop__project'
+            ).get(global_order_no=sn)
+
+            # 获取商品
+            items = TemuOrderItem.objects.filter(order=order)
+            items_list = []
+            for item in items:
+                items_list.append({
+                    'sku': item.msku,
+                    'quantity': item.quantity,
+                    'price_per_unit': str(item.unit_price_amount) if item.unit_price_amount else '0.00'
+                })
+
+            # 获取 app_id/app_secret
+            app_id = None
+            app_secret = None
+            if order.lingxing_shop and order.lingxing_shop.temu_shop and order.lingxing_shop.temu_shop.project:
+                project = order.lingxing_shop.temu_shop.project
+                app_id = project.lingxing_app_id
+                app_secret = project.lingxing_app_secret
+
+            return items_list, app_id, app_secret
+        except TemuOrder.DoesNotExist:
+            return [], None, None
+
+    items_with_qty_price, app_id, app_secret = await get_order_items_and_auth(global_order_no)
+    print(f"订单商品: {items_with_qty_price}")
+    print(f"app_id: {app_id}, app_secret: {'有' if app_secret else '无'}")
+
+    if items_with_qty_price and app_id and app_secret:
+        await step3_add_warehousing_temu(items_with_qty_price, wid, app_id, app_secret)
+        return True
+    else:
+        if not items_with_qty_price:
+            print("没有可入库的商品")
+        if not app_id or not app_secret:
+            print("缺少领星API认证信息")
+        return False
+async def step1_set_sku(
+        sku: str,
+        cg_price: str,
+        app_id: str = None,
+        app_secret: str = None,
+        length_cm: float = None,
+        width_cm: float = None,
+        height_cm: float = None,
+        weight_kg: float = None
+):
+    """
+    新建/编辑产品到领星仓库
+    尺寸重量传公制，内部自动转英制
+    """
+    # 公制转英制
+    # 1 inch = 2.54 cm
+    # 1 lb = 0.453592 kg
+    length_inch = round(length_cm / 2.54, 2) if length_cm else ""
+    width_inch = round(width_cm / 2.54, 2) if width_cm else ""
+    height_inch = round(height_cm / 2.54, 2) if height_cm else ""
+    weight_lb = round(weight_kg / 0.453592, 2) if weight_kg else ""
+
+    req_body = {
+        "sku": sku,
+        "product_name": sku,
+        "sku_identifier": sku,
+        "cg_price": cg_price,
+        'cg_package_length': str(length_inch) if length_inch != "" else "",
+        'cg_package_width': str(width_inch) if width_inch != "" else "",
+        'cg_package_height': str(height_inch) if height_inch != "" else "",
+        'cg_product_gross_weight': str(weight_lb) if weight_lb != "" else "",
+        'description': "temu订单同步，自动创建/更新产品",
+    }
+
+    # print(f"\n【步骤1】set_sku 请求参数：")
+    # print(f"   → sku        = {sku}")
+    # print(f"   → cg_price   = {cg_price}")
+    # if length_cm or width_cm or height_cm:
+    #     print(f"   → 尺寸(公制)  = {length_cm}×{width_cm}×{height_cm} cm")
+    #     print(f"   → 尺寸(英制)  = {length_inch}×{width_inch}×{height_inch} inch")
+    # if weight_kg:
+    #     print(f"   → 重量(公制)  = {weight_kg} kg")
+    #     print(f"   → 重量(英制)  = {weight_lb} lb")
+
+    resp = await get_api_resp(
+        req_body=req_body,
+        api_path="/erp/sc/routing/storage/product/set",
+        app_id=app_id,
+        app_secret=app_secret
+    )
+    print(f"创建/编辑sku→ 返回结果   = {resp}")
+    return resp
+
+async def step2_update_order_binding(global_order_no: str, list_mskus: list, app_id: str = None,
+                                     app_secret: str = None):
+
+    order_item_list = []
+    for msku in list_mskus:
+        order_item_list.append({"sku": msku, "msku": msku, "type": 3})
+    req_body = {"order_list": [{"global_order_no": global_order_no, "order_item_list": order_item_list}]}
+    print(f"批量绑定商品 updateOrder 传参：{req_body}")
+    resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder", app_id=app_id,
+                              app_secret=app_secret)
+    print(f"   → 绑定结果 = {resp}")
+
 async def test():
-    sn_no = "103680374441311872"
+    sn_no = "103680569303112731"
     # success = await temu_address_decrypt([sn_no]) # 先解密地址（如果订单地址未解密则无法正确保存地址信息）
     # if not success:
     #     raise f"订单号：{sn_no},地址解密失败，无法继续下一步骤"
     # success = await refresh_temu_order_by_sn(sn_no) # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
     # if not success:
     #     raise f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤"
-    order_info = await get_temu_order_address_data(sn_no)  # 从数据库获取订单地址数据（包含买家信息和地址信息）
-    print(order_info)
-
-    # 判断美东/美西
-    postal_code = order_info.get('postal_code', '')
-    if postal_code:
-        first_digit = postal_code[0]
-        if first_digit in '0123':
-            region = '美东'
-            wid = "530524"
-        elif first_digit in '456789':
-            region = '美西'
-            wid = "530525"
-        else:
-            region = '未知'
-            wid = None
-        print(f"邮编: {postal_code}, 地区: {region}, wid: {wid}")
-    else:
-        print("邮编信息缺失")
+    # order_info = await get_temu_order_address_data(sn_no)  # 从数据库获取订单地址数据（包含买家信息和地址信息）
+    # # 判断美东/美西
+    # postal_code = order_info.get('postal_code', '')
+    # wid = get_temu_wid(postal_code)
+    # await temu_order_create_skus(sn_no)# 创建/编辑 SKU
+    # await temu_order_to_warehouse(sn_no, wid)# 执行入库
+    # await temu_order_binding(sn_no)# 绑定商品（编辑/更新自发货订单）
 
 
 if __name__ == '__main__':
-    # asyncio.run(test())
-    asyncio.run(ck())
+    asyncio.run(test())
+    # asyncio.run(ck())
