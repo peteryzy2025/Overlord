@@ -485,9 +485,63 @@ class NicheMarket(models.Model):
         return f"{self.market_name_cn or self.market_name}"
 
 
+class AmazonNewReleaseRank(models.Model):
+    """亚马逊新品榜主题，存放稳定的基础信息"""
+    asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
+    title = models.CharField(max_length=500, verbose_name='产品标题')
+    title_translation = models.CharField(max_length=500, blank=True, verbose_name='标题译文')
+    subject = models.CharField(max_length=200, verbose_name='产品主题')
+    subject_translation = models.CharField(max_length=200, blank=True, verbose_name='主题译文')
+    category = models.CharField(max_length=100, db_index=True,verbose_name="产品分类")
+    image_url = models.URLField(max_length=500, verbose_name='图片链接')
+    launch_date = models.DateField(null=True, blank=True, verbose_name='上架日期')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    class Meta:
+        db_table = 'theme_amazon_new_release_rank'
+        verbose_name = '亚马逊新品榜主题表'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f"{self.asin} - {self.title[:50]}"
+
+class ThemeNewDailyData(models.Model):
+    """主题每日数据"""
+    product = models.ForeignKey(
+        AmazonNewReleaseRank,
+        on_delete=models.CASCADE,
+        related_name='new_release_daily_data',
+        verbose_name='关联产品'
+    )
+    crawl_date = models.DateField(verbose_name='抓取日期')
 
 
+    rank_category = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类1')
+    rank = models.IntegerField(null=True, blank=True, verbose_name='排名1')
 
+    rank_category2 = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类2')
+    rank2 = models.IntegerField(null=True, blank=True, verbose_name='排名2')
+
+    rank_category3 = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类3')
+    rank3 = models.IntegerField(null=True, blank=True, verbose_name='排名3')
+
+    crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
+    appear_count = models.IntegerField(default=1, verbose_name='重复数')
+    score = models.IntegerField(default=0, verbose_name='分值')
+
+    class Meta:
+        db_table = 'theme_new_daily_data'
+        indexes = [
+            models.Index(fields=['product', 'crawl_date']),
+            models.Index(fields=['crawl_date']),
+        ]
+        unique_together = ['product', 'crawl_date']
+        verbose_name = '排名历史'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        rank_display = self.rank if self.rank is not None else '暂无排名'
+        return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
 
 # =============================================================================
 # 主题模型 - 三层架构设计（新增）
