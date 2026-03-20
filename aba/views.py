@@ -467,10 +467,6 @@ def _custom_denoising_cache_key(task_id):
     return f'{CUSTOM_DENOISING_CACHE_PREFIX}{task_id}'
 
 
-def batch_denosing_api():
-    pass
-
-
 def _build_custom_denoising_progress(
     *,
     status='pending',
@@ -636,7 +632,6 @@ def get_aba_data_api(request):
         category = request.GET.get('category', '').strip()
         noise_status = request.GET.get('noise_status', 'all').strip()
         word_filter = request.GET.get('word_filter', 'all').strip()
-        cached_total = request.GET.get('cached_total', '').strip()
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
         
@@ -678,20 +673,12 @@ def get_aba_data_api(request):
         )
 
         has_extra_filters = bool(search_term or category or noise_status != 'all' or word_filter != 'all')
-        # 去噪状态和词分类都改用轻分页，避免首屏先做一次重 count()
-        use_simple_pagination = word_filter != 'all' or noise_status != 'all'
+        # 任意额外筛选都改用轻分页，避免实时 count()
+        use_simple_pagination = has_extra_filters
 
         if use_simple_pagination:
             total = 0
             total_pages = 0
-        elif has_extra_filters:
-            if page == 1:
-                total = queryset.count()
-            else:
-                try:
-                    total = max(int(cached_total), 0)
-                except (TypeError, ValueError):
-                    total = queryset.count()
         else:
             total = AbaReportWeek.objects.using('aba_db').filter(
                 report_week=week_date,
@@ -858,8 +845,8 @@ def get_aba_new_words_api(request):
 
         candidate_queryset = base_queryset.order_by('-first_seen', 'id')
 
-        total = candidate_queryset.count()
-        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+        total = 0
+        total_pages = 0
 
         offset = (page - 1) * page_size
         page_terms = list(candidate_queryset[offset:offset + page_size + 1])
@@ -917,6 +904,7 @@ def get_aba_new_words_api(request):
             'total_pages': total_pages,
             'has_prev': page > 1,
             'has_next': has_next,
+            'pagination_mode': 'simple',
             'needs_week': False,
             'window_start': window_start.strftime('%Y-%m-%d'),
             'window_end': window_end.strftime('%Y-%m-%d'),
