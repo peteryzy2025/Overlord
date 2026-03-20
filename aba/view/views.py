@@ -24,6 +24,7 @@ CUSTOM_DENOISING_CACHE_TTL = 60 * 60
 CUSTOM_DENOISING_SCAN_BATCH_SIZE = 200
 CUSTOM_DENOISING_UPDATE_BATCH_SIZE = 500
 ADD_NOISE_WORDS_CACHE_PREFIX = 'aba:add-noise-words:'
+ABA_TOTAL_COUNT_CACHE_PREFIX = 'aba:total-count:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 
@@ -291,6 +292,40 @@ def _get_new_words_window_start(window_end, weeks=13):
         return None
 
     return window_end - timedelta(days=(weeks - 1) * 7)
+
+
+def _build_aba_total_count_progress(
+    *,
+    status='pending',
+    total=0,
+    total_pages=0,
+    page_size=50,
+    message='任务已创建，准备开始计算',
+    error='',
+):
+    return {
+        'status': status,
+        'total': total,
+        'total_pages': total_pages,
+        'page_size': page_size,
+        'message': message,
+        'error': error,
+    }
+
+
+def _aba_total_count_cache_key(task_id):
+    return f'{ABA_TOTAL_COUNT_CACHE_PREFIX}{task_id}'
+
+
+def _get_aba_total_count_progress(task_id):
+    return cache.get(_aba_total_count_cache_key(task_id))
+
+
+def _set_aba_total_count_progress(task_id, **kwargs):
+    progress = _get_aba_total_count_progress(task_id) or _build_aba_total_count_progress()
+    progress.update(kwargs)
+    cache.set(_aba_total_count_cache_key(task_id), progress, CUSTOM_DENOISING_CACHE_TTL)
+    return progress
 
 
 def _decimal_zero():
@@ -862,6 +897,138 @@ def _launch_add_noise_words_task(keywords):
     return task_id, initial_progress
 
 
+def _build_aba_hot_queryset_context(
+    *,
+    week,
+    search_term='',
+    category='',
+    noise_status='all',
+    word_filter='all',
+    search_mode='0',
+):
+    week_date = _parse_week_value(week)
+    if not week_date:
+        return None
+
+    queryset = SearchTermMetric.objects.using('aba_db').select_related('search_term').filter(report_week=week_date)
+    queryset = _apply_search_term_filters(queryset, search_term, search_mode)
+
+    if category:
+        queryset = _apply_category_filter(queryset, category)
+
+    if noise_status == 'noise':
+        queryset = queryset.filter(search_term__denoising=True)
+    elif noise_status == 'denoised':
+        queryset = queryset.filter(search_term__denoising=False)
+
+    queryset = _apply_hot_word_filter(
+        queryset,
+        week_date,
+        word_filter,
+        search_term=search_term,
+        search_mode=search_mode,
+        category=category,
+        noise_status=noise_status,
+    )
+
+    return {
+        'week_date': week_date,
+        'queryset': queryset,
+        'has_extra_filters': bool(search_term or category or noise_status != 'all' or word_filter != 'all'),
+    }
+
+
+def _get_aba_hot_total_count(week_date, queryset, has_extra_filters):
+    if has_extra_filters:
+        return queryset.count()
+
+    return AbaReportWeek.objects.using('aba_db').filter(
+        report_week=week_date,
+        is_active=True,
+        import_status='ready'
+    ).values_list('record_count', flat=True).first() or 0
+
+
+def _run_aba_total_count_task(task_id, filters):
+    page_size = filters.get('page_size', 50)
+
+    try:
+        close_old_connections()
+        _set_aba_total_count_progress(
+            task_id,
+            status='running',
+            total=0,
+            total_pages=0,
+            page_size=page_size,
+            message='正在计算总页数',
+            error='',
+        )
+
+        context = _build_aba_hot_queryset_context(
+            week=filters.get('week', ''),
+            search_term=filters.get('search_term', ''),
+            category=filters.get('category', ''),
+            noise_status=filters.get('noise_status', 'all'),
+            word_filter=filters.get('word_filter', 'all'),
+            search_mode=filters.get('search_mode', '0'),
+        )
+        if not context:
+            raise ValueError('缺少有效周期，无法计算总页数')
+
+        total = _get_aba_hot_total_count(
+            context['week_date'],
+            context['queryset'],
+            context['has_extra_filters'],
+        )
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+
+        _set_aba_total_count_progress(
+            task_id,
+            status='success',
+            total=total,
+            total_pages=total_pages,
+            page_size=page_size,
+            message=f'计算完成，共 {total_pages} 页',
+            error='',
+        )
+    except Exception as exc:
+        _set_aba_total_count_progress(
+            task_id,
+            status='error',
+            total=0,
+            total_pages=0,
+            page_size=page_size,
+            message=f'总页数计算失败：{exc}',
+            error=str(exc),
+        )
+    finally:
+        close_old_connections()
+
+
+def _launch_aba_total_count_task(filters):
+    task_id = uuid.uuid4().hex
+    page_size = filters.get('page_size', 50)
+    initial_progress = _build_aba_total_count_progress(
+        status='pending',
+        total=0,
+        total_pages=0,
+        page_size=page_size,
+        message='任务已创建，准备开始计算',
+        error='',
+    )
+    cache.set(_aba_total_count_cache_key(task_id), initial_progress, CUSTOM_DENOISING_CACHE_TTL)
+
+    worker = threading.Thread(
+        target=_run_aba_total_count_task,
+        args=(task_id, filters),
+        daemon=True,
+        name=f'aba-total-count-{task_id[:8]}',
+    )
+    worker.start()
+
+    return task_id, initial_progress
+
+
 @require_http_methods(["GET"])
 def get_aba_data_api(request):
     """
@@ -876,11 +1043,12 @@ def get_aba_data_api(request):
     """
     try:
         # 获取参数
-        week = request.GET.get('week', '')
+        week = request.GET.get('week', '').strip()
         search_term = request.GET.get('search_term', '').strip()
         category = request.GET.get('category', '').strip()
         noise_status = request.GET.get('noise_status', 'all').strip()
         word_filter = request.GET.get('word_filter', 'all').strip()
+        search_mode = request.GET.get('search_mode', '0')
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
         
@@ -891,52 +1059,32 @@ def get_aba_data_api(request):
         if not week:
             return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
 
-        try:
-            week_date = datetime.strptime(week, "%Y-%m-%d").date()
-        except ValueError:
-            return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
-
-        # 基础查询 - 使用 aba_db 数据库
-        queryset = SearchTermMetric.objects.using('aba_db').select_related('search_term').filter(report_week=week_date)
-        
-        # 按搜索词筛选（支持不同匹配模式）
-        search_mode = request.GET.get('search_mode', '0')
-        queryset = _apply_search_term_filters(queryset, search_term, search_mode)
-
-        if category:
-            queryset = _apply_category_filter(queryset, category)
-
-        if noise_status == 'noise':
-            queryset = queryset.filter(search_term__denoising=True)
-        elif noise_status == 'denoised':
-            queryset = queryset.filter(search_term__denoising=False)
-
-        queryset = _apply_hot_word_filter(
-            queryset,
-            week_date,
-            word_filter,
+        context = _build_aba_hot_queryset_context(
+            week=week,
             search_term=search_term,
-            search_mode=search_mode,
             category=category,
             noise_status=noise_status,
+            word_filter=word_filter,
+            search_mode=search_mode,
         )
+        if not context:
+            return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
 
-        has_extra_filters = bool(search_term or category or noise_status != 'all' or word_filter != 'all')
-        # 任意额外筛选都改用轻分页，避免实时 count()
-        use_simple_pagination = has_extra_filters
+        week_date = context['week_date']
+        queryset = context['queryset']
 
-        if use_simple_pagination:
-            total = 0
-            total_pages = 0
-        else:
-            total = AbaReportWeek.objects.using('aba_db').filter(
-                report_week=week_date,
-                is_active=True,
-                import_status='ready'
-            ).values_list('record_count', flat=True).first() or 0
+        cached_total = None
+        cached_total_raw = request.GET.get('cached_total', '').strip()
+        if cached_total_raw:
+            try:
+                cached_total = max(int(cached_total_raw), 0)
+            except ValueError:
+                cached_total = None
 
-        if not use_simple_pagination:
-            total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+        total = cached_total if cached_total is not None else 0
+        has_known_total = cached_total is not None
+        total_pages = (total + page_size - 1) // page_size if has_known_total and total > 0 else 0
+        use_simple_pagination = not has_known_total
 
         # 排序：按排名升序
         queryset = queryset.order_by('search_frequency_rank')
@@ -1325,6 +1473,86 @@ def get_add_noise_words_progress_api(request):
         }, status=400)
 
     progress = _get_add_noise_words_progress(task_id)
+    if not progress:
+        return JsonResponse({
+            'success': False,
+            'error': '任务不存在或已过期'
+        }, status=404)
+
+    return JsonResponse({
+        'success': True,
+        'data': progress,
+    })
+
+
+@require_http_methods(["GET"])
+def start_aba_total_count_api(request):
+    """
+    启动 ABA 热词榜总页数计算任务
+    """
+    try:
+        week = request.GET.get('week', '').strip()
+        search_term = request.GET.get('search_term', '').strip()
+        category = request.GET.get('category', '').strip()
+        search_mode = request.GET.get('search_mode', '0')
+        noise_status = request.GET.get('noise_status', 'all').strip()
+        word_filter = request.GET.get('word_filter', 'all').strip()
+        page_size = int(request.GET.get('page_size', 50))
+
+        if page_size not in [20, 50, 100, 200]:
+            page_size = 50
+
+        context = _build_aba_hot_queryset_context(
+            week=week,
+            search_term=search_term,
+            category=category,
+            noise_status=noise_status,
+            word_filter=word_filter,
+            search_mode=search_mode,
+        )
+        if not context:
+            return JsonResponse({
+                'success': False,
+                'error': '缺少有效周期，无法计算总页数'
+            }, status=400)
+
+        task_id, progress = _launch_aba_total_count_task({
+            'week': week,
+            'search_term': search_term,
+            'category': category,
+            'search_mode': search_mode,
+            'noise_status': noise_status,
+            'word_filter': word_filter,
+            'page_size': page_size,
+        })
+        return JsonResponse({
+            'success': True,
+            'message': '总页数计算任务已启动',
+            'data': {
+                'task_id': task_id,
+                **progress,
+            }
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_aba_total_count_progress_api(request):
+    """
+    获取 ABA 热词榜总页数计算任务进度
+    """
+    task_id = request.GET.get('task_id', '').strip()
+    if not task_id:
+        return JsonResponse({
+            'success': False,
+            'error': '缺少 task_id'
+        }, status=400)
+
+    progress = _get_aba_total_count_progress(task_id)
     if not progress:
         return JsonResponse({
             'success': False,
