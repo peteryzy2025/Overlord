@@ -391,8 +391,6 @@ class ThemeReport(models.Model):
         return f"{self.product.asin} - {self.reporter.first_name if self.reporter else 'Unknown'}"
 
 
-
-
 class NiceClassification(models.Model):
     """
     尼斯分类（商标国际分类）- 共45类
