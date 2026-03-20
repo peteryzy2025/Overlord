@@ -231,3 +231,34 @@ class AbaReportWeek(models.Model):
         verbose_name = "ABA数据周期"
         verbose_name_plural = "ABA数据周期"
         ordering = ['-report_week']
+
+class AbaNoiseWord(models.Model):
+    """
+    ABA去噪词库 - 用于标题清洗
+    """
+    word = models.CharField(
+        '去噪词',
+        max_length=100,
+        primary_key=True,  # 主键是去噪词本身，不额外生成 id
+        help_text='需要去噪的词语'
+    )
+    created_by = models.ForeignKey('general.User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   verbose_name='创建人', related_name='created_noise_words')
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="创建时间"
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name="更新时间"
+    )
+
+    class Meta:
+        db_table = 'aba_noise_words'
+        verbose_name = 'ABA去噪词'
+        verbose_name_plural = 'ABA去噪词库'
+        ordering = ['word']
+
+    def __str__(self):
+        return self.word
+
