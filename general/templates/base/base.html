@@ -811,17 +811,20 @@
             </div>
 
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' or active_nav == 'dw_data' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' or active_nav == 'aba_noise_words' or active_nav == 'dw_data' %}active{% endif %}"
                    href="{% url 'theme:theme_product_list' %}">
                     主题
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
                     <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
-                        <i class="fas fa-list"></i> 新奇特
+                        <i class="fas fa-list"></i> 亚马逊最新主题
                     </a>
                     <a href="{% url 'aba:aba_data' %}" class="nav-dropdown-item">
-                        <i class="fas fa-chart-line"></i> ABA数据
+                        <i class="fas fa-chart-line"></i> 亚马逊最热主题
+                    </a>
+                    <a href="{% url 'aba:aba_noise_words' %}" class="nav-dropdown-item">
+                        <i class="fas fa-filter"></i> ABA去噪词表
                     </a>
                     <a href="{% url 'theme:trend_page' %}" class="nav-dropdown-item">
                         <i class="fas fa-search"></i> 侵权词判断

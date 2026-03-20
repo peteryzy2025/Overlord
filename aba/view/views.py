@@ -9,20 +9,21 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from django.core.cache import cache
-from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, FloatField, IntegerField, Max, OuterRef, Subquery, Value, When
+from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, FloatField, IntegerField, Max, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Cast, Coalesce
-from django.db import close_old_connections
+from django.db import close_old_connections, transaction
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
-from aba.models import AbaReportWeek, SearchTerm, SearchTermMetric
+from aba.models import AbaNoiseWord, AbaReportWeek, SearchTerm, SearchTermMetric
 
 
 CUSTOM_DENOISING_CACHE_PREFIX = 'aba:custom-denoising:'
 CUSTOM_DENOISING_CACHE_TTL = 60 * 60
 CUSTOM_DENOISING_SCAN_BATCH_SIZE = 200
 CUSTOM_DENOISING_UPDATE_BATCH_SIZE = 500
+ADD_NOISE_WORDS_CACHE_PREFIX = 'aba:add-noise-words:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 
@@ -31,6 +32,16 @@ def aba_data_page(request):
     ABA 数据管理页面
     """
     return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
+
+
+def aba_noise_words_page(request):
+    """
+    ABA 去噪词表页面
+    """
+    return render(request, 'aba/aba_noiseword.html', {
+        'active_page': 'aba_noise_words',
+        'active_nav': 'aba_noise_words',
+    })
 
 
 def _normalize_search_term_ids(raw_ids):
@@ -99,6 +110,20 @@ def _build_empty_new_words_response(page, page_size, needs_week=False):
     return response
 
 
+def _build_empty_noise_words_response(page, page_size):
+    return {
+        'success': True,
+        'data': {
+            'list': [],
+            'page': page,
+            'page_size': page_size,
+            'has_prev': page > 1,
+            'has_next': False,
+            'pagination_mode': 'simple',
+        }
+    }
+
+
 def _normalize_custom_denoising_keywords(raw_text):
     """
     将多行文本标准化为去重后的关键词列表（按大小写不敏感去重）
@@ -122,6 +147,78 @@ def _normalize_custom_denoising_keywords(raw_text):
         normalized_keywords.append(keyword)
 
     return normalized_keywords
+
+
+def _normalize_noise_words(raw_words):
+    if not isinstance(raw_words, (list, tuple, set)):
+        return []
+
+    normalized_words = []
+    seen = set()
+
+    for raw_word in raw_words:
+        if not isinstance(raw_word, str):
+            continue
+
+        word = raw_word.strip()
+        dedupe_key = word.casefold()
+        if not word or dedupe_key in seen:
+            continue
+
+        seen.add(dedupe_key)
+        normalized_words.append(word)
+
+    return normalized_words
+
+
+def _create_noise_words(words):
+    normalized_words = _normalize_noise_words(words)
+    if not normalized_words:
+        return [], 0
+
+    noise_words = AbaNoiseWord.objects.using('aba_db')
+    existing_query = Q()
+    for word in normalized_words:
+        existing_query |= Q(word__iexact=word)
+
+    existing_words = set(
+        noise_words.filter(existing_query).values_list('word', flat=True)
+    )
+    existing_keys = {word.casefold() for word in existing_words}
+    words_to_create = [
+        AbaNoiseWord(word=word)
+        for word in normalized_words
+        if word.casefold() not in existing_keys
+    ]
+
+    if words_to_create:
+        noise_words.bulk_create(words_to_create, ignore_conflicts=True)
+
+    return normalized_words, len(words_to_create)
+
+
+def _set_search_terms_denoising(search_term_ids, denoising):
+    normalized_ids = _normalize_search_term_ids(search_term_ids)
+    if not normalized_ids:
+        return 0, []
+
+    queryset = SearchTerm.objects.using('aba_db').filter(id__in=normalized_ids)
+    words = list(queryset.values_list('term', flat=True))
+    if not words:
+        return 0, []
+
+    updated_count = queryset.update(denoising=denoising)
+    return updated_count, words
+
+
+def _delete_noise_word(word):
+    normalized_words = _normalize_noise_words([word])
+    if not normalized_words:
+        return 0
+
+    normalized_word = normalized_words[0]
+    deleted_count, _ = AbaNoiseWord.objects.using('aba_db').filter(word__iexact=normalized_word).delete()
+    return deleted_count
 
 
 def _normalize_custom_denoising_match_text(raw_text):
@@ -467,8 +564,8 @@ def _custom_denoising_cache_key(task_id):
     return f'{CUSTOM_DENOISING_CACHE_PREFIX}{task_id}'
 
 
-def batch_denosing_api():
-    pass
+def _add_noise_words_cache_key(task_id):
+    return f'{ADD_NOISE_WORDS_CACHE_PREFIX}{task_id}'
 
 
 def _build_custom_denoising_progress(
@@ -494,8 +591,37 @@ def _build_custom_denoising_progress(
     }
 
 
+def _build_add_noise_words_progress(
+    *,
+    status='pending',
+    processed_count=0,
+    matched_count=0,
+    updated_count=0,
+    total_terms=0,
+    keyword_count=0,
+    inserted_word_count=0,
+    message='任务已创建，准备开始处理',
+    error='',
+):
+    return {
+        'status': status,
+        'processed_count': processed_count,
+        'matched_count': matched_count,
+        'updated_count': updated_count,
+        'total_terms': total_terms,
+        'keyword_count': keyword_count,
+        'inserted_word_count': inserted_word_count,
+        'message': message,
+        'error': error,
+    }
+
+
 def _get_custom_denoising_progress(task_id):
     return cache.get(_custom_denoising_cache_key(task_id))
+
+
+def _get_add_noise_words_progress(task_id):
+    return cache.get(_add_noise_words_cache_key(task_id))
 
 
 def _set_custom_denoising_progress(task_id, **kwargs):
@@ -505,14 +631,19 @@ def _set_custom_denoising_progress(task_id, **kwargs):
     return progress
 
 
+def _set_add_noise_words_progress(task_id, **kwargs):
+    progress = _get_add_noise_words_progress(task_id) or _build_add_noise_words_progress()
+    progress.update(kwargs)
+    cache.set(_add_noise_words_cache_key(task_id), progress, CUSTOM_DENOISING_CACHE_TTL)
+    return progress
+
+
 def _flush_custom_denoising_updates(search_term_ids):
     if not search_term_ids:
         return 0
 
-    return SearchTerm.objects.using('aba_db').filter(
-        id__in=search_term_ids,
-        denoising=False
-    ).update(denoising=True)
+    updated_count, _ = _set_search_terms_denoising(search_term_ids, True)
+    return updated_count
 
 
 def _run_custom_denoising_task(task_id, keywords, total_terms):
@@ -592,6 +723,7 @@ def _run_custom_denoising_task(task_id, keywords, total_terms):
 
 
 def _launch_custom_denoising_task(keywords):
+    normalized_keywords, _ = _create_noise_words(keywords)
     task_id = uuid.uuid4().hex
     total_terms = SearchTerm.objects.using('aba_db').count()
     initial_progress = _build_custom_denoising_progress(
@@ -600,17 +732,130 @@ def _launch_custom_denoising_task(keywords):
         matched_count=0,
         updated_count=0,
         total_terms=total_terms,
-        keyword_count=len(keywords),
-        message='任务已创建，准备开始处理',
+        keyword_count=len(normalized_keywords),
+        message='原始输入已记录，准备开始处理',
         error='',
     )
     cache.set(_custom_denoising_cache_key(task_id), initial_progress, CUSTOM_DENOISING_CACHE_TTL)
 
     worker = threading.Thread(
         target=_run_custom_denoising_task,
-        args=(task_id, keywords, total_terms),
+        args=(task_id, normalized_keywords, total_terms),
         daemon=True,
         name=f'aba-custom-denoising-{task_id[:8]}',
+    )
+    worker.start()
+
+    return task_id, initial_progress
+
+
+def _run_add_noise_words_task(task_id, keywords, total_terms, inserted_word_count):
+    keyword_patterns = _build_custom_denoising_patterns(keywords)
+    processed_count = 0
+    matched_count = 0
+    updated_count = 0
+    pending_update_ids = []
+
+    try:
+        close_old_connections()
+        _set_add_noise_words_progress(
+            task_id,
+            status='running',
+            processed_count=0,
+            matched_count=0,
+            updated_count=0,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            inserted_word_count=inserted_word_count,
+            message='词表已更新，正在扫描搜索词',
+            error='',
+        )
+
+        search_terms = SearchTerm.objects.using('aba_db').order_by('id').values_list('id', 'term')
+        for search_term_id, term in search_terms.iterator(chunk_size=CUSTOM_DENOISING_SCAN_BATCH_SIZE):
+            processed_count += 1
+
+            if _matches_custom_denoising_term(term, keyword_patterns):
+                matched_count += 1
+                pending_update_ids.append(search_term_id)
+
+            if len(pending_update_ids) >= CUSTOM_DENOISING_UPDATE_BATCH_SIZE:
+                updated_count += _flush_custom_denoising_updates(pending_update_ids)
+                pending_update_ids = []
+
+            if processed_count % CUSTOM_DENOISING_SCAN_BATCH_SIZE == 0:
+                _set_add_noise_words_progress(
+                    task_id,
+                    status='running',
+                    processed_count=processed_count,
+                    matched_count=matched_count,
+                    updated_count=updated_count,
+                    total_terms=total_terms,
+                    keyword_count=len(keywords),
+                    inserted_word_count=inserted_word_count,
+                    message=f'目前已处理 {processed_count} 条搜索词',
+                    error='',
+                )
+
+        if pending_update_ids:
+            updated_count += _flush_custom_denoising_updates(pending_update_ids)
+
+        _set_add_noise_words_progress(
+            task_id,
+            status='success',
+            processed_count=processed_count,
+            matched_count=matched_count,
+            updated_count=updated_count,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            inserted_word_count=inserted_word_count,
+            message=f'添加完成，新增词 {inserted_word_count} 个，命中 {matched_count} 条，更新 {updated_count} 条',
+            error='',
+        )
+    except Exception as exc:
+        _set_add_noise_words_progress(
+            task_id,
+            status='error',
+            processed_count=processed_count,
+            matched_count=matched_count,
+            updated_count=updated_count,
+            total_terms=total_terms,
+            keyword_count=len(keywords),
+            inserted_word_count=inserted_word_count,
+            message=f'添加去噪词失败：{exc}',
+            error=str(exc),
+        )
+    finally:
+        close_old_connections()
+
+
+def _launch_add_noise_words_task(keywords):
+    normalized_keywords = _normalize_custom_denoising_keywords('\n'.join(keywords))
+    inserted_word_count = 0
+
+    with transaction.atomic(using='aba_db'):
+        _, inserted_word_count = _create_noise_words(normalized_keywords)
+
+    task_id = uuid.uuid4().hex
+    total_terms = SearchTerm.objects.using('aba_db').count()
+    initial_progress = _build_add_noise_words_progress(
+        status='pending',
+        processed_count=0,
+        matched_count=0,
+        updated_count=0,
+        total_terms=total_terms,
+        keyword_count=len(normalized_keywords),
+        inserted_word_count=inserted_word_count,
+        message='词表已更新，准备开始扫描搜索词',
+        error='',
+    )
+    cache.set(_add_noise_words_cache_key(task_id), initial_progress, CUSTOM_DENOISING_CACHE_TTL)
+
+    worker = threading.Thread(
+        target=_run_add_noise_words_task,
+        args=(task_id, normalized_keywords, total_terms, inserted_word_count),
+        daemon=True,
+        name=f'aba-add-noise-words-{task_id[:8]}',
     )
     worker.start()
 
@@ -636,7 +881,6 @@ def get_aba_data_api(request):
         category = request.GET.get('category', '').strip()
         noise_status = request.GET.get('noise_status', 'all').strip()
         word_filter = request.GET.get('word_filter', 'all').strip()
-        cached_total = request.GET.get('cached_total', '').strip()
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 50))
         
@@ -678,20 +922,12 @@ def get_aba_data_api(request):
         )
 
         has_extra_filters = bool(search_term or category or noise_status != 'all' or word_filter != 'all')
-        # 去噪状态和词分类都改用轻分页，避免首屏先做一次重 count()
-        use_simple_pagination = word_filter != 'all' or noise_status != 'all'
+        # 任意额外筛选都改用轻分页，避免实时 count()
+        use_simple_pagination = has_extra_filters
 
         if use_simple_pagination:
             total = 0
             total_pages = 0
-        elif has_extra_filters:
-            if page == 1:
-                total = queryset.count()
-            else:
-                try:
-                    total = max(int(cached_total), 0)
-                except (TypeError, ValueError):
-                    total = queryset.count()
         else:
             total = AbaReportWeek.objects.using('aba_db').filter(
                 report_week=week_date,
@@ -858,8 +1094,8 @@ def get_aba_new_words_api(request):
 
         candidate_queryset = base_queryset.order_by('-first_seen', 'id')
 
-        total = candidate_queryset.count()
-        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+        total = 0
+        total_pages = 0
 
         offset = (page - 1) * page_size
         page_terms = list(candidate_queryset[offset:offset + page_size + 1])
@@ -917,6 +1153,7 @@ def get_aba_new_words_api(request):
             'total_pages': total_pages,
             'has_prev': page > 1,
             'has_next': has_next,
+            'pagination_mode': 'simple',
             'needs_week': False,
             'window_start': window_start.strftime('%Y-%m-%d'),
             'window_end': window_end.strftime('%Y-%m-%d'),
@@ -948,7 +1185,7 @@ def update_search_term_denoising_api(request):
             }, status=400)
 
         denoising = _normalize_boolean_value(payload.get('denoising', False), default=False)
-        updated_count = SearchTerm.objects.using('aba_db').filter(id__in=search_term_ids).update(denoising=denoising)
+        updated_count, affected_words = _set_search_terms_denoising(search_term_ids, denoising)
 
         if updated_count == 0:
             return JsonResponse({
@@ -958,11 +1195,12 @@ def update_search_term_denoising_api(request):
 
         return JsonResponse({
             'success': True,
-            'message': f'已将 {updated_count} 条数据加入噪声页' if denoising else f'已将 {updated_count} 条数据恢复到去噪后页',
+            'message': f'已将 {updated_count} 条数据标记为噪声词' if denoising else f'已将 {updated_count} 条数据恢复为非噪声词',
             'data': {
                 'search_term_ids': search_term_ids,
                 'updated_count': updated_count,
                 'denoising': denoising,
+                'affected_words': affected_words,
             }
         })
     except json.JSONDecodeError:
@@ -1038,6 +1276,67 @@ def get_custom_denoising_progress_api(request):
     })
 
 
+@require_http_methods(["POST"])
+def start_add_noise_words_api(request):
+    """
+    启动批量添加去噪词任务
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+        keywords = _normalize_custom_denoising_keywords(payload.get('keywords_text', ''))
+
+        if not keywords:
+            return JsonResponse({
+                'success': False,
+                'error': '请输入至少一个有效的去噪词或词组'
+            }, status=400)
+
+        task_id, progress = _launch_add_noise_words_task(keywords)
+        return JsonResponse({
+            'success': True,
+            'message': '添加去噪词任务已启动',
+            'data': {
+                'task_id': task_id,
+                **progress,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '请求体不是合法 JSON'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_add_noise_words_progress_api(request):
+    """
+    获取批量添加去噪词任务进度
+    """
+    task_id = request.GET.get('task_id', '').strip()
+    if not task_id:
+        return JsonResponse({
+            'success': False,
+            'error': '缺少 task_id'
+        }, status=400)
+
+    progress = _get_add_noise_words_progress(task_id)
+    if not progress:
+        return JsonResponse({
+            'success': False,
+            'error': '任务不存在或已过期'
+        }, status=404)
+
+    return JsonResponse({
+        'success': True,
+        'data': progress,
+    })
+
+
 @require_http_methods(["GET"])
 def get_available_weeks_api(request):
     """
@@ -1062,6 +1361,109 @@ def get_available_weeks_api(request):
             'success': True,
             'data': week_list
         })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def get_aba_noise_words_api(request):
+    """
+    获取 ABA 去噪词表列表
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+        word = payload.get('word', '').strip()
+        fuzzy_search = _normalize_boolean_value(payload.get('fuzzy_search', True), default=True)
+        page = max(int(payload.get('page', 1)), 1)
+        page_size = int(payload.get('page_size', 20))
+
+        if page_size not in [20, 50, 100, 200]:
+            page_size = 20
+
+        queryset = AbaNoiseWord.objects.using('aba_db').all()
+        if word:
+            if fuzzy_search:
+                queryset = queryset.filter(word__icontains=word)
+            else:
+                queryset = queryset.filter(word__iexact=word)
+
+        queryset = queryset.order_by('word')
+        offset = (page - 1) * page_size
+        page_words = list(queryset.values_list('word', flat=True)[offset:offset + page_size + 1])
+        has_next = len(page_words) > page_size
+        if has_next:
+            page_words = page_words[:page_size]
+
+        if not page_words:
+            return JsonResponse(_build_empty_noise_words_response(page, page_size))
+
+        data_list = [
+            {'word': word_value}
+            for word_value in page_words
+        ]
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'list': data_list,
+                'page': page,
+                'page_size': page_size,
+                'has_prev': page > 1,
+                'has_next': has_next,
+                'pagination_mode': 'simple',
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '请求体不是合法 JSON'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def delete_aba_noise_word_api(request):
+    """
+    删除 ABA 去噪词
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+        word = payload.get('word', '')
+        normalized_words = _normalize_noise_words([word])
+
+        if not normalized_words:
+            return JsonResponse({
+                'success': False,
+                'error': '缺少有效的 word'
+            }, status=400)
+
+        deleted_count = _delete_noise_word(normalized_words[0])
+        if deleted_count == 0:
+            return JsonResponse({
+                'success': False,
+                'error': '去噪词不存在'
+            }, status=404)
+
+        return JsonResponse({
+            'success': True,
+            'message': '已删除去噪词',
+            'data': {
+                'word': normalized_words[0],
+                'deleted_count': deleted_count,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': '请求体不是合法 JSON'
+        }, status=400)
     except Exception as e:
         return JsonResponse({
             'success': False,
