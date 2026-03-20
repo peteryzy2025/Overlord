@@ -242,16 +242,6 @@ class AbaNoiseWord(models.Model):
         primary_key=True,  # 主键是去噪词本身，不额外生成 id
         help_text='需要去噪的词语'
     )
-    created_by = models.ForeignKey('general.User', on_delete=models.SET_NULL, null=True, blank=True,
-                                   verbose_name='创建人', related_name='created_noise_words')
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name="创建时间"
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name="更新时间"
-    )
 
     class Meta:
         db_table = 'aba_noise_words'
