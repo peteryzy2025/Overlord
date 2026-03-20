@@ -17,6 +17,13 @@
             </a>
         </li>
         <li class="sidebar-item">
+            <a href="{% url 'aba:aba_noise_words' %}"
+               class="sidebar-link {% if active_page == 'aba_noise_words' %}active{% endif %}">
+                <i class="fas fa-filter sidebar-icon"></i>
+                <span>ABA去噪词表</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
             <a href="{% url 'theme:trend_page' %}"
                class="sidebar-link {% if active_page == 'trend_page' %}active{% endif %}">
                 <i class="fas fa-search sidebar-icon"></i>
