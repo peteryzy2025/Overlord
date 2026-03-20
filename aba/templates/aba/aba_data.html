@@ -523,6 +523,13 @@
             font-size: 0.875rem;
         }
 
+        #paginationContainer .pagination-total-pages {
+            margin-left: auto;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+
         #paginationContainer .page-jump-input {
             width: 76px;
             padding: 0.45rem 0.65rem;
@@ -861,6 +868,7 @@
                 <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                 <span>页</span>
             </div>
+            <div class="pagination-total-pages" id="paginationTotalPages" style="display: none;"></div>
         </div>
     </div>
 {% endblock %}
@@ -876,7 +884,13 @@
         let totalItems = 0;
         let totalPages = 0;
         let paginationMode = 'full';
-        let paginationQuerySignature = '';
+        let totalCountQuerySignature = '';
+        let hasKnownTotalCount = false;
+        let shouldStartTotalCountTaskOnNextLoad = false;
+        let totalCountTaskId = '';
+        let totalCountPollTimer = null;
+        let totalCountTaskSignature = '';
+        let isTotalCountTaskRunning = false;
         let selectedSearchTermIds = new Set();
         let allData = [];
         let currentNoiseStatus = 'denoised';
@@ -1345,26 +1359,170 @@
             updatePaginationStats();
         }
 
-        function buildPaginationQuerySignature(filters = getCurrentFilters()) {
+        function buildTotalCountQuerySignature(filters = getCurrentFilters()) {
             return JSON.stringify({
                 leaderboard: activeLeaderboard,
-                ...filters,
+                week: filters.week,
+                startWeek: filters.startWeek,
+                endWeek: filters.endWeek,
+                category: filters.category,
+                searchTerm: filters.searchTerm,
+                searchMode: filters.searchMode,
+                noiseStatus: filters.noiseStatus,
+                wordFilter: filters.wordFilter,
             });
         }
 
-        function resetPaginationCache() {
-            totalItems = 0;
-            totalPages = 0;
+        function stopTotalCountPolling() {
+            if (totalCountPollTimer) {
+                clearTimeout(totalCountPollTimer);
+                totalCountPollTimer = null;
+            }
+        }
+
+        function clearTotalCountTaskTracking() {
+            stopTotalCountPolling();
+            totalCountTaskId = '';
+            totalCountTaskSignature = '';
+            isTotalCountTaskRunning = false;
+        }
+
+        function resetPaginationCache(clearTotalCount = true) {
             hasNextPage = false;
-            paginationMode = 'full';
-            paginationQuerySignature = '';
+            paginationMode = clearTotalCount || hasKnownTotalCount ? 'full' : 'simple';
+            if (clearTotalCount) {
+                totalItems = 0;
+                totalPages = 0;
+                totalCountQuerySignature = '';
+                hasKnownTotalCount = false;
+                clearTotalCountTaskTracking();
+            }
+            shouldStartTotalCountTaskOnNextLoad = false;
         }
 
         function shouldReuseCachedTotal(filters) {
-            return hasLoadedData
-                && currentPage > 1
-                && totalItems > 0
-                && paginationQuerySignature === buildPaginationQuerySignature(filters);
+            return activeLeaderboard === 'hot'
+                && hasKnownTotalCount
+                && totalCountQuerySignature === buildTotalCountQuerySignature(filters);
+        }
+
+        function markTotalCountTaskForStart() {
+            shouldStartTotalCountTaskOnNextLoad = activeLeaderboard === 'hot';
+        }
+
+        function updateTotalPagesDisplay() {
+            const totalPagesEl = document.getElementById('paginationTotalPages');
+            if (!totalPagesEl) {
+                return;
+            }
+
+            if (!hasLoadedData || activeLeaderboard !== 'hot') {
+                totalPagesEl.textContent = '';
+                totalPagesEl.style.display = 'none';
+                return;
+            }
+
+            if (hasKnownTotalCount) {
+                totalPagesEl.textContent = `共 ${totalPages} 页`;
+                totalPagesEl.style.display = 'inline-flex';
+                return;
+            }
+
+            if (isTotalCountTaskRunning) {
+                totalPagesEl.textContent = '总页数计算中...';
+                totalPagesEl.style.display = 'inline-flex';
+                return;
+            }
+
+            totalPagesEl.textContent = '';
+            totalPagesEl.style.display = 'none';
+        }
+
+        async function startTotalCountTask(filters, signature) {
+            if (activeLeaderboard !== 'hot') {
+                return;
+            }
+
+            clearTotalCountTaskTracking();
+            isTotalCountTaskRunning = true;
+            totalCountTaskSignature = signature;
+            updateTotalPagesDisplay();
+
+            try {
+                const params = new URLSearchParams({
+                    week: filters.week,
+                    category: filters.category,
+                    search_term: filters.searchTerm,
+                    search_mode: filters.searchMode,
+                    noise_status: filters.noiseStatus,
+                    word_filter: filters.wordFilter,
+                    page_size: pageSize,
+                });
+                const response = await fetch(`/api/data/total/start/?${params}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '启动总页数计算失败');
+                }
+
+                if (totalCountTaskSignature !== signature) {
+                    return;
+                }
+
+                totalCountTaskId = result.data?.task_id || '';
+                totalCountPollTimer = setTimeout(() => pollTotalCountTask(totalCountTaskId, signature), 400);
+            } catch (error) {
+                console.error('启动总页数计算失败:', error);
+                if (totalCountTaskSignature === signature) {
+                    clearTotalCountTaskTracking();
+                    updateTotalPagesDisplay();
+                }
+            }
+        }
+
+        async function pollTotalCountTask(taskId, signature) {
+            if (!taskId || taskId !== totalCountTaskId || signature !== totalCountTaskSignature) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/data/total/progress/?task_id=${encodeURIComponent(taskId)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '获取总页数计算进度失败');
+                }
+
+                if (taskId !== totalCountTaskId || signature !== totalCountTaskSignature) {
+                    return;
+                }
+
+                const progress = result.data || {};
+                if (progress.status === 'pending' || progress.status === 'running') {
+                    isTotalCountTaskRunning = true;
+                    updateTotalPagesDisplay();
+                    totalCountPollTimer = setTimeout(() => pollTotalCountTask(taskId, signature), 500);
+                    return;
+                }
+
+                if (progress.status === 'success') {
+                    totalItems = Math.max(parseInt(progress.total || 0, 10), 0);
+                    totalPages = totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0;
+                    totalCountQuerySignature = signature;
+                    hasKnownTotalCount = true;
+                    clearTotalCountTaskTracking();
+                    paginationMode = 'full';
+                    renderPagination();
+                    updatePaginationStats();
+                    return;
+                }
+
+                throw new Error(progress.error || progress.message || '总页数计算失败');
+            } catch (error) {
+                console.error('轮询总页数计算进度失败:', error);
+                if (taskId === totalCountTaskId && signature === totalCountTaskSignature) {
+                    clearTotalCountTaskTracking();
+                    updateTotalPagesDisplay();
+                }
+            }
         }
 
         function setNoiseStatus(status, shouldReload = true) {
@@ -1715,6 +1873,8 @@
             
             try {
                 const filters = getCurrentFilters();
+                const totalCountSignature = buildTotalCountQuerySignature(filters);
+                const shouldStartTotalCountTask = activeLeaderboard === 'hot' && shouldStartTotalCountTaskOnNextLoad;
                 const params = new URLSearchParams({
                     page: currentPage,
                     page_size: pageSize,
@@ -1749,10 +1909,30 @@
                     hasLoadedData = true;
                     allData = result.data;
                     hasNextPage = !!result.has_next;
-                    totalItems = Math.max(parseInt(result.total || 0, 10), 0);
-                    totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
                     paginationMode = result.pagination_mode || 'full';
-                    paginationQuerySignature = buildPaginationQuerySignature(filters);
+
+                    if (activeLeaderboard === 'hot') {
+                        if (shouldReuseCachedTotal(filters)) {
+                            totalItems = Math.max(parseInt(result.total || totalItems || 0, 10), 0);
+                            totalPages = Math.max(parseInt(
+                                result.total_pages || (totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0),
+                                10
+                            ), 0);
+                        } else {
+                            totalItems = 0;
+                            totalPages = 0;
+                            totalCountQuerySignature = '';
+                            hasKnownTotalCount = false;
+                        }
+                    } else {
+                        totalItems = Math.max(parseInt(result.total || 0, 10), 0);
+                        totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
+                        totalCountQuerySignature = '';
+                        hasKnownTotalCount = false;
+                        clearTotalCountTaskTracking();
+                        shouldStartTotalCountTaskOnNextLoad = false;
+                    }
+
                     currentNewWordsWindow = {
                         start: result.window_start || '',
                         end: result.window_end || '',
@@ -1772,6 +1952,15 @@
 
                     renderPagination();
                     updatePaginationStats();
+
+                    if (
+                        shouldStartTotalCountTask
+                        && activeLeaderboard === 'hot'
+                        && !result.needs_week
+                    ) {
+                        shouldStartTotalCountTaskOnNextLoad = false;
+                        startTotalCountTask(filters, totalCountSignature);
+                    }
                 } else {
                     showNotification(result.error || '加载失败', 'error');
                 }
@@ -1971,6 +2160,7 @@
             if (!hasLoadedData) {
                 //pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">等待搜索</span>';
                 paginationJump.style.display = 'none';
+                updateTotalPagesDisplay();
                 return;
             }
 
@@ -1981,12 +2171,14 @@
                     <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${!hasNextPage ? 'disabled' : ''}>下一页</button>
                 `;
                 paginationJump.style.display = 'none';
+                updateTotalPagesDisplay();
                 return;
             }
 
             if (totalPages <= 0) {
                 pagination.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页数据</span>';
                 paginationJump.style.display = 'none';
+                updateTotalPagesDisplay();
                 return;
             }
 
@@ -2035,6 +2227,7 @@
 
             pagination.innerHTML = buttons.join('');
             paginationJump.style.display = totalPages > 1 ? 'inline-flex' : 'none';
+            updateTotalPagesDisplay();
         }
         
         function updatePaginationStats() {
@@ -2098,7 +2291,12 @@
             });
 
             if (hasLoadedData) {
-                resetPaginationCache();
+                if (activeLeaderboard === 'hot' && hasKnownTotalCount) {
+                    totalPages = totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0;
+                    resetPaginationCache(false);
+                } else if (!(activeLeaderboard === 'hot' && isTotalCountTaskRunning)) {
+                    resetPaginationCache();
+                }
                 loadData();
             } else {
                 updatePaginationStats();
@@ -2237,6 +2435,7 @@
 
             currentPage = 1;
             resetPaginationCache();
+            markTotalCountTaskForStart();
             loadData();
         }
         
