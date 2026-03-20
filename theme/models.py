@@ -73,6 +73,16 @@ class AmazonThemeNovelty(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     is_latest_deal = models.BooleanField(default=False, verbose_name='是否为最新成交')
+    
+    # 关联到新奇特主题（新增字段）
+    theme_novelty = models.ForeignKey(
+        'ThemeNovelty',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='asins',
+        verbose_name='所属新奇特主题'
+    )
 
     class Meta:
         db_table = 'theme_amazon_novelty'
@@ -136,8 +146,10 @@ class ThemeDailyData(models.Model):
         verbose_name='关联产品'
     )
     crawl_date = models.DateField(verbose_name='抓取日期')
+
     rank = models.IntegerField(null=True, blank=True, verbose_name='排名')
     rank_category = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类')
+
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
     appear_count = models.IntegerField(default=1, verbose_name='重复数')
     score = models.IntegerField(default=0, verbose_name='分值')
@@ -473,3 +485,101 @@ class NicheMarket(models.Model):
 
     def __str__(self):
         return f"{self.market_name_cn or self.market_name}"
+
+
+
+
+
+
+# =============================================================================
+# 主题模型 - 三层架构设计（新增）
+# =============================================================================
+
+
+class ThemeSubject(models.Model):
+    """一级：核心主题表"""
+
+    canonical_subject = models.CharField(
+        max_length=200, 
+        primary_key=True, 
+        verbose_name='标准化主题'
+    )
+    
+    core_entities = models.JSONField(
+        default=list,
+        verbose_name='核心实体'
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'theme_subject'
+        verbose_name = '核心主题'
+        verbose_name_plural = verbose_name
+    
+    def __str__(self):
+        return self.canonical_subject[:50]
+
+
+class ThemeNovelty(models.Model):
+    """二级：新奇特主题表"""
+    
+    subject = models.OneToOneField(
+        ThemeSubject,
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='theme_novelty',
+        verbose_name='核心主题'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'theme_novelty'
+        verbose_name = '新奇特主题'
+        verbose_name_plural = verbose_name
+    
+    def __str__(self):
+        return self.subject.canonical_subject[:50]
+
+
+class ThemeNoveltyDailyData(models.Model):
+    """三级：新奇特主题每日数据表"""
+    
+    novelty_theme = models.ForeignKey(
+        ThemeNovelty,
+        on_delete=models.CASCADE,
+        related_name='daily_data',
+        verbose_name='新奇特主题'
+    )
+    
+    theme_date = models.DateField(verbose_name='主题日期')
+    asin_count = models.IntegerField(default=0, verbose_name='当日ASIN数量')
+    ranked_asin_count = models.IntegerField(default=0, verbose_name='有排名ASIN数')
+    score = models.IntegerField(default=0, verbose_name='核心分值')
+    rank_trend_7d = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='7天排名趋势'
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'theme_novelty_daily_data'
+        unique_together = ['novelty_theme', 'theme_date']
+        indexes = [
+            models.Index(fields=['novelty_theme', 'theme_date']),
+            models.Index(fields=['theme_date', 'score']),
+        ]
+        verbose_name = '新奇特主题每日数据'
+        verbose_name_plural = verbose_name
+        ordering = ['-theme_date']
+    
+    def __str__(self):
+        return f"{self.novelty_theme.subject.canonical_subject[:30]} - {self.theme_date}"
+
+
+
