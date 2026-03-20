@@ -1,0 +1,1000 @@
+{% extends 'base/base_theme.html' %}
+{% load static %}
+
+{% block title %}ABA去噪词表 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
+    <style>
+        :root {
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+        }
+
+        .performance-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            width: auto;
+            max-width: none;
+            margin: 24px clamp(18px, 2vw, 32px);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            align-content: start;
+            gap: 1.25rem;
+        }
+
+        .page-header,
+        .control-panel,
+        .data-section {
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+
+        .page-header {
+            margin-bottom: 0;
+            align-items: center;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .control-panel,
+        .data-section {
+            margin-bottom: 0;
+        }
+
+        .filter-row {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr);
+            gap: 1rem;
+            align-items: end;
+        }
+
+        .filter-group {
+            min-width: 0;
+            max-width: none;
+            width: 100%;
+            flex: initial;
+        }
+
+        .filter-actions-row {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .filter-actions {
+            margin-left: 0;
+        }
+
+        .table-container {
+            width: 100%;
+        }
+
+        .table-container table {
+            width: 100%;
+            min-width: 720px;
+        }
+
+        .table-container .empty-state {
+            padding: 28px 16px;
+            text-align: center;
+            color: #6b7280;
+        }
+
+        .table-container .empty-state i {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .table-container .empty-state p {
+            margin: 0;
+            font-size: 0.95rem;
+        }
+
+        .col-word {
+            width: auto;
+        }
+
+        .col-action {
+            width: 140px;
+            text-align: center;
+        }
+
+        .word-cell {
+            font-weight: 500;
+            color: #111827;
+            word-break: break-word;
+        }
+
+        .search-mode-tag {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid;
+            user-select: none;
+        }
+
+        .search-mode-tag.fuzzy {
+            background-color: #dbeafe;
+            color: #1d4ed8;
+            border-color: #93c5fd;
+        }
+
+        .search-mode-tag.exact {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border-color: #fca5a5;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: #fff;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-sm {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .is-loading {
+            opacity: 0.72;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 2100;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 92%;
+            max-width: 420px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .status-banner {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.9rem 1rem;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            border: 1px solid transparent;
+        }
+
+        .status-banner.is-visible {
+            display: flex;
+        }
+
+        .status-banner.info {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border-color: #bfdbfe;
+        }
+
+        .status-banner.success {
+            background: #ecfdf5;
+            color: #047857;
+            border-color: #a7f3d0;
+        }
+
+        .status-banner.error {
+            background: #fef2f2;
+            color: #b91c1c;
+            border-color: #fecaca;
+        }
+
+        .noise-words-textarea {
+            width: 100%;
+            min-height: 220px;
+            margin-top: 0.75rem;
+            padding: 0.85rem 0.95rem;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            resize: vertical;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #111827;
+            box-sizing: border-box;
+        }
+
+        .modal-tip {
+            margin-top: 0.75rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .modal-footer {
+            margin-top: 1.25rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination-summary {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .page-size-select,
+        .page-jump-input {
+            padding: 0.4rem 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .page-jump {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        @media (min-width: 1024px) {
+            .filter-row {
+                grid-template-columns: minmax(360px, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .performance-main {
+                margin: 16px;
+                gap: 1rem;
+            }
+
+            .page-header {
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .table-container table {
+                min-width: 100%;
+            }
+
+            .pagination-container {
+                align-items: flex-start;
+            }
+
+            .filter-actions-row {
+                justify-content: flex-start;
+            }
+
+            .pagination-summary,
+            .page-jump {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .performance-main {
+                margin-right: clamp(28px, 2.5vw, 42px);
+            }
+
+            .table-container table {
+                min-width: 0;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="performance-main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">ABA去噪词表</h1>
+                <p class="page-subtitle">管理用户录入的 ABA 去噪原始输入</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="addNoiseWordsBtn" onclick="openAddNoiseWordsModal()">
+                    <i class="fas fa-plus"></i> 添加去噪词
+                </button>
+                <button class="btn btn-secondary" id="refreshBtn" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <div class="status-banner" id="addNoiseWordsStatusBanner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span id="addNoiseWordsStatusText">正在处理去噪词任务</span>
+        </div>
+
+        <div class="control-panel">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">去噪词</label>
+                    <div style="position: relative;">
+                        <input type="text"
+                               id="wordFilter"
+                               class="form-control"
+                               placeholder="输入去噪词搜索"
+                               style="padding-right: 50px;"
+                               onkeyup="if(event.key === 'Enter') applyFilters()">
+                        <span class="search-mode-tag fuzzy" id="searchModeTag" onclick="toggleSearchMode()">模糊</span>
+                        <input type="checkbox" id="fuzzySearchSwitch" checked style="display: none;">
+                    </div>
+                </div>
+            </div>
+            <div class="filter-actions-row">
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" id="searchBtn" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置" aria-label="重置"></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <h3 class="section-title" style="margin-bottom: 1.5rem;">词表列表</h3>
+
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th class="col-word">去噪词</th>
+                        <th class="col-action">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    <tr>
+                        <td colspan="2" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>数据加载中...</p>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container" id="paginationControls" style="display: none;">
+                <div class="pagination-summary">
+                    <label for="pageSizeSelect">每页显示</label>
+                    <select id="pageSizeSelect" class="page-size-select" onchange="changePageSize()">
+                        <option value="20">20条</option>
+                        <option value="50">50条</option>
+                        <option value="100">100条</option>
+                        <option value="200">200条</option>
+                    </select>
+                    <span id="paginationStats">0-0 / 共 0 条</span>
+                </div>
+                <div class="pagination-controls" id="paginationButtons"></div>
+                <div class="page-jump">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-overlay" id="deleteModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">确认删除</h3>
+                    <button class="close-btn" onclick="closeDeleteModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="deleteWord">
+                    <p>确定删除该去噪词吗？</p>
+                    <p style="color: #ef4444; font-size: 0.875rem;">删除后仅从词表移除该原始输入，不会修改任何搜索词状态。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
+                    <button class="btn btn-danger" id="deleteBtn" onclick="submitDelete()">确认删除</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-overlay" id="addNoiseWordsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">添加去噪词</h3>
+                    <button class="close-btn" onclick="closeAddNoiseWordsModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p>请输入去噪词或词组，一行一个。确认后会将这些原始输入写入词表，并按整词匹配将命中的搜索词标记为噪声词。</p>
+                    <textarea
+                        id="addNoiseWordsInput"
+                        class="noise-words-textarea"
+                        placeholder="示例：&#10;eye cream&#10;body pillow&#10;coffee mug"
+                    ></textarea>
+                    <p class="modal-tip">空行会被忽略；去重按大小写不敏感处理，并保留你第一次输入的写法。</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelAddNoiseWordsBtn" onclick="closeAddNoiseWordsModal()">取消</button>
+                    <button class="btn btn-primary" id="confirmAddNoiseWordsBtn" onclick="submitAddNoiseWords()">确认添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let currentFilters = {
+            word: '',
+            fuzzy_search: true
+        };
+
+        let pagination = {
+            page: 1,
+            page_size: 20,
+            has_prev: false,
+            has_next: false,
+            pagination_mode: 'simple'
+        };
+        let hasLoadedData = false;
+        let addNoiseWordsTaskId = '';
+        let addNoiseWordsPollTimer = null;
+        let isAddNoiseWordsSubmitting = false;
+
+        function showLoading(show = true) {
+            const searchBtn = document.getElementById('searchBtn');
+            const refreshBtn = document.getElementById('refreshBtn');
+            const tableSection = document.querySelector('.data-section');
+
+            if (searchBtn) {
+                searchBtn.disabled = show;
+            }
+
+            if (refreshBtn) {
+                refreshBtn.disabled = show;
+            }
+
+            if (tableSection) {
+                tableSection.classList.toggle('is-loading', show);
+            }
+        }
+
+        if (typeof showNotification === 'undefined') {
+            window.showNotification = function(message, type = 'info') {
+                console.log(`[${type}] ${message}`);
+            };
+        }
+
+        function getCsrfToken() {
+            return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function updateAddNoiseWordsStatus(message = '', type = 'info', visible = false) {
+            const banner = document.getElementById('addNoiseWordsStatusBanner');
+            const text = document.getElementById('addNoiseWordsStatusText');
+            if (!banner || !text) {
+                return;
+            }
+
+            banner.className = `status-banner ${type}${visible ? ' is-visible' : ''}`;
+            text.textContent = message || '';
+
+            const iconClass = type === 'error'
+                ? 'fas fa-exclamation-circle'
+                : type === 'success'
+                    ? 'fas fa-check-circle'
+                    : 'fas fa-spinner fa-spin';
+            banner.querySelector('i').className = iconClass;
+        }
+
+        function clearAddNoiseWordsPolling() {
+            if (addNoiseWordsPollTimer) {
+                clearTimeout(addNoiseWordsPollTimer);
+                addNoiseWordsPollTimer = null;
+            }
+        }
+
+        function openAddNoiseWordsModal() {
+            document.getElementById('addNoiseWordsModal').style.display = 'block';
+            document.getElementById('addNoiseWordsInput').focus();
+        }
+
+        function closeAddNoiseWordsModal() {
+            if (isAddNoiseWordsSubmitting) {
+                return;
+            }
+            document.getElementById('addNoiseWordsModal').style.display = 'none';
+        }
+
+        function setAddNoiseWordsSubmitting(submitting) {
+            isAddNoiseWordsSubmitting = submitting;
+            const confirmBtn = document.getElementById('confirmAddNoiseWordsBtn');
+            const cancelBtn = document.getElementById('cancelAddNoiseWordsBtn');
+            const addBtn = document.getElementById('addNoiseWordsBtn');
+
+            if (confirmBtn) {
+                confirmBtn.disabled = submitting;
+                confirmBtn.textContent = submitting ? '提交中...' : '确认添加';
+            }
+
+            if (cancelBtn) {
+                cancelBtn.disabled = submitting;
+            }
+
+            if (addBtn) {
+                addBtn.disabled = submitting;
+            }
+        }
+
+        function updateSearchModeText() {
+            const isFuzzy = document.getElementById('fuzzySearchSwitch').checked;
+            const tag = document.getElementById('searchModeTag');
+            tag.textContent = isFuzzy ? '模糊' : '精确';
+            tag.className = `search-mode-tag ${isFuzzy ? 'fuzzy' : 'exact'}`;
+        }
+
+        function toggleSearchMode() {
+            const switchInput = document.getElementById('fuzzySearchSwitch');
+            switchInput.checked = !switchInput.checked;
+            updateSearchModeText();
+        }
+
+        function getCurrentFilters() {
+            return {
+                word: document.getElementById('wordFilter').value.trim(),
+                fuzzy_search: document.getElementById('fuzzySearchSwitch').checked
+            };
+        }
+
+        async function applyFilters() {
+            currentFilters = getCurrentFilters();
+            pagination.page = 1;
+            hasLoadedData = true;
+            await loadTableData();
+        }
+
+        async function resetFilters(event) {
+            event?.preventDefault();
+            document.getElementById('wordFilter').value = '';
+            document.getElementById('fuzzySearchSwitch').checked = true;
+            document.getElementById('pageSizeSelect').value = '20';
+            pagination.page = 1;
+            pagination.page_size = 20;
+            pagination.has_prev = false;
+            pagination.has_next = false;
+            updateSearchModeText();
+            hasLoadedData = false;
+            renderIdleState();
+            showNotification('筛选条件已重置，请点击搜索加载数据', 'success');
+        }
+
+        function refreshData(event) {
+            if (!hasLoadedData) {
+                showNotification('请先点击搜索加载数据', 'info');
+                return;
+            }
+            const icon = event?.target?.closest('button')?.querySelector('i');
+            if (icon) {
+                icon.style.animation = 'spin 1s linear infinite';
+            }
+            loadTableData().finally(() => {
+                if (icon) {
+                    icon.style.animation = '';
+                }
+            });
+        }
+
+        async function submitAddNoiseWords() {
+            const textarea = document.getElementById('addNoiseWordsInput');
+            const keywordsText = textarea.value.trim();
+
+            if (!keywordsText) {
+                showNotification('请输入至少一个去噪词或词组', 'warning');
+                textarea.focus();
+                return;
+            }
+
+            setAddNoiseWordsSubmitting(true);
+            try {
+                const response = await fetch('{% url "aba:api_start_add_noise_words" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        keywords_text: textarea.value
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '启动任务失败');
+                }
+
+                addNoiseWordsTaskId = result.data?.task_id || '';
+                document.getElementById('addNoiseWordsModal').style.display = 'none';
+                textarea.value = '';
+                updateAddNoiseWordsStatus(result.data?.message || '任务已启动，正在处理去噪词', 'info', true);
+                showNotification(result.message || '添加去噪词任务已启动', 'success');
+                setAddNoiseWordsSubmitting(false);
+                pollAddNoiseWordsProgress(addNoiseWordsTaskId);
+            } catch (error) {
+                setAddNoiseWordsSubmitting(false);
+                showNotification(error.message || '添加去噪词失败', 'error');
+            }
+        }
+
+        async function pollAddNoiseWordsProgress(taskId) {
+            if (!taskId) {
+                return;
+            }
+
+            clearAddNoiseWordsPolling();
+
+            try {
+                const response = await fetch(`{% url "aba:api_add_noise_words_progress" %}?task_id=${encodeURIComponent(taskId)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '获取任务进度失败');
+                }
+
+                const progress = result.data || {};
+                const message = progress.message || '任务进行中';
+
+                if (progress.status === 'success') {
+                    const successMessage = progress.message || `添加完成，新增词 ${progress.inserted_word_count || 0} 个，命中 ${progress.matched_count || 0} 条，更新 ${progress.updated_count || 0} 条`;
+                    updateAddNoiseWordsStatus(successMessage, 'success', true);
+                    showNotification(successMessage, 'success');
+                    addNoiseWordsTaskId = '';
+                    if (hasLoadedData) {
+                        await loadTableData();
+                    }
+                    return;
+                }
+
+                if (progress.status === 'error') {
+                    updateAddNoiseWordsStatus(message, 'error', true);
+                    showNotification(message, 'error');
+                    addNoiseWordsTaskId = '';
+                    return;
+                }
+
+                updateAddNoiseWordsStatus(message, 'info', true);
+                addNoiseWordsPollTimer = setTimeout(() => pollAddNoiseWordsProgress(taskId), 1000);
+            } catch (error) {
+                updateAddNoiseWordsStatus(error.message || '获取任务进度失败', 'error', true);
+                showNotification(error.message || '获取任务进度失败', 'error');
+                addNoiseWordsTaskId = '';
+            }
+        }
+
+        async function loadTableData() {
+            const tbody = document.getElementById('tableBody');
+            const paginationControls = document.getElementById('paginationControls');
+
+            showLoading(true);
+            try {
+                const response = await fetch('{% url "aba:api_aba_noise_words" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        ...getCurrentFilters(),
+                        page: pagination.page,
+                        page_size: pagination.page_size
+                    })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '加载失败');
+                }
+
+                const data = result.data || {};
+                pagination.page = data.page || 1;
+                pagination.page_size = data.page_size || pagination.page_size;
+                pagination.has_prev = Boolean(data.has_prev);
+                pagination.has_next = Boolean(data.has_next);
+                pagination.pagination_mode = data.pagination_mode || 'simple';
+
+                renderTable(data.list || []);
+                renderPagination();
+                paginationControls.style.display = 'flex';
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="2" class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>数据请求失败: ${error.message}</p>
+                        </td>
+                    </tr>
+                `;
+                paginationControls.style.display = 'none';
+                showNotification(error.message || '数据加载失败', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function renderIdleState() {
+            const tbody = document.getElementById('tableBody');
+            const paginationControls = document.getElementById('paginationControls');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="2" class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>点击搜索开始加载数据</p>
+                    </td>
+                </tr>
+            `;
+            paginationControls.style.display = 'none';
+            document.getElementById('paginationStats').textContent = '未加载';
+            document.getElementById('paginationButtons').innerHTML = '';
+        }
+
+        function renderTable(list) {
+            const tbody = document.getElementById('tableBody');
+            if (!list.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="2" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无数据</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map(item => `
+                <tr>
+                    <td><span class="word-cell">${escapeHtml(item.word || '')}</span></td>
+                    <td class="col-action">
+                        <button
+                            class="btn btn-sm btn-danger"
+                            data-word="${escapeHtml(item.word || '')}"
+                            onclick="showDeleteModal(this.dataset.word)"
+                        >
+                            删除
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const paginationButtons = document.getElementById('paginationButtons');
+            const stats = document.getElementById('paginationStats');
+            const pageSizeSelect = document.getElementById('pageSizeSelect');
+
+            pageSizeSelect.value = String(pagination.page_size);
+
+            if (!document.querySelector('#tableBody tr') || document.querySelector('#tableBody .empty-state')) {
+                stats.textContent = `第 ${pagination.page} 页`;
+                paginationButtons.innerHTML = '';
+                return;
+            }
+
+            stats.textContent = `第 ${pagination.page} 页，每页 ${pagination.page_size} 条`;
+
+            const buttons = [];
+            buttons.push(`
+                <button class="btn btn-secondary btn-sm" ${!pagination.has_prev ? 'disabled' : ''} onclick="goToPage(${pagination.page - 1})">
+                    上一页
+                </button>
+            `);
+
+            buttons.push(`
+                <button class="btn btn-sm btn-primary" onclick="goToPage(${pagination.page})">
+                    ${pagination.page}
+                </button>
+            `);
+            if (pagination.has_next) {
+                buttons.push(`
+                    <button class="btn btn-sm btn-secondary" onclick="goToPage(${pagination.page + 1})">
+                        ${pagination.page + 1}
+                    </button>
+                `);
+            }
+
+            buttons.push(`
+                <button class="btn btn-secondary btn-sm" ${!pagination.has_next ? 'disabled' : ''} onclick="goToPage(${pagination.page + 1})">
+                    下一页
+                </button>
+            `);
+
+            paginationButtons.innerHTML = buttons.join('');
+        }
+
+        async function goToPage(page) {
+            if (!hasLoadedData || page < 1 || page === pagination.page) {
+                return;
+            }
+            pagination.page = page;
+            await loadTableData();
+        }
+
+        async function changePageSize() {
+            pagination.page_size = Number(document.getElementById('pageSizeSelect').value || 20);
+            pagination.page = 1;
+            if (!hasLoadedData) {
+                return;
+            }
+            await loadTableData();
+        }
+
+        async function handlePageJump(event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+            const targetPage = Number(event.target.value || 0);
+            if (!targetPage || targetPage < 1) {
+                showNotification('请输入有效页码', 'warning');
+                return;
+            }
+            await goToPage(targetPage);
+            event.target.value = '';
+        }
+
+        function showDeleteModal(word) {
+            document.getElementById('deleteWord').value = word;
+            document.getElementById('deleteModal').style.display = 'block';
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteWord').value = '';
+            document.getElementById('deleteModal').style.display = 'none';
+        }
+
+        async function submitDelete() {
+            const word = document.getElementById('deleteWord').value;
+            const deleteBtn = document.getElementById('deleteBtn');
+            if (!word) {
+                showNotification('缺少有效去噪词', 'warning');
+                return;
+            }
+
+            deleteBtn.disabled = true;
+            try {
+                const response = await fetch('{% url "aba:api_delete_aba_noise_word" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ word })
+                });
+
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    throw new Error(result.error || '删除失败');
+                }
+
+                closeDeleteModal();
+                const rowCount = document.querySelectorAll('#tableBody tr').length;
+                if (pagination.page > 1 && rowCount === 1 && !pagination.has_next) {
+                    pagination.page -= 1;
+                }
+                await loadTableData();
+                showNotification(result.message || '删除成功', 'success');
+            } catch (error) {
+                showNotification(error.message || '删除失败', 'error');
+            } finally {
+                deleteBtn.disabled = false;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateSearchModeText();
+            renderIdleState();
+        });
+    </script>
+{% endblock %}
