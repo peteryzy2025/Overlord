@@ -10,6 +10,8 @@ urlpatterns = [
     
     # API 接口
     path('api/data/', views.get_aba_data_api, name='api_aba_data'),
+    path('api/data/total/start/', views.start_aba_total_count_api, name='api_aba_total_count_start'),
+    path('api/data/total/progress/', views.get_aba_total_count_progress_api, name='api_aba_total_count_progress'),
     path('api/new-words/', views.get_aba_new_words_api, name='api_aba_new_words'),
     path('api/update-denoising/', views.update_search_term_denoising_api, name='api_update_search_term_denoising'),
     path('api/noise-words/', views.get_aba_noise_words_api, name='api_aba_noise_words'),
