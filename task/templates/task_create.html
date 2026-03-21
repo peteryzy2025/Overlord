@@ -152,7 +152,7 @@
                         <div class="type-icon">
                             <i class="fas fa-file-export"></i>
                         </div>
-                        <h4>迪唯汇出</h4>
+                        <h4>迪唯汇出上架-Amazon切表版</h4>
                         <p>汇出产品数据</p>
                     </div>
                     <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
@@ -1419,6 +1419,28 @@
         });
 
         // ===== 处理迪唯图库输入 =====
+        // ===== 处理图库命名输入 =====
+        function handleGalleryNameInput(element, subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+
+            const value = element.value.trim();
+            
+            // 限制20个字符
+            if (value.length > 20) {
+                element.value = value.substring(0, 20);
+            }
+            
+            // 更新计数
+            const countEl = document.getElementById(`gallery-name-count-${subtaskId}`);
+            if (countEl) {
+                countEl.textContent = element.value.length;
+            }
+            
+            // 更新 taskData
+            updateSubtaskParam(subtaskId, 'gallery_name', element.value);
+        }
+
         function handleDiweiGalleryInput(element, subtaskId, fieldName) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             if (!subtask) return;
@@ -1670,6 +1692,7 @@
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
                     diwei_account: '测试',
+                    gallery_name: '',
                     local_gallery_path: ''
                 };
             }
@@ -1704,6 +1727,7 @@
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_gallery_upload') {
                 if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.gallery_name) mergedParams.gallery_name = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
 
@@ -1906,10 +1930,24 @@
                         }
                     }, 0);
                 }
-            } else if (subtask.type === 'divi_gallery_upload' && subtask.params.local_gallery_path) {
-                const input = document.getElementById(`local-gallery-path-${subtask.id}`);
-                if (input) {
-                    input.value = subtask.params.local_gallery_path;
+            } else if (subtask.type === 'divi_gallery_upload') {
+                // 恢复图库命名
+                if (subtask.params.gallery_name) {
+                    const nameInput = document.getElementById(`gallery-name-${subtask.id}`);
+                    if (nameInput) {
+                        nameInput.value = subtask.params.gallery_name;
+                    }
+                    const countEl = document.getElementById(`gallery-name-count-${subtask.id}`);
+                    if (countEl) {
+                        countEl.textContent = subtask.params.gallery_name.length;
+                    }
+                }
+                // 恢复本地路径
+                if (subtask.params.local_gallery_path) {
+                    const pathInput = document.getElementById(`local-gallery-path-${subtask.id}`);
+                    if (pathInput) {
+                        pathInput.value = subtask.params.local_gallery_path;
+                    }
                 }
             }
 
@@ -2417,6 +2455,17 @@
                         </div>
 
                         <div class="form-group">
+                            <label class="form-label">图库命名 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="text" class="form-control"
+                                   id="gallery-name-${subtask.id}"
+                                   placeholder="请输入图库名称（20字以内）"
+                                   value="${subtask.params.gallery_name || ''}"
+                                   maxlength="20"
+                                   oninput="handleGalleryNameInput(this, ${subtask.id})">
+                            <small style="color: var(--text-tertiary);">限20个字符，当前 <span id="gallery-name-count-${subtask.id}">${(subtask.params.gallery_name || '').length}</span>/20</small>
+                        </div>
+
+                        <div class="form-group">
                             <label class="form-label">本地路径 <span style="color: var(--danger-color);">*</span></label>
                             <input type="text" class="form-control"
                                    id="local-gallery-path-${subtask.id}"
@@ -2496,7 +2545,7 @@
             const typeMap = {
                 'divi_multi_side_custom': '迪唯多面定制',
                 'divi_custom': '迪唯批量定制',
-                'divi_export': '迪唯汇出',
+                'divi_export': '迪唯汇出上架-Amazon切表版',
                 'divi_gallery_upload': 'DIVI图库上传',
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
@@ -3280,6 +3329,17 @@
                 } else if (subtask.type === 'divi_gallery_upload') {
                     if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
                         showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
+                        return false;
+                    }
+                    
+                    // 验证图库命名
+                    const galleryName = (subtask.params.gallery_name || '').trim();
+                    if (!galleryName) {
+                        showNotification(`子任务 #${subtask.order + 1} 的图库命名不能为空`, 'warning');
+                        return false;
+                    }
+                    if (galleryName.length > 20) {
+                        showNotification(`子任务 #${subtask.order + 1} 的图库命名不能超过20个字符`, 'warning');
                         return false;
                     }
 
