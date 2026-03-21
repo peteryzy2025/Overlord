@@ -916,6 +916,8 @@
 
             if (selectedProductId) {
                 productSelect.setValue(String(selectedProductId));
+                // 手动更新 taskData（setValue 不会触发 onChange）
+                updateExportRow(subtaskId, rowIndex, 'product_id', String(selectedProductId));
             }
 
             // 监听变化 - 选择产品后自动加载颜色和尺码
@@ -974,7 +976,7 @@
                         placeholder: '选择颜色'
                     });
                     
-                    // 默认全选
+                    // 默认全选并更新 taskData
                     colorSelect.setValue(allColorIds);
                     updateExportRow(subtaskId, rowIndex, 'colors', allColorIds);
                     
@@ -1004,7 +1006,7 @@
                         placeholder: '选择尺码'
                     });
                     
-                    // 默认全选
+                    // 默认全选并更新 taskData
                     sizeSelect.setValue(allSizeIds);
                     updateExportRow(subtaskId, rowIndex, 'sizes', allSizeIds);
                     
@@ -1068,12 +1070,14 @@
                     });
                     
                     colorSelect.setValue(colorValues);
-                    updateExportRow(subtaskId, rowIndex, 'colors', colorValues);
                     
                     // 监听变化
                     colorSelect.onChange = (value) => {
                         updateExportRow(subtaskId, rowIndex, 'colors', value);
                     };
+                    
+                    // 确保 taskData 被更新（setValue 不会触发 onChange）
+                    updateExportRow(subtaskId, rowIndex, 'colors', colorValues);
                     
                     colorSelectEl.dataset.initialized = 'true';
                     colorSelectEl._colorSelectInstance = colorSelect;
@@ -1098,12 +1102,14 @@
                     });
                     
                     sizeSelect.setValue(sizeValues);
-                    updateExportRow(subtaskId, rowIndex, 'sizes', sizeValues);
                     
                     // 监听变化
                     sizeSelect.onChange = (value) => {
                         updateExportRow(subtaskId, rowIndex, 'sizes', value);
                     };
+                    
+                    // 确保 taskData 被更新（setValue 不会触发 onChange）
+                    updateExportRow(subtaskId, rowIndex, 'sizes', sizeValues);
                     
                     sizeSelectEl.dataset.initialized = 'true';
                     sizeSelectEl._sizeSelectInstance = sizeSelect;
@@ -1213,6 +1219,8 @@
             });
 
             shopSelect.setValue(selectedShops);
+            // 手动更新 taskData（setValue 不会触发 onChange）
+            updateExportRow(subtaskId, rowIndex, 'shops', selectedShops);
             
             // 监听变化
             shopSelect.onChange = (value) => {
@@ -1271,8 +1279,8 @@
                 container.insertAdjacentHTML('beforeend', rowHtml);
                 
                 // 初始化新行的产品、尺码、颜色和店铺选择器
-                setTimeout(() => {
-                    initExportRowProductSelect(subtaskId, rowIndex, '');
+                setTimeout(async () => {
+                    await initExportRowProductSelect(subtaskId, rowIndex, '');
                     initExportRowSizeSelect(subtaskId, rowIndex, [], []);
                     initExportRowColorSelect(subtaskId, rowIndex, [], []);
                     initExportRowShopSelect(subtaskId, rowIndex, []);
@@ -1287,8 +1295,18 @@
             const subtask = taskData.subtasks.find(s => s.id === subtaskId);
             if (!subtask || !subtask.params.export_rows) return;
 
-            if (subtask.params.export_rows[rowIndex]) {
-                subtask.params.export_rows[rowIndex][field] = value;
+            const row = subtask.params.export_rows[rowIndex];
+            if (row) {
+                // 只使用英文字段名，删除中文字段名（避免污染）
+                row[field] = value;
+                delete row['产品ID'];
+                delete row['产品名称'];
+                delete row['尺码ID列表'];
+                delete row['尺码名称列表'];
+                delete row['颜色ID列表'];
+                delete row['颜色中文列表'];
+                delete row['颜色英文列表'];
+                delete row['店铺列表'];
                 triggerAutoSave();
             }
         }
@@ -1341,16 +1359,27 @@
             // 重新渲染所有行
             const container = document.getElementById(`export-rows-container-${subtaskId}`);
             if (container) {
+                // 清理所有行的中文字段名
+                subtask.params.export_rows.forEach(row => {
+                    delete row['产品ID'];
+                    delete row['产品名称'];
+                    delete row['尺码ID列表'];
+                    delete row['尺码名称列表'];
+                    delete row['颜色ID列表'];
+                    delete row['颜色中文列表'];
+                    delete row['颜色英文列表'];
+                    delete row['店铺列表'];
+                });
+                
                 container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportRow(subtaskId, index, row)).join('');
                 
                 // 重新初始化所有选择器
                 subtask.params.export_rows.forEach((row, index) => {
                     setTimeout(async () => {
-                        // 兼容中英文两种字段名
-                        const productId = row.product_id || row.产品ID || '';
-                        const colors = row.colors || row.颜色ID列表 || [];
-                        const sizes = row.sizes || row.尺码ID列表 || [];
-                        const shops = row.shops || row.店铺列表 || [];
+                        const productId = row.product_id || '';
+                        const colors = row.colors || [];
+                        const sizes = row.sizes || [];
+                        const shops = row.shops || [];
                         
                         // 初始化产品选择器
                         await initExportRowProductSelect(subtaskId, index, productId);
@@ -1829,12 +1858,36 @@
                 if (subtask.params.export_rows) {
                     setTimeout(async () => {
                         for (let index = 0; index < subtask.params.export_rows.length; index++) {
-                            const row = subtask.params.export_rows[index];
-                            // 兼容中英文两种字段名（旧数据可能是中文，新数据是英文）
-                            const productId = row.product_id || row.产品ID || '';
-                            const colors = row.colors || row.颜色ID列表 || [];
-                            const sizes = row.sizes || row.尺码ID列表 || [];
-                            const shops = row.shops || row.店铺列表 || [];
+                            let row = subtask.params.export_rows[index];
+                            
+                            // 兼容旧数据：如果只有中文字段名，转换为英文字段名
+                            if (!row.product_id && row.产品ID) {
+                                row.product_id = row.产品ID;
+                            }
+                            if (!row.colors && row.颜色ID列表) {
+                                row.colors = row.颜色ID列表;
+                            }
+                            if (!row.sizes && row.尺码ID列表) {
+                                row.sizes = row.尺码ID列表;
+                            }
+                            if (!row.shops && row.店铺列表) {
+                                row.shops = row.店铺列表;
+                            }
+                            
+                            // 清理中文字段名，确保数据干净
+                            delete row['产品ID'];
+                            delete row['产品名称'];
+                            delete row['尺码ID列表'];
+                            delete row['尺码名称列表'];
+                            delete row['颜色ID列表'];
+                            delete row['颜色中文列表'];
+                            delete row['颜色英文列表'];
+                            delete row['店铺列表'];
+                            
+                            const productId = row.product_id || '';
+                            const colors = row.colors || [];
+                            const sizes = row.sizes || [];
+                            const shops = row.shops || [];
                             
                             // 初始化产品选择器
                             await initExportRowProductSelect(subtask.id, index, productId);
@@ -2907,7 +2960,29 @@
 
                     // 从模板添加子任务
                     result.data.content.forEach(templateSubtask => {
-                        addSubtask(templateSubtask.type, templateSubtask.params);
+                        // 深拷贝参数
+                        const params = JSON.parse(JSON.stringify(templateSubtask.params));
+                        
+                        // 清理 divi_export 的中文字段名
+                        if (templateSubtask.type === 'divi_export' && params.export_rows) {
+                            params.export_rows.forEach(row => {
+                                if (row.产品ID && !row.product_id) row.product_id = row.产品ID;
+                                if (row.颜色ID列表 && !row.colors) row.colors = row.颜色ID列表;
+                                if (row.尺码ID列表 && !row.sizes) row.sizes = row.尺码ID列表;
+                                if (row.店铺列表 && !row.shops) row.shops = row.店铺列表;
+                                
+                                delete row['产品ID'];
+                                delete row['产品名称'];
+                                delete row['尺码ID列表'];
+                                delete row['尺码名称列表'];
+                                delete row['颜色ID列表'];
+                                delete row['颜色中文列表'];
+                                delete row['颜色英文列表'];
+                                delete row['店铺列表'];
+                            });
+                        }
+                        
+                        addSubtask(templateSubtask.type, params);
                     });
 
                     showNotification('模板加载成功', 'success');
@@ -2934,70 +3009,67 @@
                 subtasks: taskData.subtasks.map((subtask, index) => {
                     let params = subtask.params;
                     
-                    // 对 divi_export 类型的子任务，仅在创建任务时转换数据格式（保存草稿时不转换）
+                    // 对 divi_export 类型的子任务，仅在创建任务时添加产品名称（提交时转换）
                     if (convertDiviExport && subtask.type === 'divi_export' && params.export_rows) {
-                        params = {
-                            ...params,
-                            export_rows: params.export_rows.map((row, rowIndex) => {
-                                // 获取产品名称
-                                let productName = '';
-                                const productSelectEl = document.querySelector(`#export-product-select-${subtask.id}-${rowIndex}`);
-                                if (productSelectEl && productSelectEl._productSelectInstance) {
-                                    const productOption = productSelectEl._productSelectInstance.options.find(
-                                        o => o.value === row.product_id
-                                    );
-                                    if (productOption) {
-                                        // 从 "ID - 名称" 格式中提取名称
-                                        productName = productOption.label.split(' - ').slice(1).join(' - ');
-                                    }
+                        const newExportRows = params.export_rows.map((row, rowIndex) => {
+                            // 获取产品名称
+                            let productName = '';
+                            const productSelectEl = document.querySelector(`#export-product-select-${subtask.id}-${rowIndex}`);
+                            if (productSelectEl && productSelectEl._productSelectInstance) {
+                                const productOption = productSelectEl._productSelectInstance.options.find(
+                                    o => o.value === row.product_id
+                                );
+                                if (productOption) {
+                                    productName = productOption.label.split(' - ').slice(1).join(' - ');
                                 }
-                                
-                                // 获取尺码名称列表
-                                const sizeNames = (row.sizes || []).map(sizeId => {
-                                    const sizeSelectEl = document.querySelector(`#export-sizes-select-${subtask.id}-${rowIndex}`);
-                                    if (sizeSelectEl && sizeSelectEl._sizeSelectInstance) {
-                                        const sizeOption = sizeSelectEl._sizeSelectInstance.options.find(
-                                            o => o.value === sizeId
-                                        );
-                                        return sizeOption ? sizeOption.label : '';
-                                    }
-                                    return '';
-                                });
-                                
-                                // 获取颜色中文和英文列表
-                                const colorNames = [];
-                                const colorEnNames = [];
-                                (row.colors || []).forEach(colorId => {
-                                    const colorSelectEl = document.querySelector(`#export-colors-select-${subtask.id}-${rowIndex}`);
-                                    if (colorSelectEl && colorSelectEl._colorSelectInstance) {
-                                        const colorOption = colorSelectEl._colorSelectInstance.options.find(
-                                            o => o.value === colorId
-                                        );
-                                        if (colorOption) {
-                                            // 从 "名称 (en_name)" 格式中解析
-                                            const match = colorOption.label.match(/^(.+) \((.+)\)$/);
-                                            if (match) {
-                                                colorNames.push(match[1]);
-                                                colorEnNames.push(match[2]);
-                                            } else {
-                                                colorNames.push(colorOption.label);
-                                                colorEnNames.push('');
-                                            }
+                            }
+                            
+                            // 获取尺码名称列表
+                            const sizeNames = (row.sizes || []).map(sizeId => {
+                                const sizeSelectEl = document.querySelector(`#export-sizes-select-${subtask.id}-${rowIndex}`);
+                                if (sizeSelectEl && sizeSelectEl._sizeSelectInstance) {
+                                    const sizeOption = sizeSelectEl._sizeSelectInstance.options.find(
+                                        o => o.value === sizeId
+                                    );
+                                    return sizeOption ? sizeOption.label : '';
+                                }
+                                return '';
+                            });
+                            
+                            // 获取颜色中文和英文列表
+                            const colorNames = [];
+                            const colorEnNames = [];
+                            (row.colors || []).forEach(colorId => {
+                                const colorSelectEl = document.querySelector(`#export-colors-select-${subtask.id}-${rowIndex}`);
+                                if (colorSelectEl && colorSelectEl._colorSelectInstance) {
+                                    const colorOption = colorSelectEl._colorSelectInstance.options.find(
+                                        o => o.value === colorId
+                                    );
+                                    if (colorOption) {
+                                        const match = colorOption.label.match(/^(.+) \((.+)\)$/);
+                                        if (match) {
+                                            colorNames.push(match[1]);
+                                            colorEnNames.push(match[2]);
+                                        } else {
+                                            colorNames.push(colorOption.label);
+                                            colorEnNames.push('');
                                         }
                                     }
-                                });
-                                
-                                return {
-                                    产品ID: row.product_id,
-                                    产品名称: productName,
-                                    尺码ID列表: row.sizes || [],
-                                    尺码名称列表: sizeNames,
-                                    颜色ID列表: row.colors || [],
-                                    颜色中文列表: colorNames,
-                                    颜色英文列表: colorEnNames,
-                                    店铺列表: row.shops || []
-                                };
-                            })
+                                }
+                            });
+                            
+                            // 保持英文字段名，后端 webhook 会转换
+                            return {
+                                ...row,  // 保留原始英文字段
+                                product_name: productName,     // 添加产品名称
+                                size_names: sizeNames,         // 添加尺码名称列表
+                                color_names: colorNames,       // 添加颜色中文列表
+                                color_en_names: colorEnNames   // 添加颜色英文列表
+                            };
+                        });
+                        params = {
+                            ...params,
+                            export_rows: newExportRows
                         };
                     }
                     
@@ -3179,20 +3251,17 @@
                         return false;
                     }
                     
-                    // 验证汇出行（使用原始数据验证）
+                    // 验证汇出行
                     const exportRows = subtask.params.export_rows || [];
                     if (exportRows.length === 0) {
                         showNotification(`子任务 #${subtask.order + 1} 请至少添加一个产品`, 'warning');
                         return false;
                     }
                     
-                    // 找到原始子任务数据
-                    const originalSubtask = taskData.subtasks.find(s => s.id === subtask.id);
-                    const originalRows = originalSubtask?.params?.export_rows || [];
-                    
-                    for (let i = 0; i < originalRows.length; i++) {
-                        const row = originalRows[i];
-                        // 兼容中英文两种字段名
+                    for (let i = 0; i < exportRows.length; i++) {
+                        const row = exportRows[i];
+                        
+                        // 兼容中英文两种字段名（加载草稿时可能还没完成转换）
                         const productId = row.product_id || row.产品ID || '';
                         const shops = row.shops || row.店铺列表 || [];
                         
@@ -3304,7 +3373,31 @@
             document.getElementById('taskOwner').value = draftData.owner_id;
 
             draftData.subtasks.forEach(subtask => {
-                addSubtask(subtask.type, subtask.params);
+                // 深拷贝参数，避免修改原始数据
+                const params = JSON.parse(JSON.stringify(subtask.params));
+                
+                // 清理 divi_export 的中文字段名，转换为英文字段名
+                if (subtask.type === 'divi_export' && params.export_rows) {
+                    params.export_rows.forEach(row => {
+                        // 中文字段名转英文（优先使用中文值）
+                        if (row.产品ID !== undefined) row.product_id = row.产品ID;
+                        if (row.颜色ID列表 !== undefined) row.colors = row.颜色ID列表;
+                        if (row.尺码ID列表 !== undefined) row.sizes = row.尺码ID列表;
+                        if (row.店铺列表 !== undefined) row.shops = row.店铺列表;
+                        
+                        // 删除所有中文字段名
+                        delete row['产品ID'];
+                        delete row['产品名称'];
+                        delete row['尺码ID列表'];
+                        delete row['尺码名称列表'];
+                        delete row['颜色ID列表'];
+                        delete row['颜色中文列表'];
+                        delete row['颜色英文列表'];
+                        delete row['店铺列表'];
+                    });
+                }
+                
+                addSubtask(subtask.type, params);
             });
 
             showNotification('草稿已加载', 'success');

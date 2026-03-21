@@ -1222,8 +1222,12 @@ def create_task_api(request):
                         for row in params.get('export_rows', []):
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
-                                '尺码列表': row.get('sizes', []),
-                                '颜色列表': row.get('colors', []),
+                                '产品名称': row.get('product_name', ''),
+                                '尺码ID列表': row.get('sizes', []),
+                                '尺码名称列表': row.get('size_names', []),
+                                '颜色ID列表': row.get('colors', []),
+                                '颜色中文列表': row.get('color_names', []),
+                                '颜色英文列表': row.get('color_en_names', []),
                                 '店铺列表': row.get('shops', [])
                             })
                         
