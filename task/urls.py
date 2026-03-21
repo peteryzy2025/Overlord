@@ -81,4 +81,7 @@ urlpatterns = [
     path('api/tasks/amazon-upload/update-status/', task_detail_views.update_upload_status_api,
          name='update_upload_status'),
     
+    # ===== DIVI 产品相关接口 =====
+    path('api/divi/products/', task_api_views.get_divi_products_api, name='get_divi_products'),
+    path('api/divi/products/<int:product_id>/detail/', task_api_views.get_divi_product_detail_api, name='get_divi_product_detail'),
 ]

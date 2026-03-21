@@ -25,6 +25,8 @@ CUSTOM_DENOISING_SCAN_BATCH_SIZE = 200
 CUSTOM_DENOISING_UPDATE_BATCH_SIZE = 500
 ADD_NOISE_WORDS_CACHE_PREFIX = 'aba:add-noise-words:'
 ABA_TOTAL_COUNT_CACHE_PREFIX = 'aba:total-count:'
+TERM_ID_LIST_CACHE_PREFIX = 'aba:term-ids:'
+TERM_ID_LIST_CACHE_TTL = 180  # 3分钟，翻页缓存
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 
@@ -209,7 +211,28 @@ def _set_search_terms_denoising(search_term_ids, denoising):
         return 0, []
 
     updated_count = queryset.update(denoising=denoising)
+    
+    # 去噪操作后，递增缓存版本号，使旧缓存失效
+    # 使用版本号机制避免逐个删除缓存 key
+    if updated_count > 0:
+        _increment_term_ids_cache_version()
+    
     return updated_count, words
+
+
+def _get_term_ids_cache_version():
+    """获取当前缓存版本号"""
+    version = cache.get(f'{TERM_ID_LIST_CACHE_PREFIX}version')
+    return version or 0
+
+
+def _increment_term_ids_cache_version():
+    """递增缓存版本号（去噪操作后调用）"""
+    try:
+        cache.incr(f'{TERM_ID_LIST_CACHE_PREFIX}version')
+    except ValueError:
+        # 版本号不存在，初始化为 1
+        cache.set(f'{TERM_ID_LIST_CACHE_PREFIX}version', 1, 3600 * 24)
 
 
 def _delete_noise_word(word):
@@ -265,6 +288,85 @@ def _apply_category_filter(queryset, category, term_field='search_term__term'):
         return queryset
 
     return queryset.filter(**{f'{term_field}__iregex': pattern_text})
+
+
+def _get_filtered_term_ids(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
+    """
+    在 SearchTerm 表（900万条）上过滤，返回匹配的 ID 列表
+    组合条件：category AND search_term AND denoising
+    
+    优化思路：避免在 SearchTermMetric 大表（9000万条）上做正则，
+    先在小表过滤出 ID，再用 ID IN 查大表（走索引）
+    
+    新增：优先使用 category 字段索引（如果有数据），否则回退到正则
+    """
+    qs = SearchTerm.objects.using('aba_db').all()
+    
+    # 1. 品类过滤（优先使用 category 字段索引，超快！）
+    if category:
+        if use_category_field:
+            # 先尝试用 category 字段（走索引，O(logN)）
+            qs_category = qs.filter(category=category)
+            # 如果查不到（可能数据未填充），回退到正则
+            if not qs_category.exists():
+                pattern = _build_whole_word_regex(category)
+                if pattern:
+                    qs = qs.filter(term__iregex=pattern)
+            else:
+                qs = qs_category
+        else:
+            # 强制使用正则（备用方案）
+            pattern = _build_whole_word_regex(category)
+            if pattern:
+                qs = qs.filter(term__iregex=pattern)
+    
+    # 2. 搜索词过滤（三种模式）
+    if search_term:
+        if search_mode == '0':  # 精准
+            qs = qs.filter(term__iexact=search_term)
+        elif search_mode == '2':  # 广泛匹配（多关键词，全部匹配）
+            keywords = search_term.strip().split()
+            for keyword in keywords:
+                qs = qs.filter(term__iregex=rf'\y{re.escape(keyword)}\y')
+        else:  # 模糊（默认）
+            qs = qs.filter(term__icontains=search_term)
+    
+    # 3. 去噪状态过滤
+    if noise_status == 'noise':
+        qs = qs.filter(denoising=True)
+    elif noise_status == 'denoised':
+        qs = qs.filter(denoising=False)
+    
+    # 返回所有 ID（不截断）
+    return list(qs.values_list('id', flat=True))
+
+
+def _get_term_ids_cache_key(category, search_term, noise_status, search_mode):
+    """构建缓存 key（包含版本号，去噪后自动失效）"""
+    version = _get_term_ids_cache_version()
+    return f"{TERM_ID_LIST_CACHE_PREFIX}{version}:{category}:{noise_status}:{search_term}:{search_mode}"
+
+
+def _get_filtered_term_ids_with_cache(category='', search_term='', noise_status='all', search_mode='0'):
+    """
+    带缓存的版本：缓存符合条件的搜索词 ID 列表
+    翻页时不需要重新执行 900万条的正则过滤
+    去噪操作后缓存自动失效（版本号机制）
+    """
+    cache_key = _get_term_ids_cache_key(category, search_term, noise_status, search_mode)
+    
+    # 尝试从缓存读取
+    cached_ids = cache.get(cache_key)
+    if cached_ids is not None:
+        return cached_ids
+    
+    # 缓存未命中，执行查询
+    ids = _get_filtered_term_ids(category, search_term, noise_status, search_mode)
+    
+    # 存入缓存（即使为空列表也缓存，防止缓存穿透）
+    cache.set(cache_key, ids, TERM_ID_LIST_CACHE_TTL)
+    
+    return ids
 
 
 def _get_new_words_window_end(week_value):
@@ -910,17 +1012,30 @@ def _build_aba_hot_queryset_context(
     if not week_date:
         return None
 
-    queryset = SearchTermMetric.objects.using('aba_db').select_related('search_term').filter(report_week=week_date)
-    queryset = _apply_search_term_filters(queryset, search_term, search_mode)
+    # 优化：先在 SearchTerm 表（900万条）过滤，得到 ID 列表
+    # 避免在 SearchTermMetric 大表（9000万条）上做正则全表扫描
+    # 使用缓存：翻页时不需要重复执行正则过滤
+    matching_term_ids = _get_filtered_term_ids_with_cache(
+        category=category,
+        search_term=search_term,
+        noise_status=noise_status,
+        search_mode=search_mode
+    )
+    
+    if not matching_term_ids:
+        return {
+            'week_date': week_date,
+            'queryset': SearchTermMetric.objects.using('aba_db').none(),
+            'has_extra_filters': True,
+        }
+    
+    # 用 ID IN 查大表（走索引：report_week + search_term_id）
+    queryset = SearchTermMetric.objects.using('aba_db').filter(
+        report_week=week_date,
+        search_term_id__in=matching_term_ids
+    ).select_related('search_term')
 
-    if category:
-        queryset = _apply_category_filter(queryset, category)
-
-    if noise_status == 'noise':
-        queryset = queryset.filter(search_term__denoising=True)
-    elif noise_status == 'denoised':
-        queryset = queryset.filter(search_term__denoising=False)
-
+    # 最后应用热词过滤（爆发词/黄金词等）
     queryset = _apply_hot_word_filter(
         queryset,
         week_date,
@@ -1032,7 +1147,12 @@ def _launch_aba_total_count_task(filters):
 @require_http_methods(["GET"])
 def get_aba_data_api(request):
     """
-    获取 ABA 数据列表 API
+    获取 ABA 数据列表 API - 内存分页优化版
+    
+    优化策略：
+    1. 先获取所有匹配的搜索词 ID（利用缓存）
+    2. 一次性查出所有数据到内存
+    3. Python 内存分页（O(1) 任意页码）
     
     参数:
         week: 周期（日期，如 2026-02-15）
@@ -1059,41 +1179,53 @@ def get_aba_data_api(request):
         if not week:
             return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
 
-        context = _build_aba_hot_queryset_context(
-            week=week,
-            search_term=search_term,
-            category=category,
-            noise_status=noise_status,
-            word_filter=word_filter,
-            search_mode=search_mode,
-        )
-        if not context:
+        week_date = _parse_week_value(week)
+        if not week_date:
             return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
 
-        week_date = context['week_date']
-        queryset = context['queryset']
-
-        cached_total = None
-        cached_total_raw = request.GET.get('cached_total', '').strip()
-        if cached_total_raw:
-            try:
-                cached_total = max(int(cached_total_raw), 0)
-            except ValueError:
-                cached_total = None
-
-        total = cached_total if cached_total is not None else 0
-        has_known_total = cached_total is not None
-        total_pages = (total + page_size - 1) // page_size if has_known_total and total > 0 else 0
-        use_simple_pagination = not has_known_total
-
-        # 排序：按排名升序
-        queryset = queryset.order_by('search_frequency_rank')
-
+        # Step 1: 在 SearchTerm 小表过滤，获取 ID 列表（带缓存）
+        matching_term_ids = _get_filtered_term_ids_with_cache(
+            category=category,
+            search_term=search_term,
+            noise_status=noise_status,
+            search_mode=search_mode
+        )
+        
+        if not matching_term_ids:
+            return JsonResponse(_build_empty_aba_response(page, page_size))
+        
+        # Step 2: 先构建基础 queryset
+        queryset = SearchTermMetric.objects.using('aba_db').filter(
+            report_week=week_date,
+            search_term_id__in=matching_term_ids
+        ).select_related('search_term').order_by('search_frequency_rank')
+        
+        # Step 3: 应用热词过滤（仍在数据库层，避免内存处理复杂逻辑）
+        if word_filter and word_filter != 'all':
+            queryset = _apply_hot_word_filter(
+                queryset,
+                week_date,
+                word_filter,
+                search_term=search_term,
+                search_mode=search_mode,
+                category=category,
+                noise_status=noise_status,
+            )
+        
+        # Step 4: 一次性查出所有数据到内存
+        all_metrics = list(queryset)
+        
+        # 计算总数
+        total = len(all_metrics)
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+        use_simple_pagination = False  # 内存分页，总有精确总数
+        
+        # Step 5: 内存分页（O(1) 任意页码）
         offset = (page - 1) * page_size
-        page_metrics = list(queryset[offset:offset + page_size + 1])
-        has_next = len(page_metrics) > page_size
-        if has_next:
-            page_metrics = page_metrics[:page_size]
+        page_metrics = all_metrics[offset:offset + page_size]
+        has_next = offset + page_size < total
+        
+        # Step 5: 查询趋势数据（仅当前页的数据）
 
         page_search_term_ids = [metric.search_term_id for metric in page_metrics]
         trend_by_term_id = defaultdict(list)
