@@ -1217,7 +1217,7 @@ def create_task_api(request):
                             '定制行列表': custom_rows_cn
                         }
                     elif st.subtask_type == 'divi_export':
-                        # 迪唯汇出 - 转换汇出行数据
+                        # 迪唯汇出上架-Amazon切表版 - 转换汇出行数据
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
                             export_rows_cn.append({
@@ -1238,6 +1238,7 @@ def create_task_api(request):
                     elif st.subtask_type == 'divi_gallery_upload':
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
+                            '图库命名': params.get('gallery_name', ''),
                             '本地路径': params.get('local_gallery_path', '')
                         }
                     elif st.subtask_type == 'divi_multi_side_custom':
@@ -1290,7 +1291,7 @@ def create_task_api(request):
                     # 类型映射为中文显示名
                     type_display_map = {
                         'divi_custom': '迪唯批量定制',
-                        'divi_export': '迪唯汇出',
+                        'divi_export': '迪唯汇出上架-Amazon切表版',
                         'divi_gallery_upload': 'DIVI图库上传',
                         'divi_multi_side_custom': '迪唯多面定制',
                         'custom_upload': 'Temu定制上架',

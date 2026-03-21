@@ -115,7 +115,7 @@ class SubTaskType(models.TextChoices):
     DIVI_AUTO_UPLOAD = 'divi_auto_upload', 'Divi自动上架'  # 兼容旧数据
     DIVI_GALLERY_UPLOAD = 'divi_gallery_upload', 'DIVI图库上传'
     DIVI_CUSTOM = 'divi_custom', '迪唯定制'
-    DIVI_EXPORT = 'divi_export', '迪唯汇出'
+    DIVI_EXPORT = 'divi_export', '迪唯汇出上架-Amazon切表版'
 
 
 class SubTaskStatus(models.TextChoices):
