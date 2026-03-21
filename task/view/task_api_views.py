@@ -1682,3 +1682,69 @@ def delete_template_api(request, template_id):
             'success': False,
             'message': f'删除模板失败: {str(e)}'
         }, status=500)
+
+
+
+# ========== DIVI 产品相关接口 ==========
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_products_api(request):
+    """
+    获取所有 DIVI 产品列表（用于下拉框）
+    GET /api/divi/products/
+    """
+    try:
+        from divi.models import Product
+        products = Product.objects.all().order_by('name').values('id', 'name')
+        return JsonResponse({
+            'success': True,
+            'data': list(products)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取产品列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_product_detail_api(request, product_id):
+    """
+    获取单个 DIVI 产品的颜色和尺寸详情
+    GET /api/divi/products/{product_id}/detail/
+    """
+    try:
+        from divi.models import Product
+        product = Product.objects.get(id=product_id)
+        
+        colors = list(product.colors.values(
+            'color_classify_id', 
+            'color_name', 
+            'en_name'
+        ))
+        sizes = list(product.sizes.values(
+            'product_size_id', 
+            'product_size_name'
+        ))
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'product_id': product.id,
+                'product_name': product.name,
+                'colors': colors,
+                'sizes': sizes
+            }
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': '产品不存在'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取产品详情失败: {str(e)}'
+        }, status=500)
