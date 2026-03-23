@@ -341,6 +341,7 @@ class OperationalAccount(models.Model):
     ziniao_password = models.CharField('紫鸟密码', max_length=100, blank=True, null=True)
 
     # 迪唯账号信息
+    divi_username = models.CharField('迪唯用户名', max_length=100, blank=True, null=True)
     diwei_account = models.CharField('迪唯账号', max_length=100, blank=True, null=True)
     diwei_password = models.CharField('迪唯密码', max_length=100, blank=True, null=True)
 
