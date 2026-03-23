@@ -135,7 +135,63 @@
             margin-left: auto;
         }
 
+        .filter-section {
+            display: block !important;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: end;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row > .filter-group {
+            flex: 0 1 auto;
+            width: auto;
+        }
+
+        body .filter-section > .filter-row > .filter-actions {
+            display: flex !important;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: auto;
+            width: auto;
+            flex: 0 1 200px;
+            min-width: 200px;
+            justify-content: flex-end;
+        }
+
+        body .filter-section > .filter-row > .filter-group:nth-child(1) {
+            flex: 0 1 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+        }
+
+        body .filter-section > .filter-row > .filter-group:nth-child(2),
+        body .filter-section > .filter-row > .filter-group:nth-child(3),
+        body .filter-section > .filter-row > .filter-group:nth-child(4),
+        body .filter-section > .filter-row > .filter-group:nth-child(5),
+        body .filter-section > .filter-row > .filter-group:nth-child(6) {
+            flex: 0 1 142px !important;
+            min-width: 142px !important;
+            max-width: 142px !important;
+        }
+
+        body .filter-section > .filter-row > .filter-group:nth-child(7) {
+            flex: 0 1 150px !important;
+            min-width: 150px !important;
+            max-width: 150px !important;
+        }
+
         @media (max-width: 768px) {
+            body .filter-section > .filter-row > .filter-group,
+            body .filter-section > .filter-row > .filter-actions {
+                min-width: 100% !important;
+            }
+
             #paginationContainer .pagination-new {
                 width: 100%;
                 justify-content: flex-start;
@@ -391,15 +447,15 @@
             </div>
         {% endif %}
 
-        <div class="control-panel">
-            <div class="filter-row" style="flex-wrap: wrap;">
-                <div class="filter-group" style="flex: 1; min-width: 150px;">
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-group" style="flex: 1 1 220px; min-width: 220px; max-width: none;">
                     <label class="filter-label">需求名称</label>
                     <input type="text" class="form-control" id="keywordFilter" placeholder="输入需求名称搜索..."
                            value="{{ current_filters.keyword }}" onkeyup="if(event.key==='Enter') applyFilters()">
                 </div>
 
-                <div class="filter-group" style="min-width: 120px;">
+                <div class="filter-group" style="min-width: 220px; max-width: none;">
                     <label class="filter-label">状态</label>
                     <div class="select-wrapper">
                         <select class="form-select" id="statusFilter" onchange="applyFilters()">
@@ -504,11 +560,9 @@
                     <input type="date" class="form-control" id="customEnd" value="{{ current_filters.custom_end }}">
                 </div>
 
-                <div class="filter-group" style="align-self: flex-end; min-width: 200px;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
-                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置" aria-label="重置"></button>
-                    </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置" aria-label="重置"></button>
                 </div>
             </div>
         </div>
@@ -831,7 +885,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         let pendingSaveData = null;
         let needUnclaimReason = false;

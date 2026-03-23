@@ -1,6 +1,6 @@
-from django.urls import path
+﻿from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
-from theme.view import views, views_vocabulary, views_trend, views_dw_data
+from theme.view import views, views_vocabulary, views_trend, views_dw_data, views_new_release
 
 
 app_name = 'theme'
@@ -8,6 +8,7 @@ app_name = 'theme'
 urlpatterns = [
     # 页面渲染
     path('theme/products/', views.product_list_page, name='theme_product_list'),
+    path('theme/new-release/', views_new_release.new_release_page, name='theme_new_release_page'),
     path('vocabulary/tro-table/', views_vocabulary.tro_table_page, name='tro_table_page'),
     path('vocabulary/trademark-info/', views_vocabulary.trademark_info_page, name='trademark_info_page'),
     path('Theme/trend',views_trend.trend_page, name='trend_page'),
@@ -25,6 +26,8 @@ urlpatterns = [
 
     # 产品数据API
     path('api/amazon-products/', views.api_amazon_products, name='api_amazon_products'),
+    path('api/external/amazon-products/', views.external_api_amazon_products, name='external_api_amazon_products'),
+    path('api/theme-new-release/', views_new_release.api_new_release_list, name='api_new_release_list'),
     path('api/amazon-products/batch-risk-check/', views.api_batch_risk_check, name='api_batch_risk_check'),
 
     # 产品操作API - 放在详情API之前
@@ -67,3 +70,4 @@ urlpatterns = [
     path('api/market-categories/', views_dw_data.api_market_categories, name='api_market_categories'),
     path('api/niche-markets/', views_dw_data.api_niche_markets, name='api_niche_markets'),
 ]
+

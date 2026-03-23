@@ -4,7 +4,7 @@
 {% block title %}Amazon店铺上货情况 - Overlord{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <style>
         /* 状态标签样式 */
         .status-badge.processing {
@@ -54,6 +54,33 @@
         }
 
         /* 自定义日期展开后占据足够空间 */
+        body .filter-section {
+            display: block !important;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row > .filter-group {
+            flex: 1 1 0%;
+            min-width: 260px;
+            max-width: 300px;
+        }
+
+        body .filter-section > .filter-row > .filter-actions {
+            display: flex !important;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: auto;
+            width: auto;
+        }
+
         #customDateGroup {
             min-width: 520px !important;
             flex: 1.5 1 520px !important;
@@ -74,9 +101,14 @@
         }
 
         @media (max-width: 992px) {
+            body .filter-section > .filter-row > .filter-group {
+                flex: 1 1 100%;
+                min-width: 100%;
+                max-width: none;
+            }
+
             #customDateGroup {
                 min-width: 100% !important;
-                flex-basis: 100% !important;
             }
         }
 
@@ -217,7 +249,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         // ===== 全局变量定义 =====
         let currentFilters = {

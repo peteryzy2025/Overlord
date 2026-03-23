@@ -115,24 +115,46 @@
             color: var(--accent-color);
         }
 
-        .aba-filter-row {
-            flex-wrap: nowrap;
-            align-items: flex-end;
+        .filter-section {
+            display: block !important;
         }
 
-        .aba-filter-row .filter-group {
-            min-width: 0;
-            max-width: none;
+        .filter-section > .filter-row.aba-filter-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
+            gap: 1rem;
+        }
+
+        .filter-section > .filter-row.aba-filter-row > .filter-group {
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+            width: auto !important;
+            max-width: none !important;
+        }
+
+        .filter-section > .filter-row.aba-filter-row > .filter-actions {
+            display: flex !important;
+            align-items: flex-end;
+            gap: 0.5rem;
+            margin-left: 0;
+            align-self: flex-end;
+            flex: 0 0 auto !important;
+            width: auto !important;
+            justify-self: auto;
+            white-space: nowrap;
         }
 
         .aba-filter-week-group,
         .aba-filter-category-group {
-            flex: 0 0 220px;
-            max-width: 220px;
+            flex: 1 1 0 !important;
+            width: auto;
+            max-width: none;
         }
 
         .aba-filter-search-group {
-            flex: 1 1 420px;
+            flex: 1 1 0 !important;
+            min-width: 0;
             max-width: none;
         }
 
@@ -632,8 +654,8 @@
             display: none !important;
         }
 
-        .aba-quick-filter-row {
-            display: flex;
+        .filter-section > .aba-quick-filter-row {
+            display: flex !important;
             align-items: center;
             gap: 0.875rem;
             margin: 1rem 0 0;
@@ -679,7 +701,7 @@
         }
 
         @media (max-width: 1400px) {
-            .aba-filter-row {
+            .filter-section > .filter-row.aba-filter-row {
                 flex-wrap: wrap;
             }
 
@@ -691,6 +713,10 @@
 
             .aba-filter-search-group {
                 flex: 1 1 100%;
+            }
+
+            .filter-section > .filter-row.aba-filter-row > .filter-actions {
+                flex: 0 1 auto;
             }
 
             #paginationContainer .pagination-new {
