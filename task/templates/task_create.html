@@ -624,14 +624,11 @@
                     margin-bottom: 0.75rem;
                     border: 1px solid var(--border-color);">
                     
-                    <!-- 产品ID输入 -->
-                    <div class="form-group" style="margin: 0; max-width: 300px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品ID</label>
-                        <input type="text" class="form-control"
-                               id="custom-product-id-${subtaskId}-${rowIndex}"
-                               placeholder="输入产品ID"
-                               value="${rowData.product_id || ''}"
-                               oninput="updateCustomRow(${subtaskId}, ${rowIndex}, 'product_id', this.value)">
+                    <!-- 产品选择下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 1.5; min-width: 180px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品</label>
+                        <div id="custom-product-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择产品"></div>
                     </div>
 
                     <!-- 模式单选下拉框 -->
@@ -679,6 +676,39 @@
                     </div>
                 </div>
             `;
+        }
+
+        // ===== 初始化定制行产品选择器 =====
+        async function initCustomRowProductSelect(subtaskId, rowIndex, selectedProductId = null) {
+            const selectEl = document.querySelector(`#custom-product-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            // 加载产品列表
+            const products = await loadDiviProducts();
+            const productOptions = products.map(p => ({
+                value: String(p.id),
+                label: `${p.id} - ${p.name}`
+            }));
+
+            const productSelect = new SearchableSelect(`#custom-product-select-${subtaskId}-${rowIndex}`, {
+                options: productOptions,
+                multiple: false,
+                placeholder: '选择产品'
+            });
+
+            if (selectedProductId) {
+                productSelect.setValue(String(selectedProductId));
+                // 手动更新 taskData（setValue 不会触发 onChange）
+                updateCustomRow(subtaskId, rowIndex, 'product_id', String(selectedProductId));
+            }
+
+            // 监听变化
+            productSelect.onChange = (value) => {
+                updateCustomRow(subtaskId, rowIndex, 'product_id', value);
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._productSelectInstance = productSelect;
         }
 
         // ===== 初始化定制行模式选择器 =====
@@ -730,8 +760,9 @@
                 const rowHtml = renderCustomRow(subtaskId, rowIndex, newRow);
                 container.insertAdjacentHTML('beforeend', rowHtml);
                 
-                // 初始化新行的模式选择器
-                setTimeout(() => {
+                // 初始化新行的产品选择器和模式选择器
+                setTimeout(async () => {
+                    await initCustomRowProductSelect(subtaskId, rowIndex, '');
                     initCustomRowModeSelect(subtaskId, rowIndex, 'fill');
                 }, 0);
             }
@@ -814,9 +845,10 @@
             if (container) {
                 container.innerHTML = subtask.params.custom_rows.map((row, index) => renderCustomRow(subtaskId, index, row)).join('');
                 
-                // 重新初始化所有模式选择器
+                // 重新初始化所有产品选择器和模式选择器
                 subtask.params.custom_rows.forEach((row, index) => {
-                    setTimeout(() => {
+                    setTimeout(async () => {
+                        await initCustomRowProductSelect(subtaskId, index, row.product_id || '');
                         initCustomRowModeSelect(subtaskId, index, row.mode || 'fill');
                     }, 0);
                 });
@@ -1886,12 +1918,16 @@
                     }
                 }
 
-                // 初始化定制行模式选择器
+                // 初始化定制行产品选择器和模式选择器
                 if (subtask.params.custom_rows) {
-                    setTimeout(() => {
-                        subtask.params.custom_rows.forEach((row, index) => {
+                    setTimeout(async () => {
+                        for (let index = 0; index < subtask.params.custom_rows.length; index++) {
+                            const row = subtask.params.custom_rows[index];
+                            // 先初始化产品选择器
+                            await initCustomRowProductSelect(subtask.id, index, row.product_id || '');
+                            // 再初始化模式选择器
                             initCustomRowModeSelect(subtask.id, index, row.mode || 'fill');
-                        });
+                        }
                     }, 0);
                 }
             }
