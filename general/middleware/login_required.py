@@ -36,6 +36,10 @@ class LoginRequiredMiddleware:
         if request.path_info.startswith('/api/external/amazon-shops/'):
             return self.get_response(request)
         
+        # 放行迪唯账号查询接口
+        if request.path_info.startswith('/api/external/divi-account/'):
+            return self.get_response(request)
+        
         # 放行 amazon/api 路径（影刀调用巡店接口）
         if request.path_info.startswith('/amazon/api/'):
             return self.get_response(request)
