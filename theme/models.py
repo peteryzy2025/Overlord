@@ -495,8 +495,19 @@ class AmazonNewReleaseRank(models.Model):
     category = models.CharField(max_length=100, db_index=True,verbose_name="产品分类")
     image_url = models.URLField(max_length=500, verbose_name='图片链接')
     launch_date = models.DateField(null=True, blank=True, verbose_name='上架日期')
+    summary_subject = models.ForeignKey(
+        'ThemeSummary',
+        models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='summary_subject',
+        verbose_name='汇总主题'
+    )
+
+    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    
     class Meta:
         db_table = 'theme_amazon_new_release_rank'
         verbose_name = '亚马逊新品榜主题表'
@@ -504,6 +515,22 @@ class AmazonNewReleaseRank(models.Model):
 
     def __str__(self):
         return f"{self.asin} - {self.title[:50]}"
+
+class ThemeSummary(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name='ID')
+    summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
+
+    class Meta:
+        db_table = 'theme_summary'
+        verbose_name = '主题汇总'
+        indexes = [
+            models.Index(fields=['summary_subject_title']),
+        ]
+
+    def __str__(self):
+        return f'{self.summary_subject_title}'
+
+
 
 class ThemeNewDailyData(models.Model):
     """主题每日数据"""
