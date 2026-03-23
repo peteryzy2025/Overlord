@@ -2217,6 +2217,7 @@
                 startPage = Math.max(1, endPage - maxVisiblePages + 1);
             }
 
+            // 内存分页：支持任意跳转，所有按钮可用
             buttons.push(`
                 <button class="pagination-btn-new" onclick="goToPage(1)" ${currentPage === 1 ? 'disabled' : ''}>首页</button>
                 <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
@@ -2247,7 +2248,7 @@
             }
 
             buttons.push(`
-                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages || !hasNextPage ? 'disabled' : ''}>下一页</button>
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>下一页</button>
                 <button class="pagination-btn-new" onclick="goToPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>尾页</button>
             `);
 
