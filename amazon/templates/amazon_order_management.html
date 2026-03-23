@@ -4,7 +4,7 @@
 {% block title %}亚马逊订单管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <style>
         :root {
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -16,6 +16,47 @@
             --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
             --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
             --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+
+        .tab-content .control-panel {
+            display: block !important;
+            width: 100%;
+        }
+
+        .tab-content .control-panel > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .tab-content .control-panel > .filter-row > .filter-group {
+            flex: 1 1 0%;
+            min-width: 260px;
+            max-width: 300px;
+        }
+
+        .tab-content #customDateGroup,
+        .tab-content #customDateGroup2 {
+            min-width: 260px;
+            flex: 1 1 0%;
+        }
+
+        .tab-content .control-panel > .filter-row > .filter-actions {
+            display: flex !important;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: 0;
+            width: auto;
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 992px) {
+            .tab-content .control-panel > .filter-row > .filter-group {
+                min-width: 100%;
+                max-width: none;
+            }
         }
 
         .amazon-order-main {
@@ -38,22 +79,6 @@
         .page-subtitle {
             color: var(--text-secondary);
             margin-top: 0.5rem;
-        }
-
-        .control-panel {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 1.5rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
         }
 
 
@@ -662,11 +687,6 @@
                 margin: 10px;
             }
 
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
             #paginationControls .pagination-new {
                 width: 100%;
                 justify-content: flex-start;
@@ -900,7 +920,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         let allOperators = [];
         let allGroups = [];

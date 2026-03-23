@@ -39,29 +39,6 @@
             margin-top: 0.5rem;
         }
 
-        .control-panel {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 1.5rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 140px;
-        }
-
         .filter-label {
             font-weight: 500;
             color: var(--text-primary);
@@ -120,6 +97,40 @@
             display: flex;
             gap: 0.5rem;
             align-items: flex-end;
+            justify-self: start;
+            width: max-content;
+        }
+
+        .control-panel {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+        }
+
+        body .control-panel {
+            display: block !important;
+            width: 100%;
+        }
+
+        body .control-panel > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        body .control-panel > .filter-row > .filter-group {
+            flex: 1 1 0%;
+            min-width: 260px;
+            max-width: 300px;
+        }
+
+        body .control-panel > .filter-row > .filter-actions {
+            margin-left: auto;
         }
 
         .select-wrapper {
@@ -657,6 +668,12 @@
         }
 
         @media (max-width: 992px) {
+            body .control-panel > .filter-row > .filter-group {
+                flex: 1 1 100%;
+                min-width: 100%;
+                max-width: none;
+            }
+
             .page-header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -669,10 +686,6 @@
                 margin: 10px;
             }
 
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
         }
 
         @media (max-width: 576px) {
@@ -877,7 +890,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         let allOperators = [];
         let allGroups = [];

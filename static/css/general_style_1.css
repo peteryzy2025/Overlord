@@ -1,4 +1,4 @@
-/**
+﻿/**
  * general_style_1.css
  * 管理后台页面公共样式
  * 适用于：店铺管理、人员管理、操作日志、公告管理等页面
@@ -15,11 +15,24 @@
 
 .tab-content {
     display: block;
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: 100%;
     width: 100%;
-    padding: 2rem;
+    padding: 20px;
     box-sizing: border-box;
     overflow-x: hidden;
+}
+
+.tab-content > .page-header,
+.tab-content > .stats-dashboard,
+.tab-content > .filter-section,
+.tab-content > .control-panel,
+.tab-content > .data-section,
+.tab-content > .pagination-container {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 /* ============================================
@@ -71,20 +84,46 @@
     border: 1px solid var(--border-color);
 }
 
-.filter-row {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-    flex-wrap: wrap;
+.filter-section,
+.control-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 300px));
+    align-items: end;
+    justify-content: start;
+    gap: 0.875rem 1rem;
 }
 
-.filter-row-main {
+.filter-row,
+.filter-row-main,
+.filter-actions-row {
+    display: contents;
+}
+
+.filter-section > .filter-row,
+.filter-section > .filter-row-main,
+.filter-section > .filter-actions-row,
+.control-panel > .filter-row,
+.control-panel > .filter-row-main,
+.control-panel > .filter-actions-row {
+    display: contents !important;
+}
+
+.filter-section > .quick-date-buttons,
+.filter-section > .date-inputs-row,
+.control-panel > .quick-date-buttons,
+.control-panel > .date-inputs-row {
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap;
     align-items: flex-end;
-    flex-wrap: nowrap;
-    position: relative;
-    padding-right: 50px;
+    gap: 0.875rem 1rem;
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.filter-section > .date-inputs-row .filter-group,
+.control-panel > .date-inputs-row .filter-group {
+    flex: 0 1 300px;
+    width: auto;
 }
 
 .filter-row-secondary {
@@ -92,6 +131,7 @@
     gap: 1rem;
     align-items: flex-end;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
     margin-top: 1rem;
     padding-top: 1rem;
     border-top: 1px dashed var(--border-color);
@@ -105,9 +145,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    min-width: 260px;
+    min-width: 0;
+    width: 100%;
     max-width: 300px;
-    flex: 1;
 }
 
 /* 筛选区域的 input 高度与 searchable-select 保持一致 */
@@ -120,8 +160,9 @@
     display: flex;
     flex-direction: row;
     gap: 0.5rem;
-    margin-left: auto;
     align-self: flex-end;
+    justify-self: start;
+    width: max-content;
 }
 
 /* 修复筛选按钮高度与输入框一致 */
@@ -270,11 +311,15 @@ a.btn.gs-btn-icon-only::before {
 }
 
 .filter-actions-main {
-    position: absolute;
-    right: 0;
-    bottom: 0;
+    position: static;
+    right: auto;
+    bottom: auto;
     display: flex;
     gap: 0.5rem;
+    margin-left: 0;
+    align-self: flex-end;
+    justify-self: start;
+    width: max-content;
 }
 
 .filter-actions-secondary {
@@ -282,13 +327,6 @@ a.btn.gs-btn-icon-only::before {
     gap: 0.5rem;
     align-self: flex-end;
     margin-left: auto;
-}
-
-/* 可复用：当筛选按钮需要独占一行时，放在该容器内即可右对齐显示 */
-.filter-actions-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 0.875rem;
 }
 
 .filter-actions-row .filter-actions {
@@ -1788,20 +1826,36 @@ a.btn.gs-btn-icon-only::before {
         align-items: flex-start;
     }
 
-    .filter-row,
-    .filter-row-main,
-    .filter-row-secondary {
-        flex-direction: column;
-        align-items: stretch;
+    .filter-section,
+    .control-panel {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .filter-section > .quick-date-buttons,
+    .filter-section > .date-inputs-row,
+    .control-panel > .quick-date-buttons,
+    .control-panel > .date-inputs-row {
+        gap: 1rem;
     }
 
     .filter-group {
         min-width: auto;
         width: 100%;
+        max-width: none;
     }
 
     .filter-actions,
     .filter-actions-secondary {
+        margin-left: 0;
+        margin-top: 1rem;
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+    .filter-actions-row,
+    .filter-actions-main,
+    .filter-actions-secondary {
+        width: 100%;
         margin-left: 0;
         margin-top: 1rem;
         justify-content: flex-end;
@@ -2318,3 +2372,5 @@ a.btn.gs-btn-icon-only::before {
     margin-bottom: 1rem;
     display: block;
 }
+
+

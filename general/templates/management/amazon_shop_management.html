@@ -195,29 +195,40 @@
         /* Amazon 顶部筛选卡片使用紧凑换行布局，避免字段溢出卡片 */
         #amazon-shops-tab .filter-section {
             overflow: visible;
+            display: block;
         }
 
-        #amazon-shops-tab .filter-row-main {
-            display: flex;
-            flex-wrap: wrap;
+        #amazon-shops-tab .filter-section > .filter-row-main {
+            display: grid !important;
+            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
             gap: 0.875rem 1rem;
             align-items: flex-end;
             padding-right: 0;
         }
 
-        #amazon-shops-tab .filter-row-secondary {
+        #amazon-shops-tab .filter-section > .filter-row-secondary {
             display: none;
-            flex-wrap: wrap;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 0.875rem 1rem;
             align-items: flex-end;
             padding-right: 0;
+            margin-top: 0.875rem;
         }
 
-        #amazon-shops-tab .filter-row-secondary.expanded {
-            display: flex;
+        #amazon-shops-tab .filter-section > .filter-row-secondary.expanded {
+            display: grid !important;
         }
 
-        #amazon-shops-tab .filter-group {
+        #amazon-shops-tab .filter-actions-row {
+            display: grid !important;
+            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
+            gap: 0.875rem 1rem;
+            align-items: flex-end;
+            margin-top: 0.875rem;
+        }
+
+        #amazon-shops-tab .filter-row-main > .filter-group,
+        #amazon-shops-tab .filter-row-secondary > .filter-group {
             flex: 1 1 220px;
             min-width: 220px;
             max-width: none;
@@ -245,17 +256,51 @@
         }
 
         #amazon-shops-tab .expand-toggle {
-            flex: 0 0 auto;
+            width: 42px;
+            min-width: 42px;
             align-self: flex-end;
         }
 
         #amazon-shops-tab .filter-actions {
             margin-left: 0;
-            flex: 0 0 auto;
             align-self: flex-end;
+            grid-column: 7;
+            justify-self: end;
+        }
+
+        #amazon-shops-tab .filter-row-secondary.expanded .filter-actions {
+            grid-column: auto;
+            justify-self: start;
+            align-self: end;
+        }
+
+        #amazon-shops-tab #shopDateRangeGroup {
+            grid-column: span 2 !important;
+            max-width: none !important;
+        }
+
+        #amazon-shops-tab .filter-row-secondary.expanded > .filter-actions {
+            grid-column: 3;
+        }
+
+        #amazon-shops-tab .filter-section.expanded .filter-actions-row {
+            display: none !important;
         }
 
         @media (max-width: 900px) {
+            #amazon-shops-tab .filter-section > .filter-row-main {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            #amazon-shops-tab .filter-section > .filter-row-secondary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            #amazon-shops-tab .filter-actions-row,
+            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
             #amazon-shops-tab .filter-group {
                 flex-basis: 200px;
                 min-width: 200px;
@@ -263,15 +308,20 @@
         }
 
         @media (max-width: 640px) {
-            #amazon-shops-tab .filter-group,
-            #amazon-shops-tab .filter-actions,
-            #amazon-shops-tab .expand-toggle {
-                flex-basis: 100%;
-                min-width: 0;
+            #amazon-shops-tab .filter-section > .filter-row-main,
+            #amazon-shops-tab .filter-section > .filter-row-secondary {
+                grid-template-columns: 1fr;
+            }
+
+            #amazon-shops-tab .filter-actions-row,
+            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
+                grid-template-columns: 1fr;
             }
 
             #amazon-shops-tab .filter-actions {
+                grid-column: 1;
                 justify-content: flex-end;
+                justify-self: end;
             }
         }
 
@@ -372,7 +422,7 @@
                     <label class="filter-label">邮箱账号</label>
                     <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
                 </div>
-                <div class="filter-group">
+                <div class="filter-group" id="shopDateRangeGroup">
                     <label class="filter-label">下店日期范围</label>
                     <div class="date-range-group">
                         <input type="date" class="form-control" id="shopDateStartFilter">
@@ -579,7 +629,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // 全局变量
@@ -777,17 +827,40 @@
         browserSelect.onChange = () => filterAmazonShops();
     }
 
+    function syncFilterActionsPlacement(expanded) {
+        const secondaryRow = document.getElementById('secondaryFilters');
+        const actionsRow = document.querySelector('#amazon-shops-tab .filter-actions-row');
+        const actions = document.querySelector('#amazon-shops-tab .filter-actions');
+
+        if (!secondaryRow || !actionsRow || !actions) return;
+
+        if (expanded) {
+            if (actions.parentElement !== secondaryRow) {
+                secondaryRow.appendChild(actions);
+            }
+        } else {
+            if (actions.parentElement !== actionsRow) {
+                actionsRow.appendChild(actions);
+            }
+        }
+    }
+
     function toggleExpand() {
         const secondaryRow = document.getElementById('secondaryFilters');
         const icon = document.getElementById('expandIcon');
+        const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
         const isExpanded = secondaryRow.classList.contains('expanded');
 
         if (isExpanded) {
             secondaryRow.classList.remove('expanded');
+            if (filterSection) filterSection.classList.remove('expanded');
+            syncFilterActionsPlacement(false);
             icon.className = 'fas fa-chevron-down';
             localStorage.setItem('amazon_filter_expanded', 'false');
         } else {
             secondaryRow.classList.add('expanded');
+            if (filterSection) filterSection.classList.add('expanded');
+            syncFilterActionsPlacement(true);
             icon.className = 'fas fa-chevron-up';
             localStorage.setItem('amazon_filter_expanded', 'true');
         }
@@ -797,8 +870,11 @@
         const expanded = localStorage.getItem('amazon_filter_expanded') === 'true';
         if (expanded) {
             document.getElementById('secondaryFilters').classList.add('expanded');
+            const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
+            if (filterSection) filterSection.classList.add('expanded');
             document.getElementById('expandIcon').className = 'fas fa-chevron-up';
         }
+        syncFilterActionsPlacement(expanded);
     }
 
     // ==========================================

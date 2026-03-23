@@ -4,7 +4,7 @@
 {% block title %}任务列表 - Divi智管{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
 <style>
     /* 复用 task_create 的容器样式 */
     .task-list-container {
@@ -454,24 +454,11 @@
         overflow-y: auto;
     }
 
-    /* 筛选区样式 */
-    .filter-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        align-items: end;
-    }
-
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .filter-label {
-        font-weight: 500;
-        color: var(--text-primary);
-        font-size: 0.9rem;
+    .task-filter-panel {
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
     }
 
     /* 列表容器 */
@@ -610,10 +597,6 @@
             padding: 1rem;
         }
 
-        .filter-row {
-            grid-template-columns: 1fr;
-        }
-
         .task-table th,
         .task-table td {
             padding: 0.75rem 0.5rem;
@@ -747,8 +730,9 @@
 
     <!-- 筛选面板 -->
     <div class="task-card">
-        <div class="filter-row">
-            <div class="filter-group" style="min-width: 280px;">
+        <div class="control-panel task-filter-panel">
+            <div class="filter-row">
+                <div class="filter-group">
                 <label class="filter-label">搜索</label>
                 <div style="position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
@@ -756,35 +740,36 @@
                            style="padding-left: 2.5rem; width: 100%;"
                            onkeyup="handleSearch(event)">
                 </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">状态筛选</label>
+                    <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">创建人</label>
+                    <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">时间范围</label>
+                    <div id="dateRangeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
             </div>
 
-            <div class="filter-group">
-                <label class="filter-label">状态筛选</label>
-                <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">创建人</label>
-                <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">时间范围</label>
-                <div id="dateRangeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
-            </div>
-
-            <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
-                <label class="filter-label">开始日期</label>
-                <input type="date" class="form-control" id="startDate">
-            </div>
-
-            <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
-                <label class="filter-label">结束日期</label>
-                <input type="date" class="form-control" id="endDate">
-            </div>
-
-            <div class="filter-group">
-                <div class="filter-actions-secondary">
+            <div class="filter-actions-row">
+                <div class="filter-actions">
                     <button class="gs-filter-action-btn gs-filter-search-btn gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
                     <button class="gs-filter-action-btn gs-filter-reset-btn gs-btn-icon-only" onclick="resetFilters()" title="重置筛选"></button>
                 </div>
@@ -881,7 +866,7 @@
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
 <script>
     // ===== 全局变量 =====
     let taskData = {
