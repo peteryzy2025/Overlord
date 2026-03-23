@@ -1217,13 +1217,17 @@ def create_task_api(request):
                             '定制行列表': custom_rows_cn
                         }
                     elif st.subtask_type == 'divi_export':
-                        # 迪唯汇出 - 转换汇出行数据
+                        # 迪唯汇出上架-Amazon切表版 - 转换汇出行数据
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
-                                '尺码列表': row.get('sizes', []),
-                                '颜色列表': row.get('colors', []),
+                                '产品名称': row.get('product_name', ''),
+                                '尺码ID列表': row.get('sizes', []),
+                                '尺码名称列表': row.get('size_names', []),
+                                '颜色ID列表': row.get('colors', []),
+                                '颜色中文列表': row.get('color_names', []),
+                                '颜色英文列表': row.get('color_en_names', []),
                                 '店铺列表': row.get('shops', [])
                             })
                         
@@ -1234,6 +1238,7 @@ def create_task_api(request):
                     elif st.subtask_type == 'divi_gallery_upload':
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
+                            '图库命名': params.get('gallery_name', ''),
                             '本地路径': params.get('local_gallery_path', '')
                         }
                     elif st.subtask_type == 'divi_multi_side_custom':
@@ -1286,7 +1291,7 @@ def create_task_api(request):
                     # 类型映射为中文显示名
                     type_display_map = {
                         'divi_custom': '迪唯批量定制',
-                        'divi_export': '迪唯汇出',
+                        'divi_export': '迪唯汇出上架-Amazon切表版',
                         'divi_gallery_upload': 'DIVI图库上传',
                         'divi_multi_side_custom': '迪唯多面定制',
                         'custom_upload': 'Temu定制上架',
@@ -1681,4 +1686,70 @@ def delete_template_api(request, template_id):
         return JsonResponse({
             'success': False,
             'message': f'删除模板失败: {str(e)}'
+        }, status=500)
+
+
+
+# ========== DIVI 产品相关接口 ==========
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_products_api(request):
+    """
+    获取所有 DIVI 产品列表（用于下拉框）
+    GET /api/divi/products/
+    """
+    try:
+        from divi.models import Product
+        products = Product.objects.all().order_by('name').values('id', 'name')
+        return JsonResponse({
+            'success': True,
+            'data': list(products)
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取产品列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_product_detail_api(request, product_id):
+    """
+    获取单个 DIVI 产品的颜色和尺寸详情
+    GET /api/divi/products/{product_id}/detail/
+    """
+    try:
+        from divi.models import Product
+        product = Product.objects.get(id=product_id)
+        
+        colors = list(product.colors.values(
+            'color_classify_id', 
+            'color_name', 
+            'en_name'
+        ))
+        sizes = list(product.sizes.values(
+            'product_size_id', 
+            'product_size_name'
+        ))
+        
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'product_id': product.id,
+                'product_name': product.name,
+                'colors': colors,
+                'sizes': sizes
+            }
+        })
+    except Product.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': '产品不存在'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'获取产品详情失败: {str(e)}'
         }, status=500)

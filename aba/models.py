@@ -4,7 +4,7 @@ from django.db import models
 class SearchTerm(models.Model):
     """
     搜索词维度表（必须保留，去重存储）
-    50万条 vs 6亿条重复存储，空间差异1.2万倍（20MB vs 240GB）
+    900万条 vs 6亿条重复存储，空间差异1.2万倍（20MB vs 240GB）
     """
     term = models.CharField(
         max_length=500, 
@@ -41,6 +41,18 @@ class SearchTerm(models.Model):
         db_table = 'search_terms'
         verbose_name = "搜索词"
         verbose_name_plural = "搜索词"
+        indexes = [
+            # 品类+去噪状态复合索引（加速品类筛选）
+            models.Index(
+                fields=['category', 'denoising'],
+                name='category_denoising_idx'
+            ),
+            # 去噪状态+品类（另一种查询顺序）
+            models.Index(
+                fields=['denoising', 'category'],
+                name='denoising_category_idx'
+            ),
+        ]
 
 
 class SearchTermMetric(models.Model):
@@ -231,6 +243,7 @@ class AbaReportWeek(models.Model):
         verbose_name = "ABA数据周期"
         verbose_name_plural = "ABA数据周期"
         ordering = ['-report_week']
+
 
 class AbaNoiseWord(models.Model):
     """
