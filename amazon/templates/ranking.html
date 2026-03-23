@@ -24,40 +24,6 @@
         color: var(--text-primary);
     }
 
-    .filter-section {
-        background-color: var(--bg-primary);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        box-shadow: var(--shadow-light);
-        border: 1px solid var(--border-color);
-    }
-
-    .filter-row {
-        display: flex;
-        gap: 1.5rem;
-        align-items: flex-end;
-        flex-wrap: wrap;
-        margin-bottom: 1rem;
-    }
-
-    .filter-row:last-child {
-        margin-bottom: 0;
-    }
-
-    .filter-actions {
-        display: flex;
-        gap: 0.5rem;
-        align-items: flex-end;
-    }
-
-    .quick-date-buttons {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-    }
-
     .quick-date-btn {
         background-color: var(--bg-secondary);
         border: 1px solid var(--border-color);
@@ -81,27 +47,6 @@
         background-color: var(--accent-color);
         color: white;
         border-color: var(--accent-color);
-    }
-
-    .date-inputs-row {
-        display: flex;
-        gap: 1.5rem;
-        align-items: flex-end;
-        flex-wrap: wrap;
-    }
-
-    /* 其余样式保持不变... */
-        display: flex;
-        gap: 1.5rem;
-        align-items: flex-end;
-        flex-wrap: wrap;
-    }
-
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        min-width: 200px;
     }
 
     .filter-label {
@@ -312,15 +257,6 @@
             align-items: stretch;
         }
 
-        .filter-row {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .filter-group {
-            width: 100%;
-        }
-
         #rankingChart, #groupRankingChart {
             height: 400px;
         }
@@ -381,25 +317,18 @@
 
     <!-- 筛选面板 -->
     <div class="filter-section">
-        <!-- 第一行：快捷日期按钮 -->
-        <div class="filter-row">
-            <div class="filter-group" style="flex: 1;">
-                <label class="filter-label">快捷日期</label>
-                <div class="quick-date-buttons" id="quickDateButtons">
-                    <button class="quick-date-btn" data-range="today">今日</button>
-                    <button class="quick-date-btn" data-range="yesterday">昨日</button>
-                    <button class="quick-date-btn" data-range="last3days">近3日</button>
-                    <button class="quick-date-btn" data-range="last7days">近7日</button>
-                    <button class="quick-date-btn active" data-range="last30days">近30日</button>
-                    <button class="quick-date-btn" data-range="thisweek">本周</button>
-                    <button class="quick-date-btn" data-range="lastweek">上周</button>
-                    <button class="quick-date-btn" data-range="thismonth">本月</button>
-                    <button class="quick-date-btn" data-range="lastmonth">上月</button>
-                </div>
-            </div>
+        <div class="quick-date-buttons" id="quickDateButtons">
+            <button class="quick-date-btn" data-range="today">今日</button>
+            <button class="quick-date-btn" data-range="yesterday">昨日</button>
+            <button class="quick-date-btn" data-range="last3days">近3日</button>
+            <button class="quick-date-btn" data-range="last7days">近7日</button>
+            <button class="quick-date-btn active" data-range="last30days">近30日</button>
+            <button class="quick-date-btn" data-range="thisweek">本周</button>
+            <button class="quick-date-btn" data-range="lastweek">上周</button>
+            <button class="quick-date-btn" data-range="thismonth">本月</button>
+            <button class="quick-date-btn" data-range="lastmonth">上月</button>
         </div>
 
-        <!-- 第二行：日期选择 + 按钮 -->
         <div class="filter-row">
             <div class="filter-group">
                 <label class="filter-label">开始日期</label>
@@ -410,7 +339,7 @@
                 <input type="date" class="form-control" id="endDate">
             </div>
             <div class="filter-actions">
-                <button class="btn" onclick="loadRankingData()">查询</button>
+                <button class="btn gs-btn-search gs-btn-iconized" onclick="loadRankingData()">查询</button>
             </div>
         </div>
     </div>
@@ -487,7 +416,7 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
 <script>
     // 全局变量
     let rankingChart = null;

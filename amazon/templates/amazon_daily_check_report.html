@@ -1,6 +1,6 @@
 {% extends 'base/base_z.html' %} {% load static %} {% block title %}巡店报告 -
 Divi智管{% endblock %} {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}" />
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal" />
 <style>
   :root {
     --accent-color: #10b981; /* 绿色主题 */
@@ -42,7 +42,31 @@ Divi智管{% endblock %} {% block extra_css %}
     flex: 1 1 220px;
   }
 
+  body .control-panel {
+    display: block !important;
+    width: 100%;
+  }
+
+  body .control-panel > .filter-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    width: 100%;
+  }
+
+  body .control-panel > .filter-row > .filter-group {
+    flex: 1 1 0%;
+    min-width: 260px;
+    max-width: 300px;
+  }
+
   @media (max-width: 992px) {
+    body .control-panel > .filter-row > .filter-group {
+      min-width: 100%;
+      max-width: none;
+    }
+
     #customDateGroup,
     #customDateGroup2,
     #shopNameGroup,
@@ -495,7 +519,7 @@ Divi智管{% endblock %} {% block extra_css %}
 </div>
 {% endblock %} {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
 <script>
   // ===== 全局变量定义（保持不变）=====
   let currentFilters = {

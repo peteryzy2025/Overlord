@@ -4,7 +4,7 @@
 {% block title %}Amazon Listing &#31649;&#29702;{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <style>
         .tab-content {
             display: block;
@@ -101,12 +101,22 @@
 
         /* Keep filter controls aligned and prevent action buttons from wrapping. */
         .amazon-listing-main .filter-section {
+            display: block !important;
+            width: 100%;
             background-color: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 1rem;
             margin-bottom: 1rem;
             box-shadow: var(--shadow-light);
+        }
+
+        .amazon-listing-main .filter-section > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            align-items: flex-end;
+            width: 100%;
         }
 
         .stats-card.stats-card-high {
@@ -125,27 +135,11 @@
             color: #ed8936;
         }
 
-        .amazon-listing-main .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.85rem;
-            align-items: flex-end;
-        }
-
-        .amazon-listing-main .filter-group {
-            display: flex;
-            flex-direction: column;
+        .amazon-listing-main .filter-section > .filter-row > .filter-group {
             gap: 0.45rem;
-            min-width: 180px;
             flex: 1 1 180px;
-        }
-
-        .amazon-listing-main .filter-actions {
-            display: flex;
-            align-items: flex-end;
-            gap: 0.5rem;
-            flex: 0 0 auto;
-            align-self: flex-end;
+            min-width: 180px;
+            max-width: 300px;
         }
 
         .amazon-listing-main #shopNameFilter,
@@ -161,6 +155,14 @@
             align-items: stretch;
             width: 100%;
             gap: 0;
+        }
+
+        .amazon-listing-main .filter-section > .filter-row > .filter-actions {
+            display: flex !important;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: auto;
+            width: auto;
         }
 
         .amazon-listing-main .compound-search .searchable-select {
@@ -180,6 +182,17 @@
 
         .amazon-listing-main .compound-search .searchable-select .select-trigger::after {
             display: none;
+        }
+
+        @media (max-width: 992px) {
+            .amazon-listing-main .filter-section > .filter-row > .filter-group {
+                min-width: 100%;
+                max-width: none;
+            }
+
+            .amazon-listing-main .filter-section > .filter-row > .filter-actions {
+                margin-left: 0;
+            }
         }
 
         .amazon-listing-main .compound-search-input {
@@ -636,6 +649,6 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script src="{% static 'js/amazon_listing_management_page.js' %}"></script>
 {% endblock %}

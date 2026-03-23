@@ -1,4 +1,7 @@
 # views.py
+import os
+from functools import wraps
+
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -23,6 +26,24 @@ from theme.view.views_trend import analyze_theme_trend, batch_analyze_theme_tren
 
 
 from django.core.cache import cache
+
+EXTERNAL_AMAZON_PRODUCTS_SECRET = os.getenv('EXTERNAL_AMAZON_PRODUCTS_SECRET', 'YXD555')
+
+
+def external_amazon_products_auth_required(func):
+    """对外 Amazon 产品接口的简单请求头认证。"""
+
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        secret = request.headers.get('X-RPA-Secret')
+        if secret != EXTERNAL_AMAZON_PRODUCTS_SECRET:
+            return JsonResponse({
+                'success': False,
+                'message': 'Unauthorized: Invalid or missing X-RPA-Secret header'
+            }, status=401)
+        return func(request, *args, **kwargs)
+
+    return wrapper
 
 # ============================================
 # 1. 页面渲染视图
@@ -403,7 +424,6 @@ def api_amazon_products(request):
         if not stats_data:
             # 产品总数 (独立查询)
             total_products = AmazonThemeNovelty.objects.count()
-            
             # 本月新增产品数量 (独立查询)
             now = timezone.now()
             first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -482,6 +502,18 @@ def api_amazon_products(request):
                 'error_type': type(e).__name__,
             }
         }, status=500)
+
+
+@csrf_exempt
+@require_POST
+@external_amazon_products_auth_required
+def external_api_amazon_products(request):
+    """
+    对外 Amazon 产品查询接口。
+    Header: X-RPA-Secret: <secret>
+    Body: 与 /api/amazon-products/ 相同的 JSON 参数
+    """
+    return api_amazon_products(request)
 
 
 @csrf_exempt

@@ -4,7 +4,7 @@
 {% block title %}产品需求列表 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -64,18 +64,11 @@
             box-shadow: var(--shadow-light);
         }
 
-        /* 筛选区样式 */
-        .filter-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            align-items: end;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+        .task-filter-panel {
+            padding: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
         }
 
         .filter-label {
@@ -438,7 +431,8 @@
 
         <!-- 筛选面板 -->
         <div class="task-card">
-            <div class="filter-row">
+            <div class="control-panel task-filter-panel">
+                <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">状态筛选</label>
                     <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
@@ -455,6 +449,7 @@
                     <input type="text" class="form-control" id="searchFilter"
                            placeholder="搜索: 产品名称/单号/ID/材质/报关名/创建人..."
                            oninput="debounceSearch()">
+                </div>
                 </div>
             </div>
         </div>
@@ -652,7 +647,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         let currentData = {
             list: [],
