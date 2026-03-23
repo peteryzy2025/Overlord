@@ -33,15 +33,6 @@
             margin-top: 0.5rem;
         }
 
-        .control-panel {
-            background-color: var(--bg-primary);
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow-light);
-            border: 1px solid var(--border-color);
-        }
-
         .btn-divi {
             background-color: var(--accent-color);
             color: white;
@@ -62,20 +53,6 @@
 
         .btn-divi:disabled i {
             color: var(--text-secondary) !important;
-        }
-
-        .filter-row {
-            display: flex;
-            gap: 1.5rem;
-            align-items: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .filter-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            min-width: 200px;
         }
 
         .filter-label {
@@ -601,16 +578,6 @@
                 padding: 1rem;
             }
 
-            .filter-row {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group {
-                width: 100%;
-                min-width: auto;
-            }
-
             .page-header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -671,7 +638,7 @@
         </div>
 
         <!-- 筛选面板 -->
-        <div class="control-panel">
+        <div class="filter-section">
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">日期范围</label>
@@ -855,7 +822,7 @@
 {% block extra_js %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         // SearchableSelect 实例
         let groupSelect = null;

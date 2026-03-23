@@ -1646,12 +1646,143 @@ const GeneralStyleFilterActionButtonAdapter = (() => {
     return { initAll, observe };
 })();
 
+const GeneralStyleFilterLayoutManager = (() => {
+    const PANEL_SELECTOR = '.filter-section, .control-panel';
+    const ROW_TOP_TOLERANCE = 4;
+
+    let resizeObserver = null;
+    let mutationObserver = null;
+    let scheduled = false;
+
+    const isVisible = (element) => {
+        if (!(element instanceof Element)) return false;
+        const style = window.getComputedStyle(element);
+        return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    };
+
+    const topOf = (element) => Math.round(element.getBoundingClientRect().top);
+
+    const sameRow = (topA, topB) => Math.abs(topA - topB) <= ROW_TOP_TOLERANCE;
+
+    const overlapsVertically = (elementA, elementB) => {
+        const rectA = elementA.getBoundingClientRect();
+        const rectB = elementB.getBoundingClientRect();
+        return rectA.bottom > rectB.top + ROW_TOP_TOLERANCE && rectB.bottom > rectA.top + ROW_TOP_TOLERANCE;
+    };
+
+    const getPrimaryRow = (panel) => (
+        panel.querySelector(':scope > .filter-row-main') ||
+        panel.querySelector(':scope > .filter-row')
+    );
+
+    const getPrimaryGroups = (panel) => {
+        const row = getPrimaryRow(panel);
+        if (!row) return [];
+        return Array.from(row.querySelectorAll(':scope > .filter-group')).filter(isVisible);
+    };
+
+    const getActionItem = (panel) => {
+        const actionMain = panel.querySelector(':scope > .filter-actions-main');
+        if (isVisible(actionMain)) return actionMain;
+
+        const actionRow = panel.querySelector(':scope > .filter-actions-row');
+        if (actionRow) {
+            const actionGroup = actionRow.querySelector(':scope > .filter-actions');
+            if (isVisible(actionGroup)) return actionGroup;
+        }
+
+        const directAction = Array.from(panel.children).find((child) => child.classList?.contains('filter-actions'));
+        return isVisible(directAction) ? directAction : null;
+    };
+
+    const resetActionPlacement = (actionItem) => {
+        if (!actionItem) return;
+        actionItem.style.gridColumn = '';
+        actionItem.style.justifySelf = '';
+    };
+
+    const alignPanel = (panel) => {
+        if (!(panel instanceof Element)) return;
+        if (window.getComputedStyle(panel).display !== 'grid') return;
+
+        const groups = getPrimaryGroups(panel);
+        const actionItem = getActionItem(panel);
+        resetActionPlacement(actionItem);
+
+        if (!actionItem || groups.length === 0) return;
+
+        const firstRowTop = topOf(groups[0]);
+        const firstRowGroups = groups.filter((group) => sameRow(topOf(group), firstRowTop));
+        const actionTop = topOf(actionItem);
+
+        if (sameRow(actionTop, firstRowTop)) return;
+
+        const groupsOnActionRow = groups.filter((group) => overlapsVertically(group, actionItem));
+        if (groupsOnActionRow.length > 0) return;
+
+        const targetColumn = Math.max(firstRowGroups.length, 1);
+        actionItem.style.gridColumn = `${targetColumn} / span 1`;
+        actionItem.style.justifySelf = 'end';
+    };
+
+    const initAll = (root = document) => {
+        if (!root || typeof root.querySelectorAll !== 'function') return;
+        const panels = Array.from(root.querySelectorAll(PANEL_SELECTOR));
+        panels.forEach(alignPanel);
+    };
+
+    const scheduleInit = () => {
+        if (scheduled) return;
+        scheduled = true;
+        window.requestAnimationFrame(() => {
+            scheduled = false;
+            initAll(document);
+        });
+    };
+
+    const observe = () => {
+        if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+        if (!resizeObserver && typeof ResizeObserver !== 'undefined') {
+            resizeObserver = new ResizeObserver(() => scheduleInit());
+            document.querySelectorAll(PANEL_SELECTOR).forEach((panel) => resizeObserver.observe(panel));
+        }
+
+        if (!mutationObserver && typeof MutationObserver !== 'undefined' && document.body) {
+            mutationObserver = new MutationObserver((mutations) => {
+                let shouldRefresh = false;
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList') {
+                        shouldRefresh = true;
+                        return;
+                    }
+                    if (mutation.target instanceof Element && mutation.target.closest(PANEL_SELECTOR)) {
+                        shouldRefresh = true;
+                    }
+                });
+                if (shouldRefresh) scheduleInit();
+            });
+            mutationObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style', 'hidden']
+            });
+        }
+
+        window.addEventListener('resize', scheduleInit, { passive: true });
+    };
+
+    return { initAll, observe, scheduleInit };
+})();
+
 if (typeof window !== 'undefined') {
     window.GeneralStyleYearMonthPicker = GeneralStyleYearMonthPicker;
     window.GeneralStyleDatePicker = GeneralStyleDatePicker;
     window.GeneralStyleFilterSelectAdapter = GeneralStyleFilterSelectAdapter;
     window.GeneralStyleDateRangeFilter = GeneralStyleDateRangeFilter;
     window.GeneralStyleFilterActionButtonAdapter = GeneralStyleFilterActionButtonAdapter;
+    window.GeneralStyleFilterLayoutManager = GeneralStyleFilterLayoutManager;
 
     const bootDatePicker = () => {
         if (!window.GeneralStyleDatePicker) return;
@@ -1682,14 +1813,22 @@ if (typeof window !== 'undefined') {
         }
     };
 
+    const bootFilterLayoutManager = () => {
+        if (!window.GeneralStyleFilterLayoutManager) return;
+        window.GeneralStyleFilterLayoutManager.initAll(document);
+        window.GeneralStyleFilterLayoutManager.observe();
+    };
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootDatePicker);
         document.addEventListener('DOMContentLoaded', bootFilterSelectAdapter);
         document.addEventListener('DOMContentLoaded', bootFilterActionButtons);
+        document.addEventListener('DOMContentLoaded', bootFilterLayoutManager);
     } else {
         bootDatePicker();
         bootFilterSelectAdapter();
         bootFilterActionButtons();
+        bootFilterLayoutManager();
     }
 }
 
@@ -1705,6 +1844,7 @@ if (typeof module !== 'undefined' && module.exports) {
         GeneralStyleDatePicker,
         GeneralStyleFilterSelectAdapter,
         GeneralStyleDateRangeFilter,
-        GeneralStyleFilterActionButtonAdapter
+        GeneralStyleFilterActionButtonAdapter,
+        GeneralStyleFilterLayoutManager
     };
 }

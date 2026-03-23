@@ -5,17 +5,26 @@
         <li class="sidebar-item">
             <a href="{% url 'theme:theme_product_list' %}"
                class="sidebar-link {% if active_page == 'theme_product_list' %}active{% endif %}">
-                <i class="fas fa-list sidebar-icon"></i>
+                <i class="fas fa-store sidebar-icon"></i>
                 <span>亚马逊最新主题</span>
             </a>
         </li>
         <li class="sidebar-item">
             <a href="{% url 'aba:aba_data' %}"
                class="sidebar-link {% if active_page == 'aba_data' %}active{% endif %}">
-                <i class="fas fa-chart-line sidebar-icon"></i>
+                <i class="fas fa-fire sidebar-icon"></i>
                 <span>亚马逊最热主题</span>
             </a>
         </li>
+
+        <li class="sidebar-item">
+            <a href="{% url 'aba:aba_noise_words' %}"
+               class="sidebar-link {% if active_page == 'aba_noise_words' %}active{% endif %}">
+                <i class="fas fa-bolt sidebar-icon"></i>
+                <span>亚马逊最新成交主题</span>
+            </a>
+        </li>
+
         <li class="sidebar-item">
             <a href="{% url 'aba:aba_noise_words' %}"
                class="sidebar-link {% if active_page == 'aba_noise_words' %}active{% endif %}">
