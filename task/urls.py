@@ -29,6 +29,9 @@ urlpatterns = [
     # 所有者相关
     path('api/tasks/available-owners/', task_api_views.get_available_owners_api, name='get_available_owners'),
 
+    # 迪唯账号列表
+    path('api/tasks/diwei-accounts/', task_api_views.get_diwei_accounts_api, name='get_diwei_accounts'),
+
     # 任务单号
     path('api/tasks/generate-no/', task_api_views.generate_task_no_api, name='generate_task_no'),
 

@@ -338,6 +338,7 @@
         let autoSaveTimer = null;
         let lastSavedData = null;
         let galleryPathCache = [];
+        let diweiAccountsCache = [];
         let draftDataToLoad = null;
 
         // ===== 工具函数 =====
@@ -561,27 +562,45 @@
             }
         }
 
+        // ===== 加载迪唯账号列表 =====
+        async function loadDiweiAccounts() {
+            if (diweiAccountsCache.length > 0) return diweiAccountsCache;
+            try {
+                const response = await fetch('/api/tasks/diwei-accounts/');
+                const result = await response.json();
+                if (result.success) {
+                    diweiAccountsCache = result.data;
+                    return diweiAccountsCache;
+                }
+            } catch (error) {
+                console.error('加载迪唯账号列表失败:', error);
+            }
+            return [];
+        }
+
         // ===== 初始化迪唯账号选择器 =====
-        function initDiweiAccountSelect(subtask) {
+        async function initDiweiAccountSelect(subtask) {
             const accountSelectEl = document.querySelector(`#diwei-account-select-${subtask.id}`);
             if (!accountSelectEl || accountSelectEl.dataset.initialized) return;
 
-            const accountSelect = new SearchableSelect(`#diwei-account-select-${subtask.id}`, {
-                options: [
-                    { value: '测试', label: '测试（YMX-28）' },
-                    { value: '谭伟良', label: '谭伟良（YMX-26）' },
-                    { value: '吴晓纯', label: '吴晓纯（TEMU-01-1）' },
-                    { value: '侯益山', label: '侯益山（TEMU-03）' },
-                    { value: '吴杰柱', label: '吴杰柱（TEMU-04）' },
-                    { value: '杨涵', label: '杨涵（TEMU-06）' },
-                    { value: '曾雪莹', label: '曾雪莹（TEMU-07）' }
+            // 加载账号列表
+            const accounts = await loadDiweiAccounts();
+            
+            if (accounts.length === 0) {
+                console.warn('没有可用的迪唯账号');
+                return;
+            }
 
-                ],
+            const accountSelect = new SearchableSelect(`#diwei-account-select-${subtask.id}`, {
+                options: accounts,
                 multiple: false,
                 placeholder: '选择迪唯账号'
             });
 
-            accountSelect.setValue(subtask.params.diwei_account || '测试');
+            const defaultValue = subtask.params.diwei_account || '陈柔';
+            const exists = accounts.some(a => a.value === defaultValue);
+            accountSelect.setValue(exists ? defaultValue : accounts[0].value);
+            
             accountSelect.onChange = (value) => {
                 updateSubtaskParam(subtask.id, 'diwei_account', value);
             };
@@ -1635,8 +1654,8 @@
             document.getElementById('addSubtaskModal').classList.remove('active');
 
             // 然后再添加子任务
-            setTimeout(() => {
-                addSubtask(selectedSubtaskType, {});
+            setTimeout(async () => {
+                await addSubtask(selectedSubtaskType, {});
                 selectedSubtaskType = null;
                 document.getElementById('confirmAddSubtaskBtn').disabled = true;
 
@@ -1649,7 +1668,7 @@
             }, 100);
         }
 
-        function addSubtask(type, params = {}) {
+        async function addSubtask(type, params = {}) {
             const subtaskId = subtaskIdCounter++;
 
             // 立即移除空状态框（确保最先执行）
@@ -1679,19 +1698,19 @@
                 };
             } else if (type === 'divi_custom') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     gallery_path: '',
                     local_gallery_path: '',
                     custom_rows: []
                 };
             } else if (type === 'divi_export') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     export_rows: []
                 };
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     gallery_name: '',
                     local_gallery_path: ''
                 };
@@ -1740,7 +1759,7 @@
 
             taskData.subtasks.push(subtask);
 
-            renderSubtask(subtask);
+            await renderSubtask(subtask);
             renderSubtasksCount();
 
             // 如果是amazon_upload类型，添加拖拽事件监听
@@ -1800,7 +1819,7 @@
             }
         }
 
-        function renderSubtask(subtask) {
+        async function renderSubtask(subtask) {
             const container = document.getElementById('subtasksContainer');
 
             const subtaskHtml = `
@@ -1852,7 +1871,7 @@
             }
 
             if (subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_gallery_upload') {
-                initDiweiAccountSelect(subtask);
+                await initDiweiAccountSelect(subtask);
             }
 
             // 如果是divi_custom类型，初始化定制行
@@ -3008,7 +3027,7 @@
                     `;
 
                     // 从模板添加子任务
-                    result.data.content.forEach(templateSubtask => {
+                    for (const templateSubtask of result.data.content) {
                         // 深拷贝参数
                         const params = JSON.parse(JSON.stringify(templateSubtask.params));
                         
@@ -3031,8 +3050,8 @@
                             });
                         }
                         
-                        addSubtask(templateSubtask.type, params);
-                    });
+                        await addSubtask(templateSubtask.type, params);
+                    }
 
                     showNotification('模板加载成功', 'success');
 
@@ -3432,7 +3451,7 @@
             document.getElementById('taskTitle').value = draftData.title || '';
             document.getElementById('taskOwner').value = draftData.owner_id;
 
-            draftData.subtasks.forEach(subtask => {
+            for (const subtask of draftData.subtasks) {
                 // 深拷贝参数，避免修改原始数据
                 const params = JSON.parse(JSON.stringify(subtask.params));
                 
@@ -3457,8 +3476,8 @@
                     });
                 }
                 
-                addSubtask(subtask.type, params);
-            });
+                await addSubtask(subtask.type, params);
+            }
 
             showNotification('草稿已加载', 'success');
         }
