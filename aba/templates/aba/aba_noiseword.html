@@ -1,11 +1,11 @@
-{% extends 'base/base_theme.html' %}
+﻿{% extends 'base/base_theme.html' %}
 {% load static %}
 
 {% block title %}ABA去噪词表 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
-    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260321-filter-grid">
     <style>
         :root {
             --accent-color: #3b82f6;
@@ -47,30 +47,6 @@
         .control-panel,
         .data-section {
             margin-bottom: 0;
-        }
-
-        .filter-row {
-            display: grid;
-            grid-template-columns: minmax(280px, 1fr);
-            gap: 1rem;
-            align-items: end;
-        }
-
-        .filter-group {
-            min-width: 0;
-            max-width: none;
-            width: 100%;
-            flex: initial;
-        }
-
-        .filter-actions-row {
-            margin-top: 1rem;
-            display: flex;
-            justify-content: flex-end;
-        }
-
-        .filter-actions {
-            margin-left: 0;
         }
 
         .table-container {
@@ -335,11 +311,6 @@
         }
 
         @media (min-width: 1024px) {
-            .filter-row {
-                grid-template-columns: minmax(360px, 1fr);
-            }
-        }
-
         @media (max-width: 768px) {
             .performance-main {
                 margin: 16px;
@@ -361,10 +332,6 @@
 
             .pagination-container {
                 align-items: flex-start;
-            }
-
-            .filter-actions-row {
-                justify-content: flex-start;
             }
 
             .pagination-summary,
@@ -998,3 +965,4 @@
         });
     </script>
 {% endblock %}
+

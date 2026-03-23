@@ -1,10 +1,10 @@
-{% extends 'base/base_z.html' %}
+{% extends 'base/base_theme.html' %}
 {% load static %}
 
 {% block title %}Amazon最新主题 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <style>
         :root {
             /* 定义主题色变量 */
@@ -1208,7 +1208,7 @@
     </style>
 {% endblock %}
 
-{% block page_content %}
+{% block content %}
     <div class="loading-overlay" id="loadingOverlay" style="display: none;">
         <div class="loading-content">
             <div class="spinner"></div>
@@ -1728,7 +1728,7 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
-    <script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         // ===== 全局变量定义 =====
         let launchDateRangeController = null;
@@ -2144,9 +2144,12 @@
 
                     // 更新统计信息
                     if (data.stats) {
-                        document.getElementById('totalProducts').textContent = data.stats.total_products;
-                        document.getElementById('recentSubjects7d').textContent = data.stats.recent_subjects_7d;
-                        document.getElementById('recentProducts').textContent = data.stats.monthly_count;
+                        const totalProducts = document.getElementById('totalProducts');
+                        const recentSubjects7d = document.getElementById('recentSubjects7d');
+                        const recentProducts = document.getElementById('recentProducts');
+                        if (totalProducts) totalProducts.textContent = data.stats.total_products;
+                        if (recentSubjects7d) recentSubjects7d.textContent = data.stats.recent_subjects_7d;
+                        if (recentProducts) recentProducts.textContent = data.stats.monthly_count;
                     }
 
                     renderProductsTable(data.products || []);
@@ -2719,13 +2722,23 @@
 
             const count = selectedProducts.size;
 
+            if (!bulkActions) {
+                return;
+            }
+
             if (count > 0) {
                 bulkActions.style.display = 'block';
-                countElement.textContent = `已选择 ${count} 个产品`;
-                exportSelectedCount.textContent = count;
+                if (countElement) {
+                    countElement.textContent = `已选择 ${count} 个产品`;
+                }
+                if (exportSelectedCount) {
+                    exportSelectedCount.textContent = count;
+                }
             } else {
                 bulkActions.style.display = 'none';
-                exportSelectedCount.textContent = '0';
+                if (exportSelectedCount) {
+                    exportSelectedCount.textContent = '0';
+                }
             }
         }
 
@@ -2775,7 +2788,10 @@
 
         // ===== 分页逻辑 =====
         function updatePageSizeSelection(size) {
-            document.getElementById('pageSizeText').textContent = `${size}条`;
+            const pageSizeText = document.getElementById('pageSizeText');
+            if (pageSizeText) {
+                pageSizeText.textContent = `${size}条`;
+            }
             document.querySelectorAll('#paginationControls .page-size-option').forEach(option => {
                 option.classList.remove('selected');
             });
@@ -2789,13 +2805,20 @@
             const {page, page_size, total} = productsPagination;
             const start = total === 0 ? 0 : (page - 1) * page_size + 1;
             const end = total === 0 ? 0 : Math.min(page * page_size, total);
-            document.getElementById('paginationStats').textContent = `${start}-${end} / 共 ${total} 条`;
+            const paginationStats = document.getElementById('paginationStats');
+            if (paginationStats) {
+                paginationStats.textContent = `${start}-${end} / 共 ${total} 条`;
+            }
         }
 
         function renderPagination() {
             const buttonsContainer = document.getElementById('paginationButtons');
             const paginationJump = document.getElementById('paginationJump');
             const {page, page_size, total, total_pages} = productsPagination;
+
+            if (!buttonsContainer || !paginationJump) {
+                return;
+            }
 
             updatePageSizeSelection(page_size);
             updatePaginationStats();
@@ -3432,9 +3455,18 @@
         }
 
         function showBulkUpdateModal() {
-            document.getElementById('bulkUpdateCount').textContent = selectedProducts.size;
-            document.getElementById('bulkProductType').value = '';
-            document.getElementById('bulkUpdateModal').style.display = 'flex';
+            const bulkUpdateCount = document.getElementById('bulkUpdateCount');
+            const bulkProductType = document.getElementById('bulkProductType');
+            const bulkUpdateModal = document.getElementById('bulkUpdateModal');
+            if (bulkUpdateCount) {
+                bulkUpdateCount.textContent = selectedProducts.size;
+            }
+            if (bulkProductType) {
+                bulkProductType.value = '';
+            }
+            if (bulkUpdateModal) {
+                bulkUpdateModal.style.display = 'flex';
+            }
         }
 
         function closeBulkUpdateModal() {
@@ -3483,9 +3515,18 @@
 
         // ===== 导出功能 =====
         function exportProducts() {
-            document.getElementById('exportFilteredCount').textContent = productsPagination.total;
-            document.getElementById('exportSelectedCount').textContent = selectedProducts.size;
-            document.getElementById('exportModal').style.display = 'flex';
+            const exportFilteredCount = document.getElementById('exportFilteredCount');
+            const exportSelectedCount = document.getElementById('exportSelectedCount');
+            const exportModal = document.getElementById('exportModal');
+            if (exportFilteredCount) {
+                exportFilteredCount.textContent = productsPagination.total;
+            }
+            if (exportSelectedCount) {
+                exportSelectedCount.textContent = selectedProducts.size;
+            }
+            if (exportModal) {
+                exportModal.style.display = 'flex';
+            }
         }
 
         function closeExportModal() {

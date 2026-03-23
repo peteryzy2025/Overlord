@@ -4,7 +4,7 @@
 {% block title %}深渊 - 风险关键词管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <style>
         /* 统计卡片 */
         .stats-card-wrapper {
@@ -106,6 +106,45 @@
             font-size: 0.75rem;
             background-color: #EDE9FE;
             color: #7C3AED;
+        }
+
+        body .filter-section {
+            display: block !important;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row {
+            display: flex !important;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        body .filter-section > .filter-row > .filter-group {
+            flex: 1 1 0% !important;
+            min-width: 260px !important;
+            max-width: 300px !important;
+        }
+
+        body .filter-section > .filter-row > .filter-actions {
+            display: flex !important;
+            gap: 0.5rem;
+            align-items: flex-end;
+            margin-left: auto;
+            width: auto;
+        }
+
+        @media (max-width: 992px) {
+            body .filter-section > .filter-row > .filter-group {
+                flex: 1 1 100%;
+                min-width: 100% !important;
+                max-width: none !important;
+            }
+
+            body .filter-section > .filter-row > .filter-actions {
+                margin-left: 0;
+            }
         }
 
         /* 模态框 */

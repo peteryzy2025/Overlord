@@ -35,6 +35,9 @@ class LoginRequiredMiddleware:
             return self.get_response(request)
         if request.path_info.startswith('/api/external/amazon-shops/'):
             return self.get_response(request)
+        if request.path_info.startswith('/api/external/amazon-products/'):
+            # 由视图自身校验 X-RPA-Secret，避免直接暴露原始站内接口
+            return self.get_response(request)
         
         # 放行 amazon/api 路径（影刀调用巡店接口）
         if request.path_info.startswith('/amazon/api/'):

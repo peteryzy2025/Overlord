@@ -18,31 +18,6 @@
         color: var(--text-primary);
     }
 
-    .filter-section {
-        background-color: var(--bg-primary);
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 0.2rem;
-        box-shadow: var(--shadow-light);
-        border: 1px solid var(--border-color);
-    }
-
-    .filter-row {
-        display: flex;
-        gap: 1rem;
-        align-items: flex-end;
-        flex-wrap: wrap;
-    }
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        min-width: 180px;
-        max-width: 220px;
-        flex: 1;
-    }
-
-
     .filter-group.filter-group--month {
         min-width: 320px;
         max-width: 360px;
@@ -423,7 +398,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/general_style_1.js' %}"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
 <script>
     function getCookie(name) {
         let cookieValue = null;
