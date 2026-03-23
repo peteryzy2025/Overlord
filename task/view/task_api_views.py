@@ -1753,3 +1753,60 @@ def get_divi_product_detail_api(request, product_id):
             'success': False,
             'message': f'获取产品详情失败: {str(e)}'
         }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_diwei_accounts_api(request):
+    """
+    获取迪唯账号列表（用于下拉框）
+    GET /api/tasks/diwei-accounts/
+    返回: [{ value: 'divi_username', label: 'divi_username（diwei_account）' }]
+    排序: 按 user_id 升序
+    筛选: 当前公司 + diwei_account 非空
+    """
+    try:
+        from general.models import OperationalAccount
+        
+        # 获取当前用户的公司
+        current_company = request.user.company
+        if not current_company:
+            return JsonResponse({
+                'success': False,
+                'message': '当前用户未分配公司'
+            }, status=403)
+        
+        # 筛选：当前公司的用户 + divi_username 非空 + diwei_account 非空
+        accounts = OperationalAccount.objects.filter(
+            user__company=current_company
+        ).exclude(
+            divi_username__isnull=True
+        ).exclude(
+            divi_username=''
+        ).exclude(
+            diwei_account__isnull=True
+        ).exclude(
+            diwei_account=''
+        ).order_by('user_id').values('divi_username', 'diwei_account')
+        
+        data = []
+        for account in accounts:
+            divi_username = account['divi_username']
+            diwei_account = account['diwei_account']
+            data.append({
+                'value': divi_username,
+                'label': f"{divi_username}（{diwei_account}）"
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+    except Exception as e:
+        import traceback
+        print(f"获取迪唯账号列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'获取迪唯账号列表失败: {str(e)}'
+        }, status=500)

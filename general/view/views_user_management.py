@@ -242,6 +242,7 @@ def get_users_api(request):
                     'ziniao_company': account.ziniao_company or '-',
                     'ziniao_username': account.ziniao_username or '-',
                     'ziniao_password': account.ziniao_password or '-',
+                    'divi_username': account.divi_username or '-',
                     'diwei_account': account.diwei_account or '-',
                     'diwei_password': account.diwei_password or '-',
                 }
@@ -367,6 +368,7 @@ def create_user_api(request):
                     ziniao_company=account_data.get('ziniao_company', ''),
                     ziniao_username=account_data.get('ziniao_username', ''),
                     ziniao_password=account_data.get('ziniao_password', ''),
+                    divi_username=account_data.get('divi_username', ''),
                     diwei_account=account_data.get('diwei_account', ''),
                     diwei_password=account_data.get('diwei_password', ''),
                 )
@@ -481,6 +483,7 @@ def update_user_api(request, user_id):
                         'ziniao_company': account_data.get('ziniao_company', ''),
                         'ziniao_username': account_data.get('ziniao_username', ''),
                         'ziniao_password': account_data.get('ziniao_password', ''),
+                        'divi_username': account_data.get('divi_username', ''),
                         'diwei_account': account_data.get('diwei_account', ''),
                         'diwei_password': account_data.get('diwei_password', ''),
                     }
@@ -499,6 +502,7 @@ def update_user_api(request, user_id):
                     account.ziniao_company = account_data.get('ziniao_company', account.ziniao_company)
                     account.ziniao_username = account_data.get('ziniao_username', account.ziniao_username)
                     account.ziniao_password = account_data.get('ziniao_password', account.ziniao_password)
+                    account.divi_username = account_data.get('divi_username', account.divi_username)
                     account.diwei_account = account_data.get('diwei_account', account.diwei_account)
                     account.diwei_password = account_data.get('diwei_password', account.diwei_password)
                     account.save()

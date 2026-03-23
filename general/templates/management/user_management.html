@@ -439,6 +439,10 @@
                             <div class="section-title" style="font-size: 0.875rem; margin-top: 1rem;">📦 迪唯账号</div>
                             <div class="form-grid">
                                 <div class="form-group">
+                                    <label>迪唯用户名</label>
+                                    <input type="text" id="diviUsername" placeholder="迪唯用户名">
+                                </div>
+                                <div class="form-group">
                                     <label>迪唯账号</label>
                                     <input type="text" id="diweiAccount" placeholder="迪唯账号">
                                 </div>
@@ -1052,6 +1056,9 @@
                 document.getElementById('ziniaoPassword').value = ops.ziniao_password === '-' ? '' : ops.ziniao_password;
                 document.getElementById('ziniaoPassword').disabled = true;
                 document.getElementById('ziniaoPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diviUsername').value = ops.divi_username === '-' ? '' : ops.divi_username;
+                document.getElementById('diviUsername').disabled = true;
+                document.getElementById('diviUsername').style.backgroundColor = 'var(--bg-tertiary)';
                 document.getElementById('diweiAccount').value = ops.diwei_account === '-' ? '' : ops.diwei_account;
                 document.getElementById('diweiAccount').disabled = true;
                 document.getElementById('diweiAccount').style.backgroundColor = 'var(--bg-tertiary)';
@@ -1087,6 +1094,9 @@
                 document.getElementById('ziniaoPassword').value = '';
                 document.getElementById('ziniaoPassword').disabled = true;
                 document.getElementById('ziniaoPassword').style.backgroundColor = 'var(--bg-tertiary)';
+                document.getElementById('diviUsername').value = '';
+                document.getElementById('diviUsername').disabled = true;
+                document.getElementById('diviUsername').style.backgroundColor = 'var(--bg-tertiary)';
                 document.getElementById('diweiAccount').value = '';
                 document.getElementById('diweiAccount').disabled = true;
                 document.getElementById('diweiAccount').style.backgroundColor = 'var(--bg-tertiary)';
@@ -1157,6 +1167,8 @@
             document.getElementById('ziniaoUsername').style.backgroundColor = '';
             document.getElementById('ziniaoPassword').disabled = false;
             document.getElementById('ziniaoPassword').style.backgroundColor = '';
+            document.getElementById('diviUsername').disabled = false;
+            document.getElementById('diviUsername').style.backgroundColor = '';
             document.getElementById('diweiAccount').disabled = false;
             document.getElementById('diweiAccount').style.backgroundColor = '';
             document.getElementById('diweiPassword').disabled = false;
@@ -1225,6 +1237,8 @@
             document.getElementById('ziniaoUsername').style.backgroundColor = '';
             document.getElementById('ziniaoPassword').disabled = false;
             document.getElementById('ziniaoPassword').style.backgroundColor = '';
+            document.getElementById('diviUsername').disabled = false;
+            document.getElementById('diviUsername').style.backgroundColor = '';
             document.getElementById('diweiAccount').disabled = false;
             document.getElementById('diweiAccount').style.backgroundColor = '';
             document.getElementById('diweiPassword').disabled = false;
@@ -1277,6 +1291,7 @@
                 document.getElementById('ziniaoCompany').value = ops.ziniao_company === '-' ? '' : ops.ziniao_company;
                 document.getElementById('ziniaoUsername').value = ops.ziniao_username === '-' ? '' : ops.ziniao_username;
                 document.getElementById('ziniaoPassword').value = ops.ziniao_password === '-' ? '' : ops.ziniao_password;
+                document.getElementById('diviUsername').value = ops.divi_username === '-' ? '' : ops.divi_username;
                 document.getElementById('diweiAccount').value = ops.diwei_account === '-' ? '' : ops.diwei_account;
                 document.getElementById('diweiPassword').value = ops.diwei_password === '-' ? '' : ops.diwei_password;
                 
@@ -1298,6 +1313,7 @@
                 document.getElementById('ziniaoCompany').value = '';
                 document.getElementById('ziniaoUsername').value = '';
                 document.getElementById('ziniaoPassword').value = '';
+                document.getElementById('diviUsername').value = '';
                 document.getElementById('diweiAccount').value = '';
                 document.getElementById('diweiPassword').value = '';
                 if (modalPlatformSelect) modalPlatformSelect.setValue('');
@@ -1441,6 +1457,7 @@
                     ziniao_company: document.getElementById('ziniaoCompany').value.trim(),
                     ziniao_username: document.getElementById('ziniaoUsername').value.trim(),
                     ziniao_password: document.getElementById('ziniaoPassword').value.trim(),
+                    divi_username: document.getElementById('diviUsername').value.trim(),
                     diwei_account: document.getElementById('diweiAccount').value.trim(),
                     diwei_password: document.getElementById('diweiPassword').value.trim(),
                 };

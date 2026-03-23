@@ -10,6 +10,7 @@ from general import (
 )
 from general.view import view_operation_log, views_general, views_user_management
 from api.general import group_and_ops
+from general.api import divi_account_api
 
 app_name = 'general'
 
@@ -72,6 +73,8 @@ urlpatterns = [
     path('amazon-management/', views_amazon_management.amazon_management_view, name='amazon_management'),
     path('api/external/amazon-shops/', views_amazon_management.external_amazon_shops_api,
          name='external_amazon_shops_api'),
+    path('api/external/divi-account/', divi_account_api.divi_account_query_api,
+         name='external_divi_account_api'),
     path('api/amazon-shops/', views_amazon_management.get_amazon_shops_api, name='get_amazon_shops_api'),
     path('api/amazon-shops/create/', views_amazon_management.create_amazon_shop_api, name='create_amazon_shop_api'),
     path('api/amazon-shops/bulk-update-project/', views_amazon_management.bulk_update_project_api, name='bulk_update_project_api'),
