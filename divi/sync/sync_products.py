@@ -23,6 +23,7 @@ def fetch_products():
         data_dict={},
         timeout=15,
     )
+    print(resp.json())
     return resp.json()
 
 
@@ -92,5 +93,36 @@ def sync_products():
     print(f"\n同步完成，共处理 {synced_count} 个产品")
 
 
+def get_empty_size_ids():
+    """获取 productSizeName 为空的 productSizeId 列表"""
+    result = fetch_products()
+    
+    if result.get('code') != 200:
+        print(f"API请求失败: {result.get('msg')}")
+        return []
+    
+    data_list = result.get('data', [])
+    
+    # 收集所有 productSizeId 和对应的名称
+    size_map = {}  # {productSizeId: productSizeName}
+    
+    for product_data in data_list:
+        color_infos = product_data.get('productColorInfos', [])
+        for color in color_infos:
+            for size in color.get('sizeInfos', []):
+                size_id = size.get('productSizeId')
+                size_name = size.get('productSizeName')
+                if size_id is not None:
+                    size_map[size_id] = size_name
+    
+    # 筛选出名称为空的 productSizeId
+    empty_size_ids = [size_id for size_id, size_name in size_map.items() if size_name is None]
+    
+    return sorted(empty_size_ids)
+
+
 if __name__ == "__main__":
-    sync_products()
+    # sync_products()
+    # fetch_products()
+    empty_ids = get_empty_size_ids()
+    print(empty_ids)
