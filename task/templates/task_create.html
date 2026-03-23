@@ -597,7 +597,6 @@
                 placeholder: '选择迪唯账号'
             });
 
-            // 默认选中陈柔（YMX-28），如果不存在则选第一个
             const defaultValue = subtask.params.diwei_account || '陈柔';
             const exists = accounts.some(a => a.value === defaultValue);
             accountSelect.setValue(exists ? defaultValue : accounts[0].value);
@@ -1699,19 +1698,19 @@
                 };
             } else if (type === 'divi_custom') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     gallery_path: '',
                     local_gallery_path: '',
                     custom_rows: []
                 };
             } else if (type === 'divi_export') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     export_rows: []
                 };
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
-                    diwei_account: '测试',
+                    diwei_account: '陈柔',
                     gallery_name: '',
                     local_gallery_path: ''
                 };
