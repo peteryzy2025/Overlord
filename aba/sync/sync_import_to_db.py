@@ -9,6 +9,8 @@ ABA 数据导入脚本
 - 环比排名计算
 - 进度条显示
 - 支持先下载后导入
+- 实时更新搜索词 category
+- 自动更新 AbaReportWeek 记录
 
 使用方法：
     python sync_import_to_db.py
@@ -21,6 +23,7 @@ ABA 数据导入脚本
 import os
 import sys
 import json
+import re
 import time
 import ijson
 import django
@@ -37,11 +40,55 @@ django.setup()
 
 from tqdm import tqdm
 from django.db import transaction
-from aba.models import SearchTerm, SearchTermMetric
+from aba.models import SearchTerm, SearchTermMetric, AbaReportWeek
 
 # 导入下载模块
 sys.path.insert(0, str(Path(__file__).parent))
 from sync_aba_down import download_aba_report, JSON_DIR
+
+
+# 品类匹配规则（用于实时识别搜索词品类）
+CATEGORY_PATTERNS = [
+    ('shirt', ['shirt', 'shirts', 't-shirt', 'tshirt', 'tee', 'tees']),
+    ('hat', ['hat', 'hats', 'cap', 'caps', 'baseball cap', 'snapback']),
+    ('sticker', ['sticker', 'stickers', 'decal', 'decals']),
+    ('flag', ['flag', 'flags', 'garden flag', 'yard flag']),
+    ('banner', ['banner', 'banners']),
+    ('blanket', ['blanket', 'blankets']),
+    ('sock', ['sock', 'socks']),
+    ('apron', ['apron', 'aprons']),
+    ('badge', ['badge', 'badges', 'pin', 'pins']),
+    ('makeup bag', ['makeup bag', 'cosmetic bag']),
+    ('canvas bag', ['canvas bag', 'tote bag']),
+    ('sign', ['sign', 'signs', 'metal sign']),
+    ('tapestry', ['tapestry', 'tapestries']),
+]
+
+
+def detect_category(term: str) -> str:
+    """根据搜索词判断品类（整词匹配）"""
+    term_lower = term.lower()
+    for category, keywords in CATEGORY_PATTERNS:
+        for keyword in keywords:
+            pattern = rf'(^|[^a-z]){re.escape(keyword)}([^a-z]|$)'
+            if re.search(pattern, term_lower):
+                return category
+    return ''
+
+
+def generate_display_label(report_week: datetime.date) -> str:
+    """
+    生成展示文案，格式：2026年第10周 (03.08-03.14)
+    """
+    year = report_week.year
+    week_number = report_week.isocalendar()[1]
+    start_date = report_week
+    end_date = report_week + timedelta(days=6)
+    
+    start_str = start_date.strftime("%m.%d")
+    end_str = end_date.strftime("%m.%d")
+    
+    return f"{year}年第{week_number}周 ({start_str}-{end_str})"
 
 
 class ABAImporter:
@@ -65,7 +112,7 @@ class ABAImporter:
             'errors': 0            # 错误数
         }
         
-        # Cache for existing search terms {term: id}
+        # Cache for existing search terms {term: (id, category)}
         self.term_cache = {}
         
         # Load existing terms into cache
@@ -75,7 +122,7 @@ class ABAImporter:
         """将现有搜索词加载到内存缓存"""
         print("📦 正在加载现有搜索词...")
         for term in SearchTerm.objects.using('aba_db').all():
-            self.term_cache[term.term] = term.id
+            self.term_cache[term.term] = (term.id, term.category)
         print(f"   已缓存 {len(self.term_cache)} 个搜索词")
     
     def _get_last_week_rank(self, term_id: int) -> Tuple[int, int]:
@@ -138,23 +185,32 @@ class ABAImporter:
         
         return dict(grouped)
     
-    def process_batch(self, records: List[dict]) -> Tuple[List[SearchTerm], List[SearchTermMetric]]:
+    def process_batch(self, records: List[dict]) -> Tuple[List[SearchTerm], List[SearchTermMetric], List[Tuple]]:
         """
         处理一批记录
         
         返回：
-            (待创建搜索词列表, 待创建指标列表)
+            (待创建搜索词列表, 待创建指标列表, 待更新搜索词列表)
         """
         # Aggregate
         aggregated = self.aggregate_records(records)
         
         search_terms = []
         metrics = []
+        terms_to_update = []  # (term_id, new_category)
         
         for term, data in aggregated.items():
+            # 实时检测品类
+            detected_category = detect_category(term)
+            
             # 获取或创建 SearchTerm
             if term in self.term_cache:
-                term_id = self.term_cache[term]
+                term_id, existing_category = self.term_cache[term]
+                # 检查 category 是否需要更新（为空或发生变化都要更新）
+                if detected_category != existing_category:
+                    terms_to_update.append((term_id, detected_category))
+                    # 更新缓存
+                    self.term_cache[term] = (term_id, detected_category)
                 # 更新最后出现时间
                 SearchTerm.objects.using('aba_db').filter(id=term_id).update(
                     last_seen=self.report_week
@@ -163,7 +219,7 @@ class ABAImporter:
                 # 创建新搜索词
                 search_term = SearchTerm(
                     term=term,
-                    category='',  # 可后续补充
+                    category=detected_category,  # 实时计算 category
                     first_seen=self.report_week,
                     last_seen=self.report_week
                 )
@@ -212,9 +268,9 @@ class ABAImporter:
             )
             metrics.append((metric, term))  # Keep term for linking
         
-        return search_terms, metrics
+        return search_terms, metrics, terms_to_update
     
-    def save_batch(self, search_terms: List[SearchTerm], metrics: List[Tuple]):
+    def save_batch(self, search_terms: List[SearchTerm], metrics: List[Tuple], terms_to_update: List[Tuple]):
         """保存批次到数据库"""
         
         # 1. 批量创建 SearchTerms
@@ -231,7 +287,7 @@ class ABAImporter:
                 # 重新查询获取 ID（bulk_create 配合 ignore_conflicts 不返回 ID）
                 try:
                     db_term = SearchTerm.objects.using('aba_db').get(term=term.term)
-                    self.term_cache[term.term] = db_term.id
+                    self.term_cache[term.term] = (db_term.id, term.category)
                 except SearchTerm.DoesNotExist:
                     pass
         
@@ -239,12 +295,46 @@ class ABAImporter:
         fixed_metrics = []
         for metric, term in metrics:
             if metric.search_term_id is None and term in self.term_cache:
-                metric.search_term_id = self.term_cache[term]
+                metric.search_term_id = self.term_cache[term][0]
             fixed_metrics.append(metric)
         
         # 3. 使用原始 SQL 批量创建指标（managed=False 模型）
         if fixed_metrics:
             self._bulk_create_metrics_raw(fixed_metrics)
+        
+        # 4. 批量更新已存在搜索词的 category
+        if terms_to_update:
+            self._bulk_update_category(terms_to_update)
+    
+    def _bulk_update_category(self, terms_to_update: List[Tuple]):
+        """批量更新搜索词的 category"""
+        from django.db import connections
+        
+        if not terms_to_update:
+            return
+        
+        # 使用 CASE WHEN 批量更新
+        case_conditions = []
+        term_ids = []
+        for term_id, new_category in terms_to_update:
+            case_conditions.append(f"WHEN id = {term_id} THEN '{new_category}'")
+            term_ids.append(str(term_id))
+        
+        ids_str = ','.join(term_ids)
+        case_sql = '\n                    '.join(case_conditions)
+        
+        sql = f"""
+            UPDATE search_terms
+            SET category = CASE
+                {case_sql}
+                ELSE category
+            END
+            WHERE id IN ({ids_str});
+        """
+        
+        with connections['aba_db'].cursor() as cursor:
+            cursor.execute("SET search_path TO public")
+            cursor.execute(sql)
     
     def _bulk_create_metrics_raw(self, metrics: List[SearchTermMetric]):
         """使用原始 SQL 插入指标（因为 managed=False）"""
@@ -292,8 +382,13 @@ class ABAImporter:
             
             cursor.executemany(sql, data)
     
-    def import_file(self, filepath: str):
-        """主导入流程 - 使用 ijson 流式解析大 JSON"""
+    def import_file(self, filepath: str) -> int:
+        """
+        主导入流程 - 使用 ijson 流式解析大 JSON
+        
+        返回：
+            实际导入的数据条数（用于更新 AbaReportWeek）
+        """
         print(f"🚀 开始导入: {filepath}")
         print(f"   报告周: {self.report_week}")
         print(f"   批次大小: {self.batch_size}")
@@ -331,13 +426,15 @@ class ABAImporter:
         
         print(f"\n✅ 共处理 {processed:,} 条记录")
         self._print_stats()
+        
+        return processed
     
     def _process_and_save_batch(self, batch: List[dict]):
         """Process and save one batch"""
         self.stats['raw_records'] += len(batch)
         
-        search_terms, metrics = self.process_batch(batch)
-        self.save_batch(search_terms, metrics)
+        search_terms, metrics, terms_to_update = self.process_batch(batch)
+        self.save_batch(search_terms, metrics, terms_to_update)
         
         self.stats['search_terms'] += len(search_terms)
         self.stats['metrics'] += len(metrics)
@@ -355,6 +452,37 @@ class ABAImporter:
         print("="*60)
 
 
+def update_aba_report_week(report_week: datetime.date, record_count: int):
+    """
+    更新或创建 AbaReportWeek 记录
+    
+    参数：
+        report_week: 数据周日期
+        record_count: 导入的数据条数
+    """
+    display_label = generate_display_label(report_week)
+    
+    try:
+        # 尝试获取已存在的记录
+        report = AbaReportWeek.objects.using('aba_db').get(report_week=report_week)
+        report.display_label = display_label
+        report.import_status = 'completed'
+        report.record_count = record_count
+        report.is_active = True
+        report.save(using='aba_db')
+        print(f"\n📅 更新 AbaReportWeek: {display_label} (记录数: {record_count:,})")
+    except AbaReportWeek.DoesNotExist:
+        # 创建新记录
+        AbaReportWeek.objects.using('aba_db').create(
+            report_week=report_week,
+            display_label=display_label,
+            import_status='completed',
+            record_count=record_count,
+            is_active=True
+        )
+        print(f"\n📅 创建 AbaReportWeek: {display_label} (记录数: {record_count:,})")
+
+
 def generate_weeks(start_year: int = 2025) -> List[Tuple[str, int, str, str]]:
     """
     生成从指定年份到当前日期的所有周日列表
@@ -364,7 +492,7 @@ def generate_weeks(start_year: int = 2025) -> List[Tuple[str, int, str, str]]:
     weeks = []
     today = datetime.now().date()
     
-    # 找到2025年第一个周日
+    # 找到指定年份第一个周日
     start_date = datetime(start_year, 1, 1).date()
     while start_date.weekday() != 6:  # 6 = Sunday
         start_date += timedelta(days=1)
@@ -476,9 +604,13 @@ def main():
                 print(f"\n📥 开始导入 {date_str}...")
                 start_time = time.time()
                 importer = ABAImporter(report_week=date_str, batch_size=5000)
-                importer.import_file(json_path)
+                record_count = importer.import_file(json_path)
                 elapsed = time.time() - start_time
                 print(f"⏱️  导入耗时: {elapsed:.1f}秒")
+                
+                # 更新 AbaReportWeek 记录
+                report_week = datetime.strptime(date_str, "%Y-%m-%d").date()
+                update_aba_report_week(report_week, record_count)
             
             print(f"\n{'='*60}")
             print("✅ 所有周期处理完成！")
@@ -530,9 +662,14 @@ def main():
                 print(f"\n📥 开始导入 {selected_file.name}...")
                 start_time = time.time()
                 importer = ABAImporter(report_week=date_str, batch_size=5000)
-                importer.import_file(str(selected_file))
+                record_count = importer.import_file(str(selected_file))
                 elapsed = time.time() - start_time
                 print(f"\n⏱️  总耗时: {elapsed:.1f}秒 ({elapsed/60:.1f} 分钟)")
+                
+                # 更新 AbaReportWeek 记录
+                report_week = datetime.strptime(date_str, "%Y-%m-%d").date()
+                update_aba_report_week(report_week, record_count)
+                
                 return True
         
         else:
