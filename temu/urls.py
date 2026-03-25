@@ -12,4 +12,8 @@ urlpatterns = [
          name='update_temu_divi_export_status'),
     path('api/export-temu-orders-excel/', views_temu_order.export_temu_orders_excel,
          name='export_temu_orders_excel'),
+    path('api/refresh-temu-divi-status/', views_temu_order.refresh_temu_divi_status_api,
+         name='refresh_temu_divi_status'),
+    path('api/temu-order-to-divi-and-lingxing/', views_temu_order.temu_order_to_divi_and_lingxing_api,
+         name='temu_order_to_divi_and_lingxing'),
 ]

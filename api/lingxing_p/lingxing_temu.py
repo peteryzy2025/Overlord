@@ -1,3 +1,6 @@
+# temu导单发货集成
+
+
 import os
 import sys
 import time
@@ -217,17 +220,25 @@ async def check_temu_order_to_divi(global_order_no: str, pdf: bool = False, stat
             order.divi_shipping_amount = divi_order.get("taskShippingTotal")
             order.divi_goods_payment_total = divi_order.get("goodsPaymentTotal")
             order.divi_order_status = divi_order.get("status")
+            order.divi_if_order = True  # 标记为DIVI订单
 
             @sync_to_async
             def save_order():
                 order.save(update_fields=[
                     'divi_import_time', 'divi_payment_time', 'divi_dispatch_time', 'divi_shipment_time',
                     'divi_logistics_method', 'divi_tracking_number', 'divi_shipping_amount',
-                    'divi_goods_payment_total', 'divi_order_status'
+                    'divi_goods_payment_total', 'divi_order_status', 'divi_if_order'
                 ])
 
             await save_order()
             return True
+    
+    # 遍历完没有找到订单，设置 divi_if_order 为 False
+    order.divi_if_order = False
+    @sync_to_async
+    def save_order_not_found():
+        order.save(update_fields=['divi_if_order'])
+    await save_order_not_found()
     return False
 async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[str, str] = None) -> Dict[
     str, List[Dict[str, Any]]]:

@@ -758,9 +758,16 @@
                 </div>
 
                 <div class="filter-group">
-                    <label class="filter-label">订单号</label>
+                    <label class="filter-label">平台单号</label>
+                    <input type="text" class="form-control" id="platformOrderNoFilter"
+                           placeholder="输入平台单号（模糊查询）"
+                           onkeyup="if(event.key==='Enter') applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">系统单号</label>
                     <input type="text" class="form-control" id="orderIdFilter"
-                           placeholder="输入订单号（模糊查询）"
+                           placeholder="输入系统单号（模糊查询）"
                            onkeyup="if(event.key==='Enter') applyFilters()">
                 </div>
 
@@ -1033,6 +1040,7 @@
                 end_date: useCustomDate ? (dateRangeController ? dateRangeController.getEndDate() : document.getElementById('endDate').value) : '',
                 operator_id: formatMultiSelect(operatorSelect),
                 group: formatMultiSelect(groupSelect),
+                platform_order_no: document.getElementById('platformOrderNoFilter').value.trim(),
                 order_id: document.getElementById('orderIdFilter').value.trim(),
                 shop_name: document.getElementById('shopNameFilter').value.trim(),
                 shop_status: formatMultiSelect(shopStatusSelect),
@@ -1227,6 +1235,7 @@
                 groupSelect.setValue(['']);
                 operatorSelect.setValue(['']);
 
+                document.getElementById('platformOrderNoFilter').value = '';
                 document.getElementById('orderIdFilter').value = '';
                 document.getElementById('shopNameFilter').value = '';
 
@@ -1424,7 +1433,7 @@
 
                 // 8. 导单按钮逻辑
                 let canExportToDivi = true;
-                let exportTooltip = '导单到 DIVI';
+                let exportTooltip = '导单到divi并发货';
                 if (order.is_exported_to_divi) {
                     canExportToDivi = false;
                     exportTooltip = '已导单';
@@ -1594,28 +1603,37 @@
         }
 
         async function updateDiviExportStatus() {
+            // 获取选中的订单ID
+            const selectedOrderIds = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+                selectedOrderIds.push(cb.dataset.orderId);
+            });
+            
+            if (selectedOrderIds.length === 0) {
+                showNotification('请先选择要刷新状态的订单', 'warning');
+                return;
+            }
+            
             showLoading(true);
             try {
                 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
                     document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
 
-                const response = await fetch('/api/update-temu-divi-export-status/', {
+                const response = await fetch('/api/refresh-temu-divi-status/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        ...currentFilters,
-                        page: ordersPagination.page,
-                        page_size: ordersPagination.page_size
+                        order_ids: selectedOrderIds
                     })
                 });
 
                 const result = await response.json();
                 if (result.success) {
                     await loadOrdersTable();
-                    showNotification('DIVI导单状态已更新', 'success');
+                    showNotification(`已刷新 ${selectedOrderIds.length} 个订单的DIVI状态`, 'success');
                 } else {
                     showNotification('更新失败: ' + (result.message || '未知错误'), 'error');
                 }
@@ -1657,20 +1675,38 @@
             button.style.opacity = '0.7';
 
             try {
-                // 导单功能占位 - 后续实现
-                showNotification(`订单 ${orderId} 导单功能开发中...`, 'info');
-                
-                // 模拟成功后更新状态
-                setTimeout(() => {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/temu-order-to-divi-and-lingxing/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId
+                    })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(`订单 ${orderId} 导单并发货流程已启动`, 'success');
                     icon.className = 'fas fa-check-circle';
                     button.style.color = '#10B981';
                     button.style.opacity = '1';
                     updateOrderIdDiviStatus(orderId, true);
-                }, 1000);
+                } else {
+                    showNotification('导单失败: ' + (result.message || '未知错误'), 'error');
+                    icon.className = 'fas fa-file-export';
+                    button.style.color = '';
+                    button.style.opacity = '1';
+                    button.disabled = false;
+                }
 
             } catch (error) {
                 showNotification(`请求失败: ${error.message}`, 'error');
-                icon.className = 'fas fa-share-square';
+                icon.className = 'fas fa-file-export';
                 button.style.color = '';
                 button.style.opacity = '1';
                 button.disabled = false;
