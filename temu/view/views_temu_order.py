@@ -11,6 +11,9 @@ from django.db.models import Q, Sum, F
 from django.core.paginator import Paginator
 
 from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
+import asyncio
+from asgiref.sync import async_to_sync
+from api.lingxing_p.lingxing_temu import check_temu_order_to_divi, temu_order_to_divi_and_lingxing
 
 
 @login_required
@@ -43,7 +46,8 @@ def get_temu_orders_list_api(request):
         end_date = data.get('end_date', '')
         operator_id = data.get('operator_id', '')
         group = data.get('group', '')
-        order_id = data.get('order_id', '')
+        platform_order_no = data.get('platform_order_no', '')  # 平台单号
+        order_id = data.get('order_id', '')  # 系统单号
         shop_name = data.get('shop_name', '')
         shop_status = data.get('shop_status', '')
         order_status = data.get('order_status', '')
@@ -78,7 +82,11 @@ def get_temu_orders_list_api(request):
             queryset = queryset.filter(global_purchase_time__date__gte=start,
                                        global_purchase_time__date__lte=end)
         
-        # 订单号筛选
+        # 平台单号筛选（模糊查询）
+        if platform_order_no:
+            queryset = queryset.filter(reference_no__icontains=platform_order_no)
+        
+        # 系统单号筛选
         if order_id:
             queryset = queryset.filter(global_order_no__icontains=order_id)
         
@@ -96,6 +104,20 @@ def get_temu_orders_list_api(request):
             status_list = [int(s) for s in order_status.split(',') if s.isdigit()]
             if status_list:
                 queryset = queryset.filter(status__in=status_list)
+        
+        # DIVI导单情况筛选
+        if divi_export:
+            export_list = divi_export.split(',')
+            if 'true' in export_list and 'false' not in export_list:
+                queryset = queryset.filter(divi_if_order=True)
+            elif 'false' in export_list and 'true' not in export_list:
+                queryset = queryset.filter(divi_if_order=False)
+        
+        # DIVI订单状态筛选
+        if divi_order_status:
+            divi_status_list = [int(s) for s in divi_order_status.split(',') if s.isdigit()]
+            if divi_status_list:
+                queryset = queryset.filter(divi_order_status__in=divi_status_list)
         
         # 运营人员筛选（TemuShop的ops_id是IntegerField，不是ForeignKey）
         # 同时考虑 order.temu_shop 和 order.lingxing_shop.temu_shop 两种关联方式
@@ -169,11 +191,11 @@ def get_temu_orders_list_api(request):
                 except User.DoesNotExist:
                     pass
             
-            # DIVI 相关信息（占位，后续接入实际数据）
-            is_exported_to_divi = False  # 后续从关联表获取
-            divi_order_status = None
-            divi_logistics_method = ''
-            divi_tracking_number = ''
+            # DIVI 相关信息
+            is_exported_to_divi = order.divi_if_order if order.divi_if_order is not None else False
+            divi_order_status = order.divi_order_status
+            divi_logistics_method = order.divi_logistics_method or ''
+            divi_tracking_number = order.divi_tracking_number or ''
             
             orders.append({
                 'global_order_no': order.global_order_no,
@@ -237,3 +259,85 @@ def export_temu_orders_excel(request):
         'success': False,
         'message': '导出功能开发中'
     }, status=501)
+
+
+@require_http_methods(["POST"])
+def refresh_temu_divi_status_api(request):
+    """
+    批量刷新订单的DIVI状态
+    调用 check_temu_order_to_divi 函数查询并更新
+    """
+    try:
+        data = json.loads(request.body)
+        order_ids = data.get('order_ids', [])
+        
+        if not order_ids:
+            return JsonResponse({
+                'success': False,
+                'message': '未提供订单ID列表'
+            }, status=400)
+        
+        results = []
+        for sn_no in order_ids:
+            try:
+                # 调用异步函数查询DIVI状态
+                result = async_to_sync(check_temu_order_to_divi)(sn_no)
+                results.append({
+                    'order_id': sn_no,
+                    'found_in_divi': result,
+                    'status': 'success'
+                })
+            except Exception as e:
+                results.append({
+                    'order_id': sn_no,
+                    'found_in_divi': False,
+                    'status': 'error',
+                    'error': str(e)
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'已处理 {len(results)} 个订单',
+            'data': results
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'detail': traceback.format_exc()
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def temu_order_to_divi_and_lingxing_api(request):
+    """
+    将Temu订单导单到DIVI并执行领星发货流程
+    调用 temu_order_to_divi_and_lingxing 函数
+    """
+    try:
+        data = json.loads(request.body)
+        sn_no = data.get('order_id', '')
+        
+        if not sn_no:
+            return JsonResponse({
+                'success': False,
+                'message': '未提供订单ID'
+            }, status=400)
+        
+        # 调用异步函数执行导单和发货
+        async_to_sync(temu_order_to_divi_and_lingxing)(sn_no)
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'订单 {sn_no} 导单并发货流程已启动'
+        })
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'detail': traceback.format_exc()
+        }, status=500)
