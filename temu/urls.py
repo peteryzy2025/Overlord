@@ -16,4 +16,6 @@ urlpatterns = [
          name='refresh_temu_divi_status'),
     path('api/temu-order-to-divi-and-lingxing/', views_temu_order.temu_order_to_divi_and_lingxing_api,
          name='temu_order_to_divi_and_lingxing'),
+    path('api/download-temu-label/', views_temu_order.download_temu_label_api,
+         name='download_temu_label'),
 ]
