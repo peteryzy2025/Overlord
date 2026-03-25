@@ -14,7 +14,7 @@ from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
 import asyncio
 from asgiref.sync import async_to_sync
 import os
-from api.lingxing_p.lingxing_temu import check_temu_order_to_divi, temu_order_to_divi_and_lingxing
+from api.lingxing_p.lingxing_temu import check_temu_order_to_divi, temu_order_to_divi_and_lingxing, refresh_temu_order_by_sn, shipment_order, get_wms_orders_by_order_numbers, refresh_temu_order_by_sn
 
 
 @login_required
@@ -329,8 +329,37 @@ def refresh_temu_divi_status_api(request):
         results = []
         for sn_no in order_ids:
             try:
-                # 调用异步函数查询DIVI状态
+                # 先刷新订单数据
+                refresh_success = async_to_sync(refresh_temu_order_by_sn)(sn_no)
+                if not refresh_success:
+                    results.append({
+                        'order_id': sn_no,
+                        'found_in_divi': False,
+                        'status': 'error',
+                        'error': '订单数据刷新失败'
+                    })
+                    continue
+                
+                # 再调用异步函数查询DIVI状态
                 result = async_to_sync(check_temu_order_to_divi)(sn_no)
+                
+                # 查询订单最新状态
+                try:
+                    order = TemuOrder.objects.get(global_order_no=sn_no)
+                    # 如果状态为5（待发货），执行发货和下载面单
+                    if order.status == 5:
+                        try:
+                            async_to_sync(shipment_order)(sn_no)
+                        except Exception as ship_err:
+                            print(f"订单 {sn_no} 发货失败: {ship_err}")
+                        
+                        try:
+                            async_to_sync(get_wms_orders_by_order_numbers)(sn_no)
+                        except Exception as pdf_err:
+                            print(f"订单 {sn_no} 下载面单失败: {pdf_err}")
+                except TemuOrder.DoesNotExist:
+                    pass
+                
                 results.append({
                     'order_id': sn_no,
                     'found_in_divi': result,
