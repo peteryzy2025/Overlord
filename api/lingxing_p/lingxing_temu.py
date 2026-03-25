@@ -23,7 +23,7 @@ from asgiref.sync import sync_to_async
 import requests
 from api.divi.divi_d import post_partner_list_partner_user_order
 from temu.models import TemuOrder, TemuOrderItem
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date, time as dt_time
 
 def _to_decimal(value, default=Decimal('0.00')):
     """安全地把字符串金额转成 Decimal"""
@@ -259,13 +259,13 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[
     shop_map = shop_map or {}  # 如果没有传入，使用空字典
 
     # 以 UTC 计算 start/end
-    now_utc = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+    now_utc = datetime.utcnow().replace(tzinfo=timezone.utc)
     today_utc_date = now_utc.date()
     # start = (today - day) at 00:00:00  (例如 day=3 -> 3 days ago 00:00:00)
-    start_date = today_utc_date - datetime.timedelta(days=day)
-    start_dt = datetime.datetime.combine(start_date, datetime.time(0, 0, 0), tzinfo=datetime.timezone.utc)
+    start_date = today_utc_date - timedelta(days=day)
+    start_dt = datetime.combine(start_date, dt_time(0, 0, 0), tzinfo=timezone.utc)
     # end = today 23:59:59
-    end_dt = datetime.datetime.combine(today_utc_date, datetime.time(23, 59, 59), tzinfo=datetime.timezone.utc)
+    end_dt = datetime.combine(today_utc_date, dt_time(23, 59, 59), tzinfo=timezone.utc)
 
     start_ts = int(start_dt.timestamp())
     end_ts = int(end_dt.timestamp())
