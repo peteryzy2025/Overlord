@@ -18,7 +18,8 @@ django.setup()
 
 # ====== 导入模型和 API 函数 ======
 from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
-from api.lingxing_p.lingxing_temu import get_lx_temu_orders
+from api.lingxing_p.lingxing_temu import get_lx_temu_orders, check_temu_order_to_divi
+from asgiref.sync import async_to_sync
 
 
 def _to_decimal(value, default=Decimal('0.00')):
@@ -65,6 +66,9 @@ def sync_temu_orders(data_dict):
     updated_orders = 0
     skipped_orders = 0
     total_items = 0
+    
+    # 收集需要检查 DIVI 状态的订单ID（已存在且 divi_order_status != 5）
+    orders_to_check_divi = []
 
     # 大事务包裹整个同步过程
     with transaction.atomic():
@@ -155,6 +159,9 @@ def sync_temu_orders(data_dict):
                     else:
                         updated_orders += 1
                         shop_updated_orders += 1  # 店铺级统计
+                        # 如果是已存在的订单，且 DIVI 状态不是已发货(5)，则加入检查列表
+                        if order.divi_order_status != 5:
+                            orders_to_check_divi.append(order.global_order_no)
                     total_orders += 1
 
                     # ========== 处理订单明细 ==========
@@ -212,6 +219,18 @@ def sync_temu_orders(data_dict):
     # ========== 同步统计 ==========
     print(
         f"\n同步完成 - 订单总计: {total_orders}, 新增: {created_orders}, 更新: {updated_orders}, 跳过: {skipped_orders}, 商品明细总数: {total_items}")
+    
+    # ========== 批量检查 DIVI 状态 ==========
+    if orders_to_check_divi:
+        print(f"\n开始检查 {len(orders_to_check_divi)} 个订单的 DIVI 状态...")
+        for sn_no in orders_to_check_divi:
+            try:
+                # 使用 async_to_sync 调用异步函数
+                async_to_sync(check_temu_order_to_divi)(sn_no)
+                print(f"  ✓ 订单 {sn_no} DIVI 状态检查完成")
+            except Exception as e:
+                print(f"  ✗ 订单 {sn_no} DIVI 状态检查失败: {e}")
+        print("DIVI 状态检查完成")
 
 def temu_orders():
     """主入口函数"""
