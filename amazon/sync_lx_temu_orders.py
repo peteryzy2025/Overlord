@@ -12,7 +12,7 @@ from django.db import transaction
 # ====== Django 初始化（保持不变） ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
@@ -79,7 +79,7 @@ def sync_temu_orders(data_dict):
             shop_created_orders = 0
             shop_updated_orders = 0
             shop_total_items = 0
-            shop_name = getattr(lingxing_shop, 'name', store_id)  # 安全获取店铺名称
+            shop_name = getattr(lingxing_shop, 'store_name', None) or store_id  # 安全获取店铺名称
 
             for raw_order in orders:
                 try:
@@ -207,7 +207,7 @@ def sync_temu_orders(data_dict):
                     continue
 
             # ========== 打印店铺级统计 ==========
-            print(f"\n【店铺: {shop_name}】订单处理完成 - 新增: {shop_created_orders}条 | 更新: {shop_updated_orders}条 | 商品明细: {shop_total_items}条")
+            print(f"\n【店铺: {shop_name} (ID: {store_id})】订单处理完成 - 新增: {shop_created_orders}条 | 更新: {shop_updated_orders}条 | 商品明细: {shop_total_items}条")
 
     # ========== 同步统计 ==========
     print(
@@ -219,7 +219,9 @@ def temu_orders():
     print("开始同步 Temu 订单数据...")
 
     # 1. 获取所有店铺
-    store_ids = list(LingXingTemuShop.objects.values_list('store_id', flat=True))
+    shops = list(LingXingTemuShop.objects.all())
+    store_ids = [shop.store_id for shop in shops]
+    shop_map = {shop.store_id: (shop.store_name or shop.store_id) for shop in shops}
 
     if not store_ids:
         print("未找到任何 Temu 店铺配置，同步终止")
@@ -229,7 +231,7 @@ def temu_orders():
 
     # 2. 拉取订单数据（默认3天）
     try:
-        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=14))
+        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=14, shop_map=shop_map))
     except Exception as e:
         print(f"调用领星 API 失败: {e}")
         return

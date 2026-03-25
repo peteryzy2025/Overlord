@@ -460,27 +460,48 @@ def update_aba_report_week(report_week: datetime.date, record_count: int):
         report_week: 数据周日期
         record_count: 导入的数据条数
     """
+    from django.db import connections
+    
     display_label = generate_display_label(report_week)
     
-    try:
-        # 尝试获取已存在的记录
-        report = AbaReportWeek.objects.using('aba_db').get(report_week=report_week)
-        report.display_label = display_label
-        report.import_status = 'completed'
-        report.record_count = record_count
-        report.is_active = True
-        report.save(using='aba_db')
-        print(f"\n📅 更新 AbaReportWeek: {display_label} (记录数: {record_count:,})")
-    except AbaReportWeek.DoesNotExist:
-        # 创建新记录
-        AbaReportWeek.objects.using('aba_db').create(
-            report_week=report_week,
-            display_label=display_label,
-            import_status='completed',
-            record_count=record_count,
-            is_active=True
+    # 使用原始 SQL，避免 Django ORM 对 id 的依赖
+    with connections['aba_db'].cursor() as cursor:
+        cursor.execute("SET search_path TO public")
+        
+        # 检查记录是否存在
+        cursor.execute(
+            "SELECT 1 FROM aba_report_weeks WHERE report_week = %s",
+            [report_week]
         )
-        print(f"\n📅 创建 AbaReportWeek: {display_label} (记录数: {record_count:,})")
+        exists = cursor.fetchone() is not None
+        
+        if exists:
+            # 更新现有记录
+            cursor.execute(
+                """
+                UPDATE aba_report_weeks 
+                SET display_label = %s,
+                    import_status = 'completed',
+                    record_count = %s,
+                    is_active = TRUE,
+                    updated_at = NOW()
+                WHERE report_week = %s
+                """,
+                [display_label, record_count, report_week]
+            )
+            print(f"\n📅 更新 AbaReportWeek: {display_label} (记录数: {record_count:,})")
+        else:
+            # 创建新记录
+            cursor.execute(
+                """
+                INSERT INTO aba_report_weeks 
+                    (report_week, display_label, import_status, record_count, is_active, created_at, updated_at)
+                VALUES 
+                    (%s, %s, 'completed', %s, TRUE, NOW(), NOW())
+                """,
+                [report_week, display_label, record_count]
+            )
+            print(f"\n📅 创建 AbaReportWeek: {display_label} (记录数: {record_count:,})")
 
 
 def generate_weeks(start_year: int = 2025) -> List[Tuple[str, int, str, str]]:

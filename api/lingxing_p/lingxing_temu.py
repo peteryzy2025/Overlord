@@ -1,10 +1,8 @@
 import os
 import sys
+import time
+
 import django
-import asyncio
-import datetime
-from decimal import Decimal, InvalidOperation
-from django.db import transaction
 
 # ====== Django 初始化（保持不变） ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -19,8 +17,10 @@ from typing import List, Dict, Any
 import asyncio
 from decimal import Decimal, InvalidOperation
 from asgiref.sync import sync_to_async
-from temu.models import TemuOrder
-
+import requests
+from api.divi.divi_d import post_partner_list_partner_user_order
+from temu.models import TemuOrder, TemuOrderItem
+from datetime import datetime, timedelta, timezone
 
 def _to_decimal(value, default=Decimal('0.00')):
     """安全地把字符串金额转成 Decimal"""
@@ -40,7 +40,7 @@ def _timestamp_to_datetime(ts):
     if not ts or ts == 0:
         return None
     try:
-        return datetime.datetime.fromtimestamp(int(ts), tz=datetime.timezone.utc)
+        return datetime.fromtimestamp(int(ts), tz=timezone.utc)
     except (ValueError, TypeError):
         print(f"警告: 时间戳转换失败: {ts}")
         return None
@@ -59,8 +59,178 @@ async def get_lx_temu_shops():
     print(resp)
     return resp.data.get("list")
 
+async def get_temu_order_for_divi(global_order_no: str):
+    """
+    导入divi订单
+    :param global_order_no:系统单号
+    :return:
+    """
+    # 获取订单主表
+    @sync_to_async
+    def get_order():
+        return TemuOrder.objects.select_related(
+            'temu_shop__project',
+            'lingxing_shop__temu_shop__project'
+        ).get(global_order_no=global_order_no)
+    
+    order = await get_order()
 
-async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, List[Dict[str, Any]]]:
+    # 获取订单商品明细
+    @sync_to_async
+    def get_items():
+        return list(TemuOrderItem.objects.filter(order=order))
+    
+    items = await get_items()
+
+    # 解析地址信息
+    address_info = order.address_info or {}
+
+    # 构建 orderGoodsList
+    order_goods_list = []
+    for item in items:
+        order_goods_list.append({
+            "orderItemId": item.product_no or "",
+            "quantityOrdered": item.quantity or 0,
+            "title": item.title or "",
+            "shippingTax": "0",
+            "shippingPrice": "0",
+            "itemPrice": str(item.unit_price_amount) if item.unit_price_amount else "0",
+            "itemTax": "0",
+            "sellerSku": item.msku or ""
+        })
+
+    # 构建订单详情
+    order_detail = {
+        "shippingAddressCity": address_info.get("city", ""),
+        "shippingAddressStateOrRegion": address_info.get("state_or_region", ""),
+        "orderGoodsList": order_goods_list,
+        "amazonOrderId": order.reference_no or "",
+        "buyerEmail": "mai@zitu.com",
+        "shippingAddressName": "zitu",
+        "buyerPhoneNumber": "123456-789",
+        "buyerName": "zitusang",
+        "shippingAddressPhone": "123456-789",
+        "shippingAddressLine1": "1500 Main St",
+        "shippingAddressCountryCode": "US",
+        "currency": "USD",
+        "shippingAddressPostalCode": address_info.get("postal_code", "")
+    }
+
+    # 获取 brandId，优先从 temu_shop 获取，如果没有则从 lingxing_shop.temu_shop 获取
+    temu_shop = order.temu_shop or (order.lingxing_shop.temu_shop if order.lingxing_shop else None)
+    if not temu_shop or not temu_shop.divi_shop_id:
+        raise ValueError(f"订单 {global_order_no} 未关联店铺或 divi_shop_id 为空")
+    brand_id = temu_shop.divi_shop_id
+
+    # 获取 Project 的 divi 认证信息
+    project = temu_shop.project
+    if not project or not project.divi_partner_code or not project.divi_secret:
+        raise ValueError(f"订单 {global_order_no} 关联的店铺未配置 divi 认证信息")
+
+    # 构建返回结果（brandId 在最外层）
+    req_body = {
+        "orderList": [order_detail],
+        "brandId": brand_id,
+    }
+    print(req_body)
+    resp = post_partner_list_partner_user_order(req_body=req_body, api_path="/partnerTaskOrder/addPartnerUserOrder",
+                                                partner_code=project.divi_partner_code, secret=project.divi_secret)
+    print(resp.text)
+    if resp.json().get("code") != 200:
+        raise ValueError(f"订单 {global_order_no} 同步到 Divi 失败，code={resp.json().get('code')}, message={resp.json().get('message')}")
+
+
+async def check_temu_order_to_divi(global_order_no: str, pdf: bool = False, status=None):
+    """
+    检查 Temu 订单是否已经同步到 Divi，返回 True/False
+    :param global_order_no: 系统单号
+    :param pdf: 是否有面单
+    :param status: 状态列表(0：订单取消，1：未付货款，2：未审核，3：排单中，4：生产中，5：发货 )
+    :return:True/False
+    """
+    # 获取订单主表
+    if status is None:
+        status = [0, 1, 2, 3, 4, 5]
+
+    @sync_to_async
+    def get_order():
+        return TemuOrder.objects.select_related(
+            'temu_shop__project',
+            'lingxing_shop__temu_shop__project'
+        ).get(global_order_no=global_order_no)
+
+    try:
+        order = await get_order()
+    except TemuOrder.DoesNotExist:
+        raise ValueError(f"订单 {global_order_no} 不存在")
+
+    # 获取 reference_no
+    reference_no = order.reference_no
+
+    # 获取 temu_shop 和 divi_shop_id
+    temu_shop = order.temu_shop or (order.lingxing_shop.temu_shop if order.lingxing_shop else None)
+    if not temu_shop:
+        raise ValueError(f"订单 {global_order_no} 未关联店铺")
+    divi_shop_id = temu_shop.divi_shop_id
+
+    # 获取 Project 的 divi 认证信息
+    project = temu_shop.project
+    if not project or not project.divi_partner_code or not project.divi_secret:
+        raise ValueError(f"订单 {global_order_no} 关联的店铺未配置 divi 认证信息")
+
+    start_time = (datetime.now() - timedelta(days=15)).replace(hour=0, minute=0, second=0, microsecond=0)
+    end_time = datetime.now().replace(hour=23, minute=59, second=59, microsecond=0)
+    req_body = {
+        "importTimeStart": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "importTimeEnd": end_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "brandIds": [divi_shop_id],
+        "status": status,
+        "amazonOrderId": reference_no,
+    }
+    if pdf:
+        req_body["hasLogistics"] = 1
+    resp = post_partner_list_partner_user_order(req_body=req_body, api_path="/partnerTaskOrder/listPartnerUserOrder",
+                                                partner_code=project.divi_partner_code, secret=project.divi_secret)
+    j = resp.json()
+    if j.get("code") != 200:
+        print(f"查询失败，code={j.get('code')}, message={j.get('message')}")
+        return False
+    for divi_order in j.get("data", []):
+        if divi_order.get("amazonOrderId") == reference_no:
+            # 更新 TemuOrder 的 DIVI 字段
+            from datetime import datetime as dt
+
+            # 时间字符串转 datetime
+            create_time = divi_order.get("createTime")
+            payment_time = divi_order.get("paymentTime")
+            send_order_time = divi_order.get("sendOrderTime")
+            send_goods_time = divi_order.get("sendGoodsTime")
+
+            order.divi_import_time = dt.strptime(create_time, "%Y-%m-%d %H:%M:%S") if create_time else None
+            order.divi_payment_time = dt.strptime(payment_time, "%Y-%m-%d %H:%M:%S") if payment_time else None
+            order.divi_dispatch_time = dt.strptime(send_order_time, "%Y-%m-%d %H:%M:%S") if send_order_time else None
+            order.divi_shipment_time = dt.strptime(send_goods_time, "%Y-%m-%d %H:%M:%S") if send_goods_time else None
+
+            # 其他字段
+            order.divi_logistics_method = divi_order.get("logisticsMethodName")
+            order.divi_tracking_number = divi_order.get("trackingNumber")
+            order.divi_shipping_amount = divi_order.get("taskShippingTotal")
+            order.divi_goods_payment_total = divi_order.get("goodsPaymentTotal")
+            order.divi_order_status = divi_order.get("status")
+
+            @sync_to_async
+            def save_order():
+                order.save(update_fields=[
+                    'divi_import_time', 'divi_payment_time', 'divi_dispatch_time', 'divi_shipment_time',
+                    'divi_logistics_method', 'divi_tracking_number', 'divi_shipping_amount',
+                    'divi_goods_payment_total', 'divi_order_status'
+                ])
+
+            await save_order()
+            return True
+    return False
+async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[str, str] = None) -> Dict[
+    str, List[Dict[str, Any]]]:
     """
     按 store_id（一次只传一个给 API）拉取领星/Temu 订单（带分页），时间范围由 day 决定：
       start_time = (today - day days) 00:00:00 (UTC)
@@ -69,11 +239,13 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
     Args:
         store_ids: list of store_id strings (可以传多个，本函数会为每个店铺单独请求)
         day: 向前的天数窗口（例如 day=3 则从 3 天前 00:00:00 到 今天 23:59:59）
+        shop_map: {store_id: shop_name, ...} 店铺名称映射，用于日志显示
 
     Returns:
         dict: { store_id: [order_dict, ...], ... }
     """
     results: Dict[str, List[Dict[str, Any]]] = {}
+    shop_map = shop_map or {}  # 如果没有传入，使用空字典
 
     # 以 UTC 计算 start/end
     now_utc = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
@@ -90,10 +262,13 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
     LENGTH = 500
 
     for store_id in store_ids:
+        shop_name = shop_map.get(store_id, '未知店铺')
         store_results = []
         offset = 0
+        request_count = 0  # 统计请求次数
 
         while True:
+            request_count += 1
             req_body = {
                 "start_time": start_ts,
                 "end_time": end_ts,
@@ -108,7 +283,7 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
                 resp = await get_api_resp(req_body, api_path="/pb/mp/order/v2/list")
             except Exception as e:
                 # 捕获网络/解析异常，记录并跳出当前店铺的循环（或你可以改为重试）
-                print(f"[get_lingxing_orders] Exception fetching store {store_id}, offset {offset}: {e}")
+                print(f"[get_lingxing_orders] Exception fetching store {store_id}({shop_name}), offset {offset}: {e}")
                 break
 
             # 兼容原始函数里 resp.data.get("list") 的结构
@@ -132,6 +307,9 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
             except Exception:
                 data_list = []
 
+            print(
+                f"[API请求] {shop_name}(ID:{store_id}), 第{request_count}次请求, offset={offset}, 返回{len(data_list)}条数据")
+
             if not data_list:
                 # 没有数据则结束分页
                 break
@@ -148,6 +326,7 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3) -> Dict[str, Li
             # 如果你希望在分页间做短暂sleep以防限速，取消下面注释（需要 asyncio）
             # await asyncio.sleep(0.1)
 
+        print(f"[店铺汇总] {shop_name}(ID:{store_id}), 共请求{request_count}次, 获取{len(store_results)}条订单")
         results[store_id] = store_results
 
     return results
@@ -171,7 +350,6 @@ async def get_lx_temu_orders_list(platform_order_nos: List[str]) -> Dict[str, Li
     }
     # print(req_body)
     resp = await get_api_resp(req_body, api_path="/pb/mp/order/v2/list")
-
     # 提取订单列表
     order_list = []
     try:
@@ -245,7 +423,7 @@ async def refresh_temu_order_by_sn(global_order_no: str):
 
 async def temu_address_decrypt(decrypt_sn_list: List[str]):
     """
-        批量TEMU地址解密 系统单号列表
+        批量TEMU地址解密 系统单号列表 目前没使用了
     :param decrypt_sn_list:
     :return:
     """
@@ -451,23 +629,12 @@ def get_temu_order_address_data(sn):
     """获取 Temu 订单地址数据（包含买家信息和地址信息）"""
     try:
         order = TemuOrder.objects.get(global_order_no=sn)
-
         buyers_info = order.buyers_info or {}
         address_info = order.address_info or {}
-
-        # 构建 address_line_all
-        address_parts = []
-        for key in ['address_line1', 'address_line2', 'address_line3']:
-            value = address_info.get(key)
-            if value:
-                address_parts.append(value)
-        address_line_all = ' '.join(address_parts)
-
         # 合并数据
         result = {
             **buyers_info,
             **address_info,
-            'address_line_all': address_line_all,
         }
 
         return result
@@ -476,7 +643,7 @@ def get_temu_order_address_data(sn):
 
 
 async def ck():
-    """拿"""
+    """拿仓库"""
     req_body = {
         "type": 3
     }
@@ -484,8 +651,8 @@ async def ck():
     print(resp)
 
 
-async def step3_add_warehousing_temu(items_with_qty_price: list, wid:str, app_id: str = None,
-                                app_secret: str = None):
+async def step3_add_warehousing_temu(items_with_qty_price: list, wid: str, app_id: str = None,
+                                     app_secret: str = None):
     product_list = []
     for it in items_with_qty_price:
         product_item = {
@@ -503,17 +670,47 @@ async def step3_add_warehousing_temu(items_with_qty_price: list, wid:str, app_id
     print(f"   → 入库结果 = {resp}")
 
 
-def get_temu_wid(postal_code):
-    """根据邮编判断 Temu 仓库（美东/美西）"""
-    if postal_code:
-        first_digit = postal_code[0]
-        if first_digit in '0123':
-            print(f"根据邮编 {postal_code} 判断为美东仓库 (530524)")
-            return "530524"  # 美东
-        elif first_digit in '456789':
-            print(f"根据邮编 {postal_code} 判断为美西仓库 (530525)")
-            return "530525"  # 美西
-    raise "无法根据邮编判断仓库（美东/美西），请检查订单地址信息"
+@sync_to_async
+def get_temu_order_status(sn_no: str):
+    """根据系统单号获取订单状态码
+    系统订单状态：
+        1 同步中
+        2 已同步
+        3 未付款
+        4 待审核
+        5 待发货
+        6 已发货
+        7 已取消/不发货
+        8 不显示
+        9 平台发货
+
+    """
+    try:
+        order = TemuOrder.objects.get(global_order_no=sn_no)
+        return order.status
+    except TemuOrder.DoesNotExist:
+        return None
+
+
+@sync_to_async
+def get_temu_wid(sn_no: str):
+    """根据系统单号获取 Temu 仓库 wid（美东/美西）"""
+    try:
+        order = TemuOrder.objects.get(global_order_no=sn_no)
+        address_info = order.address_info or {}
+        postal_code = address_info.get('postal_code', '')
+
+        if postal_code:
+            first_digit = postal_code[0]
+            if first_digit in '0123':
+                print(f"根据邮编 {postal_code} 判断为美东仓库 (530524)")
+                return "530524"  # 美东
+            elif first_digit in '456789':
+                print(f"根据邮编 {postal_code} 判断为美西仓库 (530525)")
+                return "530525"  # 美西
+        raise ValueError(f"无法根据邮编判断仓库（美东/美西），请检查订单 {sn_no} 的地址信息")
+    except TemuOrder.DoesNotExist:
+        raise ValueError(f"订单 {sn_no} 不存在")
 
 
 async def temu_order_create_skus(global_order_no: str):
@@ -523,6 +720,7 @@ async def temu_order_create_skus(global_order_no: str):
     Args:
         global_order_no: 系统单号
     """
+
     @sync_to_async
     def get_order_skus_and_auth(sn):
         from temu.models import TemuOrderItem, TemuOrder
@@ -567,10 +765,6 @@ async def temu_order_create_skus(global_order_no: str):
             cg_price="10",  # 暂时写死
             app_id=app_id,
             app_secret=app_secret,
-            length_cm=0.13,   # 固定值
-            width_cm=11.81,   # 固定值
-            height_cm=11.02,  # 固定值
-            weight_kg=1.57    # 固定值
         )
 
     return True
@@ -583,6 +777,7 @@ async def temu_order_binding(global_order_no: str):
     Args:
         global_order_no: 系统单号
     """
+
     @sync_to_async
     def get_order_skus_and_auth(sn):
         from temu.models import TemuOrderItem, TemuOrder
@@ -632,6 +827,7 @@ async def temu_order_to_warehouse(global_order_no: str, wid: str):
         global_order_no: 系统单号
         wid: 仓库ID
     """
+
     @sync_to_async
     def get_order_items_and_auth(sn):
         from temu.models import TemuOrderItem, TemuOrder
@@ -675,49 +871,28 @@ async def temu_order_to_warehouse(global_order_no: str, wid: str):
         if not app_id or not app_secret:
             print("缺少领星API认证信息")
         return False
+
+
 async def step1_set_sku(
         sku: str,
         cg_price: str,
         app_id: str = None,
         app_secret: str = None,
-        length_cm: float = None,
-        width_cm: float = None,
-        height_cm: float = None,
-        weight_kg: float = None
 ):
     """
     新建/编辑产品到领星仓库
-    尺寸重量传公制，内部自动转英制
     """
-    # 公制转英制
-    # 1 inch = 2.54 cm
-    # 1 lb = 0.453592 kg
-    length_inch = round(length_cm / 2.54, 2) if length_cm else ""
-    width_inch = round(width_cm / 2.54, 2) if width_cm else ""
-    height_inch = round(height_cm / 2.54, 2) if height_cm else ""
-    weight_lb = round(weight_kg / 0.453592, 2) if weight_kg else ""
-
     req_body = {
         "sku": sku,
         "product_name": sku,
         "sku_identifier": sku,
         "cg_price": cg_price,
-        'cg_package_length': str(length_inch) if length_inch != "" else "",
-        'cg_package_width': str(width_inch) if width_inch != "" else "",
-        'cg_package_height': str(height_inch) if height_inch != "" else "",
-        'cg_product_gross_weight': str(weight_lb) if weight_lb != "" else "",
+        'cg_package_length': 20,
+        'cg_package_width': 20,
+        'cg_package_height': 3,
+        'cg_product_gross_weight': 150,
         'description': "temu订单同步，自动创建/更新产品",
     }
-
-    # print(f"\n【步骤1】set_sku 请求参数：")
-    # print(f"   → sku        = {sku}")
-    # print(f"   → cg_price   = {cg_price}")
-    # if length_cm or width_cm or height_cm:
-    #     print(f"   → 尺寸(公制)  = {length_cm}×{width_cm}×{height_cm} cm")
-    #     print(f"   → 尺寸(英制)  = {length_inch}×{width_inch}×{height_inch} inch")
-    # if weight_kg:
-    #     print(f"   → 重量(公制)  = {weight_kg} kg")
-    #     print(f"   → 重量(英制)  = {weight_lb} lb")
 
     resp = await get_api_resp(
         req_body=req_body,
@@ -728,9 +903,9 @@ async def step1_set_sku(
     print(f"创建/编辑sku→ 返回结果   = {resp}")
     return resp
 
+
 async def step2_update_order_binding(global_order_no: str, list_mskus: list, app_id: str = None,
                                      app_secret: str = None):
-
     order_item_list = []
     for msku in list_mskus:
         order_item_list.append({"sku": msku, "msku": msku, "type": 3})
@@ -740,23 +915,214 @@ async def step2_update_order_binding(global_order_no: str, list_mskus: list, app
                               app_secret=app_secret)
     print(f"   → 绑定结果 = {resp}")
 
-async def test():
-    sn_no = "103680569303112731"
-    # success = await temu_address_decrypt([sn_no]) # 先解密地址（如果订单地址未解密则无法正确保存地址信息）
-    # if not success:
-    #     raise f"订单号：{sn_no},地址解密失败，无法继续下一步骤"
-    # success = await refresh_temu_order_by_sn(sn_no) # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
-    # if not success:
-    #     raise f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤"
-    # order_info = await get_temu_order_address_data(sn_no)  # 从数据库获取订单地址数据（包含买家信息和地址信息）
-    # # 判断美东/美西
-    # postal_code = order_info.get('postal_code', '')
-    # wid = get_temu_wid(postal_code)
-    # await temu_order_create_skus(sn_no)# 创建/编辑 SKU
-    # await temu_order_to_warehouse(sn_no, wid)# 执行入库
-    # await temu_order_binding(sn_no)# 绑定商品（编辑/更新自发货订单）
+
+def rule_review(global_order_no_list: str):
+    url = "https://erp.lingxing.com/api/platforms/order_flow/ruleReview"
+    headers = {
+        "auth-token": "c8b4eN2IMIbc4VQ3o5+3IKKvR9zyvSP/R5HKD4babBbkROMtzJfeHIpZc/H9lcj21fYxXi7oDv4JjpXKbh/J/niPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP+gSaLarpU/K8i0HAGVZtIY",
+        "cookie": "sensorsdata2015jssdkchannel=%7B%22prop%22%3A%7B%22_sa_channel_landing_url%22%3A%22%22%7D%7D; _ga=GA1.1.1080743940.1758938699; __wpkreporterwid_=0b3c8410-66b0-492a-80de-ad88719bf782; seller-auth-erp-url=https%3A%2F%2Ferp.lingxing.com%2Fapi%2Fseller%2FoauthRedirect; _ga_89WN60ZK2E=GS2.1.s1762335780$o1$g1$t1762335962$j60$l0$h0; _gcl_au=1.1.794625941.1768957315; _uetvid=5ef977909b4611f0be08dbb64ee72a9b; _clck=ch24da%5E2%5Eg43%5E0%5E2096; _ga_57W1QW8BJG=GS2.1.s1772679296$o12$g0$t1772679299$j57$l0$h688668351; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%2210479745-10479745%22%2C%22first_id%22%3A%2219988ea949ec70-0a82006be0d1038-4c657b58-2073600-19988ea949f1da8%22%2C%22props%22%3A%7B%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTk5ODhlYTk0OWVjNzAtMGE4MjAwNmJlMGQxMDM4LTRjNjU3YjU4LTIwNzM2MDAtMTk5ODhlYTk0OWYxZGE4IiwiJGlkZW50aXR5X2xvZ2luX2lkIjoiMTA0Nzk3NDUtMTA0Nzk3NDUifQ%3D%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%2210479745-10479745%22%7D%2C%22%24device_id%22%3A%2219988ea949ec70-0a82006be0d1038-4c657b58-2073600-19988ea949f1da8%22%7D; uid=10479745; zid=10479745; Hm_lvt_e1b07b01489084694814b73e755122ea=1772499632,1773017123,1773998154,1774252571; HMACCOUNT=B78407243006DBCA; _ga_YG2XNMH0EE=GS2.1.s1774252571$o51$g0$t1774252571$j60$l0$h1411391070; company_id=901372455441989632; envKey=SAAS-103; env_key=SAAS-103; authToken=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; auth-token=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; isNeedReset=0; isUpdatePwd=0; isLogin=true; sensor-distinace-id=10479745-10479745; is_sellerAuth=1; token=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; udesk_info_901372455441989632=%7B%22level%22%3A%22B%22%2C%22klevel%22%3A%22%E5%90%A6%22%2C%22company_id%22%3A%22901372455441989632%22%2C%22customer_id%22%3A%2210479745%22%2C%22cs_group%22%3A%22CSG1-009%22%7D; Hm_lpvt_e1b07b01489084694814b73e755122ea=1774316681; info=%7B%22uid%22%3A%2210479745%22%2C%22zid%22%3A%2210479745%22%2C%22username%22%3A%22m.1113CzVrBn9a%22%2C%22siteUsername%22%3A%22%22%2C%22realname%22%3A%22%E5%90%B4%E5%B0%8F%E5%A7%90%22%2C%22mobile%22%3A%2213669591113%22%2C%22nationCode%22%3A%22%22%2C%22adminNationCode%22%3A%22%22%2C%22mealInfo%22%3A%7B%22recharge_num%22%3A0%7D%2C%22loginGuide%22%3Afalse%2C%22loginEnv%22%3A2%2C%22isPartner%22%3A0%2C%22email%22%3A%22%22%2C%22sysSubAdminFlag%22%3A0%2C%22editFlag%22%3A1%2C%22isDisableResetPwd%22%3A0%2C%22is_mobile_verified%22%3A1%2C%22is_master%22%3A1%2C%22is_email_verified%22%3A0%2C%22hide_init_guide%22%3A1%2C%22mp_hide_init_guide%22%3A0%2C%22has_bind_oauth_center%22%3A0%2C%22has_bind_jst%22%3A0%2C%22feature_info%22%3A%7B%7D%2C%22customer_id%22%3A%2210479745%22%2C%22show_zid%22%3A%2210479745%22%2C%22available_env%22%3A%5B%22amazon%22%2C%22multi%22%5D%2C%22api_info%22%3A%5B%5D%7D; Hm_lvt_49f9312a5d99eba61237e",
+        "Content-Type": "application/json;charset=UTF-8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+        'Host': 'erp.lingxing.com',
+        'Origin': 'https://erp.lingxing.com',
+        'Referer': 'https://erp.lingxing.com/erp/mmulti/mpOrderManagement',
+        'Sec-Ch-Ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Microsoft Edge";v="146"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sentry-Trace': '600e5906ff2540d9a418e14bc507e3f4-8bdff8497115cc56-0',
+        'X-Ak-Company-Id': '901372455441989632',
+        'X-Ak-Env-Key': 'SAAS-103',
+        'X-Ak-Language': 'zh',
+        'X-Ak-Platform': '2',
+        'X-Ak-Request-Id': '6b86a30e-6f6b-4756-a932-6c6e777e1b14',
+        'X-Ak-Request-Source': 'erp',
+        'X-Ak-Uid': '10479745',
+        'X-Ak-Version': '3.7.9.3.0.118',
+        'X-Ak-Zid': '10479745',
+    }
+
+    json_data = {
+        "global_order_no": [
+            global_order_no_list
+        ],
+        "req_time_sequence": "/api/platforms/order_flow/ruleReview$$1"
+    }
+
+    response = requests.post(url, json=json_data, headers=headers)
+    return response
+
+
+async def shipment_order(order_number_list):
+    req_body = {
+        "order_number_list": order_number_list,
+    }
+    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
+    print(f"发货返回：{resp}")
+
+
+async def get_wms_orders_by_order_numbers(order_numbers: str):
+    """
+    查询销售出库单详情-支持查询ERP中【仓库】>【销售出库单】数据，即自发货订单销售出库单
+    :param order_numbers: 系统单号
+    :return:
+    """
+    req_body = {
+        "isPrintCenter": 1,  # 是否需要拣货信息，枚举值：1-是, 0-否
+        "orderNumbers": order_numbers,
+    }
+    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/wmsOrder/getWmsOrdersByOrderNumbers")
+    order_i = resp.data.get("orderList")[0]
+    surface_pdf = order_i.get("surfacePdf")
+    filename = "\\\\192.168.110.54\overlord_555\自动化\Temu面单\\" + order_i.get("amazonOrderId") + "#" + order_i.get("trackingNo") + ".pdf"
+    if os.path.exists(filename):
+        print(f"文件已存在，跳过下载: {filename}")
+        return
+    print(surface_pdf, filename)
+    download_pdf(download_url=surface_pdf, save_path=filename)
+
+
+def download_pdf(download_url, save_path, headers=None, timeout=30):
+    """
+    下载PDF文件并保存到本地
+
+    Args:
+        download_url: PDF下载链接（如 https://erp.lingxing.com/api/file/downloadById?...）
+        save_path: 本地保存路径（如 ./downloads/file.pdf）
+        headers: 可选的请求头字典（如需Cookie、Authorization等）
+        timeout: 请求超时时间（秒）
+
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    # 默认请求头（模拟浏览器）
+    default_headers = {
+        "auth-token": "c8b4eN2IMIbc4VQ3o5+3IKKvR9zyvSP/R5HKD4babBbkROMtzJfeHIpZc/H9lcj21fYxXi7oDv4JjpXKbh/J/niPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP+gSaLarpU/K8i0HAGVZtIY",
+        "cookie": "sensorsdata2015jssdkchannel=%7B%22prop%22%3A%7B%22_sa_channel_landing_url%22%3A%22%22%7D%7D; _ga=GA1.1.1080743940.1758938699; __wpkreporterwid_=0b3c8410-66b0-492a-80de-ad88719bf782; seller-auth-erp-url=https%3A%2F%2Ferp.lingxing.com%2Fapi%2Fseller%2FoauthRedirect; _ga_89WN60ZK2E=GS2.1.s1762335780$o1$g1$t1762335962$j60$l0$h0; _gcl_au=1.1.794625941.1768957315; _uetvid=5ef977909b4611f0be08dbb64ee72a9b; _clck=ch24da%5E2%5Eg43%5E0%5E2096; _ga_57W1QW8BJG=GS2.1.s1772679296$o12$g0$t1772679299$j57$l0$h688668351; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%2210479745-10479745%22%2C%22first_id%22%3A%2219988ea949ec70-0a82006be0d1038-4c657b58-2073600-19988ea949f1da8%22%2C%22props%22%3A%7B%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTk5ODhlYTk0OWVjNzAtMGE4MjAwNmJlMGQxMDM4LTRjNjU3YjU4LTIwNzM2MDAtMTk5ODhlYTk0OWYxZGE4IiwiJGlkZW50aXR5X2xvZ2luX2lkIjoiMTA0Nzk3NDUtMTA0Nzk3NDUifQ%3D%3D%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%2210479745-10479745%22%7D%2C%22%24device_id%22%3A%2219988ea949ec70-0a82006be0d1038-4c657b58-2073600-19988ea949f1da8%22%7D; uid=10479745; zid=10479745; Hm_lvt_e1b07b01489084694814b73e755122ea=1772499632,1773017123,1773998154,1774252571; HMACCOUNT=B78407243006DBCA; _ga_YG2XNMH0EE=GS2.1.s1774252571$o51$g0$t1774252571$j60$l0$h1411391070; company_id=901372455441989632; envKey=SAAS-103; env_key=SAAS-103; authToken=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; auth-token=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; isNeedReset=0; isUpdatePwd=0; isLogin=true; sensor-distinace-id=10479745-10479745; is_sellerAuth=1; token=c8b4eN2IMIbc4VQ3o5%2B3IKKvR9zyvSP%2FR5HKD4babBbkROMtzJfeHIpZc%2FH9lcj21fYxXi7oDv4JjpXKbh%2FJ%2FniPVKti4tBsSHXuyz1XE1pmJKnhHDN8IA07bDbgH7o3h8jqKpSORUtH8pZxP%2BgSaLarpU%2FK8i0HAGVZtIY; udesk_info_901372455441989632=%7B%22level%22%3A%22B%22%2C%22klevel%22%3A%22%E5%90%A6%22%2C%22company_id%22%3A%22901372455441989632%22%2C%22customer_id%22%3A%2210479745%22%2C%22cs_group%22%3A%22CSG1-009%22%7D; Hm_lpvt_e1b07b01489084694814b73e755122ea=1774316681; info=%7B%22uid%22%3A%2210479745%22%2C%22zid%22%3A%2210479745%22%2C%22username%22%3A%22m.1113CzVrBn9a%22%2C%22siteUsername%22%3A%22%22%2C%22realname%22%3A%22%E5%90%B4%E5%B0%8F%E5%A7%90%22%2C%22mobile%22%3A%2213669591113%22%2C%22nationCode%22%3A%22%22%2C%22adminNationCode%22%3A%22%22%2C%22mealInfo%22%3A%7B%22recharge_num%22%3A0%7D%2C%22loginGuide%22%3Afalse%2C%22loginEnv%22%3A2%2C%22isPartner%22%3A0%2C%22email%22%3A%22%22%2C%22sysSubAdminFlag%22%3A0%2C%22editFlag%22%3A1%2C%22isDisableResetPwd%22%3A0%2C%22is_mobile_verified%22%3A1%2C%22is_master%22%3A1%2C%22is_email_verified%22%3A0%2C%22hide_init_guide%22%3A1%2C%22mp_hide_init_guide%22%3A0%2C%22has_bind_oauth_center%22%3A0%2C%22has_bind_jst%22%3A0%2C%22feature_info%22%3A%7B%7D%2C%22customer_id%22%3A%2210479745%22%2C%22show_zid%22%3A%2210479745%22%2C%22available_env%22%3A%5B%22amazon%22%2C%22multi%22%5D%2C%22api_info%22%3A%5B%5D%7D; Hm_lvt_49f9312a5d99eba61237e",
+        "Content-Type": "application/json;charset=UTF-8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+        'Host': 'erp.lingxing.com',
+        'Origin': 'https://erp.lingxing.com',
+        'Referer': 'https://erp.lingxing.com/erp/mmulti/mpOrderManagement',
+        'Sec-Ch-Ua': '"Chromium";v="146", "Not-A.Brand";v="24", "Microsoft Edge";v="146"',
+        'Sec-Ch-Ua-Mobile': '?0',
+        'Sec-Ch-Ua-Platform': '"Windows"',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sentry-Trace': '600e5906ff2540d9a418e14bc507e3f4-8bdff8497115cc56-0',
+        'X-Ak-Company-Id': '901372455441989632',
+        'X-Ak-Env-Key': 'SAAS-103',
+        'X-Ak-Language': 'zh',
+        'X-Ak-Platform': '2',
+        'X-Ak-Request-Id': '6b86a30e-6f6b-4756-a932-6c6e777e1b14',
+        'X-Ak-Request-Source': 'erp',
+        'X-Ak-Uid': '10479745',
+        'X-Ak-Version': '3.7.9.3.0.118',
+        'X-Ak-Zid': '10479745',
+    }
+
+    # 合并用户提供的headers
+    if headers:
+        default_headers.update(headers)
+
+    try:
+        # 确保目录存在
+        save_dir = os.path.dirname(os.path.abspath(save_path))
+        if save_dir and not os.path.exists(save_dir):
+            os.makedirs(save_dir, exist_ok=True)
+
+        # 流式下载，节省内存
+        print(f"开始下载: {download_url}")
+        response = requests.get(
+            download_url,
+            headers=default_headers,
+            stream=True,
+            timeout=timeout,
+            allow_redirects=True
+        )
+        response.raise_for_status()  # 检查HTTP错误
+
+        # 检查Content-Type是否为PDF（可选）
+        content_type = response.headers.get('Content-Type', '')
+
+        # 写入文件
+        total_size = int(response.headers.get('content-length', 0))
+        downloaded = 0
+        chunk_size = 8192
+
+        with open(save_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:
+                    f.write(chunk)
+                    downloaded += len(chunk)
+                    # 简单的进度显示
+                    if total_size > 0:
+                        percent = (downloaded / total_size) * 100
+                        print(f"\r下载进度: {percent:.1f}%", end='', flush=True)
+
+        print(f"\n✓ 下载完成: {save_path} ({downloaded / 1024:.1f} KB)")
+        return True, "下载成功"
+
+    except requests.exceptions.Timeout:
+        error_msg = "请求超时"
+        print(f"✗ {error_msg}")
+        return False, error_msg
+
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"HTTP错误: {e.response.status_code}"
+        print(f"✗ {error_msg}")
+        return False, error_msg
+
+    except Exception as e:
+        error_msg = f"下载失败: {str(e)}"
+        print(f"✗ {error_msg}")
+        return False, error_msg
+
+
+async def temu_order_to_divi_and_lingxing(sn_no):
+    """
+    temu订单从领星导入divi并发货
+    :param sn_no: 系统单号
+    :return:
+    """
+    success = await refresh_temu_order_by_sn(sn_no)  # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
+    if not success:
+        raise f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤"
+    status = await get_temu_order_status(sn_no)
+    if status in [0,1,2,3]:
+        raise f"{sn_no}订单处于：同步中/已同步/未付款 阶段"
+
+    divi_order_bool =  await check_temu_order_to_divi(sn_no, pdf=True, status=[0, 1, 2, 3, 4, 5])
+    if divi_order_bool:
+        print(f"订单号：{sn_no} 已存在divi且有面单，跳过后续步骤")
+        return
+    else:
+        divi_order_bool = await check_temu_order_to_divi(sn_no, pdf=False, status=[0, 1, 2, 3, 4, 5])
+        if not divi_order_bool:# 如果没有就导单
+            await get_temu_order_for_divi(sn_no) # 导入订单
+            await check_temu_order_to_divi(sn_no, pdf=False, status=[0, 1, 2, 3, 4, 5])
+        else:
+            print(f"订单号：{sn_no} 已存在divi但没有面单！")
+
+    # 获取订单状态码和仓库 wid
+    status = await get_temu_order_status(sn_no)
+    print(sn_no, status)
+    if status ==4: # 待审核
+        wid = await get_temu_wid(sn_no)
+        await temu_order_create_skus(sn_no)# 创建/编辑 SKU
+        await temu_order_to_warehouse(sn_no, wid)# 执行入库
+        await temu_order_binding(sn_no)# 绑定商品（编辑/更新自发货订单）
+        rule_review(sn_no) # 订单审核（调用ERP规则审核接口，触发订单审核流程）
+
+    elif status == 5: # 待发货
+        await shipment_order(sn_no)  # 订单发货
+    await get_wms_orders_by_order_numbers(sn_no)  # 下载面单，会去判断本地有没有面单
 
 
 if __name__ == '__main__':
-    asyncio.run(test())
+    sn_no = "103682640666460459"
+    asyncio.run(temu_order_to_divi_and_lingxing(sn_no))
     # asyncio.run(ck())

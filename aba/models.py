@@ -206,7 +206,7 @@ class SearchTermMetric(models.Model):
 
 class AbaReportWeek(models.Model):
     report_week = models.DateField(
-        unique=True,
+        primary_key=True,  # report_week 作为主键
         db_index=True,
         verbose_name="数据周"
     )
