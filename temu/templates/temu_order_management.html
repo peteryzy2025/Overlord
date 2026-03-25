@@ -843,7 +843,7 @@
                         <th>店铺名称</th>
                         <th>运营分组/人员</th>
                         <th>DIVI详情</th>
-                        <th>商品详情</th>
+                        <th>物流单号</th>
                         <th>下单时间</th>
                         <th>配送类型</th>
                         <th class="w-actions">操作</th>
@@ -1414,15 +1414,10 @@
                     </div>
                 `;
 
-                // 6. 商品详情
-                const quantity = order.quantity || 0;
-                const amount = parseFloat(order.order_total_amount || 0).toFixed(2);
-                const productInfoHtml = `
-                    <div class="product-info-cell">
-                        <div>数量：${quantity}</div>
-                        <div>金额：$${amount}</div>
-                    </div>
-                `;
+                // 6. 物流单号（可点击下载面单）
+                const trackingNumberHtml = order.tracking_number 
+                    ? `<a href="javascript:void(0)" class="primary-text" onclick="downloadTemuLabel('${order.reference_no}', '${order.tracking_number}', event)" style="cursor: pointer; text-decoration: underline;">${order.tracking_number}</a>` 
+                    : '<span style="color: var(--text-secondary);">-</span>';
 
                 // 7. 配送类型
                 const deliveryTypeMap = {
@@ -1468,7 +1463,7 @@
                         </td>
                         <td>${opsInfoHtml}</td>
                         <td>${diviDetailsHtml}</td>
-                        <td>${productInfoHtml}</td>
+                        <td>${trackingNumberHtml}</td>
                         <td>${order.purchase_time || '-'}</td>
                         <td>${deliveryTypeText}</td>
                         <td class="w-actions">
@@ -1710,6 +1705,53 @@
                 button.style.color = '';
                 button.style.opacity = '1';
                 button.disabled = false;
+            }
+        }
+
+        async function downloadTemuLabel(platformOrderNo, trackingNumber, event) {
+            event.preventDefault();
+            
+            if (!platformOrderNo || !trackingNumber) {
+                showNotification('缺少平台单号或物流单号', 'warning');
+                return;
+            }
+            
+            try {
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                    document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+
+                const response = await fetch('/api/download-temu-label/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        platform_order_no: platformOrderNo,
+                        tracking_number: trackingNumber
+                    })
+                });
+
+                if (response.ok && response.headers.get('content-type')?.includes('application/pdf')) {
+                    // 成功获取PDF，触发下载
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${platformOrderNo}#${trackingNumber}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    showNotification('面单下载成功', 'success');
+                } else {
+                    // 返回的是JSON错误信息
+                    const result = await response.json();
+                    showNotification(result.message || '下载失败', 'error');
+                }
+
+            } catch (error) {
+                showNotification(`下载失败: ${error.message}`, 'error');
             }
         }
 

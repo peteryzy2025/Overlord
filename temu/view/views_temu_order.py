@@ -4,7 +4,7 @@ Temu 订单管理视图
 """
 import json
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q, Sum, F
@@ -13,6 +13,7 @@ from django.core.paginator import Paginator
 from temu.models import TemuOrder, TemuOrderItem, LingXingTemuShop
 import asyncio
 from asgiref.sync import async_to_sync
+import os
 from api.lingxing_p.lingxing_temu import check_temu_order_to_divi, temu_order_to_divi_and_lingxing
 
 
@@ -209,6 +210,7 @@ def get_temu_orders_list_api(request):
                 'divi_order_status': divi_order_status,
                 'divi_logistics_method': divi_logistics_method,
                 'divi_tracking_number': divi_tracking_number,
+                'tracking_number': order.tracking_number or '',
                 'quantity': quantity,
                 'order_total_amount': str(order.order_total_amount) if order.order_total_amount else '0.00',
                 'purchase_time': order.global_purchase_time.strftime('%Y-%m-%d %H:%M') if order.global_purchase_time else '-',
@@ -259,6 +261,53 @@ def export_temu_orders_excel(request):
         'success': False,
         'message': '导出功能开发中'
     }, status=501)
+
+
+@require_http_methods(["POST"])
+def download_temu_label_api(request):
+    """
+    下载Temu面单PDF
+    从共享路径读取文件并返回下载
+    """
+    try:
+        data = json.loads(request.body)
+        platform_order_no = data.get('platform_order_no', '')
+        tracking_number = data.get('tracking_number', '')
+        
+        if not platform_order_no or not tracking_number:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少平台单号或物流单号'
+            }, status=400)
+        
+        # 构建文件路径（使用双反斜杠）
+        base_path = r'\\192.168.110.54\overlord_555\自动化\Temu面单'
+        filename = f'{platform_order_no}#{tracking_number}.pdf'
+        file_path = os.path.join(base_path, filename)
+        
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            return JsonResponse({
+                'success': False,
+                'message': '无面单文件！'
+            }, status=404)
+        
+        # 返回文件下载
+        response = FileResponse(
+            open(file_path, 'rb'),
+            content_type='application/pdf',
+            as_attachment=True,
+            filename=filename
+        )
+        return response
+        
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'detail': traceback.format_exc()
+        }, status=500)
 
 
 @require_http_methods(["POST"])
