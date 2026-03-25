@@ -18,8 +18,9 @@ django.setup()
 
 # ====== 导入模型和 API 函数 ======
 from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
-from api.lingxing_p.lingxing_temu import get_lx_temu_orders, check_temu_order_to_divi
+from api.lingxing_p.lingxing_temu import get_lx_temu_orders, check_temu_order_to_divi, shipment_order, get_wms_orders_by_order_numbers
 from asgiref.sync import async_to_sync
+import asyncio
 
 
 def _to_decimal(value, default=Decimal('0.00')):
@@ -69,6 +70,8 @@ def sync_temu_orders(data_dict):
     
     # 收集需要检查 DIVI 状态的订单ID（已存在且 divi_order_status != 5）
     orders_to_check_divi = []
+    # 收集状态为5（待发货）的订单ID
+    orders_to_ship = []
 
     # 大事务包裹整个同步过程
     with transaction.atomic():
@@ -162,6 +165,9 @@ def sync_temu_orders(data_dict):
                         # 如果是已存在的订单，且 DIVI 状态不是已发货(5)，则加入检查列表
                         if order.divi_order_status != 5:
                             orders_to_check_divi.append(order.global_order_no)
+                        # 如果订单状态为5（待发货），则加入发货列表
+                        if order.status == 5:
+                            orders_to_ship.append(order.global_order_no)
                     total_orders += 1
 
                     # ========== 处理订单明细 ==========
@@ -231,6 +237,24 @@ def sync_temu_orders(data_dict):
             except Exception as e:
                 print(f"  ✗ 订单 {sn_no} DIVI 状态检查失败: {e}")
         print("DIVI 状态检查完成")
+    
+    # ========== 批量处理待发货订单 ==========
+    if orders_to_ship:
+        print(f"\n开始处理 {len(orders_to_ship)} 个待发货订单...")
+        for sn_no in orders_to_ship:
+            try:
+                # 先执行发货
+                async_to_sync(shipment_order)(sn_no)
+            except Exception as e:
+                print(f"  ✗ 订单 {sn_no} 发货失败: {e}")
+                continue
+            
+            try:
+                # 再下载面单
+                async_to_sync(get_wms_orders_by_order_numbers)(sn_no)
+            except Exception as e:
+                print(f"  ✗ 订单 {sn_no} 下载面单失败: {e}")
+        print("待发货订单处理完成")
 
 def temu_orders():
     """主入口函数"""

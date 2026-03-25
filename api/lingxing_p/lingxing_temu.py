@@ -985,8 +985,15 @@ async def get_wms_orders_by_order_numbers(order_numbers: str):
         "orderNumbers": order_numbers,
     }
     resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/wmsOrder/getWmsOrdersByOrderNumbers")
-    order_i = resp.data.get("orderList")[0]
+    order_list = resp.data.get("orderList", [])
+    if not order_list:
+        print(f"订单 {order_numbers} 暂无面单信息")
+        return
+    order_i = order_list[0]
     surface_pdf = order_i.get("surfacePdf")
+    if not surface_pdf:
+        print(f"订单 {order_numbers} 暂无面单PDF链接")
+        return
     filename = "\\\\192.168.110.54\overlord_555\自动化\Temu面单\\" + order_i.get("amazonOrderId") + "#" + order_i.get("trackingNo") + ".pdf"
     if os.path.exists(filename):
         print(f"文件已存在，跳过下载: {filename}")
@@ -1108,6 +1115,7 @@ async def temu_order_to_divi_and_lingxing(sn_no):
 
     divi_order_bool =  await check_temu_order_to_divi(sn_no, pdf=True, status=[0, 1, 2, 3, 4, 5])
     if divi_order_bool:
+        await get_wms_orders_by_order_numbers(sn_no)
         print(f"订单号：{sn_no} 已存在divi且有面单，跳过后续步骤")
         return
     else:
@@ -1134,6 +1142,6 @@ async def temu_order_to_divi_and_lingxing(sn_no):
 
 
 if __name__ == '__main__':
-    sn_no = "103682640666460459"
+    sn_no = "103682700755929727"
     asyncio.run(temu_order_to_divi_and_lingxing(sn_no))
     # asyncio.run(ck())
