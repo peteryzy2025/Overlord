@@ -504,9 +504,9 @@ class AmazonNewReleaseRank(models.Model):
         verbose_name='汇总主题'
     )
 
-    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+    denoising = models.BooleanField(default=False, verbose_name='是否去噪', db_index=True)
     
     class Meta:
         db_table = 'theme_amazon_new_release_rank'
