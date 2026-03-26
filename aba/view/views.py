@@ -27,6 +27,8 @@ ADD_NOISE_WORDS_CACHE_PREFIX = 'aba:add-noise-words:'
 ABA_TOTAL_COUNT_CACHE_PREFIX = 'aba:total-count:'
 TERM_ID_LIST_CACHE_PREFIX = 'aba:term-ids:'
 TERM_ID_LIST_CACHE_TTL = 180  # 3分钟，翻页缓存
+ABA_CATEGORY_FIELD_CACHE_PREFIX = 'aba:category-field:'
+ABA_METRIC_INDEX_CACHE_PREFIX = 'aba:metric-index:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 
@@ -261,6 +263,13 @@ def _build_whole_word_regex(raw_text):
     return rf'(^|[^0-9a-z]){escaped_text}([^0-9a-z]|$)'
 
 
+def _normalize_category_value(raw_category):
+    if not isinstance(raw_category, str):
+        return ''
+
+    return raw_category.strip().casefold()
+
+
 def _build_custom_denoising_patterns(keywords):
     patterns = []
 
@@ -282,32 +291,33 @@ def _matches_custom_denoising_term(term, keyword_patterns):
     return any(pattern.search(normalized_term) for pattern in keyword_patterns)
 
 
-def _apply_category_filter(queryset, category, term_field='search_term__term'):
-    pattern_text = _build_whole_word_regex(category)
+def _apply_category_filter(queryset, category, term_field='search_term__term', category_field=None):
+    normalized_category = _normalize_category_value(category)
+    if not normalized_category:
+        return queryset
+
+    if category_field and _has_search_term_category_data(normalized_category):
+        return queryset.filter(**{category_field: normalized_category})
+
+    pattern_text = _build_whole_word_regex(normalized_category)
     if not pattern_text:
         return queryset
 
     return queryset.filter(**{f'{term_field}__iregex': pattern_text})
 
 
-def _get_filtered_term_ids(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
+def _build_filtered_term_queryset(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
     """
-    在 SearchTerm 表（900万条）上过滤，返回匹配的 ID 列表
-    组合条件：category AND search_term AND denoising
-    
-    优化思路：避免在 SearchTermMetric 大表（9000万条）上做正则，
-    先在小表过滤出 ID，再用 ID IN 查大表（走索引）
-    
-    新增：优先使用 category 字段索引（如果有数据），否则回退到正则
+    在 SearchTerm 表上构建过滤 queryset。
+
+    优先使用 category 字段索引；若当前 category 还未回填，则回退到 term 正则。
     """
+    category = _normalize_category_value(category)
     qs = SearchTerm.objects.using('aba_db').all()
-    
-    # 1. 品类过滤（优先使用 category 字段索引，超快！）
+
     if category:
         if use_category_field:
-            # 先尝试用 category 字段（走索引，O(logN)）
             qs_category = qs.filter(category=category)
-            # 如果查不到（可能数据未填充），回退到正则
             if not qs_category.exists():
                 pattern = _build_whole_word_regex(category)
                 if pattern:
@@ -315,36 +325,71 @@ def _get_filtered_term_ids(category='', search_term='', noise_status='all', sear
             else:
                 qs = qs_category
         else:
-            # 强制使用正则（备用方案）
             pattern = _build_whole_word_regex(category)
             if pattern:
                 qs = qs.filter(term__iregex=pattern)
-    
-    # 2. 搜索词过滤（三种模式）
+
     if search_term:
-        if search_mode == '0':  # 精准
+        if search_mode == '0':
             qs = qs.filter(term__iexact=search_term)
-        elif search_mode == '2':  # 广泛匹配（多关键词，全部匹配）
+        elif search_mode == '2':
             keywords = search_term.strip().split()
             for keyword in keywords:
                 qs = qs.filter(term__iregex=rf'\y{re.escape(keyword)}\y')
-        else:  # 模糊（默认）
+        else:
             qs = qs.filter(term__icontains=search_term)
-    
-    # 3. 去噪状态过滤
+
     if noise_status == 'noise':
         qs = qs.filter(denoising=True)
     elif noise_status == 'denoised':
         qs = qs.filter(denoising=False)
-    
-    # 返回所有 ID（不截断）
+
+    return qs
+
+
+def _get_filtered_term_ids(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
+    """
+    在 SearchTerm 表上过滤，返回匹配的 ID 列表。
+    """
+    qs = _build_filtered_term_queryset(
+        category=category,
+        search_term=search_term,
+        noise_status=noise_status,
+        search_mode=search_mode,
+        use_category_field=use_category_field,
+    )
     return list(qs.values_list('id', flat=True))
+
+
+def _has_search_term_category_data(category):
+    category = _normalize_category_value(category)
+    if not category:
+        return False
+
+    cache_key = f'{ABA_CATEGORY_FIELD_CACHE_PREFIX}{category}'
+    cached_value = cache.get(cache_key)
+    if cached_value is not None:
+        return cached_value
+
+    exists = SearchTerm.objects.using('aba_db').filter(category=category).only('id').exists()
+    cache.set(cache_key, exists, TERM_ID_LIST_CACHE_TTL)
+    return exists
 
 
 def _get_term_ids_cache_key(category, search_term, noise_status, search_mode):
     """构建缓存 key（包含版本号，去噪后自动失效）"""
     version = _get_term_ids_cache_version()
-    return f"{TERM_ID_LIST_CACHE_PREFIX}{version}:{category}:{noise_status}:{search_term}:{search_mode}"
+    normalized_category = _normalize_category_value(category)
+    return f"{TERM_ID_LIST_CACHE_PREFIX}{version}:{normalized_category}:{noise_status}:{search_term}:{search_mode}"
+
+
+def _get_metric_index_cache_key(week, category, search_term, noise_status, word_filter, search_mode):
+    version = _get_term_ids_cache_version()
+    normalized_category = _normalize_category_value(category)
+    return (
+        f"{ABA_METRIC_INDEX_CACHE_PREFIX}{version}:{week}:{normalized_category}:"
+        f"{noise_status}:{word_filter}:{search_term}:{search_mode}"
+    )
 
 
 def _get_filtered_term_ids_with_cache(category='', search_term='', noise_status='all', search_mode='0'):
@@ -367,6 +412,35 @@ def _get_filtered_term_ids_with_cache(category='', search_term='', noise_status=
     cache.set(cache_key, ids, TERM_ID_LIST_CACHE_TTL)
     
     return ids
+
+
+def _get_filtered_metric_index_with_cache(
+    *,
+    queryset,
+    week,
+    category='',
+    search_term='',
+    noise_status='all',
+    word_filter='all',
+    search_mode='0',
+):
+    cache_key = _get_metric_index_cache_key(
+        week,
+        category,
+        search_term,
+        noise_status,
+        word_filter,
+        search_mode,
+    )
+    cached_metric_ids = cache.get(cache_key)
+    if cached_metric_ids is not None:
+        return cached_metric_ids
+
+    metric_ids = list(
+        queryset.order_by('search_frequency_rank', 'id').values_list('id', flat=True)
+    )
+    cache.set(cache_key, metric_ids, TERM_ID_LIST_CACHE_TTL)
+    return metric_ids
 
 
 def _get_new_words_window_end(week_value):
@@ -401,7 +475,7 @@ def _build_aba_total_count_progress(
     status='pending',
     total=0,
     total_pages=0,
-    page_size=50,
+    page_size=20,
     message='任务已创建，准备开始计算',
     error='',
 ):
@@ -527,6 +601,7 @@ def _apply_hot_word_filter(
     category='',
     noise_status='all',
 ):
+    category = _normalize_category_value(category)
     if not word_filter or word_filter == 'all':
         return queryset
 
@@ -556,7 +631,11 @@ def _apply_hot_word_filter(
         )
         history_queryset = _apply_search_term_filters(history_queryset, search_term, search_mode)
         if category:
-            history_queryset = _apply_category_filter(history_queryset, category)
+            history_queryset = _apply_category_filter(
+                history_queryset,
+                category,
+                category_field='search_term__category',
+            )
         if noise_status == 'noise':
             history_queryset = history_queryset.filter(search_term__denoising=True)
         elif noise_status == 'denoised':
@@ -1008,34 +1087,38 @@ def _build_aba_hot_queryset_context(
     word_filter='all',
     search_mode='0',
 ):
+    category = _normalize_category_value(category)
     week_date = _parse_week_value(week)
     if not week_date:
         return None
 
-    # 优化：先在 SearchTerm 表（900万条）过滤，得到 ID 列表
-    # 避免在 SearchTermMetric 大表（9000万条）上做正则全表扫描
-    # 使用缓存：翻页时不需要重复执行正则过滤
-    matching_term_ids = _get_filtered_term_ids_with_cache(
-        category=category,
-        search_term=search_term,
-        noise_status=noise_status,
-        search_mode=search_mode
-    )
-    
-    if not matching_term_ids:
-        return {
-            'week_date': week_date,
-            'queryset': SearchTermMetric.objects.using('aba_db').none(),
-            'has_extra_filters': True,
-        }
-    
-    # 用 ID IN 查大表（走索引：report_week + search_term_id）
-    queryset = SearchTermMetric.objects.using('aba_db').filter(
-        report_week=week_date,
-        search_term_id__in=matching_term_ids
-    ).select_related('search_term')
+    has_term_filters = bool(search_term or category or noise_status != 'all')
+    queryset = SearchTermMetric.objects.using('aba_db').filter(report_week=week_date).select_related('search_term')
 
-    # 最后应用热词过滤（爆发词/黄金词等）
+    if has_term_filters:
+        if category and _has_search_term_category_data(category):
+            filtered_term_ids = _get_filtered_term_ids_with_cache(
+                category=category,
+                search_term=search_term,
+                noise_status=noise_status,
+                search_mode=search_mode,
+            )
+            if not filtered_term_ids:
+                queryset = queryset.none()
+            else:
+                queryset = queryset.filter(search_term_id__in=filtered_term_ids)
+        # 仅按去噪状态过滤时，直接 JOIN SearchTerm 更快。
+        elif noise_status in {'noise', 'denoised'} and not search_term and not category:
+            queryset = queryset.filter(search_term__denoising=(noise_status == 'noise'))
+        else:
+            filtered_term_ids = _build_filtered_term_queryset(
+                category=category,
+                search_term=search_term,
+                noise_status=noise_status,
+                search_mode=search_mode,
+            ).values('id')
+            queryset = queryset.filter(search_term_id__in=Subquery(filtered_term_ids))
+
     queryset = _apply_hot_word_filter(
         queryset,
         week_date,
@@ -1064,8 +1147,28 @@ def _get_aba_hot_total_count(week_date, queryset, has_extra_filters):
     ).values_list('record_count', flat=True).first() or 0
 
 
+def _parse_metric_cursor(raw_rank, raw_id):
+    try:
+        rank = int(raw_rank)
+        metric_id = int(raw_id)
+    except (TypeError, ValueError):
+        return None
+
+    return {
+        'rank': rank,
+        'id': metric_id,
+    }
+
+
+def _build_metric_page_cursor(metric):
+    return {
+        'rank': metric.search_frequency_rank,
+        'id': metric.id,
+    }
+
+
 def _run_aba_total_count_task(task_id, filters):
-    page_size = filters.get('page_size', 50)
+    page_size = filters.get('page_size', 20)
 
     try:
         close_old_connections()
@@ -1122,7 +1225,7 @@ def _run_aba_total_count_task(task_id, filters):
 
 def _launch_aba_total_count_task(filters):
     task_id = uuid.uuid4().hex
-    page_size = filters.get('page_size', 50)
+    page_size = filters.get('page_size', 20)
     initial_progress = _build_aba_total_count_progress(
         status='pending',
         total=0,
@@ -1147,34 +1250,34 @@ def _launch_aba_total_count_task(filters):
 @require_http_methods(["GET"])
 def get_aba_data_api(request):
     """
-    获取 ABA 数据列表 API - 内存分页优化版
-    
-    优化策略：
-    1. 先获取所有匹配的搜索词 ID（利用缓存）
-    2. 一次性查出所有数据到内存
-    3. Python 内存分页（O(1) 任意页码）
-    
+    获取 ABA 热词榜列表 API。
+
     参数:
         week: 周期（日期，如 2026-02-15）
         search_term: 搜索词（模糊搜索）
         category: 品类英文关键词（按搜索词整词匹配）
         page: 页码，默认 1
-        page_size: 每页条数，默认 50
+        page_size: 每页条数，默认 20
     """
     try:
         # 获取参数
         week = request.GET.get('week', '').strip()
         search_term = request.GET.get('search_term', '').strip()
-        category = request.GET.get('category', '').strip()
+        category = _normalize_category_value(request.GET.get('category', ''))
         noise_status = request.GET.get('noise_status', 'all').strip()
         word_filter = request.GET.get('word_filter', 'all').strip()
         search_mode = request.GET.get('search_mode', '0')
+        cached_total_raw = request.GET.get('cached_total', '').strip()
+        cursor_direction = request.GET.get('cursor_direction', '').strip().lower()
+        cursor = _parse_metric_cursor(
+            request.GET.get('cursor_rank', '').strip(),
+            request.GET.get('cursor_id', '').strip(),
+        )
         page = max(int(request.GET.get('page', 1)), 1)
-        page_size = int(request.GET.get('page_size', 50))
-        
-        # 验证 page_size
+        page_size = int(request.GET.get('page_size', 20))
+
         if page_size not in [20, 50, 100, 200]:
-            page_size = 50
+            page_size = 20
 
         if not week:
             return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
@@ -1183,49 +1286,126 @@ def get_aba_data_api(request):
         if not week_date:
             return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
 
-        # Step 1: 在 SearchTerm 小表过滤，获取 ID 列表（带缓存）
-        matching_term_ids = _get_filtered_term_ids_with_cache(
-            category=category,
+        context = _build_aba_hot_queryset_context(
+            week=week,
             search_term=search_term,
+            category=category,
             noise_status=noise_status,
-            search_mode=search_mode
+            word_filter=word_filter,
+            search_mode=search_mode,
         )
-        
-        if not matching_term_ids:
-            return JsonResponse(_build_empty_aba_response(page, page_size))
-        
-        # Step 2: 先构建基础 queryset
-        queryset = SearchTermMetric.objects.using('aba_db').filter(
-            report_week=week_date,
-            search_term_id__in=matching_term_ids
-        ).select_related('search_term').order_by('search_frequency_rank')
-        
-        # Step 3: 应用热词过滤（仍在数据库层，避免内存处理复杂逻辑）
-        if word_filter and word_filter != 'all':
-            queryset = _apply_hot_word_filter(
-                queryset,
-                week_date,
-                word_filter,
-                search_term=search_term,
-                search_mode=search_mode,
-                category=category,
-                noise_status=noise_status,
+        if not context:
+            return JsonResponse(_build_empty_aba_response(page, page_size, needs_week=True))
+
+        known_total = False
+        if context['has_extra_filters']:
+            try:
+                total = max(int(cached_total_raw), 0)
+                known_total = True
+            except (TypeError, ValueError):
+                total = 0
+            total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+            pagination_mode = 'full' if known_total else 'simple'
+        else:
+            total = _get_aba_hot_total_count(
+                context['week_date'],
+                context['queryset'],
+                context['has_extra_filters'],
             )
-        
-        # Step 4: 一次性查出所有数据到内存
-        all_metrics = list(queryset)
-        
-        # 计算总数
-        total = len(all_metrics)
-        total_pages = (total + page_size - 1) // page_size if total > 0 else 0
-        use_simple_pagination = False  # 内存分页，总有精确总数
-        
-        # Step 5: 内存分页（O(1) 任意页码）
-        offset = (page - 1) * page_size
-        page_metrics = all_metrics[offset:offset + page_size]
-        has_next = offset + page_size < total
-        
-        # Step 5: 查询趋势数据（仅当前页的数据）
+            total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+            pagination_mode = 'full'
+
+        base_queryset = context['queryset']
+        metric_index_ids = None
+        can_use_metric_index = bool(category and word_filter == 'all')
+        if can_use_metric_index:
+            metric_index_ids = _get_filtered_metric_index_with_cache(
+                queryset=base_queryset,
+                week=week,
+                category=category,
+                search_term=search_term,
+                noise_status=noise_status,
+                word_filter=word_filter,
+                search_mode=search_mode,
+            )
+            total = len(metric_index_ids)
+            total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+            pagination_mode = 'simple'
+            offset = (page - 1) * page_size
+            page_metric_ids = metric_index_ids[offset:offset + page_size + 1]
+            has_next = len(page_metric_ids) > page_size
+            if has_next:
+                page_metric_ids = page_metric_ids[:page_size]
+            has_prev = page > 1
+            metrics_by_id = {
+                metric.id: metric
+                for metric in SearchTermMetric.objects.using('aba_db').filter(
+                    id__in=page_metric_ids
+                ).select_related('search_term')
+            }
+            page_metrics = [metrics_by_id[metric_id] for metric_id in page_metric_ids if metric_id in metrics_by_id]
+            cursor_applied = False
+        else:
+            queryset = base_queryset.order_by('search_frequency_rank', 'id')
+            cursor_applied = cursor and cursor_direction in {'next', 'prev'}
+
+            if cursor_applied and cursor_direction == 'next':
+                limit = page_size + 1
+                page_metrics = list(
+                    base_queryset.filter(
+                        search_frequency_rank=cursor['rank'],
+                        id__gt=cursor['id'],
+                    ).order_by('id')[:limit]
+                )
+                remaining = limit - len(page_metrics)
+                if remaining > 0:
+                    page_metrics.extend(list(
+                        base_queryset.filter(
+                            search_frequency_rank__gt=cursor['rank'],
+                        ).order_by('search_frequency_rank', 'id')[:remaining]
+                    ))
+            elif cursor_applied and cursor_direction == 'prev':
+                limit = page_size + 1
+                page_metrics = list(
+                    base_queryset.filter(
+                        search_frequency_rank=cursor['rank'],
+                        id__lt=cursor['id'],
+                    ).order_by('-id')[:limit]
+                )
+                remaining = limit - len(page_metrics)
+                if remaining > 0:
+                    page_metrics.extend(list(
+                        base_queryset.filter(
+                            search_frequency_rank__lt=cursor['rank'],
+                        ).order_by('-search_frequency_rank', '-id')[:remaining]
+                    ))
+            else:
+                cursor_applied = False
+                if page > 1:
+                    offset = (page - 1) * page_size
+                    queryset = queryset[offset:]
+                page_metrics = list(queryset[:page_size + 1])
+
+            if cursor_applied and cursor_direction == 'prev':
+                has_prev = len(page_metrics) > page_size
+                if has_prev:
+                    page_metrics = page_metrics[:page_size]
+                page_metrics.reverse()
+                has_next = page > 1 and bool(page_metrics)
+            else:
+                has_next = len(page_metrics) > page_size
+                if has_next:
+                    page_metrics = page_metrics[:page_size]
+                has_prev = page > 1
+
+        if not page_metrics:
+            return JsonResponse({
+                **_build_empty_aba_response(page, page_size),
+                'pagination_mode': pagination_mode,
+                'total': total,
+                'total_pages': total_pages,
+                'has_prev': has_prev if 'has_prev' in locals() else page > 1,
+            })
 
         page_search_term_ids = [metric.search_term_id for metric in page_metrics]
         trend_by_term_id = defaultdict(list)
@@ -1305,9 +1485,11 @@ def get_aba_data_api(request):
             'page_size': page_size,
             'total': total,
             'total_pages': total_pages,
-            'has_prev': page > 1,
+            'has_prev': has_prev,
             'has_next': has_next,
-            'pagination_mode': 'simple' if use_simple_pagination else 'full',
+            'pagination_mode': 'simple',
+            'next_cursor': _build_metric_page_cursor(page_metrics[-1]) if page_metrics else None,
+            'prev_cursor': _build_metric_page_cursor(page_metrics[0]) if page_metrics else None,
             'needs_week': False,
         })
         
@@ -1330,14 +1512,14 @@ def get_aba_new_words_api(request):
         start_week_raw = request.GET.get('start_week', '').strip()
         end_week_raw = request.GET.get('end_week', '').strip() or request.GET.get('week', '').strip()
         search_term = request.GET.get('search_term', '').strip()
-        category = request.GET.get('category', '').strip()
+        category = _normalize_category_value(request.GET.get('category', ''))
         search_mode = request.GET.get('search_mode', '0')
         noise_status = request.GET.get('noise_status', 'all').strip()
         page = max(int(request.GET.get('page', 1)), 1)
-        page_size = int(request.GET.get('page_size', 50))
+        page_size = int(request.GET.get('page_size', 20))
 
         if page_size not in [20, 50, 100, 200]:
-            page_size = 50
+            page_size = 20
 
         window_end = _parse_week_value(end_week_raw)
         if not window_end:
@@ -1365,7 +1547,12 @@ def get_aba_new_words_api(request):
             term_field='term',
         )
         if category:
-            base_queryset = _apply_category_filter(base_queryset, category, term_field='term')
+            base_queryset = _apply_category_filter(
+                base_queryset,
+                category,
+                term_field='term',
+                category_field='category',
+            )
 
         if noise_status == 'noise':
             base_queryset = base_queryset.filter(denoising=True)
@@ -1625,24 +1812,16 @@ def start_aba_total_count_api(request):
     try:
         week = request.GET.get('week', '').strip()
         search_term = request.GET.get('search_term', '').strip()
-        category = request.GET.get('category', '').strip()
+        category = _normalize_category_value(request.GET.get('category', ''))
         search_mode = request.GET.get('search_mode', '0')
         noise_status = request.GET.get('noise_status', 'all').strip()
         word_filter = request.GET.get('word_filter', 'all').strip()
-        page_size = int(request.GET.get('page_size', 50))
+        page_size = int(request.GET.get('page_size', 20))
 
         if page_size not in [20, 50, 100, 200]:
-            page_size = 50
+            page_size = 20
 
-        context = _build_aba_hot_queryset_context(
-            week=week,
-            search_term=search_term,
-            category=category,
-            noise_status=noise_status,
-            word_filter=word_filter,
-            search_mode=search_mode,
-        )
-        if not context:
+        if not _parse_week_value(week):
             return JsonResponse({
                 'success': False,
                 'error': '缺少有效周期，无法计算总页数'
