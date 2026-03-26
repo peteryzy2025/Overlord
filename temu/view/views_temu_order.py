@@ -211,6 +211,7 @@ def get_temu_orders_list_api(request):
                 'divi_logistics_method': divi_logistics_method,
                 'divi_tracking_number': divi_tracking_number,
                 'tracking_number': order.tracking_number or '',
+                'order_tag': order.order_tag or [],
                 'quantity': quantity,
                 'order_total_amount': str(order.order_total_amount) if order.order_total_amount else '0.00',
                 'purchase_time': order.global_purchase_time.strftime('%Y-%m-%d %H:%M') if order.global_purchase_time else '-',
