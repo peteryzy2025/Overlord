@@ -868,14 +868,14 @@
                         <span class="page-size-label">每页显示：</span>
                         <div class="page-size-dropdown-wrapper" style="position: relative;">
                             <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
+                                <span id="pageSizeText">100条</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                                <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
-                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
                                 <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+                                <div class="page-size-option" data-value="500" onclick="changePageSize(500)">500条</div>
                             </div>
                         </div>
                         <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
@@ -916,7 +916,7 @@
         };
         let ordersPagination = {
             page: 1,
-            page_size: 20,
+            page_size: 100,
             total: 0,
             total_pages: 0
         };
@@ -1243,12 +1243,12 @@
                 operatorSelect.setOptions(allOperators);
 
                 ordersPagination.page = 1;
-                ordersPagination.page_size = 20;
+                ordersPagination.page_size = 100;
 
-                document.getElementById('pageSizeText').textContent = '20条';
+                document.getElementById('pageSizeText').textContent = '100条';
                 document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
                     opt.classList.remove('selected');
-                    if (parseInt(opt.dataset.value) === 20) {
+                    if (parseInt(opt.dataset.value) === 100) {
                         opt.classList.add('selected');
                     }
                 });
