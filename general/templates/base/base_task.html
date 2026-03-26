@@ -1,0 +1,20 @@
+{% extends 'base/base_r.html' %}
+
+{% block sidebar %}
+    <ul class="sidebar-menu">
+        <li class="sidebar-item">
+            <a href="{% url 'task:task_list_page' %}"
+               class="sidebar-link {% if active_page == 'task_list_page' %}active{% endif %}">
+                <i class="fas fa-list sidebar-icon"></i>
+                <span>自动化任务列表</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
+            <a href="{% url 'task:task_create_page' %}"
+               class="sidebar-link {% if active_page == 'task_create_page' %}active{% endif %}">
+                <i class="fas fa-plus-circle sidebar-icon"></i>
+                <span>创建任务</span>
+            </a>
+        </li>
+    </ul>
+{% endblock %}
