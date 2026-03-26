@@ -917,6 +917,10 @@
         let totalCountPollTimer = null;
         let totalCountTaskSignature = '';
         let isTotalCountTaskRunning = false;
+        let simpleNextCursor = null;
+        let simplePrevCursor = null;
+        let pendingSimpleCursor = null;
+        let pendingTrendCharts = [];
         let selectedSearchTermIds = new Set();
         let allData = [];
         let currentNoiseStatus = 'denoised';
@@ -1140,6 +1144,7 @@
             if (shouldReload && activeLeaderboard === 'hot' && hasLoadedData) {
                 currentPage = 1;
                 resetPaginationCache();
+                markTotalCountTaskForStart();
                 loadData();
             }
         }
@@ -1415,7 +1420,12 @@
 
         function resetPaginationCache(clearTotalCount = true) {
             hasNextPage = false;
-            paginationMode = clearTotalCount || hasKnownTotalCount ? 'full' : 'simple';
+            paginationMode = activeLeaderboard === 'hot'
+                ? 'simple'
+                : (clearTotalCount || hasKnownTotalCount ? 'full' : 'simple');
+            simpleNextCursor = null;
+            simplePrevCursor = null;
+            pendingSimpleCursor = null;
             if (clearTotalCount) {
                 totalItems = 0;
                 totalPages = 0;
@@ -1583,6 +1593,7 @@
             if (shouldReload && hasLoadedData) {
                 currentPage = 1;
                 resetPaginationCache();
+                markTotalCountTaskForStart();
                 loadData();
             }
         }
@@ -1769,6 +1780,24 @@
             });
         }
 
+        function queueTrendChart(chartId, data, minRank, maxRank, range) {
+            pendingTrendCharts.push({ chartId, data, minRank, maxRank, range });
+        }
+
+        function flushTrendCharts() {
+            if (!pendingTrendCharts.length) {
+                return;
+            }
+
+            const jobs = pendingTrendCharts;
+            pendingTrendCharts = [];
+            requestAnimationFrame(() => {
+                jobs.forEach(job => {
+                    initTrendChart(job.chartId, job.data, job.minRank, job.maxRank, job.range);
+                });
+            });
+        }
+
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async function() {
             // 显示初始加载动画
@@ -1918,6 +1947,12 @@
                     params.set('cached_total', totalItems);
                 }
 
+                if (activeLeaderboard === 'hot' && pendingSimpleCursor) {
+                    params.set('cursor_direction', pendingSimpleCursor.direction);
+                    params.set('cursor_rank', pendingSimpleCursor.rank);
+                    params.set('cursor_id', pendingSimpleCursor.id);
+                }
+
                 const config = getActiveLeaderboardConfig();
                 if (activeLeaderboard !== 'hot') {
                     params.delete('week');
@@ -1935,15 +1970,30 @@
                     hasLoadedData = true;
                     allData = result.data;
                     hasNextPage = !!result.has_next;
-                    paginationMode = result.pagination_mode || 'full';
+                    paginationMode = activeLeaderboard === 'hot'
+                        ? 'simple'
+                        : (result.pagination_mode || 'full');
+                    simpleNextCursor = result.next_cursor || null;
+                    simplePrevCursor = result.prev_cursor || null;
+                    pendingSimpleCursor = null;
 
                     if (activeLeaderboard === 'hot') {
-                        if (shouldReuseCachedTotal(filters)) {
-                            totalItems = Math.max(parseInt(result.total || totalItems || 0, 10), 0);
+                        const hasExactHotTotal = shouldReuseCachedTotal(filters) || (
+                            !filters.searchTerm
+                            && !filters.category
+                            && filters.noiseStatus === 'all'
+                            && filters.wordFilter === 'all'
+                        );
+
+                        if (hasExactHotTotal) {
+                            totalItems = Math.max(parseInt(result.total || 0, 10), 0);
                             totalPages = Math.max(parseInt(
                                 result.total_pages || (totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0),
                                 10
                             ), 0);
+                            totalCountQuerySignature = totalCountSignature;
+                            hasKnownTotalCount = true;
+                            clearTotalCountTaskTracking();
                         } else {
                             totalItems = 0;
                             totalPages = 0;
@@ -1983,6 +2033,7 @@
                         shouldStartTotalCountTask
                         && activeLeaderboard === 'hot'
                         && !result.needs_week
+                        && result.pagination_mode === 'simple'
                     ) {
                         shouldStartTotalCountTaskOnNextLoad = false;
                         startTotalCountTask(filters, totalCountSignature);
@@ -2041,7 +2092,7 @@
                     isoWeek: getISOWeek(t.week)
                 }));
 
-                setTimeout(() => initTrendChart(chartId, trendData, minRank, maxRank, range), 0);
+                queueTrendChart(chartId, trendData, minRank, maxRank, range);
 
                 trendHtml = `
                     <div class="trend-chart-container" id="${chartId}" 
@@ -2173,10 +2224,12 @@
         function renderTable(data) {
             if (activeLeaderboard === 'new') {
                 renderNewWordsTable(data);
+                flushTrendCharts();
                 return;
             }
 
             renderHotTable(data);
+            flushTrendCharts();
         }
         
         // ==================== 分页 ====================
@@ -2191,9 +2244,12 @@
             }
 
             if (paginationMode === 'simple') {
+                const currentPageLabel = activeLeaderboard === 'hot' && hasKnownTotalCount
+                    ? `第 ${currentPage}/${Math.max(totalPages, 1)} 页`
+                    : `第 ${currentPage} 页`;
                 pagination.innerHTML = `
                     <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>
-                    <button class="pagination-btn-new active" disabled>第 ${currentPage} 页</button>
+                    <button class="pagination-btn-new active" disabled>${currentPageLabel}</button>
                     <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${!hasNextPage ? 'disabled' : ''}>下一页</button>
                 `;
                 paginationJump.style.display = 'none';
@@ -2282,6 +2338,11 @@
 
                 const start = (currentPage - 1) * pageSize + 1;
                 const end = start + allData.length - 1;
+                if (activeLeaderboard === 'hot' && hasKnownTotalCount) {
+                    statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条，第 ${currentPage}/${Math.max(totalPages, 1)} 页`;
+                    return;
+                }
+
                 statsEl.textContent = `${start}-${end} / 第 ${currentPage} 页${hasNextPage ? '，可继续翻页' : ''}`;
                 return;
             }
@@ -2300,6 +2361,25 @@
             if (!hasLoadedData || page < 1) return;
             if (totalPages > 0 && page > totalPages) return;
             if (page === currentPage) return;
+
+            if (paginationMode === 'simple') {
+                if (page === currentPage + 1) {
+                    if (!hasNextPage || !simpleNextCursor) return;
+                    pendingSimpleCursor = {
+                        direction: 'next',
+                        ...simpleNextCursor,
+                    };
+                } else if (page === currentPage - 1) {
+                    if (currentPage <= 1 || !simplePrevCursor) return;
+                    pendingSimpleCursor = {
+                        direction: 'prev',
+                        ...simplePrevCursor,
+                    };
+                } else {
+                    return;
+                }
+            }
+
             currentPage = page;
             loadData();
         }
@@ -2323,6 +2403,9 @@
                     resetPaginationCache(false);
                 } else if (!(activeLeaderboard === 'hot' && isTotalCountTaskRunning)) {
                     resetPaginationCache();
+                }
+                if (activeLeaderboard === 'hot') {
+                    markTotalCountTaskForStart();
                 }
                 loadData();
             } else {
