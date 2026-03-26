@@ -370,7 +370,7 @@ async def get_lx_temu_orders_list(platform_order_nos: List[str]) -> Dict[str, Li
                 order_list = _data.get("list") or []
     except Exception:
         order_list = []
-
+    print(resp)
     # 按 store_id 分组
     results: Dict[str, List[Dict[str, Any]]] = {}
     for order in order_list:
@@ -1099,6 +1099,17 @@ def download_pdf(download_url, save_path, headers=None, timeout=30):
         print(f"✗ {error_msg}")
         return False, error_msg
 
+@sync_to_async
+def check_y2_pre_sale(order_sn):
+    try:
+        order = TemuOrder.objects.get(global_order_no=order_sn)
+        order_tags = order.order_tag or []
+        for tag in order_tags:
+            if tag.get('tag_name') == 'Y2 预售':
+                return True
+        return False
+    except TemuOrder.DoesNotExist:
+        return False
 
 async def temu_order_to_divi_and_lingxing(sn_no):
     """
@@ -1109,10 +1120,13 @@ async def temu_order_to_divi_and_lingxing(sn_no):
     success = await refresh_temu_order_by_sn(sn_no)  # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
     if not success:
         raise f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤"
+    is_y2_pre_sale = await check_y2_pre_sale(sn_no)
+    if is_y2_pre_sale:
+        raise f"【注意】订单 {sn_no} 包含 'Y2 预售' 标签~"
+
     status = await get_temu_order_status(sn_no)
     if status in [0,1,2,3]:
         raise f"{sn_no}订单处于：同步中/已同步/未付款 阶段"
-
     divi_order_bool =  await check_temu_order_to_divi(sn_no, pdf=True, status=[0, 1, 2, 3, 4, 5])
     if divi_order_bool:
         await get_wms_orders_by_order_numbers(sn_no)
@@ -1142,6 +1156,6 @@ async def temu_order_to_divi_and_lingxing(sn_no):
 
 
 if __name__ == '__main__':
-    sn_no = "103682700755929727"
+    sn_no = "103683121034022662"
     asyncio.run(temu_order_to_divi_and_lingxing(sn_no))
     # asyncio.run(ck())
