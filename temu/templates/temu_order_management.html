@@ -841,11 +841,11 @@
                         </th>
                         <th>订单ID</th>
                         <th>店铺名称</th>
+                        <th>标签</th>
                         <th>运营分组/人员</th>
                         <th>DIVI详情</th>
                         <th>物流单号</th>
                         <th>下单时间</th>
-                        <th>配送类型</th>
                         <th class="w-actions">操作</th>
                     </tr>
                     </thead>
@@ -868,14 +868,14 @@
                         <span class="page-size-label">每页显示：</span>
                         <div class="page-size-dropdown-wrapper" style="position: relative;">
                             <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
+                                <span id="pageSizeText">100条</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                                <div class="page-size-option" data-value="10" onclick="changePageSize(10)">10条</div>
-                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
                                 <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+                                <div class="page-size-option" data-value="500" onclick="changePageSize(500)">500条</div>
                             </div>
                         </div>
                         <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
@@ -916,7 +916,7 @@
         };
         let ordersPagination = {
             page: 1,
-            page_size: 20,
+            page_size: 100,
             total: 0,
             total_pages: 0
         };
@@ -1243,12 +1243,12 @@
                 operatorSelect.setOptions(allOperators);
 
                 ordersPagination.page = 1;
-                ordersPagination.page_size = 20;
+                ordersPagination.page_size = 100;
 
-                document.getElementById('pageSizeText').textContent = '20条';
+                document.getElementById('pageSizeText').textContent = '100条';
                 document.querySelectorAll('#pageSizeDropdown .page-size-option').forEach(opt => {
                     opt.classList.remove('selected');
-                    if (parseInt(opt.dataset.value) === 20) {
+                    if (parseInt(opt.dataset.value) === 100) {
                         opt.classList.add('selected');
                     }
                 });
@@ -1419,22 +1419,44 @@
                     ? `<a href="javascript:void(0)" class="primary-text" onclick="downloadTemuLabel('${order.reference_no}', '${order.tracking_number}', event)" style="cursor: pointer; text-decoration: underline;">${order.tracking_number}</a>` 
                     : '<span style="color: var(--text-secondary);">-</span>';
 
-                // 7. 配送类型
-                const deliveryTypeMap = {
-                    1: '标准配送',
-                    2: '快速配送'
-                };
-                const deliveryTypeText = deliveryTypeMap[order.delivery_type] || (order.delivery_type || '-');
+                // 7. 标签显示
+                let tagsHtml = '<span style="color: var(--text-secondary);">-</span>';
+                if (order.order_tag && order.order_tag.length > 0) {
+                    const validTags = order.order_tag.filter(tag => tag.tag_name);
+                    if (validTags.length > 0) {
+                        tagsHtml = validTags.map(tag => {
+                            const bgColor = tag.tag_no === '4-91' ? '#9F7AEA' : ''; // 紫色背景
+                            return `<span class="tag-shop-status status-normal" style="${bgColor ? 'background-color: ' + bgColor + '; color: white;' : ''}">${tag.tag_name}</span>`;
+                        }).join('');
+                        // 包裹在flex容器中，实现一行最多2个，内容居中
+                        tagsHtml = `<div style="display: inline-flex; flex-wrap: wrap; justify-content: center; max-width: 220px; gap: 4px;">${tagsHtml}</div>`;
+                    }
+                }
 
                 // 8. 导单按钮逻辑
                 let canExportToDivi = true;
                 let exportTooltip = '导单到divi并发货';
+                
+                // 优先级1: 已导单
                 if (order.is_exported_to_divi) {
                     canExportToDivi = false;
                     exportTooltip = '已导单';
-                } else if (order.shop_status !== '正常') {
+                }
+                // 优先级2: 店铺状态不正常
+                else if (order.shop_status !== '正常') {
                     canExportToDivi = false;
                     exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
+                }
+                // 优先级3: Y2预售订单
+                else if (order.order_tag && order.order_tag.some(tag => tag.tag_no === '4-91')) {
+                    canExportToDivi = false;
+                    exportTooltip = '该单是y2订单';
+                }
+                // 优先级4: 订单状态为同步中/已同步/未付款
+                else if ([1, 2, 3].includes(order.status)) {
+                    const statusText = orderStatusMap[order.status]?.text || order.status;
+                    canExportToDivi = false;
+                    exportTooltip = `订单状态为${statusText}，不可导单`;
                 }
 
                 // 9. 组装行HTML
@@ -1461,11 +1483,11 @@
                                 </div>
                             </div>
                         </td>
+                        <td style="text-align: center;">${tagsHtml}</td>
                         <td>${opsInfoHtml}</td>
                         <td>${diviDetailsHtml}</td>
                         <td>${trackingNumberHtml}</td>
                         <td>${order.purchase_time || '-'}</td>
-                        <td>${deliveryTypeText}</td>
                         <td class="w-actions">
                             <div class="action-buttons">
                                 <button class="btn-action btn-divi"
