@@ -874,12 +874,12 @@
                     <span class="page-size-label">每页显示：</span>
                     <div class="page-size-dropdown-wrapper" style="position: relative;">
                         <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                            <span id="pageSizeText">50条</span>
+                            <span id="pageSizeText">20条</span>
                             <i class="fas fa-chevron-down"></i>
                         </button>
                         <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                            <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
-                            <div class="page-size-option selected" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
                             <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
                             <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
                         </div>
@@ -904,7 +904,7 @@
     <script>
         // ==================== 全局变量 ====================
         let currentPage = 1;
-        let pageSize = 50;
+        let pageSize = 20;
         let hasLoadedData = false;
         let hasNextPage = false;
         let totalItems = 0;
@@ -920,6 +920,9 @@
         let simpleNextCursor = null;
         let simplePrevCursor = null;
         let pendingSimpleCursor = null;
+        let hotPageCache = new Map();
+        let hotPagePrefetchController = null;
+        let hotPagePrefetchKey = '';
         let pendingTrendCharts = [];
         let selectedSearchTermIds = new Set();
         let allData = [];
@@ -1006,6 +1009,8 @@
         let searchMode = 1;
         const searchModeLabels = ['精准查询', '模糊查询', '广泛匹配'];
         const searchModePlaceholders = ['请输入完整搜索词', '请输入搜索词', '请输入关键词（多个用空格分隔）'];
+        let currentLoadAbortController = null;
+        let latestLoadRequestId = 0;
         const searchModeColors = [
             { bg: '#dbeafe', border: '#3b82f6', color: '#1d4ed8' },  // 蓝色 - 精准
             { bg: '#dcfce7', border: '#22c55e', color: '#15803d' },  // 绿色 - 模糊
@@ -1418,6 +1423,50 @@
             isTotalCountTaskRunning = false;
         }
 
+        function buildHotPageCacheSignature(filters = getCurrentFilters()) {
+            return JSON.stringify({
+                leaderboard: activeLeaderboard,
+                week: filters.week,
+                category: filters.category,
+                searchTerm: filters.searchTerm,
+                searchMode: filters.searchMode,
+                noiseStatus: filters.noiseStatus,
+                wordFilter: filters.wordFilter,
+                pageSize: pageSize,
+            });
+        }
+
+        function buildHotPageCacheKey(page, filters = getCurrentFilters()) {
+            return `${buildHotPageCacheSignature(filters)}:${page}`;
+        }
+
+        function cancelHotPagePrefetch() {
+            if (hotPagePrefetchController) {
+                hotPagePrefetchController.abort();
+                hotPagePrefetchController = null;
+            }
+            hotPagePrefetchKey = '';
+        }
+
+        function rememberHotPage(page, filters, result) {
+            const cacheKey = buildHotPageCacheKey(page, filters);
+            hotPageCache.set(cacheKey, {
+                result: result,
+                savedAt: Date.now(),
+            });
+
+            while (hotPageCache.size > 30) {
+                const oldestKey = hotPageCache.keys().next().value;
+                hotPageCache.delete(oldestKey);
+            }
+        }
+
+        function getRememberedHotPage(page, filters = getCurrentFilters()) {
+            const cacheKey = buildHotPageCacheKey(page, filters);
+            const cached = hotPageCache.get(cacheKey);
+            return cached ? cached.result : null;
+        }
+
         function resetPaginationCache(clearTotalCount = true) {
             hasNextPage = false;
             paginationMode = activeLeaderboard === 'hot'
@@ -1426,6 +1475,8 @@
             simpleNextCursor = null;
             simplePrevCursor = null;
             pendingSimpleCursor = null;
+            hotPageCache.clear();
+            cancelHotPagePrefetch();
             if (clearTotalCount) {
                 totalItems = 0;
                 totalPages = 0;
@@ -1444,6 +1495,157 @@
 
         function markTotalCountTaskForStart() {
             shouldStartTotalCountTaskOnNextLoad = activeLeaderboard === 'hot';
+        }
+
+        function buildLeaderboardParams(filters, page = currentPage, cursorOverride = null) {
+            const params = new URLSearchParams({
+                page: page,
+                page_size: pageSize,
+                week: filters.week,
+                start_week: filters.startWeek,
+                end_week: filters.endWeek,
+                category: filters.category,
+                search_term: filters.searchTerm,
+                search_mode: filters.searchMode,
+                noise_status: filters.noiseStatus,
+                word_filter: filters.wordFilter
+            });
+
+            if (shouldReuseCachedTotal(filters)) {
+                params.set('cached_total', totalItems);
+            }
+
+            if (activeLeaderboard === 'hot' && cursorOverride) {
+                params.set('cursor_direction', cursorOverride.direction);
+                params.set('cursor_rank', cursorOverride.rank);
+                params.set('cursor_id', cursorOverride.id);
+            }
+
+            if (activeLeaderboard !== 'hot') {
+                params.delete('week');
+                params.delete('cached_total');
+                params.delete('word_filter');
+            } else {
+                params.delete('start_week');
+                params.delete('end_week');
+            }
+
+            return params;
+        }
+
+        function applyLoadResult(result, filters, totalCountSignature, { skipRender = false } = {}) {
+            hasLoadedData = true;
+            allData = result.data;
+            hasNextPage = !!result.has_next;
+            paginationMode = activeLeaderboard === 'hot'
+                ? 'simple'
+                : (result.pagination_mode || 'full');
+            simpleNextCursor = result.next_cursor || null;
+            simplePrevCursor = result.prev_cursor || null;
+            pendingSimpleCursor = null;
+
+            if (activeLeaderboard === 'hot') {
+                const hasExactHotTotal = shouldReuseCachedTotal(filters) || (
+                    !filters.searchTerm
+                    && !filters.category
+                    && filters.noiseStatus === 'all'
+                    && filters.wordFilter === 'all'
+                );
+
+                if (hasExactHotTotal) {
+                    const parsedTotal = Math.max(parseInt(result.total || 0, 10), 0);
+                    const parsedTotalPages = Math.max(parseInt(
+                        result.total_pages || (parsedTotal > 0 ? Math.ceil(parsedTotal / pageSize) : 0),
+                        10
+                    ), 0);
+
+                    if (parsedTotal > 0 || totalItems === 0) {
+                        totalItems = parsedTotal;
+                        totalPages = parsedTotalPages;
+                    }
+
+                    totalCountQuerySignature = totalCountSignature;
+                    hasKnownTotalCount = totalItems > 0;
+                    clearTotalCountTaskTracking();
+                } else {
+                    totalItems = 0;
+                    totalPages = 0;
+                    totalCountQuerySignature = '';
+                    hasKnownTotalCount = false;
+                }
+            } else {
+                totalItems = Math.max(parseInt(result.total || 0, 10), 0);
+                totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
+                totalCountQuerySignature = '';
+                hasKnownTotalCount = false;
+                clearTotalCountTaskTracking();
+                shouldStartTotalCountTaskOnNextLoad = false;
+            }
+
+            currentNewWordsWindow = {
+                start: result.window_start || '',
+                end: result.window_end || '',
+            };
+            updateLeaderboardChrome();
+
+            if (result.needs_week) {
+                hasLoadedData = false;
+                allData = [];
+                resetPaginationCache();
+                renderEmptyTableState('请选择周期后再搜索');
+            } else if (!skipRender) {
+                if (allData.length > 0) {
+                    renderTable(allData);
+                } else {
+                    renderEmptyTableState(getActiveLeaderboardConfig().emptyMessage);
+                }
+            }
+
+            if (!skipRender) {
+                renderPagination();
+                updatePaginationStats();
+            }
+        }
+
+        async function prefetchNextHotPage(filters) {
+            if (activeLeaderboard !== 'hot' || paginationMode !== 'simple' || !hasNextPage || !simpleNextCursor) {
+                cancelHotPagePrefetch();
+                return;
+            }
+
+            const nextPage = currentPage + 1;
+            const cacheKey = buildHotPageCacheKey(nextPage, filters);
+            if (hotPageCache.has(cacheKey) || hotPagePrefetchKey === cacheKey) {
+                return;
+            }
+
+            cancelHotPagePrefetch();
+            hotPagePrefetchKey = cacheKey;
+            hotPagePrefetchController = new AbortController();
+
+            try {
+                const params = buildLeaderboardParams(filters, nextPage, {
+                    direction: 'next',
+                    ...simpleNextCursor,
+                });
+                const response = await fetch(`/api/data/?${params}`, {
+                    signal: hotPagePrefetchController.signal
+                });
+                const result = await response.json();
+                if (!result.success || hotPagePrefetchKey !== cacheKey) {
+                    return;
+                }
+                rememberHotPage(nextPage, filters, result);
+            } catch (error) {
+                if (!error || error.name !== 'AbortError') {
+                    console.error('预取下一页失败:', error);
+                }
+            } finally {
+                if (hotPagePrefetchKey === cacheKey) {
+                    hotPagePrefetchKey = '';
+                    hotPagePrefetchController = null;
+                }
+            }
         }
 
         function updateTotalPagesDisplay() {
@@ -1545,7 +1747,7 @@
                     totalCountQuerySignature = signature;
                     hasKnownTotalCount = true;
                     clearTotalCountTaskTracking();
-                    paginationMode = 'full';
+                    paginationMode = activeLeaderboard === 'hot' ? 'simple' : 'full';
                     renderPagination();
                     updatePaginationStats();
                     return;
@@ -1920,6 +2122,14 @@
         }
         
         async function loadData() {
+            if (currentLoadAbortController) {
+                currentLoadAbortController.abort();
+            }
+
+            const requestId = ++latestLoadRequestId;
+            const abortController = new AbortController();
+            currentLoadAbortController = abortController;
+
             // 显示加载动画（分页切换时）
             const loadingOverlay = document.getElementById('loadingOverlay');
             if (loadingOverlay && !isInitialLoad) {
@@ -1930,104 +2140,33 @@
                 const filters = getCurrentFilters();
                 const totalCountSignature = buildTotalCountQuerySignature(filters);
                 const shouldStartTotalCountTask = activeLeaderboard === 'hot' && shouldStartTotalCountTaskOnNextLoad;
-                const params = new URLSearchParams({
-                    page: currentPage,
-                    page_size: pageSize,
-                    week: filters.week,
-                    start_week: filters.startWeek,
-                    end_week: filters.endWeek,
-                    category: filters.category,
-                    search_term: filters.searchTerm,
-                    search_mode: filters.searchMode,
-                    noise_status: filters.noiseStatus,
-                    word_filter: filters.wordFilter
-                });
-
-                if (shouldReuseCachedTotal(filters)) {
-                    params.set('cached_total', totalItems);
-                }
-
-                if (activeLeaderboard === 'hot' && pendingSimpleCursor) {
-                    params.set('cursor_direction', pendingSimpleCursor.direction);
-                    params.set('cursor_rank', pendingSimpleCursor.rank);
-                    params.set('cursor_id', pendingSimpleCursor.id);
-                }
-
+                const cursorOverride = activeLeaderboard === 'hot' ? pendingSimpleCursor : null;
                 const config = getActiveLeaderboardConfig();
-                if (activeLeaderboard !== 'hot') {
-                    params.delete('week');
-                    params.delete('cached_total');
-                    params.delete('word_filter');
-                } else {
-                    params.delete('start_week');
-                    params.delete('end_week');
+                const rememberedPage = activeLeaderboard === 'hot'
+                    ? getRememberedHotPage(currentPage, filters)
+                    : null;
+
+                if (rememberedPage) {
+                    applyLoadResult(rememberedPage, filters, totalCountSignature);
+                    await prefetchNextHotPage(filters);
+                    return;
                 }
 
-                const response = await fetch(`${config.endpoint}?${params}`);
+                const params = buildLeaderboardParams(filters, currentPage, cursorOverride);
+                const response = await fetch(`${config.endpoint}?${params}`, {
+                    signal: abortController.signal
+                });
                 const result = await response.json();
+
+                if (requestId !== latestLoadRequestId) {
+                    return;
+                }
                 
                 if (result.success) {
-                    hasLoadedData = true;
-                    allData = result.data;
-                    hasNextPage = !!result.has_next;
-                    paginationMode = activeLeaderboard === 'hot'
-                        ? 'simple'
-                        : (result.pagination_mode || 'full');
-                    simpleNextCursor = result.next_cursor || null;
-                    simplePrevCursor = result.prev_cursor || null;
-                    pendingSimpleCursor = null;
-
                     if (activeLeaderboard === 'hot') {
-                        const hasExactHotTotal = shouldReuseCachedTotal(filters) || (
-                            !filters.searchTerm
-                            && !filters.category
-                            && filters.noiseStatus === 'all'
-                            && filters.wordFilter === 'all'
-                        );
-
-                        if (hasExactHotTotal) {
-                            totalItems = Math.max(parseInt(result.total || 0, 10), 0);
-                            totalPages = Math.max(parseInt(
-                                result.total_pages || (totalItems > 0 ? Math.ceil(totalItems / pageSize) : 0),
-                                10
-                            ), 0);
-                            totalCountQuerySignature = totalCountSignature;
-                            hasKnownTotalCount = true;
-                            clearTotalCountTaskTracking();
-                        } else {
-                            totalItems = 0;
-                            totalPages = 0;
-                            totalCountQuerySignature = '';
-                            hasKnownTotalCount = false;
-                        }
-                    } else {
-                        totalItems = Math.max(parseInt(result.total || 0, 10), 0);
-                        totalPages = Math.max(parseInt(result.total_pages || 0, 10), 0);
-                        totalCountQuerySignature = '';
-                        hasKnownTotalCount = false;
-                        clearTotalCountTaskTracking();
-                        shouldStartTotalCountTaskOnNextLoad = false;
+                        rememberHotPage(currentPage, filters, result);
                     }
-
-                    currentNewWordsWindow = {
-                        start: result.window_start || '',
-                        end: result.window_end || '',
-                    };
-                    updateLeaderboardChrome();
-
-                    if (result.needs_week) {
-                        hasLoadedData = false;
-                        allData = [];
-                        resetPaginationCache();
-                        renderEmptyTableState('请选择周期后再搜索');
-                    } else if (allData.length > 0) {
-                        renderTable(allData);
-                    } else {
-                        renderEmptyTableState(config.emptyMessage);
-                    }
-
-                    renderPagination();
-                    updatePaginationStats();
+                    applyLoadResult(result, filters, totalCountSignature);
 
                     if (
                         shouldStartTotalCountTask
@@ -2038,15 +2177,23 @@
                         shouldStartTotalCountTaskOnNextLoad = false;
                         startTotalCountTask(filters, totalCountSignature);
                     }
+
+                    await prefetchNextHotPage(filters);
                 } else {
                     showNotification(result.error || '加载失败', 'error');
                 }
             } catch (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
                 console.error('加载数据失败:', error);
                 showNotification('加载数据失败', 'error');
             } finally {
+                if (requestId === latestLoadRequestId) {
+                    currentLoadAbortController = null;
+                }
                 // 隐藏加载动画（分页切换时）
-                if (loadingOverlay && !isInitialLoad) {
+                if (requestId === latestLoadRequestId && loadingOverlay && !isInitialLoad) {
                     loadingOverlay.classList.add('hidden');
                 }
             }
