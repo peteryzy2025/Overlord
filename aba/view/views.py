@@ -27,7 +27,6 @@ ADD_NOISE_WORDS_CACHE_PREFIX = 'aba:add-noise-words:'
 ABA_TOTAL_COUNT_CACHE_PREFIX = 'aba:total-count:'
 TERM_ID_LIST_CACHE_PREFIX = 'aba:term-ids:'
 TERM_ID_LIST_CACHE_TTL = 180  # 3分钟，翻页缓存
-ABA_CATEGORY_FIELD_CACHE_PREFIX = 'aba:category-field:'
 ABA_METRIC_INDEX_CACHE_PREFIX = 'aba:metric-index:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
@@ -291,43 +290,28 @@ def _matches_custom_denoising_term(term, keyword_patterns):
     return any(pattern.search(normalized_term) for pattern in keyword_patterns)
 
 
-def _apply_category_filter(queryset, category, term_field='search_term__term', category_field=None):
+def _apply_category_filter(queryset, category, category_field=None):
     normalized_category = _normalize_category_value(category)
     if not normalized_category:
         return queryset
 
-    if category_field and _has_search_term_category_data(normalized_category):
+    if category_field:
         return queryset.filter(**{category_field: normalized_category})
 
-    pattern_text = _build_whole_word_regex(normalized_category)
-    if not pattern_text:
-        return queryset
-
-    return queryset.filter(**{f'{term_field}__iregex': pattern_text})
+    return queryset
 
 
-def _build_filtered_term_queryset(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
+def _build_filtered_term_queryset(category='', search_term='', noise_status='all', search_mode='0'):
     """
     在 SearchTerm 表上构建过滤 queryset。
 
-    优先使用 category 字段索引；若当前 category 还未回填，则回退到 term 正则。
+    品类筛选仅依赖 SearchTerm.category 字段。
     """
     category = _normalize_category_value(category)
     qs = SearchTerm.objects.using('aba_db').all()
 
     if category:
-        if use_category_field:
-            qs_category = qs.filter(category=category)
-            if not qs_category.exists():
-                pattern = _build_whole_word_regex(category)
-                if pattern:
-                    qs = qs.filter(term__iregex=pattern)
-            else:
-                qs = qs_category
-        else:
-            pattern = _build_whole_word_regex(category)
-            if pattern:
-                qs = qs.filter(term__iregex=pattern)
+        qs = qs.filter(category=category)
 
     if search_term:
         if search_mode == '0':
@@ -347,7 +331,7 @@ def _build_filtered_term_queryset(category='', search_term='', noise_status='all
     return qs
 
 
-def _get_filtered_term_ids(category='', search_term='', noise_status='all', search_mode='0', use_category_field=True):
+def _get_filtered_term_ids(category='', search_term='', noise_status='all', search_mode='0'):
     """
     在 SearchTerm 表上过滤，返回匹配的 ID 列表。
     """
@@ -356,24 +340,8 @@ def _get_filtered_term_ids(category='', search_term='', noise_status='all', sear
         search_term=search_term,
         noise_status=noise_status,
         search_mode=search_mode,
-        use_category_field=use_category_field,
     )
     return list(qs.values_list('id', flat=True))
-
-
-def _has_search_term_category_data(category):
-    category = _normalize_category_value(category)
-    if not category:
-        return False
-
-    cache_key = f'{ABA_CATEGORY_FIELD_CACHE_PREFIX}{category}'
-    cached_value = cache.get(cache_key)
-    if cached_value is not None:
-        return cached_value
-
-    exists = SearchTerm.objects.using('aba_db').filter(category=category).only('id').exists()
-    cache.set(cache_key, exists, TERM_ID_LIST_CACHE_TTL)
-    return exists
 
 
 def _get_term_ids_cache_key(category, search_term, noise_status, search_mode):
@@ -1096,7 +1064,7 @@ def _build_aba_hot_queryset_context(
     queryset = SearchTermMetric.objects.using('aba_db').filter(report_week=week_date).select_related('search_term')
 
     if has_term_filters:
-        if category and _has_search_term_category_data(category):
+        if category:
             filtered_term_ids = _get_filtered_term_ids_with_cache(
                 category=category,
                 search_term=search_term,
@@ -1550,7 +1518,6 @@ def get_aba_new_words_api(request):
             base_queryset = _apply_category_filter(
                 base_queryset,
                 category,
-                term_field='term',
                 category_field='category',
             )
 
