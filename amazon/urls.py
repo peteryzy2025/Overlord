@@ -10,6 +10,7 @@ from amazon.view import views_amazon_order, views_amazon_performance, views_amaz
 from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
 from amazon.view import views_amazon_upload_records
 from amazon.api.shop_check import init_daily_shop_check, get_daily_check_list, update_daily_check, save_upload_record, get_upload_record_by_filename
+from amazon.api.shop_info import get_shop_info_by_name
 
 
 app_name = 'amazon'
@@ -128,6 +129,9 @@ urlpatterns = [
     path('amazon/api/upload-record/save/', save_upload_record, name='api_upload_record_save'),
     # 根据文件名查询上货记录
     path('api/amazon/upload-record/', get_upload_record_by_filename, name='api_upload_record_by_filename'),
+    
+    # 根据店铺名称查询店铺信息
+    path('amazon/api/shop-info/', get_shop_info_by_name, name='api_shop_info_by_name'),
     
     # ========== Amazon店铺上货情况 ==========
     path('amazon/upload-records/', views_amazon_upload_records.amazon_upload_records_page, name='amazon_upload_records'),
