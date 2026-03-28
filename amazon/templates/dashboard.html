@@ -1306,8 +1306,8 @@
                     type: 'line',
                     data: trendData.map(item => item.amazon_sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#667eea', width: 3},
-                    itemStyle: {color: '#667eea'},
                     areaStyle: {
                         color: {
                             type: 'linear',
@@ -1326,8 +1326,8 @@
                     type: 'line',
                     data: trendData.map(item => item.temu_sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#f5576c', width: 3},
-                    itemStyle: {color: '#f5576c'},
                     areaStyle: {
                         color: {
                             type: 'linear',
@@ -1346,24 +1346,24 @@
                     type: 'line',
                     data: trendData.map(item => item.amazon_sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#667eea', width: 3},
-                    itemStyle: {color: '#667eea'},
                 });
                 series.push({
                     name: 'Temu',
                     type: 'line',
                     data: trendData.map(item => item.temu_sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#f5576c', width: 3},
-                    itemStyle: {color: '#f5576c'},
                 });
                 series.push({
                     name: '总计',
                     type: 'line',
                     data: trendData.map(item => item.total_sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#10b981', width: 3, type: 'dashed'},
-                    itemStyle: {color: '#10b981'},
                 });
                 legendData.push('Amazon', 'Temu', '总计');
             } else {
@@ -1372,8 +1372,8 @@
                     type: 'line',
                     data: trendData.map(item => item.sales),
                     smooth: true,
+                    symbol: 'none',
                     lineStyle: {color: '#94a3b8', width: 2},
-                    itemStyle: {color: '#94a3b8'},
                 });
                 legendData.push('销量');
             }

@@ -1053,14 +1053,16 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
     return result
 
 
-def get_sales_trend_data(lingxing_shop_ids):
+def get_sales_trend_data(lingxing_shop_ids, start_date=None, end_date=None):
     """
-    获取最近30天每日销量数据（排除退货订单）
+    获取每日销量数据（排除退货订单）
+    如果未传入日期范围，默认获取最近30天
     返回: [{date: '2025-11-18', sales: 156}, ...] 格式
     """
-    # 计算30天日期范围
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=29)
+    # 计算日期范围
+    if start_date is None or end_date is None:
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=29)
 
     print(f"\n{'=' * 60}")
     print("📈 计算销量趋势数据(排除退货)...")
@@ -1094,9 +1096,10 @@ def get_sales_trend_data(lingxing_shop_ids):
 
     print(f"查询到 {len(sales_dict)} 天的有效销量数据（已排除退货）")
 
-    # 组装14天完整数据（补全缺失日期）
+    # 组装完整数据（补全日期范围内所有日期）
     result = []
-    for i in range(30):
+    days_count = (end_date - start_date).days + 1
+    for i in range(days_count):
         date = start_date + timedelta(days=i)
         sales = sales_dict.get(date, 0)
         result.append({
@@ -1215,7 +1218,11 @@ def filter_amazon_data_api(request):
                 amazon_stats['previous'] = get_order_statistics(
                     lingxing_shop_ids, previous_start, previous_end
                 )
-                amazon_stats['trend'] = get_sales_trend_data(lingxing_shop_ids)
+                # 如果日期范围是昨天或今天，使用默认最近30天；否则使用筛选的日期范围
+                if date_range_option in ['yesterday', 'today']:
+                    amazon_stats['trend'] = get_sales_trend_data(lingxing_shop_ids)
+                else:
+                    amazon_stats['trend'] = get_sales_trend_data(lingxing_shop_ids, current_start, current_end)
 
         # Temu统计
         temu_stats = {
@@ -1240,7 +1247,11 @@ def filter_amazon_data_api(request):
             temu_stats['previous'] = get_temu_order_statistics(
                 shop_ids_by_platform['temu'], previous_start, previous_end
             )
-            temu_stats['trend'] = get_temu_sales_trend_data(shop_ids_by_platform['temu'])
+            # 如果日期范围是昨天或今天，使用默认最近30天；否则使用筛选的日期范围
+            if date_range_option in ['yesterday', 'today']:
+                temu_stats['trend'] = get_temu_sales_trend_data(shop_ids_by_platform['temu'])
+            else:
+                temu_stats['trend'] = get_temu_sales_trend_data(shop_ids_by_platform['temu'], current_start, current_end)
 
         # 合并统计结果
         def merge_stats(current, previous, amazon_order_count):
@@ -1418,12 +1429,15 @@ def get_temu_order_statistics(temu_shop_ids, start_date, end_date):
     }
 
 
-def get_temu_sales_trend_data(temu_shop_ids):
+def get_temu_sales_trend_data(temu_shop_ids, start_date=None, end_date=None):
     """
-    Temu最近30天销量趋势（排除退货订单）
+    Temu销量趋势（排除退货订单）
+    如果未传入日期范围，默认获取最近30天
     """
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=29)
+    # 计算日期范围
+    if start_date is None or end_date is None:
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=29)
 
     if not temu_shop_ids:
         return []
@@ -1471,9 +1485,10 @@ def get_temu_sales_trend_data(temu_shop_ids):
     sales_dict = {item['date']: item['sales'] or 0 for item in daily_sales_raw}
     print(f"查询到 {len(sales_dict)} 天的有效销量数据（已排除退货）")
 
-    # 补全14天
+    # 补全日期范围内所有日期
     result = []
-    for i in range(30):
+    days_count = (end_date - start_date).days + 1
+    for i in range(days_count):
         date = start_date + timedelta(days=i)
         sales = sales_dict.get(date, 0)
         result.append({
