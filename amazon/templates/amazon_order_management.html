@@ -925,7 +925,7 @@
         let allOperators = [];
         let allGroups = [];
         let currentFilters = {
-            date_range: 'yesterday',
+            date_range: 'unlimited',
             start_date: '',
             end_date: '',
             operator_id: '',
@@ -1093,6 +1093,7 @@
                 ? window.GeneralStyleDateRangeFilter.init({
                     select: '#dateRange',
                     options: [
+                        {value: 'unlimited', label: '不限'},
                         {value: 'yesterday', label: '昨日'},
                         {value: 'today', label: '今日'},
                         {value: 'last7days', label: '最近7天'},
@@ -1100,7 +1101,7 @@
                         {value: 'custom', label: '自定义范围'}
                     ],
                     placeholder: '日期范围',
-                    defaultValue: 'last30days',
+                    defaultValue: 'unlimited',
                     customValue: 'custom',
                     customGroups: ['#customDateGroup', '#customDateGroup2'],
                     startInput: '#startDate',
@@ -1116,6 +1117,7 @@
             } else {
                 dateRangeSelect = new SearchableSelect('#dateRange', {
                     options: [
+                        {value: 'unlimited', label: '不限'},
                         {value: 'yesterday', label: '昨日'},
                         {value: 'today', label: '今日'},
                         {value: 'last7days', label: '最近7天'},
@@ -1125,7 +1127,7 @@
                     placeholder: '日期范围',
                     multiple: false
                 });
-                dateRangeSelect.setValue('last30days');
+                dateRangeSelect.setValue('unlimited');
                 dateRangeSelect.onChange = () => {
                     syncDateRangeVisibility();
                     ordersPagination.page = 1;
@@ -1287,10 +1289,10 @@
 
         function setDefaultFilters() {
             if (dateRangeController) {
-                dateRangeController.setValue('last30days');
+                dateRangeController.setValue('unlimited');
                 dateRangeController.clearCustomDates();
             } else {
-                if (dateRangeSelect) dateRangeSelect.setValue('last30days');
+                if (dateRangeSelect) dateRangeSelect.setValue('unlimited');
                 syncDateRangeVisibility();
                 document.getElementById('startDate').value = '';
                 document.getElementById('endDate').value = '';

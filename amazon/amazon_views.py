@@ -148,17 +148,30 @@ def get_operator_pie_chart_api(request):
                         lingxing_shop_id__in=lingxing_shop_ids,
                         purchase_date_local__date__gte=current_start,
                         purchase_date_local__date__lte=current_end
-                    ).count()
+                    ).exclude(order_status='Canceled').count()
 
                 if shop_ids_by_platform.get('temu'):
                     temu_shops = TemuShop.objects.filter(ops_id__in=user_ids)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
+                    # 先获取所有订单，提取退货订单号
+                    all_orders = TemuOrder.objects.filter(
+                        lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).values('global_order_no', 'platform_info')
+
+                    cancelled_order_nos = [
+                        o['global_order_no'] for o in all_orders
+                        if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                           and o['platform_info'][0].get('status') == 'CANCELED'
+                    ]
+
                     temu_count = TemuOrder.objects.filter(
                         lingxing_shop__temu_shop_id__in=temu_shop_ids,
                         global_purchase_time__date__gte=current_start,
                         global_purchase_time__date__lte=current_end
-                    ).count()
+                    ).exclude(global_order_no__in=cancelled_order_nos).count()
 
                 total = amazon_count + temu_count
                 if total > 0:
@@ -193,17 +206,30 @@ def get_operator_pie_chart_api(request):
                         lingxing_shop_id__in=lingxing_shop_ids,
                         purchase_date_local__date__gte=current_start,
                         purchase_date_local__date__lte=current_end
-                    ).count()
+                    ).exclude(order_status='Canceled').count()
 
                 if shop_ids_by_platform.get('temu'):
                     temu_shops = TemuShop.objects.filter(ops_id=u.id)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
+                    # 先获取所有订单，提取退货订单号
+                    all_orders = TemuOrder.objects.filter(
+                        lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                        global_purchase_time__date__gte=current_start,
+                        global_purchase_time__date__lte=current_end
+                    ).values('global_order_no', 'platform_info')
+
+                    cancelled_order_nos = [
+                        o['global_order_no'] for o in all_orders
+                        if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                           and o['platform_info'][0].get('status') == 'CANCELED'
+                    ]
+
                     temu_count = TemuOrder.objects.filter(
                         lingxing_shop__temu_shop_id__in=temu_shop_ids,
                         global_purchase_time__date__gte=current_start,
                         global_purchase_time__date__lte=current_end
-                    ).count()
+                    ).exclude(global_order_no__in=cancelled_order_nos).count()
 
                 total = amazon_count + temu_count
                 if total > 0:
@@ -223,12 +249,12 @@ def get_operator_pie_chart_api(request):
                 lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
 
                 if lingxing_shop_ids:
-                    # 一次性聚合统计（性能优化）
+                    # 一次性聚合统计（性能优化），排除退货订单
                     orders = AmazonOrders.objects.filter(
                         lingxing_shop_id__in=lingxing_shop_ids,
                         purchase_date_local__date__gte=current_start,
                         purchase_date_local__date__lte=current_end
-                    ).values('lingxing_shop__sid', 'lingxing_shop__name').annotate(
+                    ).exclude(order_status='Canceled').values('lingxing_shop__sid', 'lingxing_shop__name').annotate(
                         count=Count('id')
                     )
 
@@ -242,11 +268,24 @@ def get_operator_pie_chart_api(request):
             if shop_ids_by_platform.get('temu'):
                 temu_shop_ids = shop_ids_by_platform['temu']
 
+                # 先获取所有订单，提取退货订单号
+                all_orders = TemuOrder.objects.filter(
+                    lingxing_shop__temu_shop_id__in=temu_shop_ids,
+                    global_purchase_time__date__gte=current_start,
+                    global_purchase_time__date__lte=current_end
+                ).values('global_order_no', 'platform_info')
+
+                cancelled_order_nos = [
+                    o['global_order_no'] for o in all_orders
+                    if o.get('platform_info') and len(o.get('platform_info', [])) > 0
+                       and o['platform_info'][0].get('status') == 'CANCELED'
+                ]
+
                 orders = TemuOrder.objects.filter(
                     lingxing_shop__temu_shop_id__in=temu_shop_ids,
                     global_purchase_time__date__gte=current_start,
                     global_purchase_time__date__lte=current_end
-                ).values('lingxing_shop__store_id', 'lingxing_shop__store_name').annotate(
+                ).exclude(global_order_no__in=cancelled_order_nos).values('lingxing_shop__store_id', 'lingxing_shop__store_name').annotate(
                     count=Count('global_order_no')  # 正确：使用Temu主键字段
                 )
 

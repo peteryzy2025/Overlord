@@ -118,9 +118,6 @@ def get_amazon_orders_list_api(request):
         if not current_start or not current_end:
             current_start, current_end = get_date_range_from_option(date_range_option)
 
-        if not current_start or not current_end:
-            return JsonResponse({'success': False, 'message': '请提供有效的日期范围'}, status=400)
-
         # 无权限返回空
         if filter_type == 'none':
             return JsonResponse({'success': True,
@@ -144,8 +141,10 @@ def get_amazon_orders_list_api(request):
 
         # ========== 构建查询条件 ==========
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
-        order_filter &= Q(purchase_date_local__date__gte=current_start)
-        order_filter &= Q(purchase_date_local__date__lte=current_end)
+        # 只有在非不限日期范围时才添加日期筛选
+        if current_start is not None and current_end is not None:
+            order_filter &= Q(purchase_date_local__date__gte=current_start)
+            order_filter &= Q(purchase_date_local__date__lte=current_end)
 
         # 其他普通筛选条件（支持多选）
         if order_status_list:
@@ -663,13 +662,6 @@ def update_divi_export_status_api(request):
             current_start, current_end = get_date_range_from_option(date_range_option)
             print(f"📅 使用快捷日期({date_range_option}): {current_start} 至 {current_end}")
 
-        if not current_start or not current_end:
-            print("❌ 错误: 未提供有效的日期范围")
-            return JsonResponse({
-                'success': False,
-                'message': '请提供有效的日期范围'
-            }, status=400)
-
         # 分页参数
         page = int(data.get('page', 1))
         page_size = int(data.get('page_size', 20))
@@ -731,8 +723,10 @@ def update_divi_export_status_api(request):
         # 构建订单查询条件
         print(f"🔍 构建订单查询条件...")
         order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
-        order_filter &= Q(purchase_date_local__date__gte=current_start)
-        order_filter &= Q(purchase_date_local__date__lte=current_end)
+        # 只有在非不限日期范围时才添加日期筛选
+        if current_start is not None and current_end is not None:
+            order_filter &= Q(purchase_date_local__date__gte=current_start)
+            order_filter &= Q(purchase_date_local__date__lte=current_end)
 
         # ========== 应用所有筛选项 ==========
         if order_status_filter:
