@@ -132,7 +132,7 @@
             </div>
             <div class="modal-body">
                 <div class="subtask-type-options">
-                    <div class="subtask-type-card disabled" data-type="divi_multi_side_custom">
+                    <div class="subtask-type-card" data-type="divi_multi_side_custom" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-layer-group"></i>
                         </div>
@@ -475,6 +475,50 @@
             };
         }
 
+        // ===== 初始化多面定制产品选择器 =====
+        async function initMultiSideProductSelect(subtaskId, selectedProductIds = []) {
+            const selectEl = document.querySelector(`#multi-product-select-${subtaskId}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            // 加载产品列表
+            const products = await loadDiviProducts();
+            const productOptions = products.map(p => ({
+                value: String(p.id),
+                label: `${p.id} - ${p.name}`
+            }));
+
+            const productSelect = new SearchableSelect(`#multi-product-select-${subtaskId}`, {
+                options: productOptions,
+                multiple: true,
+                placeholder: '选择产品（可多选）'
+            });
+
+            // 设置已选值
+            if (selectedProductIds && selectedProductIds.length > 0) {
+                const validIds = selectedProductIds.filter(id => 
+                    productOptions.some(opt => opt.value === String(id))
+                );
+                productSelect.setValue(validIds);
+                // 更新 taskData
+                const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+                if (subtask) {
+                    subtask.params.product_ids = validIds;
+                }
+            }
+
+            // 监听变化
+            productSelect.onChange = (value) => {
+                const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+                if (subtask) {
+                    subtask.params.product_ids = value;
+                }
+                triggerAutoSave();
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._productSelectInstance = productSelect;
+        }
+
         // ===== 初始化子任务中的SearchableSelect =====
         function initSubtaskSearchableSelects(subtask) {
             if (subtask.type === 'divi_multi_side_custom' || subtask.type === 'divi_custom') {
@@ -496,31 +540,6 @@
                     modeSelectEl.dataset.initialized = 'true';
                 }
 
-                // 图库账号选择
-                const galleryAccountEl = document.querySelector(`#gallery-account-select-${subtask.id}`);
-                if (galleryAccountEl && !galleryAccountEl.dataset.initialized) {
-                    const galleryAccountSelect = new SearchableSelect(`#gallery-account-select-${subtask.id}`, {
-                        options: [
-                            { value: '曾雪莹', label: '曾雪莹' },
-                            { value: '杨涵', label: '杨涵' },
-                            { value: '魏李杰', label: '魏李杰' },
-                            { value: '吴杰柱', label: '吴杰柱' },
-                            { value: '侯益山', label: '侯益山' },
-                            { value: '郭子伊', label: '郭子伊' },
-                            { value: '吴晓纯', label: '吴晓纯' },
-                            { value: '林焕源', label: '林焕源' },
-                            { value: '罗仕明', label: '罗仕明' }
-                        ],
-                        multiple: false,
-                        placeholder: '选择图库账号'
-                    });
-                    galleryAccountSelect.setValue(subtask.params.gallery_account || '侯益山');
-                    galleryAccountSelect.onChange = (value) => {
-                        updateSubtaskParam(subtask.id, 'gallery_account', value);
-                    };
-                    galleryAccountEl.dataset.initialized = 'true';
-                }
-
                 // 工艺类型选择
                 const craftTypeEl = document.querySelector(`#craft-type-select-${subtask.id}`);
                 if (craftTypeEl && !craftTypeEl.dataset.initialized) {
@@ -540,18 +559,18 @@
                     craftTypeEl.dataset.initialized = 'true';
                 }
 
-                // 定制方式选择
+                // 定制方式选择（多面定制专用）
                 const customMethodEl = document.querySelector(`#custom-method-select-${subtask.id}`);
                 if (customMethodEl && !customMethodEl.dataset.initialized) {
                     const customMethodSelect = new SearchableSelect(`#custom-method-select-${subtask.id}`, {
                         options: [
-                            { value: 'batch', label: '批量定制' },
-                            { value: 'single', label: '单个定制' }
+                            { value: 'multi', label: '多面定制' },
+                            { value: 'batch', label: 'divi批量定制（勿选）' }
                         ],
                         multiple: false,
                         placeholder: '选择定制方式'
                     });
-                    customMethodSelect.setValue(subtask.params.custom_method || 'batch');
+                    customMethodSelect.setValue(subtask.params.custom_method || 'multi');
                     customMethodSelect.onChange = (value) => {
                         updateSubtaskParam(subtask.id, 'custom_method', value);
                     };
@@ -1713,9 +1732,9 @@
             if (type === 'divi_multi_side_custom') {
                 defaultParams = {
                     mode: 'adapt',
-                    gallery_account: '侯益山',
+                    diwei_account: '陈柔',
                     craft_type: 'print',
-                    custom_method: 'batch',
+                    custom_method: 'multi',
                     add_black_border: false,
                     recognize_theme: false,
                     add_custom_coords: false,
@@ -1751,6 +1770,7 @@
 
             // 确保数组字段是独立的实例，避免引用共享
             if (type === 'divi_multi_side_custom') {
+                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.product_ids) mergedParams.product_ids = [];
                 if (!params.gallery_path) mergedParams.gallery_path = [];
                 if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
@@ -1875,13 +1895,11 @@
 
             container.insertAdjacentHTML('beforeend', subtaskHtml);
 
-            // 初始化产品ID预览
-            if (subtask.params.product_ids) {
-                const input = document.querySelector(`#product-ids-input-${subtask.id}`);
-                if (input) {
-                    input.value = subtask.params.product_ids.join(' ');
-                    handleProductIdsInput(input, subtask.id);
-                }
+            // 初始化多面定制产品选择器
+            if (subtask.type === 'divi_multi_side_custom') {
+                setTimeout(async () => {
+                    await initMultiSideProductSelect(subtask.id, subtask.params.product_ids || []);
+                }, 0);
             }
 
             // 初始化图库目录预览
@@ -1900,7 +1918,7 @@
                 refreshFileList(subtask.id);
             }
 
-            if (subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_gallery_upload') {
+            if (subtask.type === 'divi_multi_side_custom' || subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_gallery_upload') {
                 await initDiweiAccountSelect(subtask);
             }
 
@@ -2156,17 +2174,13 @@
                 return `
                     <div class="dynamic-fields">
                         <div class="form-group">
-                            <label class="form-label">产品ID <span style="color: var(--danger-color);">*</span></label>
-                            <div class="product-ids-wrapper">
-                                <input type="text" class="form-control"
-                                       id="product-ids-input-${subtask.id}"
-                                       placeholder="输入多个产品ID，用空格分隔"
-                                       value="${subtask.params.product_ids ? subtask.params.product_ids.join(' ') : ''}"
-                                       oninput="handleProductIdsInput(this, ${subtask.id})">
-                                <div class="product-ids-preview" id="product-preview-${subtask.id}">
-                                    <!-- 动态生成 -->
-                                </div>
-                            </div>
+                            <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="diwei-account-select-${subtask.id}" class="searchable-select single" data-placeholder="选择迪唯账号"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">产品 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="multi-product-select-${subtask.id}" class="searchable-select multiple" data-placeholder="选择产品（可多选）"></div>
                         </div>
 
                         <div class="form-group has-autocomplete">
@@ -2191,11 +2205,6 @@
                         <div class="form-group">
                             <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
                             <div id="mode-select-${subtask.id}" class="searchable-select single" data-placeholder="选择模式"></div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">图库账号 <span style="color: var(--danger-color);">*</span></label>
-                            <div id="gallery-account-select-${subtask.id}" class="searchable-select single" data-placeholder="选择图库账号"></div>
                         </div>
 
                         <div class="form-group">
