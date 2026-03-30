@@ -1437,8 +1437,9 @@
                 let canExportToDivi = true;
                 let exportTooltip = '导单到divi并发货';
                 
-                // 优先级1: 已导单
-                if (order.is_exported_to_divi) {
+                // 优先级1: 已导单但状态不是待审核(4)或待发货(5)，才禁止导单
+                // 如果已导单但还处于待审核/待发货状态，允许重新导单以继续流程
+                if (order.is_exported_to_divi && ![4, 5].includes(order.status)) {
                     canExportToDivi = false;
                     exportTooltip = '已导单';
                 }
