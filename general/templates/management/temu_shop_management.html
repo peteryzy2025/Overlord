@@ -371,6 +371,40 @@
             </div>
         </div>
     </div>
+
+    <!-- 尺寸重量编辑模态框 -->
+    <div class="modal-overlay" id="dimensionsModalOverlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">编辑尺寸重量</h2>
+                <button class="modal-close" onclick="closeDimensionsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; padding: 1rem;">
+                    <div class="form-group">
+                        <label>长 (inch)</label>
+                        <input type="number" id="dim-length" step="0.01" placeholder="请输入长度">
+                    </div>
+                    <div class="form-group">
+                        <label>宽 (inch)</label>
+                        <input type="number" id="dim-width" step="0.01" placeholder="请输入宽度">
+                    </div>
+                    <div class="form-group">
+                        <label>高 (inch)</label>
+                        <input type="number" id="dim-height" step="0.01" placeholder="请输入高度">
+                    </div>
+                    <div class="form-group">
+                        <label>重量 (lb)</label>
+                        <input type="number" id="dim-weight" step="0.01" placeholder="请输入重量">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-cancel-modal" onclick="closeDimensionsModal()">取消</button>
+                <button class="btn btn-save-modal" onclick="saveDimensions()">保存</button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -385,6 +419,8 @@
         const userPermsStr = USER_PERMISSIONS.map(p => String(p));
         // 如果权限列表为空，默认设为管理员（临时解决方案）
         const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552') || USER_PERMISSIONS.length === 0;
+        // 当前登录用户ID（用于判断是否为店铺所属人）
+        const CURRENT_USER_ID = {{ current_user_id|default:"null" }};
 
         // 全局变量
         let allOperators = [];
@@ -1032,10 +1068,21 @@
                 const checkboxCell = IS_ADMIN 
                     ? `<td class="w-checkbox"><input type="checkbox" class="shop-select-checkbox" value="${shop.id}" onchange="updateBulkActionBar()"></td>`
                     : `<td class="w-checkbox"><input type="checkbox" disabled style="cursor:not-allowed;opacity:0.5;"></td>`;
-                // 根据权限生成编辑按钮
-                const actionCell = IS_ADMIN
-                    ? `<td><button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button></td>`
-                    : `<td><button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;background-color:var(--bg-tertiary);color:var(--text-secondary);">不可编辑</button></td>`;
+                // 根据权限生成操作按钮（管理员或店铺所属人可编辑）
+                const canEdit = IS_ADMIN || shop.ops_id === CURRENT_USER_ID;
+                const btnStyle = 'height: 28px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center;';
+                const actionCell = canEdit
+                    ? `<td style="white-space: nowrap;">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" style="${btnStyle}" onclick="openEditModal(${shop.id})" title="编辑店铺信息">
+                            <i class="fas fa-edit" style="font-size: 12px;"></i>
+                        </button>
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" style="${btnStyle}; margin-left: 6px;" onclick="openDimensionsModal(${shop.id})" title="编辑尺寸重量">
+                            <i class="fas fa-cube" style="font-size: 12px;"></i>
+                        </button>
+                       </td>`
+                    : `<td><button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" disabled style="${btnStyle}; opacity:0.6;cursor:not-allowed;" title="无权限编辑">
+                        <i class="fas fa-ban" style="font-size: 12px;"></i>
+                    </button></td>`;
                 
                 return `
             <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
@@ -1126,6 +1173,77 @@
             document.getElementById('shopModalOverlay').style.display = 'none';
             modalMode = null;
             currentShopId = null;
+        }
+
+        // ========== 尺寸重量编辑功能 ==========
+        let currentDimensionsShopId = null;
+
+        function openDimensionsModal(shopId) {
+            currentDimensionsShopId = shopId;
+            
+            // 获取店铺当前数据
+            fetch(`/api/temu-shops/?page=1&page_size=1&id=${shopId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data.length > 0) {
+                        const shop = result.data[0];
+                        // 填充当前值（如果有的话）
+                        document.getElementById('dim-length').value = shop.length || '';
+                        document.getElementById('dim-width').value = shop.width || '';
+                        document.getElementById('dim-height').value = shop.height || '';
+                        document.getElementById('dim-weight').value = shop.weight || '';
+                        document.getElementById('dimensionsModalOverlay').style.display = 'block';
+                    } else {
+                        SearchableSelect.notify('获取店铺数据失败', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('获取店铺数据错误:', error);
+                    SearchableSelect.notify('获取店铺数据失败', 'error');
+                });
+        }
+
+        function closeDimensionsModal() {
+            document.getElementById('dimensionsModalOverlay').style.display = 'none';
+            currentDimensionsShopId = null;
+            // 清空输入
+            document.getElementById('dim-length').value = '';
+            document.getElementById('dim-width').value = '';
+            document.getElementById('dim-height').value = '';
+            document.getElementById('dim-weight').value = '';
+        }
+
+        async function saveDimensions() {
+            if (!currentDimensionsShopId) return;
+
+            const data = {
+                length: document.getElementById('dim-length').value,
+                width: document.getElementById('dim-width').value,
+                height: document.getElementById('dim-height').value,
+                weight: document.getElementById('dim-weight').value
+            };
+
+            try {
+                const response = await fetch(`/api/temu-shops/${currentDimensionsShopId}/update-dimensions/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    SearchableSelect.notify('尺寸重量信息更新成功！', 'success');
+                    closeDimensionsModal();
+                } else {
+                    SearchableSelect.notify('操作失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('保存尺寸重量失败:', error);
+                SearchableSelect.notify('保存失败，请检查网络连接', 'error');
+            }
         }
 
         function generateModalForm(shopData = null) {
@@ -1582,10 +1700,15 @@
             if (e.target === this) closeExportModal();
         });
 
+        document.getElementById('dimensionsModalOverlay').addEventListener('click', function (e) {
+            if (e.target === this) closeDimensionsModal();
+        });
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeModal();
                 closeExportModal();
+                closeDimensionsModal();
             }
         });
     </script>

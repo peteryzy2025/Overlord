@@ -1,78 +1,138 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-验证 sync_rangking_day.py 修改后的效果
-"""
-
 import os
-import sys
-import django
-from datetime import date, timedelta
+import shutil
+from pathlib import Path
+from typing import List, Dict
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = CURRENT_DIR
-sys.path.append(PROJECT_ROOT)
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
-django.setup()
+def reorganize_excel_files(source_dir: str, dry_run: bool = False) -> List[Dict]:
+    """
+    重组影刀输出目录下的Excel文件
 
-from general.models import User
+    规则：
+    原文件：承诺希航-16蔡婉婷_2223_0330-1650.xlsx
+    新路径：承诺希航-16蔡婉婷/16蔡婉婷_2223_0330-1650.xlsx
 
-def test_functions():
-    print("\n" + "="*70)
-    print("验证 sync_rangking_day.py 修改效果")
-    print("="*70 + "\n")
-    
-    # 导入修改后的函数
-    from amazon.sync_rangking_day import (
-        get_all_operators,
-        get_all_operators_include_inactive,
-        get_all_leaders
-    )
-    
-    # 测试1: 原函数（只包含活跃人员）
-    active_operators = get_all_operators()
-    print(f"【1】get_all_operators() - 活跃人员:")
-    print(f"    人数: {active_operators.count()}")
-    print(f"    IDs: {list(active_operators.values_list('id', flat=True))}")
-    
-    # 测试2: 新函数（包含全部人员）
-    all_operators = get_all_operators_include_inactive()
-    print(f"\n【2】get_all_operators_include_inactive() - 全部人员:")
-    print(f"    人数: {all_operators.count()}")
-    print(f"    IDs: {list(all_operators.values_list('id', flat=True))}")
-    
-    # 测试3: 找出禁用的用户
-    inactive_users = all_operators.exclude(status=User.Status.NORMAL)
-    print(f"\n【3】禁用/非活跃人员:")
-    print(f"    人数: {inactive_users.count()}")
-    for u in inactive_users:
-        print(f"    - ID:{u.id} | {u.first_name} | status={u.status}")
-    
-    # 测试4: 组长列表（应保持不变，只含活跃）
-    leaders = get_all_leaders()
-    print(f"\n【4】get_all_leaders() - 组长（只含活跃）:")
-    print(f"    人数: {leaders.count()}")
-    for u in leaders:
-        print(f"    - ID:{u.id} | {u.first_name}")
-    
-    # 数据对比
-    print(f"\n" + "="*70)
-    print("数据对比:")
-    print(f"  活跃人员: {active_operators.count()} 人")
-    print(f"  全部人员: {all_operators.count()} 人")
-    print(f"  差异: {all_operators.count() - active_operators.count()} 人（禁用人员）")
-    print("="*70 + "\n")
-    
-    print("验证结论:")
-    if all_operators.count() > active_operators.count():
-        print("  ✓ 新函数正确包含了禁用人员")
-        print("  ✓ 个人报告仍将只发给活跃人员")
-        print("  ✓ 组长报告将包含禁用组员（标注但不排名）")
-        print("  ✓ 经理报告将统计全部人员")
+    Args:
+        source_dir: 源目录路径，如 r"D:\影刀\output_0330-1650\output_0330-1650"
+        dry_run: 是否为预览模式（True只打印不移动，False实际执行移动）
+
+    Returns:
+        操作结果列表，包含 original, target, status 等信息
+    """
+    source_path = Path(source_dir)
+
+    if not source_path.exists():
+        raise FileNotFoundError(f"❌ 路径不存在: {source_dir}")
+
+    if not source_path.is_dir():
+        raise NotADirectoryError(f"❌ 不是有效目录: {source_dir}")
+
+    results = []
+    xlsx_files = list(source_path.glob("*.xlsx"))
+
+    print(f"📁 扫描目录: {source_dir}")
+    print(f"📊 发现 {len(xlsx_files)} 个Excel文件")
+    print("-" * 60)
+
+    for idx, file_path in enumerate(xlsx_files, 1):
+        file_name = file_path.name
+
+        # 跳过临时文件（以~$开头的隐藏文件）
+        if file_name.startswith("~$"):
+            continue
+
+        # 解析文件名规则
+        if "_" not in file_name or "-" not in file_name:
+            print(f"⚠️  [{idx}] 跳过（不符合命名格式）: {file_name}")
+            continue
+
+        # 提取文件夹名：第一个下划线前的所有内容
+        # 例：承诺希航-16蔡婉婷_2223_0330-1650.xlsx -> 承诺希航-16蔡婉婷
+        folder_name = file_name.split("_")[0]
+
+        # 提取新文件名：第一个减号后的所有内容
+        # 例：承诺希航-16蔡婉婷_2223_0330-1650.xlsx -> 16蔡婉婷_2223_0330-1650.xlsx
+        try:
+            new_file_name = file_name.split("-", 1)[1]
+        except IndexError:
+            print(f"⚠️  [{idx}] 跳过（无法解析减号分隔）: {file_name}")
+            continue
+
+        # 构建目标路径
+        target_folder = source_path / folder_name
+        target_path = target_folder / new_file_name
+
+        result = {
+            "index": idx,
+            "original": str(file_path),
+            "target_folder": str(target_folder),
+            "target_path": str(target_path),
+            "folder_name": folder_name,
+            "new_file_name": new_file_name
+        }
+
+        if dry_run:
+            # 预览模式：只打印不执行
+            print(f"👁️  [{idx}] 预览: {file_name}")
+            print(f"    创建目录: {folder_name}")
+            print(f"    重命名为: {new_file_name}")
+            result["status"] = "preview"
+        else:
+            # 执行模式
+            try:
+                # 创建子目录（如果不存在）
+                target_folder.mkdir(exist_ok=True)
+
+                # 如果目标文件已存在，先删除（避免报错）
+                if target_path.exists():
+                    target_path.unlink()
+                    print(f"    🗑️  已覆盖旧文件")
+
+                # 移动文件
+                shutil.move(str(file_path), str(target_path))
+
+                print(f"✅  [{idx}] 成功: {file_name}")
+                print(f"    📂 移动至: {folder_name}/{new_file_name}")
+                result["status"] = "success"
+
+            except Exception as e:
+                print(f"❌  [{idx}] 失败: {file_name} - 错误: {e}")
+                result["status"] = "failed"
+                result["error"] = str(e)
+
+        results.append(result)
+        if not dry_run or idx < len(xlsx_files):
+            print()  # 空行分隔
+
+    # 统计摘要
+    print("-" * 60)
+    success_count = sum(1 for r in results if r.get("status") == "success")
+    preview_count = sum(1 for r in results if r.get("status") == "preview")
+    failed_count = sum(1 for r in results if r.get("status") == "failed")
+
+    if dry_run:
+        print(f"🔍 预览完成: {preview_count} 个文件待处理（未实际移动）")
+        print("💡 提示: 将 dry_run=False 传入函数以执行实际移动")
     else:
-        print("  ⚠ 没有发现禁用人员，或函数逻辑有误")
-    print()
+        print(f"🎉 处理完成: 成功 {success_count} 个, 失败 {failed_count} 个")
 
+    return results
+
+
+# ==================== 使用示例 ====================
 if __name__ == "__main__":
-    test_functions()
+    # 配置路径
+    SOURCE_DIR = r"D:\影刀\output_0330-1650\output_0330-1650"
+
+    # 步骤1：先预览（不实际移动，确认无误后再执行）
+    print("=" * 60)
+    print("第一步：预览模式（安全查看变更计划）")
+    print("=" * 60)
+    # reorganize_excel_files(SOURCE_DIR, dry_run=True)
+
+    print("\n" + "=" * 60)
+    print("第二步：确认无误后，注释掉上方预览代码，运行下方实际代码")
+    print("=" * 60)
+
+    # 步骤2：实际执行（取消下方注释以启用）
+    reorganize_excel_files(SOURCE_DIR, dry_run=False)

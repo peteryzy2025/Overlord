@@ -91,6 +91,7 @@ def temu_management_view(request):
         'user_permissions_json': json.dumps(user_perms),  # 用于JS
         'is_admin': can_access_shop_management(user),
         'is_ops_leader': is_ops_leader(user),
+        'current_user_id': user.id,  # 用于前端判断是否为店铺所属人
     }
     return render(request, 'management/temu_shop_management.html', context)
 
@@ -281,6 +282,10 @@ def get_temu_shops_api(request):
                     'ops_role': ops_role,
                     'ops_group': ops_group,
                     'divi_shop_id': shop.divi_shop_id or '',
+                    'length': shop.length,
+                    'width': shop.width,
+                    'height': shop.height,
+                    'weight': shop.weight,
                 }
 
                 return JsonResponse({
@@ -402,6 +407,10 @@ def get_temu_shops_api(request):
                 'ops_role': ops_info['role'],
                 'ops_group': ops_info['group'],
                 'divi_shop_id': shop.divi_shop_id or '',
+                'length': shop.length,
+                'width': shop.width,
+                'height': shop.height,
+                'weight': shop.weight,
             })
 
         return JsonResponse({
@@ -701,3 +710,85 @@ def bulk_update_operator_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def update_temu_shop_dimensions_api(request, shop_id):
+    """
+    更新Temu店铺的尺寸重量信息
+    权限要求：管理员 或 该店铺的所属运营人员
+    """
+    try:
+        shop = TemuShop.objects.get(id=shop_id)
+    except TemuShop.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
+
+    try:
+        # 权限校验：管理员 或 店铺所属人
+        user = request.user
+        if not can_access_shop_management(user) and shop.ops_id != user.id:
+            return JsonResponse({'success': False, 'error': '无权限更新该店铺信息'}, status=403)
+
+        data = json.loads(request.body or '{}')
+
+        # 更新尺寸重量字段（允许为空）
+        with transaction.atomic():
+            # 长
+            length = data.get('length')
+            if length is not None and length != '':
+                try:
+                    shop.length = float(length)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '长度格式错误'}, status=400)
+            else:
+                shop.length = None
+
+            # 宽
+            width = data.get('width')
+            if width is not None and width != '':
+                try:
+                    shop.width = float(width)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '宽度格式错误'}, status=400)
+            else:
+                shop.width = None
+
+            # 高
+            height = data.get('height')
+            if height is not None and height != '':
+                try:
+                    shop.height = float(height)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '高度格式错误'}, status=400)
+            else:
+                shop.height = None
+
+            # 重量
+            weight = data.get('weight')
+            if weight is not None and weight != '':
+                try:
+                    shop.weight = float(weight)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '重量格式错误'}, status=400)
+            else:
+                shop.weight = None
+
+            shop.save()
+
+        return JsonResponse({
+            'success': True, 
+            'message': '尺寸重量信息更新成功',
+            'data': {
+                'length': shop.length,
+                'width': shop.width,
+                'height': shop.height,
+                'weight': shop.weight
+            }
+        })
+
+    except Exception as e:
+        print(f"更新Temu店铺尺寸重量错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
