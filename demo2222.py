@@ -1,67 +1,68 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+查看用户 ID 17 和 25 的详细信息
+"""
+
 import os
-import shutil
+import sys
+import django
 
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = CURRENT_DIR
+sys.path.append(PROJECT_ROOT)
 
-def flatten_files(source_dir):
-    """
-    将 source_dir 下所有子目录中的文件移动到 source_dir 根目录，
-    并在文件名前添加子目录名作为前缀。
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
+django.setup()
+
+from general.models import User, AmazonShop
+
+def main():
+    print("\n" + "="*70)
+    print("查看关键用户信息")
+    print("="*70 + "\n")
     
-    例如: D:\output_0330-1057\承诺希航-43张子新\CR20260330-1040-08-1292-1.xlsx
-    改为: D:\output_0330-1057\承诺希航-43张子新_CR20260330-1040-08-1292-1.xlsx
+    # 查看 sync_rangking_day.py 包含的用户列表
+    sync_users = User.objects.filter(
+        status=User.Status.NORMAL,
+        department=User.Department.OPERATION,
+        company_id=1
+    )
+    print("sync_rangking_day.py 统计的用户列表:")
+    for u in sync_users:
+        print(f"  ID:{u.id} | {u.first_name or u.username}")
+    print(f"  共 {sync_users.count()} 人\n")
     
-    :param source_dir: 源目录路径
-    """
-    if not os.path.exists(source_dir):
-        print(f"目录不存在: {source_dir}")
-        return
+    # 重点查看 ID 17 和 25
+    print("="*70)
+    print("重点检查用户 ID 17 和 25:")
+    print("="*70)
     
-    moved_count = 0
-    
-    # 遍历 source_dir 下的所有子目录（不递归深层子目录）
-    for item in os.listdir(source_dir):
-        item_path = os.path.join(source_dir, item)
-        
-        # 只处理子目录
-        if os.path.isdir(item_path):
-            folder_name = item  # 子目录名，如 "承诺希航-43张子新"
+    for uid in [17, 25]:
+        user = User.objects.filter(id=uid).first()
+        if user:
+            print(f"\n用户 ID: {uid}")
+            print(f"  姓名 (first_name): {user.first_name}")
+            print(f"  用户名 (username): {user.username}")
+            print(f"  部门 (department): {user.department}")
+            print(f"  状态 (status): {user.status} (1=正常, 2=禁用/其他)")
+            print(f"  公司ID (company_id): {user.company_id}")
             
-            # 遍历子目录中的所有文件
-            for filename in os.listdir(item_path):
-                file_path = os.path.join(item_path, filename)
-                
-                # 只处理文件（不处理子目录）
-                if os.path.isfile(file_path):
-                    # 构造新文件名: 子目录名_原文件名
-                    new_filename = f"{folder_name}_{filename}"
-                    new_path = os.path.join(source_dir, new_filename)
-                    
-                    # 如果目标文件已存在，添加数字后缀避免覆盖
-                    counter = 1
-                    original_new_path = new_path
-                    while os.path.exists(new_path):
-                        name, ext = os.path.splitext(new_filename)
-                        new_filename = f"{name}_{counter}{ext}"
-                        new_path = os.path.join(source_dir, new_filename)
-                        counter += 1
-                    
-                    try:
-                        shutil.move(file_path, new_path)
-                        print(f"已移动: {file_path} -> {new_path}")
-                        moved_count += 1
-                    except Exception as e:
-                        print(f"移动失败: {file_path}, 错误: {e}")
+            # 统计该用户负责的店铺数
+            amazon_shop_count = AmazonShop.objects.filter(ops=uid, company_id=1).count()
+            print(f"  负责的 Amazon 店铺数: {amazon_shop_count}")
             
-            # 尝试删除空目录
-            try:
-                os.rmdir(item_path)
-                print(f"已删除空目录: {item_path}")
-            except OSError:
-                pass  # 目录不为空，忽略
+            # 是否被 sync_rangking_day.py 统计
+            is_in_sync = sync_users.filter(id=uid).exists()
+            print(f"  是否被 sync_rangking_day.py 统计: {'是' if is_in_sync else '否'}")
+        else:
+            print(f"\n用户 ID {uid} 不存在")
     
-    print(f"\n完成! 共移动 {moved_count} 个文件")
-
+    print("\n" + "="*70)
+    print("结论:")
+    print("  如果 ID 17 或 25 的 status 不是 1，则他们不会被 sync_rangking_day.py 统计")
+    print("  但他们负责的店铺会被 Dashboard 统计，造成数据差异")
+    print("="*70 + "\n")
 
 if __name__ == "__main__":
-    source_directory = r"D:\output_0330-1057"
-    flatten_files(source_directory)
+    main()

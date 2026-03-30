@@ -487,6 +487,10 @@ class NicheMarket(models.Model):
 
 class AmazonNewReleaseRank(models.Model):
     """亚马逊新品榜主题，存放稳定的基础信息"""
+    class Fulfillment(models.TextChoices):
+        AMZ = "AMZ"
+        FBA = "FBA"
+        FBM = "FBM"
     asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
     title = models.CharField(max_length=500, verbose_name='产品标题')
     title_translation = models.CharField(max_length=500, blank=True, verbose_name='标题译文')
@@ -507,11 +511,18 @@ class AmazonNewReleaseRank(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     denoising = models.BooleanField(default=False, verbose_name='是否去噪', db_index=True)
-    
+    fulfillment = models.CharField(max_length=10,
+                                   choices=Fulfillment.choices,#type:ignore
+                                   null=True,
+                                   blank=True,
+                                   verbose_name="配送方式")
     class Meta:
         db_table = 'theme_amazon_new_release_rank'
         verbose_name = '亚马逊新品榜主题表'
         verbose_name_plural = verbose_name
+        indexes = [
+            models.Index(fields=['fulfillment']),
+        ]
 
     def __str__(self):
         return f"{self.asin} - {self.title[:50]}"
@@ -533,11 +544,6 @@ class ThemeSummary(models.Model):
 
 
 class ThemeNewDailyData(models.Model):
-    class Fulfillment(models.TextChoices):#枚举类新增
-        AMZ = "AMZ"
-        FBA = "FBA"
-        FBM = "FBM"
-
     """主题每日数据"""
     product = models.ForeignKey(
         AmazonNewReleaseRank,
@@ -560,17 +566,12 @@ class ThemeNewDailyData(models.Model):
     crawled_at = models.DateTimeField(auto_now_add=True, verbose_name='抓取时间')
     appear_count = models.IntegerField(default=1, verbose_name='重复数')
     score = models.IntegerField(default=0, verbose_name='分值')
-    fulfillment = models.CharField(max_length=10,
-                                   choices=Fulfillment.choices, # type: ignore
-                                   null=True, blank=True,
-                                   verbose_name="配送方式") #新增配送方式
 
     class Meta:
         db_table = 'theme_new_daily_data'
         indexes = [
             models.Index(fields=['product', 'crawl_date']),
             models.Index(fields=['crawl_date']),
-            models.Index(fields=['fulfillment']),#新增索引
         ]
         unique_together = ['product', 'crawl_date']
         verbose_name = '排名历史'
@@ -579,6 +580,7 @@ class ThemeNewDailyData(models.Model):
     def __str__(self):
         rank_display = self.rank if self.rank is not None else '暂无排名'
         return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
+
 
 
 # =============================================================================
