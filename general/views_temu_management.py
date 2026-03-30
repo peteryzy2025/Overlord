@@ -307,6 +307,7 @@ def get_temu_shops_api(request):
         operator_filter = request.GET.get('operator', '').strip()
         ops_group_filter = request.GET.get('ops_group', '').strip()
         customer_filter = request.GET.get('customer', '').strip()
+        dimensions_filter = request.GET.get('dimensions', '').strip()
         search_term = request.GET.get('search', '').strip()
 
         if page < 1: page = 1
@@ -359,6 +360,22 @@ def get_temu_shops_api(request):
                 Q(shop_name__icontains=search_term) |
                 Q(shop_account__icontains=search_term) |
                 Q(shop_temu_id__icontains=search_term)
+            )
+
+        # 处理包装规格筛选
+        if dimensions_filter == '1':  # 已配置（四个值都不为空）
+            query = query.exclude(
+                Q(length__isnull=True) | Q(length='') |
+                Q(width__isnull=True) | Q(width='') |
+                Q(height__isnull=True) | Q(height='') |
+                Q(weight__isnull=True) | Q(weight='')
+            )
+        elif dimensions_filter == '0':  # 未配置（至少有一个为空）
+            query = query.filter(
+                Q(length__isnull=True) | Q(length='') |
+                Q(width__isnull=True) | Q(width='') |
+                Q(height__isnull=True) | Q(height='') |
+                Q(weight__isnull=True) | Q(weight='')
             )
 
         total_count = query.count()
