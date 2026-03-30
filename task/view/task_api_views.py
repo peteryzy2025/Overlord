@@ -1245,14 +1245,14 @@ def create_task_api(request):
                         subtask_params = {
                             '产品ID列表': params.get('product_ids', []),
                             '模式': '适应' if params.get('mode') == 'adapt' else '填充',
-                            '图库账号': params.get('gallery_account', ''),
+                            '迪唯账号': params.get('diwei_account', ''),
                             '图库路径': params.get('gallery_path', []),
                             '工艺类型': {
                                 'print': '印花',
                                 'emboss': '刺绣',
                                 'laser': '镭射'
                             }.get(params.get('craft_type'), params.get('craft_type', '')),
-                            '定制方式': '批量定制' if params.get('custom_method') == 'batch' else '单个定制',
+                            '定制方式': '多面定制' if params.get('custom_method') == 'multi' else 'divi批量定制',
                             '添加黑边': params.get('add_black_border', False),
                             '识别主题': params.get('recognize_theme', False),
                             '添加定制坐标': params.get('add_custom_coords', False),
