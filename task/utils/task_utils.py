@@ -138,7 +138,7 @@ def validate_subtask_params(subtask_type, params, user):
 
         elif subtask_type == 'divi_multi_side_custom':
             # 迪唯多面定制验证逻辑
-            required_fields = ['product_ids', 'mode', 'gallery_account',
+            required_fields = ['product_ids', 'mode', 'diwei_account',
                                'gallery_path', 'craft_type']
 
             for field in required_fields:
@@ -197,6 +197,9 @@ def validate_subtask_params(subtask_type, params, user):
         elif subtask_type == 'amazon_upload':
 
             # Amazon上传商品验证
+            # 用户ID=555可以跳过文件验证
+            if user and user.id == 555:
+                return {'valid': True, 'message': ''}
 
             file_list = params.get('file_list', [])
 

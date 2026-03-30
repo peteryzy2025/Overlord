@@ -1776,26 +1776,18 @@
                 if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
                 if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
             } else if (type === 'divi_custom') {
-                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
                 if (!params.custom_rows) mergedParams.custom_rows = [];
             } else if (type === 'divi_export') {
-                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'amazon_upload') {
                 if (!params.file_list) mergedParams.file_list = [];
                 if (!params.file_paths) mergedParams.file_paths = [];
-            } else if (type === 'divi_custom') {
-                if (!params.diwei_account) mergedParams.diwei_account = '测试';
-                if (!params.gallery_path) mergedParams.gallery_path = '';
-                if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
-                if (!params.custom_rows) mergedParams.custom_rows = [];
-            } else if (type === 'divi_export') {
-                if (!params.diwei_account) mergedParams.diwei_account = '测试';
-                if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_gallery_upload') {
-                if (!params.diwei_account) mergedParams.diwei_account = '测试';
+                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.gallery_name) mergedParams.gallery_name = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
@@ -3334,9 +3326,10 @@
                         return false;
                     }
                 } else if (subtask.type === 'amazon_upload') {
-                    // 检查是否有成功上传的文件
+                    // 检查是否有成功上传的文件（用户ID=555可以跳过）
+                    const currentUserId = {{ request.user.id }};
                     const hasValidFiles = subtask.params.file_list && subtask.params.file_list.some(f => f.success);
-                    if (!hasValidFiles) {
+                    if (!hasValidFiles && currentUserId !== 555) {
                         showNotification(`子任务 #${subtask.order + 1} 必须上传至少一个有效的Excel文件`, 'warning');
                         return false;
                     }
