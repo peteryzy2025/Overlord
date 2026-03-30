@@ -37,7 +37,7 @@ PERIOD = "day"  # "day" 或 "week"
 # PERIOD = "week"  # "day" 或 "week"
 TEST_MODE = False  # True=只发自己；False=发自己+目标用户
 # TEST_MODE = True  # True=只发自己；False=发自己+目标用户
-# TEST_MODE = False  # True=只发自己；False=发自己+目标用户
+
 
 # 企业微信Webhook配置
 WX_MAIN = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=8ca94212-ea84-4b4e-a294-55e713dcef67"
@@ -136,10 +136,10 @@ def get_single_operator_stats(user_id: int, target_date: date, company_id: int =
     }
 
     # 获取用户和运营账号信息（修正department + 添加company过滤）
+    # 注意：不排除禁用人员，用于支持组长/经理报告统计全部人员
     try:
         user = User.objects.get(
             id=user_id,
-            status=User.Status.NORMAL,  # 或写 1
             department=User.Department.OPERATION,  # 修正：'operation'，不是'运营部'
             company_id=company_id  # 关键：必须筛选公司
         )
@@ -297,6 +297,14 @@ def get_all_operators() -> List[User]:
         status=User.Status.NORMAL,
         department=User.Department.OPERATION,  # 'operation'
         company_id=1  # 硬编码公司1，或改为参数传入
+    ).select_related('operational_account')
+
+
+def get_all_operators_include_inactive() -> List[User]:
+    """获取公司全部运营人员（包括停用的，用于组长和经理报告）"""
+    return User.objects.filter(
+        department=User.Department.OPERATION,
+        company_id=1
     ).select_related('operational_account')
 
 
@@ -561,8 +569,19 @@ def render_leader_report(
 
     group_rank_detail = f"【组排名{current_rank}/{total_groups}（{rank_change_text}）】"
 
-    # ========== 3. 组内成员排序 ==========
-    sorted_members = sorted(members_stats, key=lambda x: (-x[1]['order_count'], x[0].id))
+    # ========== 3. 组内成员排序（区分活跃和禁用） ==========
+    # 活跃组员参与排名
+    active_members = [(u, s) for u, s in members_stats if u.status == User.Status.NORMAL]
+    # 禁用组员不参与排名，但显示在列表中
+    inactive_members = [(u, s) for u, s in members_stats if u.status != User.Status.NORMAL]
+    
+    # 活跃组员按订单量排序
+    sorted_active_members = sorted(active_members, key=lambda x: (-x[1]['order_count'], x[0].id))
+    # 禁用组员也按订单量排序，但放在最后
+    sorted_inactive_members = sorted(inactive_members, key=lambda x: (-x[1]['order_count'], x[0].id))
+    
+    # 合并列表（活跃在前，禁用在后）
+    sorted_members = sorted_active_members + sorted_inactive_members
 
     # ========== 4. 成员月度进度 ==========
     month_start = target_date.replace(day=1)
@@ -598,65 +617,84 @@ def render_leader_report(
             idle_summary.append(f"- {user_name}：{'；'.join(details)}")
 
     # ========== 6. 公司级排名及环比 ==========
-    # 获取全公司当日统计数据
-    all_operators = get_all_operators()
+    # 获取全公司当日统计数据（包含全部人员，与经理报告一致）
+    all_operators = get_all_operators_include_inactive()
     all_stats_cache = {u.id: get_single_operator_stats(u.id, target_date) for u in all_operators}
 
-    # 公司排名
-    company_ranked = sorted(all_operators, key=lambda u: -all_stats_cache[u.id]['order_count'])
+    # 公司排名（仅活跃组员有排名）
+    active_operators = [u for u in all_operators if u.status == User.Status.NORMAL]
+    company_ranked = sorted(active_operators, key=lambda u: -all_stats_cache[u.id]['order_count'])
     company_rank_map = {u.id: i + 1 for i, u in enumerate(company_ranked)}
 
-    # 公司前一天/上周排名
+    # 公司前一天/上周排名（仅活跃组员）
     if period == "day":
         prev_company_date = target_date - timedelta(days=2)
     else:
         prev_company_date = target_date - timedelta(days=14)
 
     prev_company_cache = {u.id: get_single_operator_stats(u.id, prev_company_date) for u in all_operators}
-    prev_company_ranked = sorted(all_operators, key=lambda u: -prev_company_cache[u.id]['order_count'])
+    prev_company_ranked = sorted(active_operators, key=lambda u: -prev_company_cache[u.id]['order_count'])
     prev_company_rank_map = {u.id: i + 1 for i, u in enumerate(prev_company_ranked)}
 
     # 组内排名列表（含公司排名与环比）
+    # 只针对活跃组员计算前日排名
     prev_group_rank_map = {}
     if period == "day":
         prev_compare_date = target_date - timedelta(days=2)
     else:
         prev_compare_date = target_date - timedelta(days=14)
 
-    prev_members_stats = [(member, get_single_operator_stats(member.id, prev_compare_date))
-                          for member, _ in members_stats]
-    prev_sorted = sorted(prev_members_stats, key=lambda x: (-x[1]['order_count'], x[0].id))
+    # 只获取活跃组员的前日数据用于排名
+    prev_active_members_stats = [
+        (member, get_single_operator_stats(member.id, prev_compare_date))
+        for member, _ in members_stats 
+        if member.status == User.Status.NORMAL
+    ]
+    prev_sorted = sorted(prev_active_members_stats, key=lambda x: (-x[1]['order_count'], x[0].id))
     prev_group_rank_map = {u.id: i + 1 for i, (u, _) in enumerate(prev_sorted)}
 
     rank_list = []
-    for i, (user, stats) in enumerate(sorted_members, 1):
-        current_group_rank = i
-        prev_group_rank = prev_group_rank_map.get(user.id, len(sorted_members))
-        rank_change = prev_group_rank - current_group_rank
+    active_rank_counter = 0  # 活跃组员排名计数器
+    
+    for user, stats in sorted_members:
+        # 判断是否为活跃组员
+        is_active = user.status == User.Status.NORMAL
+        
+        if is_active:
+            active_rank_counter += 1
+            current_group_rank = active_rank_counter
+            prev_group_rank = prev_group_rank_map.get(user.id, len(sorted_active_members))
+            rank_change = prev_group_rank - current_group_rank
 
-        if rank_change > 0:
-            rank_change_text = f"<font color='red'>↑{rank_change}名</font>"
-        elif rank_change < 0:
-            rank_change_text = f"<font color='green'>↓{abs(rank_change)}名</font>"
+            if rank_change > 0:
+                rank_change_text = f"<font color='red'>↑{rank_change}名</font>"
+            elif rank_change < 0:
+                rank_change_text = f"<font color='green'>↓{abs(rank_change)}名</font>"
+            else:
+                rank_change_text = "持平"
+
+            # 公司排名及变化（仅活跃组员有公司排名）
+            current_company_rank = company_rank_map.get(user.id, len(all_operators))
+            prev_company_rank = prev_company_rank_map.get(user.id, len(all_operators))
+            company_rank_change = prev_company_rank - current_company_rank
+            if company_rank_change > 0:
+                company_rank_change_text = f"<font color='red'>↑{company_rank_change}名</font>"
+            elif company_rank_change < 0:
+                company_rank_change_text = f"<font color='green'>↓{abs(company_rank_change)}名</font>"
+            else:
+                company_rank_change_text = "持平"
+
+            rank_list.append(
+                f"- 第{current_group_rank}名 {user.first_name or user.username}：订单 <font color='skyblue'>{stats['order_count']}</font> 单，"
+                f"销量 <font color='skyblue'>{stats['sales_quantity']}</font> 件（{rank_change_text}）"
+                f"【公司排名{current_company_rank}（{company_rank_change_text}）】"
+            )
         else:
-            rank_change_text = "持平"
-
-        # 公司排名及变化
-        current_company_rank = company_rank_map.get(user.id, len(all_operators))
-        prev_company_rank = prev_company_rank_map.get(user.id, len(all_operators))
-        company_rank_change = prev_company_rank - current_company_rank
-        if company_rank_change > 0:
-            company_rank_change_text = f"<font color='red'>↑{company_rank_change}名</font>"
-        elif company_rank_change < 0:
-            company_rank_change_text = f"<font color='green'>↓{abs(company_rank_change)}名</font>"
-        else:
-            company_rank_change_text = "持平"
-
-        rank_list.append(
-            f"- 第{i}名 {user.first_name or user.username}：订单 <font color='skyblue'>{stats['order_count']}</font> 单，"
-            f"销量 <font color='skyblue'>{stats['sales_quantity']}</font> 件（{rank_change_text}）"
-            f"【公司排名{current_company_rank}（{company_rank_change_text}）】"
-        )
+            # 禁用组员：显示但不参与排名
+            rank_list.append(
+                f"- <font color='gray'>[已停用] {user.first_name or user.username}：订单 <font color='skyblue'>{stats['order_count']}</font> 单，"
+                f"销量 <font color='skyblue'>{stats['sales_quantity']}</font> 件（不参与排名）</font>"
+            )
 
     # ========== 7. 月度进度 ==========
     group_progress = f"{group_month_sales}/{group_month_target or '—'}（{group_month_sales / group_month_target * 100:.2f}%）" if group_month_target else f"{group_month_sales}/—（未设置目标）"
@@ -914,7 +952,7 @@ def send_personal_report(target_date: date, period: str = "day"):
 
 
 def send_leader_report(target_date: date, period: str = "day"):
-    """发送组长报告给每个组长"""
+    """发送组长报告给每个组长（包含禁用组员，但不参与排名）"""
     print(f"\n{'=' * 70}")
     print(f"开始发送组长报告: {target_date} ({'日报' if period == 'day' else '周报'})")
     print(f"{'=' * 70}\n")
@@ -924,7 +962,8 @@ def send_leader_report(target_date: date, period: str = "day"):
         print("❌ 没有找到组长")
         return
 
-    operators = get_all_operators()
+    # 使用包含禁用人员的查询（组长报告需求）
+    operators = get_all_operators_include_inactive()
     if not operators:
         return
 
@@ -973,7 +1012,7 @@ def send_leader_report(target_date: date, period: str = "day"):
 
 
 def send_manager_report(target_date: date, period: str = "day"):
-    """发送经理报告给user.id=1"""
+    """发送经理报告给user.id=1（包含全部人员，不排除停用的）"""
     print(f"\n{'=' * 70}")
     print(f"开始发送经理报告: {target_date} ({'日报' if period == 'day' else '周报'})")
     print(f"{'=' * 70}\n")
@@ -984,7 +1023,8 @@ def send_manager_report(target_date: date, period: str = "day"):
         print("❌ 找不到经理用户 (id=1)")
         return
 
-    operators = get_all_operators()
+    # 使用包含禁用人员的查询（经理报告需求：统计全部人员）
+    operators = get_all_operators_include_inactive()
     if not operators:
         print("❌ 没有运营人员数据")
         return
