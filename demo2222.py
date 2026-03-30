@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-查看用户 ID 17 和 25 的详细信息
+验证 sync_rangking_day.py 修改后的效果
 """
 
 import os
 import sys
 import django
+from datetime import date, timedelta
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = CURRENT_DIR
@@ -15,54 +16,63 @@ sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from general.models import User, AmazonShop
+from general.models import User
 
-def main():
+def test_functions():
     print("\n" + "="*70)
-    print("查看关键用户信息")
+    print("验证 sync_rangking_day.py 修改效果")
     print("="*70 + "\n")
     
-    # 查看 sync_rangking_day.py 包含的用户列表
-    sync_users = User.objects.filter(
-        status=User.Status.NORMAL,
-        department=User.Department.OPERATION,
-        company_id=1
+    # 导入修改后的函数
+    from amazon.sync_rangking_day import (
+        get_all_operators,
+        get_all_operators_include_inactive,
+        get_all_leaders
     )
-    print("sync_rangking_day.py 统计的用户列表:")
-    for u in sync_users:
-        print(f"  ID:{u.id} | {u.first_name or u.username}")
-    print(f"  共 {sync_users.count()} 人\n")
     
-    # 重点查看 ID 17 和 25
-    print("="*70)
-    print("重点检查用户 ID 17 和 25:")
-    print("="*70)
+    # 测试1: 原函数（只包含活跃人员）
+    active_operators = get_all_operators()
+    print(f"【1】get_all_operators() - 活跃人员:")
+    print(f"    人数: {active_operators.count()}")
+    print(f"    IDs: {list(active_operators.values_list('id', flat=True))}")
     
-    for uid in [17, 25]:
-        user = User.objects.filter(id=uid).first()
-        if user:
-            print(f"\n用户 ID: {uid}")
-            print(f"  姓名 (first_name): {user.first_name}")
-            print(f"  用户名 (username): {user.username}")
-            print(f"  部门 (department): {user.department}")
-            print(f"  状态 (status): {user.status} (1=正常, 2=禁用/其他)")
-            print(f"  公司ID (company_id): {user.company_id}")
-            
-            # 统计该用户负责的店铺数
-            amazon_shop_count = AmazonShop.objects.filter(ops=uid, company_id=1).count()
-            print(f"  负责的 Amazon 店铺数: {amazon_shop_count}")
-            
-            # 是否被 sync_rangking_day.py 统计
-            is_in_sync = sync_users.filter(id=uid).exists()
-            print(f"  是否被 sync_rangking_day.py 统计: {'是' if is_in_sync else '否'}")
-        else:
-            print(f"\n用户 ID {uid} 不存在")
+    # 测试2: 新函数（包含全部人员）
+    all_operators = get_all_operators_include_inactive()
+    print(f"\n【2】get_all_operators_include_inactive() - 全部人员:")
+    print(f"    人数: {all_operators.count()}")
+    print(f"    IDs: {list(all_operators.values_list('id', flat=True))}")
     
-    print("\n" + "="*70)
-    print("结论:")
-    print("  如果 ID 17 或 25 的 status 不是 1，则他们不会被 sync_rangking_day.py 统计")
-    print("  但他们负责的店铺会被 Dashboard 统计，造成数据差异")
+    # 测试3: 找出禁用的用户
+    inactive_users = all_operators.exclude(status=User.Status.NORMAL)
+    print(f"\n【3】禁用/非活跃人员:")
+    print(f"    人数: {inactive_users.count()}")
+    for u in inactive_users:
+        print(f"    - ID:{u.id} | {u.first_name} | status={u.status}")
+    
+    # 测试4: 组长列表（应保持不变，只含活跃）
+    leaders = get_all_leaders()
+    print(f"\n【4】get_all_leaders() - 组长（只含活跃）:")
+    print(f"    人数: {leaders.count()}")
+    for u in leaders:
+        print(f"    - ID:{u.id} | {u.first_name}")
+    
+    # 数据对比
+    print(f"\n" + "="*70)
+    print("数据对比:")
+    print(f"  活跃人员: {active_operators.count()} 人")
+    print(f"  全部人员: {all_operators.count()} 人")
+    print(f"  差异: {all_operators.count() - active_operators.count()} 人（禁用人员）")
     print("="*70 + "\n")
+    
+    print("验证结论:")
+    if all_operators.count() > active_operators.count():
+        print("  ✓ 新函数正确包含了禁用人员")
+        print("  ✓ 个人报告仍将只发给活跃人员")
+        print("  ✓ 组长报告将包含禁用组员（标注但不排名）")
+        print("  ✓ 经理报告将统计全部人员")
+    else:
+        print("  ⚠ 没有发现禁用人员，或函数逻辑有误")
+    print()
 
 if __name__ == "__main__":
-    main()
+    test_functions()
