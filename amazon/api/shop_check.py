@@ -509,6 +509,7 @@ def save_upload_record(request):
     
     # 状态映射：中文 → 英文
     STATUS_MAP = {
+        '队列中': 'queued',
         '进行中': 'processing',
         '完成': 'completed',
         '需操作': 'needs_action',

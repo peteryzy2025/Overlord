@@ -1524,6 +1524,7 @@ class AmazonShopUploadRecord(models.Model):
     
     class UploadStatus(models.TextChoices):
         """上货状态枚举"""
+        QUEUED = 'queued', '队列中'
         PROCESSING = 'processing', '进行中'
         COMPLETED = 'completed', '完成'
         NEEDS_ACTION = 'needs_action', '需操作'
