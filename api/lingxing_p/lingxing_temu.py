@@ -501,6 +501,8 @@ async def save_temu_orders_data(data_dict: Dict[str, List[Dict[str, Any]]]):
                         continue
 
                     seen_global_item_nos.add(global_item_no)
+                    # 如果 msku 为空，用订单号 global_order_no 填充
+                    msku_value = row.get('msku') or global_order_no
                     items_to_create.append(
                         TemuOrderItem(
                             order=order,
@@ -508,7 +510,7 @@ async def save_temu_orders_data(data_dict: Dict[str, List[Dict[str, Any]]]):
                             platform_order_no=row.get('platform_order_no'),
                             order_item_no=row.get('order_item_no'),
                             item_from_name=row.get('item_from_name'),
-                            msku=row.get('msku'),
+                            msku=msku_value,
                             local_sku=row.get('local_sku'),
                             product_no=row.get('product_no'),
                             title=row.get('title'),
