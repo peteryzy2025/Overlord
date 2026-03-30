@@ -508,6 +508,12 @@ class TemuShop(models.Model):
     customer = models.CharField(max_length=255, blank=True, null=True, db_comment='客户')
     shop_status = models.SmallIntegerField(blank=True, null=True, db_comment='店铺状态')
 
+    # 包装规格 尺寸和重量信息
+    length = models.FloatField('长(inch)', blank=True, null=True, default=None, db_comment='包裹长度，单位inch')
+    width = models.FloatField('宽(inch)', blank=True, null=True, default=None, db_comment='包裹宽度，单位inch')
+    height = models.FloatField('高(inch)', blank=True, null=True, default=None, db_comment='包裹高度，单位inch')
+    weight = models.FloatField('重量(lb)', blank=True, null=True, default=None, db_comment='包裹重量，单位lb')
+
     class Meta:
         db_table = 'temu_shop'
         db_table_comment = 'temu店铺表'
