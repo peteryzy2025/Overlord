@@ -371,6 +371,18 @@ async def get_lx_temu_orders_list(platform_order_nos: List[str]) -> Dict[str, Li
     except Exception:
         order_list = []
     print(resp)
+    
+    # 检测 IP 白名单错误
+    if resp is not None:
+        resp_code = getattr(resp, "code", None)
+        resp_message = getattr(resp, "message", "") or ""
+        if resp_code == 3001002 or "ip not permit" in resp_message.lower():
+            # 提取IP地址
+            import re
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', resp_message)
+            current_ip = ip_match.group(1) if ip_match else "未知"
+            raise Exception(f"当前IP【{current_ip}】不在白名单中，请稍等几分钟")
+    
     # 按 store_id 分组
     results: Dict[str, List[Dict[str, Any]]] = {}
     for order in order_list:
@@ -679,6 +691,17 @@ async def step3_add_warehousing_temu(items_with_qty_price: list, wid: str, app_i
     resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/routing/storage/storage/orderAdd", app_id=app_id,
                               app_secret=app_secret)
     print(f"   → 入库结果 = {resp}")
+    
+    # 检测 IP 白名单错误
+    if resp is not None:
+        resp_code = getattr(resp, "code", None)
+        resp_message = getattr(resp, "message", "") or ""
+        if resp_code == 3001002 or "ip not permit" in resp_message.lower():
+            # 提取IP地址
+            import re
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', resp_message)
+            current_ip = ip_match.group(1) if ip_match else "未知"
+            raise Exception(f"当前IP【{current_ip}】不在白名单中，请稍等几分钟")
 
 
 @sync_to_async
@@ -925,6 +948,17 @@ async def step2_update_order_binding(global_order_no: str, list_mskus: list, app
     resp = await get_api_resp(req_body=req_body, api_path="/pb/mp/order/v2/updateOrder", app_id=app_id,
                               app_secret=app_secret)
     print(f"   → 绑定结果 = {resp}")
+    
+    # 检测 IP 白名单错误
+    if resp is not None:
+        resp_code = getattr(resp, "code", None)
+        resp_message = getattr(resp, "message", "") or ""
+        if resp_code == 3001002 or "ip not permit" in resp_message.lower():
+            # 提取IP地址
+            import re
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', resp_message)
+            current_ip = ip_match.group(1) if ip_match else "未知"
+            raise Exception(f"当前IP【{current_ip}】不在白名单中，请稍等几分钟")
 
 
 def rule_review(global_order_no_list: str):
@@ -972,6 +1006,17 @@ async def shipment_order(order_number_list):
     }
     resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
     print(f"发货返回：{resp}")
+    
+    # 检测 IP 白名单错误
+    if resp is not None:
+        resp_code = getattr(resp, "code", None)
+        resp_message = getattr(resp, "message", "") or ""
+        if resp_code == 3001002 or "ip not permit" in resp_message.lower():
+            # 提取IP地址
+            import re
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', resp_message)
+            current_ip = ip_match.group(1) if ip_match else "未知"
+            raise Exception(f"当前IP【{current_ip}】不在白名单中，请稍等几分钟")
 
 
 async def get_wms_orders_by_order_numbers(order_numbers: str):
@@ -1119,40 +1164,53 @@ async def temu_order_to_divi_and_lingxing(sn_no):
     """
     success = await refresh_temu_order_by_sn(sn_no)  # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
     if not success:
-        raise f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤"
+        raise Exception(f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤")
     is_y2_pre_sale = await check_y2_pre_sale(sn_no)
     if is_y2_pre_sale:
-        raise f"【注意】订单 {sn_no} 包含 'Y2 预售' 标签~"
+        raise Exception(f"【注意】订单 {sn_no} 包含 'Y2 预售' 标签~")
 
     status = await get_temu_order_status(sn_no)
     if status in [0,1,2,3]:
-        raise f"{sn_no}订单处于：同步中/已同步/未付款 阶段"
-    divi_order_bool =  await check_temu_order_to_divi(sn_no, pdf=True, status=[0, 1, 2, 3, 4, 5])
-    if divi_order_bool:
-        await get_wms_orders_by_order_numbers(sn_no)
-        print(f"订单号：{sn_no} 已存在divi且有面单，跳过后续步骤")
-        return
-    else:
-        divi_order_bool = await check_temu_order_to_divi(sn_no, pdf=False, status=[0, 1, 2, 3, 4, 5])
-        if not divi_order_bool:# 如果没有就导单
-            await get_temu_order_for_divi(sn_no) # 导入订单
-            await check_temu_order_to_divi(sn_no, pdf=False, status=[0, 1, 2, 3, 4, 5])
-        else:
-            print(f"订单号：{sn_no} 已存在divi但没有面单！")
-
-    # 获取订单状态码和仓库 wid
+        raise Exception(f"{sn_no}订单处于：同步中/已同步/未付款 阶段")
+    # 检查订单在DIVI中的状态
     status = await get_temu_order_status(sn_no)
-    print(sn_no, status)
-    if status ==4: # 待审核
+    print(f"订单号：{sn_no}，领星状态：{status}")
+    
+    # 只有在状态为待审核(4)或待发货(5)时才需要处理
+    if status not in [4, 5]:
+        print(f"订单号：{sn_no} 状态不是待审核/待发货，跳过处理")
+        return
+    
+    # 检查DIVI中是否已有面单
+    divi_order_with_pdf = await check_temu_order_to_divi(sn_no, pdf=True, status=[0, 1, 2, 3, 4, 5])
+    if divi_order_with_pdf:
+        await get_wms_orders_by_order_numbers(sn_no)
+        print(f"订单号：{sn_no} 已存在divi且有面单，处理完成")
+        return
+    
+    # 检查DIVI中是否存在（无面单）
+    divi_order_bool = await check_temu_order_to_divi(sn_no, pdf=False, status=[0, 1, 2, 3, 4, 5])
+    if not divi_order_bool:
+        # DIVI中不存在，需要导单
+        await get_temu_order_for_divi(sn_no) # 导入订单
+        print(f"订单号：{sn_no} 已导入DIVI")
+    else:
+        print(f"订单号：{sn_no} 已存在divi但没有面单，继续执行后续流程")
+
+    # 根据状态执行后续操作
+    if status == 4: # 待审核
         wid = await get_temu_wid(sn_no)
         await temu_order_create_skus(sn_no)# 创建/编辑 SKU
         await temu_order_to_warehouse(sn_no, wid)# 执行入库
         await temu_order_binding(sn_no)# 绑定商品（编辑/更新自发货订单）
         rule_review(sn_no) # 订单审核（调用ERP规则审核接口，触发订单审核流程）
+        print(f"订单号：{sn_no} 待审核流程执行完成")
 
     elif status == 5: # 待发货
         await shipment_order(sn_no)  # 订单发货
-    await get_wms_orders_by_order_numbers(sn_no)  # 下载面单，会去判断本地有没有面单
+        print(f"订单号：{sn_no} 待发货流程执行完成")
+        
+    await get_wms_orders_by_order_numbers(sn_no)  # 下载面单
 
 
 if __name__ == '__main__':
