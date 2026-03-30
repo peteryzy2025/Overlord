@@ -18,3 +18,6 @@ MarsCodeWorkspaceAppSettings.xml
 **/nul
 **/NUL
 **/media/
+
+# Worktrees directory
+.worktrees/

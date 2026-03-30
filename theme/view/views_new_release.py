@@ -1,6 +1,6 @@
 ﻿from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.db.models import Max, Min, OuterRef, Subquery
+from django.db.models import Avg, Count, Max, Min, OuterRef, Q, Subquery
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -9,7 +9,7 @@ from django.views.decorators.http import require_POST
 from datetime import datetime, timedelta
 import json
 
-from theme.models import AmazonNewReleaseRank, ThemeNewDailyData
+from theme.models import AmazonNewReleaseRank, ThemeNewDailyData, ThemeSummary
 
 
 @login_required
@@ -47,6 +47,18 @@ def new_release_page(request):
         .order_by('category')
     )
 
+    total_themes = ThemeSummary.objects.count()
+    recent_themes_7d = (
+        ThemeSummary.objects.filter(
+            summary_subject__updated_at__gte=timezone.now() - timedelta(days=7)
+        ).distinct().count()
+    )
+    recent_themes_month = (
+        ThemeSummary.objects.filter(
+            summary_subject__updated_at__gte=first_day_of_month
+        ).distinct().count()
+    )
+
     context = {
         'page_title': '亚马逊最新成交主题',
         'active_nav': 'theme_new_release',
@@ -54,6 +66,11 @@ def new_release_page(request):
             'total_products': total_products,
             'recent_subjects_7d': recent_subjects_7d,
             'recent_products': recent_products,
+        },
+        'aggregation_stats': {
+            'total_themes': total_themes,
+            'recent_themes_7d': recent_themes_7d,
+            'recent_themes_month': recent_themes_month,
         },
         'date_range': {
             'min_launch_date': product_date_range['min_launch_date'],
@@ -228,6 +245,173 @@ def api_new_release_list(request):
         return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
 
 
+@csrf_exempt
+@require_POST
+def api_theme_aggregation_list(request):
+    try:
+        data = json.loads(request.body or '{}')
+
+        start_date_str = str(data.get('start_date', '')).strip()
+        end_date_str = str(data.get('end_date', '')).strip()
+
+        date_filter = Q()
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                date_filter &= Q(summary_subject__updated_at__date__gte=start_date)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                date_filter &= Q(summary_subject__updated_at__date__lte=end_date)
+            except ValueError:
+                pass
+
+        qs = ThemeSummary.objects.annotate(
+            appear_count=Count('summary_subject', filter=date_filter, distinct=True)
+        ).filter(appear_count__gt=0)
+
+        sort_field = str(data.get('sort_field', 'appear_count')).strip()
+        sort_order = str(data.get('sort_order', 'desc')).strip().lower()
+
+        if sort_field == 'summary_subject_title':
+            order_field = 'summary_subject_title'
+            if sort_order == 'desc':
+                order_field = f'-{order_field}'
+        else:
+            order_field = '-appear_count' if sort_order == 'desc' else 'appear_count'
+
+        qs = qs.order_by(order_field)
+
+        page = int(data.get('page', 1) or 1)
+        page_size = int(data.get('page_size', 20) or 20)
+        if page_size not in (20, 50, 100, 200):
+            page_size = 20
+
+        paginator = Paginator(qs, page_size)
+        try:
+            current_page = paginator.page(page)
+        except PageNotAnInteger:
+            current_page = paginator.page(1)
+        except EmptyPage:
+            current_page = paginator.page(paginator.num_pages)
+
+        theme_ids = [item.id for item in current_page.object_list]
+
+        asin_theme_map = {}
+        for rank in AmazonNewReleaseRank.objects.filter(
+            summary_subject_id__in=theme_ids
+        ).values('asin', 'summary_subject_id'):
+            asin_theme_map[rank['asin']] = rank['summary_subject_id']
+
+        theme_trend_lookup = {}
+        if asin_theme_map:
+            trend_data = (
+                ThemeNewDailyData.objects.filter(product__asin__in=list(asin_theme_map.keys()))
+                .values('product__asin', 'crawl_date', 'rank')
+                .order_by('product__asin', 'crawl_date')
+            )
+
+            theme_date_ranks = {}
+            for row in trend_data:
+                theme_id = asin_theme_map.get(row['product__asin'])
+                if theme_id is None or row['crawl_date'] is None or row['rank'] is None:
+                    continue
+                date_str = row['crawl_date'].strftime('%Y-%m-%d')
+                theme_date_ranks.setdefault(theme_id, {}).setdefault(date_str, []).append(row['rank'])
+
+            for tid, date_ranks in theme_date_ranks.items():
+                trend_list = []
+                for d in sorted(date_ranks.keys()):
+                    ranks = date_ranks[d]
+                    avg_rank = round(sum(ranks) / len(ranks), 1)
+                    trend_list.append({'date': d, 'rank': avg_rank})
+                theme_trend_lookup[tid] = trend_list[-7:]
+
+        theme_rows = []
+        for item in current_page.object_list:
+            theme_rows.append({
+                'id': item.id,
+                'summary_subject_title': item.summary_subject_title,
+                'appear_count': item.appear_count,
+                'rank_trend_7d': theme_trend_lookup.get(item.id, []),
+            })
+
+        now = timezone.now()
+        seven_days_ago_dt = now - timedelta(days=7)
+        first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        stats = {
+            'total_themes': ThemeSummary.objects.count(),
+            'recent_themes_7d': ThemeSummary.objects.filter(
+                summary_subject__updated_at__gte=seven_days_ago_dt
+            ).distinct().count(),
+            'recent_themes_month': ThemeSummary.objects.filter(
+                summary_subject__updated_at__gte=first_day_of_month
+            ).distinct().count(),
+        }
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'themes': theme_rows,
+                'total': paginator.count,
+                'total_pages': paginator.num_pages,
+                'current_page': current_page.number,
+                'page_size': page_size,
+                'has_next': current_page.has_next(),
+                'has_previous': current_page.has_previous(),
+                'next_page': current_page.next_page_number() if current_page.has_next() else None,
+                'previous_page': current_page.previous_page_number() if current_page.has_previous() else None,
+                'stats': stats,
+            },
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '无效的JSON数据格式'}, status=400)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
 
 
+@csrf_exempt
+@require_POST
+def api_theme_aggregation_asins(request):
+    """返回指定聚合主题下的所有 ASIN 详细信息"""
+    try:
+        data = json.loads(request.body or '{}')
+        theme_id = data.get('theme_id')
 
+        if not theme_id:
+            return JsonResponse({'success': False, 'message': '缺少 theme_id 参数'}, status=400)
+
+        asins_qs = AmazonNewReleaseRank.objects.filter(
+            summary_subject_id=theme_id
+        ).values(
+            'asin', 'title', 'title_translation', 'subject',
+            'subject_translation', 'category', 'image_url', 'launch_date',
+        ).order_by('-launch_date')
+
+        asin_list = []
+        for row in asins_qs:
+            asin_list.append({
+                'asin': row['asin'] or '',
+                'title': row['title'] or '',
+                'title_translation': row['title_translation'] or '',
+                'subject': row['subject'] or '',
+                'subject_translation': row['subject_translation'] or '',
+                'category': row['category'] or '',
+                'image_url': row['image_url'] or '',
+                'launch_date': row['launch_date'].strftime('%Y-%m-%d') if row['launch_date'] else '',
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'asins': asin_list,
+                'total': len(asin_list),
+            },
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '无效的JSON数据格式'}, status=400)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
