@@ -13,7 +13,7 @@ from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Fl
 from django.db.models.functions import Cast, Coalesce
 from django.db import close_old_connections, transaction
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render,redirect
 from django.views.decorators.http import require_http_methods
 
 from aba.models import AbaNoiseWord, AbaReportWeek, SearchTerm, SearchTermMetric
@@ -30,11 +30,27 @@ TERM_ID_LIST_CACHE_TTL = 180  # 3分钟，翻页缓存
 ABA_METRIC_INDEX_CACHE_PREFIX = 'aba:metric-index:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
+def can_access_theme_management(user):
+    """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
+    return has_perm_code(user, '555') or has_perm_code(user, '552')
 
+def has_perm_code(user, code):
+    """检查用户是否有特定权限码"""
+    if not user or not user.is_authenticated:
+        return False
+    # code字段是IntegerField，尝试转为整数比较
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
 def aba_data_page(request):
     """
     ABA 数据管理页面
     """
+    user = request.user
+    if not can_access_theme_management(user) and user.stat != 'operation':
+        return redirect('general:main')
     return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
 
 
