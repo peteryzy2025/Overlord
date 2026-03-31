@@ -301,9 +301,11 @@ def api_theme_aggregation_list(request):
 
         asin_theme_map = {}
         theme_fulfillment_counts = {tid: {'FBA': 0, 'FBM': 0, 'AMZ': 0, 'unknown': 0, 'total': 0} for tid in theme_ids}
+        theme_launch_stats = {tid: {'total_days': 0, 'count': 0} for tid in theme_ids} #新增
+        theme_category_counts = {tid: {} for tid in theme_ids}  # 品类统计
         for rank in AmazonNewReleaseRank.objects.filter(
             summary_subject_id__in=theme_ids
-        ).values('asin', 'summary_subject_id', 'fulfillment'):
+        ).values('asin', 'summary_subject_id', 'fulfillment','launch_date', 'category'):
             asin_theme_map[rank['asin']] = rank['summary_subject_id']
             f = (rank['fulfillment'] or '').strip()
             tid = rank['summary_subject_id']
@@ -313,6 +315,26 @@ def api_theme_aggregation_list(request):
                 else:
                     theme_fulfillment_counts[tid]['unknown'] += 1
                 theme_fulfillment_counts[tid]['total'] += 1
+            #=============平均上架天数======================================
+            today = timezone.now().date() #today
+            launch_date = rank.get('launch_date','')
+            if launch_date and isinstance(launch_date,datetime):
+                launch_date = launch_date.date()
+            if launch_date:
+                days = (today - launch_date).days
+                theme_launch_stats[tid]['total_days'] += days
+                theme_launch_stats[tid]['count'] += 1
+            #=============品类统计======================================
+            category = (rank.get('category') or '').strip()
+            # 标准化品类名称：去除多余空格，统一换行符
+            if category:
+                # 去除多余空格（包括连续的多个空格）
+                category = ' '.join(category.split())
+                if category:
+                    theme_category_counts[tid][category] = theme_category_counts[tid].get(category, 0) + 1
+
+
+
 
         theme_trend_lookup = {}
         if asin_theme_map:
@@ -353,12 +375,36 @@ def api_theme_aggregation_list(request):
                 diff = round(100 - sum(stats[k]['pct'] for k in stats), 1)
                 largest = max(stats, key=lambda k: stats[k]['pct'])
                 stats[largest]['pct'] = round(stats[largest]['pct'] + diff, 1)
+            #=======================计算平均上架时间=====================================
+            launch_stat = theme_launch_stats.get(item.id, {'total_days': 0,'count': 0})
+            if launch_stat['count'] > 0:
+                avg_days = round(launch_stat['total_days'] / launch_stat['count'], 1)
+            else:
+                avg_days = "-"
+            #=======================计算品类占比=========================================
+            category_counts = theme_category_counts.get(item.id, {})
+            category_total = sum(category_counts.values())
+            category_stats = {}
+            if category_total > 0:
+                for cat, count in category_counts.items():
+                    category_stats[cat] = {
+                        'count': count,
+                        'pct': round(count / category_total * 100, 1)
+                    }
+                # 修正四舍五入误差
+                diff = round(100 - sum(s['pct'] for s in category_stats.values()), 1)
+                if diff != 0 and category_stats:
+                    largest = max(category_stats, key=lambda k: category_stats[k]['pct'])
+                    category_stats[largest]['pct'] = round(category_stats[largest]['pct'] + diff, 1)
+            #=============================================================================
             theme_rows.append({
                 'id': item.id,
                 'summary_subject_title': item.summary_subject_title,
                 'appear_count': item.appear_count,
                 'rank_trend_7d': theme_trend_lookup.get(item.id, []),
                 'fulfillment_stats': stats,
+                'avg_launch_days': avg_days,
+                'category_stats': category_stats,
             })
 
         now = timezone.now()
@@ -414,10 +460,35 @@ def api_theme_aggregation_asins(request):
             'subject_translation', 'category', 'image_url', 'launch_date', 'fulfillment',
         ).order_by('-launch_date')
 
+        # 获取所有ASIN列表
+        asin_list_raw = list(asins_qs)
+        asin_values = [row['asin'] for row in asin_list_raw if row['asin']]
+
+        # 批量查询所有ASIN的历史排名数据
+        rank_trend_lookup = {}
+        if asin_values:
+            trend_data = (
+                ThemeNewDailyData.objects.filter(product__asin__in=asin_values)
+                .values('product__asin', 'crawl_date', 'rank')
+                .order_by('product__asin', 'crawl_date')
+            )
+            for row in trend_data:
+                asin = row['product__asin']
+                if asin not in rank_trend_lookup:
+                    rank_trend_lookup[asin] = []
+                rank_trend_lookup[asin].append({
+                    'date': row['crawl_date'].strftime('%Y-%m-%d') if row['crawl_date'] else None,
+                    'rank': row['rank'],
+                })
+            # 只保留最近7条数据
+            for asin in rank_trend_lookup:
+                rank_trend_lookup[asin] = rank_trend_lookup[asin][-7:]
+
         asin_list = []
-        for row in asins_qs:
+        for row in asin_list_raw:
+            asin = row['asin'] or ''
             asin_list.append({
-                'asin': row['asin'] or '',
+                'asin': asin,
                 'title': row['title'] or '',
                 'title_translation': row['title_translation'] or '',
                 'subject': row['subject'] or '',
@@ -426,6 +497,7 @@ def api_theme_aggregation_asins(request):
                 'image_url': row['image_url'] or '',
                 'launch_date': row['launch_date'].strftime('%Y-%m-%d') if row['launch_date'] else '',
                 'fulfillment': row['fulfillment'] or '',
+                'rank_trend_7d': rank_trend_lookup.get(asin, []),
             })
 
         return JsonResponse({
