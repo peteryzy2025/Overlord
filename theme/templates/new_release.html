@@ -594,7 +594,7 @@
             border-spacing: 0;
             font-size: 0.875rem;
             table-layout: fixed;
-            min-width: 1040px;
+            min-width: 1200px;
         }
 
         .asin-detail-table thead {
@@ -615,33 +615,43 @@
 
         .asin-detail-table th:nth-child(1),
         .asin-detail-table td:nth-child(1) {
-            width: 132px;
+            width: 160px;
         }
 
         .asin-detail-table th:nth-child(2),
         .asin-detail-table td:nth-child(2) {
-            width: 88px;
+            width: 80px;
             text-align: center;
         }
 
         .asin-detail-table th:nth-child(3),
         .asin-detail-table td:nth-child(3) {
-            width: 30%;
+            width: 22%;
         }
 
         .asin-detail-table th:nth-child(4),
         .asin-detail-table td:nth-child(4) {
-            width: 26%;
+            width: 18%;
         }
 
         .asin-detail-table th:nth-child(5),
         .asin-detail-table td:nth-child(5) {
-            width: 140px;
+            width: 130px;
         }
 
         .asin-detail-table th:nth-child(6),
         .asin-detail-table td:nth-child(6) {
-            width: 126px;
+            width: 120px;
+        }
+
+        .asin-detail-table th:nth-child(7),
+        .asin-detail-table td:nth-child(7) {
+            width: 100px;
+        }
+
+        .asin-detail-table th:nth-child(8),
+        .asin-detail-table td:nth-child(8) {
+            width: 100px;
         }
 
         .asin-detail-table th:first-child {
@@ -860,19 +870,56 @@
         .badge-fulfillment.unknown { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
         .badge-fulfillment.unknown .dot { background: #bfbfbf; }
 
-        /* 聚合表格中配送方式列居中 */
+        /* 聚合表格中配送方式列 */
         .agg-fulfillment-cell {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 100%;
-            padding: 8px 0;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0.5rem 0.75rem;
+            box-sizing: border-box;
         }
         .agg-fulfillment-cell .fulfillment-bar {
-            width: 100%;
-            max-width: 160px;
+            margin: 0 auto;
+            width: 120px;
             height: 16px;
+            border-radius: 8px;
+        }
+
+        /* 聚合表格数据行增加垂直高度 */
+        #aggregationTableContainer .table tbody tr {
+            height: 64px;
+        }
+        #aggregationTableContainer .table tbody td {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        /* 可点击的聚合主题文字 */
+        .clickable-subject {
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .clickable-subject:hover {
+            color: var(--accent-color, #4f46e5);
+        }
+
+        /* 品类占比环形饼图样式 */
+        .category-donut-wrapper {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .category-donut-chart {
+            display: block;
+        }
+        .category-donut-chart circle {
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .category-donut-chart circle:hover {
+            opacity: 0.8;
+            filter: brightness(1.1);
         }
 
         /* Responsive adjustments */
@@ -1124,14 +1171,16 @@
                             <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
                             <th class="sortable" data-field="summary_subject_title" onclick="handleAggregationSort('summary_subject_title')">聚合主题</th>
                             <th class="sortable active" data-field="appear_count" onclick="handleAggregationSort('appear_count')">出现次数</th>
+                            <th>平均上架时间</th>
                             <th>平均排名趋势图</th>
                             <th>配送方式</th>
+                            <th>品类占比</th>
                             <th>操作</th>
                         </tr>
                         </thead>
                         <tbody id="aggregationTableBody">
                         <tr>
-                            <td colspan="6" class="empty-state">
+                            <td colspan="8" class="empty-state">
                                 <i class="fas fa-info-circle"></i>
                                 <p>请选择日期范围并点击"应用筛选"</p>
                                 <p>主题聚合数据将在此处显示</p>
@@ -1332,7 +1381,7 @@
             `;
         }
 
-        function initRankTrendChart(chartId, data) {
+        function initRankTrendChart(chartId, data, options) {
             const validData = Array.isArray(data)
                 ? data.filter(item => item && item.rank !== null && item.rank !== undefined && item.rank !== '')
                 : [];
@@ -1343,8 +1392,9 @@
             const tooltip = container.querySelector('.trend-tooltip');
             if (!svg) return;
 
-            const width = 160;
-            const height = 60;
+            const opts = options || {};
+            const width = opts.width || 160;
+            const height = opts.height || 60;
             const padding = { top: 10, bottom: 10, left: 5, right: 5 };
             const chartHeight = height - padding.top - padding.bottom;
             const chartWidth = width - padding.left - padding.right;
@@ -1850,7 +1900,7 @@
         async function loadAggregationTable() {
             showLoading(true);
             var tbody = document.getElementById('aggregationTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
 
             try {
                 var params = {
@@ -1888,7 +1938,7 @@
                     controls.style.display = aggregationState.total > 0 ? 'flex' : 'none';
                 }
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
                 var controls = document.getElementById('aggregationPaginationControls');
                 if (controls) controls.style.display = 'none';
             } finally {
@@ -1932,11 +1982,88 @@
             return '<span class="badge-fulfillment ' + item.cls + '"><span class="dot"></span>' + escapeHtml(item.label) + '</span>';
         }
 
+        // ====== Aggregation: category donut chart helper ======
+        function renderCategoryBar(stats) {
+            if (!stats || Object.keys(stats).length === 0) return '-';
+            var total = 0;
+            var keys = Object.keys(stats);
+            keys.forEach(function(k){
+                total += (stats[k] && stats[k].count) ? stats[k].count : 0;
+            });
+            if (total === 0) return '-';
+
+            // 按数量降序排序
+            keys.sort(function(a, b) {
+                var countA = (stats[a] && stats[a].count) ? stats[a].count : 0;
+                var countB = (stats[b] && stats[b].count) ? stats[b].count : 0;
+                if (countA !== countB) return countB - countA;
+                return a.localeCompare(b);
+            });
+
+            // 品类颜色映射
+            var colorMap = {
+                'bag': '#14b8a6',
+                'cup': '#f59e0b',
+                'flag': '#ef4444',
+                'hat-mens': '#2563eb',
+                'hat-news': '#8b5cf6',
+                'pin': '#ec4899',
+                'shirt': '#22c55e',
+                'sign': '#f97316'
+            };
+
+            // 为品类名称生成哈希值，用于未定义品类的颜色
+            function hashCode(str) {
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    var char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+            function getHashColor(str) {
+                var hash = hashCode(str);
+                var hue = hash % 360;
+                return 'hsl(' + hue + ', 70%, 50%)';
+            }
+
+            // SVG 环形饼图参数
+            var size = 48;
+            var strokeWidth = 12;
+            var radius = (size - strokeWidth) / 2;
+            var circumference = 2 * Math.PI * radius;
+            var center = size / 2;
+            var offset = 0;
+
+            var circles = [];
+            var tooltipLines = [];
+
+            keys.forEach(function(cat){
+                var s = stats[cat];
+                if (s && s.count > 0) {
+                    var color = colorMap[cat] || getHashColor(cat);
+                    var pct = (s.count / total);
+                    var dashArray = pct * circumference;
+                    var rotation = (offset / total) * 360;
+
+                    circles.push('<circle cx="' + center + '" cy="' + center + '" r="' + radius + '" fill="none" stroke="' + color + '" stroke-width="' + strokeWidth + '" stroke-dasharray="' + dashArray.toFixed(2) + ' ' + (circumference - dashArray).toFixed(2) + '" stroke-dashoffset="0" transform="rotate(' + (-90 + rotation) + ' ' + center + ' ' + center + ')" />');
+
+                    var displayPct = typeof s.pct === 'number' ? s.pct : Math.round(pct * 1000) / 10;
+                    tooltipLines.push(cat + ': ' + s.count + ' (' + displayPct + '%)');
+                    offset += s.count;
+                }
+            });
+
+            var svg = '<svg width="' + size + '" height="' + size + '" class="category-donut-chart">' + circles.join('') + '</svg>';
+            return '<div class="category-donut-wrapper" title="' + escapeHtml(tooltipLines.join('\n')) + '">' + svg + '</div>';
+        }
+
         // ====== Aggregation: render table ======
         function renderAggregationTable(themes) {
             var tbody = document.getElementById('aggregationTableBody');
             if (!Array.isArray(themes) || themes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
                 return;
             }
 
@@ -1950,17 +2077,25 @@
                     ? '<div class="score-trend-chart" id="' + chartId + '"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div></div>'
                     : '-';
                 var fulfillmentHTML = renderFulfillmentBar(theme.fulfillment_stats);
+                var categoryHTML = renderCategoryBar(theme.category_stats);
 
+                // 处理平均上架时间显示
+                var avgDays = theme.avg_launch_days;
+                var avgDaysHTML = (avgDays !== null && avgDays !== undefined) ? escapeHtml(avgDays) + ' 天' : '-';
+
+                var isExpanded = aggExpandedThemeIds.has(themeId);
                 return '<tr data-theme-id="' + themeId + '">' +
                     '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="' + themeId + '"' + (isChecked ? ' checked' : '') + ' onchange="handleAggRowCheckboxChange(this)"></td>' +
-                    '<td><div class="subject-main">' + title + '</div></td>' +
+                    '<td><div class="subject-main clickable-subject" onclick="toggleAggDetail(' + themeId + ')" title="点击展开/收起ASIN详情">' + title + '</div></td>' +
                     '<td>' + escapeHtml(theme.appear_count ?? '-') + '</td>' +
+                    '<td>' + avgDaysHTML + '</td>' +
                     '<td>' + trendHTML + '</td>' +
                     '<td class="agg-fulfillment-cell">' + fulfillmentHTML + '</td>' +
-                    '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleAggDetail(' + themeId + ')">ASIN详情</button></td>' +
+                    '<td class="agg-fulfillment-cell">' + categoryHTML + '</td>' +
+                    '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleAggDetail(' + themeId + ')">' + (isExpanded ? '收起' : 'ASIN详情') + '</button></td>' +
                     '</tr>' +
                     '<tr id="agg-detail-row-' + themeId + '" class="detail-row" style="display:none;">' +
-                    '<td colspan="6" class="detail-content" id="agg-detail-content-' + themeId + '">' +
+                    '<td colspan="8" class="detail-content" id="agg-detail-content-' + themeId + '">' +
                     '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
                     '</td>' +
                     '</tr>';
@@ -2092,11 +2227,12 @@
                     '<div class="asin-detail-table-wrapper">' +
                     '<table class="asin-detail-table">' +
                     '<thead><tr>' +
-                    '<th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>品类</th><th>配送方式</th><th>上架日期</th>' +
+                    '<th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>排名趋势</th><th>品类</th><th>配送方式</th><th>上架日期</th>' +
                     '</tr></thead><tbody>';
 
                 asins.forEach(function(row) {
                     var asin = escapeHtml(row.asin || '');
+                    var asinRaw = row.asin || '';
                     var title = escapeHtml(row.title || '');
                     var titleTrans = escapeHtml(row.title_translation || '');
                     var subject = escapeHtml(row.subject || '');
@@ -2105,6 +2241,11 @@
                     var launchDate = escapeHtml(row.launch_date || '-');
                     var imageUrl = row.image_url || '';
                     var fulfillmentBadge = renderFulfillmentBadge(row.fulfillment);
+                    var trendData = row.rank_trend_7d || [];
+                    var chartId = 'asin-trend-' + themeId + '-' + asinRaw.replace(/[^a-zA-Z0-9]/g, '');
+                    var trendHTML = trendData.length > 0
+                        ? '<div class="score-trend-chart" id="' + chartId + '"><svg width="120" height="50"></svg><div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div></div>'
+                        : '-';
 
                     html += '<tr>' +
                         '<td class="asin-cell"><a href="https://www.amazon.com/dp/' + asin + '" target="_blank" class="agg-asin-link">' + asin + '</a></td>' +
@@ -2117,6 +2258,7 @@
                         '<span class="asin-text-line is-primary" title="' + (subject || '-') + '">' + (subject || '-') + '</span>' +
                         (subjectTrans ? '<span class="asin-text-line is-secondary" title="' + subjectTrans + '">' + subjectTrans + '</span>' : '') +
                         '</div></td>' +
+                        '<td>' + trendHTML + '</td>' +
                         '<td><span class="badge-category">' + category + '</span></td>' +
                         '<td>' + fulfillmentBadge + '</td>' +
                         '<td class="date-cell">' + launchDate + '</td>' +
@@ -2125,6 +2267,16 @@
 
                 html += '</tbody></table></div></div></div>';
                 contentCell.innerHTML = html;
+
+                // 初始化ASIN排名趋势图
+                asins.forEach(function(row) {
+                    var trendData = row.rank_trend_7d || [];
+                    if (trendData.length > 0) {
+                        var asinRaw = row.asin || '';
+                        var chartId = 'asin-trend-' + themeId + '-' + asinRaw.replace(/[^a-zA-Z0-9]/g, '');
+                        initRankTrendChart(chartId, trendData, { width: 120, height: 50 });
+                    }
+                });
             } catch (error) {
                 contentCell.innerHTML = '<div class="agg-detail-empty"><i class="fas fa-exclamation-circle"></i><div>' + escapeHtml(error.message || '加载失败') + '</div></div>';
             }
