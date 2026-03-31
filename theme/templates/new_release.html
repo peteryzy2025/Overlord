@@ -814,6 +814,59 @@
             border: 1px solid var(--border-color);
         }
 
+        /* 迷你堆叠百分比条（聚合主题行） */
+        .fulfillment-bar {
+            display: flex;
+            width: 120px;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #e5e7eb;
+            cursor: default;
+        }
+        .fulfillment-bar-seg {
+            height: 100%;
+            transition: width 0.25s ease;
+            min-width: 0;
+        }
+        .fulfillment-bar-seg.fba { background: #5b8ff9; }
+        .fulfillment-bar-seg.fbm { background: #5ad8a6; }
+        .fulfillment-bar-seg.amz { background: #ff9d4d; }
+        .fulfillment-bar-seg.unknown { background: #bfbfbf; }
+
+        /* 配送方式文本标签（子 ASIN 行） */
+        .badge-fulfillment {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            border: 1px solid transparent;
+        }
+        .badge-fulfillment .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .badge-fulfillment.fba { background: #eef4ff; color: #2b6cb0; border-color: #c3dafe; }
+        .badge-fulfillment.fba .dot { background: #5b8ff9; }
+        .badge-fulfillment.fbm { background: #e6fffa; color: #276749; border-color: #b2f5ea; }
+        .badge-fulfillment.fbm .dot { background: #5ad8a6; }
+        .badge-fulfillment.amz { background: #fff7ed; color: #c05621; border-color: #fed7aa; }
+        .badge-fulfillment.amz .dot { background: #ff9d4d; }
+        .badge-fulfillment.unknown { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+        .badge-fulfillment.unknown .dot { background: #bfbfbf; }
+
+        /* 聚合表格中配送方式列居中 */
+        .agg-fulfillment-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .asin-detail-card {
@@ -1064,12 +1117,13 @@
                             <th class="sortable" data-field="summary_subject_title" onclick="handleAggregationSort('summary_subject_title')">聚合主题</th>
                             <th class="sortable active" data-field="appear_count" onclick="handleAggregationSort('appear_count')">出现次数</th>
                             <th>平均排名趋势图</th>
+                            <th>配送方式</th>
                             <th>操作</th>
                         </tr>
                         </thead>
                         <tbody id="aggregationTableBody">
                         <tr>
-                            <td colspan="5" class="empty-state">
+                            <td colspan="6" class="empty-state">
                                 <i class="fas fa-info-circle"></i>
                                 <p>请选择日期范围并点击"应用筛选"</p>
                                 <p>主题聚合数据将在此处显示</p>
@@ -1788,7 +1842,7 @@
         async function loadAggregationTable() {
             showLoading(true);
             var tbody = document.getElementById('aggregationTableBody');
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
 
             try {
                 var params = {
@@ -1826,7 +1880,7 @@
                     controls.style.display = aggregationState.total > 0 ? 'flex' : 'none';
                 }
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
                 var controls = document.getElementById('aggregationPaginationControls');
                 if (controls) controls.style.display = 'none';
             } finally {
@@ -1834,11 +1888,47 @@
             }
         }
 
+        // ====== Aggregation: fulfillment bar helpers ======
+        function renderFulfillmentBar(stats) {
+            if (!stats) return '-';
+            var total = 0;
+            ['FBA','FBM','AMZ','unknown'].forEach(function(k){
+                total += (stats[k] && stats[k].count) ? stats[k].count : 0;
+            });
+            if (total === 0) return '-';
+            var order = [
+                { key: 'FBA', cls: 'fba', label: 'FBA' },
+                { key: 'FBM', cls: 'fbm', label: 'FBM' },
+                { key: 'AMZ', cls: 'amz', label: 'AMZ' },
+                { key: 'unknown', cls: 'unknown', label: '未知' }
+            ];
+            var segs = [];
+            order.forEach(function(o){
+                var s = stats[o.key];
+                if (s && s.pct > 0) {
+                    var title = o.label + ': ' + s.count + ' (' + s.pct + '%)';
+                    segs.push('<div class="fulfillment-bar-seg ' + o.cls + '" style="width:' + s.pct + '%;" title="' + title + '"></div>');
+                }
+            });
+            return '<div class="fulfillment-bar">' + segs.join('') + '</div>';
+        }
+
+        function renderFulfillmentBadge(fulfillment) {
+            var f = (fulfillment || '').toString().trim().toUpperCase();
+            var map = {
+                'FBA': { cls: 'fba', label: 'FBA' },
+                'FBM': { cls: 'fbm', label: 'FBM' },
+                'AMZ': { cls: 'amz', label: 'AMZ' },
+            };
+            var item = map[f] || { cls: 'unknown', label: '未知' };
+            return '<span class="badge-fulfillment ' + item.cls + '"><span class="dot"></span>' + escapeHtml(item.label) + '</span>';
+        }
+
         // ====== Aggregation: render table ======
         function renderAggregationTable(themes) {
             var tbody = document.getElementById('aggregationTableBody');
             if (!Array.isArray(themes) || themes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
                 return;
             }
 
@@ -1851,16 +1941,18 @@
                 var trendHTML = trendData.length > 0
                     ? '<div class="score-trend-chart" id="' + chartId + '"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div></div>'
                     : '-';
+                var fulfillmentHTML = renderFulfillmentBar(theme.fulfillment_stats);
 
                 return '<tr data-theme-id="' + themeId + '">' +
                     '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="' + themeId + '"' + (isChecked ? ' checked' : '') + ' onchange="handleAggRowCheckboxChange(this)"></td>' +
                     '<td><div class="subject-main">' + title + '</div></td>' +
                     '<td>' + escapeHtml(theme.appear_count ?? '-') + '</td>' +
                     '<td>' + trendHTML + '</td>' +
+                    '<td class="agg-fulfillment-cell">' + fulfillmentHTML + '</td>' +
                     '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleAggDetail(' + themeId + ')">ASIN详情</button></td>' +
                     '</tr>' +
                     '<tr id="agg-detail-row-' + themeId + '" class="detail-row" style="display:none;">' +
-                    '<td colspan="5" class="detail-content" id="agg-detail-content-' + themeId + '">' +
+                    '<td colspan="6" class="detail-content" id="agg-detail-content-' + themeId + '">' +
                     '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
                     '</td>' +
                     '</tr>';
@@ -1992,7 +2084,7 @@
                     '<div class="asin-detail-table-wrapper">' +
                     '<table class="asin-detail-table">' +
                     '<thead><tr>' +
-                    '<th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>品类</th><th>上架日期</th>' +
+                    '<th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>品类</th><th>配送方式</th><th>上架日期</th>' +
                     '</tr></thead><tbody>';
 
                 asins.forEach(function(row) {
@@ -2004,6 +2096,7 @@
                     var category = escapeHtml(row.category || '');
                     var launchDate = escapeHtml(row.launch_date || '-');
                     var imageUrl = row.image_url || '';
+                    var fulfillmentBadge = renderFulfillmentBadge(row.fulfillment);
 
                     html += '<tr>' +
                         '<td class="asin-cell"><a href="https://www.amazon.com/dp/' + asin + '" target="_blank" class="agg-asin-link">' + asin + '</a></td>' +
@@ -2017,6 +2110,7 @@
                         (subjectTrans ? '<span class="asin-text-line is-secondary" title="' + subjectTrans + '">' + subjectTrans + '</span>' : '') +
                         '</div></td>' +
                         '<td><span class="badge-category">' + category + '</span></td>' +
+                        '<td>' + fulfillmentBadge + '</td>' +
                         '<td class="date-cell">' + launchDate + '</td>' +
                         '</tr>';
                 });
