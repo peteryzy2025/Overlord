@@ -576,6 +576,30 @@
                     };
                     customMethodEl.dataset.initialized = 'true';
                 }
+
+                // 平铺类型选择（多面定制专用）
+                if (subtask.type === 'divi_multi_side_custom') {
+                    const tileTypeEl = document.querySelector(`#tile-type-dropdown-${subtask.id}`);
+                    if (tileTypeEl && !tileTypeEl.dataset.initialized) {
+                        const tileTypeSelect = new SearchableSelect(`#tile-type-dropdown-${subtask.id}`, {
+                            options: [
+                                { value: 'basic', label: '基础平铺' },
+                                { value: 'spacing', label: '间距平铺' },
+                                { value: 'horizontal_stagger', label: '横向交错平铺' },
+                                { value: 'vertical_stagger', label: '纵向交错平铺' },
+                                { value: 'mirror', label: '镜像平铺' },
+                                { value: 'random', label: '随机平铺' }
+                            ],
+                            multiple: false,
+                            placeholder: '选择平铺类型'
+                        });
+                        tileTypeSelect.setValue(subtask.params.tile_type || 'basic');
+                        tileTypeSelect.onChange = (value) => {
+                            updateSubtaskParam(subtask.id, 'tile_type', value);
+                        };
+                        tileTypeEl.dataset.initialized = 'true';
+                    }
+                }
             }
         }
 
@@ -614,12 +638,27 @@
                 placeholder: '选择迪唯账号'
             });
 
-            const defaultValue = subtask.params.diwei_account || '陈柔';
+            // 设置默认值：优先使用已保存的 diwei_account
+            let defaultValue = subtask.params.diwei_account || '陈柔';
             const exists = accounts.some(a => a.value === defaultValue);
-            accountSelect.setValue(exists ? defaultValue : accounts[0].value);
+            if (!exists && accounts.length > 0) {
+                defaultValue = accounts[0].value;
+            }
+            accountSelect.setValue(defaultValue);
+            
+            // 同时更新两个字段
+            const selectedAccount = accounts.find(a => a.value === defaultValue);
+            if (selectedAccount) {
+                subtask.params.diwei_account = selectedAccount.value;
+                subtask.params.diwei_login_account = selectedAccount.diwei_account;
+            }
             
             accountSelect.onChange = (value) => {
-                updateSubtaskParam(subtask.id, 'diwei_account', value);
+                const selected = accounts.find(a => a.value === value);
+                if (selected) {
+                    updateSubtaskParam(subtask.id, 'diwei_account', selected.value);
+                    updateSubtaskParam(subtask.id, 'diwei_login_account', selected.diwei_account);
+                }
             };
 
             accountSelectEl.dataset.initialized = 'true';
@@ -1741,6 +1780,8 @@
                     custom_coords: '',
                     add_background_color: false,
                     background_color: '#ffffff',
+                    is_tiled: false,
+                    tile_type: '',
                     product_ids: [],
                     gallery_path: [],
                     export_shop_ids: []
@@ -1771,10 +1812,13 @@
             // 确保数组字段是独立的实例，避免引用共享
             if (type === 'divi_multi_side_custom') {
                 if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_login_account) mergedParams.diwei_login_account = '';
                 if (!params.product_ids) mergedParams.product_ids = [];
                 if (!params.gallery_path) mergedParams.gallery_path = [];
                 if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
                 if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
+                if (mergedParams.is_tiled === undefined) mergedParams.is_tiled = false;
+                if (mergedParams.tile_type === undefined) mergedParams.tile_type = '';
             } else if (type === 'divi_custom') {
                 if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
@@ -2268,6 +2312,19 @@
                                     placeholder="#RRGGBB">
                             </div>
                         </div>
+
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input"
+                                    ${subtask.params.is_tiled ? 'checked' : ''}
+                                    onchange="toggleTileType(${subtask.id}, this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否平铺</span>
+                            </label>
+                            <div id="tile-type-select-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.is_tiled ? 'block' : 'none'}">
+                                <div id="tile-type-dropdown-${subtask.id}" class="searchable-select single" data-placeholder="选择平铺类型"></div>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else if (subtask.type === 'custom_upload') {
@@ -2720,6 +2777,20 @@
                 subtask.params.add_background_color = checked;
                 const inputDiv = document.getElementById(`background-color-input-${subtaskId}`);
                 if (inputDiv) inputDiv.style.display = checked ? 'flex' : 'none';
+                triggerAutoSave();
+            }
+        }
+
+        function toggleTileType(subtaskId, checked) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (subtask) {
+                subtask.params.is_tiled = checked;
+                // 开启平铺时，默认设置为基础平铺
+                if (checked && !subtask.params.tile_type) {
+                    subtask.params.tile_type = 'basic';
+                }
+                const selectDiv = document.getElementById(`tile-type-select-${subtaskId}`);
+                if (selectDiv) selectDiv.style.display = checked ? 'block' : 'none';
                 triggerAutoSave();
             }
         }
@@ -3296,6 +3367,11 @@
                             showNotification(`子任务 #${subtask.order + 1} 的定制坐标必须为4个数字（空格分隔）`, 'warning');
                             return false;
                         }
+                    }
+
+                    // 平铺类型默认为基础平铺
+                    if (subtask.params.is_tiled && !subtask.params.tile_type) {
+                        subtask.params.tile_type = 'basic';
                     }
                 } else if (subtask.type === 'custom_upload') {
                     if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
