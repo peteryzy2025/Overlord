@@ -1242,10 +1242,20 @@ def create_task_api(request):
                             '本地路径': params.get('local_gallery_path', '')
                         }
                     elif st.subtask_type == 'divi_multi_side_custom':
+                        # 定制坐标转列表
+                        custom_coords = params.get('custom_coords', '')
+                        custom_coords_list = []
+                        if custom_coords:
+                            try:
+                                custom_coords_list = [int(x) for x in str(custom_coords).strip().split() if x.isdigit()]
+                            except (ValueError, AttributeError):
+                                custom_coords_list = []
+                        
                         subtask_params = {
                             '产品ID列表': params.get('product_ids', []),
                             '模式': '适应' if params.get('mode') == 'adapt' else '填充',
                             '迪唯账号': params.get('diwei_account', ''),
+                            '迪唯登录账号': params.get('diwei_login_account', ''),
                             '图库路径': params.get('gallery_path', []),
                             '工艺类型': {
                                 'print': '印花',
@@ -1256,9 +1266,18 @@ def create_task_api(request):
                             '添加黑边': params.get('add_black_border', False),
                             '识别主题': params.get('recognize_theme', False),
                             '添加定制坐标': params.get('add_custom_coords', False),
-                            '定制坐标': params.get('custom_coords', ''),
+                            '定制坐标': custom_coords_list,
                             '添加背景色': params.get('add_background_color', False),
-                            '背景颜色': params.get('background_color', '')
+                            '背景颜色': params.get('background_color', ''),
+                            '是否平铺': params.get('is_tiled', False),
+                            '平铺类型': {
+                                'basic': '基础平铺',
+                                'spacing': '间距平铺',
+                                'horizontal_stagger': '横向交错平铺',
+                                'vertical_stagger': '纵向交错平铺',
+                                'mirror': '镜像平铺',
+                                'random': '随机平铺'
+                            }.get(params.get('tile_type'), params.get('tile_type', ''))
                         }
                     elif st.subtask_type == 'amazon_upload':
                         # Amazon上传 - 从数据库获取实际目标路径
@@ -1795,7 +1814,8 @@ def get_diwei_accounts_api(request):
             diwei_account = account['diwei_account']
             data.append({
                 'value': divi_username,
-                'label': f"{divi_username}（{diwei_account}）"
+                'label': f"{divi_username}（{diwei_account}）",
+                'diwei_account': diwei_account
             })
         
         return JsonResponse({

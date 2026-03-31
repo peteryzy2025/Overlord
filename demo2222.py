@@ -1,68 +1,86 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-查看用户 ID 17 和 25 的详细信息
-"""
+# 获取有物流单号的 Temu 订单并下载面单
 
 import os
 import sys
 import django
+import asyncio
 
+# 设置环境变量避免编码问题
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# ====== Django 初始化 ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = CURRENT_DIR
 sys.path.append(PROJECT_ROOT)
-
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from general.models import User, AmazonShop
+from asgiref.sync import sync_to_async
+from temu.models import TemuOrder
+from api.lingxing_p.lingxing_temu import get_wms_orders_by_order_numbers
 
-def main():
-    print("\n" + "="*70)
-    print("查看关键用户信息")
-    print("="*70 + "\n")
-    
-    # 查看 sync_rangking_day.py 包含的用户列表
-    sync_users = User.objects.filter(
-        status=User.Status.NORMAL,
-        department=User.Department.OPERATION,
-        company_id=1
-    )
-    print("sync_rangking_day.py 统计的用户列表:")
-    for u in sync_users:
-        print(f"  ID:{u.id} | {u.first_name or u.username}")
-    print(f"  共 {sync_users.count()} 人\n")
-    
-    # 重点查看 ID 17 和 25
-    print("="*70)
-    print("重点检查用户 ID 17 和 25:")
-    print("="*70)
-    
-    for uid in [17, 25]:
-        user = User.objects.filter(id=uid).first()
-        if user:
-            print(f"\n用户 ID: {uid}")
-            print(f"  姓名 (first_name): {user.first_name}")
-            print(f"  用户名 (username): {user.username}")
-            print(f"  部门 (department): {user.department}")
-            print(f"  状态 (status): {user.status} (1=正常, 2=禁用/其他)")
-            print(f"  公司ID (company_id): {user.company_id}")
-            
-            # 统计该用户负责的店铺数
-            amazon_shop_count = AmazonShop.objects.filter(ops=uid, company_id=1).count()
-            print(f"  负责的 Amazon 店铺数: {amazon_shop_count}")
-            
-            # 是否被 sync_rangking_day.py 统计
-            is_in_sync = sync_users.filter(id=uid).exists()
-            print(f"  是否被 sync_rangking_day.py 统计: {'是' if is_in_sync else '否'}")
-        else:
-            print(f"\n用户 ID {uid} 不存在")
-    
-    print("\n" + "="*70)
-    print("结论:")
-    print("  如果 ID 17 或 25 的 status 不是 1，则他们不会被 sync_rangking_day.py 统计")
-    print("  但他们负责的店铺会被 Dashboard 统计，造成数据差异")
-    print("="*70 + "\n")
 
-if __name__ == "__main__":
-    main()
+async def get_orders_with_tracking():
+    """异步获取有物流单号的订单"""
+    @sync_to_async
+    def _get_orders():
+        return list(TemuOrder.objects.filter(
+            tracking_number__isnull=False
+        ).exclude(
+            tracking_number=''
+        ).order_by('-global_purchase_time'))
+    
+    return await _get_orders()
+
+
+async def download_labels_for_orders():
+    """获取有物流单号的订单并下载面单"""
+    # 获取订单列表
+    orders = await get_orders_with_tracking()
+    total = len(orders)
+    
+    print(f"共有 {total} 个订单有物流单号，开始下载面单...")
+    print("=" * 60)
+    
+    success_count = 0
+    skip_count = 0
+    fail_count = 0
+    
+    for index, order in enumerate(orders, 1):
+        print(f"\n[{index}/{total}] 处理订单: {order.global_order_no}")
+        print(f"  平台单号: {order.reference_no or '-'}")
+        print(f"  物流单号: {order.tracking_number}")
+        
+        try:
+            # 调用领星 API 下载面单
+            await get_wms_orders_by_order_numbers(order.global_order_no)
+            success_count += 1
+        except UnicodeEncodeError:
+            # 编码问题但可能下载已成功，继续下一个
+            print(f"  [注意] 输出编码问题（可能已下载成功）")
+            success_count += 1
+        except Exception as e:
+            print(f"  [失败] 下载失败: {str(e)[:100]}")
+            fail_count += 1
+            # 继续处理下一个订单，不中断
+            continue
+    
+    print("\n" + "=" * 60)
+    print(f"下载完成统计:")
+    print(f"  总订单数: {total}")
+    print(f"  成功/跳过: {success_count}")
+    print(f"  失败: {fail_count}")
+
+
+if __name__ == '__main__':
+    # 尝试设置控制台编码
+    try:
+        import codecs
+        # Windows 下设置 stdout 编码
+        if sys.platform == 'win32':
+            sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'replace')
+            sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer, 'replace')
+    except Exception:
+        pass
+    
+    asyncio.run(download_labels_for_orders())
