@@ -397,7 +397,7 @@ def get_temu_shops_api(request):
 
         shops_data = []
         for shop in shops:
-            ops_info = users_info.get(shop.ops_id, {'first_name': '-', 'group': '-'})
+            ops_info = users_info.get(shop.ops_id, {'first_name': '-', 'group': '-', 'role': '-'})
             shops_data.append({
                 'id': shop.id,
                 'shop_name': shop.shop_name or '-',
