@@ -1,0 +1,11 @@
+﻿theme_name,group_size,distinct_name_type_count,has_low_risk,keep_id,keep_name_type,keep_update_time,delete_ids,decision,reason
+armani exchange,2,1,0,40091,10,2025-10-18 22:43:03,1260,same_type_keep_latest,同类型重复，仅保留最新记录
+ben davis,2,1,0,40093,10,2025-10-18 22:45:48,2099,same_type_keep_latest,同类型重复，仅保留最新记录
+bigfoot,2,1,0,23243,8,2025-10-15 00:54:21,2279,same_type_keep_latest,同类型重复，仅保留最新记录
+get in loser,2,2,0,,,,,question_word_no_low_risk,混合类型且无低风险，不执行删除
+ghostbusters,2,1,0,23242,8,2025-10-15 00:54:21,8163,same_type_keep_latest,同类型重复，仅保留最新记录
+level,2,2,1,40401,1,2026-02-10 13:36:45,11896,mixed_types_keep_latest_low_risk,存在低风险类型，保留最新低风险记录
+snoopy,2,1,0,23247,5,2025-10-15 00:54:21,18466,same_type_keep_latest,同类型重复，仅保留最新记录
+spider-man,2,1,0,23239,5,2025-10-15 00:54:21,18776,same_type_keep_latest,同类型重复，仅保留最新记录
+tmnt,2,1,0,23244,8,2025-10-15 00:54:21,20841,same_type_keep_latest,同类型重复，仅保留最新记录
+unicorn,2,1,0,23255,4,2025-10-15 00:54:21,21581,same_type_keep_latest,同类型重复，仅保留最新记录

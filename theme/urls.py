@@ -28,6 +28,8 @@ urlpatterns = [
     path('api/amazon-products/', views.api_amazon_products, name='api_amazon_products'),
     path('api/external/amazon-products/', views.external_api_amazon_products, name='external_api_amazon_products'),
     path('api/theme-new-release/', views_new_release.api_new_release_list, name='api_new_release_list'),
+    path('api/theme-aggregation/', views_new_release.api_theme_aggregation_list, name='api_theme_aggregation_list'),
+    path('api/theme-aggregation/asins/', views_new_release.api_theme_aggregation_asins, name='api_theme_aggregation_asins'),
     path('api/amazon-products/batch-risk-check/', views.api_batch_risk_check, name='api_batch_risk_check'),
 
     # 产品操作API - 放在详情API之前
