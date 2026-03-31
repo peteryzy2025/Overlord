@@ -300,10 +300,19 @@ def api_theme_aggregation_list(request):
         theme_ids = [item.id for item in current_page.object_list]
 
         asin_theme_map = {}
+        theme_fulfillment_counts = {tid: {'FBA': 0, 'FBM': 0, 'AMZ': 0, 'unknown': 0, 'total': 0} for tid in theme_ids}
         for rank in AmazonNewReleaseRank.objects.filter(
             summary_subject_id__in=theme_ids
-        ).values('asin', 'summary_subject_id'):
+        ).values('asin', 'summary_subject_id', 'fulfillment'):
             asin_theme_map[rank['asin']] = rank['summary_subject_id']
+            f = (rank['fulfillment'] or '').strip()
+            tid = rank['summary_subject_id']
+            if tid in theme_fulfillment_counts:
+                if f in ('FBA', 'FBM', 'AMZ'):
+                    theme_fulfillment_counts[tid][f] += 1
+                else:
+                    theme_fulfillment_counts[tid]['unknown'] += 1
+                theme_fulfillment_counts[tid]['total'] += 1
 
         theme_trend_lookup = {}
         if asin_theme_map:
@@ -331,11 +340,25 @@ def api_theme_aggregation_list(request):
 
         theme_rows = []
         for item in current_page.object_list:
+            counts = theme_fulfillment_counts.get(item.id, {})
+            total = counts.get('total', 0)
+            stats = {
+                'FBA': {'count': counts.get('FBA', 0), 'pct': round(counts.get('FBA', 0) / total * 100, 1) if total else 0},
+                'FBM': {'count': counts.get('FBM', 0), 'pct': round(counts.get('FBM', 0) / total * 100, 1) if total else 0},
+                'AMZ': {'count': counts.get('AMZ', 0), 'pct': round(counts.get('AMZ', 0) / total * 100, 1) if total else 0},
+                'unknown': {'count': counts.get('unknown', 0), 'pct': round(counts.get('unknown', 0) / total * 100, 1) if total else 0},
+            }
+            if total > 0:
+                # 修正四舍五入误差，确保百分比之和等于 100
+                diff = round(100 - sum(stats[k]['pct'] for k in stats), 1)
+                largest = max(stats, key=lambda k: stats[k]['pct'])
+                stats[largest]['pct'] = round(stats[largest]['pct'] + diff, 1)
             theme_rows.append({
                 'id': item.id,
                 'summary_subject_title': item.summary_subject_title,
                 'appear_count': item.appear_count,
                 'rank_trend_7d': theme_trend_lookup.get(item.id, []),
+                'fulfillment_stats': stats,
             })
 
         now = timezone.now()
@@ -388,7 +411,7 @@ def api_theme_aggregation_asins(request):
             summary_subject_id=theme_id
         ).values(
             'asin', 'title', 'title_translation', 'subject',
-            'subject_translation', 'category', 'image_url', 'launch_date',
+            'subject_translation', 'category', 'image_url', 'launch_date', 'fulfillment',
         ).order_by('-launch_date')
 
         asin_list = []
@@ -402,6 +425,7 @@ def api_theme_aggregation_asins(request):
                 'category': row['category'] or '',
                 'image_url': row['image_url'] or '',
                 'launch_date': row['launch_date'].strftime('%Y-%m-%d') if row['launch_date'] else '',
+                'fulfillment': row['fulfillment'] or '',
             })
 
         return JsonResponse({
