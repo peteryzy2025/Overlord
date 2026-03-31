@@ -15,7 +15,7 @@
             --border-color: #e2e8f0;
         }
 
-        #paginationControls.pagination-container {
+        .pagination-container {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -29,29 +29,29 @@
             flex-wrap: wrap;
         }
 
-        #paginationControls .pagination-info {
+        .pagination-container .pagination-info {
             color: var(--text-secondary);
             font-size: 0.875rem;
         }
 
-        #paginationControls .page-size-wrapper {
+        .pagination-container .page-size-wrapper {
             display: inline-flex;
             align-items: center;
             gap: 0.75rem;
             flex-wrap: wrap;
         }
 
-        #paginationControls .page-size-label,
-        #paginationControls .pagination-stats {
+        .pagination-container .page-size-label,
+        .pagination-container .pagination-stats {
             color: var(--text-secondary);
             font-size: 0.875rem;
         }
 
-        #paginationControls .page-size-dropdown-wrapper {
+        .pagination-container .page-size-dropdown-wrapper {
             position: relative;
         }
 
-        #paginationControls .page-size-trigger {
+        .pagination-container .page-size-trigger {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -64,12 +64,12 @@
             font-size: 0.875rem;
         }
 
-        #paginationControls .page-size-trigger:hover {
+        .pagination-container .page-size-trigger:hover {
             border-color: var(--accent-color);
             color: var(--accent-color);
         }
 
-        #paginationControls .page-size-dropdown {
+        .pagination-container .page-size-dropdown {
             position: absolute;
             top: calc(100% + 0.5rem);
             left: 0;
@@ -83,11 +83,11 @@
             z-index: 20;
         }
 
-        #paginationControls .page-size-dropdown.open {
+        .pagination-container .page-size-dropdown.open {
             display: block;
         }
 
-        #paginationControls .page-size-option {
+        .pagination-container .page-size-option {
             padding: 0.45rem 0.7rem;
             border-radius: 8px;
             cursor: pointer;
@@ -96,8 +96,8 @@
             transition: all 0.2s ease;
         }
 
-        #paginationControls .page-size-option:hover,
-        #paginationControls .page-size-option.selected {
+        .pagination-container .page-size-option:hover,
+        .pagination-container .page-size-option.selected {
             background-color: #eff6ff;
             color: var(--accent-color);
         }
@@ -142,17 +142,17 @@
                 flex-wrap: wrap;
             }
 
-            #paginationControls .pagination-new {
+            .pagination-container .pagination-new {
                 width: 100%;
                 justify-content: flex-start;
             }
 
-            #paginationControls .pagination-jump {
+            .pagination-container .pagination-jump {
                 margin-left: 0;
             }
         }
 
-        #paginationControls .pagination-new {
+        .pagination-container .pagination-new {
             display: flex;
             gap: 0.5rem;
             align-items: center;
@@ -161,7 +161,7 @@
             flex-wrap: wrap;
         }
 
-        #paginationControls .pagination-btn-new {
+        .pagination-container .pagination-btn-new {
             background-color: #fff;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
@@ -172,30 +172,30 @@
             font-size: 0.875rem;
         }
 
-        #paginationControls .pagination-btn-new:hover:not(:disabled) {
+        .pagination-container .pagination-btn-new:hover:not(:disabled) {
             background-color: var(--accent-color);
             color: #fff;
             border-color: var(--accent-color);
         }
 
-        #paginationControls .pagination-btn-new:disabled {
+        .pagination-container .pagination-btn-new:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
 
-        #paginationControls .pagination-btn-new.active {
+        .pagination-container .pagination-btn-new.active {
             background-color: var(--accent-color);
             color: #fff;
             border-color: var(--accent-color);
         }
 
-        #paginationControls .pagination-ellipsis {
+        .pagination-container .pagination-ellipsis {
             color: var(--text-secondary);
             padding: 0.5rem 0.25rem;
             font-size: 0.875rem;
         }
 
-        #paginationControls .pagination-jump {
+        .pagination-container .pagination-jump {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -204,7 +204,7 @@
             font-size: 0.875rem;
         }
 
-        #paginationControls .page-jump-input {
+        .pagination-container .page-jump-input {
             width: 4.5rem;
             height: 2.25rem;
             padding: 0.35rem 0.6rem;
@@ -214,7 +214,7 @@
             text-align: center;
         }
 
-        #paginationControls .page-jump-input:focus {
+        .pagination-container .page-jump-input:focus {
             outline: none;
             border-color: var(--accent-color);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
@@ -228,7 +228,7 @@
             display: flex !important;
         }
 
-        .table-container td:nth-child(1) {
+        #productsTableContainer td:nth-child(1) {
             width: 500px;
             max-width: 500px;
             position: sticky;
@@ -240,7 +240,7 @@
             overflow: visible !important;
         }
 
-        .table-container th:nth-child(1) {
+        #productsTableContainer th:nth-child(1) {
             width: 500px;
             max-width: 500px;
             left: 0;
@@ -248,16 +248,16 @@
             box-shadow: rgba(0, 0, 0, 0.1) 2px 0px 4px 0px;
         }
 
-        .table-container tbody tr {
+        #productsTableContainer tbody tr {
             position: relative;
         }
 
-        .table-container th,
-        .table-container td {
+        #productsTableContainer th,
+        #productsTableContainer td {
             vertical-align: middle;
         }
 
-        .table-container .table tbody td:nth-child(1) {
+        #productsTableContainer .table tbody td:nth-child(1) {
             position: sticky !important;
             left: 0 !important;
             z-index: 10 !important;
@@ -265,20 +265,20 @@
             background: #fff !important;
         }
 
-        .table-container .table thead th:nth-child(1) {
+        #productsTableContainer .table thead th:nth-child(1) {
             left: 0 !important;
             z-index: 12 !important;
             box-shadow: rgba(0, 0, 0, 0.1) 2px 0px 4px 0px !important;
         }
 
-        .table-container .table tbody td:nth-child(2) {
+        #productsTableContainer .table tbody td:nth-child(2) {
             position: static !important;
             left: auto !important;
             box-shadow: none !important;
             z-index: auto !important;
         }
 
-        .table-container .table thead th:nth-child(2) {
+        #productsTableContainer .table thead th:nth-child(2) {
             left: auto !important;
             box-shadow: none !important;
         }
@@ -290,8 +290,8 @@
             display: block;
         }
 
-        .table-container td:nth-child(2),
-        .table-container th:nth-child(2) {
+        #productsTableContainer td:nth-child(2),
+        #productsTableContainer th:nth-child(2) {
             text-align: center;
             vertical-align: middle;
         }
@@ -417,6 +417,531 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Tab navigation */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .tab-nav-item {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .tab-nav-item:hover {
+            color: var(--accent-color);
+        }
+
+        .tab-nav-item.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Aggregation checkbox & detail row */
+        .w-checkbox {
+            width: 45px !important;
+            min-width: 45px !important;
+            max-width: 45px !important;
+            text-align: center;
+            vertical-align: middle;
+            padding: 0.5rem !important;
+        }
+
+        .w-checkbox input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+            margin: 0;
+        }
+
+        #aggregationTableContainer .table {
+            min-width: 980px;
+        }
+
+        #aggregationTableContainer th:nth-child(2),
+        #aggregationTableContainer td:nth-child(2) {
+            min-width: 320px;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        #aggregationTableContainer .empty-state,
+        #aggregationTableContainer .detail-row > td {
+            position: static !important;
+            left: auto !important;
+            right: auto !important;
+            z-index: auto !important;
+            box-shadow: none !important;
+        }
+
+        /* Detail row with card design */
+        .detail-row {
+            display: none;
+        }
+
+        .detail-row.open {
+            display: table-row;
+        }
+
+        .detail-row > td {
+            background: transparent !important;
+            padding: 0 !important;
+            border-top: none !important;
+        }
+
+        .detail-content {
+            padding: 1rem 1.5rem 1.5rem;
+            overflow-x: auto;
+        }
+
+        /* ASIN Detail Card Design */
+        .asin-detail-card {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .asin-detail-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .asin-detail-header-main {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            min-width: 0;
+        }
+
+        .asin-detail-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1d4ed8;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+            flex-shrink: 0;
+        }
+
+        .asin-detail-header-copy {
+            min-width: 0;
+        }
+
+        .asin-detail-title {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 1rem;
+            line-height: 1.2;
+        }
+
+        .asin-detail-subtitle {
+            margin-top: 0.2rem;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+        }
+
+        .asin-detail-count {
+            background: rgba(37, 99, 235, 0.1);
+            color: #1d4ed8;
+            font-size: 0.78rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 999px;
+            font-weight: 600;
+            border: 1px solid rgba(37, 99, 235, 0.16);
+            white-space: nowrap;
+        }
+
+        .asin-detail-body {
+            padding: 0;
+        }
+
+        .asin-detail-table-wrapper {
+            overflow-x: auto;
+        }
+
+        .asin-detail-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.875rem;
+            table-layout: fixed;
+            min-width: 1200px;
+        }
+
+        .asin-detail-table thead {
+            background: #f8fafc;
+        }
+
+        .asin-detail-table th {
+            padding: 0.875rem 1rem;
+            text-align: left;
+            color: var(--text-secondary);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .asin-detail-table th:nth-child(1),
+        .asin-detail-table td:nth-child(1) {
+            width: 160px;
+        }
+
+        .asin-detail-table th:nth-child(2),
+        .asin-detail-table td:nth-child(2) {
+            width: 80px;
+            text-align: center;
+        }
+
+        .asin-detail-table th:nth-child(3),
+        .asin-detail-table td:nth-child(3) {
+            width: 22%;
+        }
+
+        .asin-detail-table th:nth-child(4),
+        .asin-detail-table td:nth-child(4) {
+            width: 18%;
+        }
+
+        .asin-detail-table th:nth-child(5),
+        .asin-detail-table td:nth-child(5) {
+            width: 130px;
+        }
+
+        .asin-detail-table th:nth-child(6),
+        .asin-detail-table td:nth-child(6) {
+            width: 120px;
+        }
+
+        .asin-detail-table th:nth-child(7),
+        .asin-detail-table td:nth-child(7) {
+            width: 100px;
+        }
+
+        .asin-detail-table th:nth-child(8),
+        .asin-detail-table td:nth-child(8) {
+            width: 100px;
+        }
+
+        .asin-detail-table th:first-child {
+            padding-left: 1.5rem;
+        }
+
+        .asin-detail-table th:last-child {
+            padding-right: 1.5rem;
+        }
+
+        .asin-detail-table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .asin-detail-table tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        .asin-detail-table td {
+            padding: 1rem;
+            color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        .asin-detail-table td:first-child {
+            padding-left: 1.5rem;
+        }
+
+        .asin-detail-table td:last-child {
+            padding-right: 1.5rem;
+        }
+
+        .asin-detail-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .asin-cell {
+            font-size: 0.85rem;
+        }
+
+        .asin-title-cell,
+        .asin-subject-cell {
+            min-width: 0;
+        }
+
+        .asin-text-block {
+            min-width: 0;
+        }
+
+        .asin-text-line {
+            display: block;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            line-height: 1.45;
+        }
+
+        .asin-text-line.is-primary {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .asin-text-line.is-secondary {
+            margin-top: 0.2rem;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+        }
+
+        .detail-product-thumbnail {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .detail-product-thumbnail:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .agg-asin-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
+            color: #1e3a8a;
+            text-decoration: none;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            transition: all 0.2s ease;
+        }
+
+        .agg-asin-link:hover {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-color: #93c5fd;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+            color: #1d4ed8;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+
+        .agg-detail-loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .agg-detail-loading i {
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .agg-detail-empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .agg-detail-empty i {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            display: block;
+            color: #cbd5e1;
+        }
+
+        /* Detail button styling */
+        .agg-detail-btn {
+            background: #f1f5f9;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-size: 0.8rem;
+            padding: 0.4rem 0.875rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .agg-detail-btn:hover {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        .agg-detail-btn.expanded {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        .badge-category {
+            display: inline-block;
+            background: #f1f5f9;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 迷你堆叠百分比条（聚合主题行） */
+        .fulfillment-bar {
+            display: flex;
+            width: 120px;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #e5e7eb;
+            cursor: default;
+        }
+        .fulfillment-bar-seg {
+            height: 100%;
+            transition: width 0.25s ease;
+            min-width: 0;
+        }
+        .fulfillment-bar-seg.fba { background: #5b8ff9; }
+        .fulfillment-bar-seg.fbm { background: #5ad8a6; }
+        .fulfillment-bar-seg.amz { background: #ff9d4d; }
+        .fulfillment-bar-seg.unknown { background: #bfbfbf; }
+
+        /* 配送方式文本标签（子 ASIN 行） */
+        .badge-fulfillment {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+            border: 1px solid transparent;
+        }
+        .badge-fulfillment .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .badge-fulfillment.fba { background: #eef4ff; color: #2b6cb0; border-color: #c3dafe; }
+        .badge-fulfillment.fba .dot { background: #5b8ff9; }
+        .badge-fulfillment.fbm { background: #e6fffa; color: #276749; border-color: #b2f5ea; }
+        .badge-fulfillment.fbm .dot { background: #5ad8a6; }
+        .badge-fulfillment.amz { background: #fff7ed; color: #c05621; border-color: #fed7aa; }
+        .badge-fulfillment.amz .dot { background: #ff9d4d; }
+        .badge-fulfillment.unknown { background: #f3f4f6; color: #6b7280; border-color: #d1d5db; }
+        .badge-fulfillment.unknown .dot { background: #bfbfbf; }
+
+        /* 聚合表格中配送方式列 */
+        .agg-fulfillment-cell {
+            text-align: center;
+            vertical-align: middle;
+            padding: 0.5rem 0.75rem;
+            box-sizing: border-box;
+        }
+        .agg-fulfillment-cell .fulfillment-bar {
+            margin: 0 auto;
+            width: 120px;
+            height: 16px;
+            border-radius: 8px;
+        }
+
+        /* 聚合表格数据行增加垂直高度 */
+        #aggregationTableContainer .table tbody tr {
+            height: 64px;
+        }
+        #aggregationTableContainer .table tbody td {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        /* 可点击的聚合主题文字 */
+        .clickable-subject {
+            cursor: pointer;
+            transition: color 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .clickable-subject:hover {
+            color: var(--accent-color, #4f46e5);
+        }
+
+        /* 品类占比环形饼图样式 */
+        .category-donut-wrapper {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .category-donut-chart {
+            display: block;
+        }
+        .category-donut-chart circle {
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+        .category-donut-chart circle:hover {
+            opacity: 0.8;
+            filter: brightness(1.1);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .asin-detail-card {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+
+            .asin-detail-header,
+            .asin-detail-table td:first-child,
+            .asin-detail-table th:first-child {
+                padding-left: 1rem;
+            }
+
+            .asin-detail-header,
+            .asin-detail-table td:last-child,
+            .asin-detail-table th:last-child {
+                padding-right: 1rem;
+            }
+        }
     </style>
 {% endblock %}
 
@@ -441,137 +966,257 @@
             </div>
         </div>
 
-        <div class="stats-dashboard" id="statsDashboard">
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-box"></i>
-                    总产品数
-                </div>
-                <div class="stat-value" id="totalProducts">{{ stats.total_products|default:"-" }}</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-tags"></i>
-                    近7日新增主题
-                </div>
-                <div class="stat-value" id="recentSubjects7d">{{ stats.recent_subjects_7d|default:"-" }}</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">
-                    <i class="fas fa-calendar-day"></i>
-                    本月新增
-                </div>
-                <div class="stat-value" id="recentProducts">{{ stats.recent_products|default:'-' }}</div>
-                <div class="stat-change">&nbsp;</div>
-            </div>
+        <div class="tab-nav">
+            <div class="tab-nav-item active" onclick="switchNewReleaseTab('new-release')">新品榜</div>
+            <div class="tab-nav-item" onclick="switchNewReleaseTab('aggregation')">主题聚合</div>
         </div>
 
-        <div class="control-panel">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">上架日期</label>
-                    <div id="launchDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+        <!-- 新品榜 Tab -->
+        <div class="tab-pane active" id="new-release-tab">
+            <div class="stats-dashboard" id="statsDashboard">
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-box"></i>
+                        总产品数
+                    </div>
+                    <div class="stat-value" id="totalProducts">{{ stats.total_products|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
                 </div>
-
-                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup">
-                    <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="customLaunchStartDate" min="{{ date_range.min_launch_date|date:'Y-m-d' }}" max="{{ date_range.max_launch_date|date:'Y-m-d' }}">
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-tags"></i>
+                        近7日新增主题
+                    </div>
+                    <div class="stat-value" id="recentSubjects7d">{{ stats.recent_subjects_7d|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
                 </div>
-
-                <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup2">
-                    <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="customLaunchEndDate" min="{{ date_range.min_launch_date|date:'Y-m-d' }}" max="{{ date_range.max_launch_date|date:'Y-m-d' }}">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">数据日期</label>
-                    <div id="crawlDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
-                </div>
-
-                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup">
-                    <label class="filter-label">开始日期</label>
-                    <input type="date" class="form-control" id="customCrawlStartDate" min="{{ date_range.min_crawl_date|date:'Y-m-d' }}" max="{{ date_range.max_crawl_date|date:'Y-m-d' }}">
-                </div>
-                <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup2">
-                    <label class="filter-label">结束日期</label>
-                    <input type="date" class="form-control" id="customCrawlEndDate" min="{{ date_range.min_crawl_date|date:'Y-m-d' }}" max="{{ date_range.max_crawl_date|date:'Y-m-d' }}">
-                </div>
-
-                <div class="filter-group">
-                    <label class="filter-label">产品类型</label>
-                    <div id="categoryFilter" class="searchable-select multiple" data-placeholder="全部品类"></div>
-                </div>
-            </div>
-            <div class="filter-actions-row">
-                <div class="filter-actions">
-                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
-                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置" aria-label="重置"></button>
-                </div>
-            </div>
-        </div>
-
-        <div class="data-section">
-            <div class="products-header-row">
-                <div class="products-header-left">
-                    <h3 class="section-title" style="margin-bottom: 0;">新品榜列表</h3>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-calendar-day"></i>
+                        本月新增
+                    </div>
+                    <div class="stat-value" id="recentProducts">{{ stats.recent_products|default:'-' }}</div>
+                    <div class="stat-change">&nbsp;</div>
                 </div>
             </div>
 
-            <div class="table-container" id="productsTableContainer">
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th class="sortable" data-field="subject" onclick="handleSort('subject')">产品主题/主题翻译</th>
-                        <th>图片</th>
-                        <th class="sortable active" data-field="score" onclick="handleSort('score')">分值</th>
-                        <th class="sortable" data-field="appear_count" onclick="handleSort('appear_count')">重复数</th>
-                        <th>7天排名趋势</th>
-                        <th>品类1/排名1</th>
-                        <th>品类2/排名2</th>
-                        <th>品类3/排名3</th>
-                        <th class="sortable" data-field="launch_date" onclick="handleSort('launch_date')">上架/数据日期</th>
-                    </tr>
-                    </thead>
-                    <tbody id="productsTableBody">
-                    <tr>
-                        <td colspan="9" class="empty-state">
-                            <i class="fas fa-info-circle"></i>
-                            <p>请选择筛选条件并点击“应用筛选”</p>
-                            <p>新品榜数据将在此处显示</p>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
+            <div class="control-panel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">上架日期</label>
+                        <div id="launchDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+                    </div>
+
+                    <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup">
+                        <label class="filter-label">开始日期</label>
+                        <input type="date" class="form-control" id="customLaunchStartDate" min="{{ date_range.min_launch_date|date:'Y-m-d' }}" max="{{ date_range.max_launch_date|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="filter-group gs-date-range-custom-group" id="customLaunchDateGroup2">
+                        <label class="filter-label">结束日期</label>
+                        <input type="date" class="form-control" id="customLaunchEndDate" min="{{ date_range.min_launch_date|date:'Y-m-d' }}" max="{{ date_range.max_launch_date|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">数据日期</label>
+                        <div id="crawlDateRange" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+                    </div>
+
+                    <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup">
+                        <label class="filter-label">开始日期</label>
+                        <input type="date" class="form-control" id="customCrawlStartDate" min="{{ date_range.min_crawl_date|date:'Y-m-d' }}" max="{{ date_range.max_crawl_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="filter-group gs-date-range-custom-group" id="customCrawlDateGroup2">
+                        <label class="filter-label">结束日期</label>
+                        <input type="date" class="form-control" id="customCrawlEndDate" min="{{ date_range.min_crawl_date|date:'Y-m-d' }}" max="{{ date_range.max_crawl_date|date:'Y-m-d' }}">
+                    </div>
+
+                    <div class="filter-group">
+                        <label class="filter-label">产品类型</label>
+                        <div id="categoryFilter" class="searchable-select multiple" data-placeholder="全部品类"></div>
+                    </div>
+                </div>
+                <div class="filter-actions-row">
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置" aria-label="重置"></button>
+                    </div>
+                </div>
             </div>
 
-            <div class="pagination-container" id="paginationControls" style="display: none;">
-                <div class="pagination-info" data-total="0">
-                    <div class="page-size-wrapper" id="pageSizeWrapper">
-                        <span class="page-size-label">每页显示：</span>
-                        <div class="page-size-dropdown-wrapper">
-                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="page-size-dropdown" id="pageSizeDropdown">
-                                <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
-                                <div class="page-size-option" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" onclick="changePageSize(100)">100条</div>
-                                <div class="page-size-option" onclick="changePageSize(200)">200条</div>
-                            </div>
-                        </div>
-                        <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+            <div class="data-section">
+                <div class="products-header-row">
+                    <div class="products-header-left">
+                        <h3 class="section-title" style="margin-bottom: 0;">新品榜列表</h3>
                     </div>
                 </div>
 
-                <div class="pagination-new" id="paginationButtons"></div>
+                <div class="table-container" id="productsTableContainer">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="sortable" data-field="subject" onclick="handleSort('subject')">产品主题/主题翻译</th>
+                            <th>图片</th>
+                            <th class="sortable active" data-field="score" onclick="handleSort('score')">分值</th>
+                            <th class="sortable" data-field="appear_count" onclick="handleSort('appear_count')">重复数</th>
+                            <th>7天排名趋势</th>
+                            <th>品类1/排名1</th>
+                            <th>品类2/排名2</th>
+                            <th>品类3/排名3</th>
+                            <th class="sortable" data-field="launch_date" onclick="handleSort('launch_date')">上架/数据日期</th>
+                        </tr>
+                        </thead>
+                        <tbody id="productsTableBody">
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>请选择筛选条件并点击"应用筛选"</p>
+                                <p>新品榜数据将在此处显示</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <div class="pagination-jump" id="paginationJump" style="display: none;">
-                    <span>跳至</span>
-                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-                    <span>页</span>
+                <div class="pagination-container" id="paginationControls" style="display: none;">
+                    <div class="pagination-info" data-total="0">
+                        <div class="page-size-wrapper" id="pageSizeWrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div class="page-size-dropdown-wrapper">
+                                <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                    <span id="pageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="pageSizeDropdown">
+                                    <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
+                                    <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                                    <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                                    <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                                </div>
+                            </div>
+                            <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                        </div>
+                    </div>
+
+                    <div class="pagination-new" id="paginationButtons"></div>
+
+                    <div class="pagination-jump" id="paginationJump" style="display: none;">
+                        <span>跳至</span>
+                        <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                        <span>页</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 主题聚合 Tab -->
+        <div class="tab-pane" id="aggregation-tab">
+            <div class="stats-dashboard" id="aggregationStatsDashboard">
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-layer-group"></i>
+                        总主题数
+                    </div>
+                    <div class="stat-value" id="aggTotalThemes">{{ aggregation_stats.total_themes|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-clock"></i>
+                        近7日更新
+                    </div>
+                    <div class="stat-value" id="aggRecentThemes7d">{{ aggregation_stats.recent_themes_7d|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">
+                        <i class="fas fa-calendar-check"></i>
+                        本月更新
+                    </div>
+                    <div class="stat-value" id="aggRecentThemesMonth">{{ aggregation_stats.recent_themes_month|default:'-' }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">开始日期</label>
+                        <input type="date" class="form-control" id="aggStartDate">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">结束日期</label>
+                        <input type="date" class="form-control" id="aggEndDate">
+                    </div>
+                </div>
+                <div class="filter-actions-row">
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyAggregationFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAggregationFilters()" title="重置" aria-label="重置"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <div class="products-header-row">
+                    <div class="products-header-left">
+                        <h3 class="section-title" style="margin-bottom: 0;">主题聚合列表</h3>
+                    </div>
+                </div>
+
+                <div class="table-container" id="aggregationTableContainer">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
+                            <th class="sortable" data-field="summary_subject_title" onclick="handleAggregationSort('summary_subject_title')">聚合主题</th>
+                            <th class="sortable active" data-field="appear_count" onclick="handleAggregationSort('appear_count')">出现次数</th>
+                            <th>平均上架时间</th>
+                            <th>平均排名趋势图</th>
+                            <th>配送方式</th>
+                            <th>品类占比</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="aggregationTableBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>请选择日期范围并点击"应用筛选"</p>
+                                <p>主题聚合数据将在此处显示</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-container" id="aggregationPaginationControls" style="display: none;">
+                    <div class="pagination-info" data-total="0">
+                        <div class="page-size-wrapper" id="aggPageSizeWrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div class="page-size-dropdown-wrapper">
+                                <button class="page-size-trigger" id="aggPageSizeTrigger" onclick="toggleAggregationPageSizeDropdown()">
+                                    <span id="aggPageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="aggPageSizeDropdown">
+                                    <div class="page-size-option selected" onclick="changeAggregationPageSize(20)">20条</div>
+                                    <div class="page-size-option" onclick="changeAggregationPageSize(50)">50条</div>
+                                    <div class="page-size-option" onclick="changeAggregationPageSize(100)">100条</div>
+                                    <div class="page-size-option" onclick="changeAggregationPageSize(200)">200条</div>
+                                </div>
+                            </div>
+                            <span class="pagination-stats" id="aggPaginationStats">0-0 / 共 0 条</span>
+                        </div>
+                    </div>
+
+                    <div class="pagination-new" id="aggPaginationButtons"></div>
+
+                    <div class="pagination-jump" id="aggPaginationJump" style="display: none;">
+                        <span>跳至</span>
+                        <input type="number" id="aggPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleAggregationPageJump(event)">
+                        <span>页</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -736,7 +1381,7 @@
             `;
         }
 
-        function initRankTrendChart(chartId, data) {
+        function initRankTrendChart(chartId, data, options) {
             const validData = Array.isArray(data)
                 ? data.filter(item => item && item.rank !== null && item.rank !== undefined && item.rank !== '')
                 : [];
@@ -747,8 +1392,9 @@
             const tooltip = container.querySelector('.trend-tooltip');
             if (!svg) return;
 
-            const width = 160;
-            const height = 60;
+            const opts = options || {};
+            const width = opts.width || 160;
+            const height = opts.height || 60;
             const padding = { top: 10, bottom: 10, left: 5, right: 5 };
             const chartHeight = height - padding.top - padding.bottom;
             const chartWidth = width - padding.left - padding.right;
@@ -992,10 +1638,10 @@
             if (pageSizeText) {
                 pageSizeText.textContent = `${size}条`;
             }
-            document.querySelectorAll('#paginationControls .page-size-option').forEach((option) => {
+            document.querySelectorAll('.pagination-container .page-size-option').forEach((option) => {
                 option.classList.remove('selected');
             });
-            const selectedOption = document.querySelector(`#paginationControls .page-size-option[onclick="changePageSize(${size})"]`);
+            const selectedOption = document.querySelector(`.pagination-container .page-size-option[onclick="changePageSize(${size})"]`);
             if (selectedOption) {
                 selectedOption.classList.add('selected');
             }
@@ -1216,6 +1862,568 @@
             initCategoryFilter();
             updateSortHeaders();
             loadNewReleaseTable();
+        });
+
+        // ====== Tab switching ======
+        function switchNewReleaseTab(tab) {
+            document.querySelectorAll('.tab-nav-item').forEach(function(item) {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-pane').forEach(function(pane) {
+                pane.classList.remove('active');
+            });
+            if (tab === 'new-release') {
+                document.querySelector('.tab-nav-item:nth-child(1)').classList.add('active');
+                document.getElementById('new-release-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab-nav-item:nth-child(2)').classList.add('active');
+                document.getElementById('aggregation-tab').classList.add('active');
+                if (!aggregationState.loaded) {
+                    loadAggregationTable();
+                    aggregationState.loaded = true;
+                }
+            }
+        }
+
+        // ====== Aggregation state ======
+        var aggregationState = {
+            loaded: false,
+            sort_field: 'appear_count',
+            sort_order: 'desc',
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0
+        };
+
+        // ====== Aggregation: load data ======
+        async function loadAggregationTable() {
+            showLoading(true);
+            var tbody = document.getElementById('aggregationTableBody');
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+
+            try {
+                var params = {
+                    start_date: document.getElementById('aggStartDate').value,
+                    end_date: document.getElementById('aggEndDate').value,
+                    sort_field: aggregationState.sort_field,
+                    sort_order: aggregationState.sort_order,
+                    page: aggregationState.page,
+                    page_size: aggregationState.page_size
+                };
+
+                var response = await fetch("{% url 'theme:api_theme_aggregation_list' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                var result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || '数据加载失败');
+                }
+
+                var data = result.data || {};
+                aggregationState.page = data.current_page || 1;
+                aggregationState.page_size = data.page_size || 20;
+                aggregationState.total = data.total || 0;
+                aggregationState.total_pages = data.total_pages || 0;
+
+                renderAggregationTable(data.themes || []);
+                renderAggregationPagination();
+                updateAggregationStats(data.stats || {});
+
+                var controls = document.getElementById('aggregationPaginationControls');
+                if (controls) {
+                    controls.style.display = aggregationState.total > 0 ? 'flex' : 'none';
+                }
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                var controls = document.getElementById('aggregationPaginationControls');
+                if (controls) controls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ====== Aggregation: fulfillment bar helpers ======
+        function renderFulfillmentBar(stats) {
+            if (!stats) return '-';
+            var total = 0;
+            ['FBA','FBM','AMZ','unknown'].forEach(function(k){
+                total += (stats[k] && stats[k].count) ? stats[k].count : 0;
+            });
+            if (total === 0) return '-';
+            var order = [
+                { key: 'FBA', cls: 'fba', label: 'FBA' },
+                { key: 'FBM', cls: 'fbm', label: 'FBM' },
+                { key: 'AMZ', cls: 'amz', label: 'AMZ' },
+                { key: 'unknown', cls: 'unknown', label: '未知' }
+            ];
+            var segs = [];
+            order.forEach(function(o){
+                var s = stats[o.key];
+                if (s && s.pct > 0) {
+                    var title = o.label + ': ' + s.count + ' (' + s.pct + '%)';
+                    segs.push('<div class="fulfillment-bar-seg ' + o.cls + '" style="width:' + s.pct + '%;" title="' + title + '"></div>');
+                }
+            });
+            return '<div class="fulfillment-bar">' + segs.join('') + '</div>';
+        }
+
+        function renderFulfillmentBadge(fulfillment) {
+            var f = (fulfillment || '').toString().trim().toUpperCase();
+            var map = {
+                'FBA': { cls: 'fba', label: 'FBA' },
+                'FBM': { cls: 'fbm', label: 'FBM' },
+                'AMZ': { cls: 'amz', label: 'AMZ' },
+            };
+            var item = map[f] || { cls: 'unknown', label: '未知' };
+            return '<span class="badge-fulfillment ' + item.cls + '"><span class="dot"></span>' + escapeHtml(item.label) + '</span>';
+        }
+
+        // ====== Aggregation: category donut chart helper ======
+        function renderCategoryBar(stats) {
+            if (!stats || Object.keys(stats).length === 0) return '-';
+            var total = 0;
+            var keys = Object.keys(stats);
+            keys.forEach(function(k){
+                total += (stats[k] && stats[k].count) ? stats[k].count : 0;
+            });
+            if (total === 0) return '-';
+
+            // 按数量降序排序
+            keys.sort(function(a, b) {
+                var countA = (stats[a] && stats[a].count) ? stats[a].count : 0;
+                var countB = (stats[b] && stats[b].count) ? stats[b].count : 0;
+                if (countA !== countB) return countB - countA;
+                return a.localeCompare(b);
+            });
+
+            // 品类颜色映射
+            var colorMap = {
+                'bag': '#14b8a6',
+                'cup': '#f59e0b',
+                'flag': '#ef4444',
+                'hat-mens': '#2563eb',
+                'hat-news': '#8b5cf6',
+                'pin': '#ec4899',
+                'shirt': '#22c55e',
+                'sign': '#f97316'
+            };
+
+            // 为品类名称生成哈希值，用于未定义品类的颜色
+            function hashCode(str) {
+                var hash = 0;
+                for (var i = 0; i < str.length; i++) {
+                    var char = str.charCodeAt(i);
+                    hash = ((hash << 5) - hash) + char;
+                    hash = hash & hash;
+                }
+                return Math.abs(hash);
+            }
+            function getHashColor(str) {
+                var hash = hashCode(str);
+                var hue = hash % 360;
+                return 'hsl(' + hue + ', 70%, 50%)';
+            }
+
+            // SVG 环形饼图参数
+            var size = 48;
+            var strokeWidth = 12;
+            var radius = (size - strokeWidth) / 2;
+            var circumference = 2 * Math.PI * radius;
+            var center = size / 2;
+            var offset = 0;
+
+            var circles = [];
+            var tooltipLines = [];
+
+            keys.forEach(function(cat){
+                var s = stats[cat];
+                if (s && s.count > 0) {
+                    var color = colorMap[cat] || getHashColor(cat);
+                    var pct = (s.count / total);
+                    var dashArray = pct * circumference;
+                    var rotation = (offset / total) * 360;
+
+                    circles.push('<circle cx="' + center + '" cy="' + center + '" r="' + radius + '" fill="none" stroke="' + color + '" stroke-width="' + strokeWidth + '" stroke-dasharray="' + dashArray.toFixed(2) + ' ' + (circumference - dashArray).toFixed(2) + '" stroke-dashoffset="0" transform="rotate(' + (-90 + rotation) + ' ' + center + ' ' + center + ')" />');
+
+                    var displayPct = typeof s.pct === 'number' ? s.pct : Math.round(pct * 1000) / 10;
+                    tooltipLines.push(cat + ': ' + s.count + ' (' + displayPct + '%)');
+                    offset += s.count;
+                }
+            });
+
+            var svg = '<svg width="' + size + '" height="' + size + '" class="category-donut-chart">' + circles.join('') + '</svg>';
+            return '<div class="category-donut-wrapper" title="' + escapeHtml(tooltipLines.join('\n')) + '">' + svg + '</div>';
+        }
+
+        // ====== Aggregation: render table ======
+        function renderAggregationTable(themes) {
+            var tbody = document.getElementById('aggregationTableBody');
+            if (!Array.isArray(themes) || themes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = themes.map(function(theme) {
+                var themeId = Number(theme.id);
+                var title = escapeHtml(theme.summary_subject_title || '-');
+                var trendData = theme.rank_trend_7d || [];
+                var chartId = 'agg-trend-' + themeId;
+                var isChecked = aggSelectedThemeIds.has(themeId);
+                var trendHTML = trendData.length > 0
+                    ? '<div class="score-trend-chart" id="' + chartId + '"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div></div>'
+                    : '-';
+                var fulfillmentHTML = renderFulfillmentBar(theme.fulfillment_stats);
+                var categoryHTML = renderCategoryBar(theme.category_stats);
+
+                // 处理平均上架时间显示
+                var avgDays = theme.avg_launch_days;
+                var avgDaysHTML = (avgDays !== null && avgDays !== undefined) ? escapeHtml(avgDays) + ' 天' : '-';
+
+                var isExpanded = aggExpandedThemeIds.has(themeId);
+                return '<tr data-theme-id="' + themeId + '">' +
+                    '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="' + themeId + '"' + (isChecked ? ' checked' : '') + ' onchange="handleAggRowCheckboxChange(this)"></td>' +
+                    '<td><div class="subject-main clickable-subject" onclick="toggleAggDetail(' + themeId + ')" title="点击展开/收起ASIN详情">' + title + '</div></td>' +
+                    '<td>' + escapeHtml(theme.appear_count ?? '-') + '</td>' +
+                    '<td>' + avgDaysHTML + '</td>' +
+                    '<td>' + trendHTML + '</td>' +
+                    '<td class="agg-fulfillment-cell">' + fulfillmentHTML + '</td>' +
+                    '<td class="agg-fulfillment-cell">' + categoryHTML + '</td>' +
+                    '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleAggDetail(' + themeId + ')">' + (isExpanded ? '收起' : 'ASIN详情') + '</button></td>' +
+                    '</tr>' +
+                    '<tr id="agg-detail-row-' + themeId + '" class="detail-row" style="display:none;">' +
+                    '<td colspan="8" class="detail-content" id="agg-detail-content-' + themeId + '">' +
+                    '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
+                    '</td>' +
+                    '</tr>';
+            }).join('');
+
+            themes.forEach(function(theme) {
+                var trendData = theme.rank_trend_7d || [];
+                if (trendData.length > 0) {
+                    initRankTrendChart('agg-trend-' + theme.id, trendData);
+                }
+            });
+
+            syncAggSelectAllState();
+        }
+
+        // ====== Aggregation: checkbox select all ======
+        var aggSelectedThemeIds = new Set();
+
+        function toggleAggSelectAll() {
+            var checkbox = document.getElementById('aggSelectAll');
+            var rowCheckboxes = document.querySelectorAll('.agg-row-checkbox');
+
+            rowCheckboxes.forEach(function(cb) {
+                var themeId = parseInt(cb.dataset.themeId, 10);
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    aggSelectedThemeIds.add(themeId);
+                } else {
+                    aggSelectedThemeIds.delete(themeId);
+                }
+            });
+
+            syncAggSelectAllState();
+        }
+
+        function clearAggSelection() {
+            aggSelectedThemeIds.clear();
+            var selectAll = document.getElementById('aggSelectAll');
+            if (selectAll) selectAll.checked = false;
+            document.querySelectorAll('.agg-row-checkbox').forEach(function(cb) {
+                cb.checked = false;
+            });
+        }
+
+        function handleAggRowCheckboxChange(checkbox) {
+            var themeId = parseInt(checkbox.dataset.themeId, 10);
+            if (checkbox.checked) {
+                aggSelectedThemeIds.add(themeId);
+            } else {
+                aggSelectedThemeIds.delete(themeId);
+            }
+
+            syncAggSelectAllState();
+        }
+
+        function syncAggSelectAllState() {
+            var selectAll = document.getElementById('aggSelectAll');
+            var rowCheckboxes = Array.from(document.querySelectorAll('.agg-row-checkbox'));
+            if (!selectAll) return;
+            selectAll.checked = rowCheckboxes.length > 0 && rowCheckboxes.every(function(cb) { return cb.checked; });
+        }
+
+        // ====== Aggregation: ASIN detail expand ======
+        var aggExpandedThemeIds = new Set();
+
+        function toggleAggDetail(themeId) {
+            var detailRow = document.getElementById('agg-detail-row-' + themeId);
+            var btn = document.querySelector('button[onclick="toggleAggDetail(' + themeId + ')"]');
+
+            if (!detailRow) return;
+
+            if (aggExpandedThemeIds.has(themeId)) {
+                // Collapse
+                detailRow.style.display = 'none';
+                aggExpandedThemeIds.delete(themeId);
+                if (btn) {
+                    btn.textContent = 'ASIN详情';
+                    btn.classList.remove('expanded');
+                }
+            } else {
+                // Expand
+                detailRow.style.display = 'table-row';
+                aggExpandedThemeIds.add(themeId);
+                if (btn) {
+                    btn.textContent = '收起';
+                    btn.classList.add('expanded');
+                }
+                loadAggAsins(themeId);
+            }
+        }
+
+        async function loadAggAsins(themeId) {
+            var contentCell = document.getElementById('agg-detail-content-' + themeId);
+            if (!contentCell) return;
+
+            contentCell.innerHTML = '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i><div>正在加载ASIN详情...</div></div>';
+
+            try {
+                var response = await fetch("{% url 'theme:api_theme_aggregation_asins' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
+                    body: JSON.stringify({ theme_id: themeId })
+                });
+                var result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || '数据加载失败');
+                }
+
+                var asins = result.data?.asins || [];
+                if (asins.length === 0) {
+                    contentCell.innerHTML = '<div class="agg-detail-empty"><i class="fas fa-box-open"></i><div>暂无ASIN数据</div></div>';
+                    return;
+                }
+
+                // Build card-style HTML
+                var html = '<div class="asin-detail-card">' +
+                    '<div class="asin-detail-header">' +
+                    '<div class="asin-detail-header-main">' +
+                    '<span class="asin-detail-icon"><i class="fas fa-cubes"></i></span>' +
+                    '<div class="asin-detail-header-copy">' +
+                    '<div class="asin-detail-title">ASIN列表</div>' +
+                    '<div class="asin-detail-subtitle">按聚合主题展示关联产品明细</div>' +
+                    '</div>' +
+                    '</div>' +
+                    '<span class="asin-detail-count">' + asins.length + ' 个产品</span>' +
+                    '</div>' +
+                    '<div class="asin-detail-body">' +
+                    '<div class="asin-detail-table-wrapper">' +
+                    '<table class="asin-detail-table">' +
+                    '<thead><tr>' +
+                    '<th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>排名趋势</th><th>品类</th><th>配送方式</th><th>上架日期</th>' +
+                    '</tr></thead><tbody>';
+
+                asins.forEach(function(row) {
+                    var asin = escapeHtml(row.asin || '');
+                    var asinRaw = row.asin || '';
+                    var title = escapeHtml(row.title || '');
+                    var titleTrans = escapeHtml(row.title_translation || '');
+                    var subject = escapeHtml(row.subject || '');
+                    var subjectTrans = escapeHtml(row.subject_translation || '');
+                    var category = escapeHtml(row.category || '');
+                    var launchDate = escapeHtml(row.launch_date || '-');
+                    var imageUrl = row.image_url || '';
+                    var fulfillmentBadge = renderFulfillmentBadge(row.fulfillment);
+                    var trendData = row.rank_trend_7d || [];
+                    var chartId = 'asin-trend-' + themeId + '-' + asinRaw.replace(/[^a-zA-Z0-9]/g, '');
+                    var trendHTML = trendData.length > 0
+                        ? '<div class="score-trend-chart" id="' + chartId + '"><svg width="120" height="50"></svg><div class="trend-tooltip" style="display: none; position: fixed; background: rgba(0,0,0,0.8); color: white; padding: 6px 10px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; white-space: nowrap;"></div></div>'
+                        : '-';
+
+                    html += '<tr>' +
+                        '<td class="asin-cell"><a href="https://www.amazon.com/dp/' + asin + '" target="_blank" class="agg-asin-link">' + asin + '</a></td>' +
+                        '<td>' + (imageUrl ? '<img src="' + imageUrl + '" class="detail-product-thumbnail" loading="lazy" onerror="this.onerror=null;this.remove();">' : '-') + '</td>' +
+                        '<td class="asin-title-cell"><div class="asin-text-block">' +
+                        '<span class="asin-text-line is-primary" title="' + (title || '-') + '">' + (title || '-') + '</span>' +
+                        (titleTrans ? '<span class="asin-text-line is-secondary" title="' + titleTrans + '">' + titleTrans + '</span>' : '') +
+                        '</div></td>' +
+                        '<td class="asin-subject-cell"><div class="asin-text-block">' +
+                        '<span class="asin-text-line is-primary" title="' + (subject || '-') + '">' + (subject || '-') + '</span>' +
+                        (subjectTrans ? '<span class="asin-text-line is-secondary" title="' + subjectTrans + '">' + subjectTrans + '</span>' : '') +
+                        '</div></td>' +
+                        '<td>' + trendHTML + '</td>' +
+                        '<td><span class="badge-category">' + category + '</span></td>' +
+                        '<td>' + fulfillmentBadge + '</td>' +
+                        '<td class="date-cell">' + launchDate + '</td>' +
+                        '</tr>';
+                });
+
+                html += '</tbody></table></div></div></div>';
+                contentCell.innerHTML = html;
+
+                // 初始化ASIN排名趋势图
+                asins.forEach(function(row) {
+                    var trendData = row.rank_trend_7d || [];
+                    if (trendData.length > 0) {
+                        var asinRaw = row.asin || '';
+                        var chartId = 'asin-trend-' + themeId + '-' + asinRaw.replace(/[^a-zA-Z0-9]/g, '');
+                        initRankTrendChart(chartId, trendData, { width: 120, height: 50 });
+                    }
+                });
+            } catch (error) {
+                contentCell.innerHTML = '<div class="agg-detail-empty"><i class="fas fa-exclamation-circle"></i><div>' + escapeHtml(error.message || '加载失败') + '</div></div>';
+            }
+        }
+
+        // ====== Aggregation: update stats ======
+        function updateAggregationStats(stats) {
+            if (!stats) return;
+            var el;
+            el = document.getElementById('aggTotalThemes');
+            if (el) el.textContent = stats.total_themes ?? '-';
+            el = document.getElementById('aggRecentThemes7d');
+            if (el) el.textContent = stats.recent_themes_7d ?? '-';
+            el = document.getElementById('aggRecentThemesMonth');
+            if (el) el.textContent = stats.recent_themes_month ?? '-';
+        }
+
+        // ====== Aggregation: sort ======
+        function handleAggregationSort(field) {
+            if (aggregationState.sort_field === field) {
+                aggregationState.sort_order = aggregationState.sort_order === 'asc' ? 'desc' : 'asc';
+            } else {
+                aggregationState.sort_field = field;
+                aggregationState.sort_order = field === 'summary_subject_title' ? 'asc' : 'desc';
+            }
+            updateAggregationSortHeaders();
+            aggregationState.page = 1;
+            loadAggregationTable();
+        }
+
+        function updateAggregationSortHeaders() {
+            document.querySelectorAll('#aggregation-tab th.sortable').forEach(function(th) {
+                var field = th.dataset.field;
+                th.classList.toggle('active', field === aggregationState.sort_field);
+            });
+        }
+
+        // ====== Aggregation: filters ======
+        function applyAggregationFilters() {
+            aggregationState.page = 1;
+            loadAggregationTable();
+        }
+
+        function resetAggregationFilters() {
+            document.getElementById('aggStartDate').value = '';
+            document.getElementById('aggEndDate').value = '';
+            clearAggSelection();
+            aggregationState.page = 1;
+            loadAggregationTable();
+        }
+
+        // ====== Aggregation: pagination ======
+        function updateAggregationPageSizeSelection(size) {
+            var pageSizeText = document.getElementById('aggPageSizeText');
+            if (pageSizeText) pageSizeText.textContent = size + '条';
+            document.querySelectorAll('#aggPageSizeDropdown .page-size-option').forEach(function(opt) {
+                opt.classList.remove('selected');
+            });
+            var selected = document.querySelector('#aggPageSizeDropdown .page-size-option[onclick="changeAggregationPageSize(' + size + ')"]');
+            if (selected) selected.classList.add('selected');
+        }
+
+        function updateAggregationPaginationStats() {
+            var page = aggregationState.page, pageSize = aggregationState.page_size, total = aggregationState.total;
+            var start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+            var end = total === 0 ? 0 : Math.min(page * pageSize, total);
+            var el = document.getElementById('aggPaginationStats');
+            if (el) el.textContent = start + '-' + end + ' / 共 ' + total + ' 条';
+        }
+
+        function renderAggregationPagination() {
+            var buttonsContainer = document.getElementById('aggPaginationButtons');
+            var paginationJump = document.getElementById('aggPaginationJump');
+            if (!buttonsContainer || !paginationJump) return;
+
+            var page = aggregationState.page, total = aggregationState.total, totalPages = aggregationState.total_pages, pageSize = aggregationState.page_size;
+
+            updateAggregationPageSizeSelection(pageSize);
+            updateAggregationPaginationStats();
+
+            if (!total || !totalPages) {
+                buttonsContainer.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.875rem;">暂无分页</span>';
+                paginationJump.style.display = 'none';
+                return;
+            }
+
+            var html = '';
+            html += '<button class="pagination-btn-new" onclick="changeAggregationPage(1)" ' + (page === 1 ? 'disabled' : '') + '>首页</button>';
+            html += '<button class="pagination-btn-new" onclick="changeAggregationPage(' + (page - 1) + ')" ' + (page === 1 ? 'disabled' : '') + '>上一页</button>';
+
+            var startPage = Math.max(1, page - 2);
+            var endPage = Math.min(totalPages, page + 2);
+
+            if (startPage > 1) {
+                html += '<button class="pagination-btn-new" onclick="changeAggregationPage(1)">1</button>';
+                if (startPage > 2) html += '<span class="pagination-ellipsis">...</span>';
+            }
+            for (var i = startPage; i <= endPage; i++) {
+                html += '<button class="pagination-btn-new ' + (i === page ? 'active' : '') + '" onclick="changeAggregationPage(' + i + ')">' + i + '</button>';
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += '<span class="pagination-ellipsis">...</span>';
+                html += '<button class="pagination-btn-new" onclick="changeAggregationPage(' + totalPages + ')">' + totalPages + '</button>';
+            }
+
+            html += '<button class="pagination-btn-new" onclick="changeAggregationPage(' + (page + 1) + ')" ' + (page === totalPages ? 'disabled' : '') + '>下一页</button>';
+            html += '<button class="pagination-btn-new" onclick="changeAggregationPage(' + totalPages + ')" ' + (page === totalPages ? 'disabled' : '') + '>尾页</button>';
+
+            buttonsContainer.innerHTML = html;
+            paginationJump.style.display = 'inline-flex';
+        }
+
+        function changeAggregationPage(newPage) {
+            if (newPage < 1 || newPage > aggregationState.total_pages) return;
+            aggregationState.page = newPage;
+            loadAggregationTable();
+            document.getElementById('aggregationTableContainer').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function toggleAggregationPageSizeDropdown() {
+            document.getElementById('aggPageSizeDropdown').classList.toggle('open');
+        }
+
+        function changeAggregationPageSize(newSize) {
+            aggregationState.page_size = newSize;
+            aggregationState.page = 1;
+            updateAggregationPageSizeSelection(newSize);
+            document.getElementById('aggPageSizeDropdown').classList.remove('open');
+            loadAggregationTable();
+        }
+
+        function handleAggregationPageJump(event) {
+            if (event.key !== 'Enter') return;
+            var page = parseInt(event.target.value, 10);
+            if (page && page >= 1 && page <= aggregationState.total_pages) {
+                changeAggregationPage(page);
+            }
+            event.target.value = '';
+        }
+
+        // Close aggregation page-size dropdown on outside click
+        document.addEventListener('click', function(event) {
+            var wrapper = document.getElementById('aggPageSizeWrapper');
+            var dropdown = document.getElementById('aggPageSizeDropdown');
+            if (wrapper && dropdown && !wrapper.contains(event.target)) {
+                dropdown.classList.remove('open');
+            }
         });
     </script>
 {% endblock %}
