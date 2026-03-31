@@ -91,6 +91,7 @@ def temu_management_view(request):
         'user_permissions_json': json.dumps(user_perms),  # 用于JS
         'is_admin': can_access_shop_management(user),
         'is_ops_leader': is_ops_leader(user),
+        'current_user_id': user.id,  # 用于前端判断是否为店铺所属人
     }
     return render(request, 'management/temu_shop_management.html', context)
 
@@ -281,6 +282,10 @@ def get_temu_shops_api(request):
                     'ops_role': ops_role,
                     'ops_group': ops_group,
                     'divi_shop_id': shop.divi_shop_id or '',
+                    'length': shop.length,
+                    'width': shop.width,
+                    'height': shop.height,
+                    'weight': shop.weight,
                 }
 
                 return JsonResponse({
@@ -302,6 +307,7 @@ def get_temu_shops_api(request):
         operator_filter = request.GET.get('operator', '').strip()
         ops_group_filter = request.GET.get('ops_group', '').strip()
         customer_filter = request.GET.get('customer', '').strip()
+        dimensions_filter = request.GET.get('dimensions', '').strip()
         search_term = request.GET.get('search', '').strip()
 
         if page < 1: page = 1
@@ -356,6 +362,22 @@ def get_temu_shops_api(request):
                 Q(shop_temu_id__icontains=search_term)
             )
 
+        # 处理包装规格筛选
+        if dimensions_filter == '1':  # 已配置（四个值都不为null且大于0）
+            query = query.exclude(
+                Q(length__isnull=True) | Q(length__lte=0) |
+                Q(width__isnull=True) | Q(width__lte=0) |
+                Q(height__isnull=True) | Q(height__lte=0) |
+                Q(weight__isnull=True) | Q(weight__lte=0)
+            )
+        elif dimensions_filter == '0':  # 未配置（至少有一个为空或<=0）
+            query = query.filter(
+                Q(length__isnull=True) | Q(length__lte=0) |
+                Q(width__isnull=True) | Q(width__lte=0) |
+                Q(height__isnull=True) | Q(height__lte=0) |
+                Q(weight__isnull=True) | Q(weight__lte=0)
+            )
+
         total_count = query.count()
         offset = (page - 1) * page_size
         shops = query.order_by('id')[offset:offset + page_size]
@@ -375,7 +397,7 @@ def get_temu_shops_api(request):
 
         shops_data = []
         for shop in shops:
-            ops_info = users_info.get(shop.ops_id, {'first_name': '-', 'group': '-'})
+            ops_info = users_info.get(shop.ops_id, {'first_name': '-', 'group': '-', 'role': '-'})
             shops_data.append({
                 'id': shop.id,
                 'shop_name': shop.shop_name or '-',
@@ -402,6 +424,10 @@ def get_temu_shops_api(request):
                 'ops_role': ops_info['role'],
                 'ops_group': ops_info['group'],
                 'divi_shop_id': shop.divi_shop_id or '',
+                'length': shop.length,
+                'width': shop.width,
+                'height': shop.height,
+                'weight': shop.weight,
             })
 
         return JsonResponse({
@@ -701,3 +727,85 @@ def bulk_update_operator_api(request):
             'success': False,
             'error': f'服务器错误: {str(e)}'
         }, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def update_temu_shop_dimensions_api(request, shop_id):
+    """
+    更新Temu店铺的尺寸重量信息
+    权限要求：管理员 或 该店铺的所属运营人员
+    """
+    try:
+        shop = TemuShop.objects.get(id=shop_id)
+    except TemuShop.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
+
+    try:
+        # 权限校验：管理员 或 店铺所属人
+        user = request.user
+        if not can_access_shop_management(user) and shop.ops_id != user.id:
+            return JsonResponse({'success': False, 'error': '无权限更新该店铺信息'}, status=403)
+
+        data = json.loads(request.body or '{}')
+
+        # 更新尺寸重量字段（允许为空）
+        with transaction.atomic():
+            # 长
+            length = data.get('length')
+            if length is not None and length != '':
+                try:
+                    shop.length = float(length)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '长度格式错误'}, status=400)
+            else:
+                shop.length = None
+
+            # 宽
+            width = data.get('width')
+            if width is not None and width != '':
+                try:
+                    shop.width = float(width)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '宽度格式错误'}, status=400)
+            else:
+                shop.width = None
+
+            # 高
+            height = data.get('height')
+            if height is not None and height != '':
+                try:
+                    shop.height = float(height)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '高度格式错误'}, status=400)
+            else:
+                shop.height = None
+
+            # 重量
+            weight = data.get('weight')
+            if weight is not None and weight != '':
+                try:
+                    shop.weight = float(weight)
+                except (ValueError, TypeError):
+                    return JsonResponse({'success': False, 'error': '重量格式错误'}, status=400)
+            else:
+                shop.weight = None
+
+            shop.save()
+
+        return JsonResponse({
+            'success': True, 
+            'message': '尺寸重量信息更新成功',
+            'data': {
+                'length': shop.length,
+                'width': shop.width,
+                'height': shop.height,
+                'weight': shop.weight
+            }
+        })
+
+    except Exception as e:
+        print(f"更新Temu店铺尺寸重量错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)

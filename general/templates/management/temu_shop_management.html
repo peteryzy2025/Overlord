@@ -196,6 +196,11 @@
                 </div>
 
                 <div class="filter-group">
+                    <label class="filter-label">包装规格</label>
+                    <div id="temuDimensionsFilter" class="searchable-select single" data-placeholder="全部"></div>
+                </div>
+
+                <div class="filter-group">
                     <label class="filter-label">搜索店铺</label>
                     <input type="text" class="form-control" id="temuShopSearch" placeholder="搜索店铺名称/账号/TemuID">
                 </div>
@@ -371,6 +376,40 @@
             </div>
         </div>
     </div>
+
+    <!-- 尺寸重量编辑模态框 -->
+    <div class="modal-overlay" id="dimensionsModalOverlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">编辑尺寸重量</h2>
+                <button class="modal-close" onclick="closeDimensionsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; padding: 1rem;">
+                    <div class="form-group">
+                        <label>长 (inch)</label>
+                        <input type="number" id="dim-length" step="0.01" placeholder="请输入长度">
+                    </div>
+                    <div class="form-group">
+                        <label>宽 (inch)</label>
+                        <input type="number" id="dim-width" step="0.01" placeholder="请输入宽度">
+                    </div>
+                    <div class="form-group">
+                        <label>高 (inch)</label>
+                        <input type="number" id="dim-height" step="0.01" placeholder="请输入高度">
+                    </div>
+                    <div class="form-group">
+                        <label>重量 (lb)</label>
+                        <input type="number" id="dim-weight" step="0.01" placeholder="请输入重量">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary btn-cancel-modal" onclick="closeDimensionsModal()">取消</button>
+                <button class="btn btn-save-modal" onclick="saveDimensions()">保存</button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -385,6 +424,8 @@
         const userPermsStr = USER_PERMISSIONS.map(p => String(p));
         // 如果权限列表为空，默认设为管理员（临时解决方案）
         const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552') || USER_PERMISSIONS.length === 0;
+        // 当前登录用户ID（用于判断是否为店铺所属人）
+        const CURRENT_USER_ID = {{ current_user_id|default:"null" }};
 
         // 全局变量
         let allOperators = [];
@@ -397,7 +438,7 @@
         let currentPageSize = 20;
 
         // 筛选器实例
-        let statusSelect, customerSelect, operatorSelect, groupSelect, projectFilterSelect;
+        let statusSelect, customerSelect, operatorSelect, groupSelect, projectFilterSelect, dimensionsFilterSelect;
         // 模态框实例
         let modalOpsSelect, modalStatusSelect, modalProjectSelect;
 
@@ -425,6 +466,7 @@
                     ops_group: formatMultiSelect(groupSelect ? groupSelect.getValue() : ''),
                     customer: formatMultiSelect(customerSelect ? customerSelect.getValue() : ''),
                     project: formatMultiSelect(projectFilterSelect ? projectFilterSelect.getValue() : ''),
+                    dimensions: dimensionsFilterSelect ? dimensionsFilterSelect.getValue() : '',
                     search: document.getElementById('temuShopSearch').value
                 });
 
@@ -755,6 +797,19 @@
             });
             projectFilterSelect.setValue(['']);
             projectFilterSelect.onChange = () => filterTemuShops();
+
+            // 包装规格筛选器（单选）
+            dimensionsFilterSelect = new SearchableSelect('#temuDimensionsFilter', {
+                options: [
+                    {value: '', label: '全部'},
+                    {value: '1', label: '已配置包装规格'},
+                    {value: '0', label: '未配置包装规格'}
+                ],
+                placeholder: '全部',
+                multiple: false
+            });
+            dimensionsFilterSelect.setValue('');
+            dimensionsFilterSelect.onChange = () => filterTemuShops();
         }
 
         function updateFilterOptions() {
@@ -1032,15 +1087,44 @@
                 const checkboxCell = IS_ADMIN 
                     ? `<td class="w-checkbox"><input type="checkbox" class="shop-select-checkbox" value="${shop.id}" onchange="updateBulkActionBar()"></td>`
                     : `<td class="w-checkbox"><input type="checkbox" disabled style="cursor:not-allowed;opacity:0.5;"></td>`;
-                // 根据权限生成编辑按钮
-                const actionCell = IS_ADMIN
-                    ? `<td><button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button></td>`
-                    : `<td><button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;background-color:var(--bg-tertiary);color:var(--text-secondary);">不可编辑</button></td>`;
+                // 根据权限生成操作按钮
+                // 编辑店铺：仅管理员可操作
+                // 编辑尺寸重量：管理员或店铺所属人可操作
+                const canEditShop = IS_ADMIN;  // 仅管理员可编辑店铺信息
+                const canEditDimensions = IS_ADMIN || shop.ops_id === CURRENT_USER_ID;  // 管理员或所属人可编辑尺寸重量
+                const btnStyle = 'height: 28px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background-color: var(--accent-color); color: white; border: none; border-radius: 4px; cursor: pointer;';
+                const btnDisabledStyle = 'height: 28px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background-color: var(--bg-tertiary); color: var(--text-secondary); border: none; border-radius: 4px; opacity: 0.6; cursor: not-allowed;';
                 
+                // 生成编辑店铺按钮
+                const editShopBtn = canEditShop
+                    ? `<button class="btn" style="${btnStyle}" onclick="openEditModal(${shop.id})" title="编辑店铺信息">
+                        <i class="fas fa-edit" style="font-size: 12px;"></i>
+                       </button>`
+                    : `<button class="btn" disabled style="${btnDisabledStyle}" title="仅管理员可编辑店铺信息">
+                        <i class="fas fa-edit" style="font-size: 12px;"></i>
+                       </button>`;
+                
+                // 生成编辑尺寸重量按钮
+                const editDimensionsBtn = canEditDimensions
+                    ? `<button class="btn" style="${btnStyle}; margin-left: 6px;" onclick="openDimensionsModal(${shop.id})" title="编辑尺寸重量">
+                        <i class="fas fa-cube" style="font-size: 12px;"></i>
+                       </button>`
+                    : `<button class="btn" disabled style="${btnDisabledStyle}; margin-left: 6px;" title="无权限编辑尺寸重量">
+                        <i class="fas fa-cube" style="font-size: 12px;"></i>
+                       </button>`;
+                
+                const actionCell = `<td style="white-space: nowrap;">${editShopBtn}${editDimensionsBtn}</td>`;
+                
+                // 判断是否已配置包装规格（四个值都不为空）
+                const hasDimensions = shop.length && shop.width && shop.height && shop.weight;
+                const dimensionsIcon = hasDimensions
+                    ? `<i class="fas fa-check-circle" style="color: #28a745; margin-left: 6px;" title="已配置包装规格"></i>`
+                    : `<i class="fas fa-times-circle" style="color: #dc3545; margin-left: 6px;" title="未配置包装规格"></i>`;
+
                 return `
             <tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">
                 ${checkboxCell}
-                <td class="field-shop_name" data-shop-id="${shop.id}">${shop.shop_name}</td>
+                <td class="field-shop_name" data-shop-id="${shop.id}">${shop.shop_name}${dimensionsIcon}</td>
                 <td class="field-project_name">${shop.project_name || '-'}</td>
                 <td class="field-customer">${shop.customer}</td>
                 <td class="field-ops_name">${shop.ops_first_name}</td>
@@ -1082,6 +1166,7 @@
             if (operatorSelect) operatorSelect.setValue(['']);
             if (groupSelect) groupSelect.setValue(['']);
             if (projectFilterSelect) projectFilterSelect.setValue(['']);
+            if (dimensionsFilterSelect) dimensionsFilterSelect.setValue('');
 
             document.getElementById('temuShopSearch').value = '';
             currentPage = 1;
@@ -1126,6 +1211,77 @@
             document.getElementById('shopModalOverlay').style.display = 'none';
             modalMode = null;
             currentShopId = null;
+        }
+
+        // ========== 尺寸重量编辑功能 ==========
+        let currentDimensionsShopId = null;
+
+        function openDimensionsModal(shopId) {
+            currentDimensionsShopId = shopId;
+            
+            // 获取店铺当前数据
+            fetch(`/api/temu-shops/?page=1&page_size=1&id=${shopId}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data.length > 0) {
+                        const shop = result.data[0];
+                        // 填充当前值（如果有的话）
+                        document.getElementById('dim-length').value = shop.length || '';
+                        document.getElementById('dim-width').value = shop.width || '';
+                        document.getElementById('dim-height').value = shop.height || '';
+                        document.getElementById('dim-weight').value = shop.weight || '';
+                        document.getElementById('dimensionsModalOverlay').style.display = 'block';
+                    } else {
+                        SearchableSelect.notify('获取店铺数据失败', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('获取店铺数据错误:', error);
+                    SearchableSelect.notify('获取店铺数据失败', 'error');
+                });
+        }
+
+        function closeDimensionsModal() {
+            document.getElementById('dimensionsModalOverlay').style.display = 'none';
+            currentDimensionsShopId = null;
+            // 清空输入
+            document.getElementById('dim-length').value = '';
+            document.getElementById('dim-width').value = '';
+            document.getElementById('dim-height').value = '';
+            document.getElementById('dim-weight').value = '';
+        }
+
+        async function saveDimensions() {
+            if (!currentDimensionsShopId) return;
+
+            const data = {
+                length: document.getElementById('dim-length').value,
+                width: document.getElementById('dim-width').value,
+                height: document.getElementById('dim-height').value,
+                weight: document.getElementById('dim-weight').value
+            };
+
+            try {
+                const response = await fetch(`/api/temu-shops/${currentDimensionsShopId}/update-dimensions/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken(),
+                    },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    SearchableSelect.notify('尺寸重量信息更新成功！', 'success');
+                    closeDimensionsModal();
+                } else {
+                    SearchableSelect.notify('操作失败：' + (result.error || '未知错误'), 'error');
+                }
+            } catch (error) {
+                console.error('保存尺寸重量失败:', error);
+                SearchableSelect.notify('保存失败，请检查网络连接', 'error');
+            }
         }
 
         function generateModalForm(shopData = null) {
@@ -1574,18 +1730,13 @@
             }
         });
 
-        document.getElementById('shopModalOverlay').addEventListener('click', function (e) {
-            if (e.target === this) closeModal();
-        });
-
-        document.getElementById('exportModalOverlay').addEventListener('click', function (e) {
-            if (e.target === this) closeExportModal();
-        });
+        // 注：点击遮罩层关闭模态框的功能已取消，只能通过点击关闭按钮或按Escape键关闭
 
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeModal();
                 closeExportModal();
+                closeDimensionsModal();
             }
         });
     </script>

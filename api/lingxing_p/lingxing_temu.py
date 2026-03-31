@@ -777,11 +777,20 @@ async def temu_order_create_skus(global_order_no: str):
                 app_id = project.lingxing_app_id
                 app_secret = project.lingxing_app_secret
 
-            return sku_list, app_id, app_secret
-        except TemuOrder.DoesNotExist:
-            return [], None, None
+            # 获取店铺包装规格（inch/lb）
+            temu_shop = order.lingxing_shop.temu_shop if order.lingxing_shop else None
+            dimensions = {
+                'length': temu_shop.length if temu_shop else None,
+                'width': temu_shop.width if temu_shop else None,
+                'height': temu_shop.height if temu_shop else None,
+                'weight': temu_shop.weight if temu_shop else None,
+            }
 
-    sku_list, app_id, app_secret = await get_order_skus_and_auth(global_order_no)
+            return sku_list, app_id, app_secret, dimensions
+        except TemuOrder.DoesNotExist:
+            return [], None, None, {}
+
+    sku_list, app_id, app_secret, dimensions = await get_order_skus_and_auth(global_order_no)
 
     if not sku_list:
         print("没有可创建的 SKU")
@@ -792,6 +801,7 @@ async def temu_order_create_skus(global_order_no: str):
         return False
 
     print(f"待创建 SKU 列表: {sku_list}")
+    print(f"店铺包装规格: {dimensions}")
 
     # 循环创建/编辑 SKU
     for sku in sku_list:
@@ -801,6 +811,10 @@ async def temu_order_create_skus(global_order_no: str):
             cg_price="10",  # 暂时写死
             app_id=app_id,
             app_secret=app_secret,
+            length_inch=dimensions.get('length'),
+            width_inch=dimensions.get('width'),
+            height_inch=dimensions.get('height'),
+            weight_lb=dimensions.get('weight'),
         )
 
     return True
@@ -914,19 +928,57 @@ async def step1_set_sku(
         cg_price: str,
         app_id: str = None,
         app_secret: str = None,
+        length_inch: float = None,
+        width_inch: float = None,
+        height_inch: float = None,
+        weight_lb: float = None,
 ):
     """
     新建/编辑产品到领星仓库
+    
+    Args:
+        sku: SKU编码
+        cg_price: 采购价格
+        app_id: 领星AppID
+        app_secret: 领星AppSecret
+        length_inch: 包装长度（英寸），内部转换为厘米
+        width_inch: 包装宽度（英寸），内部转换为厘米
+        height_inch: 包装高度（英寸），内部转换为厘米
+        weight_lb: 产品重量（磅），内部转换为克
     """
+    # 单位转换：inch -> cm (1 inch = 2.54 cm)
+    # 单位转换：lb -> g (1 lb = 453.592 g)
+    def inch_to_cm(inch):
+        if inch is None or inch == '':
+            return 20  # 默认值
+        try:
+            return round(float(inch) * 2.54, 2)
+        except (ValueError, TypeError):
+            return 20
+    
+    def lb_to_g(lb):
+        if lb is None or lb == '':
+            return 150  # 默认值
+        try:
+            return round(float(lb) * 453.592, 2)
+        except (ValueError, TypeError):
+            return 150
+    
+    # 转换尺寸重量
+    cg_length = inch_to_cm(length_inch)
+    cg_width = inch_to_cm(width_inch)
+    cg_height = inch_to_cm(height_inch)
+    cg_weight = lb_to_g(weight_lb)
+    
     req_body = {
         "sku": sku,
         "product_name": sku,
         "sku_identifier": sku,
         "cg_price": cg_price,
-        'cg_package_length': 20,
-        'cg_package_width': 20,
-        'cg_package_height': 3,
-        'cg_product_gross_weight': 150,
+        'cg_package_length': cg_length,
+        'cg_package_width': cg_width,
+        'cg_package_height': cg_height,
+        'cg_product_gross_weight': cg_weight,
         'description': "temu订单同步，自动创建/更新产品",
     }
 
