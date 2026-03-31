@@ -532,7 +532,6 @@ class ThemeSummary(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
     summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
     report = models.BooleanField(default=False, verbose_name='举报主题')
-
     class Meta:
         db_table = 'theme_summary'
         verbose_name = '主题汇总'
