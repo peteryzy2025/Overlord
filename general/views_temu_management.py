@@ -363,19 +363,19 @@ def get_temu_shops_api(request):
             )
 
         # 处理包装规格筛选
-        if dimensions_filter == '1':  # 已配置（四个值都不为空）
+        if dimensions_filter == '1':  # 已配置（四个值都不为null且大于0）
             query = query.exclude(
-                Q(length__isnull=True) | Q(length='') |
-                Q(width__isnull=True) | Q(width='') |
-                Q(height__isnull=True) | Q(height='') |
-                Q(weight__isnull=True) | Q(weight='')
+                Q(length__isnull=True) | Q(length__lte=0) |
+                Q(width__isnull=True) | Q(width__lte=0) |
+                Q(height__isnull=True) | Q(height__lte=0) |
+                Q(weight__isnull=True) | Q(weight__lte=0)
             )
-        elif dimensions_filter == '0':  # 未配置（至少有一个为空）
+        elif dimensions_filter == '0':  # 未配置（至少有一个为空或<=0）
             query = query.filter(
-                Q(length__isnull=True) | Q(length='') |
-                Q(width__isnull=True) | Q(width='') |
-                Q(height__isnull=True) | Q(height='') |
-                Q(weight__isnull=True) | Q(weight='')
+                Q(length__isnull=True) | Q(length__lte=0) |
+                Q(width__isnull=True) | Q(width__lte=0) |
+                Q(height__isnull=True) | Q(height__lte=0) |
+                Q(weight__isnull=True) | Q(weight__lte=0)
             )
 
         total_count = query.count()
