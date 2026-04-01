@@ -32,7 +32,7 @@ HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
 
 def can_access_theme_management(user):
     """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
-    return has_perm_code(user, '555') or has_perm_code(user, '552')
+    return has_perm_code(user, '555')
 
 def has_perm_code(user, code):
     """检查用户是否有特定权限码"""
@@ -49,7 +49,7 @@ def aba_data_page(request):
     ABA 数据管理页面
     """
     user = request.user
-    if not can_access_theme_management(user) and user.stat != 'operation':
+    if not can_access_theme_management(user) and user.status != 'operation':
         return redirect('general:main')
     return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
 

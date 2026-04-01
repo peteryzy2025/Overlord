@@ -1483,6 +1483,132 @@ class AmazonListing(models.Model):
         db_comment="主题风险等级",
     )
 
+    # ========== 商品信息字段 ==========
+
+    small_image_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='商品缩略图地址',
+        db_comment='商品缩略图URL'
+    )
+
+    seller_sku = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='MSKU',
+        db_comment='卖家SKU（MSKU）'
+    )
+
+    seller_rank = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='排名',
+        db_comment='销售排名'
+    )
+
+    seller_category_new = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        verbose_name='排名所属类别',
+        db_comment='排名所属的类别列表，如["Beauty & Personal Care"]'
+    )
+
+    # ========== 销量字段 ==========
+
+    volume_1d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-昨天',
+        db_comment='昨天销量'
+    )
+
+    volume_7d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-7天',
+        db_comment='7天销量'
+    )
+
+    volume_14d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-14天',
+        db_comment='14天销量'
+    )
+
+    volume_30d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-30天',
+        db_comment='30天销量'
+    )
+
+    # ========== 销售额字段（保留2位小数） ==========
+
+    amount_1d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-昨天',
+        db_comment='昨天销售额'
+    )
+
+    amount_7d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-7天',
+        db_comment='7天销售额'
+    )
+
+    amount_14d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-14天',
+        db_comment='14天销售额'
+    )
+
+    amount_30d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-30天',
+        db_comment='30天销售额'
+    )
+
+    # ========== 日均销量字段 ==========
+
+    avg_volume_7d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-7日',
+        db_comment='7日日均销量'
+    )
+
+    avg_volume_14d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-14日',
+        db_comment='14日日均销量'
+    )
+
+    avg_volume_30d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-30日',
+        db_comment='30日日均销量'
+    )
+
+    # 下面是基础信息
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 

@@ -122,7 +122,6 @@ def get_empty_size_ids():
 
 
 if __name__ == "__main__":
-    # sync_products()
-    # fetch_products()
-    empty_ids = get_empty_size_ids()
-    print(empty_ids)
+    sync_products()
+    # empty_ids = get_empty_size_ids()
+    # print(empty_ids)
