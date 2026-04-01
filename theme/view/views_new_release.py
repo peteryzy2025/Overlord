@@ -10,9 +10,10 @@ from datetime import datetime, timedelta
 import json
 
 from theme.models import AmazonNewReleaseRank, ThemeNewDailyData, ThemeSummary
+from theme.view.permissions import theme_access_required
 
 
-@login_required
+@theme_access_required
 def new_release_page(request):
     total_products = AmazonNewReleaseRank.objects.count()
 
@@ -83,6 +84,7 @@ def new_release_page(request):
     return render(request, 'new_release.html', context)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
 def api_new_release_list(request):
@@ -245,6 +247,7 @@ def api_new_release_list(request):
         return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
 def api_theme_aggregation_list(request):
@@ -442,6 +445,7 @@ def api_theme_aggregation_list(request):
         return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
 def api_theme_aggregation_asins(request):
