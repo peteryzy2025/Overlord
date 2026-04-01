@@ -7,6 +7,7 @@ import threading
 import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
+from functools import wraps
 
 from django.core.cache import cache
 from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, FloatField, IntegerField, Max, OuterRef, Q, Subquery, Value, When
@@ -14,6 +15,7 @@ from django.db.models.functions import Cast, Coalesce
 from django.db import close_old_connections, transaction
 from django.http import JsonResponse
 from django.shortcuts import render,redirect
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods
 
 from aba.models import AbaNoiseWord, AbaReportWeek, SearchTerm, SearchTermMetric
@@ -29,10 +31,7 @@ TERM_ID_LIST_CACHE_PREFIX = 'aba:term-ids:'
 TERM_ID_LIST_CACHE_TTL = 180  # 3分钟，翻页缓存
 ABA_METRIC_INDEX_CACHE_PREFIX = 'aba:metric-index:'
 HOT_WORD_PICKUP_RANK_THRESHOLD = 30000
-
-def can_access_theme_management(user):
-    """店铺管理页面权限：555(超管) 或 552(店铺管理)"""
-    return has_perm_code(user, '555') or has_perm_code(user, '552')
+ABA_ACCESS_CODES = {555, 8}
 
 def has_perm_code(user, code):
     """检查用户是否有特定权限码"""
@@ -44,16 +43,45 @@ def has_perm_code(user, code):
         return user.permission_configs.filter(code=code_int).exists()
     except (ValueError, TypeError):
         return False
+
+
+def can_access_aba(user):
+    """ABA 页面权限：仅 555 或 8 可访问。"""
+    if not user or not user.is_authenticated:
+        return False
+
+    user_codes = set(user.permission_configs.values_list('code', flat=True))
+    return bool(user_codes & ABA_ACCESS_CODES)
+
+
+def aba_permission_required(view_func):
+    """统一保护 ABA 页面与 API。"""
+    @login_required
+    @wraps(view_func)
+    def wrapped_view(request, *args, **kwargs):
+        if can_access_aba(request.user):
+            return view_func(request, *args, **kwargs)
+
+        if request.path.startswith('/api/') or request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': '无权访问 ABA 页面',
+            }, status=403)
+
+        return redirect('general:main')
+
+    return wrapped_view
+
+
+@aba_permission_required
 def aba_data_page(request):
     """
     ABA 数据管理页面
     """
-    user = request.user
-    if not can_access_theme_management(user) and user.stat != 'operation':
-        return redirect('general:main')
     return render(request, 'aba/aba_data.html', {'active_page': 'aba_data'})
 
 
+@aba_permission_required
 def aba_noise_words_page(request):
     """
     ABA 去噪词表页面
@@ -1232,6 +1260,7 @@ def _launch_aba_total_count_task(filters):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_aba_data_api(request):
     """
     获取 ABA 热词榜列表 API。
@@ -1485,6 +1514,7 @@ def get_aba_data_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_aba_new_words_api(request):
     """
     获取 ABA 新词榜列表 API
@@ -1616,6 +1646,7 @@ def get_aba_new_words_api(request):
 
 #=========批量去噪接口====================
 @require_http_methods(["POST"])
+@aba_permission_required
 def update_search_term_denoising_api(request):
     """
     更新搜索词的去噪状态
@@ -1666,6 +1697,7 @@ def update_search_term_denoising_api(request):
 
 
 @require_http_methods(["POST"])
+@aba_permission_required
 def start_custom_denoising_api(request):
     """
     启动自定义批量去噪任务
@@ -1702,6 +1734,7 @@ def start_custom_denoising_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_custom_denoising_progress_api(request):
     """
     获取自定义批量去噪任务进度
@@ -1727,6 +1760,7 @@ def get_custom_denoising_progress_api(request):
 
 
 @require_http_methods(["POST"])
+@aba_permission_required
 def start_add_noise_words_api(request):
     """
     启动批量添加去噪词任务
@@ -1763,6 +1797,7 @@ def start_add_noise_words_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_add_noise_words_progress_api(request):
     """
     获取批量添加去噪词任务进度
@@ -1788,6 +1823,7 @@ def get_add_noise_words_progress_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def start_aba_total_count_api(request):
     """
     启动 ABA 热词榜总页数计算任务
@@ -1835,6 +1871,7 @@ def start_aba_total_count_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_aba_total_count_progress_api(request):
     """
     获取 ABA 热词榜总页数计算任务进度
@@ -1860,6 +1897,7 @@ def get_aba_total_count_progress_api(request):
 
 
 @require_http_methods(["GET"])
+@aba_permission_required
 def get_available_weeks_api(request):
     """
     获取可用的周期（周）列表
@@ -1891,6 +1929,7 @@ def get_available_weeks_api(request):
 
 
 @require_http_methods(["POST"])
+@aba_permission_required
 def get_aba_noise_words_api(request):
     """
     获取 ABA 去噪词表列表
@@ -1951,6 +1990,7 @@ def get_aba_noise_words_api(request):
 
 
 @require_http_methods(["POST"])
+@aba_permission_required
 def delete_aba_noise_word_api(request):
     """
     删除 ABA 去噪词
