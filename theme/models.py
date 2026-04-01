@@ -1,4 +1,7 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.signals import post_save, pre_save
+from django.dispatch import receiver
 
 
 class AmazonProduct(models.Model):
@@ -73,7 +76,7 @@ class AmazonThemeNovelty(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     is_latest_deal = models.BooleanField(default=False, verbose_name='是否为最新成交')
-    
+
     # 关联到新奇特主题（新增字段）
     theme_novelty = models.ForeignKey(
         'ThemeNovelty',
@@ -517,6 +520,7 @@ class AmazonNewReleaseRank(models.Model):
                                    null=True,
                                    blank=True,
                                    verbose_name="配送方式")
+
     class Meta:
         db_table = 'theme_amazon_new_release_rank'
         verbose_name = '亚马逊新品榜主题表'
@@ -532,6 +536,8 @@ class ThemeSummary(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
     summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
     report = models.BooleanField(default=False, verbose_name='举报主题')
+    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间',db_index=True)
+
     class Meta:
         db_table = 'theme_summary'
         verbose_name = '主题汇总'
@@ -542,6 +548,231 @@ class ThemeSummary(models.Model):
     def __str__(self):
         return f'{self.summary_subject_title}'
 
+
+
+class NewReleaseThemeReport(models.Model):
+    reporter = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='new_release_theme_reports',
+        verbose_name='举报人'
+    )
+    theme = models.ForeignKey(
+        'ThemeSummary',
+        on_delete=models.CASCADE,
+        related_name='new_release_theme_reports',
+        verbose_name='被举报主题',
+        db_index=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='举报时间')
+
+    class Meta:
+        db_table = 'theme_new_release_theme_report'
+        verbose_name = '新品榜主题举报记录'
+        verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['reporter', 'theme'],
+                name='uniq_new_release_theme_report'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['theme']),
+            models.Index(fields=['reporter', 'created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def clean(self):
+        if not self.theme_id:
+            raise ValidationError('必须选择举报主题')
+        if self.pk:
+            previous = type(self).objects.filter(pk=self.pk).values('reporter_id', 'theme_id').first()
+            if previous and (
+                previous['reporter_id'] != self.reporter_id or
+                previous['theme_id'] != self.theme_id
+            ):
+                raise ValidationError('主题举报记录创建后不可修改，请删除后重新创建')
+
+    def save(self, *args, **kwargs):
+        is_create = self._state.adding
+        self.clean()
+        super().save(*args, **kwargs)
+
+        if is_create:
+            NewReleaseAsinReport.sync_for_theme_report(self)
+
+    @classmethod
+    def is_reported_by(cls, theme, reporter):
+        if not theme or not reporter:
+            return False
+        return cls.objects.filter(reporter=reporter, theme=theme).exists()
+
+    def __str__(self):
+        reporter_name = self.reporter or '未知用户'
+        return f"{reporter_name} 举报主题:{self.theme.summary_subject_title[:20]}"
+
+
+class NewReleaseAsinReport(models.Model):
+    reporter = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='new_release_asin_reports',
+        verbose_name='举报人'
+    )
+    asin = models.ForeignKey(
+        'AmazonNewReleaseRank',
+        on_delete=models.CASCADE,
+        related_name='new_release_asin_reports',
+        verbose_name='被举报ASIN',
+        db_index=True
+    )
+    source_theme_report = models.ForeignKey(
+        'NewReleaseThemeReport',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='asin_reports',
+        verbose_name='来源主题举报'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='举报时间')
+
+    class Meta:
+        db_table = 'theme_new_release_asin_report'
+        verbose_name = '新品榜ASIN举报记录'
+        verbose_name_plural = verbose_name
+        constraints = [
+            models.UniqueConstraint(
+                fields=['reporter', 'asin'],
+                condition=models.Q(source_theme_report__isnull=True),
+                name='uniq_new_release_manual_asin_report'
+            ),
+            models.UniqueConstraint(
+                fields=['source_theme_report', 'asin'],
+                condition=models.Q(source_theme_report__isnull=False),
+                name='uniq_new_release_theme_derived_asin_report'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['asin']),
+            models.Index(fields=['source_theme_report']),
+            models.Index(fields=['reporter', 'created_at']),
+        ]
+        ordering = ['-created_at']
+
+    def clean(self):
+        if not self.asin_id:
+            raise ValidationError('必须选择举报ASIN')
+
+        if self.source_theme_report_id:
+            if self.reporter_id and self.reporter_id != self.source_theme_report.reporter_id:
+                raise ValidationError('来源主题举报人与ASIN举报人不一致')
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def sync_for_theme_report(cls, theme_report):
+        if not theme_report.reporter_id or not theme_report.theme_id:
+            return 0
+
+        asin_ids = list(
+            AmazonNewReleaseRank.objects.filter(summary_subject_id=theme_report.theme_id)
+            .values_list('asin', flat=True)
+        )
+        if not asin_ids:
+            return 0
+
+        reports_to_create = [
+            cls(
+                reporter_id=theme_report.reporter_id,
+                asin_id=asin_id,
+                source_theme_report=theme_report,
+            )
+            for asin_id in asin_ids
+        ]
+        cls.objects.bulk_create(reports_to_create, ignore_conflicts=True)
+        return len(reports_to_create)
+
+    @classmethod
+    def sync_for_asin(cls, asin, previous_theme_id=None):
+        current_theme_id = asin.summary_subject_id
+
+        if previous_theme_id and previous_theme_id != current_theme_id:
+            cls.objects.filter(
+                asin=asin,
+                source_theme_report__theme_id=previous_theme_id,
+            ).delete()
+
+        if not current_theme_id:
+            return 0
+
+        theme_reports = list(
+            NewReleaseThemeReport.objects.filter(theme_id=current_theme_id)
+            .exclude(reporter__isnull=True)
+            .values('id', 'reporter_id')
+        )
+        if not theme_reports:
+            return 0
+
+        reports_to_create = [
+            cls(
+                reporter_id=theme_report['reporter_id'],
+                asin=asin,
+                source_theme_report_id=theme_report['id'],
+            )
+            for theme_report in theme_reports
+        ]
+        cls.objects.bulk_create(reports_to_create, ignore_conflicts=True)
+        return len(reports_to_create)
+
+    @classmethod
+    def rebuild_for_theme(cls, theme_id):
+        if not theme_id:
+            return 0
+
+        cls.objects.filter(
+            source_theme_report__theme_id=theme_id,
+        ).delete()
+
+        theme_reports = list(
+            NewReleaseThemeReport.objects.filter(theme_id=theme_id)
+            .exclude(reporter__isnull=True)
+        )
+        created_count = 0
+        for theme_report in theme_reports:
+            created_count += cls.sync_for_theme_report(theme_report)
+        return created_count
+
+    def __str__(self):
+        reporter_name = self.reporter or '未知用户'
+        return f"{reporter_name} 举报ASIN:{self.asin_id}"
+
+
+@receiver(pre_save, sender=AmazonNewReleaseRank)
+def cache_previous_summary_subject(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._previous_summary_subject_id = None
+        return
+
+    instance._previous_summary_subject_id = (
+        sender.objects.filter(pk=instance.pk)
+        .values_list('summary_subject_id', flat=True)
+        .first()
+    )
+
+
+@receiver(post_save, sender=AmazonNewReleaseRank)
+def auto_report_asin_on_theme_change(sender, instance, created, **kwargs):
+    previous_theme_id = getattr(instance, '_previous_summary_subject_id', None)
+    if not created and previous_theme_id == instance.summary_subject_id:
+        return
+
+    NewReleaseAsinReport.sync_for_asin(instance, previous_theme_id=previous_theme_id)
 
 
 class ThemeNewDailyData(models.Model):
@@ -593,11 +824,11 @@ class ThemeSubject(models.Model):
     """一级：核心主题表"""
 
     canonical_subject = models.CharField(
-        max_length=200, 
-        primary_key=True, 
+        max_length=200,
+        primary_key=True,
         verbose_name='标准化主题'
     )
-    
+
     core_entities = models.JSONField(
         default=list,
         verbose_name='核心实体'
@@ -605,19 +836,19 @@ class ThemeSubject(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'theme_subject'
         verbose_name = '核心主题'
         verbose_name_plural = verbose_name
-    
+
     def __str__(self):
         return self.canonical_subject[:50]
 
 
 class ThemeNovelty(models.Model):
     """二级：新奇特主题表"""
-    
+
     subject = models.OneToOneField(
         ThemeSubject,
         on_delete=models.CASCADE,
@@ -625,29 +856,29 @@ class ThemeNovelty(models.Model):
         related_name='theme_novelty',
         verbose_name='核心主题'
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         db_table = 'theme_novelty'
         verbose_name = '新奇特主题'
         verbose_name_plural = verbose_name
-    
+
     def __str__(self):
         return self.subject.canonical_subject[:50]
 
 
 class ThemeNoveltyDailyData(models.Model):
     """三级：新奇特主题每日数据表"""
-    
+
     novelty_theme = models.ForeignKey(
         ThemeNovelty,
         on_delete=models.CASCADE,
         related_name='daily_data',
         verbose_name='新奇特主题'
     )
-    
+
     theme_date = models.DateField(verbose_name='主题日期')
     asin_count = models.IntegerField(default=0, verbose_name='当日ASIN数量')
     ranked_asin_count = models.IntegerField(default=0, verbose_name='有排名ASIN数')
@@ -657,9 +888,9 @@ class ThemeNoveltyDailyData(models.Model):
         blank=True,
         verbose_name='7天排名趋势'
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         db_table = 'theme_novelty_daily_data'
         unique_together = ['novelty_theme', 'theme_date']
@@ -670,7 +901,7 @@ class ThemeNoveltyDailyData(models.Model):
         verbose_name = '新奇特主题每日数据'
         verbose_name_plural = verbose_name
         ordering = ['-theme_date']
-    
+
     def __str__(self):
         return f"{self.novelty_theme.subject.canonical_subject[:30]} - {self.theme_date}"
 

@@ -7,6 +7,7 @@ import traceback
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from tqdm import tqdm
 
 # ====== Django 初始化 ======
 # 说明：
@@ -40,11 +41,8 @@ VALID_RISK_LEVELS = {"high", "medium", "low", "unknown"}
 KEYWORD_WRITE_RISK_LEVELS = {"high", "medium"}
 
 LOGGER = logging.getLogger("amazon.listing_risk_worker.sync")
-if not LOGGER.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(message)s"))
-    LOGGER.addHandler(handler)
-LOGGER.setLevel(logging.INFO)
+# 静默日志（只保留错误）
+LOGGER.setLevel(logging.ERROR)
 LOGGER.propagate = False
 
 
@@ -167,19 +165,17 @@ def _batch_analyze_titles(
     failed_titles = set()
     analyzed_titles = 0
     error_count = 0
-    for idx, chunk in enumerate(_chunked(unique_titles, title_batch_size), start=1):
+    
+    # 计算总批次数
+    total_batches = (len(unique_titles) + title_batch_size - 1) // title_batch_size
+    
+    # 使用 tqdm 显示分析进度
+    chunks = list(_chunked(unique_titles, title_batch_size))
+    for idx, chunk in enumerate(tqdm(chunks, desc="  🔍 分析标题", total=total_batches, unit="批"), start=1):
         try:
             batch_result = batch_analyze_theme_trend(chunk)
             analysis_map.update(batch_result)
             analyzed_titles += len(chunk)
-            _log(
-                "info",
-                "risk.batch.done",
-                sid=sid,
-                batch_index=idx,
-                batch_size=len(chunk),
-                analyzed_titles=analyzed_titles,
-            )
         except Exception as exc:
             error_count += 1
             failed_titles.update(chunk)
@@ -355,10 +351,24 @@ def _process_one_sid(
     only_active: bool,
     title_batch_size: int,
     max_titles: Optional[int] = None,
+    shop_idx: int = 0,
+    total_shops: int = 0,
 ) -> SidRiskStats:
     close_old_connections()
     sid_stats = SidRiskStats(sid=current_sid)
     try:
+        # 获取店铺名称
+        from amazon.models import LingXingAmazonShop
+        shop = LingXingAmazonShop.objects.filter(sid=current_sid).first()
+        shop_name = shop.name if shop else f"店铺{current_sid}"
+        
+        # 构建进度前缀
+        prefix = f""
+        if total_shops > 0:
+            prefix = f"[{shop_idx}/{total_shops}] "
+        
+        print(f"\n{prefix}🔍 {shop_name}")
+        
         sid_queryset = _get_target_queryset(
             sid=current_sid,
             include_known=include_known,
@@ -366,6 +376,7 @@ def _process_one_sid(
         )
         sid_listings = list(sid_queryset.iterator(chunk_size=2000))
         if not sid_listings:
+            print(f"  ⚠️ 没有需要分析的Listing")
             return sid_stats
 
         sid_stats.target_listings = len(sid_listings)
@@ -379,13 +390,7 @@ def _process_one_sid(
         if sid_stats.unique_titles <= 0:
             return sid_stats
 
-        _log(
-            "info",
-            "risk.sid.start",
-            sid=current_sid,
-            target_listings=sid_stats.target_listings,
-            unique_titles=sid_stats.unique_titles,
-        )
+        print(f"  📋 Listing数: {sid_stats.target_listings} | 去重标题: {sid_stats.unique_titles}")
 
         analysis_map, failed_titles, analyzed_titles, batch_errors = _batch_analyze_titles(
             unique_titles=unique_titles,
@@ -424,13 +429,10 @@ def _process_one_sid(
         sid_stats.low_count = sync_stats["low_count"]
         sid_stats.unknown_count = sync_stats["unknown_count"]
         sid_stats.committed = True
-        _log(
-            "info",
-            "risk.sid.done",
-            sid=current_sid,
-            committed_listings=sid_stats.listings_updated,
-            committed_titles=len(ready_title_map),
-        )
+        
+        # 打印结果摘要
+        print(f"  ✅ 完成 - 更新:{sid_stats.listings_updated} 高危:{sid_stats.high_count} 中危:{sid_stats.medium_count} 低危:{sid_stats.low_count}")
+        
         return sid_stats
     except Exception as exc:
         sid_stats.error_count += 1
@@ -457,31 +459,22 @@ def run_risk_worker(
     stats = RiskWorkerStats()
     sid_list = _get_target_sid_list(sid=sid, include_known=include_known, only_active=only_active)
     if not sid_list:
-        _log("info", "risk.no_target_listings", sid=sid, include_known=include_known, only_active=only_active)
+        print("⚠️ 没有找到需要分析风险的目标Listing")
         return stats
 
     stats.total_sids = len(sid_list)
     remaining_titles = None if max_titles is None else max(0, int(max_titles))
-
-    _log(
-        "info",
-        "risk.start",
-        sid=sid,
-        total_sids=stats.total_sids,
-        title_batch_size=title_batch_size,
-        workers=max(1, int(workers)),
-        include_known=include_known,
-        only_active=only_active,
-        rerun_rule="title_changed_should_be_marked_unknown_in_ingest",
-    )
+    
+    print(f"\n📊 共发现 {len(sid_list)} 个店铺需要风险分析\n")
 
     worker_count = max(1, int(workers))
     if remaining_titles is not None and worker_count > 1:
-        _log("warning", "risk.parallel.disabled_for_max_titles", reason="max_titles_requires_ordered_sequential")
+        print("⚠️ 因设置了max_titles，禁用并行模式")
         worker_count = 1
 
     if worker_count <= 1 or len(sid_list) <= 1:
-        for current_sid in sid_list:
+        # 顺序执行，带进度
+        for idx, current_sid in enumerate(sid_list, 1):
             if remaining_titles is not None and remaining_titles <= 0:
                 break
             sid_stats = _process_one_sid(
@@ -490,11 +483,15 @@ def run_risk_worker(
                 only_active=only_active,
                 title_batch_size=title_batch_size,
                 max_titles=remaining_titles,
+                shop_idx=idx,
+                total_shops=len(sid_list),
             )
             _merge_stats(stats, sid_stats)
             if remaining_titles is not None:
                 remaining_titles -= sid_stats.unique_titles
     else:
+        # 并行执行（多线程，不显示详细进度）
+        print(f"⚡ 使用 {worker_count} 线程并行处理...")
         max_workers = min(worker_count, len(sid_list))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_map = {
@@ -505,12 +502,15 @@ def run_risk_worker(
                     only_active,
                     title_batch_size,
                     None,
+                    0,  # shop_idx
+                    0,  # total_shops（0表示不显示详细进度）
                 ): current_sid
                 for current_sid in sid_list
             }
             for future in as_completed(future_map):
                 sid_stats = future.result()
                 _merge_stats(stats, sid_stats)
+                print(f"  ✅ 店铺{sid_stats.sid}完成 - 更新:{sid_stats.listings_updated}")
 
     _log(
         "info",
