@@ -25,6 +25,7 @@ import sys
 import json
 import re
 import time
+import importlib
 import ijson
 import django
 from pathlib import Path
@@ -40,7 +41,7 @@ django.setup()
 
 from tqdm import tqdm
 from django.db import transaction
-from aba.models import SearchTerm, SearchTermMetric, AbaReportWeek
+from aba.models import SearchTerm, SearchTermMetric, AbaReportWeek, AbaNoiseWord
 
 # 导入下载模块
 sys.path.insert(0, str(Path(__file__).parent))
@@ -76,6 +77,14 @@ def detect_category(term: str) -> str:
     return ''
 
 
+def normalize_noise_match_text(raw_text: str) -> str:
+    """统一去噪匹配文本，保持与现有去噪功能一致。"""
+    if not isinstance(raw_text, str):
+        return ''
+
+    return re.sub(r'\s+', ' ', raw_text.casefold()).strip()
+
+
 def generate_display_label(report_week: datetime.date) -> str:
     """
     生成展示文案，格式：2026年第10周 (03.08-03.14)
@@ -109,14 +118,18 @@ class ABAImporter:
             'search_terms': 0,     # 搜索词数
             'metrics': 0,          # 指标记录数
             'batches': 0,          # 批次数
-            'errors': 0            # 错误数
+            'errors': 0,           # 错误数
+            'noise_words_loaded': 0,
+            'filtered_terms': 0,
         }
-        
+
         # Cache for existing search terms {term: (id, category)}
         self.term_cache = {}
-        
+        self.noise_word_matcher = None
+
         # Load existing terms into cache
         self._load_term_cache()
+        self._load_noise_word_matcher()
     
     def _load_term_cache(self):
         """将现有搜索词加载到内存缓存"""
@@ -124,6 +137,50 @@ class ABAImporter:
         for term in SearchTerm.objects.using('aba_db').all():
             self.term_cache[term.term] = (term.id, term.category)
         print(f"   已缓存 {len(self.term_cache)} 个搜索词")
+
+    def _load_noise_word_matcher(self):
+        """加载去噪词库并构建 AC 自动机。"""
+        print("🧹 正在加载去噪词库...")
+
+        ahocorasick_spec = importlib.util.find_spec('ahocorasick')
+        if ahocorasick_spec is None:
+            raise RuntimeError(
+                "缺少依赖 'pyahocorasick'。请先执行 `pip install pyahocorasick` "
+                "或将其加入项目依赖后再运行导入脚本。"
+            )
+
+        ahocorasick = importlib.import_module('ahocorasick')
+        automaton = ahocorasick.Automaton()
+        seen_words = set()
+
+        for raw_word in AbaNoiseWord.objects.using('aba_db').values_list('word', flat=True).iterator():
+            normalized_word = normalize_noise_match_text(raw_word)
+            if not normalized_word or normalized_word in seen_words:
+                continue
+
+            seen_words.add(normalized_word)
+            automaton.add_word(normalized_word, normalized_word)
+
+        if seen_words:
+            automaton.make_automaton()
+            self.noise_word_matcher = automaton
+
+        self.stats['noise_words_loaded'] = len(seen_words)
+        print(f"   已加载 {len(seen_words)} 个去噪词")
+
+    def _contains_noise_word(self, term: str) -> bool:
+        """判断搜索词是否命中去噪词库。"""
+        if self.noise_word_matcher is None:
+            return False
+
+        normalized_term = normalize_noise_match_text(term)
+        if not normalized_term:
+            return False
+
+        for _end_index, _matched_word in self.noise_word_matcher.iter(normalized_term):
+            return True
+
+        return False
     
     def _get_last_week_rank(self, term_id: int) -> Tuple[int, int]:
         """
@@ -185,12 +242,12 @@ class ABAImporter:
         
         return dict(grouped)
     
-    def process_batch(self, records: List[dict]) -> Tuple[List[SearchTerm], List[SearchTermMetric], List[Tuple]]:
+    def process_batch(self, records: List[dict]) -> Tuple[List[SearchTerm], List[SearchTermMetric], List[Tuple], int]:
         """
         处理一批记录
         
         返回：
-            (待创建搜索词列表, 待创建指标列表, 待更新搜索词列表)
+            (待创建搜索词列表, 待创建指标列表, 待更新搜索词列表, 被去噪拦截数量)
         """
         # Aggregate
         aggregated = self.aggregate_records(records)
@@ -198,8 +255,13 @@ class ABAImporter:
         search_terms = []
         metrics = []
         terms_to_update = []  # (term_id, new_category)
+        filtered_terms = 0
         
         for term, data in aggregated.items():
+            if self._contains_noise_word(term):
+                filtered_terms += 1
+                continue
+
             # 实时检测品类
             detected_category = detect_category(term)
             
@@ -268,7 +330,7 @@ class ABAImporter:
             )
             metrics.append((metric, term))  # Keep term for linking
         
-        return search_terms, metrics, terms_to_update
+        return search_terms, metrics, terms_to_update, filtered_terms
     
     def save_batch(self, search_terms: List[SearchTerm], metrics: List[Tuple], terms_to_update: List[Tuple]):
         """保存批次到数据库"""
@@ -433,11 +495,12 @@ class ABAImporter:
         """Process and save one batch"""
         self.stats['raw_records'] += len(batch)
         
-        search_terms, metrics, terms_to_update = self.process_batch(batch)
+        search_terms, metrics, terms_to_update, filtered_terms = self.process_batch(batch)
         self.save_batch(search_terms, metrics, terms_to_update)
         
         self.stats['search_terms'] += len(search_terms)
         self.stats['metrics'] += len(metrics)
+        self.stats['filtered_terms'] += filtered_terms
     
     def _print_stats(self):
         """打印最终统计"""
@@ -445,6 +508,8 @@ class ABAImporter:
         print("✅ 导入完成！")
         print("="*60)
         print(f"   原始记录处理: {self.stats['raw_records']:,} 条")
+        print(f"   去噪词加载:   {self.stats['noise_words_loaded']:,} 个")
+        print(f"   去噪拦截:     {self.stats['filtered_terms']:,} 个")
         print(f"   搜索词创建:   {self.stats['search_terms']:,} 个")
         print(f"   指标记录创建: {self.stats['metrics']:,} 条")
         print(f"   批次数:       {self.stats['batches']}")

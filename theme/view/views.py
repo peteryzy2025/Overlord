@@ -22,6 +22,7 @@ from theme.models import (
     AmazonProduct, ProductRankHistory, AmazonThemeNovelty,
     ThemeRecord, ThemeDailyData, ThemeReport
 )
+from theme.view.permissions import theme_access_required
 from theme.view.views_trend import analyze_theme_trend, batch_analyze_theme_trend
 
 
@@ -49,7 +50,7 @@ def external_amazon_products_auth_required(func):
 # 1. 页面渲染视图
 # ============================================
 
-@login_required
+@theme_access_required
 def product_list_page(request):
     """
     产品列表页面 - 渲染产品管理界面
@@ -114,6 +115,7 @@ def product_list_page(request):
 # 2. 产品数据API接口
 # ============================================
 
+@theme_access_required
 @csrf_exempt
 @require_POST
 def api_amazon_products(request):
@@ -516,6 +518,7 @@ def external_api_amazon_products(request):
     return api_amazon_products(request)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
 def api_batch_risk_check(request):
@@ -539,7 +542,7 @@ def api_batch_risk_check(request):
 # 3. 产品详情API
 # ============================================
 
-@login_required
+@theme_access_required
 def api_product_detail(request, asin):
     """
     获取单个产品的详细信息
@@ -595,9 +598,9 @@ def api_product_detail(request, asin):
 # 4. 产品操作API
 # ============================================
 
+@theme_access_required
 @csrf_exempt
 @require_POST
-@login_required
 def api_create_product(request):
     """
     创建新产品
@@ -678,9 +681,9 @@ def api_create_product(request):
         }, status=500)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
-@login_required
 def api_update_product(request, asin):
     """
     更新产品信息
@@ -769,9 +772,9 @@ def api_update_product(request, asin):
         }, status=500)
 
 
+@theme_access_required
 @csrf_exempt
 @require_POST
-@login_required
 def api_delete_product(request, asin):
     """
     删除产品
@@ -800,7 +803,7 @@ def api_delete_product(request, asin):
 # 5. 导出功能
 # ============================================
 
-@login_required
+@theme_access_required
 def export_products_csv(request):
     try:
         scope = request.GET.get('scope', 'all')
@@ -972,9 +975,9 @@ def export_products_json(request):
 # 6. 批量操作
 # ============================================
 
+@theme_access_required
 @csrf_exempt
 @require_POST
-@login_required
 def api_bulk_update_product_type(request):
     """
     批量更新产品类型
@@ -1032,7 +1035,7 @@ def api_bulk_update_product_type(request):
 # 7. 统计报表API
 # ============================================
 
-@login_required
+@theme_access_required
 def api_product_statistics(request):
     """
     获取产品统计报表数据
@@ -1113,7 +1116,7 @@ def api_product_statistics(request):
 # 8. 搜索建议API
 # ============================================
 
-@login_required
+@theme_access_required
 def api_product_suggestions(request):
     """
     获取产品搜索建议（用于自动完成）
@@ -1224,7 +1227,7 @@ def api_health_check(request):
         }, status=500)
 
 
-@login_required
+@theme_access_required
 def export_products_excel(request):
     try:
         scope = request.GET.get('scope', 'all')
@@ -1342,6 +1345,7 @@ def export_products_excel(request):
 # 10. 举报功能API
 # ============================================
 
+@theme_access_required
 @require_POST
 def api_report_product(request):
     """
@@ -1444,6 +1448,7 @@ def api_report_product(request):
         }, status=500)
 
 
+@theme_access_required
 @require_POST
 def api_unreport_product(request):
     """
