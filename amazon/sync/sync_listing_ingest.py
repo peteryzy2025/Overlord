@@ -10,10 +10,10 @@ from decimal import Decimal, InvalidOperation
 
 # ====== Django 初始化 ======
 # 说明：
-# 1) 当前脚本在 amazon/view/ 目录下，需要将项目根目录加入 sys.path。
+# 1) 当前脚本在 amazon/sync/ 目录下，需要向上两级到项目根目录。
 # 2) 必须先设置 DJANGO_SETTINGS_MODULE，再调用 django.setup()。
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))  # amazon/sync/ -> amazon/ -> 项目根目录
 sys.path.insert(0, PROJECT_ROOT)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
