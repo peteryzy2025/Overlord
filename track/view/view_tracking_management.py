@@ -18,15 +18,26 @@ from track.models import Tracking, Courier, TrackingDetail, Factory
 from api.track.track_api import register_tracking, get_tracking_updates, parse_datetime
 
 
+def has_perm_code(user, code):
+    """检查用户是否有特定权限码（使用 permission_configs 模型）"""
+    if not user or not user.is_authenticated:
+        return False
+    try:
+        code_int = int(code)
+        return user.permission_configs.filter(code=code_int).exists()
+    except (ValueError, TypeError):
+        return False
+
+
 # 主页视图
 @login_required
 def tracking_management(request):
     """物流追踪管理主页"""
-    # 权限检查：只有permission包含555或gyl的用户可以访问
-    user_permission = request.user.permission or ''
-    permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
-
-    if not any(p in permission_list for p in ['555', 'gyl']):
+    # 权限检查：只有权限码 555、6、8 的用户可以访问
+    allowed_codes = ['555', '6', '8']
+    has_permission = any(has_perm_code(request.user, code) for code in allowed_codes)
+    
+    if not has_permission:
         from django.shortcuts import redirect
         return redirect('general:main')
 
