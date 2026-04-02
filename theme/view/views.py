@@ -102,6 +102,7 @@ def product_list_page(request):
     context = {
         'page_title': 'Amazon新奇特',
         'active_nav': 'theme_products',
+        'active_page':'theme_product_list',
         'stats': stats,
         'latest_deal_stats': latest_deal_stats,
         'date_range': date_range,
