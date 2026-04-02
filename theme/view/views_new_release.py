@@ -271,9 +271,29 @@ def api_theme_aggregation_list(request):
             except ValueError:
                 pass
 
+        # 新主题快速筛选
+        new_theme_days = data.get('new_theme_days')
+        new_theme_filter = Q()
+        if new_theme_days:
+            try:
+                days = int(new_theme_days)
+                if days > 0:
+                    cutoff = timezone.now() - timedelta(days=days)
+                    new_theme_filter = Q(created_time__gte=cutoff)
+            except (ValueError, TypeError):
+                pass
+
         qs = ThemeSummary.objects.annotate(
             appear_count=Count('summary_subject', filter=date_filter, distinct=True)
-        ).filter(appear_count__gt=0)
+        ).filter(appear_count__gt=0).filter(new_theme_filter)
+
+        # 子ASIN主题搜索
+        subject_search = str(data.get('subject_search', '')).strip()
+        if subject_search:
+            qs = qs.filter(
+                Q(summary_subject__subject__icontains=subject_search) |
+                Q(summary_subject__subject_translation__icontains=subject_search)
+            ).distinct()
 
         sort_field = str(data.get('sort_field', 'appear_count')).strip()
         sort_order = str(data.get('sort_order', 'desc')).strip().lower()
