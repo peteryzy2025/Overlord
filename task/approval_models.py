@@ -363,7 +363,6 @@ class AmazonAdShopConfig(models.Model):
     asins = models.ManyToManyField(
         'amazon.AmazonListingV2',
         verbose_name='ASIN列表',
-        db_comment='需要开广告的ASIN'
     )
 
     # 否定词库
