@@ -942,6 +942,94 @@
                 padding-right: 1rem;
             }
         }
+
+        .quick-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding: 0.75rem 1rem;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            flex-wrap: wrap;
+        }
+        .quick-filter-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-right: 0.25rem;
+            white-space: nowrap;
+        }
+        .quick-filter-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.4rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #fff;
+            color: var(--text-primary);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .quick-filter-btn:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            background-color: #eff6ff;
+        }
+        .quick-filter-btn.active {
+            background-color: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+        }
+        .agg-quick-filter-row {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            grid-column: 1 / -1;
+        }
+        .agg-quick-filter-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .agg-quick-filter-options {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            flex-wrap: wrap;
+        }
+        .agg-quick-filter-chip {
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            padding: 0.4rem 0.9rem;
+            font-size: 0.8125rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .agg-quick-filter-chip:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+        .agg-quick-filter-chip.active {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #047857;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.14);
+        }
     </style>
 {% endblock %}
 
@@ -1148,11 +1236,26 @@
                         <label class="filter-label">结束日期</label>
                         <input type="date" class="form-control" id="aggEndDate">
                     </div>
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label class="filter-label">主题搜索</label>
+                        <input type="text" class="form-control" id="aggSubjectSearch"
+                               placeholder="搜索子ASIN主题..."
+                               onkeydown="if(event.key==='Enter'){applyAggregationFilters();}">
+                    </div>
                 </div>
                 <div class="filter-actions-row">
                     <div class="filter-actions">
                         <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyAggregationFilters()" title="应用筛选" aria-label="应用筛选"></button>
                         <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAggregationFilters()" title="重置" aria-label="重置"></button>
+                    </div>
+                </div>
+                <div class="agg-quick-filter-row" id="aggregationQuickFilter">
+                    <div class="agg-quick-filter-label"></i> 新主题</div>
+                    <div class="agg-quick-filter-options">
+                        <button type="button" class="agg-quick-filter-chip active" data-days="" onclick="applyQuickFilter(this)">全部</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="3" onclick="applyQuickFilter(this)">3天内</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="7" onclick="applyQuickFilter(this)">7天内</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="15" onclick="applyQuickFilter(this)">15天内</button>
                     </div>
                 </div>
             </div>
@@ -1171,7 +1274,7 @@
                             <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
                             <th class="sortable" data-field="summary_subject_title" onclick="handleAggregationSort('summary_subject_title')">聚合主题</th>
                             <th class="sortable active" data-field="appear_count" onclick="handleAggregationSort('appear_count')">出现次数</th>
-                            <th>平均上架时间</th>
+                            <th class="sortable" data-field="avg_launch_days" onclick="handleAggregationSort('avg_launch_days')">平均上架时间</th>
                             <th>平均排名趋势图</th>
                             <th>配送方式</th>
                             <th>品类占比</th>
@@ -1893,7 +1996,8 @@
             page: 1,
             page_size: 20,
             total: 0,
-            total_pages: 0
+            total_pages: 0,
+            new_theme_days: ''
         };
 
         // ====== Aggregation: load data ======
@@ -1906,10 +2010,12 @@
                 var params = {
                     start_date: document.getElementById('aggStartDate').value,
                     end_date: document.getElementById('aggEndDate').value,
+                    subject_search: document.getElementById('aggSubjectSearch').value.trim(),
                     sort_field: aggregationState.sort_field,
                     sort_order: aggregationState.sort_order,
                     page: aggregationState.page,
-                    page_size: aggregationState.page_size
+                    page_size: aggregationState.page_size,
+                    new_theme_days: aggregationState.new_theme_days
                 };
 
                 var response = await fetch("{% url 'theme:api_theme_aggregation_list' %}", {
@@ -1929,7 +2035,8 @@
                 aggregationState.total = data.total || 0;
                 aggregationState.total_pages = data.total_pages || 0;
 
-                renderAggregationTable(data.themes || []);
+                aggregationCurrentThemes = data.themes || [];
+                renderAggregationTable(aggregationCurrentThemes);
                 renderAggregationPagination();
                 updateAggregationStats(data.stats || {});
 
@@ -2295,6 +2402,8 @@
         }
 
         // ====== Aggregation: sort ======
+        var aggregationCurrentThemes = [];
+
         function handleAggregationSort(field) {
             if (aggregationState.sort_field === field) {
                 aggregationState.sort_order = aggregationState.sort_order === 'asc' ? 'desc' : 'asc';
@@ -2303,6 +2412,19 @@
                 aggregationState.sort_order = field === 'summary_subject_title' ? 'asc' : 'desc';
             }
             updateAggregationSortHeaders();
+
+            // avg_launch_days 在后端是分页后Python计算的，无法数据库排序，改用前端排序
+            if (field === 'avg_launch_days' && aggregationCurrentThemes.length > 0) {
+                var order = aggregationState.sort_order === 'asc' ? 1 : -1;
+                var sorted = aggregationCurrentThemes.slice().sort(function(a, b) {
+                    var va = (a.avg_launch_days !== null && a.avg_launch_days !== undefined && a.avg_launch_days !== '-') ? parseFloat(a.avg_launch_days) : -1;
+                    var vb = (b.avg_launch_days !== null && b.avg_launch_days !== undefined && b.avg_launch_days !== '-') ? parseFloat(b.avg_launch_days) : -1;
+                    return (va - vb) * order;
+                });
+                renderAggregationTable(sorted);
+                return;
+            }
+
             aggregationState.page = 1;
             loadAggregationTable();
         }
@@ -2320,10 +2442,35 @@
             loadAggregationTable();
         }
 
+        function applyQuickFilter(btn) {
+            var days = btn.getAttribute('data-days');
+            var allBtn = document.querySelector('#aggregationQuickFilter .agg-quick-filter-chip[data-days=""]');
+            if (btn.classList.contains('active') && days !== '') {
+                btn.classList.remove('active');
+                if (allBtn) allBtn.classList.add('active');
+                aggregationState.new_theme_days = '';
+            } else {
+                document.querySelectorAll('#aggregationQuickFilter .agg-quick-filter-chip').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                btn.classList.add('active');
+                aggregationState.new_theme_days = days;
+            }
+            aggregationState.page = 1;
+            loadAggregationTable();
+        }
+
         function resetAggregationFilters() {
             document.getElementById('aggStartDate').value = '';
             document.getElementById('aggEndDate').value = '';
+            document.getElementById('aggSubjectSearch').value = '';
             clearAggSelection();
+            aggregationState.new_theme_days = '';
+            document.querySelectorAll('#aggregationQuickFilter .agg-quick-filter-chip').forEach(function(b) {
+                b.classList.remove('active');
+            });
+            var allBtn = document.querySelector('#aggregationQuickFilter .agg-quick-filter-chip[data-days=""]');
+            if (allBtn) allBtn.classList.add('active');
             aggregationState.page = 1;
             loadAggregationTable();
         }
