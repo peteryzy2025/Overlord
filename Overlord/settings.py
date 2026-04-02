@@ -77,7 +77,6 @@ INSTALLED_APPS = [
     'shop_guard.apps.ShopGuardConfig',
     'inventory.apps.InventoryConfig',
     'data_req.apps.DataReqConfig',
-    'advertisement.apps.AdvertisementConfig',
     'aba.apps.AbaConfig',
     'divi.apps.DiviConfig'
 ]

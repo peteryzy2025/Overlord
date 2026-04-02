@@ -48,6 +48,7 @@ async def fetch_shop_listing(
         resp = await get_api_resp(
             req_body={
                 "sid": sid,
+                "is_delete":0,
                 "offset": offset,
                 "length": limit,
             },
@@ -269,9 +270,6 @@ async def sync_single_shop(
             has_more = len(data_list) == limit
             offset += limit
 
-            if has_more:
-                await asyncio.sleep(0.5)
-
         except Exception as e:
             logger.warning(f"店铺 {shop_name}(sid={sid}) 同步失败: {e}")
             stats['API错误'] += 1
@@ -302,12 +300,9 @@ async def sync_all_shops(snapshot_date: Optional[date] = None, max_shops: Option
 
     # 创建进度条
     with tqdm(total=total_shops, desc="同步店铺", unit="个") as pbar:
-        for i, shop in enumerate(shops):
+        for shop in shops:
             stats = await sync_single_shop(shop, snapshot_date, pbar)
             all_stats.append(stats)
-            # 店铺间延迟，避免限流
-            if i < len(shops) - 1:
-                await asyncio.sleep(1)
 
     # 输出汇总统计
     logger.info("=" * 50)
