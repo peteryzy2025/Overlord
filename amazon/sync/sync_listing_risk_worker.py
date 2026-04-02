@@ -31,7 +31,7 @@ from django.db.models import Q
 from django.db.models.functions import Lower
 from django.utils import timezone
 
-from amazon.models import AmazonListing
+from amazon.models import AmazonListingLegacy
 from theme.models import TrademarkInfo, TroTable
 from theme.view.views_trend import batch_analyze_theme_trend
 
@@ -118,7 +118,7 @@ def _chunked(items: List[str], size: int):
 
 
 def _get_target_queryset(sid: Optional[int], include_known: bool, only_active: bool):
-    queryset = AmazonListing.objects.select_related("lingxing_shop").filter(
+    queryset = AmazonListingLegacy.objects.select_related("lingxing_shop").filter(
         lingxing_shop__name__icontains="US",
     ).exclude(
         title__isnull=True,
@@ -146,7 +146,7 @@ def _get_target_sid_list(sid: Optional[int], include_known: bool, only_active: b
     return [int(item) for item in sid_values if item is not None]
 
 
-def _build_title_map_from_listings(listings: List[AmazonListing]) -> Dict[str, List[AmazonListing]]:
+def _build_title_map_from_listings(listings: List[AmazonListingLegacy]) -> Dict[str, List[AmazonListingLegacy]]:
     title_map = defaultdict(list)
     for listing in listings:
         title = _safe_str(listing.title)
@@ -231,7 +231,7 @@ def _build_word_object_maps(analysis_map: Dict[str, Dict]):
 
 
 def _sync_listing_risk(
-    title_map: Dict[str, List[AmazonListing]],
+    title_map: Dict[str, List[AmazonListingLegacy]],
     analysis_map: Dict[str, Dict],
     tro_map: Dict,
     tm_map: Dict,
@@ -248,8 +248,8 @@ def _sync_listing_risk(
     tro_rel_rows = []
     tm_rel_rows = []
 
-    tro_through = AmazonListing.tro_words.through
-    tm_through = AmazonListing.trademarks.through
+    tro_through = AmazonListingLegacy.tro_words.through
+    tm_through = AmazonListingLegacy.trademarks.through
     tro_source_fk, tro_target_fk = _resolve_through_fk_names(tro_through)
     tm_source_fk, tm_target_fk = _resolve_through_fk_names(tm_through)
 
@@ -305,7 +305,7 @@ def _sync_listing_risk(
                 unknown_count += 1
 
     if listing_updates:
-        AmazonListing.objects.bulk_update(
+        AmazonListingLegacy.objects.bulk_update(
             listing_updates,
             fields=["risk_level", "updated_at"],
             batch_size=2000,
@@ -336,7 +336,7 @@ def _resolve_through_fk_names(through_model):
         if not getattr(field, "many_to_one", False):
             continue
         related_model = field.remote_field.model
-        if related_model == AmazonListing:
+        if related_model == AmazonListingLegacy:
             source_fk = field.name
         else:
             target_fk = field.name

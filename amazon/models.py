@@ -1411,10 +1411,12 @@ class AmazonOrderItemFullDetail(models.Model):
         return f"{self.order.amazon_order_id} - {self.seller_sku}"
 
 
-class AmazonListing(models.Model):
+class AmazonListingLegacy(models.Model):
     """
-    Listing 数据库
+    Listing 数据库（旧版本，保留历史数据）
     唯一约束：同一个领星店铺（站点）内，ASIN 不能重复
+    
+    注意：此模型已废弃，请使用新的 AmazonListingV2（amazon_listing_v2 表）
     """
 
     class RiskLevelChoice(models.TextChoices):
@@ -1448,7 +1450,7 @@ class AmazonListing(models.Model):
     lingxing_shop = models.ForeignKey(
         'amazon.LingXingAmazonShop',
         on_delete=models.CASCADE,  # 店铺删除则 Listing 删除
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='所属领星店铺',
         db_comment='绑定的领星站点店铺'
     )
@@ -1456,7 +1458,7 @@ class AmazonListing(models.Model):
     # 多对多：侵权词库（一个 ASIN 可能命中多个词，一个词可能关联多个 ASIN）
     tro_words = models.ManyToManyField(
         'theme.TroTable',
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='命中侵权词',
         blank=True,
     )
@@ -1464,7 +1466,7 @@ class AmazonListing(models.Model):
     # 多对多：美标网
     trademarks = models.ManyToManyField(
         'theme.TrademarkInfo',
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='命中商标',
         blank=True,
     )
@@ -1613,10 +1615,11 @@ class AmazonListing(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        db_table = 'amazon_listing'
-        db_table_comment = 'Listing主表（店铺+ASIN唯一）'
-        verbose_name = 'Amazon Listing'
-        verbose_name_plural = 'Amazon Listings'
+        db_table = 'amazon_listing'  # 保持旧表名
+        db_table_comment = 'Listing主表（旧版本，已废弃）'
+        verbose_name = 'Amazon Listing (旧版)'
+        verbose_name_plural = 'Amazon Listings (旧版)'
+        managed = False  # 不管理此表，表已存在
 
         # 核心约束：同一个店铺内 ASIN 唯一
         constraints = [
@@ -1721,3 +1724,9 @@ class AmazonShopUploadRecord(models.Model):
     def __str__(self):
         shop_name = self.shop.shop_name if self.shop else '未知店铺'
         return f"{shop_name} - {self.batch_id} ({self.get_status_display()})"
+
+
+# ========== 导入新的 Listing 模型（V2版本） ==========
+# 旧的 AmazonListing 已改名为 AmazonListingLegacy 保留历史数据
+# 新的 AmazonListing 使用 amazon_listing_v2 表
+from .listing_models import AmazonListingV2, AmazonListingSalesHistory

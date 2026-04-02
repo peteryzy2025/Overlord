@@ -29,7 +29,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from api.lingxing.Y_OpenApi import get_api_resp
-from amazon.models import AmazonListing, LingXingAmazonShop
+from amazon.models import AmazonListingLegacy, LingXingAmazonShop
 
 
 PAGE_SIZE = 1000
@@ -260,12 +260,12 @@ def process_lingxing_api_listing_info(sid, page_offset):
 
 
 def _upsert_one_base_listing(shop: LingXingAmazonShop, row: Dict, stats: ShopIngestStats) -> str:
-    listing = AmazonListing.objects.filter(lingxing_shop=shop, asin=row["asin"]).first()
+    listing = AmazonListingLegacy.objects.filter(lingxing_shop=shop, asin=row["asin"]).first()
     incoming_title = row["title"]
     incoming_active = bool(row["is_active"])
 
     if listing is None:
-        AmazonListing.objects.create(
+        AmazonListingLegacy.objects.create(
             lingxing_shop=shop,
             asin=row["asin"],
             title=incoming_title,
