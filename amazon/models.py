@@ -1411,10 +1411,12 @@ class AmazonOrderItemFullDetail(models.Model):
         return f"{self.order.amazon_order_id} - {self.seller_sku}"
 
 
-class AmazonListing(models.Model):
+class AmazonListingLegacy(models.Model):
     """
-    Listing 数据库
+    Listing 数据库（旧版本，保留历史数据）
     唯一约束：同一个领星店铺（站点）内，ASIN 不能重复
+    
+    注意：此模型已废弃，请使用新的 AmazonListingV2（amazon_listing_v2 表）
     """
 
     class RiskLevelChoice(models.TextChoices):
@@ -1448,7 +1450,7 @@ class AmazonListing(models.Model):
     lingxing_shop = models.ForeignKey(
         'amazon.LingXingAmazonShop',
         on_delete=models.CASCADE,  # 店铺删除则 Listing 删除
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='所属领星店铺',
         db_comment='绑定的领星站点店铺'
     )
@@ -1456,7 +1458,7 @@ class AmazonListing(models.Model):
     # 多对多：侵权词库（一个 ASIN 可能命中多个词，一个词可能关联多个 ASIN）
     tro_words = models.ManyToManyField(
         'theme.TroTable',
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='命中侵权词',
         blank=True,
     )
@@ -1464,7 +1466,7 @@ class AmazonListing(models.Model):
     # 多对多：美标网
     trademarks = models.ManyToManyField(
         'theme.TrademarkInfo',
-        related_name='listings',
+        related_name='legacy_listings',  # 改为 legacy_ 前缀避免冲突
         verbose_name='命中商标',
         blank=True,
     )
@@ -1483,14 +1485,141 @@ class AmazonListing(models.Model):
         db_comment="主题风险等级",
     )
 
+    # ========== 商品信息字段 ==========
+
+    small_image_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name='商品缩略图地址',
+        db_comment='商品缩略图URL'
+    )
+
+    seller_sku = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='MSKU',
+        db_comment='卖家SKU（MSKU）'
+    )
+
+    seller_rank = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='排名',
+        db_comment='销售排名'
+    )
+
+    seller_category_new = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        verbose_name='排名所属类别',
+        db_comment='排名所属的类别列表，如["Beauty & Personal Care"]'
+    )
+
+    # ========== 销量字段 ==========
+
+    volume_1d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-昨天',
+        db_comment='昨天销量'
+    )
+
+    volume_7d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-7天',
+        db_comment='7天销量'
+    )
+
+    volume_14d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-14天',
+        db_comment='14天销量'
+    )
+
+    volume_30d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='销量-30天',
+        db_comment='30天销量'
+    )
+
+    # ========== 销售额字段（保留2位小数） ==========
+
+    amount_1d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-昨天',
+        db_comment='昨天销售额'
+    )
+
+    amount_7d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-7天',
+        db_comment='7天销售额'
+    )
+
+    amount_14d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-14天',
+        db_comment='14天销售额'
+    )
+
+    amount_30d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        blank=True,
+        null=True,
+        verbose_name='销售额-30天',
+        db_comment='30天销售额'
+    )
+
+    # ========== 日均销量字段 ==========
+
+    avg_volume_7d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-7日',
+        db_comment='7日日均销量'
+    )
+
+    avg_volume_14d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-14日',
+        db_comment='14日日均销量'
+    )
+
+    avg_volume_30d = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name='日均销量-30日',
+        db_comment='30日日均销量'
+    )
+
+    # 下面是基础信息
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
 
     class Meta:
-        db_table = 'amazon_listing'
-        db_table_comment = 'Listing主表（店铺+ASIN唯一）'
-        verbose_name = 'Amazon Listing'
-        verbose_name_plural = 'Amazon Listings'
+        db_table = 'amazon_listing'  # 保持旧表名
+        db_table_comment = 'Listing主表（旧版本，已废弃）'
+        verbose_name = 'Amazon Listing (旧版)'
+        verbose_name_plural = 'Amazon Listings (旧版)'
+        managed = False  # 不管理此表，表已存在
 
         # 核心约束：同一个店铺内 ASIN 唯一
         constraints = [
@@ -1595,3 +1724,10 @@ class AmazonShopUploadRecord(models.Model):
     def __str__(self):
         shop_name = self.shop.shop_name if self.shop else '未知店铺'
         return f"{shop_name} - {self.batch_id} ({self.get_status_display()})"
+
+
+# ========== 导入新的 Listing 模型（V2版本） ==========
+# 旧的 AmazonListing 已改名为 AmazonListingLegacy 保留历史数据
+# 新的 AmazonListing 使用 amazon_listing_v2 表
+from .listing_models import AmazonListingV2, AmazonListingSalesHistory
+

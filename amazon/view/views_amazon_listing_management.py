@@ -12,7 +12,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from amazon.models import AmazonListing
+from amazon.models import AmazonListingLegacy
 from general.models import OperationalAccount
 from theme.models import TrademarkInfo
 
@@ -401,7 +401,7 @@ def _build_filtered_listing_queryset(payload):
     active_status_filters = set(_normalize_text_list(payload.get('active_statuses'), lower=True))
     listing_date_range = (payload.get('listing_date_range') or 'all').strip().lower()
 
-    queryset = AmazonListing.objects.select_related(
+    queryset = AmazonListingLegacy.objects.select_related(
         'lingxing_shop',
         'lingxing_shop__amazon_shop',
         'lingxing_shop__amazon_shop__ops',
@@ -500,7 +500,7 @@ def get_amazon_listing_management_filter_options_api(request):
     if cached_data is not None:
         return JsonResponse({'success': True, 'data': cached_data})
 
-    base_queryset = AmazonListing.objects.filter(
+    base_queryset = AmazonListingLegacy.objects.filter(
         lingxing_shop__name__icontains='US',
     ).exclude(
         title__isnull=True,
@@ -718,7 +718,7 @@ def get_amazon_listing_batch_risk_check_api(request):
         return JsonResponse({'success': True, 'data': {}})
 
     listings = list(
-        AmazonListing.objects.prefetch_related('tro_words', 'trademarks').filter(id__in=normalized_ids)
+        AmazonListingLegacy.objects.prefetch_related('tro_words', 'trademarks').filter(id__in=normalized_ids)
     )
     listing_map = {item.id: item for item in listings}
     status_words = _collect_status_words_from_listings(listings)
@@ -743,7 +743,7 @@ def get_amazon_listing_batch_risk_check_api(request):
 @login_required
 @require_http_methods(['GET'])
 def get_amazon_listing_word_sources_api(request, listing_id):
-    listing = AmazonListing.objects.select_related(
+    listing = AmazonListingLegacy.objects.select_related(
         'lingxing_shop',
         'lingxing_shop__amazon_shop',
         'lingxing_shop__amazon_shop__ops',

@@ -535,7 +535,9 @@ class AmazonNewReleaseRank(models.Model):
 class ThemeSummary(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
     summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
-    report = models.BooleanField(default=False, verbose_name='举报主题')
+    report = models.BooleanField(default=False, verbose_name='举报主题') # 目前不用
+    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间',db_index=True)
+
     class Meta:
         db_table = 'theme_summary'
         verbose_name = '主题汇总'
@@ -545,6 +547,7 @@ class ThemeSummary(models.Model):
 
     def __str__(self):
         return f'{self.summary_subject_title}'
+
 
 
 class NewReleaseThemeReport(models.Model):

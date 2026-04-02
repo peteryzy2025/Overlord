@@ -855,3 +855,21 @@ class AmazonUploadFile(models.Model):
         if status == self.STATUS_COMPLETED:
             self.uploaded_at = timezone.now()
         self.save()
+
+
+# ========== 导入审批模型 ==========
+# 将审批系统模型导入到 task.models 命名空间，以便 Django ORM 正确识别
+from .approval_models import (
+    LibType,
+    ApprovalStatus,
+    ApprovalType,
+    ExecStatus,
+    StepStatus,
+    RecordResult,
+    NegativeKeywordLibrary,
+    Approval,
+    ApprovalStep,
+    ApprovalRecord,
+    AmazonAdApproval,
+    AmazonAdShopConfig,
+)

@@ -546,7 +546,7 @@ def update_aba_report_week(report_week: datetime.date, record_count: int):
                 """
                 UPDATE aba_report_weeks 
                 SET display_label = %s,
-                    import_status = 'completed',
+                    import_status = 'ready',
                     record_count = %s,
                     is_active = TRUE,
                     updated_at = NOW()
@@ -562,7 +562,7 @@ def update_aba_report_week(report_week: datetime.date, record_count: int):
                 INSERT INTO aba_report_weeks 
                     (report_week, display_label, import_status, record_count, is_active, created_at, updated_at)
                 VALUES 
-                    (%s, %s, 'completed', %s, TRUE, NOW(), NOW())
+                    (%s, %s, 'ready', %s, TRUE, NOW(), NOW())
                 """,
                 [report_week, display_label, record_count]
             )
