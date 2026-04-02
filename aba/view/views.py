@@ -1574,8 +1574,8 @@ def get_aba_new_words_api(request):
 
         candidate_queryset = base_queryset.order_by('-first_seen', 'id')
 
-        total = 0
-        total_pages = 0
+        total = candidate_queryset.count()
+        total_pages = max(1, (total + page_size - 1) // page_size) if total > 0 else 0
 
         offset = (page - 1) * page_size
         page_terms = list(candidate_queryset[offset:offset + page_size + 1])
@@ -1633,7 +1633,7 @@ def get_aba_new_words_api(request):
             'total_pages': total_pages,
             'has_prev': page > 1,
             'has_next': has_next,
-            'pagination_mode': 'simple',
+            'pagination_mode': 'full',
             'needs_week': False,
             'window_start': window_start.strftime('%Y-%m-%d'),
             'window_end': window_end.strftime('%Y-%m-%d'),
