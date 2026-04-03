@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/users/ops-groups/', views_user_management.get_ops_groups_api, name='get_users_ops_groups_api'),
     path('api/users/departments/', views_user_management.get_departments_api, name='get_users_departments_api'),
     path('api/company/projects/', views_user_management.get_company_projects_api, name='get_company_projects_api'),
+    path('api/company/users/', views_user_management.get_company_users_api, name='get_company_users_api'),
     # 新增：获取公司项目列表
 
     # ========== 基础系统 ==========

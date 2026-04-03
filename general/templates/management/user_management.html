@@ -265,6 +265,7 @@
                     <th>状态</th>
                     <th>用户名</th>
                     <th>部门</th>
+                    <th>直接上级</th>
                     <th>部门角色</th>
                     <th>权限</th>
                     <th>企业微信通知</th>
@@ -343,6 +344,10 @@
                         <div class="form-group">
                             <label>状态</label>
                             <div id="statusSelect" class="searchable-select single"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>直接上级</label>
+                            <div id="managerSelect" class="searchable-select single"></div>
                         </div>
                     </div>
 
@@ -542,6 +547,10 @@
         let modalStatusSelect = null;
         let modalPlatformSelect = null;
         let modalOpsRoleSelect = null;
+        let modalManagerSelect = null;
+        
+        // 公司用户列表（用于选择上级）
+        let companyUsers = [];
 
         // 部门选项映射
         const DEPARTMENT_OPTIONS = [
@@ -567,7 +576,10 @@
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', async function() {
             initSearchableSelects();
-            await loadOpsGroupsFromAPI();
+            await Promise.all([
+                loadOpsGroupsFromAPI(),
+                loadCompanyUsers()
+            ]);
             loadUsers();
             loadDepartments();
             loadPermissions();
@@ -662,6 +674,18 @@
             }
         }
 
+        async function loadCompanyUsers() {
+            try {
+                const response = await fetch('/api/company/users/');
+                const result = await response.json();
+                if (result.success) {
+                    companyUsers = result.data;
+                }
+            } catch (error) {
+                console.error('加载公司用户列表失败:', error);
+            }
+        }
+
         async function loadDepartments() {
             try {
                 const response = await fetch('/api/users/departments/');
@@ -724,6 +748,7 @@
                     </td>
                     <td>${user.username}</td>
                     <td>${DEPARTMENT_MAP[user.department] || '-'}</td>
+                    <td>${user.manager_name || '-'}</td>
                     <td>${user.department_role || '-'}</td>
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
@@ -1013,7 +1038,7 @@
             initModalSelects(user);
             // 禁用下拉框交互（通过CSS）
             setTimeout(() => {
-                document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+                document.querySelectorAll('#departmentSelect, #statusSelect, #managerSelect, #platformSelect, #opsRoleSelect').forEach(el => {
                     el.style.pointerEvents = 'none';
                     el.style.opacity = '0.7';
                 });
@@ -1178,7 +1203,7 @@
             initModalSelects();
             
             // 恢复下拉框交互
-            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+            document.querySelectorAll('#departmentSelect, #statusSelect, #managerSelect, #platformSelect, #opsRoleSelect').forEach(el => {
                 el.style.pointerEvents = '';
                 el.style.opacity = '';
             });
@@ -1250,7 +1275,7 @@
             });
 
             // 恢复下拉框交互
-            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+            document.querySelectorAll('#departmentSelect, #statusSelect, #managerSelect, #platformSelect, #opsRoleSelect').forEach(el => {
                 el.style.pointerEvents = '';
                 el.style.opacity = '';
             });
@@ -1339,7 +1364,7 @@
                 }
             }, 100);
             // 恢复下拉框交互
-            document.querySelectorAll('#departmentSelect, #statusSelect, #platformSelect, #opsRoleSelect').forEach(el => {
+            document.querySelectorAll('#departmentSelect, #statusSelect, #managerSelect, #platformSelect, #opsRoleSelect').forEach(el => {
                 el.style.pointerEvents = '';
                 el.style.opacity = '';
             });
@@ -1365,6 +1390,22 @@
                 placeholder: '请选择状态'
             });
             modalStatusSelect.setValue(userData ? userData.status : 'active');
+
+            // 直接上级下拉框
+            const managerOptions = [{ value: '', label: '无上级' }, ...companyUsers.map(u => ({
+                value: String(u.id),
+                label: u.display_name
+            }))];
+            modalManagerSelect = new SearchableSelect('#managerSelect', {
+                options: managerOptions,
+                placeholder: '请选择直接上级'
+            });
+            // 编辑时排除自己（防止选择自己）
+            if (userData && userData.id) {
+                const filteredOptions = managerOptions.filter(opt => opt.value !== String(userData.id));
+                modalManagerSelect.setOptions(filteredOptions);
+            }
+            modalManagerSelect.setValue(userData && userData.manager_id ? String(userData.manager_id) : '');
 
             // 平台下拉框
             modalPlatformSelect = new SearchableSelect('#platformSelect', {
@@ -1441,6 +1482,7 @@
                 remark: document.getElementById('remark').value.trim(),
                 wx_url: document.getElementById('wxUrl').value.trim(),
                 permissions: Array.from(document.querySelectorAll('input[name="permission"]:checked')).map(cb => cb.value),
+                manager_id: modalManagerSelect ? modalManagerSelect.getValue() || null : null,
             };
 
             // 只有运营部才提交运营账号信息

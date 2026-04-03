@@ -889,7 +889,7 @@ a.btn.gs-btn-icon-only::before {
 .btn {
     background-color: var(--accent-color);
     color: white;
-    border: none;
+    border: 1px solid transparent;
     border-radius: 8px;
     padding: 0.5rem 1rem;
     font-weight: 500;
@@ -905,7 +905,7 @@ a.btn.gs-btn-icon-only::before {
 .btn:hover {
     background-color: #ffffff;
     color: var(--accent-color);
-    border: 1px solid var(--accent-color);
+    border-color: var(--accent-color);
     transform: translateY(-1px);
 }
 

@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET, require_POST
-from general.models import User, OperationalAccount, PermissionConfig, Project
+from general.models import User, OperationalAccount, PermissionConfig, Project, Company
 import traceback
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
@@ -211,6 +211,16 @@ def get_users_api(request):
                 if parts:
                     department_role = '-'.join(parts)
             
+            # 获取上级信息
+            manager_id = user.manager_id
+            manager_name = '-'
+            if manager_id:
+                try:
+                    manager = User.objects.get(id=manager_id)
+                    manager_name = manager.first_name or manager.username
+                except User.DoesNotExist:
+                    manager_id = None
+
             user_dict = {
                 'id': user.id,
                 'username': user.username,
@@ -227,6 +237,8 @@ def get_users_api(request):
                 'role': user.role or '',
                 'platform': user.platform or '',
                 'remark': user.remark or '',
+                'manager_id': manager_id,
+                'manager_name': manager_name,
             }
 
             if account:
@@ -420,6 +432,30 @@ def update_user_api(request, user_id):
                 'success': False,
                 'error': '用户不存在或不属于您的公司'
             }, status=404)
+
+        # 处理上级（必须在同公司内）
+        manager_id = data.get('manager_id')
+        if manager_id is not None:  # 显式传了null或id才处理
+            if manager_id:
+                try:
+                    manager = User.objects.get(id=manager_id, company=current_company)
+                    # 检查是否形成循环
+                    current = manager
+                    while current:
+                        if current.id == user.id:
+                            return JsonResponse({
+                                'success': False,
+                                'error': '不能将自己或自己的下级设为上级'
+                            }, status=400)
+                        current = current.manager
+                    user.manager = manager
+                except User.DoesNotExist:
+                    return JsonResponse({
+                        'success': False,
+                        'error': '所选上级不存在或不属于本公司'
+                    }, status=400)
+            else:
+                user.manager = None
 
         with transaction.atomic():
             user.first_name = data.get('first_name', user.first_name)
@@ -783,6 +819,53 @@ def get_departments_api(request):
 
     except Exception as e:
         print(f"获取部门列表错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'error': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_GET
+@login_required
+def get_company_users_api(request):
+    """
+    获取当前公司的所有用户列表（用于选择上级等场景）
+    返回简化信息：id, username, first_name
+    """
+    try:
+        current_company = get_user_company(request.user)
+        if not current_company:
+            return JsonResponse({'success': False, 'error': '无公司归属'}, status=403)
+
+        # 获取本公司所有用户（排除自己，用于选择上级时）
+        exclude_id = request.GET.get('exclude_id')
+        
+        queryset = User.objects.filter(
+            company=current_company,
+            status=User.Status.NORMAL  # 只返回正常状态的用户
+        ).order_by('first_name', 'username')
+        
+        if exclude_id:
+            queryset = queryset.exclude(id=exclude_id)
+
+        users_data = [
+            {
+                'id': user.id,
+                'username': user.username,
+                'first_name': user.first_name or '',
+                'display_name': f"{user.first_name or user.username} ({user.username})"
+            }
+            for user in queryset
+        ]
+
+        return JsonResponse({
+            'success': True,
+            'data': users_data
+        })
+
+    except Exception as e:
+        print(f"获取公司用户列表错误: {str(e)}")
         traceback.print_exc()
         return JsonResponse({
             'success': False,
