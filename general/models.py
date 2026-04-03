@@ -257,6 +257,17 @@ class User(AbstractUser):
         help_text='用户头像图片'
     )
 
+    # ========== 上下级关系 ==========
+    manager = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subordinates',
+        verbose_name='直接上级',
+        help_text='该用户的直接汇报对象，必须同公司'
+    )
+
     class Meta:
         db_table = 'users'
         verbose_name = '用户信息'
@@ -283,6 +294,76 @@ class User(AbstractUser):
         """检查用户是否为运营组长"""
         if hasattr(self, 'operational_account') and self.operational_account.role:
             return self.operational_account.role == OperationalAccount.Role.LEADER
+        return False
+
+    def clean(self):
+        """校验上下级关系"""
+        super().clean()
+
+        # 1. 防止循环引用
+        if self.manager_id == self.pk:
+            raise ValidationError({'manager': '不能将自己设为上级'})
+
+        if self.manager:
+            # 2. 必须同公司
+            if self.manager.company_id != self.company_id:
+                raise ValidationError({'manager': '上级必须与该用户同属一个公司'})
+
+            # 3. 防止循环：检查上级的上级链中是否包含自己
+            current = self.manager
+            visited = {self.pk}
+            while current:
+                if current.pk in visited:
+                    raise ValidationError({'manager': '设置的上级会形成循环汇报关系'})
+                visited.add(current.pk)
+                current = current.manager
+
+    def get_reporting_chain(self):
+        """
+        获取完整汇报链（从直接上级一直到根）
+        返回: [直接上级, 上级的上级, ... , 最高级]
+        """
+        chain = []
+        current = self.manager
+        visited = {self.pk}
+
+        while current and current.pk not in visited:
+            chain.append(current)
+            visited.add(current.pk)
+            current = current.manager
+
+        return chain
+
+    def get_all_subordinates(self):
+        """
+        获取所有下级（包括直接和间接下级）
+        返回: QuerySet 包含所有下级用户
+        """
+        all_ids = set()
+
+        def collect_subordinate_ids(user_id):
+            sub_ids = list(User.objects.filter(manager_id=user_id).values_list('id', flat=True))
+            for sid in sub_ids:
+                if sid not in all_ids:
+                    all_ids.add(sid)
+                    collect_subordinate_ids(sid)
+
+        collect_subordinate_ids(self.pk)
+        return User.objects.filter(id__in=all_ids)
+
+    def is_descendant_of(self, user_id):
+        """判断当前用户是否是某人的下级（用于权限判断）"""
+        current = self.manager
+        visited = {self.pk}
+
+        while current:
+            if current.pk == user_id:
+                return True
+            if current.pk in visited:
+                break
+            visited.add(current.pk)
+            current = current.manager
+
         return False
 
 
