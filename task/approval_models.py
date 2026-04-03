@@ -140,7 +140,7 @@ class Approval(models.Model):
     )
 
     # 当前进行到的步骤序号（从1开始，0表示未开始）
-    current_step_sequence = models.IntegerField('当前步骤序号', default=0, db_comment='当前待审批的步骤序号')
+    current_step_sequence = models.IntegerField('当前步骤序号', default=-1, db_comment='当前待审批的步骤序号')
 
     # 总步骤数（创建时确定，方便判断进度）
     total_steps = models.IntegerField('总步骤数', default=0, db_comment='审批步骤总数')
