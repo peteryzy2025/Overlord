@@ -1660,6 +1660,7 @@ class AmazonShopUploadRecord(models.Model):
         DRAFT = 'draft', '已保存为草稿'
         PUBLISHED = 'published', '已发布'
         FAILED = 'failed', '失败'
+        CANCELLED = 'cancelled', '已取消'
     
     # 主键：批次编号
     batch_id = models.CharField(
