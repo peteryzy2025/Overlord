@@ -326,6 +326,13 @@ class OperationalAccount(models.Model):
         null=True
     )
 
+    ad_requires_approval = models.BooleanField(
+        '广告需审批',
+        default=False,  # 默认不需要，如需全员默认审批改为 True
+        help_text='该账号的广告投放/调整操作是否需要组长/管理员审批',
+        blank=True,
+        null=True  # 允许 NULL，方便后续批量设置
+    )
     # 闪电云账号信息
     shandianyun_account = models.CharField('闪电云账号', max_length=100, blank=True, null=True)
     shandianyun_username = models.CharField('闪电云用户名', max_length=100, blank=True, null=True)
