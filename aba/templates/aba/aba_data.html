@@ -2226,13 +2226,17 @@
         function buildTrendHtml(item) {
             let trendHtml = '<span style="color: var(--text-tertiary);">-</span>';
             if (item.trend && item.trend.length > 0) {
+                const validTrend = item.trend.filter(t => t.rank != null && !isNaN(t.rank));
+                if (validTrend.length < 2) {
+                    return trendHtml;
+                }
                 const chartId = `trend-${activeLeaderboard}-${item.id}`;
-                const ranks = item.trend.map(t => t.rank);
+                const ranks = validTrend.map(t => t.rank);
                 const maxRank = Math.max(...ranks);
                 const minRank = Math.min(...ranks);
                 const range = maxRank - minRank || 1;
 
-                const trendData = item.trend.map((t, i) => ({
+                const trendData = validTrend.map((t, i) => ({
                     index: i,
                     rank: t.rank,
                     week: t.week,

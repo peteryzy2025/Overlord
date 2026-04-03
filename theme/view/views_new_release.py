@@ -63,6 +63,7 @@ def new_release_page(request):
     context = {
         'page_title': '亚马逊最新成交主题',
         'active_nav': 'theme_new_release',
+        'active_page':'theme_new_release_page',
         'stats': {
             'total_products': total_products,
             'recent_subjects_7d': recent_subjects_7d,
