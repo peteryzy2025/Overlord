@@ -1730,5 +1730,5 @@ class AmazonShopUploadRecord(models.Model):
 # ========== 导入新的 Listing 模型（V2版本） ==========
 # 旧的 AmazonListing 已改名为 AmazonListingLegacy 保留历史数据
 # 新的 AmazonListing 使用 amazon_listing_v2 表
-from .listing_models import AmazonListingV2, AmazonListingSalesHistory
+from .listing_models import AmazonListingV2
 

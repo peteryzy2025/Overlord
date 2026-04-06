@@ -426,6 +426,98 @@ class AmazonListingV2(models.Model):
         db_comment='全局标签列表'
     )
 
+    # ========== 销量数据（从 AmazonListingSalesHistory 迁移过来） ==========
+    sales_volume_1d = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='销量-昨天',
+        db_comment='昨天销量'
+    )
+
+    sales_volume_7d = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='销量-7天',
+        db_comment='7天销量'
+    )
+
+    sales_volume_14d = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='销量-14天',
+        db_comment='14天销量'
+    )
+
+    sales_volume_30d = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name='销量-30天',
+        db_comment='30天销量'
+    )
+
+    sales_amount_1d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='销售额-昨天',
+        db_comment='昨天销售额'
+    )
+
+    sales_amount_7d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='销售额-7天',
+        db_comment='7天销售额'
+    )
+
+    sales_amount_14d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='销售额-14天',
+        db_comment='14天销售额'
+    )
+
+    sales_amount_30d = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='销售额-30天',
+        db_comment='30天销售额'
+    )
+
+    sales_avg_volume_7d = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='日均销量-7日',
+        db_comment='7日日均销量'
+    )
+
+    sales_avg_volume_14d = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='日均销量-14日',
+        db_comment='14日日均销量'
+    )
+
+    sales_avg_volume_30d = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='日均销量-30日',
+        db_comment='30日日均销量'
+    )
+
     # ========== 系统时间 ==========
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -474,159 +566,3 @@ class AmazonListingV2(models.Model):
         return f"{shop_name} - {self.asin} ({self.fulfillment_channel_type})"
 
 
-class AmazonListingSalesHistory(models.Model):
-    """
-    Amazon Listing 销量历史表
-    每日快照存储销量、销售额、日均销量数据
-    保留180天历史数据（需自行清理）
-    """
-
-    # ========== 主键 ==========
-    id = models.BigAutoField(
-        primary_key=True,
-        verbose_name='ID',
-        db_comment='自增主键'
-    )
-
-    # ========== 外键关联 ==========
-    listing = models.ForeignKey(
-        AmazonListingV2,
-        on_delete=models.CASCADE,
-        related_name='sales_history',
-        verbose_name='Listing',
-        db_comment='关联的AmazonListing'
-    )
-
-    # ========== 快照日期 ==========
-    snapshot_date = models.DateField(
-        verbose_name='快照日期',
-        db_comment='数据统计日期'
-    )
-
-    # ========== 销量字段 ==========
-    volume_1d = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name='销量-昨天',
-        db_comment='昨天销量'
-    )
-
-    volume_7d = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name='销量-7天',
-        db_comment='7天销量'
-    )
-
-    volume_14d = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name='销量-14天',
-        db_comment='14天销量'
-    )
-
-    volume_30d = models.IntegerField(
-        null=True,
-        blank=True,
-        verbose_name='销量-30天',
-        db_comment='30天销量'
-    )
-
-    # ========== 销售额字段 ==========
-    amount_1d = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='销售额-昨天',
-        db_comment='昨天销售额'
-    )
-
-    amount_7d = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='销售额-7天',
-        db_comment='7天销售额'
-    )
-
-    amount_14d = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='销售额-14天',
-        db_comment='14天销售额'
-    )
-
-    amount_30d = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='销售额-30天',
-        db_comment='30天销售额'
-    )
-
-    # ========== 日均销量字段 ==========
-    avg_volume_7d = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='日均销量-7日',
-        db_comment='7日日均销量'
-    )
-
-    avg_volume_14d = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='日均销量-14日',
-        db_comment='14日日均销量'
-    )
-
-    avg_volume_30d = models.DecimalField(
-        max_digits=8,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        verbose_name='日均销量-30日',
-        db_comment='30日日均销量'
-    )
-
-    # ========== 系统时间 ==========
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='创建时间',
-        db_comment='记录创建时间'
-    )
-
-    class Meta:
-        db_table = 'amazon_listing_sales_history'
-        db_table_comment = 'Amazon Listing销量历史表（每日快照）'
-        verbose_name = 'Listing销量历史'
-        verbose_name_plural = 'Listing销量历史'
-
-        # 唯一约束：每个Listing每天一条记录
-        constraints = [
-            models.UniqueConstraint(
-                fields=['listing', 'snapshot_date'],
-                name='uniq_listing_date'
-            )
-        ]
-
-        # 常用查询索引
-        indexes = [
-            models.Index(fields=['listing', 'snapshot_date'], name='idx_sales_listing_date'),
-            models.Index(fields=['snapshot_date'], name='idx_sales_date'),
-            models.Index(fields=['listing'], name='idx_sales_listing'),
-        ]
-
-        # 按时间倒序，方便查看最新数据
-        ordering = ['-snapshot_date']
-
-    def __str__(self):
-        return f"{self.listing.asin} - {self.snapshot_date}"

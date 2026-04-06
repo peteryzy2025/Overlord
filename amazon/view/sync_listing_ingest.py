@@ -29,7 +29,8 @@ from django.db import transaction
 from django.utils import timezone
 
 from api.lingxing.Y_OpenApi import get_api_resp
-from amazon.models import AmazonListingLegacy, LingXingAmazonShop
+from amazon.models import LingXingAmazonShop
+from amazon.listing_models import AmazonListingV2
 
 
 PAGE_SIZE = 1000
@@ -260,40 +261,56 @@ def process_lingxing_api_listing_info(sid, page_offset):
 
 
 def _upsert_one_base_listing(shop: LingXingAmazonShop, row: Dict, stats: ShopIngestStats) -> str:
-    listing = AmazonListingLegacy.objects.filter(lingxing_shop=shop, asin=row["asin"]).first()
+    """
+    更新或创建 AmazonListingV2 记录
+    V2 唯一约束: asin + sid + fulfillment_channel_type
+    """
     incoming_title = row["title"]
     incoming_active = bool(row["is_active"])
+    fulfillment_channel = row.get("fulfillment_channel_type") or ""
+    
+    # 尝试查找现有记录（V2 使用 asin + sid + fulfillment_channel_type 唯一）
+    listing = AmazonListingV2.objects.filter(
+        sid=shop.sid,
+        asin=row["asin"],
+        fulfillment_channel_type=fulfillment_channel
+    ).first()
 
     if listing is None:
-        AmazonListingLegacy.objects.create(
-            lingxing_shop=shop,
+        # 创建新记录
+        AmazonListingV2.objects.create(
+            sid=shop.sid,
             asin=row["asin"],
+            fulfillment_channel_type=fulfillment_channel,
+            lingxing_shop=shop,
             title=incoming_title,
             is_active=incoming_active,
+            status=1 if incoming_active else 0,  # V2 用 status 字段
             risk_level=DEFAULT_RISK_LEVEL,
-            # 新增字段
+            # 图片和SKU
             small_image_url=row.get("small_image_url") or None,
             seller_sku=row.get("seller_sku") or None,
             seller_rank=row.get("seller_rank"),
             seller_category_new=row.get("seller_category_new") or [],
-            # 销量字段
-            volume_1d=row.get("volume_1d"),
-            volume_7d=row.get("volume_7d"),
-            volume_14d=row.get("volume_14d"),
-            volume_30d=row.get("volume_30d"),
-            # 销售额字段
-            amount_1d=row.get("amount_1d"),
-            amount_7d=row.get("amount_7d"),
-            amount_14d=row.get("amount_14d"),
-            amount_30d=row.get("amount_30d"),
-            # 日均销量字段
-            avg_volume_7d=row.get("avg_volume_7d"),
-            avg_volume_14d=row.get("avg_volume_14d"),
-            avg_volume_30d=row.get("avg_volume_30d"),
+            # 销量数据（直接写入 V2 的新字段）
+            sales_volume_1d=row.get("volume_1d"),
+            sales_volume_7d=row.get("volume_7d"),
+            sales_volume_14d=row.get("volume_14d"),
+            sales_volume_30d=row.get("volume_30d"),
+            # 销售额数据
+            sales_amount_1d=row.get("amount_1d"),
+            sales_amount_7d=row.get("amount_7d"),
+            sales_amount_14d=row.get("amount_14d"),
+            sales_amount_30d=row.get("amount_30d"),
+            # 日均销量
+            sales_avg_volume_7d=row.get("avg_volume_7d"),
+            sales_avg_volume_14d=row.get("avg_volume_14d"),
+            sales_avg_volume_30d=row.get("avg_volume_30d"),
         )
         stats.listing_created += 1
         return "created"
 
+    # 处理 is_active 单向升级策略
     effective_active, blocked_downgrade = _resolve_effective_is_active(
         current_is_active=listing.is_active,
         incoming_is_active=incoming_active,
@@ -305,32 +322,33 @@ def _upsert_one_base_listing(shop: LingXingAmazonShop, row: Dict, stats: ShopIng
     title_changed = old_title != incoming_title
     active_changed = bool(listing.is_active) != bool(effective_active)
     
-    # 注意：15个新字段（销量、销售额等）每次都全量更新，不判断是否变化
+    # 注意：销量数据每次都全量更新，不判断是否变化
     # 只有 title 变化才用于触发风险检测（清空关联词、重置 risk_level）
     if not title_changed and not active_changed:
-        # 即使没有基础字段变化，也更新动态数据字段（销量、销售额等）
+        # 更新动态数据字段（销量、销售额等）
         listing.updated_at = timezone.now()
         listing.small_image_url = row.get("small_image_url") or None
         listing.seller_sku = row.get("seller_sku") or None
         listing.seller_rank = row.get("seller_rank")
         listing.seller_category_new = row.get("seller_category_new") or []
-        listing.volume_1d = row.get("volume_1d")
-        listing.volume_7d = row.get("volume_7d")
-        listing.volume_14d = row.get("volume_14d")
-        listing.volume_30d = row.get("volume_30d")
-        listing.amount_1d = row.get("amount_1d")
-        listing.amount_7d = row.get("amount_7d")
-        listing.amount_14d = row.get("amount_14d")
-        listing.amount_30d = row.get("amount_30d")
-        listing.avg_volume_7d = row.get("avg_volume_7d")
-        listing.avg_volume_14d = row.get("avg_volume_14d")
-        listing.avg_volume_30d = row.get("avg_volume_30d")
+        # V2 销量字段（带 sales_ 前缀）
+        listing.sales_volume_1d = row.get("volume_1d")
+        listing.sales_volume_7d = row.get("volume_7d")
+        listing.sales_volume_14d = row.get("volume_14d")
+        listing.sales_volume_30d = row.get("volume_30d")
+        listing.sales_amount_1d = row.get("amount_1d")
+        listing.sales_amount_7d = row.get("amount_7d")
+        listing.sales_amount_14d = row.get("amount_14d")
+        listing.sales_amount_30d = row.get("amount_30d")
+        listing.sales_avg_volume_7d = row.get("avg_volume_7d")
+        listing.sales_avg_volume_14d = row.get("avg_volume_14d")
+        listing.sales_avg_volume_30d = row.get("avg_volume_30d")
         listing.save(update_fields=[
             "updated_at",
             "small_image_url", "seller_sku", "seller_rank", "seller_category_new",
-            "volume_1d", "volume_7d", "volume_14d", "volume_30d",
-            "amount_1d", "amount_7d", "amount_14d", "amount_30d",
-            "avg_volume_7d", "avg_volume_14d", "avg_volume_30d",
+            "sales_volume_1d", "sales_volume_7d", "sales_volume_14d", "sales_volume_30d",
+            "sales_amount_1d", "sales_amount_7d", "sales_amount_14d", "sales_amount_30d",
+            "sales_avg_volume_7d", "sales_avg_volume_14d", "sales_avg_volume_30d",
         ])
         stats.listing_updated += 1
         return "updated"
@@ -338,8 +356,9 @@ def _upsert_one_base_listing(shop: LingXingAmazonShop, row: Dict, stats: ShopIng
     # title 或 is_active 有变化的情况
     listing.title = incoming_title
     listing.is_active = effective_active
+    listing.status = 1 if effective_active else 0  # 同步更新 status
     listing.updated_at = timezone.now()
-    update_fields = ["title", "is_active", "updated_at"]
+    update_fields = ["title", "is_active", "status", "updated_at"]
 
     # 只有 title 变化时才重置风险等级（触发风险检测）
     if title_changed:
@@ -352,27 +371,27 @@ def _upsert_one_base_listing(shop: LingXingAmazonShop, row: Dict, stats: ShopIng
             "new_title": incoming_title[:80] + "..." if len(incoming_title) > 80 else incoming_title,
         })
 
-    # 同时更新所有新字段
+    # 同时更新所有字段
     listing.small_image_url = row.get("small_image_url") or None
     listing.seller_sku = row.get("seller_sku") or None
     listing.seller_rank = row.get("seller_rank")
     listing.seller_category_new = row.get("seller_category_new") or []
-    listing.volume_1d = row.get("volume_1d")
-    listing.volume_7d = row.get("volume_7d")
-    listing.volume_14d = row.get("volume_14d")
-    listing.volume_30d = row.get("volume_30d")
-    listing.amount_1d = row.get("amount_1d")
-    listing.amount_7d = row.get("amount_7d")
-    listing.amount_14d = row.get("amount_14d")
-    listing.amount_30d = row.get("amount_30d")
-    listing.avg_volume_7d = row.get("avg_volume_7d")
-    listing.avg_volume_14d = row.get("avg_volume_14d")
-    listing.avg_volume_30d = row.get("avg_volume_30d")
+    listing.sales_volume_1d = row.get("volume_1d")
+    listing.sales_volume_7d = row.get("volume_7d")
+    listing.sales_volume_14d = row.get("volume_14d")
+    listing.sales_volume_30d = row.get("volume_30d")
+    listing.sales_amount_1d = row.get("amount_1d")
+    listing.sales_amount_7d = row.get("amount_7d")
+    listing.sales_amount_14d = row.get("amount_14d")
+    listing.sales_amount_30d = row.get("amount_30d")
+    listing.sales_avg_volume_7d = row.get("avg_volume_7d")
+    listing.sales_avg_volume_14d = row.get("avg_volume_14d")
+    listing.sales_avg_volume_30d = row.get("avg_volume_30d")
     update_fields.extend([
         "small_image_url", "seller_sku", "seller_rank", "seller_category_new",
-        "volume_1d", "volume_7d", "volume_14d", "volume_30d",
-        "amount_1d", "amount_7d", "amount_14d", "amount_30d",
-        "avg_volume_7d", "avg_volume_14d", "avg_volume_30d",
+        "sales_volume_1d", "sales_volume_7d", "sales_volume_14d", "sales_volume_30d",
+        "sales_amount_1d", "sales_amount_7d", "sales_amount_14d", "sales_amount_30d",
+        "sales_avg_volume_7d", "sales_avg_volume_14d", "sales_avg_volume_30d",
     ])
 
     listing.save(update_fields=update_fields)

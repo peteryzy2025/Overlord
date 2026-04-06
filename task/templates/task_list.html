@@ -1538,10 +1538,11 @@
     async function confirmDelete() {
             if (!deleteTargetId) return;
             
+            const deletedId = deleteTargetId; // 保存要删除的ID
             showLoading(true);
             
             try {
-                const response = await fetch(`/api/tasks/${deleteTargetId}/delete/`, {
+                const response = await fetch(`/api/tasks/${deletedId}/delete/`, {
                     method: 'DELETE',
                     headers: {
                         'X-CSRFToken': getCsrfToken()
@@ -1552,15 +1553,24 @@
                 
                 if (result.success) {
                     showNotification('任务已删除', 'success');
-                    // 手动从列表中移除被删除的任务，确保表格立即更新
-                    taskData.list = taskData.list.filter(task => task.id !== deleteTargetId);
+                    // 立即从本地列表中移除，确保用户立即看到删除效果
+                    taskData.list = taskData.list.filter(task => task.id !== deletedId);
                     // 重新渲染表格
                     renderTasks();
                     // 重新渲染分页
                     renderPagination();
-                    // 调用API刷新最新数据，确保数据一致性
-                    loadTasks();
-                    loadStats();
+                    // 等待一段时间后刷新数据，确保后端数据已更新
+                    setTimeout(async () => {
+                        await loadTasks();
+                        await loadStats();
+                        // 再次确保已删除的任务不在列表中（防止后端缓存导致数据回显）
+                        const stillExists = taskData.list.some(task => task.id === deletedId);
+                        if (stillExists) {
+                            taskData.list = taskData.list.filter(task => task.id !== deletedId);
+                            renderTasks();
+                            renderPagination();
+                        }
+                    }, 500);
                 } else {
                     throw new Error(result.message || '删除失败');
                 }
