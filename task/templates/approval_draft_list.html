@@ -1,0 +1,211 @@
+{% extends 'base/base_task.html' %}
+{% load static %}
+
+{% block title %}驳回草稿 - Divi智管{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260406-approval-draft-list">
+<style>
+    .task-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .task-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    .task-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .task-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .task-table th {
+        background: var(--bg-secondary);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .task-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .task-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .task-table tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    .draft-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(107, 114, 128, 0.12);
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        font-weight: 500;
+    }
+
+    .empty-state {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--text-tertiary);
+    }
+
+    .remark-text {
+        max-width: 320px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    @media (max-width: 768px) {
+        .task-list-container {
+            padding: 1rem;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="task-list-container">
+    <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-copy"></i> 驳回草稿</h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" type="button" onclick="window.location.href='/task/approval/create/'">
+                <i class="fas fa-plus"></i> 新建审批
+            </button>
+        </div>
+    </div>
+
+    <div class="task-card">
+        <div class="task-table-wrapper">
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th>草稿审批单号</th>
+                        <th>原审批单号</th>
+                        <th>配置概览</th>
+                        <th>备注</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="draftTableBody">
+                    <tr>
+                        <td colspan="6" class="empty-state">正在加载草稿...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (response.status === 403) {
+            window.location.href = '/';
+            throw new Error(result.message || '无权访问');
+        }
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || '请求失败');
+        }
+        return result;
+    }
+
+    function renderDraftRows(rows) {
+        const tbody = document.getElementById('draftTableBody');
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有驳回后生成的草稿</p></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = rows.map((row) => `
+            <tr>
+                <td>${escapeHtml(row.approval_no)}</td>
+                <td>${escapeHtml(row.original_approval_no || '-')}</td>
+                <td><span class="draft-meta">${row.config_count || 0} 组配置 / ${row.asin_count || 0} 条 ASIN</span></td>
+                <td><div class="remark-text" title="${escapeHtml(row.remark || '')}">${escapeHtml(row.remark || '-')}</div></td>
+                <td>${escapeHtml(row.updated_at || '-')}</td>
+                <td>
+                    <button class="btn btn-primary" type="button" onclick="continueEdit(${row.approval_id})">
+                        <i class="fas fa-pen"></i> 继续编辑
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadDrafts() {
+        try {
+            const result = await fetchJson('/api/task/approvals/ad/drafts/');
+            renderDraftRows(result.data || []);
+        } catch (error) {
+            document.getElementById('draftTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
+            if (typeof showNotification === 'function') showNotification('加载驳回草稿失败: ' + error.message, 'error');
+        }
+    }
+
+    function continueEdit(approvalId) {
+        window.location.href = `/task/approval/create/?draft_id=${approvalId}`;
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDrafts);
+</script>
+{% endblock %}

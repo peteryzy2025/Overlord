@@ -1,6 +1,7 @@
 # task/approval_models.py
 
 from django.db import models
+from django.utils import timezone
 
 
 class LibType(models.TextChoices):
@@ -139,8 +140,8 @@ class Approval(models.Model):
         db_comment='审批流程状态'
     )
 
-    # 当前进行到的步骤序号（从1开始，0表示未开始）
-    current_step_sequence = models.IntegerField('当前步骤序号', default=-1, db_comment='当前待审批的步骤序号')
+    # 审批进度序号：-1草稿，0待组长，1待主管，2全部完成
+    current_step_sequence = models.IntegerField('当前步骤序号', default=-1, db_comment='审批进度序号：-1草稿，0待组长，1待主管，2全部完成')
 
     # 总步骤数（创建时确定，方便判断进度）
     total_steps = models.IntegerField('总步骤数', default=0, db_comment='审批步骤总数')
@@ -175,6 +176,45 @@ class Approval(models.Model):
 
     def __str__(self):
         return f"{self.approval_no} ({self.get_status_display()})"
+
+    @staticmethod
+    def get_total_steps_for_type(approval_type):
+        total_steps_map = {
+            ApprovalType.AMAZON_AD: 2,
+        }
+        return total_steps_map.get(approval_type, 0)
+
+    @classmethod
+    def generate_approval_no(cls, user):
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S%f')
+        return f"{user.id}_{timestamp}"
+
+    @classmethod
+    def build_draft(cls, applicant, approval_type=ApprovalType.AMAZON_AD, **extra_fields):
+        approval = cls(
+            company=applicant.company,
+            applicant=applicant,
+            approval_type=approval_type,
+            status=ApprovalStatus.DRAFT,
+            current_step_sequence=-1,
+            total_steps=cls.get_total_steps_for_type(approval_type),
+            **extra_fields,
+        )
+        if not approval.approval_no:
+            approval.approval_no = cls.generate_approval_no(applicant)
+        return approval
+
+    def save(self, *args, **kwargs):
+        if self.approval_type:
+            self.total_steps = self.get_total_steps_for_type(self.approval_type)
+
+        if self.current_step_sequence is None:
+            self.current_step_sequence = -1
+
+        if not self.approval_no and self.applicant_id:
+            self.approval_no = self.generate_approval_no(self.applicant)
+
+        super().save(*args, **kwargs)
 
 
 class ApprovalStep(models.Model):

@@ -1,0 +1,342 @@
+{% extends 'base/base_task.html' %}
+{% load static %}
+
+{% block title %}组长审批 - Divi智管{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260406-approval-leader">
+<style>
+    .task-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+    }
+
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .task-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    .task-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .task-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .task-table th {
+        background: var(--bg-secondary);
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        white-space: nowrap;
+    }
+
+    .task-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    .task-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .task-table tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .status-pending {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .status-approved {
+        background: rgba(72, 187, 120, 0.12);
+        color: #2f855a;
+    }
+
+    .status-rejected {
+        background: rgba(229, 62, 62, 0.12);
+        color: var(--danger-color);
+    }
+
+    .approval-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .pagination-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .pagination-info {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+
+    .pagination-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+
+    .page-size-select {
+        width: 100px;
+        height: 38px;
+    }
+
+    .empty-state {
+        padding: 2rem 1rem;
+        text-align: center;
+        color: var(--text-tertiary);
+    }
+
+    @media (max-width: 768px) {
+        .task-list-container {
+            padding: 1rem;
+        }
+
+        .page-header,
+        .pagination-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="task-list-container">
+    <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-user-check"></i> 组长审批</h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" type="button" onclick="loadLeaderApprovals()">
+                <i class="fas fa-rotate-right"></i> 刷新
+            </button>
+        </div>
+    </div>
+
+    <div class="task-card">
+        <div class="task-table-wrapper">
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th>审批单号</th>
+                        <th>申请者</th>
+                        <th>当前状态</th>
+                        <th>ASIN</th>
+                        <th>店铺名称</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="approvalTableBody">
+                    <tr>
+                        <td colspan="6" class="empty-state">正在加载审批数据...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="task-card pagination-bar" id="paginationCard" style="display:none;">
+        <div class="pagination-info" id="paginationInfo"></div>
+        <div class="pagination-actions">
+            <label for="pageSizeSelect" class="pagination-info">每页显示</label>
+            <select class="form-select page-size-select" id="pageSizeSelect" onchange="changePageSize(this.value)">
+                <option value="20">20条</option>
+                <option value="50">50条</option>
+                <option value="100">100条</option>
+            </select>
+            <button class="btn btn-secondary" type="button" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
+            <button class="btn btn-secondary" type="button" id="nextPageBtn" onclick="changePage(1)">下一页</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const leaderApprovalState = {
+        rows: [],
+        pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
+        loadingApprovalId: null,
+    };
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+
+        if (response.status === 403) {
+            window.location.href = '/';
+            throw new Error(result.message || '无权访问');
+        }
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || '请求失败');
+        }
+
+        return result;
+    }
+
+    function getStatusClass(statusLabel) {
+        if (String(statusLabel).includes('驳回')) return 'status-rejected';
+        if (String(statusLabel).includes('通过')) return 'status-approved';
+        return 'status-pending';
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('approvalTableBody');
+        if (!leaderApprovalState.rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有待你审批的广告审批</p></td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = leaderApprovalState.rows.map((row) => {
+            const isProcessing = leaderApprovalState.loadingApprovalId === row.approval_id;
+            return `
+                <tr>
+                    <td>${escapeHtml(row.approval_no)}</td>
+                    <td>${escapeHtml(row.applicant_name)}</td>
+                    <td><span class="status-badge ${getStatusClass(row.current_status_label)}">${escapeHtml(row.current_status_label)}</span></td>
+                    <td>${escapeHtml(row.asin)}</td>
+                    <td>${escapeHtml(row.shop_name)}</td>
+                    <td>
+                        <div class="approval-actions">
+                            <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
+                            <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function renderPagination() {
+        const pagination = leaderApprovalState.pagination || {};
+        const card = document.getElementById('paginationCard');
+        document.getElementById('pageSizeSelect').value = String(pagination.page_size || 20);
+        document.getElementById('paginationInfo').textContent = `共 ${pagination.total || 0} 条，当前第 ${pagination.page || 1}/${pagination.total_pages || 1} 页`;
+        document.getElementById('prevPageBtn').disabled = !pagination.has_prev;
+        document.getElementById('nextPageBtn').disabled = !pagination.has_next;
+        card.style.display = pagination.total ? 'flex' : 'none';
+    }
+
+    async function loadLeaderApprovals(page = leaderApprovalState.pagination.page || 1) {
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                page_size: String(leaderApprovalState.pagination.page_size || 20)
+            });
+            const result = await fetchJson(`/api/task/approvals/leader/list/?${params.toString()}`);
+            leaderApprovalState.rows = result.data || [];
+            leaderApprovalState.pagination = result.pagination || leaderApprovalState.pagination;
+            renderTable();
+            renderPagination();
+        } catch (error) {
+            document.getElementById('approvalTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
+            document.getElementById('paginationCard').style.display = 'none';
+            if (typeof showNotification === 'function') showNotification('加载审批列表失败: ' + error.message, 'error');
+        }
+    }
+
+    function changePage(offset) {
+        const nextPage = (leaderApprovalState.pagination.page || 1) + offset;
+        if (nextPage < 1) return;
+        loadLeaderApprovals(nextPage);
+    }
+
+    function changePageSize(value) {
+        leaderApprovalState.pagination.page_size = Number(value) || 20;
+        loadLeaderApprovals(1);
+    }
+
+    async function handleApprovalAction(approvalId, action) {
+        const actionLabel = action === 'approved' ? '通过' : '驳回';
+        const confirmMessage = action === 'approved'
+            ? '确定通过该审批单吗？'
+            : '确定驳回该审批单吗？系统将自动复制一张新的审批草稿。';
+        if (!window.confirm(confirmMessage)) return;
+
+        leaderApprovalState.loadingApprovalId = approvalId;
+        renderTable();
+
+        try {
+            const result = await fetchJson('/api/task/approvals/leader/action/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({
+                    approval_id: approvalId,
+                    action: action
+                })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || `审批已${actionLabel}`, 'success');
+            await loadLeaderApprovals(leaderApprovalState.pagination.page || 1);
+        } catch (error) {
+            if (typeof showNotification === 'function') showNotification(`审批${actionLabel}失败: ` + error.message, 'error');
+        } finally {
+            leaderApprovalState.loadingApprovalId = null;
+            renderTable();
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLeaderApprovals();
+    });
+</script>
+{% endblock %}

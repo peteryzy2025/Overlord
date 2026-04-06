@@ -1,0 +1,750 @@
+{% extends 'base/base_task.html' %}
+{% load static %}
+
+{% block title %}广告审批 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
+    <link rel="stylesheet" href="{% static 'css/task_create.css' %}">
+    <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260321-filter-grid">
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <style>
+        .approval-readonly { display:flex; align-items:center; min-height:42px; padding:0.5rem 0.75rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px; color:var(--text-secondary); }
+        .approval-readonly.is-pending { color:var(--text-tertiary); }
+        .approval-warning { margin-top:1rem; padding:0.9rem 1rem; border-radius:10px; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.28); color:#b45309; }
+        .approval-task-body, .config-list { display:flex; flex-direction:column; gap:1rem; }
+        .approval-config-card { border:1px solid var(--border-color); border-radius:10px; overflow:hidden; background:var(--bg-primary); }
+        .approval-config-header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:var(--bg-secondary); border-bottom:1px solid var(--border-color); }
+        .approval-config-meta { display:flex; align-items:center; gap:.75rem; }
+        .approval-config-body { display:flex; flex-direction:column; gap:1rem; padding:1.25rem; }
+        .approval-config-grid { display:grid; grid-template-columns:minmax(260px,300px) minmax(0,1fr); gap:1rem; align-items:start; }
+        .asin-dual-layout { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr); gap:1rem; }
+        .asin-panel { border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); overflow:hidden; min-height:360px; }
+        .asin-panel-header, .asin-pagination { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.9rem 1rem; background:var(--bg-tertiary); }
+        .asin-panel-header { border-bottom:1px solid var(--border-color); }
+        .asin-pagination { border-top:1px solid var(--border-color); flex-direction:column; align-items:stretch; }
+        .asin-panel-title { font-size:.92rem; font-weight:600; color:var(--text-primary); }
+        .asin-toolbar, .asin-pagination-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+        .asin-search-row { display:grid; grid-template-columns:minmax(0,1fr) 42px; gap:.5rem; margin-top:.75rem; width:100%; }
+        .asin-search-input { width:100%; }
+        .asin-search-btn { width:42px; min-width:42px; }
+        .page-size-select { width:90px; height:36px; padding:.25rem .5rem; }
+        .asin-pagination-top { display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; }
+        .asin-pagination-bottom { display:flex; align-items:center; gap:.5rem; justify-content:flex-start; }
+        .asin-page-size-row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+        .asin-list-header, .asin-row { display:grid; gap:.75rem; align-items:center; padding:.8rem 1rem; }
+        .asin-list-header { background:var(--bg-secondary); border-bottom:1px solid var(--border-color); color:var(--text-secondary); font-size:.82rem; font-weight:600; }
+        .asin-list-header.available, .asin-row.available { grid-template-columns:44px 120px 80px minmax(120px,1fr); }
+        .asin-list-header.selected, .asin-row.selected { grid-template-columns:minmax(120px,1fr) 120px 80px; }
+        .asin-list-body { max-height:360px; overflow-y:auto; }
+        .asin-row { border-bottom:1px solid var(--border-color); cursor:pointer; transition:background .2s ease; }
+        .asin-row:hover { background:rgba(59,130,246,.06); }
+        .asin-row:last-child { border-bottom:none; }
+        .asin-row.is-selected { background:rgba(59,130,246,.12); }
+        .asin-row-empty, .asin-row-loading { padding:1.3rem 1rem; color:var(--text-tertiary); text-align:center; }
+        .asin-title, .selected-asin-text { color:var(--text-secondary); font-size:.84rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .selected-channel-cell { display:flex; align-items:center; justify-content:space-between; gap:.5rem; min-width:0; }
+        .remove-selected-btn { border:none; background:transparent; color:var(--danger-color); cursor:pointer; padding:0; font-size:.85rem; }
+        .selection-summary, .asin-pagination-info { color:var(--text-tertiary); font-size:.82rem; }
+        .approval-inline-tip { color:var(--text-tertiary); font-size:.82rem; line-height:1.5; margin-top:.35rem; }
+        .approval-empty-state { border:1px dashed var(--border-color); border-radius:10px; padding:2rem 1rem; text-align:center; color:var(--text-tertiary); background:var(--bg-secondary); }
+        .approval-actions-inline { display:flex; justify-content:flex-start; align-items:center; gap:1rem; flex-wrap:wrap; }
+        @media (max-width:1200px) { .asin-dual-layout { grid-template-columns:1fr; } }
+        @media (max-width:1024px) { .approval-config-grid { grid-template-columns:1fr; } }
+        @media (max-width:768px) {
+            .asin-panel-header, .asin-pagination { flex-direction:column; align-items:stretch; }
+            .asin-toolbar, .asin-pagination-actions, .asin-pagination-bottom, .asin-page-size-row { justify-content:space-between; }
+            .asin-search-input { width:100%; }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="task-create-container">
+        {% csrf_token %}
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-bullhorn"></i> 广告审批</h1>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='/task/approval/drafts/'"><i class="fas fa-copy"></i> 驳回草稿</button>
+                <button class="btn btn-secondary" onclick="cancelApprovalCreation()"><i class="fas fa-times"></i> 取消</button>
+            </div>
+        </div>
+
+        <div class="task-card">
+            <h2 class="card-title"><i class="fas fa-info-circle"></i> 申请信息</h2>
+            <div class="task-info-grid">
+                <div class="form-group"><label class="form-label">申请人</label><div class="approval-readonly" id="applicantPreview">加载中...</div></div>
+                <div class="form-group"><label class="form-label">审批单号</label><div class="approval-readonly" id="approvalNoPreview">加载中...</div></div>
+                <div class="form-group"><label class="form-label">审批类型</label><div class="approval-readonly is-pending" id="approvalTypePreview">待选择</div></div>
+                <div class="form-group"><label class="form-label">总步骤数</label><div class="approval-readonly" id="totalStepsPreview">-</div></div>
+                <div class="form-group"><label class="form-label">当前步骤序号</label><div class="approval-readonly" id="currentStepPreview">-</div></div>
+                <div class="form-group"><label class="form-label">审批链</label><div class="approval-readonly" id="approvalChainPreview">加载中...</div></div>
+            </div>
+            <div class="approval-warning" id="approvalChainWarning" style="display:none;"></div>
+        </div>
+
+        <div class="task-card">
+            <div class="subtasks-section">
+                <div class="subtasks-toolbar">
+                    <h2 class="card-title"><i class="fas fa-list-check"></i> 创建任务</h2>
+                    <div style="display:flex; align-items:center; gap:1rem;">
+                        <span class="subtasks-count" id="configCountText">已配置 0 组店铺与 ASIN</span>
+                        <button class="btn btn-primary" onclick="handleCreateTaskAction()"><i class="fas fa-plus"></i> 创建任务</button>
+                    </div>
+                </div>
+
+                <div class="approval-task-body">
+                    <div class="form-group">
+                        <label class="form-label">审批备注</label>
+                        <textarea class="form-control" id="approvalRemark" rows="4" style="resize:vertical; min-height:96px;" placeholder="请输入广告审批备注（选填）"></textarea>
+                    </div>
+
+                    <div id="taskConfigContainer" style="display:none;">
+                        <div class="approval-actions-inline">
+                            <div class="selection-summary" id="selectionSummary">尚未添加配置组</div>
+                        </div>
+                        <div class="config-list" id="configList"></div>
+                    </div>
+
+                    <div class="approval-empty-state" id="approvalEmptyState">
+                        <i class="fas fa-inbox" style="font-size:2rem; margin-bottom:.75rem;"></i>
+                        <p>尚未选择审批子任务类型</p>
+                        <p>点击“创建任务”后，选择“创建广告审批”开始配置</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button class="btn btn-secondary" onclick="cancelApprovalCreation()"><i class="fas fa-times"></i> 取消</button>
+            <button class="btn btn-primary" onclick="submitApproval()"><i class="fas fa-paper-plane"></i> 提交审批</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="taskTypeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">选择子任务类型</h3>
+                <button class="btn-icon" onclick="closeTaskTypeModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="subtask-type-options">
+                    <div class="subtask-type-card" data-type="amazon_ad" onclick="selectTaskType(this)">
+                        <div class="type-icon"><i class="fas fa-bullhorn"></i></div>
+                        <h4>创建广告审批</h4>
+                        <p>配置店铺与 ASIN，发起两级广告审批</p>
+                    </div>
+                </div>
+                <button class="btn btn-primary" id="confirmTaskTypeBtn" onclick="confirmTaskTypeSelection()" style="width:100%; margin-top:1.5rem;" disabled>
+                    <i class="fas fa-check"></i> 确认添加
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        const approvalState = {
+            meta: null,
+            stores: [],
+            selectedTaskType: '',
+            configIdCounter: 1,
+            configs: [],
+            storeSelectMap: {},
+            draftApprovalId: null
+        };
+
+        function getDraftIdFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const draftId = params.get('draft_id');
+            return draftId ? Number(draftId) : null;
+        }
+
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+                document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+        }
+
+        function showLoading(show = true) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (!overlay) return;
+            overlay.style.display = show ? 'flex' : 'none';
+            overlay.style.visibility = show ? 'visible' : 'hidden';
+            overlay.style.opacity = show ? '1' : '0';
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function getStoreNameBySid(sid) {
+            const store = approvalState.stores.find(item => String(item.sid) === String(sid));
+            return store ? store.name : `sid_${sid}`;
+        }
+
+        function getSortedSelectedListings(config) {
+            return Object.values(config.selectedListings || {}).sort((a, b) => {
+                const shopCompare = String(a.shop_name || '').localeCompare(String(b.shop_name || ''));
+                if (shopCompare !== 0) return shopCompare;
+                const asinCompare = String(a.asin || '').localeCompare(String(b.asin || ''));
+                if (asinCompare !== 0) return asinCompare;
+                return Number(a.id) - Number(b.id);
+            });
+        }
+
+        async function fetchJson(url, options = {}) {
+            const response = await fetch(url, options);
+            const result = await response.json();
+
+            if (response.status === 403) {
+                window.location.href = '/';
+                throw new Error(result.message || '无权访问');
+            }
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || '请求失败');
+            }
+
+            return result;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading(true);
+            try {
+                await loadStores();
+                const draftId = getDraftIdFromUrl();
+                if (draftId) {
+                    await loadApprovalDraft(draftId);
+                } else {
+                    await loadApprovalMeta();
+                }
+                initConfigSortable();
+            } catch (error) {
+                console.error(error);
+                showNotification('审批页初始化失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        function renderApprovalChain(resultData) {
+            const chainParts = [];
+            if (resultData.leader_name) chainParts.push(`组长：${resultData.leader_name}`);
+            if (resultData.supervisor_name) chainParts.push(`主管：${resultData.supervisor_name}`);
+            document.getElementById('approvalChainPreview').textContent = chainParts.length ? chainParts.join(' / ') : '审批链未配置';
+
+            const warningEl = document.getElementById('approvalChainWarning');
+            warningEl.style.display = 'none';
+            warningEl.textContent = '';
+            if (!resultData.chain_ready) {
+                warningEl.style.display = 'block';
+                warningEl.textContent = '当前未识别到直接上级或主管，审批单仍可创建，缺失审批人步骤会保留为空。';
+            } else if (!resultData.leader_name || !resultData.supervisor_name) {
+                warningEl.style.display = 'block';
+                warningEl.textContent = '当前审批链不完整，未识别到的审批步骤会以空审批人创建。';
+            }
+        }
+
+        function applyApprovalMetaToPage(resultData) {
+            approvalState.meta = resultData;
+            document.getElementById('applicantPreview').textContent = resultData.applicant.name;
+            document.getElementById('approvalNoPreview').textContent = resultData.approval_no;
+            document.getElementById('totalStepsPreview').textContent = resultData.total_steps;
+            document.getElementById('currentStepPreview').textContent = resultData.current_step_sequence;
+            renderApprovalChain(resultData);
+        }
+
+        async function loadApprovalMeta() {
+            const result = await fetchJson('/api/task/approvals/ad/meta/');
+            approvalState.draftApprovalId = null;
+            applyApprovalMetaToPage(result.data);
+        }
+
+        async function loadStores() {
+            const result = await fetchJson('/api/task/approvals/ad/stores/');
+            approvalState.stores = result.data;
+        }
+
+        async function loadApprovalDraft(draftId) {
+            const result = await fetchJson(`/api/task/approvals/ad/drafts/${draftId}/`);
+            approvalState.draftApprovalId = result.data.approval.id;
+            applyApprovalMetaToPage({
+                applicant: result.data.applicant,
+                approval_no: result.data.approval.approval_no,
+                approval_type: result.data.approval.approval_type,
+                approval_type_label: result.data.approval.approval_type_label,
+                total_steps: result.data.approval.total_steps,
+                current_step_sequence: result.data.approval.current_step_sequence,
+                leader_name: result.data.leader_name,
+                supervisor_name: result.data.supervisor_name,
+                chain_ready: result.data.chain_ready,
+            });
+
+            document.getElementById('approvalRemark').value = result.data.remark || '';
+            approvalState.selectedTaskType = 'amazon_ad';
+            document.getElementById('approvalTypePreview').textContent = result.data.approval.approval_type_label || 'Amazon开广告';
+            document.getElementById('approvalTypePreview').classList.remove('is-pending');
+            document.getElementById('taskConfigContainer').style.display = 'block';
+            document.getElementById('approvalEmptyState').style.display = 'none';
+
+            approvalState.configs = (result.data.shop_configs || []).map((config) => {
+                const selectedListings = {};
+                (config.selected_listings || []).forEach((listing) => {
+                    selectedListings[String(listing.id)] = {
+                        id: listing.id,
+                        sid: listing.sid,
+                        shop_name: listing.shop_name,
+                        asin: listing.asin,
+                        fulfillment_channel_type: listing.fulfillment_channel_type || ''
+                    };
+                });
+                return {
+                    id: approvalState.configIdCounter++,
+                    sid: config.sid || '',
+                    search: '',
+                    currentPage: 1,
+                    pageSize: 20,
+                    pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
+                    listings: [],
+                    selectedListings: selectedListings,
+                    loading: false
+                };
+            });
+            renderConfigList();
+            for (const config of approvalState.configs) {
+                if (config.sid) await loadConfigListings(config.id);
+            }
+        }
+
+        function cancelApprovalCreation() {
+            window.location.href = '/task/list/';
+        }
+
+        function showTaskTypeModal() {
+            document.getElementById('taskTypeModal').style.display = 'flex';
+        }
+
+        function handleCreateTaskAction() {
+            if (approvalState.selectedTaskType === 'amazon_ad') {
+                addConfigGroup();
+                return;
+            }
+            showTaskTypeModal();
+        }
+
+        function closeTaskTypeModal(shouldReset = true) {
+            document.getElementById('taskTypeModal').style.display = 'none';
+            if (shouldReset) clearTaskTypeSelection();
+        }
+
+        function selectTaskType(card) {
+            document.querySelectorAll('#taskTypeModal .subtask-type-card').forEach(item => item.classList.remove('selected'));
+            card.classList.add('selected');
+            approvalState.selectedTaskType = card.dataset.type;
+            document.getElementById('confirmTaskTypeBtn').disabled = false;
+        }
+
+        function clearTaskTypeSelection() {
+            approvalState.selectedTaskType = '';
+            document.getElementById('confirmTaskTypeBtn').disabled = true;
+            document.querySelectorAll('#taskTypeModal .subtask-type-card').forEach(item => item.classList.remove('selected'));
+        }
+
+        function confirmTaskTypeSelection() {
+            if (approvalState.selectedTaskType !== 'amazon_ad') return;
+
+            document.getElementById('approvalTypePreview').textContent = approvalState.meta?.approval_type_label || 'Amazon开广告';
+            document.getElementById('approvalTypePreview').classList.remove('is-pending');
+            document.getElementById('taskConfigContainer').style.display = 'block';
+            document.getElementById('approvalEmptyState').style.display = 'none';
+
+            if (approvalState.configs.length === 0) addConfigGroup();
+            closeTaskTypeModal(false);
+        }
+
+        function addConfigGroup() {
+            approvalState.configs.push({
+                id: approvalState.configIdCounter++,
+                sid: '',
+                search: '',
+                currentPage: 1,
+                pageSize: 20,
+                pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
+                listings: [],
+                selectedListings: {},
+                loading: false
+            });
+            renderConfigList();
+        }
+
+        function removeConfigGroup(configId) {
+            approvalState.configs = approvalState.configs.filter(config => config.id !== configId);
+            delete approvalState.storeSelectMap[configId];
+            renderConfigList();
+        }
+
+        function getConfig(configId) {
+            return approvalState.configs.find(config => config.id === configId);
+        }
+
+        function getSelectedListingCount(config) {
+            return Object.keys(config?.selectedListings || {}).length;
+        }
+
+        function renderAsinRows(config) {
+            if (!config.sid) return '<div class="asin-row-empty">请先选择店铺</div>';
+            if (config.loading) return '<div class="asin-row-loading"><i class="fas fa-spinner fa-spin"></i> 正在加载 ASIN...</div>';
+            if (!config.listings.length) return `<div class="asin-row-empty">${config.search ? '当前搜索无结果' : '该店铺下暂无可选 ASIN 数据'}</div>`;
+
+            return config.listings.map((listing) => {
+                const checked = !!config.selectedListings[String(listing.id)];
+                return `
+                    <label class="asin-row available ${checked ? 'is-selected' : ''}">
+                        <span><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleListingSelection(${config.id}, ${listing.id}, this.checked)"></span>
+                        <span>${escapeHtml(listing.asin)}</span>
+                        <span>${escapeHtml(listing.fulfillment_channel_type || '-')}</span>
+                        <span class="asin-title" title="${escapeHtml(listing.title || '-')}">${escapeHtml(listing.title || '-')}</span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function renderSelectedRows(config) {
+            const rows = getSortedSelectedListings(config);
+            if (!rows.length) return '<div class="asin-row-empty">当前配置组还没有已选 ASIN</div>';
+
+            return rows.map((listing) => `
+                <div class="asin-row selected">
+                    <span class="asin-title" title="${escapeHtml(listing.shop_name || '-')}">${escapeHtml(listing.shop_name || '-')}</span>
+                    <span class="selected-asin-text">${escapeHtml(listing.asin)}</span>
+                    <span class="selected-channel-cell">
+                        <span>${escapeHtml(listing.fulfillment_channel_type || '-')}</span>
+                        <button type="button" class="remove-selected-btn" title="移除" onclick="removeSelectedListing(${config.id}, ${listing.id})"><i class="fas fa-times"></i></button>
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function renderPagination(config) {
+            if (!config.sid) return '<div class="asin-pagination"><div class="asin-pagination-info">请选择店铺后加载分页数据</div></div>';
+            const pagination = config.pagination || {};
+            const currentPage = pagination.page || 1;
+            const totalPages = pagination.total_pages || 1;
+            return `
+                <div class="asin-pagination">
+                    <div class="asin-pagination-top">
+                        <div class="asin-pagination-info">共 ${pagination.total || 0} 条，当前第 ${currentPage}/${totalPages} 页</div>
+                        <div class="asin-page-size-row">
+                            <span class="asin-pagination-info">每页显示条数</span>
+                            <select class="form-select page-size-select" onchange="changeConfigPageSize(${config.id}, this.value)">
+                                <option value="20" ${config.pageSize === 20 ? 'selected' : ''}>20条</option>
+                                <option value="50" ${config.pageSize === 50 ? 'selected' : ''}>50条</option>
+                                <option value="100" ${config.pageSize === 100 ? 'selected' : ''}>100条</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="asin-pagination-bottom">
+                        <button class="btn btn-secondary" type="button" onclick="changeConfigPage(${config.id}, ${currentPage - 1})" ${pagination.has_prev ? '' : 'disabled'}>上一页</button>
+                        <button class="btn btn-secondary" type="button" onclick="changeConfigPage(${config.id}, ${currentPage + 1})" ${pagination.has_next ? '' : 'disabled'}>下一页</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderConfigList() {
+            const configList = document.getElementById('configList');
+            if (!approvalState.configs.length) {
+                configList.innerHTML = '';
+                approvalState.storeSelectMap = {};
+                document.getElementById('selectionSummary').textContent = '尚未添加配置组';
+                document.getElementById('configCountText').textContent = '已配置 0 组店铺与 ASIN';
+                return;
+            }
+
+            approvalState.storeSelectMap = {};
+            configList.innerHTML = approvalState.configs.map((config, index) => `
+                <div class="approval-config-card" data-config-id="${config.id}">
+                    <div class="approval-config-header">
+                        <div class="approval-config-meta">
+                            <span class="drag-handle" title="拖动排序"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="subtask-number">配置组 #${index + 1}</span>
+                            <span class="subtask-type">${config.sid ? '当前店铺：' + escapeHtml(getStoreNameBySid(config.sid)) : '待选择店铺'}</span>
+                        </div>
+                        <button class="btn-icon" type="button" onclick="removeConfigGroup(${config.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div class="approval-config-body">
+                        <div class="approval-config-grid">
+                            <div class="form-group">
+                                <label class="form-label">选择店铺 <span style="color: var(--danger-color);">*</span></label>
+                                <div id="store-select-${config.id}" class="searchable-select single" data-placeholder="请选择店铺"></div>
+                                <div class="asin-search-row">
+                                    <input type="text" class="form-control asin-search-input" id="asin-search-${config.id}" placeholder="搜索 ASIN" value="${escapeHtml(config.search)}" onkeydown="handleAsinSearchKeydown(event, ${config.id})">
+                                    <button class="btn gs-filter-action-btn gs-filter-search-btn gs-btn-icon-only asin-search-btn" type="button" onclick="applyConfigSearch(${config.id})" title="搜索 ASIN">
+                                        <i class="fas fa-search" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="selection-summary">当前配置组已选 ${getSelectedListingCount(config)} 条 ASIN</div>
+                                <div class="approval-inline-tip">一个配置组仅支持同一店铺的 ASIN，如需选择其他店铺，请新建配置组。</div>
+                            </div>
+                            <div class="asin-dual-layout">
+                                <div class="asin-panel">
+                                    <div class="asin-panel-header">
+                                        <div class="asin-panel-title">可选 ASIN</div>
+                                    </div>
+                                    <div class="asin-list-header available">
+                                        <span>选择</span>
+                                        <span>ASIN</span>
+                                        <span>渠道</span>
+                                        <span>标题</span>
+                                    </div>
+                                    <div class="asin-list-body" id="asin-list-${config.id}">${renderAsinRows(config)}</div>
+                                    ${renderPagination(config)}
+                                </div>
+                                <div class="asin-panel">
+                                    <div class="asin-panel-header">
+                                        <div class="asin-panel-title">已选 ASIN</div>
+                                        <div class="selection-summary">共 ${getSelectedListingCount(config)} 条</div>
+                                    </div>
+                                    <div class="asin-list-header selected">
+                                        <span>店铺名称</span>
+                                        <span>ASIN</span>
+                                        <span>渠道</span>
+                                    </div>
+                                    <div class="asin-list-body">${renderSelectedRows(config)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            approvalState.configs.forEach(initStoreSelect);
+            updateSummary();
+        }
+
+        function initStoreSelect(config) {
+            const selector = `#store-select-${config.id}`;
+            if (!document.querySelector(selector)) return;
+
+            const instance = new SearchableSelect(selector, {
+                options: approvalState.stores.map(store => ({ value: store.sid, label: store.name })),
+                multiple: false,
+                placeholder: '请选择店铺'
+            });
+            instance.onChange = (value) => handleStoreChange(config.id, value);
+            approvalState.storeSelectMap[config.id] = instance;
+
+            if (config.sid) instance.setValue(String(config.sid));
+        }
+
+        async function loadConfigListings(configId) {
+            const config = getConfig(configId);
+            if (!config || !config.sid) return;
+
+            config.loading = true;
+            renderConfigList();
+
+            try {
+                const params = new URLSearchParams({
+                    sid: config.sid,
+                    page: String(config.currentPage || 1),
+                    page_size: String(config.pageSize || 20),
+                    search: config.search || ''
+                });
+                const result = await fetchJson(`/api/task/approvals/ad/asins/?${params.toString()}`);
+                config.listings = result.data;
+                config.pagination = result.pagination;
+            } catch (error) {
+                config.listings = [];
+                config.pagination = { page: 1, page_size: config.pageSize, total: 0, total_pages: 0, has_next: false, has_prev: false };
+                showNotification('加载 ASIN 失败: ' + error.message, 'error');
+            } finally {
+                config.loading = false;
+                renderConfigList();
+            }
+        }
+
+        async function handleStoreChange(configId, sid) {
+            const config = getConfig(configId);
+            if (!config) return;
+
+            const nextSid = sid ? String(sid) : '';
+            const previousSid = config.sid ? String(config.sid) : '';
+            if (nextSid === previousSid) return;
+
+            const selectedCount = getSelectedListingCount(config);
+            if (selectedCount > 0) {
+                const confirmed = window.confirm('切换店铺会清空当前配置组已选 ASIN。若需选择其他店铺，请新建配置组。是否继续切换？');
+                if (!confirmed) {
+                    const instance = approvalState.storeSelectMap[configId];
+                    if (instance) instance.setValue(previousSid);
+                    return;
+                }
+                config.selectedListings = {};
+            }
+
+            config.sid = nextSid;
+            config.search = '';
+            config.currentPage = 1;
+            config.listings = [];
+            config.pagination = { page: 1, page_size: config.pageSize, total: 0, total_pages: 0, has_next: false, has_prev: false };
+
+            if (!nextSid) {
+                renderConfigList();
+                return;
+            }
+
+            await loadConfigListings(configId);
+        }
+
+        function changeConfigPage(configId, page) {
+            const config = getConfig(configId);
+            if (!config || !config.sid || page < 1) return;
+            config.currentPage = page;
+            loadConfigListings(configId);
+        }
+
+        function changeConfigPageSize(configId, value) {
+            const config = getConfig(configId);
+            if (!config) return;
+            config.pageSize = Number(value) || 20;
+            config.currentPage = 1;
+            loadConfigListings(configId);
+        }
+
+        function handleAsinSearchKeydown(event, configId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                applyConfigSearch(configId);
+            }
+        }
+
+        function applyConfigSearch(configId) {
+            const config = getConfig(configId);
+            if (!config || !config.sid) return;
+
+            const input = document.getElementById(`asin-search-${configId}`);
+            config.search = input ? input.value.trim() : '';
+            config.currentPage = 1;
+            loadConfigListings(configId);
+        }
+
+        function toggleListingSelection(configId, listingId, checked) {
+            const config = getConfig(configId);
+            if (!config) return;
+
+            const listing = config.listings.find(item => Number(item.id) === Number(listingId));
+            if (!listing) return;
+
+            const key = String(listingId);
+            if (checked) {
+                if (String(listing.sid) !== String(config.sid)) {
+                    showNotification('一个配置组只能选择当前店铺的 ASIN，如需其他店铺请新建配置组', 'warning');
+                    renderConfigList();
+                    return;
+                }
+                config.selectedListings[key] = {
+                    id: listing.id,
+                    sid: listing.sid,
+                    shop_name: listing.shop_name,
+                    asin: listing.asin,
+                    fulfillment_channel_type: listing.fulfillment_channel_type || ''
+                };
+            } else {
+                delete config.selectedListings[key];
+            }
+
+            renderConfigList();
+        }
+
+        function removeSelectedListing(configId, listingId) {
+            const config = getConfig(configId);
+            if (!config) return;
+            delete config.selectedListings[String(listingId)];
+            renderConfigList();
+        }
+
+        function updateSummary() {
+            const configCount = approvalState.configs.length;
+            const selectedCount = approvalState.configs.reduce((total, config) => total + Object.keys(config.selectedListings || {}).length, 0);
+            document.getElementById('selectionSummary').textContent = `当前共 ${configCount} 组配置，已选择 ${selectedCount} 条 ASIN 记录`;
+            document.getElementById('configCountText').textContent = `已配置 ${configCount} 组店铺与 ASIN`;
+        }
+
+        function initConfigSortable() {
+            const list = document.getElementById('configList');
+            if (!list || typeof Sortable === 'undefined') return;
+
+            new Sortable(list, {
+                animation: 150,
+                handle: '.drag-handle',
+                onEnd: () => {
+                    const configMap = new Map(approvalState.configs.map(item => [item.id, item]));
+                    approvalState.configs = Array.from(document.querySelectorAll('#configList .approval-config-card'))
+                        .map(item => configMap.get(Number(item.dataset.configId)))
+                        .filter(Boolean);
+                    renderConfigList();
+                }
+            });
+        }
+
+        function validateBeforeSubmit() {
+            if (approvalState.selectedTaskType !== 'amazon_ad') throw new Error('请先选择“创建广告审批”');
+            if (!approvalState.configs.length) throw new Error('请至少添加一组店铺与 ASIN 配置');
+
+            approvalState.configs.forEach((config, index) => {
+                if (!config.sid) throw new Error(`配置组 #${index + 1} 未选择店铺`);
+                if (!Object.keys(config.selectedListings || {}).length) throw new Error(`配置组 #${index + 1} 至少选择一个 ASIN`);
+                const hasCrossShopListing = Object.values(config.selectedListings || {}).some(item => String(item.sid) !== String(config.sid));
+                if (hasCrossShopListing) throw new Error(`配置组 #${index + 1} 只能选择当前店铺的 ASIN，如需其他店铺请新增配置组`);
+            });
+        }
+
+        async function submitApproval() {
+            try {
+                validateBeforeSubmit();
+            } catch (error) {
+                showNotification(error.message, 'warning');
+                return;
+            }
+
+            const payload = {
+                approval_id: approvalState.draftApprovalId,
+                approval_no: approvalState.meta?.approval_no || '',
+                approval_type: 'amazon_ad',
+                remark: document.getElementById('approvalRemark').value.trim(),
+                shop_configs: approvalState.configs.map(config => ({
+                    sid: config.sid,
+                    listing_ids: Object.keys(config.selectedListings || {}).map(item => Number(item))
+                }))
+            };
+
+            showLoading(true);
+            try {
+                const result = await fetchJson('/api/task/approvals/ad/create/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                    body: JSON.stringify(payload)
+                });
+                showNotification(`广告审批提交成功：${result.data.approval_no}`, 'success');
+                setTimeout(() => {
+                    if (approvalState.draftApprovalId) {
+                        window.location.href = '/task/approval/drafts/';
+                        return;
+                    }
+                    window.location.reload();
+                }, 900);
+            } catch (error) {
+                showNotification('创建失败: ' + error.message, 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+    </script>
+{% endblock %}

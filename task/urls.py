@@ -1,11 +1,14 @@
 # Task/urls.py
 
 from django.urls import path
-from task.view import task_api_views, task_page_views, product_views, task_upload_views,task_detail_views
+from task.view import approval_views, task_api_views, task_page_views, product_views, task_upload_views,task_detail_views
 app_name = 'task'  # 命名空间
 urlpatterns = [
     # 页面路由
     path('task/create/', task_page_views.task_create_page, name='task_create_page'),
+    path('task/approval/create/', approval_views.approval_create_page, name='approval_create_page'),
+    path('task/approval/drafts/', approval_views.approval_draft_page, name='approval_draft_page'),
+    path('task/approval/leader/', approval_views.approval_leader_page, name='approval_leader_page'),
     path('task/product/create/', product_views.product_create_page, name='product_create_page'),
     path('task/product/list/', product_views.product_list_page, name='product_list_page'),
     path('task/list/', task_page_views.task_list_page, name='task_list_page'),
@@ -25,6 +28,14 @@ urlpatterns = [
     path('api/products/status-choices/', product_views.get_status_choices_api, name='get_status_choices'),
     # 店铺相关
     path('api/tasks/shops/', task_api_views.get_available_shops_api, name='get_available_shops'),
+    path('api/task/approvals/ad/meta/', approval_views.approval_meta_api, name='approval_meta_api'),
+    path('api/task/approvals/ad/stores/', approval_views.approval_stores_api, name='approval_stores_api'),
+    path('api/task/approvals/ad/drafts/', approval_views.approval_draft_list_api, name='approval_draft_list_api'),
+    path('api/task/approvals/ad/drafts/<int:approval_id>/', approval_views.approval_draft_detail_api, name='approval_draft_detail_api'),
+    path('api/task/approvals/ad/asins/', approval_views.approval_asins_api, name='approval_asins_api'),
+    path('api/task/approvals/ad/create/', approval_views.create_ad_approval_api, name='create_ad_approval_api'),
+    path('api/task/approvals/leader/list/', approval_views.approval_leader_list_api, name='approval_leader_list_api'),
+    path('api/task/approvals/leader/action/', approval_views.approval_leader_action_api, name='approval_leader_action_api'),
 
     # 所有者相关
     path('api/tasks/available-owners/', task_api_views.get_available_owners_api, name='get_available_owners'),
