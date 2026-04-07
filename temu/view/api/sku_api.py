@@ -183,3 +183,82 @@ def _decimal_eq(a, b):
     if a is None or b is None:
         return False
     return a == b
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def get_temu_shop_password_api(request):
+    """
+    根据店铺名称获取店铺登录账号和密码 API
+    
+    入参格式（JSON）：
+    {
+        "shop_name": "店铺名称"
+    }
+    
+    返回格式：
+    {
+        "success": true,
+        "data": {
+            "shop_name": "店铺名称",
+            "shop_account": "登录账号/手机号",
+            "shop_password": "密码"
+        }
+    }
+    或
+    {
+        "success": false,
+        "message": "店铺不存在"
+    }
+    """
+    try:
+        body = json.loads(request.body)
+        shop_name = body.get('shop_name', '').strip()
+        
+        if not shop_name:
+            return JsonResponse({
+                'success': False,
+                'message': '参数错误：shop_name 不能为空'
+            }, status=400)
+        
+        from general.models import TemuShop
+        
+        try:
+            shop = TemuShop.objects.get(shop_name=shop_name)
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'shop_name': shop.shop_name,
+                    'shop_account': shop.shop_account or '',
+                    'shop_password': shop.shop_password or ''
+                }
+            })
+        except TemuShop.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': f'店铺 "{shop_name}" 不存在'
+            }, status=404)
+        except TemuShop.MultipleObjectsReturned:
+            # 如果有多个同名店铺，返回第一个
+            shop = TemuShop.objects.filter(shop_name=shop_name).first()
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'shop_name': shop.shop_name,
+                    'shop_account': shop.shop_account or '',
+                    'shop_password': shop.shop_password or ''
+                }
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'JSON 解析错误'
+        }, status=400)
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+            'detail': traceback.format_exc()
+        }, status=500)

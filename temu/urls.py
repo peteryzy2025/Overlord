@@ -22,4 +22,7 @@ urlpatterns = [
     
     # ========== Temu SKU 管理 ==========
     path('api/batch-upsert-sku/', sku_api.batch_upsert_sku_api, name='batch_upsert_sku'),
+    
+    # ========== Temu 店铺管理 ==========
+    path('api/get-temu-shop-password/', sku_api.get_temu_shop_password_api, name='get_temu_shop_password'),
 ]
