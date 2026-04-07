@@ -153,6 +153,13 @@
                         <h4>迪唯汇出上架-Amazon切表版</h4>
                         <p>汇出产品数据</p>
                     </div>
+                    <div class="subtask-type-card" data-type="divi_export_pro" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-file-export"></i>
+                        </div>
+                        <h4>迪唯汇出上架-Pro</h4>
+                        <p>汇出产品数据（Pro版）</p>
+                    </div>
                     <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-images"></i>
@@ -1798,6 +1805,11 @@
                     diwei_account: '陈柔',
                     export_rows: []
                 };
+            } else if (type === 'divi_export_pro') {
+                defaultParams = {
+                    diwei_account: '陈柔',
+                    export_rows: []
+                };
             } else if (type === 'divi_gallery_upload') {
                 defaultParams = {
                     diwei_account: '陈柔',
@@ -1825,6 +1837,9 @@
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
                 if (!params.custom_rows) mergedParams.custom_rows = [];
             } else if (type === 'divi_export') {
+                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.export_rows) mergedParams.export_rows = [];
+            } else if (type === 'divi_export_pro') {
                 if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'amazon_upload') {
@@ -1954,7 +1969,7 @@
                 refreshFileList(subtask.id);
             }
 
-            if (subtask.type === 'divi_multi_side_custom' || subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_gallery_upload') {
+            if (subtask.type === 'divi_multi_side_custom' || subtask.type === 'divi_custom' || subtask.type === 'divi_export' || subtask.type === 'divi_export_pro' || subtask.type === 'divi_gallery_upload') {
                 await initDiweiAccountSelect(subtask);
             }
 
@@ -1984,8 +1999,8 @@
                 }
             }
 
-            // 如果是divi_export类型，初始化汇出行
-            if (subtask.type === 'divi_export') {
+            // 如果是divi_export或divi_export_pro类型，初始化汇出行
+            if (subtask.type === 'divi_export' || subtask.type === 'divi_export_pro') {
                 if (subtask.params.export_rows) {
                     setTimeout(async () => {
                         for (let index = 0; index < subtask.params.export_rows.length; index++) {
@@ -2556,6 +2571,25 @@
                         </div>
                     </div>
                 `;
+            } else if (subtask.type === 'divi_export_pro') {
+                return `
+                    <div class="dynamic-fields diwei-fields">
+                        <div class="form-group">
+                            <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择迪唯账号"></div>
+                        </div>
+
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="export-rows-container" id="export-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
+                                ${(subtask.params.export_rows || []).map((row, index) => renderExportRow(subtask.id, index, row)).join('')}
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addExportRow(${subtask.id})" style="width: 100%;">
+                                <i class="fas fa-plus"></i> 添加产品
+                            </button>
+                        </div>
+                    </div>
+                `;
             } else if (subtask.type === 'divi_gallery_upload') {
                 return `
                     <div class="dynamic-fields diwei-fields">
@@ -2657,6 +2691,7 @@
                 'divi_multi_side_custom': '迪唯多面定制',
                 'divi_custom': '迪唯批量定制',
                 'divi_export': '迪唯汇出上架-Amazon切表版',
+                'divi_export_pro': '迪唯汇出上架-Pro',
                 'divi_gallery_upload': 'DIVI图库上传',
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
@@ -3137,8 +3172,8 @@
                         // 深拷贝参数
                         const params = JSON.parse(JSON.stringify(templateSubtask.params));
                         
-                        // 清理 divi_export 的中文字段名
-                        if (templateSubtask.type === 'divi_export' && params.export_rows) {
+                        // 清理 divi_export 和 divi_export_pro 的中文字段名
+                        if ((templateSubtask.type === 'divi_export' || templateSubtask.type === 'divi_export_pro') && params.export_rows) {
                             params.export_rows.forEach(row => {
                                 if (row.产品ID && !row.product_id) row.product_id = row.产品ID;
                                 if (row.颜色ID列表 && !row.colors) row.colors = row.颜色ID列表;
@@ -3183,8 +3218,8 @@
                 subtasks: taskData.subtasks.map((subtask, index) => {
                     let params = subtask.params;
                     
-                    // 对 divi_export 类型的子任务，仅在创建任务时添加产品名称（提交时转换）
-                    if (convertDiviExport && subtask.type === 'divi_export' && params.export_rows) {
+                    // 对 divi_export 和 divi_export_pro 类型的子任务，仅在创建任务时添加产品名称（提交时转换）
+                    if (convertDiviExport && (subtask.type === 'divi_export' || subtask.type === 'divi_export_pro') && params.export_rows) {
                         const newExportRows = params.export_rows.map((row, rowIndex) => {
                             // 获取产品名称
                             let productName = '';
@@ -3457,6 +3492,39 @@
                             return false;
                         }
                     }
+                } else if (subtask.type === 'divi_export_pro') {
+                    // 迪唯汇出上架-Pro 验证（与 divi_export 相同）
+                    if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
+                        return false;
+                    }
+                    
+                    // 验证汇出行
+                    const exportRows = subtask.params.export_rows || [];
+                    if (exportRows.length === 0) {
+                        showNotification(`子任务 #${subtask.order + 1} 请至少添加一个产品`, 'warning');
+                        return false;
+                    }
+                    
+                    for (let i = 0; i < exportRows.length; i++) {
+                        const row = exportRows[i];
+                        
+                        // 兼容中英文两种字段名（加载草稿时可能还没完成转换）
+                        const productId = row.product_id || row.产品ID || '';
+                        const shops = row.shops || row.店铺列表 || [];
+                        
+                        // 验证产品不能为空
+                        if (!productId || String(productId).trim() === '') {
+                            showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行的产品不能为空`, 'warning');
+                            return false;
+                        }
+                        
+                        // 验证店铺不能为空
+                        if (!shops || shops.length === 0) {
+                            showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行的店铺不能为空`, 'warning');
+                            return false;
+                        }
+                    }
                 } else if (subtask.type === 'divi_gallery_upload') {
                     if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
                         showNotification(`子任务 #${subtask.order + 1} 的迪唯账号不能为空`, 'warning');
@@ -3567,8 +3635,8 @@
                 // 深拷贝参数，避免修改原始数据
                 const params = JSON.parse(JSON.stringify(subtask.params));
                 
-                // 清理 divi_export 的中文字段名，转换为英文字段名
-                if (subtask.type === 'divi_export' && params.export_rows) {
+                // 清理 divi_export 和 divi_export_pro 的中文字段名，转换为英文字段名
+                if ((subtask.type === 'divi_export' || subtask.type === 'divi_export_pro') && params.export_rows) {
                     params.export_rows.forEach(row => {
                         // 中文字段名转英文（优先使用中文值）
                         if (row.产品ID !== undefined) row.product_id = row.产品ID;

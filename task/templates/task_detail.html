@@ -879,6 +879,8 @@
                 return renderFactPill('定制行', Array.isArray(params.custom_rows) ? params.custom_rows.length : 0);
             case 'divi_export':
                 return renderFactPill('汇出行', Array.isArray(params.export_rows) ? params.export_rows.length : 0);
+            case 'divi_export_pro':
+                return renderFactPill('汇出行', Array.isArray(params.export_rows) ? params.export_rows.length : 0);
             case 'divi_gallery_upload':
                 return renderFactPill('路径', hasDisplayValue(params.gallery_path) || hasDisplayValue(params.local_gallery_path) ? '已填写' : '未填写');
             default:
@@ -961,6 +963,18 @@
                 break;
             case 'divi_export':
                 title = '迪唯汇出配置';
+                content = renderFieldGrid([
+                    field('迪唯账号', params.diwei_account),
+                    field('汇出行', renderGroupedProductRows(params.export_rows, [
+                        { key: 'product_id', label: '产品 ID' },
+                        { key: 'sizes', label: '尺码' },
+                        { key: 'colors', label: '颜色' },
+                        { key: 'shops', label: '店铺' }
+                    ]), true, true)
+                ]);
+                break;
+            case 'divi_export_pro':
+                title = '迪唯汇出配置-Pro';
                 content = renderFieldGrid([
                     field('迪唯账号', params.diwei_account),
                     field('汇出行', renderGroupedProductRows(params.export_rows, [
@@ -1344,6 +1358,7 @@
             divi_multi_side_custom: '迪唯多面定制',
             divi_custom: '迪唯批量定制',
             divi_export: '迪唯汇出',
+            divi_export_pro: '迪唯汇出-Pro',
             divi_gallery_upload: 'DIVI图库上传',
             amazon_upload: 'Amazon上架'
         };

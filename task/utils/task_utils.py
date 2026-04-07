@@ -241,6 +241,14 @@ def validate_subtask_params(subtask_type, params, user):
 
             return {'valid': True, 'message': ''}
 
+        elif subtask_type == 'divi_export_pro':
+            # 迪唯汇出上架-Pro 验证（与 divi_export 相同）
+            diwei_account = params.get('diwei_account', '').strip()
+            if not diwei_account:
+                return {'valid': False, 'message': '迪唯账号不能为空'}
+
+            return {'valid': True, 'message': ''}
+
         elif subtask_type == 'divi_gallery_upload':
             diwei_account = params.get('diwei_account', '').strip()
             if not diwei_account:

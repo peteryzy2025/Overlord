@@ -116,6 +116,7 @@ class SubTaskType(models.TextChoices):
     DIVI_GALLERY_UPLOAD = 'divi_gallery_upload', 'DIVI图库上传'
     DIVI_CUSTOM = 'divi_custom', '迪唯定制'
     DIVI_EXPORT = 'divi_export', '迪唯汇出上架-Amazon切表版'
+    DIVI_EXPORT_PRO = 'divi_export_pro', '迪唯汇出上架-Pro'
 
 
 class SubTaskStatus(models.TextChoices):
@@ -143,6 +144,7 @@ class SubTask(models.Model):
     TYPE_DIVI_GALLERY_UPLOAD = 'divi_gallery_upload'
     TYPE_DIVI_CUSTOM = 'divi_custom'
     TYPE_DIVI_EXPORT = 'divi_export'
+    TYPE_DIVI_EXPORT_PRO = 'divi_export_pro'
 
     # 子任务状态定义
     STATUS_DRAFT = 'draft'
@@ -165,6 +167,7 @@ class SubTask(models.Model):
         (TYPE_DIVI_MULTI_SIDE_CUSTOM, '迪唯多面定制'),
         (TYPE_DIVI_CUSTOM, '迪唯批量定制'),
         (TYPE_DIVI_EXPORT, '迪唯汇出'),
+        (TYPE_DIVI_EXPORT_PRO, '迪唯汇出上架-Pro'),
         (TYPE_DIVI_GALLERY_UPLOAD, 'DIVI图库上传'),
         (TYPE_CUSTOM_UPLOAD, '定制上架'),
         (TYPE_TEMU_EXPORT, 'Temu导单'),
@@ -189,7 +192,7 @@ class SubTask(models.Model):
         '子任务类型',
         max_length=30,
         choices=TYPE_CHOICES,
-        db_comment='子任务类型：divi_multi_side_custom/divi_custom/divi_export/divi_gallery_upload'
+        db_comment='子任务类型：divi_multi_side_custom/divi_custom/divi_export/divi_export_pro/divi_gallery_upload'
     )
 
     # 子任务状态

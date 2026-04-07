@@ -1235,6 +1235,25 @@ def create_task_api(request):
                             '迪唯账号': params.get('diwei_account', ''),
                             '汇出行列表': export_rows_cn
                         }
+                    elif st.subtask_type == 'divi_export_pro':
+                        # 迪唯汇出上架-Pro - 转换汇出行数据（与 divi_export 相同）
+                        export_rows_cn = []
+                        for row in params.get('export_rows', []):
+                            export_rows_cn.append({
+                                '产品ID': row.get('product_id', ''),
+                                '产品名称': row.get('product_name', ''),
+                                '尺码ID列表': row.get('sizes', []),
+                                '尺码名称列表': row.get('size_names', []),
+                                '颜色ID列表': row.get('colors', []),
+                                '颜色中文列表': row.get('color_names', []),
+                                '颜色英文列表': row.get('color_en_names', []),
+                                '店铺列表': row.get('shops', [])
+                            })
+                        
+                        subtask_params = {
+                            '迪唯账号': params.get('diwei_account', ''),
+                            '汇出行列表': export_rows_cn
+                        }
                     elif st.subtask_type == 'divi_gallery_upload':
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
@@ -1311,6 +1330,7 @@ def create_task_api(request):
                     type_display_map = {
                         'divi_custom': '迪唯批量定制',
                         'divi_export': '迪唯汇出上架-Amazon切表版',
+                        'divi_export_pro': '迪唯汇出上架-Pro',
                         'divi_gallery_upload': 'DIVI图库上传',
                         'divi_multi_side_custom': '迪唯多面定制',
                         'custom_upload': 'Temu定制上架',
