@@ -11,125 +11,162 @@
     
     <!-- Pro版本金色流光特效 -->
     <style>
-        /* Pro版本卡片金色流光边框 */
+        /* Pro版本卡片 - 波浪边框 + 小金色流动光点 */
         .subtask-type-card.pro-card {
             position: relative;
-            background: linear-gradient(145deg, #ffffff 0%, #fffef5 100%);
-            border: 2px solid transparent;
-            background-clip: padding-box;
+            background: linear-gradient(145deg, #ffffff 0%, #fffef8 100%);
             overflow: visible;
         }
         
+        /* 波浪纹理边框 - 使用渐变条纹模拟波浪 */
         .subtask-type-card.pro-card::before {
             content: '';
             position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: conic-gradient(
-                from 0deg,
-                rgba(212, 175, 55, 0.3),
-                rgba(255, 215, 0, 0.8),
-                rgba(255, 236, 139, 1),
-                rgba(255, 215, 0, 0.8),
-                rgba(212, 175, 55, 0.3),
-                rgba(212, 175, 55, 0.3)
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            background: repeating-linear-gradient(
+                45deg,
+                #d4af37 0px,
+                #d4af37 3px,
+                #e5c158 3px,
+                #e5c158 6px,
+                #ffd700 6px,
+                #ffd700 9px,
+                #e5c158 9px,
+                #e5c158 12px
             );
             border-radius: 10px;
             z-index: -1;
-            animation: goldenFlow 4s linear infinite;
+            opacity: 0.7;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            -webkit-mask-composite: xor;
+            padding: 3px;
         }
         
-        .subtask-type-card.pro-card::after {
+        /* 流动的金色小光点 - 更小更精致 */
+        .subtask-type-card.pro-card .firefly {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ffd700 0%, #ffec8b 50%, transparent 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 4px #ffd700, 0 0 8px #ffec8b;
+            pointer-events: none;
+            z-index: 10;
+            animation: fireflyMove 3s linear infinite;
+        }
+        
+        /* 小光点拖尾效果 */
+        .subtask-type-card.pro-card .firefly::after {
             content: '';
             position: absolute;
-            top: -2px;
-            left: -2px;
-            right: -2px;
-            bottom: -2px;
-            background: conic-gradient(
-                from 180deg,
-                transparent,
-                rgba(255, 215, 0, 0.4),
-                rgba(255, 236, 139, 0.6),
-                rgba(255, 215, 0, 0.4),
-                transparent
-            );
-            border-radius: 10px;
-            z-index: -2;
-            animation: goldenFlow 4s linear infinite reverse;
-            filter: blur(4px);
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(255, 215, 0, 0.8), transparent);
+            transform: translate(-100%, -50%);
+            border-radius: 1px;
         }
         
-        @keyframes goldenFlow {
+        /* 小光点沿边框四周移动 */
+        @keyframes fireflyMove {
             0% {
+                top: -3px;
+                left: -3px;
                 transform: rotate(0deg);
             }
+            25% {
+                top: -3px;
+                left: calc(100% - 3px);
+                transform: rotate(0deg);
+            }
+            26% {
+                transform: rotate(90deg);
+            }
+            50% {
+                top: calc(100% - 3px);
+                left: calc(100% - 3px);
+                transform: rotate(90deg);
+            }
+            51% {
+                transform: rotate(180deg);
+            }
+            75% {
+                top: calc(100% - 3px);
+                left: -3px;
+                transform: rotate(180deg);
+            }
+            76% {
+                transform: rotate(270deg);
+            }
             100% {
-                transform: rotate(360deg);
+                top: -3px;
+                left: -3px;
+                transform: rotate(270deg);
             }
         }
         
-        /* Pro卡片内部图标金色光晕 */
-        .subtask-type-card.pro-card .type-icon {
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4a 50%, #d4af37 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.4));
+        /* 辅助小光点 */
+        .subtask-type-card.pro-card .firefly-trail {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.5), transparent);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9;
+            animation: trailMove 3s linear infinite;
+            opacity: 0.4;
         }
         
-        .subtask-type-card.pro-card .type-icon i {
+        @keyframes trailMove {
+            0% { top: -2px; left: -2px; }
+            25% { top: -2px; left: calc(100% - 2px); }
+            50% { top: calc(100% - 2px); left: calc(100% - 2px); }
+            75% { top: calc(100% - 2px); left: -2px; }
+            100% { top: -2px; left: -2px; }
+        }
+        
+        /* Pro卡片内部图标 */
+        .subtask-type-card.pro-card .type-icon {
             background: linear-gradient(135deg, #d4af37 0%, #ffd700 50%, #ffec8b 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
         
-        /* Pro卡片标题金色渐变 */
+        /* Pro卡片标题 */
         .subtask-type-card.pro-card h4 {
-            background: linear-gradient(90deg, #b8860b, #d4af37, #ffd700, #d4af37, #b8860b);
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            animation: goldenShimmer 3s linear infinite;
+            color: #b8860b;
+            font-weight: 600;
         }
         
-        @keyframes goldenShimmer {
-            0% {
-                background-position: 0% center;
-            }
-            100% {
-                background-position: 200% center;
-            }
-        }
-        
-        /* Pro卡片悬停效果增强 */
+        /* Pro卡片悬停效果 */
         .subtask-type-card.pro-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 32px rgba(212, 175, 55, 0.25), 
-                        0 0 20px rgba(255, 215, 0, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.2);
         }
         
-        /* 被选中状态的金色特效 */
+        /* Pro卡片被选中状态 */
         .subtask-type-card.pro-card.selected {
-            background: linear-gradient(145deg, #fffef0 0%, #fff8dc 100%);
-            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3),
-                        0 8px 32px rgba(212, 175, 55, 0.3);
+            background: linear-gradient(145deg, #fffef5 0%, #fff8e7 100%);
         }
         
         .subtask-type-card.pro-card.selected::before {
-            background: conic-gradient(
-                from 0deg,
-                rgba(212, 175, 55, 0.5),
-                rgba(255, 215, 0, 1),
-                rgba(255, 236, 139, 1),
-                rgba(255, 215, 0, 1),
-                rgba(212, 175, 55, 0.5),
-                rgba(212, 175, 55, 0.5)
+            background: repeating-linear-gradient(
+                45deg,
+                #d4af37 0px,
+                #d4af37 3px,
+                #ffd700 3px,
+                #ffd700 9px,
+                #ffec8b 9px,
+                #ffec8b 12px
             );
+            opacity: 1;
         }
     </style>
 {% endblock %}
@@ -277,6 +314,9 @@
                         <p>汇出产品数据</p>
                     </div>
                     <div class="subtask-type-card pro-card" data-type="divi_export_pro" onclick="selectSubtaskType(this)">
+                        <!-- 流动的金色小蜇蜂 -->
+                        <div class="firefly"></div>
+                        <div class="firefly-trail"></div>
                         <div class="type-icon">
                             <i class="fas fa-crown"></i>
                         </div>
