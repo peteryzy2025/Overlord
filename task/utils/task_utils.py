@@ -242,10 +242,32 @@ def validate_subtask_params(subtask_type, params, user):
             return {'valid': True, 'message': ''}
 
         elif subtask_type == 'divi_export_pro':
-            # 迪唯汇出上架-Pro 验证（与 divi_export 相同）
+            # 迪唯汇出上架-Pro 验证
             diwei_account = params.get('diwei_account', '').strip()
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
+
+            # 验证汇出行
+            export_rows = params.get('export_rows', [])
+            if not export_rows or len(export_rows) == 0:
+                return {'valid': False, 'message': '请至少添加一个产品'}
+
+            for i, row in enumerate(export_rows):
+                # 验证产品ID
+                product_id = row.get('product_id', '')
+                if not product_id or str(product_id).strip() == '':
+                    return {'valid': False, 'message': f'第 {i + 1} 行的产品不能为空'}
+
+                # 验证上架店铺
+                publish_shops = row.get('publish_shops', [])
+                if not publish_shops or len(publish_shops) == 0:
+                    return {'valid': False, 'message': f'第 {i + 1} 行的上架店铺不能为空'}
+
+                # 如果开启切表，验证汇出店铺
+                if row.get('need_split'):
+                    export_shop = row.get('export_shop', '')
+                    if not export_shop or str(export_shop).strip() == '':
+                        return {'valid': False, 'message': f'第 {i + 1} 行开启了切表，汇出店铺不能为空'}
 
             return {'valid': True, 'message': ''}
 

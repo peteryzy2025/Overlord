@@ -981,7 +981,27 @@
                         { key: 'product_id', label: '产品 ID' },
                         { key: 'sizes', label: '尺码' },
                         { key: 'colors', label: '颜色' },
-                        { key: 'shops', label: '店铺' }
+                        { 
+                            key: 'template_name', 
+                            label: '模板命名',
+                            getValue: row => row.template_name === 'shop_product_id' ? '汇出店铺_产品ID' : '产品ID'
+                        },
+                        { 
+                            key: 'platform', 
+                            label: '平台',
+                            getValue: row => row.platform === 'temu' ? 'Temu' : 'Amazon'
+                        },
+                        { 
+                            key: 'need_split', 
+                            label: '切表',
+                            getValue: row => row.need_split ? '是' : '否'
+                        },
+                        { 
+                            key: 'export_shop', 
+                            label: '汇出店铺',
+                            getValue: row => row.need_split ? (row.export_shop || '-') : '-'
+                        },
+                        { key: 'publish_shops', label: '上架店铺' }
                     ]), true, true)
                 ]);
                 break;

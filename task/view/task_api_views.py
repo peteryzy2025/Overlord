@@ -1236,18 +1236,23 @@ def create_task_api(request):
                             '汇出行列表': export_rows_cn
                         }
                     elif st.subtask_type == 'divi_export_pro':
-                        # 迪唯汇出上架-Pro - 转换汇出行数据（与 divi_export 相同）
+                        # 迪唯汇出上架-Pro - 转换汇出行数据
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
+                            # 获取模板命名显示
+                            template_name_display = '产品ID' if row.get('template_name') == 'product_id' else '汇出店铺_产品ID'
+                            # 获取平台显示
+                            platform_display = 'Amazon' if row.get('platform') == 'amazon' else 'Temu'
+                            
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
-                                '产品名称': row.get('product_name', ''),
                                 '尺码ID列表': row.get('sizes', []),
-                                '尺码名称列表': row.get('size_names', []),
                                 '颜色ID列表': row.get('colors', []),
-                                '颜色中文列表': row.get('color_names', []),
-                                '颜色英文列表': row.get('color_en_names', []),
-                                '店铺列表': row.get('shops', [])
+                                '模板命名': template_name_display,
+                                '平台': platform_display,
+                                '是否切表': '是' if row.get('need_split') else '否',
+                                '汇出店铺': row.get('export_shop', '') if row.get('need_split') else '',
+                                '上架店铺列表': row.get('publish_shops', [])
                             })
                         
                         subtask_params = {
