@@ -880,7 +880,8 @@
             case 'divi_export':
                 return renderFactPill('汇出行', Array.isArray(params.export_rows) ? params.export_rows.length : 0);
             case 'divi_export_pro':
-                return renderFactPill('汇出行', Array.isArray(params.export_rows) ? params.export_rows.length : 0);
+                const platformText = params.platform === 'temu' ? 'Temu' : 'Amazon';
+                return renderFactPill('汇出行', `${Array.isArray(params.export_rows) ? params.export_rows.length : 0} (${platformText})`);
             case 'divi_gallery_upload':
                 return renderFactPill('路径', hasDisplayValue(params.gallery_path) || hasDisplayValue(params.local_gallery_path) ? '已填写' : '未填写');
             default:
@@ -975,8 +976,11 @@
                 break;
             case 'divi_export_pro':
                 title = '迪唯汇出配置-Pro';
+                const needSplit = params.need_split || false;
                 content = renderFieldGrid([
                     field('迪唯账号', params.diwei_account),
+                    field('平台', params.platform === 'temu' ? 'Temu' : 'Amazon'),
+                    field('切表', needSplit ? '是' : '否'),
                     field('汇出行', renderGroupedProductRows(params.export_rows, [
                         { key: 'product_id', label: '产品 ID' },
                         { key: 'sizes', label: '尺码' },
@@ -987,19 +991,9 @@
                             getValue: row => row.template_name === 'shop_product_id' ? '汇出店铺_产品ID' : '产品ID'
                         },
                         { 
-                            key: 'platform', 
-                            label: '平台',
-                            getValue: row => row.platform === 'temu' ? 'Temu' : 'Amazon'
-                        },
-                        { 
-                            key: 'need_split', 
-                            label: '切表',
-                            getValue: row => row.need_split ? '是' : '否'
-                        },
-                        { 
                             key: 'export_shop', 
                             label: '汇出店铺',
-                            getValue: row => row.need_split ? (row.export_shop || '-') : '-'
+                            getValue: row => needSplit ? (row.export_shop || '-') : '-'
                         },
                         { key: 'publish_shops', label: '上架店铺' }
                     ]), true, true)

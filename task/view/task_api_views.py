@@ -1237,26 +1237,50 @@ def create_task_api(request):
                         }
                     elif st.subtask_type == 'divi_export_pro':
                         # 迪唯汇出上架-Pro - 转换汇出行数据
+                        # 获取子任务级别的平台和是否切表
+                        platform_display = 'Amazon' if params.get('platform') == 'amazon' else 'Temu'
+                        need_split = bool(params.get('need_split', False))
+                        
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
                             # 获取模板命名显示
                             template_name_display = '产品ID' if row.get('template_name') == 'product_id' else '汇出店铺_产品ID'
-                            # 获取平台显示
-                            platform_display = 'Amazon' if row.get('platform') == 'amazon' else 'Temu'
+                            
+                            # 获取尺码名称列表（优先使用size_names，如果没有则使用sizes作为后备）
+                            size_names = row.get('size_names', [])
+                            if not size_names and row.get('sizes'):
+                                size_names = row.get('sizes', [])
+                            
+                            # 获取颜色中文和英文名称列表
+                            color_names = row.get('color_names', [])
+                            color_en_names = row.get('color_en_names', [])
+                            if not color_names and row.get('colors'):
+                                color_names = row.get('colors', [])
+                            
+                            # 处理上架店铺列表 - 确保始终是列表
+                            publish_shops = row.get('publish_shops', [])
+                            if isinstance(publish_shops, str):
+                                publish_shops = [publish_shops] if publish_shops else []
+                            
+                            # 处理汇出店铺 - 单元素列表
+                            export_shop = row.get('export_shop', '')
+                            export_shops = [export_shop] if export_shop else []
                             
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
-                                '尺码ID列表': row.get('sizes', []),
-                                '颜色ID列表': row.get('colors', []),
+                                '尺码列表': size_names,
+                                '颜色中文列表': color_names,
+                                '颜色英文列表': color_en_names,
                                 '模板命名': template_name_display,
-                                '平台': platform_display,
-                                '是否切表': '是' if row.get('need_split') else '否',
-                                '汇出店铺': row.get('export_shop', '') if row.get('need_split') else '',
-                                '上架店铺列表': row.get('publish_shops', [])
+                                '最大汇出数量': row.get('max_export_quantity', 100),
+                                '汇出店铺列表': export_shops,
+                                '上架店铺列表': publish_shops
                             })
                         
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
+                            '平台': platform_display,
+                            '是否切表': need_split,
                             '汇出行列表': export_rows_cn
                         }
                     elif st.subtask_type == 'divi_gallery_upload':

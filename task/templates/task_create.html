@@ -1174,12 +1174,10 @@
         }
 
         // ===== 渲染汇出产品行（Pro版本）=====
-        function renderExportProRow(subtaskId, rowIndex, rowData = {}) {
+        function renderExportProRow(subtaskId, rowIndex, rowData = {}, subtaskNeedSplit = false) {
             const colors = rowData.colors || [];
             const sizes = rowData.sizes || [];
             const templateName = rowData.template_name || 'product_id';
-            const platform = rowData.platform || 'amazon';
-            const needSplit = rowData.need_split || false;
             const exportShop = rowData.export_shop || '';
             const publishShops = rowData.publish_shops || [];
             
@@ -1229,33 +1227,21 @@
                     </div>
 
                     <!-- 模板命名下拉框 -->
-                    <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 120px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">模板命名</label>
                         <div id="export-pro-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择命名规则"></div>
                     </div>
 
-                    <!-- 平台选择下拉框 -->
+                    <!-- 最大汇出数量下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 0.8; min-width: 100px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">平台</label>
-                        <div id="export-pro-platform-select-${subtaskId}-${rowIndex}" class="searchable-select single"
-                             data-placeholder="选择平台"></div>
-                    </div>
-
-                    <!-- 是否切表开关 -->
-                    <div class="form-group" style="margin: 0; display: flex; align-items: center; padding-bottom: 0.5rem;">
-                        <label class="form-switch" style="margin: 0;">
-                            <input type="checkbox" class="switch-input"
-                                   id="export-pro-split-${subtaskId}-${rowIndex}"
-                                   ${needSplit ? 'checked' : ''}
-                                   onchange="toggleProSplit(${subtaskId}, ${rowIndex}, this.checked)">
-                            <span class="switch-slider"></span>
-                            <span class="switch-label" style="font-size: 0.75rem;">切表</span>
-                        </label>
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">最大汇出数量</label>
+                        <div id="export-pro-quantity-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择数量"></div>
                     </div>
 
                     <!-- 汇出店铺下拉框（仅切表时显示，单选） -->
-                    <div class="form-group export-pro-export-shop-${subtaskId}-${rowIndex}" style="margin: 0; flex: 1; min-width: 140px; display: ${needSplit ? 'block' : 'none'};">
+                    <div class="form-group export-pro-export-shop-${subtaskId}-${rowIndex}" style="margin: 0; flex: 1; min-width: 140px; display: ${subtaskNeedSplit ? 'block' : 'none'};">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺</label>
                         <div id="export-pro-export-shop-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择汇出店铺"></div>
@@ -1816,9 +1802,35 @@
             selectEl._templateSelectInstance = templateSelect;
         }
 
-        // ===== 初始化 Pro 版本平台选择器 =====
-        function initExportProRowPlatformSelect(subtaskId, rowIndex, selectedValue = 'amazon') {
-            const selectEl = document.querySelector(`#export-pro-platform-select-${subtaskId}-${rowIndex}`);
+        // ===== 初始化 Pro 版本最大汇出数量选择器 =====
+        function initExportProRowQuantitySelect(subtaskId, rowIndex, selectedValue = 100) {
+            const selectEl = document.querySelector(`#export-pro-quantity-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            // 生成100-1500的选项，每100递增
+            const quantityOptions = [];
+            for (let i = 100; i <= 1500; i += 100) {
+                quantityOptions.push({ value: String(i), label: String(i) });
+            }
+
+            const quantitySelect = new SearchableSelect(`#export-pro-quantity-select-${subtaskId}-${rowIndex}`, {
+                options: quantityOptions,
+                multiple: false,
+                placeholder: '选择数量'
+            });
+
+            quantitySelect.setValue(String(selectedValue));
+            quantitySelect.onChange = (value) => {
+                updateExportProRow(subtaskId, rowIndex, 'max_export_quantity', parseInt(value) || 100);
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._quantitySelectInstance = quantitySelect;
+        }
+
+        // ===== 初始化 Pro 版本平台选择器（子任务级别）=====
+        function initExportProPlatformSelect(subtask, selectedValue = 'amazon') {
+            const selectEl = document.querySelector(`#platform-select-${subtask.id}`);
             if (!selectEl || selectEl.dataset.initialized) return;
 
             const platformOptions = [
@@ -1826,7 +1838,7 @@
                 { value: 'temu', label: 'Temu' }
             ];
 
-            const platformSelect = new SearchableSelect(`#export-pro-platform-select-${subtaskId}-${rowIndex}`, {
+            const platformSelect = new SearchableSelect(`#platform-select-${subtask.id}`, {
                 options: platformOptions,
                 multiple: false,
                 placeholder: '选择平台'
@@ -1834,23 +1846,24 @@
 
             platformSelect.setValue(selectedValue);
             platformSelect.onChange = (value) => {
-                const oldValue = updateExportProRow(subtaskId, rowIndex, 'platform', value);
+                const oldValue = subtask.params.platform;
+                subtask.params.platform = value;
                 
-                // 平台切换时，清空店铺选择并重新初始化
+                // 平台切换时，清空所有行的店铺选择
                 if (oldValue !== value) {
-                    const subtask = taskData.subtasks.find(s => s.id == subtaskId);
-                    const row = subtask?.params?.export_rows?.[rowIndex];
-                    const needSplit = row?.need_split || false;
+                    const exportRows = subtask.params.export_rows || [];
+                    exportRows.forEach((row, rowIndex) => {
+                        // 清空汇出店铺
+                        row.export_shop = '';
+                        // 清空上架店铺
+                        row.publish_shops = [];
+                        
+                        // 重新初始化该行的店铺选择器
+                        refreshProRowShopSelects(subtask.id, rowIndex, value, true);
+                    });
                     
-                    // 清空汇出店铺
-                    updateExportProRow(subtaskId, rowIndex, 'export_shop', '');
-                    // 清空上架店铺
-                    updateExportProRow(subtaskId, rowIndex, 'publish_shops', []);
-                    
-                    // 重新初始化店铺选择器
-                    refreshProRowShopSelects(subtaskId, rowIndex, value, true);
-                    
-                    showNotification(`已切换到 ${value === 'temu' ? 'Temu' : 'Amazon'} 平台，请重新选择店铺`, 'info', 2000);
+                    triggerAutoSave();
+                    showNotification(`已切换到 ${value === 'temu' ? 'Temu' : 'Amazon'} 平台，所有店铺选择已清空`, 'info', 3000);
                 }
             };
 
@@ -1949,7 +1962,7 @@
         function refreshProRowShopSelects(subtaskId, rowIndex, platform, clearSelection = false) {
             const subtask = taskData.subtasks.find(s => s.id === subtaskId);
             const row = subtask?.params?.export_rows?.[rowIndex];
-            const needSplit = row?.need_split || false;
+            const needSplit = subtask?.params?.need_split || false;
             
             // 重新初始化汇出店铺选择器
             const exportShopEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
@@ -2098,53 +2111,56 @@
             triggerAutoSave();
         }
 
-        // ===== 切换是否切表 =====
-        function toggleProSplit(subtaskId, rowIndex, checked) {
+        // ===== 子任务级别切换是否切表 =====
+        function toggleProSplitSubtask(subtaskId, checked) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             if (!subtask) return;
 
-            updateExportProRow(subtaskId, rowIndex, 'need_split', checked);
+            // 更新子任务级别的 need_split
+            subtask.params.need_split = checked;
 
-            // 显示/隐藏汇出店铺选择器
-            const exportShopGroup = document.querySelector(`.export-pro-export-shop-${subtaskId}-${rowIndex}`);
-            if (exportShopGroup) {
-                exportShopGroup.style.display = checked ? 'block' : 'none';
-                
-                // 如果开启切表，初始化汇出店铺选择器
-                if (checked) {
-                    const row = subtask.params.export_rows[rowIndex];
-                    const platform = row?.platform || 'amazon';
-                    const exportShopSelectEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
-                    if (exportShopSelectEl) {
-                        if (exportShopSelectEl._exportShopSelectInstance) {
-                            exportShopSelectEl._exportShopSelectInstance.destroy?.();
+            // 重新渲染所有行，显示/隐藏汇出店铺列
+            const exportRows = subtask.params.export_rows || [];
+            exportRows.forEach((row, rowIndex) => {
+                // 显示/隐藏汇出店铺选择器
+                const exportShopGroup = document.querySelector(`.export-pro-export-shop-${subtaskId}-${rowIndex}`);
+                if (exportShopGroup) {
+                    exportShopGroup.style.display = checked ? 'block' : 'none';
+                    
+                    // 如果开启切表，初始化汇出店铺选择器
+                    if (checked) {
+                        const platform = subtask?.params?.platform || 'amazon';
+                        const exportShopSelectEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
+                        if (exportShopSelectEl) {
+                            if (exportShopSelectEl._exportShopSelectInstance) {
+                                exportShopSelectEl._exportShopSelectInstance.destroy?.();
+                            }
+                            exportShopSelectEl.dataset.initialized = '';
+                            initExportProRowExportShopSelect(subtaskId, rowIndex, row?.export_shop || '', platform);
                         }
-                        exportShopSelectEl.dataset.initialized = '';
-                        initExportProRowExportShopSelect(subtaskId, rowIndex, row?.export_shop || '', platform);
                     }
                 }
-            }
 
-            // 重新初始化上架店铺选择器（切换单/多选模式）
-            const publishShopsSelectEl = document.querySelector(`#export-pro-publish-shops-select-${subtaskId}-${rowIndex}`);
-            if (publishShopsSelectEl) {
-                const row = subtask.params.export_rows[rowIndex];
-                const platform = row?.platform || 'amazon';
-                let currentShops = row?.publish_shops || [];
-                
-                // 如果从切表切换到不切表（checked=false），且当前有多个店铺，则清空重选
-                if (!checked && Array.isArray(currentShops) && currentShops.length > 1) {
-                    currentShops = [];
-                    updateExportProRow(subtaskId, rowIndex, 'publish_shops', []);
-                    showNotification('已切换为单店铺模式，请重新选择上架店铺', 'info', 2000);
+                // 重新初始化上架店铺选择器（切换单/多选模式）
+                const publishShopsSelectEl = document.querySelector(`#export-pro-publish-shops-select-${subtaskId}-${rowIndex}`);
+                if (publishShopsSelectEl) {
+                    const platform = subtask?.params?.platform || 'amazon';
+                    let currentShops = row?.publish_shops || [];
+                    
+                    // 如果从切表切换到不切表（checked=false），且当前有多个店铺，则清空重选
+                    if (!checked && Array.isArray(currentShops) && currentShops.length > 1) {
+                        currentShops = [];
+                        row.publish_shops = [];
+                        showNotification('已切换为单店铺模式，请重新选择上架店铺', 'info', 2000);
+                    }
+                    
+                    if (publishShopsSelectEl._publishShopsSelectInstance) {
+                        publishShopsSelectEl._publishShopsSelectInstance.destroy?.();
+                    }
+                    publishShopsSelectEl.dataset.initialized = '';
+                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, currentShops, platform, checked);
                 }
-                
-                if (publishShopsSelectEl._publishShopsSelectInstance) {
-                    publishShopsSelectEl._publishShopsSelectInstance.destroy?.();
-                }
-                publishShopsSelectEl.dataset.initialized = '';
-                initExportProRowPublishShopsSelect(subtaskId, rowIndex, currentShops, platform, checked);
-            }
+            });
 
             triggerAutoSave();
         }
@@ -2178,8 +2194,7 @@
                 sizes: [],
                 colors: [],
                 template_name: 'product_id',
-                platform: 'amazon',
-                need_split: false,
+                max_export_quantity: 100,
                 export_shop: '',
                 publish_shops: []
             };
@@ -2188,8 +2203,9 @@
             const rowIndex = subtask.params.export_rows.length - 1;
 
             const container = document.getElementById(`export-pro-rows-container-${subtaskId}`);
+            const subtaskNeedSplit = subtask?.params?.need_split || false;
             if (container) {
-                const rowHtml = renderExportProRow(subtaskId, rowIndex, newRow);
+                const rowHtml = renderExportProRow(subtaskId, rowIndex, newRow, subtaskNeedSplit);
                 container.insertAdjacentHTML('beforeend', rowHtml);
                 
                 setTimeout(async () => {
@@ -2197,8 +2213,9 @@
                     initExportProRowSizeSelect(subtaskId, rowIndex, [], []);
                     initExportProRowColorSelect(subtaskId, rowIndex, [], []);
                     initExportProRowTemplateSelect(subtaskId, rowIndex, 'product_id');
-                    initExportProRowPlatformSelect(subtaskId, rowIndex, 'amazon');
-                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], 'amazon', false);
+                    initExportProRowQuantitySelect(subtaskId, rowIndex, 100);
+                    const platform = subtask?.params?.platform || 'amazon';
+                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform, false);
                 }, 0);
             }
 
@@ -2224,17 +2241,19 @@
             subtask.params.export_rows.splice(rowIndex, 1);
 
             const container = document.getElementById(`export-pro-rows-container-${subtaskId}`);
+            const subtaskNeedSplit = subtask?.params?.need_split || false;
             if (container) {
-                container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportProRow(subtaskId, index, row)).join('');
+                container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportProRow(subtaskId, index, row, subtaskNeedSplit)).join('');
                 
+                const platform = subtask?.params?.platform || 'amazon';
                 subtask.params.export_rows.forEach((row, index) => {
                     setTimeout(async () => {
                         const productId = row.product_id || '';
                         const colors = row.colors || [];
                         const sizes = row.sizes || [];
                         const templateName = row.template_name || 'product_id';
-                        const platform = row.platform || 'amazon';
-                        const needSplit = row.need_split || false;
+                        const maxExportQuantity = row.max_export_quantity || 100;
+                        const needSplit = subtaskNeedSplit;
                         const exportShop = row.export_shop || '';
                         const publishShops = row.publish_shops || [];
                         
@@ -2248,7 +2267,7 @@
                         }
                         
                         initExportProRowTemplateSelect(subtaskId, index, templateName);
-                        initExportProRowPlatformSelect(subtaskId, index, platform);
+                        initExportProRowQuantitySelect(subtaskId, index, maxExportQuantity);
                         if (needSplit) {
                             initExportProRowExportShopSelect(subtaskId, index, exportShop, platform);
                         }
@@ -2630,6 +2649,8 @@
             } else if (type === 'divi_export_pro') {
                 defaultParams = {
                     diwei_account: '陈柔',
+                    platform: 'amazon',
+                    need_split: false,
                     export_rows: []
                 };
             }
@@ -2657,13 +2678,14 @@
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_export_pro') {
                 if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.platform) mergedParams.platform = 'amazon';
+                if (params.need_split === undefined) mergedParams.need_split = false;
                 if (!params.export_rows) mergedParams.export_rows = [];
                 // Pro版本默认参数
                 if (params.export_rows) {
                     params.export_rows.forEach(row => {
                         if (!row.template_name) row.template_name = 'product_id';
-                        if (!row.platform) row.platform = 'amazon';
-                        if (row.need_split === undefined) row.need_split = false;
+                        if (!row.max_export_quantity) row.max_export_quantity = 100;
                         if (!row.export_shop) row.export_shop = '';
                         if (!row.publish_shops) row.publish_shops = [];
                     });
@@ -2883,6 +2905,8 @@
             // 如果是divi_export_pro类型，初始化Pro版本汇出行
             if (subtask.type === 'divi_export_pro') {
                 if (subtask.params.export_rows) {
+                    const platform = subtask.params.platform || 'amazon';
+                    const subtaskNeedSplit = subtask.params.need_split || false;
                     setTimeout(async () => {
                         for (let index = 0; index < subtask.params.export_rows.length; index++) {
                             let row = subtask.params.export_rows[index];
@@ -2891,8 +2915,7 @@
                             const colors = row.colors || [];
                             const sizes = row.sizes || [];
                             const templateName = row.template_name || 'product_id';
-                            const platform = row.platform || 'amazon';
-                            const needSplit = row.need_split || false;
+                            const maxExportQuantity = row.max_export_quantity || 100;
                             const exportShop = row.export_shop || '';
                             const publishShops = row.publish_shops || [];
                             
@@ -2909,12 +2932,12 @@
                             
                             // 初始化其他选择器
                             initExportProRowTemplateSelect(subtask.id, index, templateName);
-                            initExportProRowPlatformSelect(subtask.id, index, platform);
+                            initExportProRowQuantitySelect(subtask.id, index, maxExportQuantity);
                             
-                            if (needSplit) {
+                            if (subtaskNeedSplit) {
                                 initExportProRowExportShopSelect(subtask.id, index, exportShop, platform);
                             }
-                            initExportProRowPublishShopsSelect(subtask.id, index, publishShops, platform, needSplit);
+                            initExportProRowPublishShopsSelect(subtask.id, index, publishShops, platform, subtaskNeedSplit);
                         }
                     }, 0);
                 }
@@ -2941,6 +2964,13 @@
 
             // 初始化所有子任务中的SearchableSelect
             initSubtaskSearchableSelects(subtask);
+            
+            // 如果是divi_export_pro类型，初始化子任务级别的平台选择器
+            if (subtask.type === 'divi_export_pro') {
+                setTimeout(() => {
+                    initExportProPlatformSelect(subtask, subtask.params.platform || 'amazon');
+                }, 0);
+            }
         }
 
         // ===== Amazon上传文件相关函数 =====
@@ -3445,10 +3475,26 @@
                             <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
                                  data-placeholder="选择迪唯账号"></div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label">平台 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="platform-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择平台"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-switch">
+                                <input type="checkbox" class="switch-input"
+                                    ${subtask.params.need_split ? 'checked' : ''}
+                                    onchange="toggleProSplitSubtask(${subtask.id}, this.checked)">
+                                <span class="switch-slider"></span>
+                                <span class="switch-label">是否切表</span>
+                            </label>
+                        </div>
 
                         <div style="grid-column: 1 / -1; margin-top: 1rem;">
                             <div class="export-pro-rows-container" id="export-pro-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
-                                ${(subtask.params.export_rows || []).map((row, index) => renderExportProRow(subtask.id, index, row)).join('')}
+                                ${(subtask.params.export_rows || []).map((row, index) => renderExportProRow(subtask.id, index, row, subtask.params.need_split || false)).join('')}
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="addExportProRow(${subtask.id})" style="width: 100%;">
                                 <i class="fas fa-plus"></i> 添加产品
@@ -4084,12 +4130,18 @@
                 subtasks: taskData.subtasks.map((subtask, index) => {
                     let params = subtask.params;
                     
-                    // 对 divi_export 和 divi_export_pro 类型的子任务，仅在创建任务时添加产品名称（提交时转换）
+                    // 对 divi_export 和 divi_export_pro 类型的子任务，仅在创建任务时添加产品名称和尺码颜色名称（提交时转换）
                     if (convertDiviExport && (subtask.type === 'divi_export' || subtask.type === 'divi_export_pro') && params.export_rows) {
                         const newExportRows = params.export_rows.map((row, rowIndex) => {
+                            // 判断是否为Pro版本，使用不同的选择器
+                            const isPro = subtask.type === 'divi_export_pro';
+                            const productSelectPrefix = isPro ? 'export-pro-product-select' : 'export-product-select';
+                            const sizeSelectPrefix = isPro ? 'export-pro-sizes-select' : 'export-sizes-select';
+                            const colorSelectPrefix = isPro ? 'export-pro-colors-select' : 'export-colors-select';
+                            
                             // 获取产品名称
                             let productName = '';
-                            const productSelectEl = document.querySelector(`#export-product-select-${subtask.id}-${rowIndex}`);
+                            const productSelectEl = document.querySelector(`#${productSelectPrefix}-${subtask.id}-${rowIndex}`);
                             if (productSelectEl && productSelectEl._productSelectInstance) {
                                 const productOption = productSelectEl._productSelectInstance.options.find(
                                     o => o.value === row.product_id
@@ -4101,7 +4153,7 @@
                             
                             // 获取尺码名称列表
                             const sizeNames = (row.sizes || []).map(sizeId => {
-                                const sizeSelectEl = document.querySelector(`#export-sizes-select-${subtask.id}-${rowIndex}`);
+                                const sizeSelectEl = document.querySelector(`#${sizeSelectPrefix}-${subtask.id}-${rowIndex}`);
                                 if (sizeSelectEl && sizeSelectEl._sizeSelectInstance) {
                                     const sizeOption = sizeSelectEl._sizeSelectInstance.options.find(
                                         o => o.value === sizeId
@@ -4115,7 +4167,7 @@
                             const colorNames = [];
                             const colorEnNames = [];
                             (row.colors || []).forEach(colorId => {
-                                const colorSelectEl = document.querySelector(`#export-colors-select-${subtask.id}-${rowIndex}`);
+                                const colorSelectEl = document.querySelector(`#${colorSelectPrefix}-${subtask.id}-${rowIndex}`);
                                 if (colorSelectEl && colorSelectEl._colorSelectInstance) {
                                     const colorOption = colorSelectEl._colorSelectInstance.options.find(
                                         o => o.value === colorId
@@ -4365,6 +4417,12 @@
                         return false;
                     }
                     
+                    // 验证平台
+                    if (!subtask.params.platform || subtask.params.platform.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的平台必须选择`, 'warning');
+                        return false;
+                    }
+                    
                     // 验证汇出行
                     const exportRows = subtask.params.export_rows || [];
                     if (exportRows.length === 0) {
@@ -4390,7 +4448,8 @@
                         }
                         
                         // 如果开启切表，验证汇出店铺必填
-                        if (row.need_split) {
+                        const subtaskNeedSplit = subtask?.params?.need_split || false;
+                        if (subtaskNeedSplit) {
                             const exportShop = row.export_shop || '';
                             if (!exportShop || String(exportShop).trim() === '') {
                                 showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行开启了切表，汇出店铺不能为空`, 'warning');
