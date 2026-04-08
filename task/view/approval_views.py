@@ -431,6 +431,7 @@ def approval_asins_api(request):
             'id': listing.id,
             'asin': listing.asin,
             'title': listing.title or '',
+            'img_url':listing.small_image_url or '',
             'local_sku': listing.local_sku or '',
             'seller_sku': listing.seller_sku or '',
             'fulfillment_channel_type': listing.fulfillment_channel_type or '',
