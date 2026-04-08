@@ -530,6 +530,7 @@
 
 {% block extra_js %}
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         // ===== 全局状态 =====
         let taskData = {
@@ -1240,7 +1241,7 @@
                     
                     <!-- 产品选择下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 1.5; min-width: 180px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品</label>
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品 <span style="color: var(--danger-color);">*</span></label>
                         <div id="export-pro-product-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择产品"></div>
                     </div>
@@ -1271,6 +1272,44 @@
                              data-placeholder="选择颜色"></div>
                     </div>
 
+                    <!-- 设计产品日期筛选开关 -->
+                    <div class="form-group" style="margin: 0; flex: 0 0 auto; min-width: 60px; display: flex; flex-direction: column;">
+                        <label class="form-label" style="font-size: 0.75rem; margin: 0 0 0.25rem 0; height: 1.5rem; display: flex; align-items: center;">日期筛选</label>
+                        <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
+                            <label class="form-switch" style="margin: 0;">
+                                <input type="checkbox" class="switch-input"
+                                    ${rowData.design_date_filter ? 'checked' : ''}
+                                    onchange="toggleProDesignDateFilter(${subtaskId}, ${rowIndex}, this.checked)">
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 设计日期开始日期 -->
+                    <div class="form-group gs-date-range-custom-group ${rowData.design_date_filter ? 'is-visible' : ''}" 
+                         id="export-pro-design-date-start-group-${subtaskId}-${rowIndex}"
+                         style="margin: 0; flex: 1; min-width: 120px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计开始日期</label>
+                        <input type="date" class="form-control" 
+                               id="export-pro-design-start-date-${subtaskId}-${rowIndex}"
+                               value="${rowData.design_start_date || ''}"
+                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_start_date', this.value)">
+                    </div>
+
+                    <!-- 设计日期结束日期 -->
+                    <div class="form-group gs-date-range-custom-group ${rowData.design_date_filter ? 'is-visible' : ''}" 
+                         id="export-pro-design-date-end-group-${subtaskId}-${rowIndex}"
+                         style="margin: 0; flex: 1; min-width: 120px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计结束日期</label>
+                        <input type="date" class="form-control" 
+                               id="export-pro-design-end-date-${subtaskId}-${rowIndex}"
+                               value="${rowData.design_end_date || ''}"
+                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_end_date', this.value)">
+                    </div>
+
+                    <!-- 强制换行 -->
+                    <div style="flex-basis: 100%; height: 0;"></div>
+
                     <!-- 模板命名下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 1; min-width: 120px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">模板命名</label>
@@ -1287,14 +1326,14 @@
 
                     <!-- 汇出店铺下拉框（仅切表时显示，单选） -->
                     <div class="form-group export-pro-export-shop-${subtaskId}-${rowIndex}" style="margin: 0; flex: 1; min-width: 140px; display: ${subtaskNeedSplit ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺</label>
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺 <span style="color: var(--danger-color);">*</span></label>
                         <div id="export-pro-export-shop-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择汇出店铺"></div>
                     </div>
 
                     <!-- 上架店铺下拉框（多选） -->
                     <div class="form-group" style="margin: 0; flex: 1.2; min-width: 160px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">上架店铺</label>
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">上架店铺 <span style="color: var(--danger-color);">*</span></label>
                         <div id="export-pro-publish-shops-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
                              data-placeholder="选择上架店铺"></div>
                     </div>
@@ -2156,6 +2195,58 @@
             triggerAutoSave();
         }
 
+        // ===== 行级别切换设计产品日期筛选 =====
+        function toggleProDesignDateFilter(subtaskId, rowIndex, checked) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+            
+            const row = subtask.params.export_rows?.[rowIndex];
+            if (!row) return;
+            
+            // 更新行数据
+            row.design_date_filter = checked;
+            
+            // 显示/隐藏日期选择框
+            const dateStartGroup = document.querySelector(`#export-pro-design-date-start-group-${subtaskId}-${rowIndex}`);
+            const dateEndGroup = document.querySelector(`#export-pro-design-date-end-group-${subtaskId}-${rowIndex}`);
+            if (dateStartGroup) {
+                if (checked) dateStartGroup.classList.add('is-visible');
+                else dateStartGroup.classList.remove('is-visible');
+            }
+            if (dateEndGroup) {
+                if (checked) dateEndGroup.classList.add('is-visible');
+                else dateEndGroup.classList.remove('is-visible');
+            }
+            
+            // 如果开启且没有设置日期，默认填充：开始3天前，结束今天
+            if (checked) {
+                const today = new Date();
+                const threeDaysAgo = new Date(today);
+                threeDaysAgo.setDate(today.getDate() - 3);
+                
+                const formatDate = (date) => {
+                    return date.toISOString().split('T')[0];
+                };
+                
+                const defaultStartDate = formatDate(threeDaysAgo);
+                const defaultEndDate = formatDate(today);
+                
+                // 如果没有已有值，设置默认值
+                if (!row.design_start_date) {
+                    row.design_start_date = defaultStartDate;
+                    const startInput = document.querySelector(`#export-pro-design-start-date-${subtaskId}-${rowIndex}`);
+                    if (startInput) startInput.value = defaultStartDate;
+                }
+                if (!row.design_end_date) {
+                    row.design_end_date = defaultEndDate;
+                    const endInput = document.querySelector(`#export-pro-design-end-date-${subtaskId}-${rowIndex}`);
+                    if (endInput) endInput.value = defaultEndDate;
+                }
+            }
+            
+            triggerAutoSave();
+        }
+
         // ===== 子任务级别切换是否切表 =====
         function toggleProSplitSubtask(subtaskId, checked) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
@@ -2251,6 +2342,9 @@
                 product_id: '',
                 sizes: [],
                 colors: [],
+                design_date_filter: false,
+                design_start_date: '',
+                design_end_date: '',
                 template_name: 'product_id',
                 max_export_quantity: 100,
                 export_shop: '',
@@ -3548,14 +3642,15 @@
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-label" style="visibility: hidden;">切表开关</label>
-                            <label class="form-switch" style="margin-top: 0.5rem;">
-                                <input type="checkbox" class="switch-input"
-                                    ${subtask.params.need_split ? 'checked' : ''}
-                                    onchange="toggleProSplitSubtask(${subtask.id}, this.checked)">
-                                <span class="switch-slider"></span>
-                                <span class="switch-label">是否切表</span>
-                            </label>
+                            <label class="form-label">是否切表 <span style="color: var(--danger-color);">*</span></label>
+                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <label class="form-switch" style="margin: 0;">
+                                    <input type="checkbox" class="switch-input"
+                                        ${subtask.params.need_split ? 'checked' : ''}
+                                        onchange="toggleProSplitSubtask(${subtask.id}, this.checked)">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
                         </div>
 
                         <div style="grid-column: 1 / -1; margin-top: 1rem;">
@@ -4522,6 +4617,14 @@
                                 return false;
                             }
                         }
+                        
+                        // 如果开启设计日期筛选，验证日期必填
+                        if (row.design_date_filter) {
+                            if (!row.design_start_date || !row.design_end_date) {
+                                showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行开启了设计日期筛选，开始日期和结束日期都不能为空`, 'warning');
+                                return false;
+                            }
+                        }
                     }
                 } else if (subtask.type === 'divi_gallery_upload') {
                     if (!subtask.params.diwei_account || subtask.params.diwei_account.trim() === '') {
@@ -4684,11 +4787,21 @@
                         </ul>
                     </div>
                     
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">日期筛选说明</h4>
+                        <ul style="padding-left: 1.5rem; margin: 0; line-height: 1.8;">
+                            <li style="margin-bottom: 0.5rem;">开启<strong style="color: var(--accent-color);">日期筛选</strong>后，可以设置设计时间范围，系统只会汇出在该时间范围内设计的产品</li>
+                            <li style="margin-bottom: 0.5rem;">默认开始日期为<strong style="color: var(--accent-color);">3天前</strong>，结束日期为<strong style="color: var(--accent-color);">今天</strong></li>
+                            <li style="margin-bottom: 0;">如果不需要按日期筛选，请保持开关关闭状态</li>
+                        </ul>
+                    </div>
+                    
                     <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
                         <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">字段说明</h4>
                         <ul style="padding-left: 1.5rem; margin: 0; font-size: 0.9rem;">
                             <li style="margin-bottom: 0.25rem;"><strong>平台</strong>：选择 Amazon 或 Temu，决定了可选的店铺列表</li>
                             <li style="margin-bottom: 0.25rem;"><strong>是否切表</strong>：开启后每个产品行需要选择汇出店铺</li>
+                            <li style="margin-bottom: 0.25rem;"><strong>日期筛选</strong>：按设计时间范围筛选产品</li>
                             <li style="margin-bottom: 0.25rem;"><strong>模板命名</strong>：产品ID 或 汇出店铺_产品ID</li>
                             <li style="margin-bottom: 0.25rem;"><strong>最大汇出数量</strong>：每行最多汇出多少个产品（100-1500）</li>
                         </ul>
@@ -4732,6 +4845,11 @@
         document.getElementById('taskTitle').addEventListener('input', function () {
             taskData.title = this.value;
         });
+
+        // 初始化日期选择器组件
+        if (typeof GeneralStyleDatePicker !== 'undefined') {
+            GeneralStyleDatePicker.observe();
+        }
 
     </script>
 {% endblock %}

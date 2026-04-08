@@ -986,6 +986,21 @@
                         { key: 'sizes', label: '尺码' },
                         { key: 'colors', label: '颜色' },
                         { 
+                            key: 'design_date_filter', 
+                            label: '日期筛选',
+                            getValue: row => row.design_date_filter ? '是' : '否'
+                        },
+                        { 
+                            key: 'design_start_date', 
+                            label: '设计开始日期',
+                            getValue: row => row.design_date_filter ? (row.design_start_date || '-') : '-'
+                        },
+                        { 
+                            key: 'design_end_date', 
+                            label: '设计结束日期',
+                            getValue: row => row.design_date_filter ? (row.design_end_date || '-') : '-'
+                        },
+                        { 
                             key: 'template_name', 
                             label: '模板命名',
                             getValue: row => row.template_name === 'shop_product_id' ? '汇出店铺_产品ID' : '产品ID'

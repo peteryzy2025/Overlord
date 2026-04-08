@@ -276,6 +276,13 @@ def validate_subtask_params(subtask_type, params, user):
                     export_shop = row.get('export_shop', '')
                     if not export_shop or str(export_shop).strip() == '':
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了切表，汇出店铺不能为空'}
+                
+                # 如果开启设计日期筛选，验证日期
+                if row.get('design_date_filter'):
+                    if not row.get('design_start_date'):
+                        return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计开始日期不能为空'}
+                    if not row.get('design_end_date'):
+                        return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计结束日期不能为空'}
 
             return {'valid': True, 'message': ''}
 

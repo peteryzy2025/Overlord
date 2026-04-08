@@ -1274,7 +1274,10 @@ def create_task_api(request):
                                 '模板命名': template_name_display,
                                 '最大汇出数量': row.get('max_export_quantity', 100),
                                 '汇出店铺列表': export_shops,
-                                '上架店铺列表': publish_shops
+                                '上架店铺列表': publish_shops,
+                                '设计时间自定义': bool(row.get('design_date_filter', False)),
+                                '设计时间开始日期': row.get('design_start_date', '') if row.get('design_date_filter') else '',
+                                '设计时间结束日期': row.get('design_end_date', '') if row.get('design_date_filter') else ''
                             })
                         
                         subtask_params = {
