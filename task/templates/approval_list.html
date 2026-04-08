@@ -1,0 +1,774 @@
+{% extends 'base/base_task.html' %}
+{% load static %}
+
+{% block title %}审批列表 - Divi智管{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260407-approval-list">
+<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260407-approval-list">
+<style>
+    .tab-content {
+        padding: 20px;
+    }
+
+    .stats-dashboard {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1;
+    }
+
+    .tab-nav {
+        display: flex;
+        gap: 0;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .tab-nav-item {
+        padding: 0.75rem 1.5rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        transition: all 0.2s ease;
+        user-select: none;
+    }
+
+    .tab-nav-item:hover {
+        color: var(--accent-color);
+    }
+
+    .tab-nav-item.active {
+        color: var(--accent-color);
+        border-bottom-color: var(--accent-color);
+    }
+
+    .tab-pane {
+        display: none;
+    }
+
+    .tab-pane.active {
+        display: block;
+    }
+
+    .status-pending {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .status-approved {
+        background: rgba(72, 187, 120, 0.12);
+        color: #2f855a;
+    }
+
+    .status-rejected {
+        background: rgba(229, 62, 62, 0.12);
+        color: var(--danger-color);
+    }
+
+    .status-draft {
+        background: rgba(107, 114, 128, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .approval-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .btn-danger {
+        background-color: #e53e3e;
+        color: white;
+        border: 1px solid #e53e3e;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .btn-danger:hover {
+        background-color: #fff;
+        color: #e53e3e;
+        border-color: #e53e3e;
+    }
+
+    .filter-bar {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-bar .search-input {
+        position: relative;
+        flex: 1;
+        min-width: 200px;
+        max-width: 400px;
+    }
+
+    .filter-bar .search-input input {
+        width: 100%;
+        padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        height: 38px;
+        box-sizing: border-box;
+    }
+
+    .filter-bar .search-input input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .filter-bar .search-input i {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+    }
+
+    .detail-info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .detail-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .detail-info-label {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+
+    .detail-info-value {
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .detail-table th {
+        background: var(--bg-secondary);
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+
+    .detail-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tab-content">
+        <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-clipboard-check"></i> 审批列表</h1>
+        <div class="header-actions">
+            <a href="/task/approval/create/" class="btn btn-secondary">
+                <i class="fas fa-plus"></i> 创建审批
+            </a>
+        </div>
+    </div>
+
+    <div class="stats-dashboard" id="statsDashboard">
+        <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-clipboard-list"></i> 总审批单数</div>
+            <div class="stat-value" id="statTotal">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-clock"></i> 待审批</div>
+            <div class="stat-value" id="statPending">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-spinner"></i> 审批中</div>
+            <div class="stat-value" id="statInProcess">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label"><i class="fas fa-check-circle"></i> 审批通过</div>
+            <div class="stat-value" id="statApproved">0</div>
+        </div>
+    </div>
+
+    <div class="tab-nav">
+        <div class="tab-nav-item active" onclick="switchTab('all')">全部</div>
+        <div class="tab-nav-item" onclick="switchTab('pending')">待审批</div>
+    </div>
+
+    <div class="tab-pane active" id="tab-all">
+        <div class="filter-bar">
+            <div class="search-input">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInputAll" placeholder="搜索审批单号、申请者..." onkeyup="handleSearchAll(event)">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="table" id="allTable">
+                <thead>
+                    <tr>
+                        <th>审批单号</th>
+                        <th>审批类型</th>
+                        <th>申请者</th>
+                        <th>当前状态</th>
+                        <th>店铺名称</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="allTableBody">
+                    <tr><td colspan="6" class="empty-state">正在加载...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-container" id="allPagination" style="display:none;">
+            <div class="pagination-info" id="allPaginationInfo" data-total="0">
+                <div class="page-size-wrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div style="position:relative;">
+                        <button class="page-size-trigger" onclick="toggleAllPageSize()">
+                            <span id="allPageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="allPageSizeDropdown">
+                            <div class="page-size-option selected" onclick="changeAllPageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changeAllPageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changeAllPageSize(100)">100条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="allPaginationNew"></div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="allPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleAllPageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane" id="tab-pending">
+        <div class="filter-bar">
+            <div class="search-input">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInputPending" placeholder="搜索审批单号、申请者..." onkeyup="handleSearchPending(event)">
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="table" id="pendingTable">
+                <thead>
+                    <tr>
+                        <th>审批单号</th>
+                        <th>审批类型</th>
+                        <th>申请者</th>
+                        <th>当前状态</th>
+                        <th>店铺名称</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingTableBody">
+                    <tr><td colspan="6" class="empty-state">正在加载...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination-container" id="pendingPagination" style="display:none;">
+            <div class="pagination-info" id="pendingPaginationInfo" data-total="0">
+                <div class="page-size-wrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div style="position:relative;">
+                        <button class="page-size-trigger" onclick="togglePendingPageSize()">
+                            <span id="pendingPageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pendingPageSizeDropdown">
+                            <div class="page-size-option selected" onclick="changePendingPageSize(20)">20条</div>
+                            <div class="page-size-option" onclick="changePendingPageSize(50)">50条</div>
+                            <div class="page-size-option" onclick="changePendingPageSize(100)">100条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="pendingPaginationNew"></div>
+            <div class="pagination-jump">
+                <span>跳至</span>
+                <input type="number" id="pendingPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePendingPageJump(event)">
+                <span>页</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content" style="max-width:400px;">
+        <div class="modal-header">
+            <h3>确认删除</h3>
+            <button class="btn-action" onclick="closeDeleteModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p>确定要删除审批单 <strong id="deleteApprovalNo"></strong> 吗？</p>
+            <p style="color:var(--text-tertiary);font-size:0.875rem;margin-top:0.5rem;">删除后无法恢复，请谨慎操作。</p>
+            <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex:1;">取消</button>
+                <button class="btn btn-danger" onclick="confirmDelete()" style="flex:1;"><i class="fas fa-trash"></i> 删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="detailModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>审批单详情</h3>
+            <button class="btn-action" onclick="closeDetailModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/general_style_1.js' %}?v=20260407-approval-list"></script>
+<script>
+    const canOperateApproval = {{ can_operate_approval|yesno:'true,false' }};
+    let currentTab = 'all';
+    let deleteTargetId = null;
+
+    const allState = { rows: [], page: 1, page_size: 20, total: 0, total_pages: 0, search: '' };
+    const pendingState = { rows: [], page: 1, page_size: 20, total: 0, total_pages: 0, search: '' };
+
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function fetchJson(url, options = {}) {
+        const response = await fetch(url, options);
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            throw new Error(result.message || '请求失败');
+        }
+        return result;
+    }
+
+    function getStatusClassByCode(code) {
+        const map = { 'pending': 'status-pending', 'approved': 'status-approved', 'rejected': 'status-rejected', 'draft': 'status-draft' };
+        return map[code] || 'status-pending';
+    }
+
+    function renderRow(row, showViewDelete) {
+        const shopDisplay = row.shop_count > 0 ? `共${row.shop_count}个店铺` : '--';
+        let actionsHtml = '';
+
+        if (showViewDelete) {
+            actionsHtml = `
+                <div class="approval-actions">
+                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
+                    ${row.can_edit && row.draft_approval_id ? `<button class="btn btn-sm" type="button" onclick="window.location.href='/task/approval/create/?draft_id=${row.draft_approval_id}'">编辑</button>` : ''}
+                    ${row.can_delete ? `<button class="btn-danger btn-sm" type="button" onclick="openDeleteModal(${row.approval_id}, '${escapeHtml(row.approval_no)}')">删除</button>` : `<button class="btn-danger btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">删除</button>`}
+                </div>`;
+        } else {
+            if (canOperateApproval && row.can_operate) {
+                actionsHtml = `
+                <div class="approval-actions">
+                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
+                    <button class="btn btn-sm" type="button" onclick="handleAction(${row.approval_id}, 'approved')">通过</button>
+                    <button class="btn-danger btn-sm" type="button" onclick="handleAction(${row.approval_id}, 'rejected')">驳回</button>
+                </div>`;
+            } else {
+                actionsHtml = `
+                <div class="approval-actions">
+                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
+                    <button class="btn btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">通过</button>
+                    <button class="btn-danger btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">驳回</button>
+                </div>`;
+            }
+        }
+
+        return `<tr>
+            <td>${escapeHtml(row.approval_no)}</td>
+            <td>${escapeHtml(row.approval_type_label)}</td>
+            <td>${escapeHtml(row.applicant_name)}</td>
+            <td><span class="status-badge ${getStatusClassByCode(row.status)}">${escapeHtml(row.status_label)}</span></td>
+            <td>${shopDisplay}</td>
+            <td>${actionsHtml}</td>
+        </tr>`;
+    }
+
+    function renderTable(tbodyId, rows, showViewDelete) {
+        const tbody = document.getElementById(tbodyId);
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>暂无数据</p></td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(r => renderRow(r, showViewDelete)).join('');
+    }
+
+    function renderPagination(containerId, newId, infoId, state) {
+        const container = document.getElementById(containerId);
+        const totalPages = state.total_pages || 1;
+        if (state.total === 0) {
+            container.style.display = 'none';
+            return;
+        }
+        container.style.display = 'flex';
+        document.getElementById(infoId).dataset.total = state.total;
+
+        const start = (state.page - 1) * state.page_size + 1;
+        const end = Math.min(state.page * state.page_size, state.total);
+        const statsText = state.total === 0 ? '0' : `${start}-${end} / 共 ${state.total} 条`;
+        let statsEl = document.getElementById(infoId).querySelector('.pagination-stats');
+        if (!statsEl) {
+            statsEl = document.createElement('span');
+            statsEl.className = 'pagination-stats';
+            document.getElementById(infoId).querySelector('.page-size-wrapper').appendChild(statsEl);
+        }
+        statsEl.textContent = statsText;
+
+        const paginationNew = document.getElementById(newId);
+        let html = '';
+        html += `<button class="pagination-btn-new" onclick="goPage('${containerId}', ${state.page - 1})" ${state.page <= 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i> 上一页</button>`;
+
+        if (totalPages > 1) {
+            let startPage = Math.max(1, state.page - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            if (endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" onclick="goPage('${containerId}', 1)">1</button>`;
+                if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+            }
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="pagination-btn-new ${i === state.page ? 'active' : ''}" onclick="goPage('${containerId}', ${i})">${i}</button>`;
+            }
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+                html += `<button class="pagination-btn-new" onclick="goPage('${containerId}', ${totalPages})">${totalPages}</button>`;
+            }
+        } else {
+            html += `<button class="pagination-btn-new active" disabled>1</button>`;
+        }
+
+        html += `<button class="pagination-btn-new" onclick="goPage('${containerId}', ${state.page + 1})" ${state.page >= totalPages ? 'disabled' : ''}>下一页 <i class="fas fa-chevron-right"></i></button>`;
+        paginationNew.innerHTML = html;
+    }
+
+    function goPage(containerId, page) {
+        if (containerId === 'allPagination') {
+            loadAllData(page);
+        } else {
+            loadPendingData(page);
+        }
+    }
+
+    async function loadStats() {
+        try {
+            const result = await fetchJson('/api/task/approvals/list/stats/');
+            document.getElementById('statTotal').textContent = result.data.total;
+            document.getElementById('statPending').textContent = result.data.pending;
+            document.getElementById('statInProcess').textContent = result.data.pending;
+            document.getElementById('statApproved').textContent = result.data.approved;
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('加载统计失败: ' + e.message, 'error');
+        }
+    }
+
+    async function loadAllData(page) {
+        if (page < 1) return;
+        allState.page = page;
+        try {
+            const params = new URLSearchParams({ page: String(page), page_size: String(allState.page_size), tab: 'all', search: allState.search });
+            const result = await fetchJson('/api/task/approvals/list/data/?' + params.toString());
+            allState.rows = result.data || [];
+            allState.total = result.pagination.total;
+            allState.total_pages = result.pagination.total_pages;
+            allState.page = result.pagination.page;
+            renderTable('allTableBody', allState.rows, true);
+            renderPagination('allPagination', 'allPaginationNew', 'allPaginationInfo', allState);
+        } catch (e) {
+            document.getElementById('allTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
+            document.getElementById('allPagination').style.display = 'none';
+        }
+    }
+
+    async function loadPendingData(page) {
+        if (page < 1) return;
+        pendingState.page = page;
+        try {
+            const params = new URLSearchParams({ page: String(page), page_size: String(pendingState.page_size), tab: 'pending', search: pendingState.search });
+            const result = await fetchJson('/api/task/approvals/list/data/?' + params.toString());
+            pendingState.rows = result.data || [];
+            pendingState.total = result.pagination.total;
+            pendingState.total_pages = result.pagination.total_pages;
+            pendingState.page = result.pagination.page;
+            renderTable('pendingTableBody', pendingState.rows, false);
+            renderPagination('pendingPagination', 'pendingPaginationNew', 'pendingPaginationInfo', pendingState);
+        } catch (e) {
+            document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
+            document.getElementById('pendingPagination').style.display = 'none';
+        }
+    }
+
+    function loadCurrentTabData() {
+        loadAllData(allState.page);
+        loadPendingData(pendingState.page);
+    }
+
+    function switchTab(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.tab-nav-item').forEach(function(item) { item.classList.remove('active'); });
+        document.querySelectorAll('.tab-pane').forEach(function(pane) { pane.classList.remove('active'); });
+        if (tab === 'all') {
+            document.querySelector('.tab-nav-item:nth-child(1)').classList.add('active');
+            document.getElementById('tab-all').classList.add('active');
+        } else {
+            document.querySelector('.tab-nav-item:nth-child(2)').classList.add('active');
+            document.getElementById('tab-pending').classList.add('active');
+        }
+    }
+
+    let searchAllTimer = null;
+    function handleSearchAll(event) {
+        clearTimeout(searchAllTimer);
+        searchAllTimer = setTimeout(function() {
+            allState.search = document.getElementById('searchInputAll').value.trim();
+            loadAllData(1);
+        }, 400);
+    }
+
+    let searchPendingTimer = null;
+    function handleSearchPending(event) {
+        clearTimeout(searchPendingTimer);
+        searchPendingTimer = setTimeout(function() {
+            pendingState.search = document.getElementById('searchInputPending').value.trim();
+            loadPendingData(1);
+        }, 400);
+    }
+
+    function toggleAllPageSize() {
+        document.getElementById('allPageSizeDropdown').classList.toggle('open');
+    }
+
+    function changeAllPageSize(size) {
+        allState.page_size = size;
+        allState.page = 1;
+        document.getElementById('allPageSizeText').textContent = size + '条';
+        document.getElementById('allPageSizeDropdown').classList.remove('open');
+        document.querySelectorAll('#allPageSizeDropdown .page-size-option').forEach(function(opt) {
+            opt.classList.remove('selected');
+        });
+        var sel = document.querySelector(`#allPageSizeDropdown .page-size-option[onclick="changeAllPageSize(${size})"]`);
+        if (sel) sel.classList.add('selected');
+        loadAllData(1);
+    }
+
+    function handleAllPageJump(e) {
+        if (e.key === 'Enter') {
+            var page = parseInt(document.getElementById('allPageJumpInput').value);
+            if (!isNaN(page) && page >= 1 && page <= allState.total_pages) {
+                loadAllData(page);
+            }
+            document.getElementById('allPageJumpInput').value = '';
+        }
+    }
+
+    function togglePendingPageSize() {
+        document.getElementById('pendingPageSizeDropdown').classList.toggle('open');
+    }
+
+    function changePendingPageSize(size) {
+        pendingState.page_size = size;
+        pendingState.page = 1;
+        document.getElementById('pendingPageSizeText').textContent = size + '条';
+        document.getElementById('pendingPageSizeDropdown').classList.remove('open');
+        document.querySelectorAll('#pendingPageSizeDropdown .page-size-option').forEach(function(opt) {
+            opt.classList.remove('selected');
+        });
+        var sel = document.querySelector(`#pendingPageSizeDropdown .page-size-option[onclick="changePendingPageSize(${size})"]`);
+        if (sel) sel.classList.add('selected');
+        loadPendingData(1);
+    }
+
+    function handlePendingPageJump(e) {
+        if (e.key === 'Enter') {
+            var page = parseInt(document.getElementById('pendingPageJumpInput').value);
+            if (!isNaN(page) && page >= 1 && page <= pendingState.total_pages) {
+                loadPendingData(page);
+            }
+            document.getElementById('pendingPageJumpInput').value = '';
+        }
+    }
+
+    async function viewDetail(approvalId) {
+        try {
+            const result = await fetchJson('/api/task/approvals/' + approvalId + '/detail/');
+            const d = result.data;
+            let html = `
+                <div class="detail-info-grid">
+                    <div class="detail-info-item"><div class="detail-info-label">审批单号</div><div class="detail-info-value">${escapeHtml(d.approval_no)}</div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">审批类型</div><div class="detail-info-value">${escapeHtml(d.approval_type_label)}</div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">申请者</div><div class="detail-info-value">${escapeHtml(d.applicant_name)}</div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><span class="status-badge ${getStatusClassByCode(d.status_label)}">${escapeHtml(d.status_label)}</span></div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">创建时间</div><div class="detail-info-value">${escapeHtml(d.created_at)}</div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">提交时间</div><div class="detail-info-value">${d.submitted_at ? escapeHtml(d.submitted_at) : '--'}</div></div>
+                </div>`;
+            if (d.remark) {
+                html += `<div style="margin-bottom:1rem;"><div class="detail-info-label">备注</div><div style="margin-top:0.25rem;color:var(--text-primary);">${escapeHtml(d.remark)}</div></div>`;
+            }
+            if (d.detail_rows && d.detail_rows.length > 0) {
+                html += `<table class="detail-table"><thead><tr><th>ASIN</th><th>店铺名称</th><th>发货渠道</th></tr></thead><tbody>`;
+                for (const r of d.detail_rows) {
+                    html += `<tr><td>${escapeHtml(r.asin)}</td><td>${escapeHtml(r.shop_name)}</td><td>${escapeHtml(r.fulfillment_channel_type)}</td></tr>`;
+                }
+                html += '</tbody></table>';
+            } else {
+                html += '<p style="color:var(--text-tertiary);">暂无详细配置数据</p>';
+            }
+            document.getElementById('detailModalBody').innerHTML = html;
+            document.getElementById('detailModal').style.display = 'block';
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('加载详情失败: ' + e.message, 'error');
+        }
+    }
+
+    function closeDetailModal() {
+        document.getElementById('detailModal').style.display = 'none';
+    }
+
+    function openDeleteModal(approvalId, approvalNo) {
+        deleteTargetId = approvalId;
+        document.getElementById('deleteApprovalNo').textContent = approvalNo;
+        document.getElementById('deleteModal').style.display = 'block';
+    }
+
+    function closeDeleteModal() {
+        deleteTargetId = null;
+        document.getElementById('deleteModal').style.display = 'none';
+    }
+
+    async function confirmDelete() {
+        if (!deleteTargetId) return;
+        try {
+            const result = await fetchJson('/api/task/approvals/' + deleteTargetId + '/delete/', {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '' }
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '删除成功', 'success');
+            closeDeleteModal();
+            loadStats();
+            loadCurrentTabData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('删除失败: ' + e.message, 'error');
+        }
+    }
+
+    async function handleAction(approvalId, action) {
+        if (!canOperateApproval) {
+            if (typeof showNotification === 'function') showNotification('无审批操作权限', 'error');
+            return;
+        }
+        const actionLabel = action === 'approved' ? '通过' : '驳回';
+        const msg = action === 'approved'
+            ? '确定通过该审批单吗？'
+            : '确定驳回该审批单吗？系统将自动复制一张新的审批草稿。';
+        if (!window.confirm(msg)) return;
+
+        try {
+            const result = await fetchJson('/api/task/approvals/list/action/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({ approval_id: approvalId, action: action })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '审批已' + actionLabel, 'success');
+            loadStats();
+            loadCurrentTabData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('审批' + actionLabel + '失败: ' + e.message, 'error');
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        var allWrapper = document.getElementById('allPageSizeDropdown');
+        var pendingWrapper = document.getElementById('pendingPageSizeDropdown');
+        if (allWrapper && !allWrapper.contains(e.target) && !e.target.closest('#allPagination .page-size-trigger')) {
+            allWrapper.classList.remove('open');
+        }
+        if (pendingWrapper && !pendingWrapper.contains(e.target) && !e.target.closest('#pendingPagination .page-size-trigger')) {
+            pendingWrapper.classList.remove('open');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadStats();
+        loadAllData(1);
+        loadPendingData(1);
+    });
+</script>
+{% endblock %}
