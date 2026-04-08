@@ -882,6 +882,8 @@
             case 'divi_export_pro':
                 const platformText = params.platform === 'temu' ? 'Temu' : 'Amazon';
                 return renderFactPill('汇出行', `${Array.isArray(params.export_rows) ? params.export_rows.length : 0} (${platformText})`);
+            case 'amazon_exempt':
+                return renderFactPill('豁免产品', Array.isArray(params.exempt_rows) ? params.exempt_rows.length : 0);
             case 'divi_gallery_upload':
                 return renderFactPill('路径', hasDisplayValue(params.gallery_path) || hasDisplayValue(params.local_gallery_path) ? '已填写' : '未填写');
             default:
@@ -1020,6 +1022,16 @@
                     field('迪唯账号', params.diwei_account),
                     field('本地路径', params.local_gallery_path, true),
                     field('上传到的图库路径', joinList(params['上传到的图库路径']), true)
+                ]);
+                break;
+            case 'amazon_exempt':
+                title = 'Amazon UPC豁免配置';
+                content = renderFieldGrid([
+                    field('Amazon店铺', params.amazon_shop),
+                    field('豁免产品', renderGroupedProductRows(params.exempt_rows, [
+                        { key: 'product_name', label: '产品名称' },
+                        { key: 'product_type', label: '产品类型', truncate: true }
+                    ]), true, true)
                 ]);
                 break;
             default:
@@ -1388,6 +1400,7 @@
             divi_custom: '迪唯批量定制',
             divi_export: '迪唯汇出',
             divi_export_pro: '迪唯汇出-Pro',
+            amazon_exempt: 'Amazon UPC豁免',
             divi_gallery_upload: 'DIVI图库上传',
             amazon_upload: 'Amazon上架'
         };

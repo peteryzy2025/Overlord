@@ -346,6 +346,13 @@
                         <h4>迪唯汇出上架-Pro</h4>
                         <p>汇出产品数据（Pro版）</p>
                     </div>
+                    <div class="subtask-type-card" data-type="amazon_exempt" onclick="selectSubtaskType(this)">
+                        <div class="type-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>Amazon UPC豁免</h4>
+                        <p>申请Amazon UPC豁免</p>
+                    </div>
                     <div class="subtask-type-card" data-type="divi_gallery_upload" onclick="selectSubtaskType(this)">
                         <div class="type-icon">
                             <i class="fas fa-images"></i>
@@ -544,6 +551,27 @@
             amazon: [],
             temu: []
         };
+
+        // Amazon资格豁免产品数据
+        const amazonExemptProducts = [
+            { cn: '旗', en: 'Flag', type: 'Patio, Lawn & Garden›Outdoor Décor›Flags' },
+            { cn: '帽子', en: 'Hat', type: 'Clothing, Shoes & Jewelry › Novelty & More › Clothing › Novelty › Men › Accessories › Hats & Caps Baseball Caps' },
+            { cn: '杯子', en: 'Drinking cup', type: 'Home & Kitchen›Kitchen & Dining›Dining & Entertaining›Glassware & Drinkware›Tumblers & Water Glasses' },
+            { cn: '袜子', en: 'Socks', type: 'Clothing, Shoes & Jewelry›Novelty & More›Clothing›Novelty›Women›Socks & Hosiery›Socks' },
+            { cn: '背包', en: 'Backpack', type: 'Clothing, Shoes & Jewelry›Luggage & Travel Gear›Gym Bags›Drawstring Bags' },
+            { cn: '毛毯', en: 'Blanket', type: 'Home & Kitchen›Bedding›Blankets & Throws›Throws' },
+            { cn: '地垫', en: 'Rug', type: 'Home & Kitchen›Home Décor Products›Rugs, Pads & Protectors›Area Rugs' },
+            { cn: '挂毯', en: 'Wallart', type: 'Home & Kitchen›Home Décor Products›Tapestries' },
+            { cn: '铁皮挂画', en: 'Decorative signage', type: 'Home & Kitchen›Home Décor Products›Home Décor Accents›Decorative Accessories›Decorative Signs & Plaques' },
+            { cn: '咖啡垫', en: 'placemat', type: 'Home & Kitchen›Kitchen & Dining›Kitchen & Table Linens›Place Mats' },
+            { cn: '热转印白墨画贴纸', en: 'iron on transfer design', type: 'Arts, Crafts & Sewing›Sewing›Trim & Embellishments›Iron-on Transfers' },
+            { cn: '胸章', en: 'apparel pin', type: 'Clothing, Shoes & Jewelry›Women›Jewelry›Brooches & Pins' },
+            { cn: 'T恤', en: 'shirt', type: 'Clothing, Shoes & Jewelry › Women › Maternity › Tops & Tees › T-Shirts' },
+            { cn: '围裙', en: 'apron', type: 'Clothing, Shoes & Jewelry › Uniforms, Work & Safety › Clothing › Food Service › Aprons' },
+            { cn: '桌布', en: 'tablecloth', type: 'Home & Kitchen › Kitchen & Dining › Dining & Entertaining › Tabletop Accessories › Linens › Tablecloths' },
+            { cn: '横幅', en: 'Banner', type: 'Arts, Crafts & Sewing › Party Decorations and Supplies › Banners' },
+            { cn: '化妆包', en: 'Cosmetic Bag', type: 'Beauty & Personal Care › Tools & Accessories › Bags & Cases › Cosmetic Bags' }
+        ];
 
         let availableOwners = [];
         let selectedSubtaskType = null;
@@ -817,6 +845,52 @@
                     }
                 }
             }
+        }
+
+        // ===== 初始化Amazon资格豁免店铺选择器 =====
+        async function initAmazonExemptShopSelect(subtask) {
+            const shopSelectEl = document.querySelector(`#amazon-exempt-shop-select-${subtask.id}`);
+            if (!shopSelectEl || shopSelectEl.dataset.initialized) return;
+
+            // 获取Amazon店铺列表
+            let shopOptions = [];
+            if (availableShops.amazon && availableShops.amazon.length > 0) {
+                const currentUserId = String("{{ request.user.id }}");
+                const ownerId = String(taskData.ownerId || currentUserId);
+                
+                shopOptions = availableShops.amazon
+                    .filter(shop => {
+                        const shopOpsId = String(shop.ops_id);
+                        return shopOpsId === ownerId || shopOpsId === currentUserId;
+                    })
+                    .map(shop => ({
+                        value: shop.raw_name || shop.shop_name || shop.name,
+                        label: shop.raw_name || shop.shop_name || shop.name
+                    }));
+
+                if (shopOptions.length === 0) {
+                    shopOptions = availableShops.amazon.map(shop => ({
+                        value: shop.raw_name || shop.shop_name || shop.name,
+                        label: shop.raw_name || shop.shop_name || shop.name
+                    }));
+                }
+            }
+
+            const shopSelect = new SearchableSelect(`#amazon-exempt-shop-select-${subtask.id}`, {
+                options: shopOptions,
+                multiple: false,
+                placeholder: '选择Amazon店铺'
+            });
+
+            if (subtask.params.amazon_shop) {
+                shopSelect.setValue(subtask.params.amazon_shop);
+            }
+
+            shopSelect.onChange = (value) => {
+                updateSubtaskParam(subtask.id, 'amazon_shop', value);
+            };
+
+            shopSelectEl.dataset.initialized = 'true';
         }
 
         // ===== 加载迪唯账号列表 =====
@@ -1382,6 +1456,185 @@
 
             selectEl.dataset.initialized = 'true';
             selectEl._productSelectInstance = productSelect;
+        }
+
+        // ===== 渲染Amazon资格豁免产品行 =====
+        function renderAmazonExemptRow(subtaskId, rowIndex, rowData = {}) {
+            const productName = rowData.product_name || '';
+            const productType = rowData.product_type || '';
+            
+            return `
+                <div class="amazon-exempt-row" id="amazon-exempt-row-${subtaskId}-${rowIndex}" data-row-index="${rowIndex}" style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 0.75rem;
+                    align-items: end;
+                    padding: 1rem;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                    margin-bottom: 0.75rem;
+                    border: 1px solid var(--border-color);">
+                    
+                    <!-- 产品名称下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 200px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品名称 <span style="color: var(--danger-color);">*</span></label>
+                        <div id="amazon-exempt-product-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择产品名称"></div>
+                    </div>
+
+                    <!-- 强制换行 -->
+                    <div style="flex-basis: 100%; height: 0;"></div>
+
+                    <!-- 产品类型输入框 -->
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 300px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品类型 <span style="color: var(--danger-color);">*</span></label>
+                        <input type="text" class="form-control"
+                               id="amazon-exempt-type-${subtaskId}-${rowIndex}"
+                               value="${productType}"
+                               placeholder="产品类型将根据选择的产品自动填充"
+                               oninput="updateAmazonExemptRow(${subtaskId}, ${rowIndex}, 'product_type', this.value)">
+                    </div>
+
+                    <!-- 删除按钮 -->
+                    <div style="padding-bottom: 0.25rem; flex-shrink: 0;">
+                        <button type="button" class="btn btn-sm btn-danger" onclick="showDeleteAmazonExemptRowModal(${subtaskId}, ${rowIndex})" style="padding: 0.375rem 0.625rem;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ===== 初始化Amazon资格豁免产品选择器 =====
+        function initAmazonExemptProductSelect(subtaskId, rowIndex, selectedProductName = '') {
+            const selectEl = document.querySelector(`#amazon-exempt-product-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl || selectEl.dataset.initialized) return;
+
+            // 准备选项数据，格式：中文（英文）
+            const productOptions = amazonExemptProducts.map(p => ({
+                value: p.cn,
+                label: `${p.cn}（${p.en}）`
+            }));
+
+            const productSelect = new SearchableSelect(`#amazon-exempt-product-select-${subtaskId}-${rowIndex}`, {
+                options: productOptions,
+                multiple: false,
+                placeholder: '选择产品名称'
+            });
+
+            if (selectedProductName) {
+                productSelect.setValue(selectedProductName);
+            }
+
+            // 监听变化 - 选择产品后自动填充英文名称和产品类型
+            productSelect.onChange = (value) => {
+                updateAmazonExemptRow(subtaskId, rowIndex, 'product_name', value);
+                
+                // 查找选中的产品数据
+                const selectedProduct = amazonExemptProducts.find(p => p.cn === value);
+                if (selectedProduct) {
+                    // 自动填充产品类型
+                    const typeInput = document.querySelector(`#amazon-exempt-type-${subtaskId}-${rowIndex}`);
+                    if (typeInput) {
+                        typeInput.value = selectedProduct.type;
+                        updateAmazonExemptRow(subtaskId, rowIndex, 'product_type', selectedProduct.type);
+                    }
+                }
+            };
+
+            selectEl.dataset.initialized = 'true';
+            selectEl._productSelectInstance = productSelect;
+        }
+
+        // ===== 更新Amazon资格豁免行数据 =====
+        function updateAmazonExemptRow(subtaskId, rowIndex, field, value) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.exempt_rows) return undefined;
+
+            const row = subtask.params.exempt_rows[rowIndex];
+            if (row) {
+                const oldValue = row[field];
+                row[field] = value;
+                triggerAutoSave();
+                return oldValue;
+            }
+            return undefined;
+        }
+
+        // ===== 添加Amazon资格豁免产品行 =====
+        function addAmazonExemptRow(subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask) return;
+
+            if (!subtask.params.exempt_rows) {
+                subtask.params.exempt_rows = [];
+            }
+
+            const newRow = {
+                product_name: '',
+                product_type: ''
+            };
+
+            subtask.params.exempt_rows.push(newRow);
+            const rowIndex = subtask.params.exempt_rows.length - 1;
+
+            const container = document.getElementById(`amazon-exempt-rows-container-${subtaskId}`);
+            if (container) {
+                const rowHtml = renderAmazonExemptRow(subtaskId, rowIndex, newRow);
+                container.insertAdjacentHTML('beforeend', rowHtml);
+                
+                setTimeout(() => {
+                    initAmazonExemptProductSelect(subtaskId, rowIndex, '');
+                }, 0);
+            }
+
+            triggerAutoSave();
+        }
+
+        // ===== 显示删除Amazon资格豁免行确认弹窗 =====
+        let amazonExemptRowToDelete = null;
+
+        function showDeleteAmazonExemptRowModal(subtaskId, rowIndex) {
+            amazonExemptRowToDelete = { subtaskId, rowIndex };
+            document.getElementById('deleteExportRowModal').classList.add('active');
+            // 修改弹窗文案
+            const modalBody = document.querySelector('#deleteExportRowModal .modal-body p');
+            if (modalBody) {
+                modalBody.textContent = '确定要删除此豁免产品吗？';
+            }
+            // 修改确认按钮事件
+            const confirmBtn = document.getElementById('confirmDeleteExportRowBtn');
+            if (confirmBtn) {
+                confirmBtn.onclick = confirmDeleteAmazonExemptRow;
+            }
+        }
+
+        // ===== 确认删除Amazon资格豁免行 =====
+        function confirmDeleteAmazonExemptRow() {
+            if (!amazonExemptRowToDelete) return;
+            
+            const { subtaskId, rowIndex } = amazonExemptRowToDelete;
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            if (!subtask || !subtask.params.exempt_rows) return;
+
+            subtask.params.exempt_rows.splice(rowIndex, 1);
+
+            const container = document.getElementById(`amazon-exempt-rows-container-${subtaskId}`);
+            if (container) {
+                container.innerHTML = subtask.params.exempt_rows.map((row, index) => renderAmazonExemptRow(subtaskId, index, row)).join('');
+                
+                subtask.params.exempt_rows.forEach((row, index) => {
+                    setTimeout(() => {
+                        initAmazonExemptProductSelect(subtaskId, index, row.product_name || '');
+                    }, 0);
+                });
+            }
+
+            triggerAutoSave();
+            closeDeleteExportRowModal();
+            showNotification('已删除豁免产品', 'success', 2000);
+            
+            amazonExemptRowToDelete = null;
         }
 
         // ===== 加载产品颜色和尺码 =====
@@ -2809,6 +3062,11 @@
                     need_split: false,
                     export_rows: []
                 };
+            } else if (type === 'amazon_exempt') {
+                defaultParams = {
+                    amazon_shop: '',
+                    exempt_rows: []
+                };
             }
 
             // 合并参数（优先使用传入的params，缺失的使用defaultParams）
@@ -2843,8 +3101,17 @@
                         if (!row.template_name) row.template_name = 'product_id';
                         if (!row.max_export_quantity) row.max_export_quantity = 100;
                         if (!row.export_shop) row.export_shop = '';
-                        if (!row.publish_shops) row.publish_shops = [];
                     });
+                }
+            } else if (type === 'amazon_exempt') {
+                if (!params.amazon_shop) mergedParams.amazon_shop = '';
+                if (!params.exempt_rows) mergedParams.exempt_rows = [];
+                // 至少添加一个默认行
+                if (mergedParams.exempt_rows.length === 0) {
+                    mergedParams.exempt_rows = [{
+                        product_name: '',
+                        product_type: ''
+                    }];
                 }
             } else if (type === 'amazon_upload') {
                 if (!params.file_list) mergedParams.file_list = [];
@@ -3128,6 +3395,19 @@
             if (subtask.type === 'divi_export_pro') {
                 setTimeout(() => {
                     initExportProPlatformSelect(subtask, subtask.params.platform || 'amazon');
+                }, 0);
+            }
+            
+            // 如果是amazon_exempt类型，初始化店铺和豁免产品选择器
+            if (subtask.type === 'amazon_exempt') {
+                setTimeout(async () => {
+                    await initAmazonExemptShopSelect(subtask);
+                    // 初始化所有豁免产品行
+                    if (subtask.params.exempt_rows) {
+                        subtask.params.exempt_rows.forEach((row, index) => {
+                            initAmazonExemptProductSelect(subtask.id, index, row.product_name || '');
+                        });
+                    }
                 }, 0);
             }
         }
@@ -3663,6 +3943,25 @@
                         </div>
                     </div>
                 `;
+            } else if (subtask.type === 'amazon_exempt') {
+                return `
+                    <div class="dynamic-fields">
+                        <div class="form-group">
+                            <label class="form-label">Amazon店铺 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="amazon-exempt-shop-select-${subtask.id}" class="searchable-select single"
+                                 data-placeholder="选择Amazon店铺"></div>
+                        </div>
+                        
+                        <div style="grid-column: 1 / -1; margin-top: 1rem;">
+                            <div class="amazon-exempt-rows-container" id="amazon-exempt-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
+                                ${(subtask.params.exempt_rows || []).map((row, index) => renderAmazonExemptRow(subtask.id, index, row)).join('')}
+                            </div>
+                            <button type="button" class="btn btn-secondary" onclick="addAmazonExemptRow(${subtask.id})" style="width: 100%;">
+                                <i class="fas fa-plus"></i> 添加豁免产品
+                            </button>
+                        </div>
+                    </div>
+                `;
             } else if (subtask.type === 'divi_gallery_upload') {
                 return `
                     <div class="dynamic-fields diwei-fields">
@@ -3765,6 +4064,7 @@
                 'divi_custom': '迪唯批量定制',
                 'divi_export': '迪唯汇出上架-Amazon切表版',
                 'divi_export_pro': '迪唯汇出上架-Pro',
+                'amazon_exempt': 'Amazon UPC豁免',
                 'divi_gallery_upload': 'DIVI图库上传',
                 'custom_upload': 'Temu定制上架',
                 'temu_export': 'Temu导单',
@@ -4624,6 +4924,35 @@
                                 showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行开启了设计日期筛选，开始日期和结束日期都不能为空`, 'warning');
                                 return false;
                             }
+                        }
+                    }
+                } else if (subtask.type === 'amazon_exempt') {
+                    // Amazon资格豁免验证
+                    if (!subtask.params.amazon_shop || subtask.params.amazon_shop.trim() === '') {
+                        showNotification(`子任务 #${subtask.order + 1} 的Amazon店铺不能为空`, 'warning');
+                        return false;
+                    }
+                    
+                    // 验证豁免产品列表
+                    const exemptRows = subtask.params.exempt_rows || [];
+                    if (exemptRows.length === 0) {
+                        showNotification(`子任务 #${subtask.order + 1} 请至少添加一个豁免产品`, 'warning');
+                        return false;
+                    }
+                    
+                    for (let i = 0; i < exemptRows.length; i++) {
+                        const row = exemptRows[i];
+                        
+                        // 验证产品名称不能为空
+                        if (!row.product_name || String(row.product_name).trim() === '') {
+                            showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行的产品名称不能为空`, 'warning');
+                            return false;
+                        }
+                        
+                        // 验证产品类型不能为空
+                        if (!row.product_type || String(row.product_type).trim() === '') {
+                            showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行的产品类型不能为空`, 'warning');
+                            return false;
                         }
                     }
                 } else if (subtask.type === 'divi_gallery_upload') {

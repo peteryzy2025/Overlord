@@ -286,6 +286,30 @@ def validate_subtask_params(subtask_type, params, user):
 
             return {'valid': True, 'message': ''}
 
+        elif subtask_type == 'amazon_exempt':
+            # Amazon资格豁免验证
+            amazon_shop = params.get('amazon_shop', '').strip()
+            if not amazon_shop:
+                return {'valid': False, 'message': 'Amazon店铺不能为空'}
+
+            # 验证豁免产品列表
+            exempt_rows = params.get('exempt_rows', [])
+            if not exempt_rows or len(exempt_rows) == 0:
+                return {'valid': False, 'message': '请至少添加一个豁免产品'}
+
+            for i, row in enumerate(exempt_rows):
+                # 验证产品名称
+                product_name = row.get('product_name', '')
+                if not product_name or str(product_name).strip() == '':
+                    return {'valid': False, 'message': f'第 {i + 1} 行的产品名称不能为空'}
+
+                # 验证产品类型
+                product_type = row.get('product_type', '')
+                if not product_type or str(product_type).strip() == '':
+                    return {'valid': False, 'message': f'第 {i + 1} 行的产品类型不能为空'}
+
+            return {'valid': True, 'message': ''}
+
         elif subtask_type == 'divi_gallery_upload':
             diwei_account = params.get('diwei_account', '').strip()
             if not diwei_account:

@@ -117,6 +117,7 @@ class SubTaskType(models.TextChoices):
     DIVI_CUSTOM = 'divi_custom', '迪唯定制'
     DIVI_EXPORT = 'divi_export', '迪唯汇出上架-Amazon切表版'
     DIVI_EXPORT_PRO = 'divi_export_pro', '迪唯汇出上架-Pro'
+    AMAZON_EXEMPT = 'amazon_exempt', 'Amazon UPC豁免'
 
 
 class SubTaskStatus(models.TextChoices):
@@ -145,6 +146,7 @@ class SubTask(models.Model):
     TYPE_DIVI_CUSTOM = 'divi_custom'
     TYPE_DIVI_EXPORT = 'divi_export'
     TYPE_DIVI_EXPORT_PRO = 'divi_export_pro'
+    TYPE_AMAZON_EXEMPT = 'amazon_exempt'
 
     # 子任务状态定义
     STATUS_DRAFT = 'draft'
@@ -168,6 +170,7 @@ class SubTask(models.Model):
         (TYPE_DIVI_CUSTOM, '迪唯批量定制'),
         (TYPE_DIVI_EXPORT, '迪唯汇出'),
         (TYPE_DIVI_EXPORT_PRO, '迪唯汇出上架-Pro'),
+        (TYPE_AMAZON_EXEMPT, 'Amazon UPC豁免'),
         (TYPE_DIVI_GALLERY_UPLOAD, 'DIVI图库上传'),
         (TYPE_CUSTOM_UPLOAD, '定制上架'),
         (TYPE_TEMU_EXPORT, 'Temu导单'),
