@@ -1292,6 +1292,49 @@ def create_task_api(request):
                             '图库命名': params.get('gallery_name', ''),
                             '本地路径': params.get('local_gallery_path', '')
                         }
+                    elif st.subtask_type == 'amazon_exempt':
+                        # Amazon资格豁免 - 转换豁免产品数据
+                        exempt_rows_cn = []
+                        for row in params.get('exempt_rows', []):
+                            # 根据中文产品名称查找对应的英文名称
+                            product_cn = row.get('product_name', '')
+                            product_en = ''
+                            product_type = row.get('product_type', '')
+                            
+                            # 产品映射表（与前端一致）
+                            product_map = {
+                                '旗': 'Flag',
+                                '帽子': 'Hat',
+                                '杯子': 'Drinking cup',
+                                '袜子': 'Socks',
+                                '背包': 'Backpack',
+                                '毛毯': 'Blanket',
+                                '地垫': 'Rug',
+                                '挂毯': 'Wallart',
+                                '铁皮挂画': 'Decorative signage',
+                                '咖啡垫': 'placemat',
+                                '热转印白墨画贴纸': 'iron on transfer design',
+                                '胸章': 'apparel pin',
+                                'T恤': 'shirt',
+                                '围裙': 'apron',
+                                '桌布': 'tablecloth',
+                                '横幅': 'Banner',
+                                '化妆包': 'Cosmetic Bag'
+                            }
+                            
+                            if product_cn in product_map:
+                                product_en = product_map[product_cn]
+                            
+                            exempt_rows_cn.append({
+                                '产品名称中文': product_cn,
+                                '产品名称英文': product_en,
+                                '产品类型': product_type
+                            })
+                        
+                        subtask_params = {
+                            'Amazon店铺': params.get('amazon_shop', ''),
+                            '豁免产品列表': exempt_rows_cn
+                        }
                     elif st.subtask_type == 'divi_multi_side_custom':
                         # 定制坐标转列表
                         custom_coords = params.get('custom_coords', '')
@@ -1363,6 +1406,7 @@ def create_task_api(request):
                         'divi_custom': '迪唯批量定制',
                         'divi_export': '迪唯汇出上架-Amazon切表版',
                         'divi_export_pro': '迪唯汇出上架-Pro',
+                        'amazon_exempt': 'Amazon UPC豁免',
                         'divi_gallery_upload': 'DIVI图库上传',
                         'divi_multi_side_custom': '迪唯多面定制',
                         'custom_upload': 'Temu定制上架',
