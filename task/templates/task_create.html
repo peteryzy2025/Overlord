@@ -2161,6 +2161,19 @@
                     initExportProRowPublishShopsSelect(subtaskId, rowIndex, currentShops, platform, checked);
                 }
             });
+            
+            // 延迟初始化汇出店铺选择器，确保DOM已更新
+            if (checked) {
+                setTimeout(() => {
+                    exportRows.forEach((row, rowIndex) => {
+                        const platform = subtask?.params?.platform || 'amazon';
+                        const exportShopSelectEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
+                        if (exportShopSelectEl && !exportShopSelectEl.dataset.initialized) {
+                            initExportProRowExportShopSelect(subtaskId, rowIndex, row?.export_shop || '', platform);
+                        }
+                    });
+                }, 50);
+            }
 
             triggerAutoSave();
         }
@@ -2215,7 +2228,11 @@
                     initExportProRowTemplateSelect(subtaskId, rowIndex, 'product_id');
                     initExportProRowQuantitySelect(subtaskId, rowIndex, 100);
                     const platform = subtask?.params?.platform || 'amazon';
-                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform, false);
+                    // 如果开启了切表，初始化汇出店铺选择器
+                    if (subtaskNeedSplit) {
+                        initExportProRowExportShopSelect(subtaskId, rowIndex, '', platform);
+                    }
+                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform, subtaskNeedSplit);
                 }, 0);
             }
 
@@ -3483,7 +3500,8 @@
                         </div>
                         
                         <div class="form-group">
-                            <label class="form-switch">
+                            <label class="form-label" style="visibility: hidden;">切表开关</label>
+                            <label class="form-switch" style="margin-top: 0.5rem;">
                                 <input type="checkbox" class="switch-input"
                                     ${subtask.params.need_split ? 'checked' : ''}
                                     onchange="toggleProSplitSubtask(${subtask.id}, this.checked)">
