@@ -11,39 +11,40 @@
     
     <!-- Pro版本金色流光特效 -->
     <style>
-        /* Pro版本卡片 - 波浪边框 + 小金色流动光点 */
+        /* Pro版本卡片 - 金色动态边框 */
         .subtask-type-card.pro-card {
             position: relative;
             background: linear-gradient(145deg, #ffffff 0%, #fffef8 100%);
             overflow: visible;
+            border: 2px solid transparent;
+            background-clip: padding-box;
         }
         
-        /* 波浪纹理边框 - 使用渐变条纹模拟波浪 */
+        /* 金色流动边框 - 使用渐变动画 */
         .subtask-type-card.pro-card::before {
             content: '';
             position: absolute;
-            top: -3px;
-            left: -3px;
-            right: -3px;
-            bottom: -3px;
-            background: repeating-linear-gradient(
-                45deg,
-                #d4af37 0px,
-                #d4af37 3px,
-                #e5c158 3px,
-                #e5c158 6px,
-                #ffd700 6px,
-                #ffd700 9px,
-                #e5c158 9px,
-                #e5c158 12px
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(
+                90deg,
+                #d4af37 0%,
+                #ffd700 25%,
+                #ffec8b 50%,
+                #ffd700 75%,
+                #d4af37 100%
             );
+            background-size: 200% 100%;
             border-radius: 10px;
             z-index: -1;
-            opacity: 0.7;
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: exclude;
-            -webkit-mask-composite: xor;
-            padding: 3px;
+            animation: borderShine 3s linear infinite;
+        }
+        
+        @keyframes borderShine {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
         }
         
         /* 流动的金色小光点 - 更小更精致 */
@@ -157,16 +158,16 @@
         }
         
         .subtask-type-card.pro-card.selected::before {
-            background: repeating-linear-gradient(
-                45deg,
-                #d4af37 0px,
-                #d4af37 3px,
-                #ffd700 3px,
-                #ffd700 9px,
-                #ffec8b 9px,
-                #ffec8b 12px
+            background: linear-gradient(
+                90deg,
+                #b8860b 0%,
+                #ffd700 25%,
+                #fff5b0 50%,
+                #ffd700 75%,
+                #b8860b 100%
             );
-            opacity: 1;
+            background-size: 200% 100%;
+            animation: borderShine 2s linear infinite;
         }
         
         /* 子任务类型名称 - 可点击查看说明 */
