@@ -168,6 +168,28 @@
             );
             opacity: 1;
         }
+        
+        /* 子任务类型名称 - 可点击查看说明 */
+        .subtask-type {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .subtask-type:hover {
+            color: var(--accent-color);
+        }
+        
+        .subtask-type .fa-question-circle {
+            font-size: 0.85rem;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+        }
+        
+        .subtask-type:hover .fa-question-circle {
+            opacity: 1;
+        }
     </style>
 {% endblock %}
 
@@ -451,6 +473,28 @@
                         <i class="fas fa-trash"></i> 删除
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 子任务使用说明模态框 -->
+    <div class="modal-overlay" id="subtaskHelpModal">
+        <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="subtaskHelpTitle">使用说明</h3>
+                <button class="btn-icon" onclick="closeSubtaskHelpModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="subtaskHelpContent" style="line-height: 1.8; color: var(--text-primary);">
+                    <!-- 动态填充内容 -->
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: center; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <button class="btn btn-primary" onclick="closeSubtaskHelpModal()">
+                    <i class="fas fa-check"></i> 我知道了
+                </button>
             </div>
         </div>
     </div>
@@ -2796,7 +2840,10 @@
                                 <i class="fas fa-bars"></i>
                             </span>
                             <span class="subtask-number">#${subtask.order + 1}</span>
-                            <span class="subtask-type">${getSubtaskTypeDisplay(subtask.type)}</span>
+                            <span class="subtask-type" onclick="showSubtaskHelpModal('${subtask.type}')" style="cursor: pointer;" title="点击查看使用说明">
+                                ${getSubtaskTypeDisplay(subtask.type)}
+                                <i class="fas fa-question-circle" style="margin-left: 0.25rem; opacity: 0.6;"></i>
+                            </span>
                         </div>
                         <button class="btn-icon" onclick="deleteSubtask(${subtask.id})" title="删除">
                             <i class="fas fa-trash"></i>
@@ -4610,6 +4657,61 @@
             }
 
             showNotification('草稿已加载', 'success');
+        }
+
+        // ===== 子任务使用说明数据 =====
+        const subtaskHelpData = {
+            'divi_export_pro': {
+                title: '迪唯汇出上架-Pro 使用说明',
+                content: `
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">注意事项</h4>
+                        <div style="background: #fff5f5; border: 1px solid #ffcdd2; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                            <p style="margin: 0; color: #c62828; font-weight: 600; text-decoration: underline;">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                                一个主任务单号下的 所有汇出上架子任务 只能存在一个产品ID，不可以出现重复的！
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">颜色和尺码过滤说明</h4>
+                        <ul style="padding-left: 1.5rem; margin: 0; line-height: 1.8;">
+                            <li style="margin-bottom: 0.5rem;">如果选择了具体的颜色或尺码，系统<strong style="color: var(--accent-color);">只会上架这些被选中的项</strong>，未选中的颜色/尺码将会被删除，不会进行上架</li>
+                            <li style="margin-bottom: 0.5rem;">如果某一项（颜色或尺码）<strong style="color: var(--accent-color);">保持空白不选</strong>，则表示<strong style="color: var(--accent-color);">不对颜色和尺码进行过滤</strong>，会汇出所有的颜色和尺码</li>
+                            <li style="margin-bottom: 0;">举例：只选择颜色"红色"、尺码不选 → 会汇出所有尺码和颜色产品</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">字段说明</h4>
+                        <ul style="padding-left: 1.5rem; margin: 0; font-size: 0.9rem;">
+                            <li style="margin-bottom: 0.25rem;"><strong>平台</strong>：选择 Amazon 或 Temu，决定了可选的店铺列表</li>
+                            <li style="margin-bottom: 0.25rem;"><strong>是否切表</strong>：开启后每个产品行需要选择汇出店铺</li>
+                            <li style="margin-bottom: 0.25rem;"><strong>模板命名</strong>：产品ID 或 汇出店铺_产品ID</li>
+                            <li style="margin-bottom: 0.25rem;"><strong>最大汇出数量</strong>：每行最多汇出多少个产品（100-1500）</li>
+                        </ul>
+                    </div>
+                `
+            }
+        };
+
+        // ===== 显示子任务帮助模态框 =====
+        function showSubtaskHelpModal(subtaskType) {
+            const helpData = subtaskHelpData[subtaskType];
+            if (!helpData) {
+                showNotification('暂无该任务类型的使用说明', 'info');
+                return;
+            }
+            
+            document.getElementById('subtaskHelpTitle').textContent = helpData.title;
+            document.getElementById('subtaskHelpContent').innerHTML = helpData.content;
+            document.getElementById('subtaskHelpModal').classList.add('active');
+        }
+
+        // ===== 关闭子任务帮助模态框 =====
+        function closeSubtaskHelpModal() {
+            document.getElementById('subtaskHelpModal').classList.remove('active');
         }
 
         // ===== 防抖函数 =====

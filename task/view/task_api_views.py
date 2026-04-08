@@ -1268,7 +1268,7 @@ def create_task_api(request):
                             
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
-                                '尺码列表': size_names,
+                                '尺码名称列表': size_names,
                                 '颜色中文列表': color_names,
                                 '颜色英文列表': color_en_names,
                                 '模板命名': template_name_display,
