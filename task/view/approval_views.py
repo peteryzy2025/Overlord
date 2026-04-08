@@ -7,6 +7,7 @@ from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from amazon.listing_models import AmazonListingV2
@@ -97,6 +98,27 @@ def get_current_status_label(approval):
     if approval.current_step_sequence == 2:
         return '已通过'
     return f'第{approval.current_step_sequence}步审核中'
+
+
+def get_exec_status_summary(approval):
+    if approval.status != ApprovalStatus.APPROVED:
+        return None, None
+    ad_detail = getattr(approval, 'ad_detail', None)
+    if not ad_detail:
+        return '已通过', 'approved'
+    configs = ad_detail.shop_configs.all()
+    if not configs:
+        return '已通过', 'approved'
+    exec_status_map = dict(ExecStatus.choices)
+    counts = {}
+    for config in configs:
+        label = exec_status_map.get(config.exec_status, config.exec_status)
+        counts[label] = counts.get(label, 0) + 1
+    if len(counts) == 1:
+        single_status = configs[0].exec_status
+        return list(counts.keys())[0], single_status
+    parts = [f'{label}({count})' for label, count in counts.items()]
+    return ' / '.join(parts), 'mixed'
 
 
 def create_approval_steps(approval, applicant):
@@ -928,7 +950,7 @@ def approval_list_data_api(request):
     tab = request.GET.get('tab', 'all')
     search = (request.GET.get('search') or '').strip()
 
-    base_qs = Approval.objects.filter(company=request.user.company).select_related('applicant')
+    base_qs = Approval.objects.filter(company=request.user.company).select_related('applicant', 'ad_detail')
 
     if tab == 'pending':
         base_qs = base_qs.filter(status=ApprovalStatus.PENDING)
@@ -954,6 +976,10 @@ def approval_list_data_api(request):
     for approval in page_obj.object_list:
         applicant_name = approval.applicant.first_name or approval.applicant.username
         status_label = get_current_status_label(approval)
+
+        exec_status_label, exec_status_code = get_exec_status_summary(approval)
+        if exec_status_label is not None:
+            status_label = exec_status_label
 
         shop_names_set = set()
         ad_detail = getattr(approval, 'ad_detail', None)
@@ -989,6 +1015,7 @@ def approval_list_data_api(request):
             'applicant_name': applicant_name,
             'status': approval.status,
             'status_label': status_label,
+            'exec_status': exec_status_code,
             'shop_count': len(shop_names_set),
             'shop_names': ', '.join(sorted(shop_names_set)),
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -1018,7 +1045,7 @@ def approval_detail_api(request, approval_id):
     approval = (
         Approval.objects
         .filter(id=approval_id, company=request.user.company)
-        .select_related('applicant')
+        .select_related('applicant', 'ad_detail')
         .first()
     )
     if not approval:
@@ -1028,6 +1055,11 @@ def approval_detail_api(request, approval_id):
         'asins',
         queryset=AmazonListingV2.objects.select_related('lingxing_shop').order_by('asin', 'id'),
     )
+
+    status_label = get_current_status_label(approval)
+    exec_status_label, exec_status_code = get_exec_status_summary(approval)
+    if exec_status_label is not None:
+        status_label = exec_status_label
 
     detail_rows = []
     ad_detail = getattr(approval, 'ad_detail', None)
@@ -1058,7 +1090,9 @@ def approval_detail_api(request, approval_id):
             'approval_no': approval.approval_no,
             'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
             'applicant_name': approval.applicant.first_name or approval.applicant.username,
-            'status_label': get_current_status_label(approval),
+            'status': approval.status,
+            'status_label': status_label,
+            'exec_status': exec_status_code,
             'remark': ad_detail.remark if ad_detail else '',
             'detail_rows': detail_rows,
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -1127,3 +1161,115 @@ def approval_list_action_api(request):
 
     step, response = _process_approval_action(approval, request.user, action)
     return response
+
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def external_update_exec_status_api(request):
+    """
+    对外执行状态更新接口（无需登录）
+    POST /api/external/approval/update-exec-status/
+
+    {
+        "approval_no": "xxx",
+        "sequence": 1,              # 可选，不传则更新该审批下全部 shop_config
+        "exec_status": "completed"
+    }
+    """
+    try:
+        data = {}
+        if request.body:
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                data = {}
+
+        if not data:
+            data = request.POST.dict()
+
+        approval_no = (data.get('approval_no') or '').strip()
+        sequence_raw = data.get('sequence')
+        exec_status = (data.get('exec_status') or '').strip()
+
+        if not approval_no:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: approval_no'
+            }, status=400)
+
+        if not exec_status:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: exec_status'
+            }, status=400)
+
+        valid_statuses = [choice.value for choice in ExecStatus]
+        if exec_status not in valid_statuses:
+            return JsonResponse({
+                'success': False,
+                'message': f'无效的执行状态，必须是: {", ".join(valid_statuses)}'
+            }, status=400)
+
+        sequence = None
+        if sequence_raw is not None and str(sequence_raw).strip() != '':
+            try:
+                sequence = int(str(sequence_raw).strip())
+            except (TypeError, ValueError):
+                return JsonResponse({
+                    'success': False,
+                    'message': 'sequence 必须为整数'
+                }, status=400)
+
+        with transaction.atomic():
+            approval = Approval.objects.select_related('ad_detail').filter(approval_no=approval_no).first()
+            if not approval:
+                return JsonResponse({
+                    'success': False,
+                    'message': '审批单不存在'
+                }, status=404)
+
+            ad_detail = getattr(approval, 'ad_detail', None)
+            if not ad_detail:
+                return JsonResponse({
+                    'success': False,
+                    'message': '该审批单无关联的开广告配置'
+                }, status=404)
+
+            if sequence is not None:
+                config = AmazonAdShopConfig.objects.filter(
+                    amazon_ad=ad_detail, sequence=sequence
+                ).first()
+                if not config:
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'未找到 sequence={sequence} 的店铺配置'
+                    }, status=404)
+                config.exec_status = exec_status
+                config.save(update_fields=['exec_status', 'updated_at'])
+                updated_count = 1
+            else:
+                updated_count = AmazonAdShopConfig.objects.filter(
+                    amazon_ad=ad_detail
+                ).update(exec_status=exec_status)
+
+        resp_data = {
+            'approval_no': approval_no,
+            'exec_status': exec_status,
+        }
+        if sequence is not None:
+            resp_data['sequence'] = sequence
+        else:
+            resp_data['sequence'] = None
+            resp_data['updated_count'] = updated_count
+
+        return JsonResponse({
+            'success': True,
+            'data': resp_data
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'更新执行状态失败: {str(e)}'
+        }, status=500)

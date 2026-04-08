@@ -104,6 +104,31 @@
         color: var(--text-secondary);
     }
 
+    .status-exec-status-pending {
+        background: rgba(107, 114, 128, 0.1);
+        color: var(--text-secondary);
+    }
+
+    .status-exec-status-executing {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .status-exec-status-completed {
+        background: rgba(72, 187, 120, 0.12);
+        color: #2f855a;
+    }
+
+    .status-exec-status-failed {
+        background: rgba(229, 62, 62, 0.12);
+        color: var(--danger-color);
+    }
+
+    .status-exec-status-mixed {
+        background: rgba(237, 137, 54, 0.12);
+        color: #c05621;
+    }
+
     .approval-actions {
         display: flex;
         align-items: center;
@@ -421,6 +446,13 @@
         return map[code] || 'status-pending';
     }
 
+    function getStatusBadgeClass(row) {
+        if (row.status === 'approved' && row.exec_status) {
+            return 'status-exec-status-' + row.exec_status;
+        }
+        return getStatusClassByCode(row.status);
+    }
+
     function renderRow(row, showViewDelete) {
         const shopDisplay = row.shop_count > 0 ? `共${row.shop_count}个店铺` : '--';
         let actionsHtml = '';
@@ -454,7 +486,7 @@
             <td>${escapeHtml(row.approval_no)}</td>
             <td>${escapeHtml(row.approval_type_label)}</td>
             <td>${escapeHtml(row.applicant_name)}</td>
-            <td><span class="status-badge ${getStatusClassByCode(row.status)}">${escapeHtml(row.status_label)}</span></td>
+            <td><span class="status-badge ${getStatusBadgeClass(row)}">${escapeHtml(row.status_label)}</span></td>
             <td>${shopDisplay}</td>
             <td>${actionsHtml}</td>
         </tr>`;
@@ -663,6 +695,13 @@
         }
     }
 
+    function getDetailStatusBadgeClass(d) {
+        if (d.status === 'approved' && d.exec_status) {
+            return 'status-exec-status-' + d.exec_status;
+        }
+        return getStatusClassByCode(d.status);
+    }
+
     async function viewDetail(approvalId) {
         try {
             const result = await fetchJson('/api/task/approvals/' + approvalId + '/detail/');
@@ -672,7 +711,7 @@
                     <div class="detail-info-item"><div class="detail-info-label">审批单号</div><div class="detail-info-value">${escapeHtml(d.approval_no)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">审批类型</div><div class="detail-info-value">${escapeHtml(d.approval_type_label)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">申请者</div><div class="detail-info-value">${escapeHtml(d.applicant_name)}</div></div>
-                    <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><span class="status-badge ${getStatusClassByCode(d.status_label)}">${escapeHtml(d.status_label)}</span></div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><span class="status-badge ${getDetailStatusBadgeClass(d)}">${escapeHtml(d.status_label)}</span></div></div>
                     <div class="detail-info-item"><div class="detail-info-label">创建时间</div><div class="detail-info-value">${escapeHtml(d.created_at)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">提交时间</div><div class="detail-info-value">${d.submitted_at ? escapeHtml(d.submitted_at) : '--'}</div></div>
                 </div>`;
