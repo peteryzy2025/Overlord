@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('task', '0034_alter_approval_current_step_sequence'),
+        ('task', '0035_alter_approval_current_step_sequence_progress_comment'),
     ]
 
     operations = [
