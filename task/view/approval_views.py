@@ -1,4 +1,9 @@
 import json
+import logging
+import threading
+import requests as _requests
+
+logger = logging.getLogger(__name__)
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -803,6 +808,7 @@ def approval_leader_action_api(request):
         approval.current_step_sequence = 2
         approval.completed_at = timezone.now()
         approval.save()
+        _send_approval_webhook(approval)
         return JsonResponse({
             'success': True,
             'message': '审批已通过',
@@ -831,6 +837,54 @@ def approval_leader_action_api(request):
             'cloned_approval_id': cloned_approval.id,
         }
     })
+
+
+def _send_approval_webhook(approval):
+    try:
+        ad_detail = (
+            Approval.objects
+            .select_related('ad_detail', 'applicant')
+            .filter(pk=approval.pk)
+            .first()
+        )
+        ad_detail = getattr(ad_detail, 'ad_detail', None) if ad_detail else None
+        if not ad_detail:
+            return
+
+        configs = (
+            AmazonAdShopConfig.objects
+            .filter(amazon_ad=ad_detail)
+            .select_related('lingxing_shop')
+            .prefetch_related('asins')
+            .order_by('sequence')
+        )
+
+        subtask_list = []
+        for config in configs:
+            asin_list = list(config.asins.values_list('asin', flat=True))
+            subtask_list.append({
+                '子任务序号': config.sequence,
+                '店铺名称': config.lingxing_shop.name if config.lingxing_shop else '',
+                'ASIN列表': asin_list,
+            })
+
+        payload = {
+            '审批单号': approval.approval_no,
+            '企业微信通知url': approval.applicant.wx_url or '',
+            '子任务列表': subtask_list,
+        }
+
+        def _post(data):
+            url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/937960756270653440"
+            try:
+                _requests.post(url, json=data, timeout=10)
+                logger.info("Webhook sent successfully: %s", data.get('审批单号'))
+            except Exception as e:
+                logger.error("Webhook send failed: %s", e)
+
+        transaction.on_commit(lambda: threading.Thread(target=_post, args=(payload,)).start())
+    except Exception as e:
+        logger.error("Error preparing approval webhook: %s", e)
 
 
 def _has_approval_operate_permission(user):
@@ -878,6 +932,7 @@ def _process_approval_action(approval, user, action):
         approval.current_step_sequence = approval.total_steps
         approval.completed_at = timezone.now()
         approval.save()
+        _send_approval_webhook(approval)
         return current_step, JsonResponse({
             'success': True,
             'message': '审批已通过',
