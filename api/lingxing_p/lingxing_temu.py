@@ -1219,6 +1219,8 @@ async def temu_order_to_divi_and_lingxing(sn_no):
     success = await refresh_temu_order_by_sn(sn_no)  # 刷新订单数据（会调用 save_temu_orders_data 保存到数据库）
     if not success:
         raise Exception(f"订单号：{sn_no},订单数据刷新失败，无法继续下一步骤")
+
+
     is_y2_pre_sale = await check_y2_pre_sale(sn_no)
     if is_y2_pre_sale:
         raise Exception(f"【注意】订单 {sn_no} 包含 'Y2 预售' 标签~")

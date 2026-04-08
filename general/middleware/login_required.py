@@ -23,6 +23,8 @@ class LoginRequiredMiddleware:
             '/dw-data/',  # 迪唯产业大数据模型页面
             '/api/market-categories/',  # 迪唯分类API
             '/api/niche-markets/',  # 迪唯市场数据API
+            '/api/batch-upsert-sku/',  # Temu SKU 批量新增/更新接口
+            '/api/get-temu-shop-password/',  # Temu 店铺密码查询接口
         ]
 
     def __call__(self, request):

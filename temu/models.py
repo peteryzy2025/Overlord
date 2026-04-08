@@ -350,45 +350,23 @@ class TemuOrderItem(models.Model):
 
 
 
-# class TemuSKU(models.Model):
-#     """
-#     Temu SKU 映射表
-#     - 存储 Temu 平台的 SKU 与本地 SKU 的映射关系
-#     """
-#     temu_sku = models.CharField(max_length=200, primary_key=True, db_comment='Temu平台SKU货号（主键）')
-#
-#     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
-#     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
-#
-#     class Meta:
-#         db_table = 'temu_sku_mapping'
-#         db_table_comment = 'Temu SKU 映射表'
-#
-#         # 关键索引
-#         indexes = [
-#             models.Index(fields=['local_sku'], name='idx_local_sku'),
-#         ]
-#
-#     def __str__(self):
-#         return f"{self.temu_sku} -> {self.local_sku or '未映射'}"
-#
-# class TemuPackingSpecification():
-#     """
-#     Temu 包装规格表
-#     - 存储 Temu 平台的包装规格信息
-#     """
-#     specification_id = models.CharField(max_length=64, primary_key=True, db_comment='包装规格ID（主键）')
-#     length_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='长度（cm）')
-#     width_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='宽度（cm）')
-#     height_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='高度（cm）')
-#     weight_kg = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True, db_comment='重量（kg）')
-#
-#     created_at = models.DateTimeField(auto_now_add=True, db_comment='创建时间')
-#     updated_at = models.DateTimeField(auto_now=True, db_comment='更新时间')
-#
-#     class Meta:
-#         db_table = 'temu_packing_specification'
-#         db_table_comment = 'Temu 包装规格表'
-#
-#     def __str__(self):
-#         return f"{self.specification_name} ({self.specification_id})"
+class TemuSKU(models.Model):
+    """
+    Temu SKU 规格表
+    - 存储 Temu 平台的 SKU 规格信息（尺寸、重量）
+    """
+    temu_sku = models.CharField(max_length=200, primary_key=True, db_comment='Temu平台SKU货号（主键）')
+    length_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='长度（cm）')
+    width_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='宽度（cm）')
+    height_cm = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, db_comment='高度（cm）')
+    weight_g = models.DecimalField(max_digits=10, decimal_places=3, blank=True, null=True, db_comment='重量（g）')
+    class Meta:
+        db_table = 'temu_sku_mapping'
+        db_table_comment = 'Temu SKU 规格表'
+
+        # 关键索引
+        indexes = [
+        ]
+
+    def __str__(self):
+        return f"{self.temu_sku}"

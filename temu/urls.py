@@ -1,6 +1,7 @@
 # Temu/urls.py
 from django.urls import path
 from temu.view import views_temu_order
+from temu.view.api import sku_api
 
 app_name = 'temu'
 
@@ -18,4 +19,10 @@ urlpatterns = [
          name='temu_order_to_divi_and_lingxing'),
     path('api/download-temu-label/', views_temu_order.download_temu_label_api,
          name='download_temu_label'),
+    
+    # ========== Temu SKU 管理 ==========
+    path('api/batch-upsert-sku/', sku_api.batch_upsert_sku_api, name='batch_upsert_sku'),
+    
+    # ========== Temu 店铺管理 ==========
+    path('api/get-temu-shop-password/', sku_api.get_temu_shop_password_api, name='get_temu_shop_password'),
 ]
