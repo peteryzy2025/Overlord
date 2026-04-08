@@ -129,6 +129,52 @@
         height: 38px;
     }
 
+    .detail-row {
+        background: var(--bg-secondary);
+    }
+
+    .detail-row td {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+    }
+
+    .btn-expand {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+
+    .btn-expand:hover {
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .btn-expand.expanded {
+        background: var(--bg-secondary);
+        color: var(--accent-color);
+    }
+
+    .detail-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.15rem 0.5rem;
+        background: rgba(59, 130, 246, 0.06);
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--accent-color);
+    }
+
     .empty-state {
         padding: 2rem 1rem;
         text-align: center;
@@ -165,6 +211,7 @@
             <table class="task-table">
                 <thead>
                     <tr>
+                        <th style="width:40px;"></th>
                         <th>审批单号</th>
                         <th>申请者</th>
                         <th>当前状态</th>
@@ -175,7 +222,7 @@
                 </thead>
                 <tbody id="approvalTableBody">
                     <tr>
-                        <td colspan="6" class="empty-state">正在加载审批数据...</td>
+                        <td colspan="7" class="empty-state">正在加载审批数据...</td>
                     </tr>
                 </tbody>
             </table>
@@ -204,6 +251,7 @@
         rows: [],
         pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
         loadingApprovalId: null,
+        expandedApprovalIds: new Set(),
     };
 
     function escapeHtml(text) {
@@ -240,35 +288,68 @@
     function renderTable() {
         const tbody = document.getElementById('approvalTableBody');
         if (!leaderApprovalState.rows.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有待你审批的广告审批</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有待你审批的广告审批</p></td></tr>';
             return;
         }
 
-        tbody.innerHTML = leaderApprovalState.rows.map((row) => {
+        let html = '';
+        for (const row of leaderApprovalState.rows) {
             const isProcessing = leaderApprovalState.loadingApprovalId === row.approval_id;
-            return `
-                <tr>
-                    <td>${escapeHtml(row.approval_no)}</td>
-                    <td>${escapeHtml(row.applicant_name)}</td>
-                    <td><span class="status-badge ${getStatusClass(row.current_status_label)}">${escapeHtml(row.current_status_label)}</span></td>
-                    <td>${escapeHtml(row.asin)}</td>
-                    <td>${escapeHtml(row.shop_name)}</td>
-                    <td>
-                        <div class="approval-actions">
-                            <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
-                            <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+            const isExpanded = leaderApprovalState.expandedApprovalIds.has(row.approval_id);
+            const hasDetails = row.detail_rows && row.detail_rows.length > 0;
+
+            html += `<tr data-approval-id="${row.approval_id}">
+                <td>${hasDetails ? `<button class="btn-expand ${isExpanded ? 'expanded' : ''}" type="button" onclick="toggleDetail(${row.approval_id})"><i class="fas fa-chevron-${isExpanded ? 'down' : 'right'}"></i></button>` : ''}</td>
+                <td>${escapeHtml(row.approval_no)}</td>
+                <td>${escapeHtml(row.applicant_name)}</td>
+                <td><span class="status-badge ${getStatusClass(row.current_status_label)}">${escapeHtml(row.current_status_label)}</span></td>
+                <td><span style="color:var(--text-tertiary)">--</span></td>
+                <td><span style="color:var(--text-tertiary)">--</span></td>
+                <td>
+                    <div class="approval-actions">
+                        <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
+                        <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
+                    </div>
+                </td>
+            </tr>`;
+
+            if (isExpanded && hasDetails) {
+                for (const detail of row.detail_rows) {
+                    html += `<tr class="detail-row" data-parent-approval-id="${row.approval_id}">
+                        <td></td>
+                        <td><span class="detail-label"><i class="fas fa-level-up-alt fa-rotate-90"></i> 详细</span></td>
+                        <td></td>
+                        <td></td>
+                        <td>${escapeHtml(detail.asin)}</td>
+                        <td>${escapeHtml(detail.shop_name)}</td>
+                        <td>
+                            <div class="approval-actions">
+                                <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
+                                <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
+                            </div>
+                        </td>
+                    </tr>`;
+                }
+            }
+        }
+
+        tbody.innerHTML = html;
+    }
+
+    function toggleDetail(approvalId) {
+        if (leaderApprovalState.expandedApprovalIds.has(approvalId)) {
+            leaderApprovalState.expandedApprovalIds.delete(approvalId);
+        } else {
+            leaderApprovalState.expandedApprovalIds.add(approvalId);
+        }
+        renderTable();
     }
 
     function renderPagination() {
         const pagination = leaderApprovalState.pagination || {};
         const card = document.getElementById('paginationCard');
         document.getElementById('pageSizeSelect').value = String(pagination.page_size || 20);
-        document.getElementById('paginationInfo').textContent = `共 ${pagination.total || 0} 条，当前第 ${pagination.page || 1}/${pagination.total_pages || 1} 页`;
+        document.getElementById('paginationInfo').textContent = `共 ${pagination.total || 0} 个审批单，当前第 ${pagination.page || 1}/${pagination.total_pages || 1} 页`;
         document.getElementById('prevPageBtn').disabled = !pagination.has_prev;
         document.getElementById('nextPageBtn').disabled = !pagination.has_next;
         card.style.display = pagination.total ? 'flex' : 'none';
@@ -286,7 +367,7 @@
             renderTable();
             renderPagination();
         } catch (error) {
-            document.getElementById('approvalTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
+            document.getElementById('approvalTableBody').innerHTML = `<tr><td colspan="7" class="empty-state">${escapeHtml(error.message)}</td></tr>`;
             document.getElementById('paginationCard').style.display = 'none';
             if (typeof showNotification === 'function') showNotification('加载审批列表失败: ' + error.message, 'error');
         }

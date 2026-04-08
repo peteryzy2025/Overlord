@@ -2,8 +2,8 @@ import json
 
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import models, transaction
 from django.db.models import Prefetch
-from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
@@ -22,7 +22,7 @@ from task.approval_models import (
     Approval,
     RecordResult,
     StepStatus,
-    ApprovalType,
+    ApprovalType, NegativeKeywordLibrary,
 )
 from task.utils.task_utils import parse_permissions
 
@@ -166,17 +166,6 @@ def approval_create_page(request):
 
 
 @login_required(login_url='/login/')
-def approval_draft_page(request):
-    if not has_approval_access(request.user):
-        return redirect('/')
-
-    return render(request, 'approval_draft_list.html', {
-        'active_nav': 'task',
-        'active_page': 'approval_draft_page',
-    })
-
-
-@login_required(login_url='/login/')
 def approval_leader_page(request):
     if not has_leader_approval_access(request.user):
         return redirect('/')
@@ -216,6 +205,12 @@ def approval_meta_api(request):
             'leader_name': leader.first_name or leader.username if leader else '',
             'supervisor_name': supervisor.first_name or supervisor.username if supervisor else '',
             'chain_ready': bool(leader or supervisor),
+            'negative_keyword_libs':list(
+                NegativeKeywordLibrary.objects.filter(
+                    company = request.user.company,
+                    is_active = True,
+                ).values('id','name','lib_type')
+            )
         }
     })
 
@@ -307,7 +302,7 @@ def approval_draft_detail_api(request, approval_id):
     shop_configs = []
     ad_detail = draft.ad_detail if hasattr(draft, 'ad_detail') else None
     if ad_detail:
-        configs = ad_detail.shop_configs.select_related('lingxing_shop').prefetch_related('asins__lingxing_shop').order_by('sequence', 'id')
+        configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related('asins__lingxing_shop').order_by('sequence', 'id')
         for config in configs:
             selected_listings = []
             for listing in config.asins.all():
@@ -329,6 +324,8 @@ def approval_draft_detail_api(request, approval_id):
             shop_configs.append({
                 'sid': str(config.lingxing_shop.sid),
                 'selected_listings': selected_listings,
+                'negative_keyword_lib_id': config.negative_keyword_lib_id,
+                'negative_keyword_lib_name': config.negative_keyword_lib.name if config.negative_keyword_lib else None,
             })
 
     return JsonResponse({
@@ -448,58 +445,77 @@ def approval_leader_list_api(request):
     if page_size not in {20, 50, 100}:
         page_size = 20
 
+    approvals_qs = (
+        Approval.objects
+        .filter(
+            company=request.user.company,
+            approval_type=ApprovalType.AMAZON_AD,
+            status=ApprovalStatus.PENDING,
+            current_step_sequence=0,
+            steps__sequence=1,
+            steps__status=StepStatus.PENDING,
+            steps__approver=request.user,
+            applicant__manager=request.user,
+        )
+        .select_related('applicant')
+        .order_by('-created_at', '-id')
+        .distinct()
+    )
+
+    paginator = Paginator(approvals_qs, page_size)
+    page_obj = paginator.get_page(page)
+
     asin_prefetch = Prefetch(
         'asins',
         queryset=AmazonListingV2.objects.select_related('lingxing_shop').order_by('asin', 'id'),
     )
-    shop_configs = (
-        AmazonAdShopConfig.objects
-        .filter(
-            company=request.user.company,
-            amazon_ad__approval__approval_type=ApprovalType.AMAZON_AD,
-            amazon_ad__approval__status=ApprovalStatus.PENDING,
-            amazon_ad__approval__current_step_sequence=0,
-            amazon_ad__approval__steps__sequence=1,
-            amazon_ad__approval__steps__status=StepStatus.PENDING,
-            amazon_ad__approval__steps__approver=request.user,
-        )
-        .select_related('amazon_ad__approval__applicant', 'amazon_ad__approval', 'lingxing_shop')
-        .prefetch_related(asin_prefetch)
-        .order_by('-amazon_ad__approval__created_at', 'sequence', 'id')
-        .distinct()
-    )
 
-    rows = []
-    for config in shop_configs:
-        approval = config.amazon_ad.approval
+    data = []
+    for approval in page_obj.object_list:
         applicant_name = approval.applicant.first_name or approval.applicant.username
         current_status_label = get_current_status_label(approval)
-        for listing in config.asins.all():
-            shop_name = ''
-            if listing.lingxing_shop and listing.lingxing_shop.name:
-                shop_name = listing.lingxing_shop.name
-            elif config.lingxing_shop and config.lingxing_shop.name:
-                shop_name = config.lingxing_shop.name
-            else:
-                shop_name = f"sid_{listing.sid}"
 
-            rows.append({
-                'row_key': f'{approval.id}-{config.id}-{listing.id}',
-                'approval_id': approval.id,
-                'approval_no': approval.approval_no,
-                'applicant_name': applicant_name,
-                'current_step_sequence': approval.current_step_sequence,
-                'current_status_label': current_status_label,
-                'asin': listing.asin or '',
-                'shop_name': shop_name,
-            })
+        detail_rows = []
+        ad_detail = getattr(approval, 'ad_detail', None)
+        if ad_detail:
+            configs = (
+                ad_detail.shop_configs
+                .select_related('lingxing_shop')
+                .prefetch_related(asin_prefetch)
+                .order_by('sequence', 'id')
+            )
+            for config in configs:
+                for listing in config.asins.all():
+                    shop_name = ''
+                    if listing.lingxing_shop and listing.lingxing_shop.name:
+                        shop_name = listing.lingxing_shop.name
+                    elif config.lingxing_shop and config.lingxing_shop.name:
+                        shop_name = config.lingxing_shop.name
+                    else:
+                        shop_name = f"sid_{listing.sid}"
 
-    paginator = Paginator(rows, page_size)
-    page_obj = paginator.get_page(page)
+                    detail_rows.append({
+                        'row_key': f'{approval.id}-{config.id}-{listing.id}',
+                        'config_id': config.id,
+                        'asin': listing.asin or '',
+                        'shop_name': shop_name,
+                    })
+
+        data.append({
+            'approval_id': approval.id,
+            'approval_no': approval.approval_no,
+            'applicant_name': applicant_name,
+            'current_step_sequence': approval.current_step_sequence,
+            'current_status_label': current_status_label,
+            'asin': '--',
+            'shop_name': '--',
+            'detail_count': len(detail_rows),
+            'detail_rows': detail_rows,
+        })
 
     return JsonResponse({
         'success': True,
-        'data': list(page_obj.object_list),
+        'data': data,
         'pagination': {
             'page': page_obj.number,
             'page_size': page_size,
@@ -529,131 +545,152 @@ def create_ad_approval_api(request):
     if approval_type != ApprovalType.AMAZON_AD:
         return JsonResponse({'success': False, 'message': '当前仅支持创建广告审批'}, status=400)
 
-    shop_configs = payload.get('shop_configs') or []
-    if not isinstance(shop_configs, list) or not shop_configs:
-        return JsonResponse({'success': False, 'message': '至少需要一组店铺与 ASIN 配置'}, status=400)
+    try:
+        shop_configs = payload.get('shop_configs') or []
+        if not isinstance(shop_configs, list) or not shop_configs:
+            return JsonResponse({'success': False, 'message': '至少需要一组店铺与 ASIN 配置'}, status=400)
 
-    normalized_configs = []
-    for index, config in enumerate(shop_configs, start=1):
-        sid = config.get('sid')
-        listing_ids = config.get('listing_ids') or config.get('asin_ids') or []
+        normalized_configs = []
+        for index, config in enumerate(shop_configs, start=1):
+            sid = config.get('sid')
+            listing_ids = config.get('listing_ids') or config.get('asin_ids') or []
+            negative_keyword_lib_id = config.get('negative_keyword_lib_id')
 
-        if sid in (None, ''):
-            return JsonResponse({'success': False, 'message': f'第 {index} 组未选择店铺'}, status=400)
+            if sid in (None, ''):
+                return JsonResponse({'success': False, 'message': f'第 {index} 组未选择店铺'}, status=400)
 
-        try:
-            sid_int = int(sid)
-        except (TypeError, ValueError):
-            return JsonResponse({'success': False, 'message': f'第 {index} 组店铺参数无效'}, status=400)
+            try:
+                sid_int = int(sid)
+            except (TypeError, ValueError):
+                return JsonResponse({'success': False, 'message': f'第 {index} 组店铺参数无效'}, status=400)
 
-        if not user_has_shop_access(request.user, sid_int):
-            return JsonResponse({'success': False, 'message': f'第 {index} 组店铺无访问权限'}, status=403)
+            if not user_has_shop_access(request.user, sid_int):
+                return JsonResponse({'success': False, 'message': f'第 {index} 组店铺无访问权限'}, status=403)
 
-        if not isinstance(listing_ids, list) or not listing_ids:
-            return JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN'}, status=400)
+            if not isinstance(listing_ids, list) or not listing_ids:
+                return JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN'}, status=400)
 
-        try:
-            listing_ids_int = [int(item) for item in listing_ids]
-        except (TypeError, ValueError):
-            return JsonResponse({'success': False, 'message': f'第 {index} 组 ASIN 参数无效'}, status=400)
+            try:
+                listing_ids_int = [int(item) for item in listing_ids]
+            except (TypeError, ValueError):
+                return JsonResponse({'success': False, 'message': f'第 {index} 组 ASIN 参数无效'}, status=400)
 
-        listings = list(
-            AmazonListingV2.objects.filter(
-                id__in=listing_ids_int,
-            ).select_related('lingxing_shop')
-        )
+            listings = list(
+                AmazonListingV2.objects.filter(
+                    id__in=listing_ids_int,
+                ).select_related('lingxing_shop')
+            )
 
-        if len(listings) != len(set(listing_ids_int)):
-            return JsonResponse({'success': False, 'message': f'第 {index} 组包含无效 ASIN 记录'}, status=400)
+            if len(listings) != len(set(listing_ids_int)):
+                return JsonResponse({'success': False, 'message': f'第 {index} 组包含无效 ASIN 记录'}, status=400)
 
-        for listing in listings:
-            if not user_has_shop_access(request.user, listing.sid):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组包含无权限 ASIN 记录'}, status=403)
-            if int(listing.sid) != sid_int:
+            for listing in listings:
+                if not user_has_shop_access(request.user, listing.sid):
+                    return JsonResponse({'success': False, 'message': f'第 {index} 组包含无权限 ASIN 记录'}, status=403)
+                if int(listing.sid) != sid_int:
+                    return JsonResponse({
+                        'success': False,
+                        'message': f'配置组 #{index} 只能选择店铺 sid={sid_int} 下的 ASIN，如需其他店铺请新增配置组'
+                    }, status=400)
+
+            normalized_configs.append({
+                'sid': sid_int,
+                'listings': listings,
+                'negative_keyword_lib_id': negative_keyword_lib_id,
+            })
+
+        if approval_id in (None, ''):
+            approval = Approval.build_draft(
+                applicant=request.user,
+                approval_type=approval_type,
+            )
+            if preview_approval_no:
+                approval.approval_no = preview_approval_no
+            approval.save()
+            ad_approval = AmazonAdApproval.objects.create(
+                company=request.user.company,
+                approval=approval,
+                remark=(payload.get('remark') or '').strip(),
+            )
+        else:
+            try:
+                approval_id = int(approval_id)
+            except (TypeError, ValueError):
+                return JsonResponse({'success': False, 'message': 'approval_id 参数无效'}, status=400)
+
+            approval = (
+                Approval.objects
+                .select_for_update()
+                .filter(
+                    id=approval_id,
+                    company=request.user.company,
+                    applicant=request.user,
+                    approval_type=ApprovalType.AMAZON_AD,
+            status__in=[ApprovalStatus.DRAFT, ApprovalStatus.REJECTED],
+                )
+                .first()
+            )
+            if not approval:
+                return JsonResponse({'success': False, 'message': '草稿不存在或已不可编辑'}, status=404)
+
+            ad_approval, _ = AmazonAdApproval.objects.get_or_create(
+                approval=approval,
+                defaults={
+                    'company': request.user.company,
+                    'remark': '',
+                }
+            )
+            ad_approval.remark = (payload.get('remark') or '').strip()
+            ad_approval.save()
+            approval.steps.all().delete()
+            ad_approval.shop_configs.all().delete()
+
+        create_approval_steps(approval, request.user)
+
+        for sequence, config in enumerate(normalized_configs, start=1):
+            lingxing_shop = LingXingAmazonShop.objects.filter(sid=config['sid']).first()
+            if not lingxing_shop:
                 return JsonResponse({
                     'success': False,
-                    'message': f'配置组 #{index} 只能选择店铺 sid={sid_int} 下的 ASIN，如需其他店铺请新增配置组'
-                }, status=400)
+                    'message': f'店铺 sid={config["sid"]} 不存在或已被删除，请刷新页面后重新选择'
+                }, status=404)
 
-        normalized_configs.append({
-            'sid': sid_int,
-            'listings': listings,
-        })
-
-    if approval_id in (None, ''):
-        approval = Approval.build_draft(
-            applicant=request.user,
-            approval_type=approval_type,
-        )
-        if preview_approval_no:
-            approval.approval_no = preview_approval_no
-        approval.save()
-        ad_approval = AmazonAdApproval.objects.create(
-            company=request.user.company,
-            approval=approval,
-            remark=(payload.get('remark') or '').strip(),
-        )
-    else:
-        try:
-            approval_id = int(approval_id)
-        except (TypeError, ValueError):
-            return JsonResponse({'success': False, 'message': 'approval_id 参数无效'}, status=400)
-
-        approval = (
-            Approval.objects
-            .select_for_update()
-            .filter(
-                id=approval_id,
-                company=request.user.company,
-                applicant=request.user,
-                approval_type=ApprovalType.AMAZON_AD,
-                status=ApprovalStatus.DRAFT,
+            lib_id = config.get('negative_keyword_lib_id')
+            negative_keyword_lib = (
+                NegativeKeywordLibrary.objects.filter(id=lib_id, company=request.user.company, is_active=True).first()
+                if lib_id else None
             )
-            .first()
-        )
-        if not approval:
-            return JsonResponse({'success': False, 'message': '草稿不存在或已不可编辑'}, status=404)
 
-        ad_approval, _ = AmazonAdApproval.objects.get_or_create(
-            approval=approval,
-            defaults={
-                'company': request.user.company,
-                'remark': '',
+            shop_config = AmazonAdShopConfig.objects.create(
+                company=request.user.company,
+                amazon_ad=ad_approval,
+                lingxing_shop=lingxing_shop,
+                sequence=sequence,
+                negative_keyword_lib=negative_keyword_lib,
+            )
+            shop_config.asins.set(config['listings'])
+
+        approval.status = ApprovalStatus.PENDING
+        approval.current_step_sequence = 0
+        approval.submitted_at = timezone.now()
+        approval.completed_at = None
+        approval.save()
+
+        if approval.original_approval_id:
+            approval.original_approval.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': '广告审批提交成功',
+            'data': {
+                'approval_id': approval.id,
+                'approval_no': approval.approval_no,
+                'total_steps': approval.total_steps,
+                'current_step_sequence': approval.current_step_sequence,
             }
-        )
-        ad_approval.remark = (payload.get('remark') or '').strip()
-        ad_approval.save()
-        approval.steps.all().delete()
-        ad_approval.shop_configs.all().delete()
-
-    create_approval_steps(approval, request.user)
-
-    for sequence, config in enumerate(normalized_configs, start=1):
-        lingxing_shop = LingXingAmazonShop.objects.get(sid=config['sid'])
-        shop_config = AmazonAdShopConfig.objects.create(
-            company=request.user.company,
-            amazon_ad=ad_approval,
-            lingxing_shop=lingxing_shop,
-            sequence=sequence,
-        )
-        shop_config.asins.set(config['listings'])
-
-    approval.status = ApprovalStatus.PENDING
-    approval.current_step_sequence = 0
-    approval.submitted_at = timezone.now()
-    approval.completed_at = None
-    approval.save()
-
-    return JsonResponse({
-        'success': True,
-        'message': '广告审批提交成功',
-        'data': {
-            'approval_id': approval.id,
-            'approval_no': approval.approval_no,
-            'total_steps': approval.total_steps,
-            'current_step_sequence': approval.current_step_sequence,
-        }
-    })
+        })
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'广告审批提交失败: {exc}'}, status=500)
 
 
 @login_required(login_url='/login/')
@@ -693,6 +730,7 @@ def approval_leader_action_api(request):
             approval_type=ApprovalType.AMAZON_AD,
             status=ApprovalStatus.PENDING,
             current_step_sequence=0,
+            applicant__manager=request.user,
         )
         .first()
     )
@@ -764,11 +802,328 @@ def approval_leader_action_api(request):
     cloned_approval = clone_rejected_approval(approval)
     return JsonResponse({
         'success': True,
-        'message': f'审批已驳回，并自动生成复制草稿 {cloned_approval.approval_no}',
+        'message': f'审批已驳回，已生成草稿 {cloned_approval.approval_no} 可重新编辑提交',
         'data': {
             'approval_id': approval.id,
             'approval_no': approval.approval_no,
             'cloned_approval_id': cloned_approval.id,
-            'cloned_approval_no': cloned_approval.approval_no,
         }
     })
+
+
+def _has_approval_operate_permission(user):
+    if not getattr(user, 'is_authenticated', False):
+        return False
+
+    return user.permission_configs.filter(code__in=[555, 2]).exists()
+
+
+def _process_approval_action(approval, user, action):
+    current_step = (
+        approval.steps
+        .filter(status=StepStatus.PENDING, approver__isnull=False)
+        .order_by('sequence')
+        .first()
+    )
+    if not current_step:
+        return None, JsonResponse({'success': False, 'message': '没有找到待审批步骤'}, status=400)
+
+    ApprovalRecord.objects.create(
+        company=user.company,
+        step=current_step,
+        approver=user,
+        result=action,
+    )
+    current_step.status = StepStatus.COMPLETED
+    current_step.save()
+
+    if action == RecordResult.APPROVED:
+        next_step = approval.steps.filter(sequence__gt=current_step.sequence, status=StepStatus.PENDING).first()
+        if next_step and next_step.approver:
+            approval.current_step_sequence = next_step.sequence - 1
+            approval.save()
+            return current_step, JsonResponse({
+                'success': True,
+                'message': f'审批已通过，流转至 {next_step.step_name}',
+                'data': {'approval_id': approval.id, 'approval_no': approval.approval_no}
+            })
+
+        for s in approval.steps.filter(sequence__gt=current_step.sequence, status=StepStatus.PENDING):
+            s.status = StepStatus.SKIPPED
+            s.save()
+
+        approval.status = ApprovalStatus.APPROVED
+        approval.current_step_sequence = approval.total_steps
+        approval.completed_at = timezone.now()
+        approval.save()
+        return current_step, JsonResponse({
+            'success': True,
+            'message': '审批已通过',
+            'data': {'approval_id': approval.id, 'approval_no': approval.approval_no}
+        })
+
+    for s in approval.steps.filter(sequence__gt=current_step.sequence, status=StepStatus.PENDING):
+        s.status = StepStatus.SKIPPED
+        s.save()
+
+    approval.status = ApprovalStatus.REJECTED
+    approval.completed_at = timezone.now()
+    approval.save()
+
+    cloned_approval = clone_rejected_approval(approval)
+    return current_step, JsonResponse({
+        'success': True,
+        'message': f'审批已驳回，已生成草稿 {cloned_approval.approval_no} 可重新编辑提交',
+        'data': {
+            'approval_id': approval.id,
+            'approval_no': approval.approval_no,
+            'cloned_approval_id': cloned_approval.id,
+        }
+    })
+
+
+@login_required(login_url='/login/')
+def approval_list_page(request):
+    can_operate = _has_approval_operate_permission(request.user)
+    return render(request, 'approval_list.html', {
+        'active_nav': 'task',
+        'active_page': 'approval_list_page',
+        'can_operate_approval': can_operate,
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["GET"])
+def approval_list_stats_api(request):
+    base_qs = Approval.objects.filter(company=request.user.company)
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'total': base_qs.count(),
+            'pending': base_qs.filter(status=ApprovalStatus.PENDING).count(),
+            'approved': base_qs.filter(status=ApprovalStatus.APPROVED).count(),
+            'rejected': base_qs.filter(status=ApprovalStatus.REJECTED).count(),
+        }
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["GET"])
+def approval_list_data_api(request):
+    can_operate = _has_approval_operate_permission(request.user)
+
+    try:
+        page = max(int(request.GET.get('page', 1)), 1)
+    except ValueError:
+        page = 1
+
+    try:
+        page_size = int(request.GET.get('page_size', 20))
+    except ValueError:
+        page_size = 20
+
+    if page_size not in {20, 50, 100}:
+        page_size = 20
+
+    tab = request.GET.get('tab', 'all')
+    search = (request.GET.get('search') or '').strip()
+
+    base_qs = Approval.objects.filter(company=request.user.company).select_related('applicant')
+
+    if tab == 'pending':
+        base_qs = base_qs.filter(status=ApprovalStatus.PENDING)
+
+    if search:
+        base_qs = base_qs.filter(
+            models.Q(approval_no__icontains=search)
+            | models.Q(applicant__first_name__icontains=search)
+            | models.Q(applicant__username__icontains=search)
+        )
+
+    base_qs = base_qs.order_by('-created_at', '-id')
+
+    paginator = Paginator(base_qs, page_size)
+    page_obj = paginator.get_page(page)
+
+    asin_prefetch = Prefetch(
+        'asins',
+        queryset=AmazonListingV2.objects.select_related('lingxing_shop').order_by('asin', 'id'),
+    )
+
+    data = []
+    for approval in page_obj.object_list:
+        applicant_name = approval.applicant.first_name or approval.applicant.username
+        status_label = get_current_status_label(approval)
+
+        shop_names_set = set()
+        ad_detail = getattr(approval, 'ad_detail', None)
+        if ad_detail:
+            configs = ad_detail.shop_configs.select_related('lingxing_shop').all()
+            for config in configs:
+                if config.lingxing_shop and config.lingxing_shop.name:
+                    shop_names_set.add(config.lingxing_shop.name)
+
+        can_edit = (
+            approval.applicant_id == request.user.id
+            and approval.status in (ApprovalStatus.DRAFT, ApprovalStatus.REJECTED)
+        )
+
+        draft_approval_id = None
+        if can_edit:
+            if approval.status == ApprovalStatus.DRAFT:
+                draft_approval_id = approval.id
+            elif approval.status == ApprovalStatus.REJECTED:
+                cloned = Approval.objects.filter(
+                    original_approval=approval,
+                    status=ApprovalStatus.DRAFT,
+                ).first()
+                if cloned:
+                    draft_approval_id = cloned.id
+
+        data.append({
+            'approval_id': approval.id,
+            'approval_no': approval.approval_no,
+            'approval_type': approval.approval_type,
+            'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            'applicant_id': approval.applicant_id,
+            'applicant_name': applicant_name,
+            'status': approval.status,
+            'status_label': status_label,
+            'shop_count': len(shop_names_set),
+            'shop_names': ', '.join(sorted(shop_names_set)),
+            'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'can_operate': can_operate,
+            'can_delete': has_admin_555(request.user),
+            'can_edit': can_edit,
+            'draft_approval_id': draft_approval_id,
+        })
+
+    return JsonResponse({
+        'success': True,
+        'data': data,
+        'pagination': {
+            'page': page_obj.number,
+            'page_size': page_size,
+            'total': paginator.count,
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_prev': page_obj.has_previous(),
+        }
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["GET"])
+def approval_detail_api(request, approval_id):
+    approval = (
+        Approval.objects
+        .filter(id=approval_id, company=request.user.company)
+        .select_related('applicant')
+        .first()
+    )
+    if not approval:
+        return JsonResponse({'success': False, 'message': '审批单不存在'}, status=404)
+
+    asin_prefetch = Prefetch(
+        'asins',
+        queryset=AmazonListingV2.objects.select_related('lingxing_shop').order_by('asin', 'id'),
+    )
+
+    detail_rows = []
+    ad_detail = getattr(approval, 'ad_detail', None)
+    if ad_detail:
+        configs = ad_detail.shop_configs.select_related('lingxing_shop').prefetch_related(asin_prefetch).order_by('sequence', 'id')
+        for config in configs:
+            for listing in config.asins.all():
+                shop_name = ''
+                if listing.lingxing_shop and listing.lingxing_shop.name:
+                    shop_name = listing.lingxing_shop.name
+                elif config.lingxing_shop and config.lingxing_shop.name:
+                    shop_name = config.lingxing_shop.name
+                else:
+                    shop_name = f"sid_{listing.sid}"
+
+                detail_rows.append({
+                    'row_key': f'{approval.id}-{config.id}-{listing.id}',
+                    'config_id': config.id,
+                    'asin': listing.asin or '',
+                    'shop_name': shop_name,
+                    'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+                })
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'approval_id': approval.id,
+            'approval_no': approval.approval_no,
+            'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            'applicant_name': approval.applicant.first_name or approval.applicant.username,
+            'status_label': get_current_status_label(approval),
+            'remark': ad_detail.remark if ad_detail else '',
+            'detail_rows': detail_rows,
+            'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'submitted_at': approval.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if approval.submitted_at else '',
+        }
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["DELETE"])
+@transaction.atomic
+def approval_delete_api(request, approval_id):
+    try:
+        approval = Approval.objects.get(id=approval_id, company=request.user.company)
+    except Approval.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '审批单不存在'}, status=404)
+
+    if not has_admin_555(request.user):
+        return JsonResponse({'success': False, 'message': '无权删除该审批单'}, status=403)
+
+    approval_no = approval.approval_no
+    approval.delete()
+    return JsonResponse({'success': True, 'message': f'审批单 {approval_no} 已删除'})
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["POST"])
+@transaction.atomic
+def approval_list_action_api(request):
+    if not _has_approval_operate_permission(request.user):
+        return JsonResponse({'success': False, 'message': '无审批操作权限'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '请求体不是有效 JSON'}, status=400)
+
+    approval_id = payload.get('approval_id')
+    action = (payload.get('action') or '').strip()
+    comment = (payload.get('comment') or '').strip()
+
+    if not approval_id:
+        return JsonResponse({'success': False, 'message': '缺少 approval_id'}, status=400)
+
+    if action not in {RecordResult.APPROVED, RecordResult.REJECTED}:
+        return JsonResponse({'success': False, 'message': 'action 参数无效'}, status=400)
+
+    try:
+        approval_id = int(approval_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'message': 'approval_id 参数无效'}, status=400)
+
+    approval = (
+        Approval.objects
+        .select_for_update()
+        .select_related('applicant')
+        .filter(
+            id=approval_id,
+            company=request.user.company,
+            status=ApprovalStatus.PENDING,
+        )
+        .first()
+    )
+    if not approval:
+        return JsonResponse({'success': False, 'message': '审批单不存在或当前不可审批'}, status=404)
+
+    step, response = _process_approval_action(approval, request.user, action)
+    return response

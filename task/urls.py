@@ -7,8 +7,8 @@ urlpatterns = [
     # 页面路由
     path('task/create/', task_page_views.task_create_page, name='task_create_page'),
     path('task/approval/create/', approval_views.approval_create_page, name='approval_create_page'),
-    path('task/approval/drafts/', approval_views.approval_draft_page, name='approval_draft_page'),
     path('task/approval/leader/', approval_views.approval_leader_page, name='approval_leader_page'),
+    path('task/approval/list/', approval_views.approval_list_page, name='approval_list_page'),
     path('task/product/create/', product_views.product_create_page, name='product_create_page'),
     path('task/product/list/', product_views.product_list_page, name='product_list_page'),
     path('task/list/', task_page_views.task_list_page, name='task_list_page'),
@@ -36,6 +36,11 @@ urlpatterns = [
     path('api/task/approvals/ad/create/', approval_views.create_ad_approval_api, name='create_ad_approval_api'),
     path('api/task/approvals/leader/list/', approval_views.approval_leader_list_api, name='approval_leader_list_api'),
     path('api/task/approvals/leader/action/', approval_views.approval_leader_action_api, name='approval_leader_action_api'),
+    path('api/task/approvals/list/stats/', approval_views.approval_list_stats_api, name='approval_list_stats_api'),
+    path('api/task/approvals/list/data/', approval_views.approval_list_data_api, name='approval_list_data_api'),
+    path('api/task/approvals/<int:approval_id>/detail/', approval_views.approval_detail_api, name='approval_detail_api'),
+    path('api/task/approvals/<int:approval_id>/delete/', approval_views.approval_delete_api, name='approval_delete_api'),
+    path('api/task/approvals/list/action/', approval_views.approval_list_action_api, name='approval_list_action_api'),
 
     # 所有者相关
     path('api/tasks/available-owners/', task_api_views.get_available_owners_api, name='get_available_owners'),

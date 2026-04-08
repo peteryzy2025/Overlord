@@ -78,7 +78,7 @@ INSTALLED_APPS = [
     'inventory.apps.InventoryConfig',
     'data_req.apps.DataReqConfig',
     'aba.apps.AbaConfig',
-    'divi.apps.DiviConfig'
+    'divi.apps.DiviConfig',
 ]
 
 MIDDLEWARE = [

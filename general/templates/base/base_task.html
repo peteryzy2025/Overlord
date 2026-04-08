@@ -16,5 +16,12 @@
                 <span>创建任务</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'task:approval_list_page' %}"
+               class="sidebar-link {% if active_page == 'approval_list_page' %}active{% endif %}">
+                <i class="fas fa-clipboard-check sidebar-icon"></i>
+                <span>审批列表</span>
+            </a>
+        </li>
     </ul>
 {% endblock %}

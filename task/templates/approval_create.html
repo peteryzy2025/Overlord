@@ -65,7 +65,6 @@
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-bullhorn"></i> 广告审批</h1>
             <div class="header-actions">
-                <button class="btn btn-secondary" onclick="window.location.href='/task/approval/drafts/'"><i class="fas fa-copy"></i> 驳回草稿</button>
                 <button class="btn btn-secondary" onclick="cancelApprovalCreation()"><i class="fas fa-times"></i> 取消</button>
             </div>
         </div>
@@ -148,6 +147,7 @@
         const approvalState = {
             meta: null,
             stores: [],
+            negativeKeywordLibs: [],
             selectedTaskType: '',
             configIdCounter: 1,
             configs: [],
@@ -200,7 +200,20 @@
 
         async function fetchJson(url, options = {}) {
             const response = await fetch(url, options);
-            const result = await response.json();
+            const text = await response.text();
+            let result = null;
+
+            try {
+                result = text ? JSON.parse(text) : {};
+            } catch (error) {
+                if (response.redirected || response.url.includes('/login')) {
+                    throw new Error('登录状态已失效，请刷新页面后重新登录');
+                }
+                if (response.status === 403) {
+                    throw new Error('请求被拒绝，请刷新页面后重试');
+                }
+                throw new Error(`服务返回了非 JSON 响应（HTTP ${response.status}）`);
+            }
 
             if (response.status === 403) {
                 window.location.href = '/';
@@ -218,6 +231,7 @@
             showLoading(true);
             try {
                 await loadStores();
+                await loadApprovalMeta();
                 const draftId = getDraftIdFromUrl();
                 if (draftId) {
                     await loadApprovalDraft(draftId);
@@ -263,6 +277,7 @@
         async function loadApprovalMeta() {
             const result = await fetchJson('/api/task/approvals/ad/meta/');
             approvalState.draftApprovalId = null;
+            approvalState.negativeKeywordLibs = result.data.negative_keyword_libs || [];
             applyApprovalMetaToPage(result.data);
         }
 
@@ -313,6 +328,7 @@
                     pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
                     listings: [],
                     selectedListings: selectedListings,
+                    negativeKeywordLibId: config.negative_keyword_lib_id || null,
                     loading: false
                 };
             });
@@ -378,6 +394,7 @@
                 pagination: { page: 1, page_size: 20, total: 0, total_pages: 0, has_next: false, has_prev: false },
                 listings: [],
                 selectedListings: {},
+                negativeKeywordLibId: null,
                 loading: false
             });
             renderConfigList();
@@ -489,6 +506,7 @@
                                         <i class="fas fa-search" aria-hidden="true"></i>
                                     </button>
                                 </div>
+                                <div id="negative-lib-select-${config.id}" class="searchable-select single" data-placeholder="请选择否定词库（可不选）" style="margin-top:0.75rem;"></div>
                                 <div class="selection-summary">当前配置组已选 ${getSelectedListingCount(config)} 条 ASIN</div>
                                 <div class="approval-inline-tip">一个配置组仅支持同一店铺的 ASIN，如需选择其他店铺，请新建配置组。</div>
                             </div>
@@ -541,6 +559,22 @@
             approvalState.storeSelectMap[config.id] = instance;
 
             if (config.sid) instance.setValue(String(config.sid));
+
+            const libSelector = `#negative-lib-select-${config.id}`;
+            if (document.querySelector(libSelector)) {
+                const libInstance = new SearchableSelect(libSelector, {
+                    options: approvalState.negativeKeywordLibs.map(lib => ({ value: String(lib.id), label: lib.name })),
+                    multiple: false,
+                    placeholder: '请选择否定词库（可不选）'
+                });
+                libInstance.onChange = (value) => handleNegativeLibChange(config.id, value);
+                if (config.negativeKeywordLibId) libInstance.setValue(String(config.negativeKeywordLibId));
+            }
+        }
+
+        function handleNegativeLibChange(configId, libId) {
+            const config = approvalState.configs.find(c => c.id === configId);
+            if (config) config.negativeKeywordLibId = libId || null;
         }
 
         async function loadConfigListings(configId) {
@@ -721,7 +755,8 @@
                 remark: document.getElementById('approvalRemark').value.trim(),
                 shop_configs: approvalState.configs.map(config => ({
                     sid: config.sid,
-                    listing_ids: Object.keys(config.selectedListings || {}).map(item => Number(item))
+                    listing_ids: Object.keys(config.selectedListings || {}).map(item => Number(item)),
+                    negative_keyword_lib_id: config.negativeKeywordLibId || null
                 }))
             };
 
@@ -734,11 +769,7 @@
                 });
                 showNotification(`广告审批提交成功：${result.data.approval_no}`, 'success');
                 setTimeout(() => {
-                    if (approvalState.draftApprovalId) {
-                        window.location.href = '/task/approval/drafts/';
-                        return;
-                    }
-                    window.location.reload();
+                    window.location.href = '/task/approval/list/';
                 }, 900);
             } catch (error) {
                 showNotification('创建失败: ' + error.message, 'error');
