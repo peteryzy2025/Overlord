@@ -65,6 +65,8 @@ urlpatterns = [
          name='external_get_subtask_detail'),
     path('api/external/tasks/subtasks/update-detail/', task_api_views.external_update_subtask_detail_api,
          name='external_update_subtask_detail'),
+    path('api/external/approval/update-exec-status/', approval_views.external_update_exec_status_api,
+         name='external_update_exec_status'),
     path('api/tasks/list/', task_api_views.get_tasks_list_api, name='get_tasks_list'),
     path('api/tasks/stats/', task_api_views.get_task_stats_api, name='get_task_stats'),
     path('api/tasks/creators/', task_api_views.get_task_creators_api, name='get_task_creators'),
