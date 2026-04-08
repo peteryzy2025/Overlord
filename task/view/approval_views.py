@@ -598,6 +598,9 @@ def create_ad_approval_api(request):
             if not isinstance(listing_ids, list) or not listing_ids:
                 return JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN'}, status=400)
 
+            if not negative_keyword_lib_id:
+                return JsonResponse({'success': False, 'message': f'第 {index} 组未选择否定词库'}, status=400)
+
             try:
                 listing_ids_int = [int(item) for item in listing_ids]
             except (TypeError, ValueError):
@@ -855,7 +858,7 @@ def _send_approval_webhook(approval):
         configs = (
             AmazonAdShopConfig.objects
             .filter(amazon_ad=ad_detail)
-            .select_related('lingxing_shop')
+            .select_related('lingxing_shop','negative_keyword_lib')
             .prefetch_related('asins')
             .order_by('sequence')
         )
@@ -867,6 +870,7 @@ def _send_approval_webhook(approval):
                 '子任务序号': config.sequence,
                 '店铺名称': config.lingxing_shop.name if config.lingxing_shop else '',
                 'ASIN列表': asin_list,
+                '否定词库': config.negative_keyword_lib.keywords if config.negative_keyword_lib else '',
             })
 
         payload = {
@@ -1118,9 +1122,13 @@ def approval_detail_api(request, approval_id):
         status_label = exec_status_label
 
     detail_rows = []
+    negative_keyword_lib_names = []
     ad_detail = getattr(approval, 'ad_detail', None)
     if ad_detail:
-        configs = ad_detail.shop_configs.select_related('lingxing_shop').prefetch_related(asin_prefetch).order_by('sequence', 'id')
+        configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related(asin_prefetch).order_by('sequence', 'id')
+        for config in configs:
+            if config.negative_keyword_lib and config.negative_keyword_lib.name not in negative_keyword_lib_names:
+                negative_keyword_lib_names.append(config.negative_keyword_lib.name)
         for config in configs:
             for listing in config.asins.all():
                 shop_name = ''
@@ -1150,6 +1158,7 @@ def approval_detail_api(request, approval_id):
             'status_label': status_label,
             'exec_status': exec_status_code,
             'remark': ad_detail.remark if ad_detail else '',
+            'negative_keyword_lib_names': negative_keyword_lib_names,
             'detail_rows': detail_rows,
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'submitted_at': approval.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if approval.submitted_at else '',

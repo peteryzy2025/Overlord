@@ -711,6 +711,7 @@
                     <div class="detail-info-item"><div class="detail-info-label">审批单号</div><div class="detail-info-value">${escapeHtml(d.approval_no)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">审批类型</div><div class="detail-info-value">${escapeHtml(d.approval_type_label)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">申请者</div><div class="detail-info-value">${escapeHtml(d.applicant_name)}</div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">否定词库</div><div class="detail-info-value">${(d.negative_keyword_lib_names && d.negative_keyword_lib_names.length) ? escapeHtml(d.negative_keyword_lib_names.join('、')) : '--'}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><span class="status-badge ${getDetailStatusBadgeClass(d)}">${escapeHtml(d.status_label)}</span></div></div>
                     <div class="detail-info-item"><div class="detail-info-label">创建时间</div><div class="detail-info-value">${escapeHtml(d.created_at)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">提交时间</div><div class="detail-info-value">${d.submitted_at ? escapeHtml(d.submitted_at) : '--'}</div></div>

@@ -508,7 +508,8 @@
                                         <i class="fas fa-search" aria-hidden="true"></i>
                                     </button>
                                 </div>
-                                <div id="negative-lib-select-${config.id}" class="searchable-select single" data-placeholder="请选择否定词库（可不选）" style="margin-top:0.75rem;"></div>
+                                <label class="form-label" style="margin-top:0.75rem;">选择否定词库 <span style="color: var(--danger-color);">*</span></label>
+                                <div id="negative-lib-select-${config.id}" class="searchable-select single" data-placeholder="请选择否定词库"></div>
                                 <div class="selection-summary">当前配置组已选 ${getSelectedListingCount(config)} 条 ASIN</div>
                                 <div class="approval-inline-tip">一个配置组仅支持同一店铺的 ASIN，如需选择其他店铺，请新建配置组。</div>
                             </div>
@@ -740,6 +741,7 @@
 
             approvalState.configs.forEach((config, index) => {
                 if (!config.sid) throw new Error(`配置组 #${index + 1} 未选择店铺`);
+                if (!config.negativeKeywordLibId) throw new Error(`配置组 #${index + 1} 未选择否定词库`);
                 if (!Object.keys(config.selectedListings || {}).length) throw new Error(`配置组 #${index + 1} 至少选择一个 ASIN`);
                 const hasCrossShopListing = Object.values(config.selectedListings || {}).some(item => String(item.sid) !== String(config.sid));
                 if (hasCrossShopListing) throw new Error(`配置组 #${index + 1} 只能选择当前店铺的 ASIN，如需其他店铺请新增配置组`);
