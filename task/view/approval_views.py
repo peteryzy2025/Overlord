@@ -161,7 +161,7 @@ def approval_create_page(request):
 
     return render(request, 'approval_create.html', {
         'active_nav': 'task',
-        'active_page': 'task_create_page',
+        'active_page': 'ad_create_page',
     })
 
 
@@ -883,11 +883,11 @@ def _process_approval_action(approval, user, action):
 
 
 @login_required(login_url='/login/')
-def approval_list_page(request):
+def approval_ad_page(request):
     can_operate = _has_approval_operate_permission(request.user)
     return render(request, 'approval_list.html', {
         'active_nav': 'task',
-        'active_page': 'approval_list_page',
+        'active_page': 'approval_ad_page',
         'can_operate_approval': can_operate,
     })
 
