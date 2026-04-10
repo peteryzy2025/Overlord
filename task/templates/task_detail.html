@@ -1018,11 +1018,8 @@
                 break;
             case 'divi_gallery_upload':
                 title = 'DIVI 图库上传配置';
-                content = renderFieldGrid([
-                    field('迪唯账号', params.diwei_account),
-                    field('本地路径', params.local_gallery_path, true),
-                    field('上传到的图库路径', joinList(params['上传到的图库路径']), true)
-                ]);
+                // 动态渲染所有 params 字段，兼容中文键名
+                content = renderDiviGalleryUploadParams(params);
                 break;
             case 'amazon_exempt':
                 title = 'Amazon UPC豁免配置';
@@ -1192,6 +1189,46 @@
 
     function renderFieldGrid(items) {
         return items.map(item => renderFieldCard(item.label, item.value, item.wide, item.isHtml)).join('');
+    }
+
+    function renderDiviGalleryUploadParams(params) {
+        if (!params || Object.keys(params).length === 0) {
+            return renderFieldCard('配置信息', '--', true);
+        }
+        
+        // 定义字段显示顺序和友好名称
+        const fieldOrder = [
+            { key: '迪唯账号', label: '迪唯账号' },
+            { key: '图库命名', label: '图库命名' },
+            { key: '本地路径', label: '本地路径', wide: true },
+            { key: '上传到的图库路径', label: '上传到的图库路径', wide: true },
+            { key: '报错信息', label: '报错信息', wide: true }
+        ];
+        
+        // 按顺序渲染有值的字段
+        const items = [];
+        
+        // 先渲染已知字段
+        fieldOrder.forEach(({ key, label, wide }) => {
+            const value = params[key];
+            if (value !== undefined && value !== null && value !== '') {
+                items.push({ label, value, wide: wide || false, isHtml: false });
+            }
+        });
+        
+        // 渲染其他未知字段
+        Object.entries(params).forEach(([key, value]) => {
+            const isKnown = fieldOrder.some(f => f.key === key);
+            if (!isKnown && value !== undefined && value !== null && value !== '') {
+                items.push({ label: key, value, wide: true, isHtml: false });
+            }
+        });
+        
+        if (items.length === 0) {
+            return renderFieldCard('配置信息', '--', true);
+        }
+        
+        return renderFieldGrid(items);
     }
 
     function renderFieldCard(label, value, wide = false, isHtml = false) {
