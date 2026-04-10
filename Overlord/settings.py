@@ -98,6 +98,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'Overlord.urls'
 
+JSON_ENSURE_ASCII = False
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -192,4 +194,13 @@ MEDIA_URL = '/media/'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+import django.http.response
+_orig_json_response_init = django.http.response.JsonResponse.__init__
+
+def _patched_init(self, data, **kwargs):
+    kwargs.setdefault('json_dumps_params', {})['ensure_ascii'] = False
+    _orig_json_response_init(self, data, **kwargs)
+
+django.http.response.JsonResponse.__init__ = _patched_init
 
