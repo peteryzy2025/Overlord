@@ -532,6 +532,7 @@ def get_tasks_list_api(request):
         date_range = request.GET.get('date_range', 'all')
         start_date = request.GET.get('start_date')
         end_date = request.GET.get('end_date')
+        search = request.GET.get('search', '').strip()
 
         # 基础查询：只能看到自己创建的，或自己负责的，或者有权限看到的
         current_user = request.user
@@ -578,6 +579,12 @@ def get_tasks_list_api(request):
                 queryset = queryset.filter(created_at__month=now.month, created_at__year=now.year)
             elif date_range == 'custom' and start_date and end_date:
                 queryset = queryset.filter(created_at__range=[start_date, end_date + ' 23:59:59'])
+
+        # 搜索过滤（支持任务标题和任务单号）
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | Q(task_no__icontains=search)
+            )
 
         # 排序
         queryset = queryset.order_by('-created_at')

@@ -2830,6 +2830,27 @@
             }
         }
 
+        // ===== 处理本地图库路径输入（DIVI图库上传专用）=====
+        function handleLocalGalleryPathInput(element, subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+
+            const value = element.value.trim();
+            updateSubtaskParam(subtaskId, 'local_gallery_path', value);
+
+            // 实时验证路径前缀
+            const errorEl = document.getElementById(`local-gallery-path-error-${subtaskId}`);
+            if (errorEl) {
+                if (value && !value.startsWith('\\\\ZT-NAS')) {
+                    errorEl.style.display = 'block';
+                    element.style.borderColor = 'var(--danger-color)';
+                } else {
+                    errorEl.style.display = 'none';
+                    element.style.borderColor = '';
+                }
+            }
+        }
+
         // ===== 迪唯图库目录输入处理（结合多面定制预览逻辑） =====
         function handleDiweiGalleryPathInput(element, subtaskId) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
@@ -3986,9 +4007,13 @@
                             <label class="form-label">本地路径 <span style="color: var(--danger-color);">*</span></label>
                             <input type="text" class="form-control"
                                    id="local-gallery-path-${subtask.id}"
-                                   placeholder="本地路径"
+                                   placeholder="例: \\\\Zt-nas\\运营三组\\wyy"
                                    value="${subtask.params.local_gallery_path || ''}"
-                                   oninput="handleDiweiGalleryInput(this, ${subtask.id}, 'local_gallery_path')">
+                                   oninput="handleLocalGalleryPathInput(this, ${subtask.id})">
+                            <small id="local-gallery-path-error-${subtask.id}" style="color: var(--danger-color); display: none;">
+                                <i class="fas fa-exclamation-circle"></i> 路径必须以 \\\\ZT-NAS 开头
+                            </small>
+                            <small style="color: var(--text-tertiary);">必须是 NAS 路径，以 \\\\ZT-NAS 开头</small>
                         </div>
                     </div>
                 `;
@@ -4977,6 +5002,11 @@
                         showNotification(`子任务 #${subtask.order + 1} 的本地路径不能为空`, 'warning');
                         return false;
                     }
+                    // 验证本地路径必须以 \\ZT-NAS 开头
+                    if (!localGalleryPath.startsWith('\\\\ZT-NAS')) {
+                        showNotification(`子任务 #${subtask.order + 1} 的本地路径必须以 \\\\ZT-NAS 开头`, 'warning');
+                        return false;
+                    }
                 }
             }
 
@@ -5094,6 +5124,38 @@
 
         // ===== 子任务使用说明数据 =====
         const subtaskHelpData = {
+            'divi_gallery_upload': {
+                title: 'DIVI图库上传 使用说明',
+                content: `
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">注意事项</h4>
+                        <div style="background: #fff5f5; border: 1px solid #ffcdd2; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                            <p style="margin: 0; color: #c62828; font-weight: 600; text-decoration: underline;">
+                                <i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem;"></i>
+                                本地路径必须是 NAS 路径，且必须以 \\\\ZT-NAS 开头！
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">路径格式要求</h4>
+                        <ul style="padding-left: 1.5rem; margin: 0; line-height: 1.8;">
+                            <li style="margin-bottom: 0.5rem;">本地路径<strong style="color: var(--accent-color);">必须是 NAS 路径</strong>，格式如：<code>\\\\ZT-NAS\\共享文件夹\\图片</code></li>
+                            <li style="margin-bottom: 0.5rem;">路径必须以 <code>\\\\ZT-NAS</code> 开头，否则系统无法访问</li>
+                            <li style="margin-bottom: 0;">不支持本地磁盘路径（如 C:\\、D:\\ 等）</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: var(--bg-secondary); padding: 1rem; border-radius: 8px;">
+                        <h4 style="color: var(--accent-color); margin-bottom: 0.75rem;">字段说明</h4>
+                        <ul style="padding-left: 1.5rem; margin: 0; font-size: 0.9rem;">
+                            <li style="margin-bottom: 0.25rem;"><strong>迪唯账号</strong>：选择要上传到的迪唯账号</li>
+                            <li style="margin-bottom: 0.25rem;"><strong>图库命名</strong>：为新图库命名（限20个字符）</li>
+                            <li style="margin-bottom: 0;"><strong>本地路径</strong>：NAS 上的图片文件夹路径，必须以 \\\\ZT-NAS 开头</li>
+                        </ul>
+                    </div>
+                `
+            },
             'divi_export_pro': {
                 title: '迪唯汇出上架-Pro 使用说明',
                 content: `
