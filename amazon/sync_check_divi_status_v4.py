@@ -180,6 +180,7 @@ def reimport_orders(queryset, total):
             # 执行补导
             result = import_order_from_lingxing_to_divi(order_id=order_id, print_if=True)
             if result and getattr(result, 'code', 200) == 200:
+                print(result)
                 print("✓ 补导成功")
                 success += 1
                 # 立即标记，避免重复导入

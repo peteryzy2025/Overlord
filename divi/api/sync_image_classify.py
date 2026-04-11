@@ -82,12 +82,21 @@ def fetch_image_classify_tree(cookie=None, technology_classify_id=100002):
         return []
 
 
-def save_tree_to_db(nodes, parent=None, level=0, path="", sort_order=0):
+def extract_username_from_cookie(cookie):
+    """从 cookie 中提取 username"""
+    for item in cookie.split('; '):
+        if item.startswith('username='):
+            return item.split('=', 1)[1]
+    return None
+
+
+def save_tree_to_db(nodes, username, parent=None, level=0, path="", sort_order=0):
     """
     递归保存树节点到数据库
     
     Args:
         nodes: 节点列表
+        username: DIVI 账号
         parent: 父节点实例
         level: 当前层级
         path: 当前路径
@@ -105,12 +114,13 @@ def save_tree_to_db(nodes, parent=None, level=0, path="", sort_order=0):
         node_technology = node_data.get('classifyTechnologyName', '')
         children = node_data.get('children', [])
         
-        # 构建当前节点的路径
-        current_path = f"{path}/{node_id}" if path else f"/{node_id}"
+        # 构建当前节点的路径（包含 username 区分不同账号）
+        current_path = f"{path}/{node_id}" if path else f"/{username}/{node_id}"
         
-        # 更新或创建节点
+        # 更新或创建节点（使用复合键：id + username）
         node, created = DiviImageClassify.objects.update_or_create(
             id=node_id,
+            username=username,
             defaults={
                 'parent': parent,
                 'label': node_label,
@@ -130,6 +140,7 @@ def save_tree_to_db(nodes, parent=None, level=0, path="", sort_order=0):
         if children:
             child_created, child_updated = save_tree_to_db(
                 children, 
+                username=username,
                 parent=node, 
                 level=level + 1, 
                 path=current_path,
@@ -159,9 +170,16 @@ def sync_image_classify(cookie=None, technology_classify_id=100002):
         'failed': 0,
     }
     
+    # 提取 username
+    username = extract_username_from_cookie(cookie) if cookie else None
+    if not username:
+        username = 'unknown'
+        print("⚠️ 未从 cookie 中提取到 username，使用默认值")
+    
     print("=" * 50)
     print("开始同步 DIVI 图库分类...")
     print(f"技术分类ID: {technology_classify_id}")
+    print(f"账号: {username}")
     print("=" * 50)
     
     # 1. 获取树形数据
@@ -183,14 +201,14 @@ def sync_image_classify(cookie=None, technology_classify_id=100002):
     stats['fetched'] = total_nodes
     print(f"✅ 获取到 {total_nodes} 个节点")
     
-    # 2. 清空旧数据（全量更新）
-    print("🗑️  清空旧数据...")
-    DiviImageClassify.objects.all().delete()
+    # 2. 清空该账号的旧数据（全量更新，按账号隔离）
+    print(f"🗑️  清空账号 {username} 的旧数据...")
+    DiviImageClassify.objects.filter(username=username).delete()
     print("✅ 已清空")
     
     # 3. 保存到数据库
     print("💾 保存到数据库...")
-    created, updated = save_tree_to_db(tree_data)
+    created, updated = save_tree_to_db(tree_data, username=username)
     stats['created'] = created
     stats['updated'] = updated
     

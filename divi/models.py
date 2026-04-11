@@ -193,6 +193,15 @@ class DiviImageClassify(models.Model):
     )
     
     # 记录同步时间
+    # 账号信息（从 cookie 中提取）
+    username = models.CharField(
+        'DIVI 账号',
+        max_length=100,
+        blank=True,
+        null=True,
+        db_comment='同步数据的 DIVI 账号，如 YMX-26'
+    )
+    
     synced_at = models.DateTimeField(
         '同步时间',
         auto_now=True,
@@ -208,11 +217,12 @@ class DiviImageClassify(models.Model):
         db_table = 'divi_image_classify'
         verbose_name = 'DIVI 图库分类'
         verbose_name_plural = 'DIVI 图库分类'
-        ordering = ['level', 'sort_order', 'id']
+        ordering = ['username', 'level', 'sort_order', 'id']
         indexes = [
             models.Index(fields=['parent', 'sort_order'], name='idx_divi_img_parent_sort'),
             models.Index(fields=['level'], name='idx_divi_img_level'),
             models.Index(fields=['path'], name='idx_divi_img_path'),
+            models.Index(fields=['username'], name='idx_divi_img_username'),
         ]
 
     def __str__(self):
