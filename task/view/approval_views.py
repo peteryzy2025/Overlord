@@ -342,6 +342,7 @@ def approval_draft_detail_api(request, approval_id):
                     'asin': listing.asin or '',
                     'shop_name': shop_name,
                     'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+                    'fnsku': listing.fnsku or '',
                 })
 
             shop_configs.append({
@@ -431,6 +432,7 @@ def approval_asins_api(request):
             'local_sku': listing.local_sku or '',
             'seller_sku': listing.seller_sku or '',
             'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+            'fnsku': listing.fnsku or '',
             'marketplace': listing.marketplace or '',
             'shop_name': listing.lingxing_shop.name if listing.lingxing_shop and listing.lingxing_shop.name else f"sid_{listing.sid}",
             'sid': listing.sid,
@@ -872,6 +874,7 @@ def _send_approval_webhook(approval):
         payload = {
             '审批单号': approval.approval_no,
             '企业微信通知url': approval.applicant.wx_url or '',
+            '任务类型': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
             '子任务列表': subtask_list,
         }
 

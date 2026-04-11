@@ -17,15 +17,16 @@
         .approval-config-header { display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:var(--bg-secondary); border-bottom:1px solid var(--border-color); }
         .approval-config-meta { display:flex; align-items:center; gap:.75rem; }
         .approval-config-body { display:flex; flex-direction:column; gap:1rem; padding:1.25rem; }
-        .approval-config-grid { display:grid; grid-template-columns:minmax(260px,300px) minmax(0,1fr); gap:1rem; align-items:start; }
-        .asin-dual-layout { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr); gap:1rem; }
+        .approval-config-top-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; align-items:start; }
+        .approval-config-asin-row { display:block; }
+        .asin-dual-layout { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
         .asin-panel { border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); overflow:hidden; min-height:360px; }
         .asin-panel-header, .asin-pagination { display:flex; justify-content:space-between; align-items:center; gap:.75rem; padding:.9rem 1rem; background:var(--bg-tertiary); }
         .asin-panel-header { border-bottom:1px solid var(--border-color); }
         .asin-pagination { border-top:1px solid var(--border-color); flex-direction:column; align-items:stretch; }
         .asin-panel-title { font-size:.92rem; font-weight:600; color:var(--text-primary); }
         .asin-toolbar, .asin-pagination-actions { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
-        .asin-search-row { display:grid; grid-template-columns:minmax(0,1fr) 42px; gap:.5rem; margin-top:.75rem; width:100%; }
+        .asin-search-row { display:grid; grid-template-columns:minmax(0,1fr) 42px; gap:.5rem; width:100%; }
         .asin-search-input { width:100%; }
         .asin-search-btn { width:42px; min-width:42px; }
         .page-size-select { width:90px; height:36px; padding:.25rem .5rem; }
@@ -34,9 +35,9 @@
         .asin-page-size-row { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
         .asin-list-header, .asin-row { display:grid; gap:.75rem; align-items:center; padding:.8rem 1rem; }
         .asin-list-header { background:var(--bg-secondary); border-bottom:1px solid var(--border-color); color:var(--text-secondary); font-size:.82rem; font-weight:600; }
-        .asin-list-header.available, .asin-row.available { grid-template-columns:44px 50px 120px 80px minmax(120px,1fr); }
+        .asin-list-header.available, .asin-row.available { grid-template-columns:44px 50px 120px 110px 80px minmax(60px,1fr); }
         .asin-row.available img.asin-thumb { width:40px; height:40px; object-fit:contain; border-radius:4px; border:1px solid var(--border-color); background:#fff; }
-        .asin-list-header.selected, .asin-row.selected { grid-template-columns:minmax(160px,1fr) 70px 140px 90px 36px; }
+        .asin-list-header.selected, .asin-row.selected { grid-template-columns:minmax(100px,1fr) 70px 140px 110px 90px 36px; }
         .asin-row.selected img.asin-thumb { width:56px; height:56px; object-fit:contain; border-radius:4px; border:1px solid var(--border-color); background:#fff; }
         .asin-list-body { max-height:360px; overflow-y:auto; }
         .asin-row { border-bottom:1px solid var(--border-color); cursor:pointer; transition:background .2s ease; }
@@ -51,8 +52,8 @@
         .approval-inline-tip { color:var(--text-tertiary); font-size:.82rem; line-height:1.5; margin-top:.35rem; }
         .approval-empty-state { border:1px dashed var(--border-color); border-radius:10px; padding:2rem 1rem; text-align:center; color:var(--text-tertiary); background:var(--bg-secondary); }
         .approval-actions-inline { display:flex; justify-content:flex-start; align-items:center; gap:1rem; flex-wrap:wrap; }
-        @media (max-width:1200px) { .asin-dual-layout { grid-template-columns:1fr; } }
-        @media (max-width:1024px) { .approval-config-grid { grid-template-columns:1fr; } }
+        @media (max-width:1200px) { .asin-dual-layout { grid-template-columns:1fr; } .approval-config-top-row { grid-template-columns:1fr; } }
+        @media (max-width:1024px) { .approval-config-top-row { grid-template-columns:1fr; } }
         @media (max-width:768px) {
             .asin-panel-header, .asin-pagination { flex-direction:column; align-items:stretch; }
             .asin-toolbar, .asin-pagination-actions, .asin-pagination-bottom, .asin-page-size-row { justify-content:space-between; }
@@ -318,7 +319,8 @@
                         sid: listing.sid,
                         shop_name: listing.shop_name,
                         asin: listing.asin,
-                        fulfillment_channel_type: listing.fulfillment_channel_type || ''
+                        fulfillment_channel_type: listing.fulfillment_channel_type || '',
+                        fnsku: listing.fnsku || ''
                     };
                 });
                 return {
@@ -428,6 +430,7 @@
                         <span><input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleListingSelection(${config.id}, ${listing.id}, this.checked)"></span>
                         <span>${listing.img_url ? `<img class="asin-thumb" src="${escapeHtml(listing.img_url)}" alt="" loading="lazy">` : ''}</span>
                         <span>${escapeHtml(listing.asin)}</span>
+                        <span>${escapeHtml(listing.fnsku || '-')}</span>
                         <span>${escapeHtml(listing.fulfillment_channel_type || '-')}</span>
                         <span class="asin-title" title="${escapeHtml(listing.title || '-')}">${escapeHtml(listing.title || '-')}</span>
                     </label>
@@ -444,6 +447,7 @@
                     <span class="asin-title" title="${escapeHtml(listing.shop_name || '-')}">${escapeHtml(listing.shop_name || '-')}</span>
                     <span>${listing.img_url ? `<img class="asin-thumb" src="${escapeHtml(listing.img_url)}" alt="" loading="lazy">` : ''}</span>
                     <span class="selected-asin-text">${escapeHtml(listing.asin)}</span>
+                    <span>${escapeHtml(listing.fnsku || '-')}</span>
                     <span>${escapeHtml(listing.fulfillment_channel_type || '-')}</span>
                     <span><button type="button" class="remove-selected-btn" title="移除" onclick="removeSelectedListing(${config.id}, ${listing.id})"><i class="fas fa-times"></i></button></span>
                 </div>
@@ -498,21 +502,27 @@
                         <button class="btn-icon" type="button" onclick="removeConfigGroup(${config.id})"><i class="fas fa-trash"></i></button>
                     </div>
                     <div class="approval-config-body">
-                        <div class="approval-config-grid">
+                        <div class="approval-config-top-row">
                             <div class="form-group">
                                 <label class="form-label">选择店铺 <span style="color: var(--danger-color);">*</span></label>
                                 <div id="store-select-${config.id}" class="searchable-select single" data-placeholder="请选择店铺"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">搜索 ASIN</label>
                                 <div class="asin-search-row">
                                     <input type="text" class="form-control asin-search-input" id="asin-search-${config.id}" placeholder="搜索 ASIN" value="${escapeHtml(config.search)}" onkeydown="handleAsinSearchKeydown(event, ${config.id})">
                                     <button class="btn gs-filter-action-btn gs-filter-search-btn gs-btn-icon-only asin-search-btn" type="button" onclick="applyConfigSearch(${config.id})" title="搜索 ASIN">
                                         <i class="fas fa-search" aria-hidden="true"></i>
                                     </button>
                                 </div>
-                                <label class="form-label" style="margin-top:0.75rem;">选择否定词库 <span style="color: var(--danger-color);">*</span></label>
-                                <div id="negative-lib-select-${config.id}" class="searchable-select single" data-placeholder="请选择否定词库"></div>
-                                <div class="selection-summary">当前配置组已选 ${getSelectedListingCount(config)} 条 ASIN</div>
-                                <div class="approval-inline-tip">一个配置组仅支持同一店铺的 ASIN，如需选择其他店铺，请新建配置组。</div>
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">选择否定词库 <span style="color: var(--danger-color);">*</span></label>
+                                <div id="negative-lib-select-${config.id}" class="searchable-select single" data-placeholder="请选择否定词库"></div>
+                            </div>
+                        </div>
+                        <div class="selection-summary">当前配置组已选 ${getSelectedListingCount(config)} 条 ASIN</div>
+                        <div class="approval-config-asin-row">
                             <div class="asin-dual-layout">
                                 <div class="asin-panel">
                                     <div class="asin-panel-header">
@@ -522,6 +532,7 @@
                                         <span>选择</span>
                                         <span>图片</span>
                                         <span>ASIN</span>
+                                        <span>FNSKU</span>
                                         <span>渠道</span>
                                         <span>标题</span>
                                     </div>
@@ -537,6 +548,7 @@
                                         <span>店铺名称</span>
                                         <span>图片</span>
                                         <span>ASIN</span>
+                                        <span>FNSKU</span>
                                         <span>渠道</span>
                                         <span></span>
                                     </div>
@@ -544,6 +556,7 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="approval-inline-tip">一个配置组仅支持同一店铺的 ASIN，如需选择其他店铺，请新建配置组。</div>
                     </div>
                 </div>
             `).join('');
@@ -695,6 +708,7 @@
                     shop_name: listing.shop_name,
                     asin: listing.asin,
                     fulfillment_channel_type: listing.fulfillment_channel_type || '',
+                    fnsku: listing.fnsku || '',
                     img_url: listing.img_url || ''
                 };
             } else {
