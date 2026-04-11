@@ -3,12 +3,11 @@
 Divi 应用视图
 """
 import json
-import threading
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 
 from .api.update_template import sync_templates_to_db
+from .api.sync_image_classify import sync_image_classify
 
 
 # CORS 响应头
@@ -30,14 +29,24 @@ def cors_json_response(data, status=200):
 @csrf_exempt
 def sync_templates_api(request):
     """
-    接收 cookie 并异步执行模板同步
+    接收 cookie 并同步执行模板同步，返回详细统计
     
     POST 参数:
         cookie: str - DIVI 网站的 cookie 字符串
         company_id: int - 公司ID（可选，默认1）
     
     Returns:
-        {"success": true, "message": "任务已提交，后台同步中..."}
+        {
+            "success": true,
+            "stats": {
+                "total_fetched": 17,
+                "created": 0,
+                "updated": 17,
+                "failed": 0,
+                "skipped_products": 0,
+                "skipped_shops": 0
+            }
+        }
     """
     # 处理 OPTIONS 预检请求
     if request.method == 'OPTIONS':
@@ -63,22 +72,17 @@ def sync_templates_api(request):
                 'message': '缺少 cookie 参数'
             }, 400)
         
-        # 启动后台线程执行同步任务
-        def run_sync():
-            try:
-                print(f"[后台任务] 开始同步模板，company_id={company_id}")
-                print(f"[后台任务] 使用 Cookie: {cookie[:100]}...")  # 打印前100字符
-                stats = sync_templates_to_db(cookie=cookie, company_id=company_id)
-                print(f"[后台任务] 同步完成: {stats}")
-            except Exception as e:
-                print(f"[后台任务] 同步失败: {e}")
+        print(f"[同步模板] 开始执行，company_id={company_id}")
+        print(f"[同步模板] Cookie: {cookie[:80]}...")
         
-        thread = threading.Thread(target=run_sync, daemon=True)
-        thread.start()
+        # 同步执行，等待结果
+        stats = sync_templates_to_db(cookie=cookie, company_id=company_id)
+        
+        print(f"[同步模板] 完成: {stats}")
         
         return cors_json_response({
             'success': True,
-            'message': '任务已提交，后台同步中...\n请稍后查看数据库更新结果'
+            'stats': stats
         })
         
     except json.JSONDecodeError:
@@ -87,6 +91,79 @@ def sync_templates_api(request):
             'message': '请求格式错误，需要 JSON'
         }, 400)
     except Exception as e:
+        import traceback
+        print(f"[同步模板] 异常: {e}")
+        print(traceback.format_exc())
+        return cors_json_response({
+            'success': False,
+            'message': f'服务器错误: {str(e)}'
+        }, 500)
+
+
+@csrf_exempt
+def sync_image_classify_api(request):
+    """
+    接收 cookie 并同步执行图库分类同步
+    
+    POST 参数:
+        cookie: str - DIVI 网站的 cookie 字符串
+    
+    Returns:
+        {
+            "success": true,
+            "stats": {
+                "fetched": 100,
+                "created": 100,
+                "updated": 0,
+                "failed": 0
+            }
+        }
+    """
+    # 处理 OPTIONS 预检请求
+    if request.method == 'OPTIONS':
+        response = JsonResponse({})
+        for key, value in CORS_HEADERS.items():
+            response[key] = value
+        return response
+    
+    if request.method != 'POST':
+        return cors_json_response({
+            'success': False,
+            'message': '只支持 POST 请求'
+        }, 405)
+    
+    try:
+        data = json.loads(request.body)
+        cookie = data.get('cookie', '')
+        
+        if not cookie:
+            return cors_json_response({
+                'success': False,
+                'message': '缺少 cookie 参数'
+            }, 400)
+        
+        print(f"[同步图库分类] 开始执行")
+        print(f"[同步图库分类] Cookie: {cookie[:80]}...")
+        
+        # 同步执行，等待结果
+        stats = sync_image_classify(cookie=cookie, technology_classify_id=100002)
+        
+        print(f"[同步图库分类] 完成: {stats}")
+        
+        return cors_json_response({
+            'success': True,
+            'stats': stats
+        })
+        
+    except json.JSONDecodeError:
+        return cors_json_response({
+            'success': False,
+            'message': '请求格式错误，需要 JSON'
+        }, 400)
+    except Exception as e:
+        import traceback
+        print(f"[同步图库分类] 异常: {e}")
+        print(traceback.format_exc())
         return cors_json_response({
             'success': False,
             'message': f'服务器错误: {str(e)}'

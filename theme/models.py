@@ -907,3 +907,19 @@ class ThemeNoveltyDailyData(models.Model):
 
 
 
+class ThemeNoveltySummary(models.Model):
+    id = models.AutoField(primary_key=True, verbose_name='ID')
+    summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
+    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间',db_index=True)
+
+    class Meta:
+        db_table = 'theme_novelty_summary'
+        verbose_name = '新奇特主题汇总'
+        indexes = [
+            models.Index(fields=['summary_subject_title']),
+        ]
+
+    def __str__(self):
+        return f'{self.summary_subject_title}'
+
+

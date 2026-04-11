@@ -141,3 +141,88 @@ class DiviExportTemplate(models.Model):
 
     def __str__(self):
         return f"{self.template_id} - {self.template_name or '未命名模板'}"
+
+
+class DiviImageClassify(models.Model):
+    """
+    DIVI 图库分类表
+    存储从 DIVI 系统同步的图库目录树结构
+    """
+    id = models.IntegerField(
+        '分类ID',
+        primary_key=True,
+        db_comment='DIVI 系统的分类ID'
+    )
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
+        verbose_name='父节点',
+        db_comment='父分类ID，根节点为null'
+    )
+    label = models.CharField(
+        '显示名称',
+        max_length=255,
+        db_comment='分类显示名称，如"10月"、"10.7天空"'
+    )
+    technology_name = models.CharField(
+        '技术名称',
+        max_length=100,
+        blank=True,
+        null=True,
+        db_comment='技术分类名称，如"印花"'
+    )
+    level = models.IntegerField(
+        '层级',
+        default=0,
+        db_comment='层级深度，0=根节点，1=一级，以此类推'
+    )
+    path = models.CharField(
+        '完整路径',
+        max_length=500,
+        blank=True,
+        null=True,
+        db_comment='完整路径，如"/100000/117298/117299"，便于查询子树'
+    )
+    sort_order = models.IntegerField(
+        '排序',
+        default=0,
+        db_comment='同层级内的排序'
+    )
+    
+    # 记录同步时间
+    synced_at = models.DateTimeField(
+        '同步时间',
+        auto_now=True,
+        db_comment='最近一次从 DIVI 同步的时间'
+    )
+    created_at = models.DateTimeField(
+        '创建时间',
+        auto_now_add=True,
+        db_comment='记录创建时间'
+    )
+
+    class Meta:
+        db_table = 'divi_image_classify'
+        verbose_name = 'DIVI 图库分类'
+        verbose_name_plural = 'DIVI 图库分类'
+        ordering = ['level', 'sort_order', 'id']
+        indexes = [
+            models.Index(fields=['parent', 'sort_order'], name='idx_divi_img_parent_sort'),
+            models.Index(fields=['level'], name='idx_divi_img_level'),
+            models.Index(fields=['path'], name='idx_divi_img_path'),
+        ]
+
+    def __str__(self):
+        return f"{'  ' * self.level}{self.label}"
+    
+    def get_full_path_name(self):
+        """获取完整路径名称，如：印花/10月/10.7/10.7天空"""
+        names = []
+        node = self
+        while node:
+            names.append(node.label)
+            node = node.parent
+        return '/'.join(reversed(names))
