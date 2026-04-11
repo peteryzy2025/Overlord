@@ -192,6 +192,158 @@
             opacity: 1;
         }
         
+        /* ===== 树形下拉框样式（来自 dw_data.html）===== */
+        .tree-select-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .tree-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--bg-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-height: 38px;
+        }
+        
+        .tree-select-trigger:hover {
+            border-color: var(--accent-color);
+        }
+        
+        .tree-select-trigger.active {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .tree-select-value {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .tree-select-placeholder {
+            color: var(--text-tertiary);
+        }
+        
+        .tree-select-arrow {
+            transition: transform 0.2s ease;
+            color: var(--text-secondary);
+        }
+        
+        .tree-select-trigger.active .tree-select-arrow {
+            transform: rotate(180deg);
+        }
+        
+        .tree-dropdown {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            right: 0;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            max-height: 320px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .tree-dropdown.hidden {
+            display: none;
+        }
+        
+        .tree-search-box {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 0.5rem;
+        }
+        
+        .tree-search-box i {
+            color: var(--text-tertiary);
+        }
+        
+        .tree-search-box input {
+            flex: 1;
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 0.875rem;
+        }
+        
+        .tree-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 0;
+        }
+        
+        .tree-node {
+            display: flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+        }
+        
+        .tree-node:hover {
+            background-color: var(--bg-secondary);
+        }
+        
+        .tree-node.selected {
+            background-color: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+        }
+        
+        .tree-node-content {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            gap: 0.5rem;
+        }
+        
+        .tree-node-expand {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-tertiary);
+            transition: transform 0.2s ease;
+        }
+        
+        .tree-node-expand.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .tree-node-expand.leaf {
+            visibility: hidden;
+        }
+        
+        .tree-node-icon {
+            color: var(--text-tertiary);
+        }
+        
+        .tree-node-label {
+            flex: 1;
+            font-size: 0.875rem;
+        }
+        
+        .tree-node-empty {
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-tertiary);
+        }
+        
         /* 店铺状态标签样式 */
     </style>
 {% endblock %}
@@ -867,6 +1019,301 @@
             }
         }
 
+        // ===== 图库分类树形下拉框相关函数 =====
+        // 存储每个子任务的图库分类数据
+        const imageClassifyDataCache = {};
+        const imageClassifyExpandedNodes = {};
+        
+        // 加载图库分类数据
+        async function loadImageClassifyData(subtaskId, username) {
+            if (!username) return [];
+            
+            try {
+                const response = await fetch(`/api/divi/image-classifies/?username=${encodeURIComponent(username)}`);
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    imageClassifyDataCache[subtaskId] = result.data;
+                    return result.data;
+                }
+            } catch (error) {
+                console.error('加载图库分类失败:', error);
+            }
+            return [];
+        }
+        
+        // 切换下拉框显示
+        async function toggleImageClassifyDropdown(subtaskId) {
+            const dropdown = document.getElementById(`image-classify-dropdown-${subtaskId}`);
+            const trigger = document.querySelector(`#image-classify-container-${subtaskId} .tree-select-trigger`);
+            
+            if (dropdown.classList.contains('hidden')) {
+                // 获取当前迪唯账号
+                const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+                const username = subtask?.params?.diwei_login_account || '';
+                
+                if (!username) {
+                    showNotification('请先选择迪唯账号', 'warning');
+                    return;
+                }
+                
+                // 加载数据（如果还没有）
+                if (!imageClassifyDataCache[subtaskId]) {
+                    await loadImageClassifyData(subtaskId, username);
+                }
+                
+                // 渲染树
+                renderImageClassifyTree(subtaskId);
+                
+                dropdown.classList.remove('hidden');
+                trigger.classList.add('active');
+                
+                // 聚焦搜索框
+                setTimeout(() => {
+                    document.getElementById(`image-classify-search-${subtaskId}`)?.focus();
+                }, 100);
+            } else {
+                closeImageClassifyDropdown(subtaskId);
+            }
+        }
+        
+        // 关闭下拉框
+        function closeImageClassifyDropdown(subtaskId) {
+            const dropdown = document.getElementById(`image-classify-dropdown-${subtaskId}`);
+            const trigger = document.querySelector(`#image-classify-container-${subtaskId} .tree-select-trigger`);
+            
+            dropdown.classList.add('hidden');
+            trigger.classList.remove('active');
+        }
+        
+        // 渲染树形结构
+        function renderImageClassifyTree(subtaskId, searchKeyword = '') {
+            const container = document.getElementById(`image-classify-content-${subtaskId}`);
+            const treeData = imageClassifyDataCache[subtaskId] || [];
+            
+            if (!container) return;
+            
+            if (treeData.length === 0) {
+                container.innerHTML = '<div class="tree-node-empty">暂无分类数据</div>';
+                return;
+            }
+            
+            // 如果有搜索关键词，展开所有节点
+            if (searchKeyword) {
+                const matchedIds = findMatchedImageClassifyNodes(treeData, searchKeyword);
+                matchedIds.forEach(id => {
+                    if (!imageClassifyExpandedNodes[subtaskId]) {
+                        imageClassifyExpandedNodes[subtaskId] = new Set();
+                    }
+                    imageClassifyExpandedNodes[subtaskId].add(id);
+                });
+            }
+            
+            container.innerHTML = renderImageClassifyNodes(treeData, subtaskId, 0, searchKeyword);
+        }
+        
+        // 递归渲染节点
+        function renderImageClassifyNodes(nodes, subtaskId, level = 0, searchKeyword = '', parentPath = '') {
+            if (!nodes || nodes.length === 0) return '';
+            
+            const currentClassifyId = document.getElementById(`image-classify-id-${subtaskId}`)?.value || '';
+            const expandedSet = imageClassifyExpandedNodes[subtaskId] || new Set();
+            
+            return nodes.map(node => {
+                const hasChildren = node.children && node.children.length > 0;
+                const isExpanded = expandedSet.has(node.id);
+                const isSelected = String(node.id) === String(currentClassifyId);
+                const paddingLeft = level * 20 + 8;
+                
+                // 构建完整路径
+                const fullPath = parentPath ? `${parentPath} > ${node.label}` : node.label;
+                
+                // 搜索高亮
+                let labelHtml = escapeHtml(node.label);
+                if (searchKeyword) {
+                    const regex = new RegExp(`(${escapeRegex(searchKeyword)})`, 'gi');
+                    labelHtml = labelHtml.replace(regex, '<mark style="background: #fde047; color: #000;">$1</mark>');
+                }
+                
+                let html = `
+                    <div class="tree-node ${isSelected ? 'selected' : ''}" 
+                         style="padding-left: ${paddingLeft}px;"
+                         onclick="selectImageClassifyNode(${subtaskId}, ${node.id}, '${escapeJsString(node.label)}', '${escapeJsString(fullPath)}')">
+                        <div class="tree-node-content">
+                            <span class="tree-node-expand ${hasChildren ? '' : 'leaf'} ${isExpanded ? 'expanded' : ''}"
+                                  onclick="event.stopPropagation(); toggleImageClassifyNode(${subtaskId}, ${node.id})">
+                                ${hasChildren ? '<i class="fas fa-chevron-right"></i>' : ''}
+                            </span>
+                            <i class="fas fa-folder${isExpanded ? '-open' : ''} tree-node-icon"></i>
+                            <span class="tree-node-label">${labelHtml}</span>
+                        </div>
+                    </div>
+                `;
+                
+                // 递归渲染子节点
+                if (hasChildren && (isExpanded || searchKeyword)) {
+                    html += renderImageClassifyNodes(node.children, subtaskId, level + 1, searchKeyword, fullPath);
+                }
+                
+                return html;
+            }).join('');
+        }
+        
+        // 切换节点展开/折叠
+        function toggleImageClassifyNode(subtaskId, nodeId) {
+            if (!imageClassifyExpandedNodes[subtaskId]) {
+                imageClassifyExpandedNodes[subtaskId] = new Set();
+            }
+            
+            if (imageClassifyExpandedNodes[subtaskId].has(nodeId)) {
+                imageClassifyExpandedNodes[subtaskId].delete(nodeId);
+            } else {
+                imageClassifyExpandedNodes[subtaskId].add(nodeId);
+            }
+            
+            renderImageClassifyTree(subtaskId);
+        }
+        
+        // 选择节点
+        function selectImageClassifyNode(subtaskId, nodeId, nodeLabel, fullPath) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            
+            // 更新隐藏字段
+            document.getElementById(`image-classify-id-${subtaskId}`).value = nodeId;
+            
+            // 更新显示
+            document.getElementById(`image-classify-placeholder-${subtaskId}`).style.display = 'none';
+            document.getElementById(`image-classify-value-${subtaskId}`).textContent = fullPath;
+            
+            // 更新 taskData
+            updateSubtaskParam(subtaskId, 'image_classify_id', nodeId);
+            updateSubtaskParam(subtaskId, 'image_classify_path', fullPath);
+            
+            // 互斥逻辑：如果选择了图库分类，清空NAS路径
+            if (subtask && subtask.type === 'divi_multi_side_custom') {
+                updateSubtaskParam(subtaskId, 'nas_path', '');
+                const nasInput = document.getElementById(`nas-path-input-${subtaskId}`);
+                if (nasInput) {
+                    nasInput.value = '';
+                    // 清除验证错误状态
+                    nasInput.style.borderColor = '';
+                    const errorEl = document.getElementById(`nas-path-error-${subtaskId}`);
+                    if (errorEl) errorEl.style.display = 'none';
+                }
+            }
+            
+            // 关闭下拉框
+            closeImageClassifyDropdown(subtaskId);
+        }
+        
+        // 搜索节点
+        function searchImageClassifyNodes(subtaskId, keyword) {
+            renderImageClassifyTree(subtaskId, keyword.trim());
+        }
+        
+        // 查找匹配的节点ID
+        function findMatchedImageClassifyNodes(nodes, keyword, matchedIds = new Set()) {
+            if (!nodes) return matchedIds;
+            
+            const lowerKeyword = keyword.toLowerCase();
+            
+            nodes.forEach(node => {
+                if (node.label.toLowerCase().includes(lowerKeyword)) {
+                    matchedIds.add(node.id);
+                }
+                
+                if (node.children && node.children.length > 0) {
+                    const childMatched = findMatchedImageClassifyNodes(node.children, keyword, matchedIds);
+                    if (childMatched.size > 0) {
+                        matchedIds.add(node.id); // 父节点也展开
+                    }
+                }
+            });
+            
+            return matchedIds;
+        }
+        
+        // 获取完整路径
+        // 根据节点ID获取完整路径
+        function getImageClassifyFullPath(subtaskId, nodeId) {
+            const treeData = imageClassifyDataCache[subtaskId] || [];
+            
+            // 递归查找节点并构建路径
+            function findNodeAndBuildPath(nodes, targetId, currentPath = []) {
+                for (const node of nodes) {
+                    const newPath = [...currentPath, node.label];
+                    if (node.id === targetId) {
+                        return newPath.join(' > ');
+                    }
+                    if (node.children && node.children.length > 0) {
+                        const result = findNodeAndBuildPath(node.children, targetId, newPath);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            }
+            
+            return findNodeAndBuildPath(treeData, nodeId);
+        }
+        
+        // 初始化图库分类（根据迪唯账号）
+        async function initImageClassifySelect(subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            const username = subtask?.params?.diwei_login_account || '';
+            
+            if (username) {
+                await loadImageClassifyData(subtaskId, username);
+                // 默认展开第一级
+                const treeData = imageClassifyDataCache[subtaskId] || [];
+                if (treeData.length > 0 && !imageClassifyExpandedNodes[subtaskId]) {
+                    imageClassifyExpandedNodes[subtaskId] = new Set();
+                    treeData.forEach(node => imageClassifyExpandedNodes[subtaskId].add(node.id));
+                }
+            }
+        }
+        
+        // 刷新图库分类（迪唯账号变化时调用）
+        async function refreshImageClassifySelect(subtaskId) {
+            // 清空缓存
+            delete imageClassifyDataCache[subtaskId];
+            imageClassifyExpandedNodes[subtaskId] = new Set();
+            
+            // 清空选择
+            document.getElementById(`image-classify-id-${subtaskId}`).value = '';
+            document.getElementById(`image-classify-placeholder-${subtaskId}`).style.display = 'block';
+            document.getElementById(`image-classify-value-${subtaskId}`).textContent = '';
+            
+            // 重新加载
+            await initImageClassifySelect(subtaskId);
+        }
+        
+        // 辅助函数：转义 HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // 辅助函数：转义正则特殊字符
+        function escapeRegex(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+        
+        // 辅助函数：转义 JS 字符串
+        function escapeJsString(string) {
+            return string.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+        
+        // 点击外部关闭下拉框
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('.tree-select-container').forEach(container => {
+                if (!container.contains(e.target)) {
+                    const subtaskId = container.id.replace('image-classify-container-', '');
+                    closeImageClassifyDropdown(subtaskId);
+                }
+            });
+        });
+
         // ===== 初始化Amazon资格豁免店铺选择器 =====
         async function initAmazonExemptShopSelect(subtask) {
             const shopSelectEl = document.querySelector(`#amazon-exempt-shop-select-${subtask.id}`);
@@ -962,10 +1409,35 @@
                 if (selected) {
                     updateSubtaskParam(subtask.id, 'diwei_account', selected.value);
                     updateSubtaskParam(subtask.id, 'diwei_login_account', selected.diwei_account);
+                    
+                    // 刷新图库分类数据
+                    if (subtask.type === 'divi_multi_side_custom') {
+                        loadImageClassifyData(subtask.id, selected.diwei_account);
+                        // 清除已选择的图库分类
+                        updateSubtaskParam(subtask.id, 'image_classify_id', '');
+                        const displayEl = document.getElementById(`image-classify-value-${subtask.id}`);
+                        if (displayEl) displayEl.textContent = '请选择图库分类';
+                    }
                 }
             };
 
             accountSelectEl.dataset.initialized = 'true';
+            
+            // 如果是多面定制，初始化图库分类选择器
+            if (subtask.type === 'divi_multi_side_custom') {
+                const selectedAccount = accounts.find(a => a.value === defaultValue);
+                if (selectedAccount) {
+                    // 初始化图库分类选择器
+                    await initImageClassifySelect(subtask.id);
+                    
+                    // 如果有已保存的分类ID，显示对应的完整路径
+                    if (subtask.params.image_classify_id) {
+                        const fullPath = getImageClassifyFullPath(subtask.id, subtask.params.image_classify_id);
+                        const displayEl = document.getElementById(`image-classify-value-${subtask.id}`);
+                        if (displayEl) displayEl.textContent = fullPath || '请选择图库分类';
+                    }
+                }
+            }
         }
 
         // ===== 渲染定制产品行 =====
@@ -2957,6 +3429,45 @@
             }
         }
 
+        // ===== 处理NAS路径输入（多面定制专用）=====
+        function handleNasPathInput(element, subtaskId) {
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            if (!subtask) return;
+
+            const value = element.value.trim();
+            updateSubtaskParam(subtaskId, 'nas_path', value);
+
+            // 实时验证路径前缀
+            const errorEl = document.getElementById(`nas-path-error-${subtaskId}`);
+            if (errorEl) {
+                if (value && !value.toUpperCase().startsWith('\\\\ZT-NAS')) {
+                    errorEl.style.display = 'block';
+                    element.style.borderColor = 'var(--danger-color)';
+                } else {
+                    errorEl.style.display = 'none';
+                    element.style.borderColor = '';
+                }
+            }
+
+            // 互斥逻辑：如果NAS路径有值，清空图库分类
+            if (value && subtask.type === 'divi_multi_side_custom') {
+                // 清空图库分类
+                updateSubtaskParam(subtaskId, 'image_classify_id', '');
+                updateSubtaskParam(subtaskId, 'image_classify_path', '');
+                
+                const idInput = document.getElementById(`image-classify-id-${subtaskId}`);
+                const placeholderEl = document.getElementById(`image-classify-placeholder-${subtaskId}`);
+                const valueEl = document.getElementById(`image-classify-value-${subtaskId}`);
+                
+                if (idInput) idInput.value = '';
+                if (placeholderEl) placeholderEl.style.display = 'block';
+                if (valueEl) valueEl.textContent = '';
+                
+                // 重新渲染树（取消选中状态）
+                renderImageClassifyTree(subtaskId);
+            }
+        }
+
         // ===== 迪唯图库目录输入处理（结合多面定制预览逻辑） =====
         function handleDiweiGalleryPathInput(element, subtaskId) {
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
@@ -3167,7 +3678,9 @@
                     is_tiled: false,
                     tile_type: '',
                     product_ids: [],
-                    gallery_path: [],
+                    nas_path: '',  // NAS路径（与图库分类二选一）
+                    image_classify_id: '',  // 图库分类ID
+                    image_classify_path: '',  // 图库分类完整路径
                     export_shop_ids: []
                 };
             } else if (type === 'divi_custom') {
@@ -3204,7 +3717,9 @@
                 if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.diwei_login_account) mergedParams.diwei_login_account = '';
                 if (!params.product_ids) mergedParams.product_ids = [];
-                if (!params.gallery_path) mergedParams.gallery_path = [];
+                if (!params.nas_path) mergedParams.nas_path = '';
+                if (!params.image_classify_id) mergedParams.image_classify_id = '';
+                if (!params.image_classify_path) mergedParams.image_classify_path = '';
                 if (!params.export_shop_ids) mergedParams.export_shop_ids = [];
                 if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
                 if (mergedParams.is_tiled === undefined) mergedParams.is_tiled = false;
@@ -3355,14 +3870,11 @@
                 }, 0);
             }
 
-            // 初始化图库目录预览
-            if (subtask.params.gallery_path) {
-                const input = document.querySelector(`#gallery-path-input-${subtask.id}`);
+            // 初始化NAS路径
+            if (subtask.params.nas_path) {
+                const input = document.getElementById(`nas-path-input-${subtask.id}`);
                 if (input) {
-                    // 兼容旧数据（字符串）和新数据（数组）
-                    const val = Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path;
-                    input.value = val;
-                    handleGalleryPathInput(input, subtask.id);
+                    input.value = subtask.params.nas_path;
                 }
             }
 
@@ -3688,49 +4200,71 @@
         function renderSubtaskEditForm(subtask) {
             if (subtask.type === 'divi_multi_side_custom') {
                 return `
-                    <div class="dynamic-fields">
-                        <div class="form-group">
+                    <div class="dynamic-fields divi-multi-side-grid">
+                        <!-- 迪唯账号 -->
+                        <div class="form-group" style="margin: 0;">
                             <label class="form-label">迪唯账号 <span style="color: var(--danger-color);">*</span></label>
                             <div id="diwei-account-select-${subtask.id}" class="searchable-select single" data-placeholder="选择迪唯账号"></div>
                         </div>
 
-                        <div class="form-group">
+                        <!-- 产品 -->
+                        <div class="form-group" style="margin: 0;">
                             <label class="form-label">产品 <span style="color: var(--danger-color);">*</span></label>
                             <div id="multi-product-select-${subtask.id}" class="searchable-select multiple" data-placeholder="选择产品（可多选）"></div>
                         </div>
 
-                        <div class="form-group has-autocomplete">
-                            <label class="form-label">图库目录 <span style="color: var(--danger-color);">*</span></label>
-                            <div class="product-ids-wrapper">
-                                <input type="text" class="form-control gallery-path-input"
-                                       id="gallery-path-input-${subtask.id}"
-                                       value="${subtask.params.gallery_path ? (Array.isArray(subtask.params.gallery_path) ? subtask.params.gallery_path.join(' ') : subtask.params.gallery_path) : ''}"
-                                       placeholder="输入多级目录，如 10月 10.31 10.31-樱花"
-                                       data-subtask-id="${subtask.id}"
-                                       oninput="handleGalleryPathInput(this, ${subtask.id})"
-                                       onfocus="showPathSuggestions(this)">
-                                <div class="product-ids-preview" id="gallery-path-preview-${subtask.id}">
-                                    <!-- 动态生成 -->
-                                </div>
-                                <div class="path-suggestions" id="path-suggestions-${subtask.id}">
-                                    <!-- 自动补全建议 -->
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
+                        <!-- 模式 -->
+                        <div class="form-group" style="margin: 0;">
                             <label class="form-label">模式 <span style="color: var(--danger-color);">*</span></label>
                             <div id="mode-select-${subtask.id}" class="searchable-select single" data-placeholder="选择模式"></div>
                         </div>
 
-                        <div class="form-group">
-                            <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
-                            <div id="craft-type-select-${subtask.id}" class="searchable-select single" data-placeholder="选择工艺类型"></div>
+                        <!-- NAS路径 -->
+                        <div class="form-group" style="margin: 0;">
+                            <label class="form-label">NAS路径 <span style="color: var(--danger-color);">*</span></label>
+                            <input type="text" class="form-control"
+                                   id="nas-path-input-${subtask.id}"
+                                   value="${subtask.params.nas_path || ''}"
+                                   placeholder="例: \\\\ZT-NAS\\运营三组\\wyy"
+                                   oninput="handleNasPathInput(this, ${subtask.id})">
+                            <small id="nas-path-error-${subtask.id}" style="color: var(--danger-color); display: none;">
+                                <i class="fas fa-exclamation-circle"></i> 路径必须以 \\\\ZT-NAS 开头
+                            </small>
+                            <small style="color: var(--text-tertiary);">必须是 NAS 路径，以 \\\\ZT-NAS 开头（与图库分类二选一）</small>
                         </div>
 
-                        <div class="form-group">
+                        <!-- 图库分类树形下拉框（更宽） -->
+                        <div class="form-group image-classify-group" style="margin: 0;">
+                            <label class="form-label">图库分类 <span style="color: var(--danger-color);">*</span> <small style="color: var(--text-tertiary); font-weight: normal;">（与NAS路径二选一）</small></label>
+                            <div class="tree-select-container" id="image-classify-container-${subtask.id}">
+                                <div class="tree-select-trigger" onclick="toggleImageClassifyDropdown(${subtask.id})">
+                                    <span id="image-classify-placeholder-${subtask.id}" class="tree-select-placeholder" style="display: ${subtask.params.image_classify_path ? 'none' : 'block'};">选择图库分类</span>
+                                    <span id="image-classify-value-${subtask.id}" class="tree-select-value">${subtask.params.image_classify_path || ''}</span>
+                                    <i class="fas fa-chevron-down tree-select-arrow"></i>
+                                </div>
+                                <div id="image-classify-dropdown-${subtask.id}" class="tree-dropdown hidden">
+                                    <div class="tree-search-box">
+                                        <i class="fas fa-search"></i>
+                                        <input type="text" id="image-classify-search-${subtask.id}" placeholder="搜索分类..." oninput="searchImageClassifyNodes(${subtask.id}, this.value)">
+                                    </div>
+                                    <div class="tree-content" id="image-classify-content-${subtask.id}">
+                                        <!-- 树形内容动态生成 -->
+                                    </div>
+                                </div>
+                            </div>
+                            <input type="hidden" id="image-classify-id-${subtask.id}" value="${subtask.params.image_classify_id || ''}">
+                        </div>
+
+                        <!-- 定制方式 -->
+                        <div class="form-group" style="margin: 0;">
                             <label class="form-label">定制方式 <span style="color: var(--danger-color);">*</span></label>
                             <div id="custom-method-select-${subtask.id}" class="searchable-select single" data-placeholder="选择定制方式"></div>
+                        </div>
+
+                        <!-- 工艺类型（占满整行） -->
+                        <div class="form-group craft-type-group" style="margin: 0;">
+                            <label class="form-label">工艺类型 <span style="color: var(--danger-color);">*</span></label>
+                            <div id="craft-type-select-${subtask.id}" class="searchable-select single" data-placeholder="选择工艺类型"></div>
                         </div>
 
                         <div class="form-group">
@@ -4795,6 +5329,28 @@
                         };
                     }
                     
+                    // 对 divi_multi_side_custom 类型，转换数据格式
+                    if (subtask.type === 'divi_multi_side_custom') {
+                        const nasPath = (params.nas_path || '').trim();
+                        const imageClassifyPath = params.image_classify_path || '';
+                        
+                        // 转换图库分类路径为列表
+                        let imageClassifyList = [];
+                        if (imageClassifyPath) {
+                            imageClassifyList = imageClassifyPath.split(' > ').map(s => s.trim()).filter(Boolean);
+                        }
+                        
+                        params = {
+                            ...params,
+                            nas_path: nasPath,  // 字符串，空则为空字符串
+                            image_classify: imageClassifyList,  // 列表，空则为空列表
+                            // 删除旧的 gallery_path 字段
+                            gallery_path: undefined,
+                            image_classify_id: undefined,
+                            image_classify_path: undefined
+                        };
+                    }
+                    
                     return {
                         id: subtask.id,
                         type: subtask.type,
@@ -4904,6 +5460,26 @@
                 if (subtask.type === 'divi_multi_side_custom') {
                     if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
                         showNotification(`子任务 #${subtask.order + 1} 的产品ID不能为空`, 'warning');
+                        return false;
+                    }
+
+                    // NAS路径和图库分类二选一验证
+                    // 注意：collectFormData 可能已经转换了数据格式，需要同时检查原始字段和转换后的字段
+                    const nasPath = (subtask.params.nas_path || '').trim();
+                    const imageClassifyId = subtask.params.image_classify_id;
+                    const imageClassifyList = subtask.params.image_classify || [];
+                    
+                    const hasNasPath = nasPath.length > 0;
+                    const hasImageClassify = imageClassifyId || (imageClassifyList.length > 0);
+                    
+                    if (!hasNasPath && !hasImageClassify) {
+                        showNotification(`子任务 #${subtask.order + 1} 必须填写NAS路径或选择图库分类（二选一）`, 'warning');
+                        return false;
+                    }
+                    
+                    // 如果填写了NAS路径，验证格式
+                    if (hasNasPath && !nasPath.toUpperCase().startsWith('\\\\ZT-NAS')) {
+                        showNotification(`子任务 #${subtask.order + 1} 的NAS路径必须以 \\\\ZT-NAS 开头`, 'warning');
                         return false;
                     }
 

@@ -203,6 +203,42 @@
     gap: 1rem;
 }
 
+/* 迪唯多面定制的网格布局 */
+.divi-multi-side-grid {
+    grid-template-columns: repeat(6, 1fr);
+}
+
+.divi-multi-side-grid .form-group {
+    grid-column: span 2;
+}
+
+.divi-multi-side-grid .image-classify-group {
+    grid-column: span 3;
+}
+
+.divi-multi-side-grid .craft-type-group {
+    grid-column: span 3;
+}
+
+/* 响应式：小屏幕下每行一个 */
+@media (max-width: 1200px) {
+    .divi-multi-side-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .divi-multi-side-grid .form-group,
+    .divi-multi-side-grid .image-classify-group,
+    .divi-multi-side-grid .craft-type-group {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .divi-multi-side-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* 自动化铺货子任务的动态字段 */
 .diwei-fields [id^="export-fields-"],
 .diwei-fields [id^="custom-fields-"] {

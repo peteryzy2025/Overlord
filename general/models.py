@@ -477,6 +477,7 @@ class AmazonShop(models.Model):
         verbose_name='运营人员'
     )
     shop_status = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺情况')
+
     customer = models.CharField(max_length=100, blank=True, null=True, db_comment='客户')
     shop_number = models.IntegerField(blank=True, null=True, db_comment='店铺序号')
     shop_name = models.CharField(max_length=100, blank=True, null=True, db_comment='店铺名')

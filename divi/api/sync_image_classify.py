@@ -205,7 +205,7 @@ def sync_image_classify(cookie=None, technology_classify_id=100002):
     print(f"🗑️  清空账号 {username} 的旧数据...")
     DiviImageClassify.objects.filter(username=username).delete()
     print("✅ 已清空")
-    
+    print(f"✅ 验证清空: {DiviImageClassify.objects.filter(username=username).count()} 个")
     # 3. 保存到数据库
     print("💾 保存到数据库...")
     created, updated = save_tree_to_db(tree_data, username=username)

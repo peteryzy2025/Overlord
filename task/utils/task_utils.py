@@ -138,8 +138,7 @@ def validate_subtask_params(subtask_type, params, user):
 
         elif subtask_type == 'divi_multi_side_custom':
             # 迪唯多面定制验证逻辑
-            required_fields = ['product_ids', 'mode', 'diwei_account',
-                               'gallery_path', 'craft_type']
+            required_fields = ['product_ids', 'mode', 'diwei_account', 'craft_type']
 
             for field in required_fields:
                 if field not in params:
@@ -161,6 +160,20 @@ def validate_subtask_params(subtask_type, params, user):
             # 验证工艺类型
             if params.get('craft_type') not in ['print', 'emboss', 'laser']:
                 return {'valid': False, 'message': '工艺类型无效'}
+
+            # NAS路径和图库分类二选一验证
+            nas_path = params.get('nas_path', '').strip()
+            image_classify = params.get('image_classify', [])
+            
+            has_nas_path = bool(nas_path)
+            has_image_classify = isinstance(image_classify, list) and len(image_classify) > 0
+            
+            if not has_nas_path and not has_image_classify:
+                return {'valid': False, 'message': '必须填写NAS路径或选择图库分类（二选一）'}
+            
+            # 如果填写了NAS路径，验证格式
+            if has_nas_path and not nas_path.upper().startswith('\\\\ZT-NAS'):
+                return {'valid': False, 'message': 'NAS路径必须以 \\\\ZT-NAS 开头'}
 
         elif subtask_type == 'temu_export':
             # 验证店铺ID

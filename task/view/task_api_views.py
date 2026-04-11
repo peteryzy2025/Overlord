@@ -1353,12 +1353,17 @@ def create_task_api(request):
                             except (ValueError, AttributeError):
                                 custom_coords_list = []
                         
+                        # 获取NAS路径和图库分类
+                        nas_path = params.get('nas_path', '')
+                        image_classify = params.get('image_classify', [])
+                        
                         subtask_params = {
                             '产品ID列表': params.get('product_ids', []),
                             '模式': '适应' if params.get('mode') == 'adapt' else '填充',
                             '迪唯账号': params.get('diwei_account', ''),
                             '迪唯登录账号': params.get('diwei_login_account', ''),
-                            '图库路径': params.get('gallery_path', []),
+                            'NAS路径': nas_path,
+                            '图库分类': image_classify if isinstance(image_classify, list) else [],
                             '工艺类型': {
                                 'print': '印花',
                                 'emboss': '刺绣',
@@ -2023,4 +2028,65 @@ def get_divi_export_templates_api(request):
         return JsonResponse({
             'success': False,
             'message': f'获取汇出模板列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_image_classifies_api(request):
+    """
+    获取 DIVI 图库分类树形数据（根据迪唯账号筛选）
+    GET /api/divi/image-classifies/?username=YMX-26
+    
+    参数:
+        username: 迪唯账号用户名（如 YMX-26，必填）
+    
+    返回: 树形结构数据 [{ id, label, children: [...] }]
+    """
+    try:
+        from divi.models import DiviImageClassify
+        
+        username = request.GET.get('username', '').strip()
+        
+        if not username:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: username'
+            }, status=400)
+        
+        # 查询该账号下的所有分类
+        classifies = DiviImageClassify.objects.filter(
+            username=username
+        ).order_by('level', 'sort_order', 'id')
+        
+        # 构建树形结构
+        node_map = {}
+        root_nodes = []
+        
+        for cls in classifies:
+            node = {
+                'id': cls.id,
+                'label': cls.label,
+                'level': cls.level,
+                'path': cls.path or '',
+                'children': []
+            }
+            node_map[cls.id] = node
+            
+            if cls.parent_id and cls.parent_id in node_map:
+                node_map[cls.parent_id]['children'].append(node)
+            else:
+                root_nodes.append(node)
+        
+        return JsonResponse({
+            'success': True,
+            'data': root_nodes
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'获取图库分类失败: {str(e)}'
         }, status=500)

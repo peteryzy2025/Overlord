@@ -63,7 +63,6 @@ class ProductRankHistory(models.Model):
         return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
 
 
-
 class AmazonThemeNovelty(models.Model):
     """亚马逊主题，存放稳定的基础信息"""
     asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
@@ -85,6 +84,14 @@ class AmazonThemeNovelty(models.Model):
         blank=True,
         related_name='asins',
         verbose_name='所属新奇特主题'
+    )
+    theme_novelty_summary = models.ForeignKey(
+        'ThemeNoveltySummary',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='summary_subject',
+        verbose_name='所属新奇特聚合主题'
     )
 
     class Meta:
@@ -194,16 +201,19 @@ class ThemeDailySubjectStat(models.Model):
 
 class ThemeTrashBin(models.Model):
     asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
+
     class Meta:
-        db_table= "theme_trash_bin"
+        db_table = "theme_trash_bin"
+
     def __str__(self):
         return self.asin
 
-#---------------------------
+
+# ---------------------------
 
 class StatusCodeMapping(models.Model):
     """商标状态码映射表"""
-    status_code = models.CharField(max_length=50,verbose_name='商标状态码', primary_key=True)
+    status_code = models.CharField(max_length=50, verbose_name='商标状态码', primary_key=True)
     status_type = models.CharField(max_length=50, verbose_name='商标状态类型')
 
     class Meta:
@@ -258,7 +268,7 @@ class TroTable(models.Model):
         blank=True,
         help_text='检测到侵权时建议使用的替代词汇'
     )
-    name_type = models.IntegerField(verbose_name='侵权类型码',null=True, blank=True)
+    name_type = models.IntegerField(verbose_name='侵权类型码', null=True, blank=True)
     international_classes = models.ManyToManyField(
         'NiceClassification',
         related_name='tro_words',
@@ -274,9 +284,11 @@ class TroTable(models.Model):
         related_name='tro_words',  # 反向查询：shop.tro_words.all()
         verbose_name='所属店铺'
     )
+
     class Category(models.IntegerChoices):
         TEXT = 1, '文字侵权'
         COPYRIGHT = 2, '版权侵权'
+
     category = models.IntegerField(
         verbose_name='侵权分类',
         choices=Category.choices,  # type: ignore
@@ -490,16 +502,18 @@ class NicheMarket(models.Model):
 
 class AmazonNewReleaseRank(models.Model):
     """亚马逊新品榜主题，存放稳定的基础信息"""
+
     class Fulfillment(models.TextChoices):
         AMZ = "AMZ"
         FBA = "FBA"
         FBM = "FBM"
+
     asin = models.CharField(max_length=10, primary_key=True, verbose_name='ASIN')
     title = models.CharField(max_length=500, verbose_name='产品标题')
     title_translation = models.CharField(max_length=500, blank=True, verbose_name='标题译文')
     subject = models.CharField(max_length=200, verbose_name='产品主题')
     subject_translation = models.CharField(max_length=200, blank=True, verbose_name='主题译文')
-    category = models.CharField(max_length=100, db_index=True,verbose_name="产品分类")
+    category = models.CharField(max_length=100, db_index=True, verbose_name="产品分类")
     image_url = models.URLField(max_length=500, verbose_name='图片链接')
     launch_date = models.DateField(null=True, blank=True, verbose_name='上架日期')
     summary_subject = models.ForeignKey(
@@ -516,7 +530,7 @@ class AmazonNewReleaseRank(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     denoising = models.BooleanField(default=False, verbose_name='是否去噪', db_index=True)
     fulfillment = models.CharField(max_length=10,
-                                   choices=Fulfillment.choices,#type:ignore
+                                   choices=Fulfillment.choices,  # type:ignore
                                    null=True,
                                    blank=True,
                                    verbose_name="配送方式")
@@ -532,11 +546,12 @@ class AmazonNewReleaseRank(models.Model):
     def __str__(self):
         return f"{self.asin} - {self.title[:50]}"
 
+
 class ThemeSummary(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
-    summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
-    report = models.BooleanField(default=False, verbose_name='举报主题') # 目前不用
-    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间',db_index=True)
+    summary_subject_title = models.CharField(max_length=525, verbose_name='汇总主题', unique=True)
+    report = models.BooleanField(default=False, verbose_name='举报主题')  # 目前不用
+    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', db_index=True)
 
     class Meta:
         db_table = 'theme_summary'
@@ -547,7 +562,6 @@ class ThemeSummary(models.Model):
 
     def __str__(self):
         return f'{self.summary_subject_title}'
-
 
 
 class NewReleaseThemeReport(models.Model):
@@ -590,8 +604,8 @@ class NewReleaseThemeReport(models.Model):
         if self.pk:
             previous = type(self).objects.filter(pk=self.pk).values('reporter_id', 'theme_id').first()
             if previous and (
-                previous['reporter_id'] != self.reporter_id or
-                previous['theme_id'] != self.theme_id
+                    previous['reporter_id'] != self.reporter_id or
+                    previous['theme_id'] != self.theme_id
             ):
                 raise ValidationError('主题举报记录创建后不可修改，请删除后重新创建')
 
@@ -785,7 +799,6 @@ class ThemeNewDailyData(models.Model):
     )
     crawl_date = models.DateField(verbose_name='抓取日期')
 
-
     rank_category = models.CharField(max_length=100, null=True, blank=True, verbose_name='排名分类1')
     rank = models.IntegerField(null=True, blank=True, verbose_name='排名1')
 
@@ -812,7 +825,6 @@ class ThemeNewDailyData(models.Model):
     def __str__(self):
         rank_display = self.rank if self.rank is not None else '暂无排名'
         return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
-
 
 
 # =============================================================================
@@ -906,11 +918,10 @@ class ThemeNoveltyDailyData(models.Model):
         return f"{self.novelty_theme.subject.canonical_subject[:30]} - {self.theme_date}"
 
 
-
 class ThemeNoveltySummary(models.Model):
     id = models.AutoField(primary_key=True, verbose_name='ID')
-    summary_subject_title = models.CharField(max_length=525,verbose_name='汇总主题', unique=True)
-    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间',db_index=True)
+    summary_subject_title = models.CharField(max_length=525, verbose_name='汇总主题', unique=True)
+    created_time = models.DateTimeField(null=True, blank=True, verbose_name='创建时间', db_index=True)
 
     class Meta:
         db_table = 'theme_novelty_summary'
@@ -921,5 +932,3 @@ class ThemeNoveltySummary(models.Model):
 
     def __str__(self):
         return f'{self.summary_subject_title}'
-
-
