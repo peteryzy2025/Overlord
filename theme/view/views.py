@@ -116,16 +116,7 @@ def product_list_page(request):
 # 2. 产品数据API接口
 # ============================================
 
-@theme_access_required
-@csrf_exempt
-@require_POST
-def api_amazon_products(request):
-    """
-    产品数据API接口 - 提供产品列表数据（支持筛选、排序、分页）
-    请求方法: POST
-    请求地址: /api/amazon-products/
-    请求体: JSON格式的筛选、排序、分页参数
-    """
+def _api_amazon_products_impl(request):
     try:
         # 1. 解析请求数据
         data = json.loads(request.body)
@@ -507,6 +498,19 @@ def api_amazon_products(request):
         }, status=500)
 
 
+@theme_access_required
+@csrf_exempt
+@require_POST
+def api_amazon_products(request):
+    """
+    产品数据API接口 - 提供产品列表数据（支持筛选、排序、分页）
+    请求方法: POST
+    请求地址: /api/amazon-products/
+    请求体: JSON格式的筛选、排序、分页参数
+    """
+    return _api_amazon_products_impl(request)
+
+
 @csrf_exempt
 @require_POST
 @external_amazon_products_auth_required
@@ -516,7 +520,7 @@ def external_api_amazon_products(request):
     Header: X-RPA-Secret: <secret>
     Body: 与 /api/amazon-products/ 相同的 JSON 参数
     """
-    return api_amazon_products(request)
+    return _api_amazon_products_impl(request)
 
 
 @theme_access_required

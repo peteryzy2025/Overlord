@@ -16,6 +16,10 @@ class ApprovalStatus(models.TextChoices):
     PENDING = 'pending', '审批中'
     APPROVED = 'approved', '已通过'
     REJECTED = 'rejected', '已驳回'
+    WAITING = 'waiting', '待执行'
+    EXECUTING = 'executing', '执行中'
+    SUCCESS = 'success', '执行成功'
+    FAILED = 'failed', '执行失败'
 
 
 class ApprovalType(models.TextChoices):
@@ -25,9 +29,9 @@ class ApprovalType(models.TextChoices):
 
 class ExecStatus(models.TextChoices):
     """执行状态"""
-    PENDING = 'pending', '待执行'
+    WAITING = 'waiting', '待执行'
     EXECUTING = 'executing', '执行中'
-    COMPLETED = 'completed', '执行成功'
+    COMPLETED = 'success', '执行成功'
     FAILED = 'failed', '执行失败'
 
 
@@ -36,6 +40,10 @@ class StepStatus(models.TextChoices):
     PENDING = 'pending', '待审批'
     COMPLETED = 'completed', '已完成'
     SKIPPED = 'skipped', '已跳过'
+    WAITING = 'waiting', '待执行'
+    EXECUTING = 'executing', '执行中'
+    SUCCESS = 'success', '执行成功'
+    FAILED = 'failed', '执行失败'
 
 
 class RecordResult(models.TextChoices):
@@ -420,7 +428,7 @@ class AmazonAdShopConfig(models.Model):
         '执行状态',
         max_length=20,
         choices=ExecStatus.choices,
-        default=ExecStatus.PENDING,
+        default=ExecStatus.WAITING,
         db_comment='RPA执行状态'
     )
 

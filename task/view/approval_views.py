@@ -90,12 +90,17 @@ def user_has_shop_access(user, sid):
 
 
 def get_current_status_label(approval):
-    if approval.status == ApprovalStatus.APPROVED:
-        return '已通过'
-    if approval.status == ApprovalStatus.REJECTED:
-        return '已驳回'
-    if approval.status == ApprovalStatus.DRAFT:
-        return '草稿'
+    status_map = {
+        ApprovalStatus.APPROVED: '已通过',
+        ApprovalStatus.REJECTED: '已驳回',
+        ApprovalStatus.DRAFT: '草稿',
+        ApprovalStatus.WAITING: '待执行',
+        ApprovalStatus.EXECUTING: '执行中',
+        ApprovalStatus.SUCCESS: '执行成功',
+        ApprovalStatus.FAILED: '执行失败',
+    }
+    if approval.status in status_map:
+        return status_map[approval.status]
     if approval.current_step_sequence == 0:
         return '组长审核中'
     if approval.current_step_sequence == 1:
@@ -106,24 +111,15 @@ def get_current_status_label(approval):
 
 
 def get_exec_status_summary(approval):
-    if approval.status != ApprovalStatus.APPROVED:
-        return None, None
-    ad_detail = getattr(approval, 'ad_detail', None)
-    if not ad_detail:
-        return '已通过', 'approved'
-    configs = ad_detail.shop_configs.all()
-    if not configs:
-        return '已通过', 'approved'
-    exec_status_map = dict(ExecStatus.choices)
-    counts = {}
-    for config in configs:
-        label = exec_status_map.get(config.exec_status, config.exec_status)
-        counts[label] = counts.get(label, 0) + 1
-    if len(counts) == 1:
-        single_status = configs[0].exec_status
-        return list(counts.keys())[0], single_status
-    parts = [f'{label}({count})' for label, count in counts.items()]
-    return ' / '.join(parts), 'mixed'
+    exec_status_map = {
+        ApprovalStatus.WAITING: ('待执行', 'waiting'),
+        ApprovalStatus.EXECUTING: ('执行中', 'executing'),
+        ApprovalStatus.SUCCESS: ('执行成功', 'success'),
+        ApprovalStatus.FAILED: ('执行失败', 'failed'),
+    }
+    if approval.status in exec_status_map:
+        return exec_status_map[approval.status]
+    return None, None
 
 
 def create_approval_steps(approval, applicant):
@@ -808,7 +804,7 @@ def approval_leader_action_api(request):
             next_step.status = StepStatus.SKIPPED
             next_step.save()
 
-        approval.status = ApprovalStatus.APPROVED
+        approval.status = ApprovalStatus.WAITING
         approval.current_step_sequence = 2
         approval.completed_at = timezone.now()
         approval.save()
@@ -933,7 +929,7 @@ def _process_approval_action(approval, user, action):
             s.status = StepStatus.SKIPPED
             s.save()
 
-        approval.status = ApprovalStatus.APPROVED
+        approval.status = ApprovalStatus.WAITING
         approval.current_step_sequence = approval.total_steps
         approval.completed_at = timezone.now()
         approval.save()
@@ -1317,6 +1313,22 @@ def external_update_exec_status_api(request):
                 updated_count = AmazonAdShopConfig.objects.filter(
                     amazon_ad=ad_detail
                 ).update(exec_status=exec_status)
+
+            # 同步更新 Approval.status
+            all_configs = AmazonAdShopConfig.objects.filter(amazon_ad=ad_detail)
+            exec_statuses = list(all_configs.values_list('exec_status', flat=True))
+            
+            new_approval_status = None
+            if 'failed' in exec_statuses:
+                new_approval_status = ApprovalStatus.FAILED
+            elif all(s == 'success' for s in exec_statuses):
+                new_approval_status = ApprovalStatus.SUCCESS
+            elif all(s == 'executing' for s in exec_statuses):
+                new_approval_status = ApprovalStatus.EXECUTING
+            
+            if new_approval_status and approval.status != new_approval_status:
+                approval.status = new_approval_status
+                approval.save(update_fields=['status', 'updated_at'])
 
         resp_data = {
             'approval_no': approval_no,
