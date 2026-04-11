@@ -18,6 +18,7 @@ urlpatterns = [
     path('shop_guard/', include('shop_guard.urls')),
     path('inventory/', include('inventory.urls')),
     path('data_req/', include('data_req.urls')),
+    path('', include('divi.urls')),  # 包含 Divi 应用的路由
 ]
 
 # 开发环境下提供媒体文件服务

@@ -218,21 +218,42 @@ class SearchableSelect {
             return `<div class="no-options">${this.config.noMatchText}</div>`;
         }
 
-        return filtered.map(opt => {
+        const fragment = document.createDocumentFragment();
+        
+        filtered.forEach(opt => {
             const optionValue = this.normalizeOptionValue(opt.value);
             const isSelected = this.config.multiple
                 ? this.selectedValues.includes(optionValue)
                 : this.normalizeOptionValue(this.selectedValues) === optionValue;
             const isDisabled = !!opt.disabled;
             
-            return `
-                <div class="option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
-                     data-value="${optionValue}">
-                    ${this.config.multiple ? '<span class="checkbox"></span>' : ''}
-                    <span class="option-text">${opt.label}</span>
-                </div>
-            `;
-        }).join('');
+            const div = document.createElement('div');
+            div.className = `option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`;
+            div.dataset.value = optionValue;
+            
+            if (this.config.multiple) {
+                const checkbox = document.createElement('span');
+                checkbox.className = 'checkbox';
+                div.appendChild(checkbox);
+            }
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'option-text';
+            // 使用 htmlLabel 时设置 innerHTML，否则使用 textContent
+            if (opt.htmlLabel) {
+                textSpan.innerHTML = opt.htmlLabel;
+            } else {
+                textSpan.textContent = opt.label;
+            }
+            div.appendChild(textSpan);
+            
+            fragment.appendChild(div);
+        });
+        
+        // 创建一个临时容器来返回 HTML 字符串
+        const temp = document.createElement('div');
+        temp.appendChild(fragment);
+        return temp.innerHTML;
     }
 
     getFilteredOptions() {
@@ -383,7 +404,12 @@ class SearchableSelect {
                 this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
             } else {
                 const opt = this.options.find(o => o.value == this.selectedValues);
-                this.selectedText.textContent = opt ? opt.label : this.selectedValues;
+                if (opt) {
+                    // 优先使用 htmlLabel（支持HTML），否则使用 label
+                    this.selectedText.innerHTML = opt.htmlLabel || opt.label;
+                } else {
+                    this.selectedText.textContent = this.selectedValues;
+                }
             }
         }
 

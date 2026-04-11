@@ -777,24 +777,23 @@ def get_available_shops_api(request):
             if shop_type == 'amazon':
                 shops_data.append({
                     'id': shop.id,
-                    'name': f"{shop.shop_name} ({shop.ops.first_name if shop.ops else '无运营'})",
-                    'raw_name': shop.shop_name
+                    'raw_name': shop.shop_name,
+                    'shop_status': shop.shop_status or '',  # 店铺状态
+                    'ops_name': shop.ops.first_name if shop.ops else '无运营'  # 运营人员
                 })
             else:  # temu
-                # 手动查询运营姓名
-                try:
-                    user = User.objects.get(id=shop.ops_id) if shop.ops_id else None
-                    ops_name = user.first_name if user else '无运营'
-                except User.DoesNotExist:
-                    ops_name = '无运营'
-
                 shops_data.append({
                     'id': shop.id,
-                    'name': f"{shop.shop_name} ({ops_name})",
                     'raw_name': shop.shop_name
                 })
 
-        shops_data.sort(key=lambda x: x['raw_name'])
+        # 排序：正常状态的排在前面，然后按店铺名排序
+        def sort_key(x):
+            status = x.get('shop_status', '')
+            is_normal = 0 if status == '正常' else 1
+            return (is_normal, x['raw_name'])
+        
+        shops_data.sort(key=sort_key)
 
         return JsonResponse({'success': True, 'data': shops_data})
 
@@ -1885,7 +1884,7 @@ def get_diwei_accounts_api(request):
     GET /api/tasks/diwei-accounts/
     返回: [{ value: 'divi_username', label: 'divi_username（diwei_account）' }]
     排序: 按 user_id 升序
-    筛选: 当前公司 + diwei_account 非空
+    筛选: 当前公司 + diwei_account 非空 + 权限控制
     """
     try:
         from general.models import OperationalAccount
@@ -1898,8 +1897,8 @@ def get_diwei_accounts_api(request):
                 'message': '当前用户未分配公司'
             }, status=403)
         
-        # 筛选：当前公司的用户 + divi_username 非空 + diwei_account 非空
-        accounts = OperationalAccount.objects.filter(
+        # 基础查询：当前公司的用户 + divi_username 非空 + diwei_account 非空
+        queryset = OperationalAccount.objects.filter(
             user__company=current_company
         ).exclude(
             divi_username__isnull=True
@@ -1909,7 +1908,26 @@ def get_diwei_accounts_api(request):
             diwei_account__isnull=True
         ).exclude(
             diwei_account=''
-        ).order_by('user_id').values('divi_username', 'diwei_account')
+        )
+        
+        # 权限过滤
+        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        if 'ops_all' not in permissions:
+            if 'ops_group' in permissions and hasattr(request.user, 'operational_account'):
+                # 组长：可以看到组内成员的（包括自己）
+                group_name = request.user.operational_account.ops_group
+                if group_name:
+                    queryset = queryset.filter(
+                        user__operational_account__ops_group=group_name
+                    )
+                else:
+                    # 组长但未分组，只能看到自己的
+                    queryset = queryset.filter(user=request.user)
+            else:
+                # 普通用户：只能看到自己的
+                queryset = queryset.filter(user=request.user)
+        
+        accounts = queryset.order_by('user_id').values('divi_username', 'diwei_account')
         
         data = []
         for account in accounts:

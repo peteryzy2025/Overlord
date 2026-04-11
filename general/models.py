@@ -530,7 +530,7 @@ class AmazonShop(models.Model):
     email_163_account = models.CharField(max_length=255, blank=True, null=True, db_comment='163大师账号')
     ling_xing_if = models.SmallIntegerField(db_comment='是否绑定领星')
     browser = models.CharField(max_length=255, db_comment='浏览器')
-    divi_shop_id = models.IntegerField(blank=True, null=True, db_comment='迪唯店铺id')
+    divi_shop_id = models.IntegerField(blank=True, null=True, unique=True,db_comment='迪唯店铺id')
     qupital_if = models.BooleanField(db_comment='是否绑定qupital', default=False)
 
     class Meta:

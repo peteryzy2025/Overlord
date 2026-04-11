@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
     <link rel="stylesheet" href="{% static 'css/task_create.css' %}">
     <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260321-filter-grid">
-    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/searchable-select.js' %}?v=20250411-html-label"></script>
     
     <!-- Pro版本金色流光特效 -->
     <style>
@@ -190,6 +190,60 @@
         
         .subtask-type:hover .fa-question-circle {
             opacity: 1;
+        }
+        
+        /* 店铺状态标签样式 */
+        .shop-status-tag {
+            display: inline-block !important;
+            padding: 1px 6px !important;
+            border-radius: 4px !important;
+            font-size: 0.75rem !important;
+            font-weight: 500 !important;
+            margin-left: 4px !important;
+            line-height: 1.4 !important;
+            white-space: nowrap !important;
+        }
+        
+        .shop-status-tag.status-active {
+            background-color: #dcfce7 !important;
+            color: #166534 !important;
+            border: 1px solid #86efac !important;
+        }
+        
+        .shop-status-tag.status-inactive {
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px solid #fca5a5 !important;
+        }
+        
+        .shop-status-tag.status-cancelled {
+            background-color: #f3f4f6 !important;
+            color: #4b5563 !important;
+            border: 1px solid #d1d5db !important;
+        }
+        
+        .shop-status-tag.status-warning {
+            background-color: #ffedd5 !important;
+            color: #9a3412 !important;
+            border: 1px solid #fdba74 !important;
+        }
+        
+        .shop-status-tag.status-pending {
+            background-color: #dbeafe !important;
+            color: #1e40af !important;
+            border: 1px solid #93c5fd !important;
+        }
+        
+        .shop-status-tag.status-unknown {
+            background-color: #f3e8ff !important;
+            color: #6b21a8 !important;
+            border: 1px solid #d8b4fe !important;
+        }
+        
+        .shop-status-tag.status-default {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+            border: 1px solid #d1d5db !important;
         }
     </style>
 {% endblock %}
@@ -582,6 +636,46 @@
         let galleryPathCache = [];
         let diweiAccountsCache = [];
         let draftDataToLoad = null;
+        
+        // 当前用户的迪唯账号（用于默认值）
+        const currentUserDiviUsername = "{{ request.user.operational_account.divi_username|default:'' }}";
+        
+        // 格式化店铺名称（加上运营人员和状态）- 仅用于 Amazon
+        // 返回对象：{ value, label, htmlLabel }
+        function formatShopOption(shop) {
+            const rawName = shop.raw_name || shop.shop_name || shop.name;
+            const opsName = shop.ops_name || '无运营';
+            const shopStatus = shop.shop_status || '';
+            
+            // 纯文本格式：店铺名（运营人员）[状态]
+            const label = rawName + `（${opsName}）` + (shopStatus ? `[${shopStatus}]` : '');
+            
+            // HTML格式：店铺名（运营人员）<状态标签>
+            let htmlLabel = rawName + `（${opsName}）`;
+            if (shopStatus) {
+                const statusClass = getStatusClass(shopStatus);
+                htmlLabel += ` <span class="shop-status-tag ${statusClass}">${shopStatus}</span>`;
+            }
+            
+            return {
+                value: rawName,
+                label: label,        // 纯文本，用于搜索
+                htmlLabel: htmlLabel // HTML格式，用于下拉列表显示
+            };
+        }
+        
+        // 获取状态对应的样式类
+        function getStatusClass(status) {
+            const statusClasses = {
+                '正常': 'status-active',
+                '停用': 'status-inactive',
+                '注销': 'status-cancelled',
+                '救店中': 'status-warning',
+                '审核中': 'status-pending',
+                '待定': 'status-unknown'
+            };
+            return statusClasses[status] || 'status-default';
+        }
 
         // ===== 工具函数 =====
         function getCsrfToken() {
@@ -863,16 +957,10 @@
                         const shopOpsId = String(shop.ops_id);
                         return shopOpsId === ownerId || shopOpsId === currentUserId;
                     })
-                    .map(shop => ({
-                        value: shop.raw_name || shop.shop_name || shop.name,
-                        label: shop.raw_name || shop.shop_name || shop.name
-                    }));
+                    .map(shop => formatShopOption(shop));
 
                 if (shopOptions.length === 0) {
-                    shopOptions = availableShops.amazon.map(shop => ({
-                        value: shop.raw_name || shop.shop_name || shop.name,
-                        label: shop.raw_name || shop.shop_name || shop.name
-                    }));
+                    shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
                 }
             }
 
@@ -929,7 +1017,7 @@
             });
 
             // 设置默认值：优先使用已保存的 diwei_account
-            let defaultValue = subtask.params.diwei_account || '陈柔';
+            let defaultValue = subtask.params.diwei_account || currentUserDiviUsername || '';
             const exists = accounts.some(a => a.value === defaultValue);
             if (!exists && accounts.length > 0) {
                 defaultValue = accounts[0].value;
@@ -1904,17 +1992,11 @@
                     const shopOpsId = String(shop.ops_id);
                     return shopOpsId === ownerId || shopOpsId === currentUserId;
                 })
-                .map(shop => ({
-                    value: shop.raw_name || shop.shop_name || shop.name,
-                    label: shop.raw_name || shop.shop_name || shop.name
-                }));
+                .map(shop => formatShopOption(shop));
 
             // 如果没有过滤出来的店铺，显示所有Amazon店铺
             if (shopOptions.length === 0) {
-                shopOptions = availableShops.amazon.map(shop => ({
-                    value: shop.raw_name || shop.shop_name || shop.name,
-                    label: shop.raw_name || shop.shop_name || shop.name
-                }));
+                shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
             }
 
             const shopSelect = new SearchableSelect(`#export-shops-select-${subtaskId}-${rowIndex}`, {
@@ -2280,16 +2362,16 @@
                     const shopOpsId = String(shop.ops_id);
                     return shopOpsId === ownerId || shopOpsId === currentUserId;
                 })
-                .map(shop => ({
-                    value: shop.raw_name || shop.shop_name || shop.name,
-                    label: shop.raw_name || shop.shop_name || shop.name
-                }));
+                .map(shop => platform === 'amazon' 
+                    ? formatShopOption(shop) 
+                    : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
+                );
 
             if (shopOptions.length === 0) {
-                shopOptions = sourceShops.map(shop => ({
-                    value: shop.raw_name || shop.shop_name || shop.name,
-                    label: shop.raw_name || shop.shop_name || shop.name
-                }));
+                shopOptions = sourceShops.map(shop => platform === 'amazon' 
+                    ? formatShopOption(shop) 
+                    : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
+                );
             }
 
             return shopOptions;
@@ -3049,7 +3131,7 @@
             if (type === 'divi_multi_side_custom') {
                 defaultParams = {
                     mode: 'adapt',
-                    diwei_account: '陈柔',
+                    diwei_account: currentUserDiviUsername || '',
                     craft_type: 'print',
                     custom_method: 'multi',
                     add_black_border: false,
@@ -3066,19 +3148,19 @@
                 };
             } else if (type === 'divi_custom') {
                 defaultParams = {
-                    diwei_account: '陈柔',
+                    diwei_account: currentUserDiviUsername || '',
                     gallery_path: '',
                     local_gallery_path: '',
                     custom_rows: []
                 };
             } else if (type === 'divi_export') {
                 defaultParams = {
-                    diwei_account: '陈柔',
+                    diwei_account: currentUserDiviUsername || '',
                     export_rows: []
                 };
             } else if (type === 'divi_export_pro') {
                 defaultParams = {
-                    diwei_account: '陈柔',
+                    diwei_account: currentUserDiviUsername || '',
                     platform: 'amazon',
                     need_split: false,
                     export_rows: []
@@ -3095,7 +3177,7 @@
 
             // 确保数组字段是独立的实例，避免引用共享
             if (type === 'divi_multi_side_custom') {
-                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.diwei_login_account) mergedParams.diwei_login_account = '';
                 if (!params.product_ids) mergedParams.product_ids = [];
                 if (!params.gallery_path) mergedParams.gallery_path = [];
@@ -3104,15 +3186,15 @@
                 if (mergedParams.is_tiled === undefined) mergedParams.is_tiled = false;
                 if (mergedParams.tile_type === undefined) mergedParams.tile_type = '';
             } else if (type === 'divi_custom') {
-                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
                 if (!params.custom_rows) mergedParams.custom_rows = [];
             } else if (type === 'divi_export') {
-                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.export_rows) mergedParams.export_rows = [];
             } else if (type === 'divi_export_pro') {
-                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.platform) mergedParams.platform = 'amazon';
                 if (params.need_split === undefined) mergedParams.need_split = false;
                 if (!params.export_rows) mergedParams.export_rows = [];
@@ -3138,7 +3220,7 @@
                 if (!params.file_list) mergedParams.file_list = [];
                 if (!params.file_paths) mergedParams.file_paths = [];
             } else if (type === 'divi_gallery_upload') {
-                if (!params.diwei_account) mergedParams.diwei_account = '陈柔';
+                if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.gallery_name) mergedParams.gallery_name = '';
                 if (!params.local_gallery_path) mergedParams.local_gallery_path = '';
             }
