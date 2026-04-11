@@ -67,6 +67,7 @@ def sync_templates_api(request):
         def run_sync():
             try:
                 print(f"[后台任务] 开始同步模板，company_id={company_id}")
+                print(f"[后台任务] 使用 Cookie: {cookie[:100]}...")  # 打印前100字符
                 stats = sync_templates_to_db(cookie=cookie, company_id=company_id)
                 print(f"[后台任务] 同步完成: {stats}")
             except Exception as e:

@@ -105,4 +105,7 @@ urlpatterns = [
     # ===== DIVI 产品相关接口 =====
     path('api/divi/products/', task_api_views.get_divi_products_api, name='get_divi_products'),
     path('api/divi/products/<int:product_id>/detail/', task_api_views.get_divi_product_detail_api, name='get_divi_product_detail'),
+    
+    # ===== DIVI 汇出模板接口 =====
+    path('api/divi/export-templates/', task_api_views.get_divi_export_templates_api, name='get_divi_export_templates'),
 ]

@@ -1249,9 +1249,6 @@ def create_task_api(request):
                         
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
-                            # 获取模板命名显示
-                            template_name_display = '产品ID' if row.get('template_name') == 'product_id' else '汇出店铺_产品ID'
-                            
                             # 获取尺码名称列表（优先使用size_names，如果没有则使用sizes作为后备）
                             size_names = row.get('size_names', [])
                             if not size_names and row.get('sizes'):
@@ -1272,12 +1269,17 @@ def create_task_api(request):
                             export_shop = row.get('export_shop', '')
                             export_shops = [export_shop] if export_shop else []
                             
+                            # 获取汇出模板信息
+                            export_template_id = row.get('export_template_id', '')
+                            export_template_name = row.get('export_template_name', '')
+                            
                             export_rows_cn.append({
                                 '产品ID': row.get('product_id', ''),
                                 '尺码名称列表': size_names,
                                 '颜色中文列表': color_names,
                                 '颜色英文列表': color_en_names,
-                                '模板命名': template_name_display,
+                                '汇出模板ID': export_template_id,
+                                '汇出模板名称': export_template_name,
                                 '最大汇出数量': row.get('max_export_quantity', 100),
                                 '汇出店铺列表': export_shops,
                                 '上架店铺列表': publish_shops,
@@ -1950,4 +1952,75 @@ def get_diwei_accounts_api(request):
         return JsonResponse({
             'success': False,
             'message': f'获取迪唯账号列表失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_export_templates_api(request):
+    """
+    获取 DIVI 汇出模板列表（根据产品和店铺筛选）
+    GET /api/divi/export-templates/?product_id=123&need_split=false&shop=店铺名
+    
+    参数:
+        product_id: 产品ID（必填）
+        need_split: 是否切表（true/false，必填）
+        shop: 店铺名（必填，不切表时传上架店铺，切表时传汇出店铺）
+    
+    返回: [{ template_id, template_name }]
+    """
+    try:
+        from divi.models import DiviExportTemplate
+        
+        product_id = request.GET.get('product_id')
+        need_split = request.GET.get('need_split', 'false').lower() == 'true'
+        shop_name = request.GET.get('shop', '').strip()
+        
+        if not product_id:
+            return JsonResponse({
+                'success': False,
+                'message': '缺少必要参数: product_id'
+            }, status=400)
+        
+        # 获取当前用户公司
+        company = request.user.company
+        if not company:
+            return JsonResponse({
+                'success': True,
+                'data': []
+            })
+        
+        # 基础查询：当前公司的模板，且包含所选产品
+        queryset = DiviExportTemplate.objects.filter(
+            company=company,
+            products__id=product_id
+        ).distinct()
+        
+        # 根据店铺进一步筛选
+        if shop_name:
+            queryset = queryset.filter(shops__shop_name=shop_name)
+        
+        # 组装数据
+        templates = queryset.order_by('-synced_at').values('template_id', 'template_name')
+        
+        data = []
+        for tpl in templates:
+            data.append({
+                'template_id': tpl['template_id'],
+                'template_name': tpl['template_name'] or f"模板-{tpl['template_id']}",
+                'value': tpl['template_id'],
+                'label': tpl['template_name'] or f"模板-{tpl['template_id']}"
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'获取汇出模板列表失败: {str(e)}'
         }, status=500)

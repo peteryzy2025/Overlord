@@ -1311,7 +1311,6 @@
         function renderExportProRow(subtaskId, rowIndex, rowData = {}, subtaskNeedSplit = false) {
             const colors = rowData.colors || [];
             const sizes = rowData.sizes || [];
-            const templateName = rowData.template_name || 'product_id';
             const exportShop = rowData.export_shop || '';
             const publishShops = rowData.publish_shops || [];
             
@@ -1398,13 +1397,6 @@
                     <!-- 强制换行 -->
                     <div style="flex-basis: 100%; height: 0;"></div>
 
-                    <!-- 模板命名下拉框 -->
-                    <div class="form-group" style="margin: 0; flex: 1; min-width: 120px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">模板命名</label>
-                        <div id="export-pro-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
-                             data-placeholder="选择命名规则"></div>
-                    </div>
-
                     <!-- 最大汇出数量下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 0.8; min-width: 100px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">最大汇出数量</label>
@@ -1422,8 +1414,16 @@
                     <!-- 上架店铺下拉框（多选） -->
                     <div class="form-group" style="margin: 0; flex: 1.2; min-width: 160px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">上架店铺 <span style="color: var(--danger-color);">*</span></label>
-                        <div id="export-pro-publish-shops-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
+                        <div id="export-pro-publish-shops-select-${subtaskId}-${rowIndex}" class="searchable-select ${subtaskNeedSplit ? 'multiple' : 'single'}"
                              data-placeholder="选择上架店铺"></div>
+                    </div>
+
+                    <!-- 汇出模板下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 1.5; min-width: 200px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出模板 <span style="color: var(--danger-color);">*</span></label>
+                        <div id="export-pro-export-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择汇出模板"></div>
+                        <small id="export-template-hint-${subtaskId}-${rowIndex}" style="color: var(--text-tertiary); display: none;">请先选择产品和店铺</small>
                     </div>
 
                     <!-- 删除按钮 -->
@@ -2067,10 +2067,12 @@
                 updateExportProRow(subtaskId, rowIndex, 'product_id', String(selectedProductId));
             }
 
-            productSelect.onChange = (value) => {
+            productSelect.onChange = async (value) => {
                 updateExportProRow(subtaskId, rowIndex, 'product_id', value);
                 if (value) {
-                    loadProductColorsAndSizesForProRow(subtaskId, rowIndex, value);
+                    await loadProductColorsAndSizesForProRow(subtaskId, rowIndex, value);
+                    // 产品变化时刷新汇出模板
+                    await refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
                 }
             };
 
@@ -2122,29 +2124,115 @@
             selectEl._colorSelectInstance = colorSelect;
         }
 
-        // ===== 初始化 Pro 版本模板命名选择器 =====
-        function initExportProRowTemplateSelect(subtaskId, rowIndex, selectedValue = 'product_id') {
-            const selectEl = document.querySelector(`#export-pro-template-select-${subtaskId}-${rowIndex}`);
+        // ===== 初始化 Pro 版本汇出模板选择器 =====
+        async function initExportProRowExportTemplateSelect(subtaskId, rowIndex, selectedTemplateId = '') {
+            const selectEl = document.querySelector(`#export-pro-export-template-select-${subtaskId}-${rowIndex}`);
+            const hintEl = document.querySelector(`#export-template-hint-${subtaskId}-${rowIndex}`);
             if (!selectEl || selectEl.dataset.initialized) return;
 
-            const templateOptions = [
-                { value: 'product_id', label: '产品ID' },
-                { value: 'shop_product_id', label: '汇出店铺_产品ID' }
-            ];
+            // 获取当前行的数据
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            const row = subtask?.params?.export_rows?.[rowIndex];
+            if (!row) return;
 
-            const templateSelect = new SearchableSelect(`#export-pro-template-select-${subtaskId}-${rowIndex}`, {
-                options: templateOptions,
-                multiple: false,
-                placeholder: '选择命名规则'
-            });
+            const productId = row.product_id;
+            const needSplit = subtask?.params?.need_split || false;
+            // publish_shops 可能是字符串或数组
+            let shop = '';
+            if (needSplit) {
+                shop = row.export_shop || '';
+            } else {
+                const ps = row.publish_shops;
+                if (Array.isArray(ps) && ps.length > 0) {
+                    shop = ps[0];
+                } else if (typeof ps === 'string' && ps) {
+                    shop = ps;
+                }
+            }
 
-            templateSelect.setValue(selectedValue);
-            templateSelect.onChange = (value) => {
-                updateExportProRow(subtaskId, rowIndex, 'template_name', value);
-            };
+            // 如果没有产品或店铺，显示提示并创建空选择器
+            if (!productId || !shop) {
+                if (hintEl) hintEl.style.display = 'block';
+                
+                const templateSelect = new SearchableSelect(`#export-pro-export-template-select-${subtaskId}-${rowIndex}`, {
+                    options: [],
+                    multiple: false,
+                    placeholder: '请先选择产品和店铺'
+                });
+                
+                selectEl.dataset.initialized = 'true';
+                selectEl._exportTemplateSelectInstance = templateSelect;
+                return;
+            }
+            if (hintEl) hintEl.style.display = 'none';
 
-            selectEl.dataset.initialized = 'true';
-            selectEl._templateSelectInstance = templateSelect;
+            // 加载模板列表
+            try {
+                const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&need_split=${needSplit}&shop=${encodeURIComponent(shop)}`);
+                const result = await response.json();
+
+                let templateOptions = [];
+                if (result.success && result.data && result.data.length > 0) {
+                    templateOptions = result.data.map(t => ({
+                        value: String(t.template_id),
+                        label: t.template_name
+                    }));
+                }
+
+                const templateSelect = new SearchableSelect(`#export-pro-export-template-select-${subtaskId}-${rowIndex}`, {
+                    options: templateOptions,
+                    multiple: false,
+                    placeholder: templateOptions.length > 0 ? '选择汇出模板' : '无可用模板'
+                });
+
+                // 设置默认值
+                if (selectedTemplateId && templateOptions.some(t => t.value === String(selectedTemplateId))) {
+                    templateSelect.setValue(String(selectedTemplateId));
+                    const selectedOption = templateOptions.find(t => t.value === String(selectedTemplateId));
+                    if (selectedOption) {
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                    }
+                } else if (templateOptions.length > 0) {
+                    // 默认选中第一个，但触发验证
+                    templateSelect.setValue(templateOptions[0].value);
+                    updateExportProRow(subtaskId, rowIndex, 'export_template_id', templateOptions[0].value);
+                    updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].label);
+                }
+
+                templateSelect.onChange = (value) => {
+                    updateExportProRow(subtaskId, rowIndex, 'export_template_id', value);
+                    const selectedOption = templateOptions.find(t => t.value === value);
+                    if (selectedOption) {
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                    }
+                };
+
+                selectEl.dataset.initialized = 'true';
+                selectEl._exportTemplateSelectInstance = templateSelect;
+
+            } catch (error) {
+                console.error('加载汇出模板失败:', error);
+                selectEl.dataset.initialized = 'true';
+            }
+        }
+
+        // ===== 刷新 Pro 版本汇出模板选择器 =====
+        async function refreshExportProRowExportTemplateSelect(subtaskId, rowIndex) {
+            const selectEl = document.querySelector(`#export-pro-export-template-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl) return;
+
+            // 销毁旧实例
+            if (selectEl._exportTemplateSelectInstance) {
+                selectEl._exportTemplateSelectInstance.destroy?.();
+            }
+            selectEl.dataset.initialized = '';
+
+            // 重新初始化
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            const row = subtask?.params?.export_rows?.[rowIndex];
+            const currentTemplateId = row?.export_template_id || '';
+            
+            await initExportProRowExportTemplateSelect(subtaskId, rowIndex, currentTemplateId);
         }
 
         // ===== 初始化 Pro 版本最大汇出数量选择器 =====
@@ -2230,8 +2318,10 @@
             });
 
             shopSelect.setValue(selectedShop);
-            shopSelect.onChange = (value) => {
+            shopSelect.onChange = async (value) => {
                 updateExportProRow(subtaskId, rowIndex, 'export_shop', value);
+                // 汇出店铺变化时刷新汇出模板
+                await refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
             };
 
             selectEl.dataset.initialized = 'true';
@@ -2261,8 +2351,10 @@
             shopSelect.setValue(finalValue);
             updateExportProRow(subtaskId, rowIndex, 'publish_shops', finalValue);
 
-            shopSelect.onChange = (value) => {
+            shopSelect.onChange = async (value) => {
                 updateExportProRow(subtaskId, rowIndex, 'publish_shops', value);
+                // 上架店铺变化时刷新汇出模板
+                await refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
             };
 
             selectEl.dataset.initialized = 'true';
@@ -2557,6 +2649,9 @@
                     publishShopsSelectEl.dataset.initialized = '';
                     initExportProRowPublishShopsSelect(subtaskId, rowIndex, currentShops, platform, checked);
                 }
+                
+                // 切表状态变化时刷新汇出模板
+                refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
             });
             
             // 延迟初始化汇出店铺选择器，确保DOM已更新
@@ -2606,7 +2701,8 @@
                 design_date_filter: false,
                 design_start_date: '',
                 design_end_date: '',
-                template_name: 'product_id',
+                export_template_id: '',
+                export_template_name: '',
                 max_export_quantity: 100,
                 export_shop: '',
                 publish_shops: []
@@ -2625,7 +2721,6 @@
                     await initExportProRowProductSelect(subtaskId, rowIndex, '');
                     initExportProRowSizeSelect(subtaskId, rowIndex, [], []);
                     initExportProRowColorSelect(subtaskId, rowIndex, [], []);
-                    initExportProRowTemplateSelect(subtaskId, rowIndex, 'product_id');
                     initExportProRowQuantitySelect(subtaskId, rowIndex, 100);
                     const platform = subtask?.params?.platform || 'amazon';
                     // 如果开启了切表，初始化汇出店铺选择器
@@ -2633,6 +2728,8 @@
                         initExportProRowExportShopSelect(subtaskId, rowIndex, '', platform);
                     }
                     initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform, subtaskNeedSplit);
+                    // 汇出模板放在最后初始化（依赖产品和店铺）
+                    await initExportProRowExportTemplateSelect(subtaskId, rowIndex, '');
                 }, 0);
             }
 
@@ -2668,7 +2765,7 @@
                         const productId = row.product_id || '';
                         const colors = row.colors || [];
                         const sizes = row.sizes || [];
-                        const templateName = row.template_name || 'product_id';
+                        const exportTemplateId = row.export_template_id || '';
                         const maxExportQuantity = row.max_export_quantity || 100;
                         const needSplit = subtaskNeedSplit;
                         const exportShop = row.export_shop || '';
@@ -2683,12 +2780,13 @@
                             initExportProRowColorSelect(subtaskId, index, [], []);
                         }
                         
-                        initExportProRowTemplateSelect(subtaskId, index, templateName);
                         initExportProRowQuantitySelect(subtaskId, index, maxExportQuantity);
                         if (needSplit) {
                             initExportProRowExportShopSelect(subtaskId, index, exportShop, platform);
                         }
                         initExportProRowPublishShopsSelect(subtaskId, index, publishShops, platform, needSplit);
+                        // 汇出模板最后初始化
+                        await initExportProRowExportTemplateSelect(subtaskId, index, exportTemplateId);
                     }, 0);
                 });
             }
@@ -3127,7 +3225,8 @@
                 // Pro版本默认参数
                 if (params.export_rows) {
                     params.export_rows.forEach(row => {
-                        if (!row.template_name) row.template_name = 'product_id';
+                        if (!row.export_template_id) row.export_template_id = '';
+                        if (!row.export_template_name) row.export_template_name = '';
                         if (!row.max_export_quantity) row.max_export_quantity = 100;
                         if (!row.export_shop) row.export_shop = '';
                     });
@@ -3369,7 +3468,7 @@
                             const productId = row.product_id || '';
                             const colors = row.colors || [];
                             const sizes = row.sizes || [];
-                            const templateName = row.template_name || 'product_id';
+                            const exportTemplateId = row.export_template_id || '';
                             const maxExportQuantity = row.max_export_quantity || 100;
                             const exportShop = row.export_shop || '';
                             const publishShops = row.publish_shops || [];
@@ -3386,13 +3485,15 @@
                             }
                             
                             // 初始化其他选择器
-                            initExportProRowTemplateSelect(subtask.id, index, templateName);
                             initExportProRowQuantitySelect(subtask.id, index, maxExportQuantity);
                             
                             if (subtaskNeedSplit) {
                                 initExportProRowExportShopSelect(subtask.id, index, exportShop, platform);
                             }
                             initExportProRowPublishShopsSelect(subtask.id, index, publishShops, platform, subtaskNeedSplit);
+                            
+                            // 汇出模板最后初始化（依赖产品和店铺）
+                            await initExportProRowExportTemplateSelect(subtask.id, index, exportTemplateId);
                         }
                     }, 0);
                 }

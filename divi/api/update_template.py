@@ -24,14 +24,22 @@ DEFAULT_COOKIE = "rememberMe=true; Admin-Expires-In=43200; password=RG0qULq5LNu0
 
 
 def _get_headers(cookie=None):
-    """获取通用请求头"""
+    """获取通用请求头，从 cookie 中提取 Admin-Token 设置 Authorization"""
     if cookie is None:
         cookie = DEFAULT_COOKIE
+    
+    # 从 cookie 中提取 Admin-Token
+    authorization = "Bearer "
+    for item in cookie.split('; '):
+        if item.startswith('Admin-Token='):
+            authorization += item.split('=', 1)[1]
+            break
+    
     return {
         "Accept": "application/json, text/plain, */*",
         "Accept-Encoding": "gzip, deflate",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        "Authorization": "Bearer ca902b22-bbc9-44ad-bd10-b12558f32ff7",
+        "Authorization": authorization,
         "Connection": "keep-alive",
         "Content-Type": "application/json;charset=UTF-8",
         "Cookie": cookie,
@@ -147,12 +155,19 @@ def get_custom_product_template_info(template_id, cookie=None):
     
     if cookie is None:
         cookie = DEFAULT_COOKIE
+    
+    # 从 cookie 中提取 Admin-Token
+    authorization = "Bearer "
+    for item in cookie.split('; '):
+        if item.startswith('Admin-Token='):
+            authorization += item.split('=', 1)[1]
+            break
         
     headers = {
         "Accept": "application/json, text/plain, */*",
         "Accept-Encoding": "gzip, deflate",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        "Authorization": "Bearer ca902b22-bbc9-44ad-bd10-b12558f32ff7",
+        "Authorization": authorization,
         "Connection": "keep-alive",
         "Content-Type": "multipart/form-data; boundary=----WebKitFormBoundaryqLuGcSQoh940IX0C",
         "Cookie": cookie,
