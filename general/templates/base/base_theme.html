@@ -60,5 +60,12 @@
                 <span>迪唯产业大数据</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:amazon_data_crawler' %}"
+               class="sidebar-link {% if active_page == 'amazon_data_crawler' %}active{% endif %}">
+                <i class="fas fa-spider sidebar-icon"></i>
+                <span>Amazon数据抓取工具</span>
+            </a>
+        </li>
     </ul>
 {% endblock %}

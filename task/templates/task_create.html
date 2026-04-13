@@ -2650,7 +2650,10 @@
 
             // 加载模板列表
             try {
-                const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&need_split=${needSplit}&shop=${encodeURIComponent(shop)}`);
+                // 获取当前迪唯账号
+                const diweiAccount = subtask?.params?.diwei_login_account || '';
+                
+                const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&need_split=${needSplit}&shop=${encodeURIComponent(shop)}&divi_account=${encodeURIComponent(diweiAccount)}`);
                 const result = await response.json();
 
                 let templateOptions = [];

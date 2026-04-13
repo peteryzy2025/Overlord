@@ -116,6 +116,22 @@ class DiviExportTemplate(models.Model):
         blank=True,
         db_comment='数据隔离边界'
     )
+    
+    # 模板类型
+    template_type = models.IntegerField(
+        '模板类型',
+        default=0,
+        db_comment='模板类型标识'
+    )
+    
+    # DIVI 账号（从 cookie 中提取）
+    username = models.CharField(
+        'DIVI 账号',
+        max_length=100,
+        blank=True,
+        null=True,
+        db_comment='同步数据的 DIVI 账号，如 YMX-26'
+    )
 
     # 记录同步时间
     synced_at = models.DateTimeField(

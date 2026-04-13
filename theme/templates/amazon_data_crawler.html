@@ -1,0 +1,694 @@
+{% extends 'base/base_theme.html' %}
+{% load static %}
+
+{% block title %}Amazon数据抓取工具 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* 搜索区域 */
+        .search-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 1rem;
+            align-items: stretch;
+        }
+
+        .search-input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            height: 48px;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-btn {
+            height: 48px;
+            padding: 0 2rem;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .progress-container.visible {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--accent-color);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .status-text {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .toolbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .select-all-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .select-all-wrapper input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
+        .select-all-wrapper span {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .selected-count {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .selected-count .count {
+            color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        /* 图片网格区域 */
+        .images-section {
+            background-color: var(--bg-primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-light);
+            border: 1px solid var(--border-color);
+            min-height: 400px;
+        }
+
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* 图片卡片 */
+        .image-card {
+            position: relative;
+            background-color: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            aspect-ratio: 1;
+        }
+
+        .image-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .image-card.selected {
+            border-color: var(--accent-color);
+        }
+
+        .image-card .checkbox {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 22px;
+            height: 22px;
+            z-index: 10;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+        .image-wrapper {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: var(--bg-tertiary);
+        }
+
+        .image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .image-card:hover .image-wrapper img {
+            transform: scale(1.05);
+        }
+
+        .image-placeholder {
+            color: var(--text-secondary);
+            font-size: 2rem;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+            color: var(--text-tertiary);
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        /* 图片预览模态框 */
+        .image-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .image-modal-overlay.visible {
+            display: flex;
+        }
+
+        .image-modal-content {
+            background-color: var(--bg-primary);
+            border-radius: 16px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .image-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .image-modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .image-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .image-modal-close:hover {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .image-modal-body {
+            flex: 1;
+            overflow: auto;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--bg-secondary);
+        }
+
+        .image-modal-body img {
+            max-width: 100%;
+            max-height: 60vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .image-modal-url {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.75rem 1rem;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .images-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+
+            .toolbar {
+                flex-direction: column;
+                gap: 0.75rem;
+                align-items: flex-start;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <!-- 页面标题 -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-spider" style="color: var(--accent-color);"></i>
+                    Amazon数据抓取工具
+                </h1>
+                <p class="page-subtitle">搜索Amazon商品图片，支持批量选择和预览</p>
+            </div>
+        </div>
+
+        <!-- 搜索区域 -->
+        <div class="search-section">
+            <div class="search-form">
+                <div class="search-input-wrapper">
+                    <input type="text" class="search-input" id="searchInput" 
+                           placeholder="输入搜索关键词（如：cat, funny dog...）"
+                           onkeypress="if(event.key==='Enter') startSearch()">
+                </div>
+                <button class="search-btn" id="searchBtn" onclick="startSearch()">
+                    <i class="fas fa-search"></i>
+                    开始搜索
+                </button>
+            </div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="status-text" id="statusText">正在搜索...</div>
+            </div>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar" id="toolbar" style="display: none;">
+            <div class="toolbar-left">
+                <label class="select-all-wrapper">
+                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                    <span>全选</span>
+                </label>
+                <span class="selected-count">
+                    已选择 <span class="count" id="selectedCount">0</span> 张
+                </span>
+            </div>
+        </div>
+
+        <!-- 图片网格 -->
+        <div class="images-section">
+            <div class="images-grid" id="imagesGrid">
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>请输入关键词开始搜索</h3>
+                    <p>输入Amazon商品关键词，点击搜索按钮获取图片</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片预览模态框 -->
+    <div class="image-modal-overlay" id="imageModal" onclick="closeModal(event)">
+        <div class="image-modal-content" onclick="event.stopPropagation()">
+            <div class="image-modal-header">
+                <h3 class="image-modal-title">图片详情</h3>
+                <button class="image-modal-close" onclick="closeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="image-modal-body">
+                <img src="" alt="预览" id="modalImage">
+            </div>
+            <div class="image-modal-footer">
+                <div class="image-modal-url" id="modalUrl"></div>
+                <button class="btn btn-secondary" onclick="copyImageUrl()">
+                    <i class="fas fa-copy"></i> 复制链接
+                </button>
+                <button class="btn" onclick="openInBrowser()">
+                    <i class="fas fa-external-link-alt"></i> 浏览器打开
+                </button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        let currentImages = [];
+        let selectedImages = new Set();
+        let currentKeyword = '';
+
+        // 开始搜索
+        async function startSearch() {
+            const keyword = document.getElementById('searchInput').value.trim();
+            if (!keyword) {
+                showNotification('请输入搜索关键词', 'warning');
+                return;
+            }
+
+            currentKeyword = keyword;
+            const searchBtn = document.getElementById('searchBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('statusText');
+            const imagesGrid = document.getElementById('imagesGrid');
+
+            // 重置状态
+            searchBtn.disabled = true;
+            searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 搜索中...';
+            progressContainer.classList.add('visible');
+            progressFill.style.width = '0%';
+            statusText.textContent = '正在搜索: ' + keyword + '...';
+            
+            // 清空之前的结果
+            selectedImages.clear();
+            updateSelectedCount();
+            document.getElementById('selectAllCheckbox').checked = false;
+
+            try {
+                const response = await fetch('/api/amazon-search/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ keyword: keyword })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    progressFill.style.width = '100%';
+                    statusText.textContent = `找到 ${data.images.length} 张图片`;
+                    currentImages = data.images;
+                    renderImages(data.images);
+                    document.getElementById('toolbar').style.display = 'flex';
+                } else {
+                    throw new Error(data.message || '搜索失败');
+                }
+            } catch (error) {
+                statusText.textContent = '搜索失败: ' + error.message;
+                statusText.style.color = 'var(--danger-color)';
+                imagesGrid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle" style="color: var(--danger-color);"></i>
+                        <h3>搜索失败</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                searchBtn.disabled = false;
+                searchBtn.innerHTML = '<i class="fas fa-search"></i> 开始搜索';
+                setTimeout(() => {
+                    progressContainer.classList.remove('visible');
+                    statusText.style.color = '';
+                }, 2000);
+            }
+        }
+
+        // 渲染图片网格
+        function renderImages(images) {
+            const grid = document.getElementById('imagesGrid');
+            
+            if (images.length === 0) {
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <h3>未找到图片</h3>
+                        <p>请尝试其他关键词</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = images.map((img, index) => `
+                <div class="image-card ${selectedImages.has(index) ? 'selected' : ''}" 
+                     data-index="${index}"
+                     onclick="openModal(${index})">
+                    <input type="checkbox" class="checkbox" 
+                           ${selectedImages.has(index) ? 'checked' : ''}
+                           onclick="event.stopPropagation(); toggleImageSelection(${index})">
+                    <div class="image-wrapper">
+                        <img src="${img.thumb_url}" 
+                             alt="图片${index + 1}" 
+                             loading="lazy"
+                             onerror="this.parentElement.innerHTML='<i class=\\'fas fa-image image-placeholder\\'></i>'">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 切换图片选择状态
+        function toggleImageSelection(index) {
+            const card = document.querySelector(`.image-card[data-index="${index}"]`);
+            
+            if (selectedImages.has(index)) {
+                selectedImages.delete(index);
+                card.classList.remove('selected');
+            } else {
+                selectedImages.add(index);
+                card.classList.add('selected');
+            }
+            
+            updateSelectedCount();
+            updateSelectAllCheckbox();
+        }
+
+        // 全选/取消全选
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAllCheckbox');
+            const isChecked = checkbox.checked;
+
+            if (isChecked) {
+                currentImages.forEach((_, index) => selectedImages.add(index));
+            } else {
+                selectedImages.clear();
+            }
+
+            // 更新所有卡片状态
+            document.querySelectorAll('.image-card').forEach((card, index) => {
+                card.classList.toggle('selected', isChecked);
+                card.querySelector('.checkbox').checked = isChecked;
+            });
+
+            updateSelectedCount();
+        }
+
+        // 更新全选复选框状态
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAllCheckbox');
+            const allSelected = currentImages.length > 0 && selectedImages.size === currentImages.length;
+            checkbox.checked = allSelected;
+        }
+
+        // 更新选中数量显示
+        function updateSelectedCount() {
+            document.getElementById('selectedCount').textContent = selectedImages.size;
+        }
+
+        // 打开图片预览模态框
+        function openModal(index) {
+            const img = currentImages[index];
+            const modal = document.getElementById('imageModal');
+            const modalImg = document.getElementById('modalImage');
+            const modalUrl = document.getElementById('modalUrl');
+
+            modalImg.src = img.original_url;
+            modalImg.dataset.url = img.original_url;
+            modalUrl.textContent = img.original_url;
+            modal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 关闭模态框
+        function closeModal(event) {
+            if (event && event.target !== document.getElementById('imageModal')) {
+                return;
+            }
+            document.getElementById('imageModal').classList.remove('visible');
+            document.body.style.overflow = '';
+        }
+
+        // 复制图片链接
+        function copyImageUrl() {
+            const url = document.getElementById('modalImage').dataset.url;
+            navigator.clipboard.writeText(url).then(() => {
+                showNotification('链接已复制到剪贴板', 'success');
+            }).catch(() => {
+                showNotification('复制失败，请手动复制', 'error');
+            });
+        }
+
+        // 在浏览器中打开
+        function openInBrowser() {
+            const url = document.getElementById('modalImage').dataset.url;
+            window.open(url, '_blank');
+        }
+
+        // 获取CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // 通知提示
+        function showNotification(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'times-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            container.appendChild(notification);
+
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }, duration);
+        }
+
+        // ESC键关闭模态框
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+{% endblock %}

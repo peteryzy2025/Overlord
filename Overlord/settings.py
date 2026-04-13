@@ -54,7 +54,7 @@ ALLOWED_HOSTS = [
     '192.168.110.196',
     'ztzf.cpolar.cn',
     'divi.cpolar.cn',
-
+    '*',  # 允许所有 IP 访问（内网环境）
 ]
 
 # Application definition
