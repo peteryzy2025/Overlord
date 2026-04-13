@@ -452,6 +452,7 @@ class AmazonShop(models.Model):
         INACTIVE = 'status-inactive', '停用'
         CANCELLED = 'status-cancelled', '注销'
         WARNING = 'status-warning', '救店中'
+        NURTURING = 'status-nurturing', '养店中'
         PENDING = 'status-pending', '审核中'
         UNKNOWN = 'status-unknown', '待定'
 
