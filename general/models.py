@@ -493,6 +493,19 @@ class AmazonShop(models.Model):
         verbose_name='amazon_shop_status',
         db_comment='店铺情况',
     )
+    company_address = models.CharField(
+        max_length=500,
+        verbose_name='公司地址',
+        blank=True,
+        null=True,
+    )
+
+    id_card_address = models.CharField(
+        max_length=500,
+        verbose_name='身份证地址',
+        blank=True,
+        null=True,
+    )
 
     customer = models.CharField(max_length=100, blank=True, null=True, db_comment='客户')
     shop_number = models.IntegerField(blank=True, null=True, db_comment='店铺序号')
