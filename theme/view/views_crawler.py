@@ -4,6 +4,7 @@ Amazon数据抓取工具视图
 """
 import os
 import re
+import random
 import asyncio
 import aiohttp
 import ssl
@@ -33,8 +34,12 @@ def convert_to_original(url):
     return f"{base_url}/{clean_filename}"
 
 
-async def search_amazon_images_async(keyword):
-    """异步搜索Amazon图片"""
+async def fetch_page(session, keyword, page_num):
+    """获取单页数据"""
+    # 页面间添加随机延迟，避免被拦截
+    if page_num > 1:
+        await asyncio.sleep(random.uniform(0.5, 1.5))
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -54,32 +59,59 @@ async def search_amazon_images_async(keyword):
         "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
     }
 
-    search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}"
-    print(f"搜索URL: {search_url}")
+    search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
+    
+    async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
+        html_content = await response.text()
+        
+        if "dogs of amazon" in html_content.lower() or response.status != 200:
+            return None
+        
+        tree = html.fromstring(html_content)
+        image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
+        
+        return image_urls
+
+
+async def search_amazon_images_async(keyword, max_pages=3):
+    """异步搜索Amazon图片，默认爬3页"""
+    all_image_urls = []
+    
     async with aiohttp.ClientSession() as session:
-        async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
-            html_content = await response.text()
-
-
-            if "dogs of amazon" in html_content.lower() or response.status != 200:
-                return [], f"访问被拦截 (Status: {response.status})"
-
-            tree = html.fromstring(html_content)
-            image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
-
+        for page in range(1, max_pages + 1):
+            image_urls = await fetch_page(session, keyword, page)
+            
+            if image_urls is None:
+                # 被拦截了，终止爬取
+                if page == 1:
+                    return [], "访问被拦截"
+                break
+            
             if not image_urls:
-                return [], "未找到图片"
-
-            results = []
-            for idx, url in enumerate(image_urls):
-                original_url = convert_to_original(url)
-                results.append({
-                    "thumb_url": url,
-                    "original_url": original_url,
-                    "id": idx
-                })
-
-            return results, f"找到 {len(image_urls)} 张图片"
+                # 该页没有数据，结束
+                break
+            
+            all_image_urls.extend(image_urls)
+    
+    if not all_image_urls:
+        return [], "未找到图片"
+    
+    # 去重（根据缩略图URL）
+    seen = set()
+    unique_results = []
+    idx = 0
+    for url in all_image_urls:
+        if url not in seen:
+            seen.add(url)
+            original_url = convert_to_original(url)
+            unique_results.append({
+                "thumb_url": url,
+                "original_url": original_url,
+                "id": idx
+            })
+            idx += 1
+    
+    return unique_results, f"找到 {len(unique_results)} 张图片"
 
 
 def has_crawler_permission(user):
@@ -150,7 +182,7 @@ def api_amazon_search(request):
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        results, msg = loop.run_until_complete(search_amazon_images_async(keyword))
+        results, msg = loop.run_until_complete(search_amazon_images_async(keyword, max_pages=3))
         loop.close()
 
         if not results:
