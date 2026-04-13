@@ -197,6 +197,16 @@ def get_custom_product_template_info(template_id, cookie=None):
         return None
 
 
+def extract_username_from_cookie(cookie):
+    """从 cookie 中提取 username"""
+    if not cookie:
+        return None
+    for item in cookie.split('; '):
+        if item.startswith('username='):
+            return item.split('=', 1)[1]
+    return None
+
+
 def sync_templates_to_db(cookie=None, company_id=None):
     """
     同步 DIVI 模板到数据库
@@ -217,8 +227,15 @@ def sync_templates_to_db(cookie=None, company_id=None):
         'skipped_shops': 0,
     }
     
+    # 从 cookie 提取 username
+    username = extract_username_from_cookie(cookie) if cookie else None
+    if not username:
+        username = 'unknown'
+        print("⚠️ 未从 cookie 中提取到 username，使用默认值")
+    
     print("=" * 50)
     print("开始同步 DIVI 模板...")
+    print(f"账号: {username}")
     print("=" * 50)
     
     # 1. 获取所有模板ID
@@ -240,12 +257,14 @@ def sync_templates_to_db(cookie=None, company_id=None):
         data = info.get('data', {})
         
         try:
-            # 3. 更新或创建模板记录
+            # 3. 更新或创建模板记录（按 template_id + username 区分不同账号）
             template, created = DiviExportTemplate.objects.update_or_create(
                 template_id=template_id,
+                username=username,
                 defaults={
                     'template_name': data.get('templateName'),
                     'product_type': data.get('productType'),
+                    'template_type': data.get('templateType', 0),
                 }
             )
             
