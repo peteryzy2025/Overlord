@@ -476,8 +476,38 @@ class AmazonShop(models.Model):
         db_comment='运营id',
         verbose_name='运营人员'
     )
-    shop_status = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺情况')
+    company_address = models.CharField(
+        max_length=500,
+        verbose_name='公司地址',
+        blank=True,
+        null=True,
+    )
 
+    id_card_address = models.CharField(
+        max_length=500,
+        verbose_name='身份证地址',
+        blank=True,
+        null=True,
+    )
+    class ShopStatus(models.TextChoices):
+        ACTIVE = 'status-active','正常'
+        INACTIVE = 'status-inactive','停用'
+        CANCELLED = 'status-cancelled','注销'
+        WARNING = 'status-warning','救店中'
+        NURTURING = 'status-nurturing','养店中'
+        PENDING = 'status-pending','审核中'
+        UNKNOWN = 'status-unknown','待定'
+
+
+    shop_status = models.CharField(
+        max_length=50,
+        choices=ShopStatus.choices, #type:ignore
+        default=ShopStatus.ACTIVE,
+        null=True,
+        blank=True,
+        verbose_name='amazon_shop_status',
+        db_comment='店铺情况',
+    )
     customer = models.CharField(max_length=100, blank=True, null=True, db_comment='客户')
     shop_number = models.IntegerField(blank=True, null=True, db_comment='店铺序号')
     shop_name = models.CharField(max_length=100, blank=True, null=True, db_comment='店铺名')

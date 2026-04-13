@@ -741,13 +741,23 @@
         const currentUserDiviUsername = "{{ request.user.operational_account.divi_username|default:'' }}";
         
         // 格式化店铺名称（加上运营人员和状态）- 仅用于 Amazon
+        const SHOP_STATUS_LABELS = {
+            'status-active': '正常',
+            'status-inactive': '停用',
+            'status-cancelled': '注销',
+            'status-warning': '救店中',
+            'status-pending': '审核中',
+            'status-unknown': '待定'
+        };
+
         function formatShopOption(shop) {
             const rawName = shop.raw_name || shop.shop_name || shop.name;
             const opsName = shop.ops_name || '无运营';
             const shopStatus = shop.shop_status || '';
+            const statusLabel = SHOP_STATUS_LABELS[shopStatus] || shopStatus;
             
             // 纯文本格式：店铺名（运营人员）[状态]
-            const label = rawName + `（${opsName}）` + (shopStatus ? `[${shopStatus}]` : '');
+            const label = rawName + `（${opsName}）` + (statusLabel ? `[${statusLabel}]` : '');
             
             return {
                 value: rawName,

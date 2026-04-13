@@ -152,7 +152,7 @@ def get_shop_info_by_name(request):
                 "shop_number": 1001,
                 "amazon_shop_name": "Amazon-Shop-A",
                 "email_account": "shop@example.com",
-                "shop_status": "正常",
+                "shop_status": "status-active",
                 "browser": "闪店",
                 "ops_name": "运营人员",
                 "company_name": "公司A",

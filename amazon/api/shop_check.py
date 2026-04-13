@@ -50,7 +50,7 @@ def init_daily_shop_check(request):
     初始化今日亚马逊巡店日报
     
     请求参数（JSON 格式）:
-        - shop_status (str, 可选): 店铺状态，如 "正常"
+        - shop_status (str, 可选): 店铺状态，如 "status-active"
         - browser (str, 可选): 浏览器，如 "闪店"
         - project_id (int, 可选): 项目 ID
         - check_date (str, 可选): 巡店日期，格式 "YYYY-MM-DD"，默认今天
@@ -162,7 +162,7 @@ def get_daily_check_list(request):
     
     请求参数（Query String）:
         - check_date (str, 可选): 巡店日期，格式 "YYYY-MM-DD"，默认今天
-        - shop_status (str, 可选): 按店铺状态筛选
+        - shop_status (str, 可选): 按店铺状态筛选（枚举值，如 "status-active"）
         - browser (str, 可选): 按浏览器筛选
         - project_id (int, 可选): 按项目 ID 筛选
         - visited (bool, 可选): 按是否已访问筛选

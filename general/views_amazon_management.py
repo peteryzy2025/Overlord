@@ -725,7 +725,7 @@ def create_amazon_shop_api(request):
                 amazon_shop_name=data.get('amazon_shop_name', '') or '',
                 customer=data.get('customer', '') or '',
                 ops_id=data.get('ops') if data.get('ops') else None,
-                shop_status=data.get('shop_status', '正常') or '正常',
+                shop_status=data.get('shop_status', 'status-active') or 'status-active',
                 shop_date=data.get('shop_date') or None,
                 qu_dao=data.get('qu_dao', '') or '',
                 seller_mark=data.get('seller_mark', '') or '',
@@ -846,7 +846,7 @@ def update_amazon_shop_api(request, shop_id):
             shop.amazon_shop_name = data.get('amazon_shop_name', '') or ''
             shop.customer = data.get('customer', '') or ''
             shop.ops_id = data.get('ops') or None
-            shop.shop_status = data.get('shop_status', '正常') or '正常'
+            shop.shop_status = data.get('shop_status', 'status-active') or 'status-active'
             shop.shop_date = data.get('shop_date') or None
             shop.qu_dao = data.get('qu_dao', '') or ''
             shop.seller_mark = data.get('seller_mark', '') or ''
