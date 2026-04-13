@@ -1965,21 +1965,25 @@ def get_diwei_accounts_api(request):
 def get_divi_export_templates_api(request):
     """
     获取 DIVI 汇出模板列表（根据产品和店铺筛选）
-    GET /api/divi/export-templates/?product_id=123&need_split=false&shop=店铺名
+    GET /api/divi/export-templates/?product_id=123&need_split=false&shop=店铺名&divi_account=YMX-26
     
     参数:
         product_id: 产品ID（必填）
         need_split: 是否切表（true/false，必填）
         shop: 店铺名（必填，不切表时传上架店铺，切表时传汇出店铺）
+        divi_account: 迪唯登录账号（如YMX-26，必填）
     
-    返回: [{ template_id, template_name }]
+    返回: [{ template_id, template_name, value, label }]
+      - template_name 已包含【系统】或【用户】后缀
     """
     try:
         from divi.models import DiviExportTemplate
+        from django.db.models import Q
         
         product_id = request.GET.get('product_id')
         need_split = request.GET.get('need_split', 'false').lower() == 'true'
         shop_name = request.GET.get('shop', '').strip()
+        divi_account = request.GET.get('divi_account', '').strip()
         
         if not product_id:
             return JsonResponse({
@@ -1996,25 +2000,42 @@ def get_divi_export_templates_api(request):
             })
         
         # 基础查询：当前公司的模板，且包含所选产品
-        queryset = DiviExportTemplate.objects.filter(
+        base_query = Q(
             company=company,
             products__id=product_id
-        ).distinct()
+        )
         
-        # 根据店铺进一步筛选
-        if shop_name:
-            queryset = queryset.filter(shops__shop_name=shop_name)
+        # 系统模板：template_type=1，只验证产品ID，不验证店铺
+        system_query = base_query & Q(template_type=1)
+        
+        # 用户模板：template_type=2，验证产品ID + 店铺 + 账号
+        user_query = None
+        if divi_account:
+            user_query = base_query & Q(template_type=2, username=divi_account)
+            # 用户模板需要根据店铺筛选
+            if shop_name:
+                user_query &= Q(shops__shop_name=shop_name)
+        
+        # 合并查询
+        if user_query:
+            queryset = DiviExportTemplate.objects.filter(system_query | user_query).distinct()
+        else:
+            queryset = DiviExportTemplate.objects.filter(system_query).distinct()
         
         # 组装数据
-        templates = queryset.order_by('-synced_at').values('template_id', 'template_name')
+        templates = queryset.order_by('-synced_at').values('template_id', 'template_name', 'template_type')
         
         data = []
         for tpl in templates:
+            # 根据模板类型添加后缀
+            suffix = '【系统】' if tpl['template_type'] == 1 else '【用户】'
+            display_name = (tpl['template_name'] or f"模板-{tpl['template_id']}") + suffix
+            
             data.append({
                 'template_id': tpl['template_id'],
-                'template_name': tpl['template_name'] or f"模板-{tpl['template_id']}",
+                'template_name': display_name,
                 'value': tpl['template_id'],
-                'label': tpl['template_name'] or f"模板-{tpl['template_id']}"
+                'label': display_name
             })
         
         return JsonResponse({

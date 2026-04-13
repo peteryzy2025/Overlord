@@ -447,6 +447,14 @@ class OperationalAccount(models.Model):
 
 
 class AmazonShop(models.Model):
+    class ShopStatus(models.TextChoices):
+        ACTIVE = 'status-active', '正常'
+        INACTIVE = 'status-inactive', '停用'
+        CANCELLED = 'status-cancelled', '注销'
+        WARNING = 'status-warning', '救店中'
+        PENDING = 'status-pending', '审核中'
+        UNKNOWN = 'status-unknown', '待定'
+
     id = models.BigAutoField(primary_key=True, db_comment='主键')
     company = models.ForeignKey(
         'general.Company',
@@ -476,7 +484,15 @@ class AmazonShop(models.Model):
         db_comment='运营id',
         verbose_name='运营人员'
     )
-    shop_status = models.CharField(max_length=255, blank=True, null=True, db_comment='店铺情况')
+    shop_status = models.CharField(
+        max_length=50,
+        choices=ShopStatus.choices,  # type:ignore
+        default=ShopStatus.ACTIVE,
+        null=True,
+        blank=True,
+        verbose_name='amazon_shop_status',
+        db_comment='店铺情况',
+    )
 
     customer = models.CharField(max_length=100, blank=True, null=True, db_comment='客户')
     shop_number = models.IntegerField(blank=True, null=True, db_comment='店铺序号')
