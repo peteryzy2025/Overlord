@@ -925,7 +925,32 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeModal();
 });
 
+// 页面加载性能监控
+window.addEventListener('load', function() {
+    const timing = performance.timing;
+    console.log('=== 页面加载时间分析 ===');
+    console.log('DNS查询:', timing.domainLookupEnd - timing.domainLookupStart, 'ms');
+    console.log('连接建立:', timing.connectEnd - timing.connectStart, 'ms');
+    console.log('首字节时间:', timing.responseStart - timing.requestStart, 'ms');
+    console.log('DOM解析:', timing.domContentLoadedEventEnd - timing.responseEnd, 'ms');
+    console.log('总加载时间:', timing.loadEventEnd - timing.navigationStart, 'ms');
+    
+    // 检查慢资源
+    const resources = performance.getEntriesByType('resource');
+    const slowResources = resources.filter(r => r.duration > 1000);
+    if (slowResources.length > 0) {
+        console.log('=== 慢资源 (>1秒) ===');
+        slowResources.forEach(r => {
+            console.log(`${r.name}: ${Math.round(r.duration)}ms`);
+        });
+    }
+});
+
 // 初始化
-renderHistory();
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM加载完成');
+    renderHistory();
+    console.log('历史记录渲染完成');
+});
 </script>
 {% endblock %}

@@ -1280,6 +1280,7 @@ def create_task_api(request):
                                 '颜色英文列表': color_en_names,
                                 '汇出模板ID': export_template_id,
                                 '汇出模板名称': export_template_name,
+                                '是否已汇出': bool(row.get('is_exported', False)),
                                 '最大汇出数量': row.get('max_export_quantity', 100),
                                 '汇出店铺列表': export_shops,
                                 '上架店铺列表': publish_shops,
@@ -1384,7 +1385,8 @@ def create_task_api(request):
                                 'vertical_stagger': '纵向交错平铺',
                                 'mirror': '镜像平铺',
                                 'random': '随机平铺'
-                            }.get(params.get('tile_type'), params.get('tile_type', ''))
+                            }.get(params.get('tile_type'), params.get('tile_type', '')),
+                            '平铺间距': params.get('tile_spacing', 0)
                         }
                     elif st.subtask_type == 'amazon_upload':
                         # Amazon上传 - 从数据库获取实际目标路径

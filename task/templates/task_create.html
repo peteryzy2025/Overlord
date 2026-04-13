@@ -1881,6 +1881,17 @@
                     <!-- 强制换行 -->
                     <div style="flex-basis: 100%; height: 0;"></div>
 
+                    <!-- 是否已汇出开关 -->
+                    <div class="form-group" style="margin: 0; width: auto; white-space: nowrap;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">是否已汇出</label>
+                        <label class="form-switch" style="margin: 0; justify-content: flex-start;">
+                            <input type="checkbox" class="switch-input"
+                                   ${rowData.is_exported ? 'checked' : ''}
+                                   onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'is_exported', this.checked)">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
                     <!-- 最大汇出数量下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 0.8; min-width: 100px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">最大汇出数量</label>
@@ -3191,6 +3202,7 @@
                 design_end_date: '',
                 export_template_id: '',
                 export_template_name: '',
+                is_exported: false,  // 是否已汇出，默认否
                 max_export_quantity: 100,
                 export_shop: '',
                 publish_shops: []
@@ -3693,6 +3705,7 @@
                     background_color: '#ffffff',
                     is_tiled: false,
                     tile_type: '',
+                    tile_spacing: 0,  // 平铺间距，默认0
                     product_ids: [],
                     nas_path: '',  // NAS路径（与图库分类二选一）
                     image_classify_id: '',  // 图库分类ID
@@ -3740,6 +3753,7 @@
                 if (mergedParams.custom_coords === undefined) mergedParams.custom_coords = '';
                 if (mergedParams.is_tiled === undefined) mergedParams.is_tiled = false;
                 if (mergedParams.tile_type === undefined) mergedParams.tile_type = '';
+                if (mergedParams.tile_spacing === undefined) mergedParams.tile_spacing = 0;
             } else if (type === 'divi_custom') {
                 if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.gallery_path) mergedParams.gallery_path = '';
@@ -3758,6 +3772,7 @@
                     params.export_rows.forEach(row => {
                         if (!row.export_template_id) row.export_template_id = '';
                         if (!row.export_template_name) row.export_template_name = '';
+                        if (row.is_exported === undefined) row.is_exported = false;  // 默认未汇出
                         if (!row.max_export_quantity) row.max_export_quantity = 100;
                         if (!row.export_shop) row.export_shop = '';
                     });
@@ -4354,6 +4369,17 @@
                             <div id="tile-type-select-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.is_tiled ? 'block' : 'none'}">
                                 <div id="tile-type-dropdown-${subtask.id}" class="searchable-select single" data-placeholder="选择平铺类型"></div>
                             </div>
+                            <!-- 平铺间距输入框 -->
+                            <div id="tile-spacing-input-${subtask.id}" style="margin-top: 0.5rem; display: ${subtask.params.is_tiled ? 'block' : 'none'}">
+                                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">平铺间距</label>
+                                <input type="number" class="form-control"
+                                       id="tile-spacing-${subtask.id}"
+                                       value="${subtask.params.tile_spacing !== undefined ? subtask.params.tile_spacing : 0}"
+                                       min="0" max="100" step="5"
+                                       placeholder="0-100，步长5"
+                                       oninput="handleTileSpacingInput(this, ${subtask.id})">
+                                <small id="tile-spacing-error-${subtask.id}" style="color: var(--danger-color); display: none;">必须是5的倍数（0, 5, 10...）</small>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -4883,7 +4909,33 @@
                 }
                 const selectDiv = document.getElementById(`tile-type-select-${subtaskId}`);
                 if (selectDiv) selectDiv.style.display = checked ? 'block' : 'none';
+                // 显示/隐藏间距输入框
+                const spacingDiv = document.getElementById(`tile-spacing-input-${subtaskId}`);
+                if (spacingDiv) spacingDiv.style.display = checked ? 'block' : 'none';
                 triggerAutoSave();
+            }
+        }
+
+        // 处理平铺间距输入
+        function handleTileSpacingInput(element, subtaskId) {
+            let value = parseInt(element.value, 10);
+            
+            // 验证范围
+            if (isNaN(value)) {
+                value = 0;
+            }
+            if (value < 0) value = 0;
+            if (value > 100) value = 100;
+            
+            // 验证步长（必须是5的倍数）
+            const errorEl = document.getElementById(`tile-spacing-error-${subtaskId}`);
+            if (value % 5 !== 0) {
+                if (errorEl) errorEl.style.display = 'block';
+                element.style.borderColor = 'var(--danger-color)';
+            } else {
+                if (errorEl) errorEl.style.display = 'none';
+                element.style.borderColor = '';
+                updateSubtaskParam(subtaskId, 'tile_spacing', value);
             }
         }
 
@@ -5512,6 +5564,14 @@
                     // 平铺类型默认为基础平铺
                     if (subtask.params.is_tiled && !subtask.params.tile_type) {
                         subtask.params.tile_type = 'basic';
+                    }
+                    // 验证平铺间距（如果开启了平铺）
+                    if (subtask.params.is_tiled) {
+                        const tileSpacing = subtask.params.tile_spacing || 0;
+                        if (tileSpacing % 5 !== 0) {
+                            showNotification(`子任务 #${subtask.order + 1} 的平铺间距必须是5的倍数（0, 5, 10...）`, 'warning');
+                            return false;
+                        }
                     }
                 } else if (subtask.type === 'custom_upload') {
                     if (!subtask.params.product_ids || subtask.params.product_ids.length === 0) {
