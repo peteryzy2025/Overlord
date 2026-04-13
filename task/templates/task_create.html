@@ -746,8 +746,20 @@
             const opsName = shop.ops_name || '无运营';
             const shopStatus = shop.shop_status || '';
             
+            // 状态映射：将英文状态转换为中文（与 AmazonShop.ShopStatus 对应）
+            const statusMap = {
+                'status-active': '正常',
+                'status-inactive': '停用',
+                'status-cancelled': '注销',
+                'status-warning': '救店中',
+                'status-nurturing': '养店中',
+                'status-pending': '审核中',
+                'status-unknown': '待定'
+            };
+            const statusText = statusMap[shopStatus] || shopStatus;
+            
             // 纯文本格式：店铺名（运营人员）[状态]
-            const label = rawName + `（${opsName}）` + (shopStatus ? `[${shopStatus}]` : '');
+            const label = rawName + `（${opsName}）` + (statusText ? `[${statusText}]` : '');
             
             return {
                 value: rawName,
