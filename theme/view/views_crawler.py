@@ -138,11 +138,110 @@ def amazon_data_crawler_page(request):
     })
 
 
+async def fetch_single_page_async(keyword, page_num):
+    """获取单页数据（用于逐页搜索API）"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Connection": "keep-alive",
+        "Host": "www.amazon.com",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+        "sec-ch-ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
+        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+    }
+
+    search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
+            html_content = await response.text()
+            
+            if "dogs of amazon" in html_content.lower() or response.status != 200:
+                return None, f"访问被拦截 (Status: {response.status})"
+            
+            tree = html.fromstring(html_content)
+            image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
+            
+            results = []
+            for idx, url in enumerate(image_urls):
+                original_url = convert_to_original(url)
+                results.append({
+                    "thumb_url": url,
+                    "original_url": original_url,
+                    "id": idx
+                })
+            
+            return results, f"找到 {len(results)} 张图片"
+
+
+@login_required
+@require_POST
+def api_amazon_search_page(request):
+    """
+    Amazon图片单页搜索API（用于显示分页进度）
+    权限要求：code=555 或 code=9
+    """
+    if not has_crawler_permission(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': '权限不足'
+        }, status=403)
+
+    try:
+        import json
+        data = json.loads(request.body)
+        keyword = data.get('keyword', '').strip()
+        page = int(data.get('page', 1))
+
+        if not keyword:
+            return JsonResponse({
+                'success': False,
+                'message': '请输入搜索关键词'
+            })
+
+        # 异步执行单页搜索
+        if os.name == 'nt':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results, msg = loop.run_until_complete(fetch_single_page_async(keyword, page))
+        loop.close()
+
+        if results is None:
+            return JsonResponse({
+                'success': False,
+                'message': msg
+            })
+
+        return JsonResponse({
+            'success': True,
+            'images': results,
+            'page': page,
+            'message': msg
+        })
+
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'搜索失败: {str(e)}'
+        })
+
+
 @login_required
 @require_POST
 def api_amazon_search(request):
     """
-    Amazon图片搜索API
+    Amazon图片搜索API（一次性搜索多页，保留用于兼容性）
     权限要求：code=555 或 code=9
     缓存时间：60分钟
     """
@@ -156,6 +255,7 @@ def api_amazon_search(request):
         import json
         data = json.loads(request.body)
         keyword = data.get('keyword', '').strip()
+        pages = min(int(data.get('pages', 1)), 50)  # 最大50页
 
         if not keyword:
             return JsonResponse({
@@ -164,7 +264,7 @@ def api_amazon_search(request):
             })
 
         # 构建缓存key
-        cache_key = f"amazon_crawler:search:{keyword.lower().replace(' ', '_')}"
+        cache_key = f"amazon_crawler:search:{keyword.lower().replace(' ', '_')}:p{pages}"
         
         # 尝试从缓存获取
         cached_result = cache.get(cache_key)
@@ -182,7 +282,7 @@ def api_amazon_search(request):
         
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        results, msg = loop.run_until_complete(search_amazon_images_async(keyword, max_pages=3))
+        results, msg = loop.run_until_complete(search_amazon_images_async(keyword, max_pages=pages))
         loop.close()
 
         if not results:
