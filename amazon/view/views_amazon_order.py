@@ -1040,7 +1040,7 @@ def api_ship_order(request):
             })
 
         # 验证6：店铺状态检查
-        if not order.amazon_shop or order.amazon_shop.shop_status != '正常':
+        if not order.amazon_shop or order.amazon_shop.shop_status != 'status-active':
             current_status = order.amazon_shop.shop_status if order.amazon_shop else '未知'
             # ✅ 修改9：记录失败日志
             log_shipment(False, f"店铺状态为'{current_status}'")

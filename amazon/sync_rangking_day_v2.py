@@ -175,7 +175,7 @@ def get_single_operator_stats(user_id: int, start_date: date, end_date: date, pe
     # 闲置店铺判断（日报：近7天；周报：上周）
     normal_amazon_shops = AmazonShop.objects.filter(
         ops=user_id,
-        shop_status='正常'
+        shop_status='status-active'
     )
 
     # 根据周期确定检查日期范围

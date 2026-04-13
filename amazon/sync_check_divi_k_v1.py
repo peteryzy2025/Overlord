@@ -49,7 +49,7 @@ def extract_orphaned_orders_candidates(start_datetime):
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
         is_exported_to_divi=True,  # ⭐ 核心：只查已导出的
-        amazon_shop__shop_status='正常',  # 只查正常店铺
+        amazon_shop__shop_status='status-active',  # 只查正常店铺
     ).exclude(
         order_status__in={'PendingAvailability', 'Pending', 'Canceled'}
     ).select_related(

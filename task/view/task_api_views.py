@@ -2027,15 +2027,18 @@ def get_divi_export_templates_api(request):
         
         data = []
         for tpl in templates:
-            # 根据模板类型添加后缀
+            # 原始名称（用于 webhook）
+            original_name = tpl['template_name'] or f"模板-{tpl['template_id']}"
+            # 根据模板类型添加后缀（用于前端显示）
             suffix = '【系统】' if tpl['template_type'] == 1 else '【用户】'
-            display_name = (tpl['template_name'] or f"模板-{tpl['template_id']}") + suffix
+            display_name = original_name + suffix
             
             data.append({
                 'template_id': tpl['template_id'],
-                'template_name': display_name,
+                'template_name': original_name,  # 原始名称，给 webhook 使用
+                'template_name_display': display_name,  # 带后缀的名称，给前端显示
                 'value': tpl['template_id'],
-                'label': display_name
+                'label': display_name  # 下拉框显示用带后缀的
             })
         
         return JsonResponse({

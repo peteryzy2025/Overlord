@@ -2650,7 +2650,8 @@
                 if (result.success && result.data && result.data.length > 0) {
                     templateOptions = result.data.map(t => ({
                         value: String(t.template_id),
-                        label: t.template_name
+                        label: t.template_name_display || t.template_name,  // 显示带后缀的名称
+                        template_name: t.template_name  // 原始名称，用于保存到数据库
                     }));
                 }
 
@@ -2665,20 +2666,20 @@
                     templateSelect.setValue(String(selectedTemplateId));
                     const selectedOption = templateOptions.find(t => t.value === String(selectedTemplateId));
                     if (selectedOption) {
-                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
                     }
                 } else if (templateOptions.length > 0) {
                     // 默认选中第一个，但触发验证
                     templateSelect.setValue(templateOptions[0].value);
                     updateExportProRow(subtaskId, rowIndex, 'export_template_id', templateOptions[0].value);
-                    updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].label);
+                    updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].template_name);  // 保存原始名称
                 }
 
                 templateSelect.onChange = (value) => {
                     updateExportProRow(subtaskId, rowIndex, 'export_template_id', value);
                     const selectedOption = templateOptions.find(t => t.value === value);
                     if (selectedOption) {
-                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
                     }
                 };
 

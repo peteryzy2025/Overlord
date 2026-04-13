@@ -974,9 +974,12 @@
 
         // 店铺状态映射
         const shopStatusMap = {
-            '正常': {text: '正常', class: 'status-normal'},
-            '停用': {text: '停用', class: 'status-suspended'},
-            '注销': {text: '注销', class: 'status-cancelled'}
+            'status-active': {text: '正常', class: 'status-normal'},
+            'status-inactive': {text: '停用', class: 'status-suspended'},
+            'status-cancelled': {text: '注销', class: 'status-cancelled'},
+            'status-warning': {text: '救店中', class: 'status-warning'},
+            'status-pending': {text: '审核中', class: 'status-pending'},
+            'status-unknown': {text: '待定', class: 'status-unknown'}
         };
 
         // DIVI状态映射
@@ -1138,9 +1141,12 @@
             shopStatusSelect = new SearchableSelect('#shopStatusFilter', {
                 options: [
                     {value: '', label: '全部'},
-                    {value: '正常', label: '正常'},
-                    {value: '停用', label: '停用'},
-                    {value: '注销', label: '注销'}
+                    {value: 'status-active', label: '正常'},
+                    {value: 'status-inactive', label: '停用'},
+                    {value: 'status-cancelled', label: '注销'},
+                    {value: 'status-warning', label: '救店中'},
+                    {value: 'status-pending', label: '审核中'},
+                    {value: 'status-unknown', label: '待定'}
                 ],
                 placeholder: '全部状态',
                 multiple: true
@@ -1576,7 +1582,7 @@
                     order.fulfillment_channel === 'MFN' &&
                     hasValidLogistics &&
                     [3, 4, 5].includes(order.divi_order_status) &&
-                    order.shop_status === '正常';
+                    order.shop_status === 'status-active';
 
                 let shipButtonTooltip = '';
                 if (!canShip) {
@@ -1588,7 +1594,7 @@
                         shipButtonTooltip = '物流信息不完整';
                     } else if (![3, 4, 5].includes(order.divi_order_status)) {
                         shipButtonTooltip = 'DIVI订单状态未达标';
-                    } else if (order.shop_status !== '正常') {
+                    } else if (order.shop_status !== 'status-active') {
                         shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
                     }
                 } else {
@@ -1606,7 +1612,7 @@
                 } else if (NON_EXPORTABLE_STATUSES.includes(order.order_status)) {
                     canExportToDivi = false;
                     exportTooltip = '该订单类型不支持导单';
-                } else if (order.shop_status !== '正常') {
+                } else if (order.shop_status !== 'status-active') {
                     canExportToDivi = false;
                     exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
                 }

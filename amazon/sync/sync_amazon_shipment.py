@@ -95,7 +95,7 @@ def query_red_deadline_orders(start_date_str=None, max_batch_size=None):
         amazon_shop__isnull=False,
         divi_tracking_number__isnull=False,
     ).exclude(
-        amazon_shop__shop_status__in=['停用', '注销']
+        amazon_shop__shop_status__in=['status-inactive', 'status-cancelled', 'status-warning']
     ).exclude(
         divi_tracking_number=''
     ).select_related(
@@ -128,7 +128,7 @@ def query_normal_ship_orders(start_date_str=None, max_batch_size=None):
         purchase_date_local__gte=start_datetime,
         amazon_shop__isnull=False,
     ).exclude(
-        amazon_shop__shop_status__in=['停用', '注销']
+        amazon_shop__shop_status__in=['status-inactive', 'status-cancelled', 'status-warning']
     ).select_related(
         'lingxing_shop', 'amazon_shop'
     ).order_by('purchase_date_local')

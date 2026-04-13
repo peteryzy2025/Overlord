@@ -182,7 +182,7 @@ def get_single_operator_stats(user_id: int, target_date: date, company_id: int =
     # 获取正常状态的店铺（仅用于闲置判断）- 也要加company过滤
     normal_amazon_shops = AmazonShop.objects.filter(
         ops=user_id,
-        shop_status='正常',
+        shop_status='status-active',
         company_id=company_id
     )
 

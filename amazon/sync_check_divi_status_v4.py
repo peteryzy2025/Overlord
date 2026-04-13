@@ -88,7 +88,7 @@ def query_reimport_orders(start_datetime):
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
         is_exported_to_divi=False,  # 核心条件：只找漏单
-        amazon_shop__shop_status='正常',  # ⭐ 只查询正常状态的店铺
+        amazon_shop__shop_status='status-active',  # ⭐ 只查询正常状态的店铺
     ).exclude(
         divi_order_status__in={0, 5}
     ).exclude(
@@ -135,7 +135,7 @@ def query_sync_orders(start_datetime):
     return AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
-        amazon_shop__shop_status='正常',  # ⭐ 新增：只查询正常状态的店铺
+        amazon_shop__shop_status='status-active',  # ⭐ 新增：只查询正常状态的店铺
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).select_related(
@@ -234,7 +234,7 @@ def extract_unique_brand_ids(start_datetime):
     orders_with_sid = AmazonOrders.objects.filter(
         fulfillment_channel='MFN',
         purchase_date_local__gte=start_datetime,
-        amazon_shop__shop_status='正常',  # ⭐ 确保只查询正常店铺
+        amazon_shop__shop_status='status-active',  # ⭐ 确保只查询正常店铺
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).exclude(
@@ -321,7 +321,7 @@ def sync_brand_orders(brand_ids, brand_info=None):
                 fulfillment_channel='MFN',
                 purchase_date_local__gte=datetime.strptime(f"{TARGET_DATE} 00:00:00",
                                                            "%Y-%m-%d %H:%M:%S"),
-                amazon_shop__shop_status='正常',  # ⭐ 确保只查询正常店铺
+                amazon_shop__shop_status='status-active',  # ⭐ 确保只查询正常店铺
             ).exclude(
                 order_status__in=EXCLUDE_AMAZON_STATUS
             ).select_related(
