@@ -20,7 +20,7 @@ from openpyxl.styles import Font, Alignment
 # 导入你的模型
 from theme.models import (
     AmazonProduct, ProductRankHistory, AmazonThemeNovelty,
-    ThemeRecord, ThemeDailyData, ThemeReport
+    ThemeRecord, ThemeDailyData, ThemeReport, ThemeNoveltySummary
 )
 from theme.view.permissions import theme_access_required
 from theme.view.views_trend import analyze_theme_trend, batch_analyze_theme_trend
@@ -99,6 +99,18 @@ def product_list_page(request):
         max_created_at=Max('created_at')
     )
 
+    total_themes = ThemeNoveltySummary.objects.count()
+    recent_themes_7d = (
+        ThemeNoveltySummary.objects.filter(
+            summary_subject__updated_at__gte=timezone.now() - timedelta(days=7)
+        ).distinct().count()
+    )
+    recent_themes_month = (
+        ThemeNoveltySummary.objects.filter(
+            summary_subject__updated_at__gte=first_day_of_month
+        ).distinct().count()
+    )
+
     context = {
         'page_title': 'Amazon新奇特',
         'active_nav': 'theme_products',
@@ -107,6 +119,11 @@ def product_list_page(request):
         'latest_deal_stats': latest_deal_stats,
         'date_range': date_range,
         'current_user': user,
+        'aggregation_stats': {
+            'total_themes': total_themes,
+            'recent_themes_7d': recent_themes_7d,
+            'recent_themes_month': recent_themes_month,
+        },
     }
 
     return render(request, 'amazon_products_display.html', context)

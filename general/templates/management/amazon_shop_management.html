@@ -693,8 +693,10 @@
         { key: 'bind_phone', label: '绑定手机', group: '收款信息' },
         { key: 'collection_card_number', label: '收款卡号', group: '收款信息' },
         { key: 'payment_password', label: '支付密码', group: '收款信息' },
-        { key: 'id_number', label: '身份证号', group: '法人信息' },
-        { key: 'legal_person_phone', label: '法人手机', group: '法人信息' },
+                { key: 'id_number', label: '身份证号', group: '法人信息' },
+                { key: 'id_card_address', label: '身份证地址', group: '法人信息' },
+                { key: 'company_address', label: '公司地址', group: '法人信息' },
+                { key: 'legal_person_phone', label: '法人手机', group: '法人信息' },
         { key: 'company_name', label: '公司名称', group: '法人信息', tableVisible: true },
         { key: 'license_number', label: '执照号', group: '法人信息' },
         { key: 'business_license_date', label: '执照日期', group: '法人信息' },
@@ -754,6 +756,7 @@
                 { value: 'status-inactive', label: '停用' },
                 { value: 'status-cancelled', label: '注销' },
                 { value: 'status-warning', label: '救店中' },
+                { value: 'status-nurturing', label: '养店中' },
                 { value: 'status-pending', label: '审核中' },
                 { value: 'status-unknown', label: '待定' }
             ],
@@ -958,6 +961,7 @@
             'status-inactive': 'status-inactive',
             'status-cancelled': 'status-cancelled',
             'status-warning': 'status-warning',
+            'status-nurturing': 'status-nurturing',
             'status-pending': 'status-pending',
             'status-unknown': 'status-unknown'
         };
@@ -966,6 +970,7 @@
             'status-inactive': '停用',
             'status-cancelled': '注销',
             'status-warning': '救店中',
+            'status-nurturing': '养店中',
             'status-pending': '审核中',
             'status-unknown': '待定'
         };
@@ -982,8 +987,8 @@
                     return `<td class="field-${col.key}" data-shop-id="${shop.id}">${value || '-'}</td>`;
                 }
                 if (col.key === 'shop_status') {
-                    const cls = statusClasses[shop.shop_status] || 'status-unknown';
-                    const label = statusLabels[shop.shop_status] || shop.shop_status;
+                    const cls = statusClasses[shop.shop_status] || 'status-inactive';
+                    const label = statusLabels[shop.shop_status] || shop.shop_status || '-';
                     return `<td class="field-${col.key}"><span class="status-badge ${cls}">${label}</span></td>`;
                 }
                 if (col.key === 'ling_xing_if') {
@@ -1115,12 +1120,13 @@
 
         modalStatusSelect = new SearchableSelect('#modal-shop_status', {
             options: [
-                { value: 'status-active', label: '正常' },
-                { value: 'status-inactive', label: '停用' },
-                { value: 'status-cancelled', label: '注销' },
-                { value: 'status-warning', label: '救店中' },
-                { value: 'status-pending', label: '审核中' },
-                { value: 'status-unknown', label: '待定' }
+                {value: 'status-active', label: '正常'},
+                {value: 'status-inactive', label: '停用'},
+                {value: 'status-cancelled', label: '注销'},
+                {value: 'status-warning', label: '救店中'},
+                {value: 'status-nurturing', label: '养店中'},
+                {value: 'status-pending', label: '审核中'},
+                {value: 'status-unknown', label: '待定'}
             ],
             placeholder: '请选择状态'
         });
@@ -1323,6 +1329,14 @@
                     <label>身份证到期</label>
                     <input type="text" id="modal-id_expiry_date" value="${data.id_expiry_date || ''}">
                 </div>
+                <div class="form-group">
+                    <label>身份证地址</label>
+                    <input type="text" id="modal-id_card_address" value="${data.id_card_address || ''}">
+                </div>
+                <div class="form-group">
+                    <label>公司地址</label>
+                    <input type="text" id="modal-company_address" value="${data.company_address || ''}">
+                </div>
                 <div class="form-group" style="grid-column: span 3;">
                     <label>图片1</label>
                     <input type="text" id="modal-img1" value="${data.img1 || ''}">
@@ -1383,6 +1397,8 @@
             business_license_date: v('modal-business_license_date'),
             birth_date: v('modal-birth_date'),
             id_expiry_date: v('modal-id_expiry_date'),
+            id_card_address: v('modal-id_card_address'),
+            company_address: v('modal-company_address'),
             remark: v('modal-remark'),
             additional_remark: v('modal-additional_remark'),
             img1: v('modal-img1')

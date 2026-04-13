@@ -75,7 +75,7 @@ def query_pending_ship_orders(start_date_str=None, max_batch_size=None):
         start_datetime = datetime.min
 
     # 店铺状态——停用/注销关键词
-    STOP_WORDS = ['停用', '注销']
+    STOP_WORDS = ['status-inactive', 'status-cancelled']
 
     # 构建基础查询
     orders = AmazonOrders.objects.filter(

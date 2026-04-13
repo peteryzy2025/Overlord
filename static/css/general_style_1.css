@@ -1185,6 +1185,11 @@ a.btn.gs-btn-icon-only::before {
     color: #4A5568;
 }
 
+.status-nurturing {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
 .status-warning {
     background-color: #FEEBC8;
     color: #744210;

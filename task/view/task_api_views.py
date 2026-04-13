@@ -790,7 +790,7 @@ def get_available_shops_api(request):
         # 排序：正常状态的排在前面，然后按店铺名排序
         def sort_key(x):
             status = x.get('shop_status', '')
-            is_normal = 0 if status == '正常' else 1
+            is_normal = 0 if status == 'status-active' else 1
             return (is_normal, x['raw_name'])
         
         shops_data.sort(key=sort_key)

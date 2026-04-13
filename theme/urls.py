@@ -1,5 +1,6 @@
 ﻿from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
+from theme.view import views, views_vocabulary, views_trend, views_dw_data, views_new_release, views_novelty_aggregation
 from theme.view import views, views_vocabulary, views_trend, views_dw_data, views_new_release, views_crawler
 
 
@@ -30,6 +31,8 @@ urlpatterns = [
     path('api/theme-new-release/', views_new_release.api_new_release_list, name='api_new_release_list'),
     path('api/theme-aggregation/', views_new_release.api_theme_aggregation_list, name='api_theme_aggregation_list'),
     path('api/theme-aggregation/asins/', views_new_release.api_theme_aggregation_asins, name='api_theme_aggregation_asins'),
+    path('api/theme-novelty-aggregation/', views_novelty_aggregation.api_novelty_aggregation_list, name='api_novelty_aggregation_list'),
+    path('api/theme-novelty-aggregation/asins/', views_novelty_aggregation.api_novelty_aggregation_asins, name='api_novelty_aggregation_asins'),
     path('api/amazon-products/batch-risk-check/', views.api_batch_risk_check, name='api_batch_risk_check'),
 
     # 产品操作API - 放在详情API之前

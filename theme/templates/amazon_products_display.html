@@ -1205,6 +1205,154 @@
         .tri-state-toggle[data-state="unreported"] .toggle-option[data-value="unreported"] {
             color: #047857;
         }
+
+        /* ===== Tab navigation ===== */
+        .tab-nav {
+            display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color);
+        }
+        .tab-nav-item {
+            padding: 0.75rem 1.5rem; cursor: pointer; font-size: 0.95rem; font-weight: 500;
+            color: var(--text-secondary); border-bottom: 2px solid transparent;
+            margin-bottom: -2px; transition: all 0.2s ease; user-select: none;
+        }
+        .tab-nav-item:hover { color: var(--accent-color); }
+        .tab-nav-item.active { color: var(--accent-color); border-bottom-color: var(--accent-color); }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* ===== Aggregation table ===== */
+        .w-checkbox {
+            width: 45px !important; min-width: 45px !important; max-width: 45px !important;
+            text-align: center; vertical-align: middle; padding: 0.5rem !important;
+        }
+        .w-checkbox input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent-color); margin: 0; }
+        #noveltyAggregationTableContainer .table { min-width: 780px; }
+        #noveltyAggregationTableContainer td:nth-child(2),
+        #noveltyAggregationTableContainer th:nth-child(2) { max-width: 320px; }
+        .detail-row { display: none; }
+        .detail-row.open { display: table-row; }
+        .detail-row > td { background: transparent !important; padding: 0 !important; border-top: none !important; }
+        .detail-content { padding: 1rem 1.5rem 1.5rem; overflow-x: auto; }
+        .asin-detail-card {
+            background: #ffffff; border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); border: 1px solid var(--border-color); overflow: hidden;
+        }
+        .asin-detail-header {
+            background: linear-gradient(135deg, #f8fafc 0%, #eef4ff 100%);
+            padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        }
+        .asin-detail-header-main { display: flex; align-items: center; gap: 0.875rem; min-width: 0; }
+        .asin-detail-icon {
+            width: 2.5rem; height: 2.5rem; border-radius: 0.9rem;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1d4ed8; box-shadow: inset 0 1px 0 rgba(255,255,255,0.65); flex-shrink: 0;
+        }
+        .asin-detail-header-copy { min-width: 0; }
+        .asin-detail-title { font-weight: 700; color: var(--text-primary); font-size: 1rem; line-height: 1.2; }
+        .asin-detail-subtitle { margin-top: 0.2rem; color: var(--text-secondary); font-size: 0.82rem; }
+        .asin-detail-count {
+            background: rgba(37,99,235,0.1); color: #1d4ed8; font-size: 0.78rem;
+            padding: 0.35rem 0.75rem; border-radius: 999px; font-weight: 600;
+            border: 1px solid rgba(37,99,235,0.16); white-space: nowrap;
+        }
+        .asin-detail-body { padding: 0; }
+        .asin-detail-table-wrapper { overflow-x: auto; }
+        .asin-detail-table {
+            width: 100%; border-collapse: separate; border-spacing: 0;
+            font-size: 0.875rem; table-layout: fixed; min-width: 1000px;
+        }
+        .asin-detail-table thead { background: #f8fafc; }
+        .asin-detail-table th {
+            padding: 0.875rem 1rem; text-align: left; color: var(--text-secondary);
+            font-weight: 600; border-bottom: 2px solid var(--border-color);
+            white-space: nowrap; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .asin-detail-table th:nth-child(1), .asin-detail-table td:nth-child(1) { width: 160px; }
+        .asin-detail-table th:nth-child(2), .asin-detail-table td:nth-child(2) { width: 80px; text-align: center; }
+        .asin-detail-table th:nth-child(3), .asin-detail-table td:nth-child(3) { width: 25%; }
+        .asin-detail-table th:nth-child(4), .asin-detail-table td:nth-child(4) { width: 20%; }
+        .asin-detail-table th:nth-child(5), .asin-detail-table td:nth-child(5) { width: 130px; }
+        .asin-detail-table th:nth-child(6), .asin-detail-table td:nth-child(6) { width: 120px; }
+        .asin-detail-table th:first-child { padding-left: 1.5rem; }
+        .asin-detail-table th:last-child { padding-right: 1.5rem; }
+        .asin-detail-table tbody tr { transition: background-color 0.2s ease; }
+        .asin-detail-table tbody tr:hover { background-color: #f8fafc; }
+        .asin-detail-table td {
+            padding: 1rem; color: var(--text-primary);
+            border-bottom: 1px solid var(--border-color); vertical-align: middle;
+        }
+        .asin-detail-table td:first-child { padding-left: 1.5rem; }
+        .asin-detail-table td:last-child { padding-right: 1.5rem; }
+        .asin-detail-table tbody tr:last-child td { border-bottom: none; }
+        .asin-cell { font-size: 0.85rem; }
+        .asin-title-cell, .asin-subject-cell { min-width: 0; }
+        .asin-text-block { min-width: 0; }
+        .asin-text-line {
+            display: block; min-width: 0; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; line-height: 1.45;
+        }
+        .asin-text-line.is-primary { color: var(--text-primary); font-weight: 600; }
+        .asin-text-line.is-secondary { margin-top: 0.2rem; color: var(--text-secondary); font-size: 0.82rem; }
+        .detail-product-thumbnail {
+            width: 50px; height: 50px; object-fit: cover; border-radius: 8px;
+            border: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .detail-product-thumbnail:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .agg-asin-link {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 92px; padding: 0.45rem 0.8rem; border-radius: 999px;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe; box-shadow: 0 4px 14px rgba(37,99,235,0.12);
+            color: #1e3a8a; text-decoration: none; font-size: 0.76rem;
+            font-weight: 700; letter-spacing: 0.08em; transition: all 0.2s ease;
+        }
+        .agg-asin-link:hover {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-color: #93c5fd; box-shadow: 0 8px 18px rgba(37,99,235,0.18);
+            color: #1d4ed8; text-decoration: none; transform: translateY(-1px);
+        }
+        .agg-detail-loading { text-align: center; padding: 3rem; color: var(--text-secondary); }
+        .agg-detail-loading i { font-size: 1.5rem; margin-bottom: 0.75rem; display: block; }
+        .agg-detail-empty { text-align: center; padding: 3rem; color: var(--text-secondary); }
+        .agg-detail-empty i { font-size: 2rem; margin-bottom: 0.75rem; display: block; color: #cbd5e1; }
+        .agg-detail-btn {
+            background: #f1f5f9; border: 1px solid var(--border-color); color: var(--text-primary);
+            font-size: 0.8rem; padding: 0.4rem 0.875rem; border-radius: 6px;
+            transition: all 0.2s ease; font-weight: 500;
+        }
+        .agg-detail-btn:hover { background: var(--accent-color); border-color: var(--accent-color); color: white; }
+        .agg-detail-btn.expanded { background: var(--accent-color); border-color: var(--accent-color); color: white; }
+        .badge-category {
+            display: inline-block; background: #f1f5f9; color: var(--text-secondary);
+            font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 4px;
+            font-weight: 500; border: 1px solid var(--border-color);
+        }
+        .clickable-subject {
+            cursor: pointer; transition: color 0.2s ease;
+            display: block; max-width: 100%;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .clickable-subject:hover { color: var(--accent-color, #4f46e5); }
+        .agg-quick-filter-row {
+            display: flex; align-items: center; gap: 0.875rem; margin-top: 1rem; flex-wrap: wrap; grid-column: 1 / -1;
+        }
+        .agg-quick-filter-label { font-size: 0.875rem; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+        .agg-quick-filter-options { display: flex; align-items: center; gap: 0.625rem; flex-wrap: wrap; }
+        .agg-quick-filter-chip {
+            border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary);
+            border-radius: 999px; padding: 0.4rem 0.9rem; font-size: 0.8125rem; line-height: 1;
+            cursor: pointer; transition: all 0.2s ease; user-select: none; white-space: nowrap;
+        }
+        .agg-quick-filter-chip:hover { border-color: var(--accent-color); color: var(--accent-color); }
+        .agg-quick-filter-chip.active {
+            background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.4);
+            color: #047857; box-shadow: 0 6px 16px rgba(16,185,129,0.14);
+        }
+        #noveltyAggregationTableContainer .table tbody tr { height: 64px; }
+        #noveltyAggregationTableContainer .table tbody td { padding-top: 0.75rem; padding-bottom: 0.75rem; }
     </style>
 {% endblock %}
 
@@ -1231,6 +1379,14 @@
                 </button>
             </div>
         </div>
+
+        <div class="tab-nav">
+            <div class="tab-nav-item active" onclick="switchProductsTab('products')">新奇特</div>
+            <div class="tab-nav-item" onclick="switchProductsTab('aggregation')">主题聚合</div>
+        </div>
+
+        <!-- 新奇特 Tab -->
+        <div class="tab-pane active" id="products-tab">
 
         <div class="stats-dashboard" id="statsDashboard">
             <div class="stat-card">
@@ -1445,6 +1601,122 @@
                 </div>
             </div>
         </div>
+        </div><!-- end products-tab -->
+
+        <!-- 主题聚合 Tab -->
+        <div class="tab-pane" id="aggregation-tab">
+            <div class="stats-dashboard" id="aggregationStatsDashboard">
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-layer-group"></i> 总主题数</div>
+                    <div class="stat-value" id="aggTotalThemes">{{ aggregation_stats.total_themes|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-clock"></i> 近7日更新</div>
+                    <div class="stat-value" id="aggRecentThemes7d">{{ aggregation_stats.recent_themes_7d|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label"><i class="fas fa-calendar-check"></i> 本月更新</div>
+                    <div class="stat-value" id="aggRecentThemesMonth">{{ aggregation_stats.recent_themes_month|default:"-" }}</div>
+                    <div class="stat-change">&nbsp;</div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">开始日期</label>
+                        <input type="date" class="form-control" id="aggStartDate">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">结束日期</label>
+                        <input type="date" class="form-control" id="aggEndDate">
+                    </div>
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label class="filter-label">主题搜索</label>
+                        <input type="text" class="form-control" id="aggSubjectSearch"
+                               placeholder="搜索子ASIN主题..."
+                               onkeydown="if(event.key==='Enter'){applyNoveltyAggregationFilters();}">
+                    </div>
+                </div>
+                <div class="filter-actions-row">
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyNoveltyAggregationFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetNoveltyAggregationFilters()" title="重置" aria-label="重置"></button>
+                    </div>
+                </div>
+                <div class="agg-quick-filter-row" id="noveltyAggQuickFilter">
+                    <div class="agg-quick-filter-label">新主题</div>
+                    <div class="agg-quick-filter-options">
+                        <button type="button" class="agg-quick-filter-chip active" data-days="" onclick="applyNoveltyQuickFilter(this)">全部</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="3" onclick="applyNoveltyQuickFilter(this)">3天内</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="7" onclick="applyNoveltyQuickFilter(this)">7天内</button>
+                        <button type="button" class="agg-quick-filter-chip" data-days="15" onclick="applyNoveltyQuickFilter(this)">15天内</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <div class="products-header-row">
+                    <div class="products-header-left">
+                        <h3 class="section-title" style="margin-bottom: 0;">主题聚合列表</h3>
+                    </div>
+                </div>
+
+                <div class="table-container" id="noveltyAggregationTableContainer">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
+                            <th class="sortable" data-field="summary_subject_title" onclick="handleNoveltyAggSort('summary_subject_title')">聚合主题</th>
+                            <th class="sortable active" data-field="appear_count" onclick="handleNoveltyAggSort('appear_count')">出现次数</th>
+                            <th class="sortable" data-field="avg_launch_days" onclick="handleNoveltyAggSort('avg_launch_days')">平均上架时间</th>
+                            <th>平均排名趋势图</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="noveltyAggregationTableBody">
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>请选择日期范围并点击"应用筛选"</p>
+                                <p>主题聚合数据将在此处显示</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-container" id="aggPaginationControls" style="display: none;">
+                    <div class="pagination-info" data-total="0">
+                        <div class="page-size-wrapper" id="aggPageSizeWrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div class="page-size-dropdown-wrapper">
+                                <button class="page-size-trigger" id="aggPageSizeTrigger" onclick="toggleAggPageSizeDropdown()">
+                                    <span id="aggPageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="aggPageSizeDropdown">
+                                    <div class="page-size-option selected" onclick="changeAggPageSize(20)">20条</div>
+                                    <div class="page-size-option" onclick="changeAggPageSize(50)">50条</div>
+                                    <div class="page-size-option" onclick="changeAggPageSize(100)">100条</div>
+                                    <div class="page-size-option" onclick="changeAggPageSize(200)">200条</div>
+                                </div>
+                            </div>
+                            <span class="pagination-stats" id="aggPaginationStats">0-0 / 共 0 条</span>
+                        </div>
+                    </div>
+                    <div class="pagination-new" id="aggPaginationButtons"></div>
+                    <div class="pagination-jump" id="aggPaginationJump" style="display: none;">
+                        <span>跳至</span>
+                        <input type="number" id="aggPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleAggPageJump(event)">
+                        <span>页</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 {% endblock %}
 
@@ -3606,6 +3878,354 @@
                     else if (this.id === 'exportModal') closeExportModal();
                 }
             });
+        });
+
+        // ===== Tab switching ======
+        function switchProductsTab(tab) {
+            document.querySelectorAll('.tab-nav-item').forEach(function(item) {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-pane').forEach(function(pane) {
+                pane.classList.remove('active');
+            });
+            if (tab === 'products') {
+                document.querySelector('.tab-nav-item:nth-child(1)').classList.add('active');
+                document.getElementById('products-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab-nav-item:nth-child(2)').classList.add('active');
+                document.getElementById('aggregation-tab').classList.add('active');
+                if (!noveltyAggState.loaded) {
+                    loadNoveltyAggregationTable();
+                    noveltyAggState.loaded = true;
+                }
+            }
+        }
+
+        // ===== Novelty Aggregation state ======
+        var noveltyAggState = {
+            loaded: false,
+            sort_field: 'appear_count',
+            sort_order: 'desc',
+            page: 1,
+            page_size: 20,
+            total: 0,
+            total_pages: 0,
+            new_theme_days: ''
+        };
+        var noveltyAggCurrentThemes = [];
+        var noveltyAggSelectedIds = new Set();
+        var noveltyAggExpandedIds = new Set();
+
+        // ===== Novelty Aggregation: load data ======
+        async function loadNoveltyAggregationTable() {
+            showLoading(true);
+            var tbody = document.getElementById('noveltyAggregationTableBody');
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+            try {
+                var params = {
+                    start_date: document.getElementById('aggStartDate').value,
+                    end_date: document.getElementById('aggEndDate').value,
+                    subject_search: document.getElementById('aggSubjectSearch').value.trim(),
+                    sort_field: noveltyAggState.sort_field,
+                    sort_order: noveltyAggState.sort_order,
+                    page: noveltyAggState.page,
+                    page_size: noveltyAggState.page_size,
+                    new_theme_days: noveltyAggState.new_theme_days
+                };
+                var response = await fetch("{% url 'theme:api_novelty_aggregation_list' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                var result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || '数据加载失败');
+                var data = result.data || {};
+                noveltyAggState.page = data.current_page || 1;
+                noveltyAggState.page_size = data.page_size || 20;
+                noveltyAggState.total = data.total || 0;
+                noveltyAggState.total_pages = data.total_pages || 0;
+                noveltyAggCurrentThemes = data.themes || [];
+                renderNoveltyAggTable(noveltyAggCurrentThemes);
+                renderNoveltyAggPagination();
+                updateNoveltyAggStats(data.stats || {});
+                var controls = document.getElementById('aggPaginationControls');
+                if (controls) controls.style.display = noveltyAggState.total > 0 ? 'flex' : 'none';
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                var controls = document.getElementById('aggPaginationControls');
+                if (controls) controls.style.display = 'none';
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+        }
+
+        function initRankTrendChart(chartId, data, options) {
+            var validData = Array.isArray(data) ? data.filter(function(item){return item && item.rank !== null && item.rank !== undefined && item.rank !== '';}) : [];
+            var container = document.getElementById(chartId);
+            if (!container || validData.length === 0) return;
+            var svg = container.querySelector('svg');
+            var tooltip = container.querySelector('.trend-tooltip');
+            if (!svg) return;
+            var opts = options || {};
+            var width = opts.width || 160, height = opts.height || 60;
+            var padding = {top:10,bottom:10,left:5,right:5};
+            var chartHeight = height - padding.top - padding.bottom;
+            var chartWidth = width - padding.left - padding.right;
+            var ranks = validData.map(function(item){return Number(item.rank);});
+            var minRank = Math.min.apply(null,ranks), maxRank = Math.max.apply(null,ranks);
+            var range = maxRank - minRank || 1;
+            var points = validData.map(function(item,index){
+                var x = validData.length === 1 ? width/2 : padding.left + (index/(validData.length-1))*chartWidth;
+                var normalizedRank = (maxRank - Number(item.rank))/range;
+                var y = height - padding.bottom - normalizedRank*chartHeight;
+                return {index:index,x:x,y:y,rank:Number(item.rank),date:item.date||''};
+            });
+            var pathD = 'M '+points[0].x+' '+points[0].y;
+            for (var i=0;i<points.length-1;i++){var p0=points[i],p1=points[i+1];pathD+=' C '+(p0.x+(p1.x-p0.x)/2)+' '+p0.y+', '+(p0.x+(p1.x-p0.x)/2)+' '+p1.y+', '+p1.x+' '+p1.y;}
+            svg.innerHTML = '<path d="'+pathD+'" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>';
+            points.forEach(function(point){
+                var circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+                circle.setAttribute('cx',point.x);circle.setAttribute('cy',point.y);
+                circle.setAttribute('r','3');circle.setAttribute('fill','#3b82f6');
+                circle.setAttribute('stroke','white');circle.setAttribute('stroke-width','1.5');
+                if(validData.length===1) circle.setAttribute('opacity','1');
+                else circle.setAttribute('opacity','0');
+                circle.style.transition='opacity 0.2s';
+                svg.appendChild(circle);
+            });
+            var bestPoint = points.reduce(function(a,b){return a.rank<b.rank?a:b;});
+            var label=document.createElement('div');label.className='trend-point-label';
+            label.style.cssText='position:absolute;left:'+(bestPoint.x-8)+'px;top:'+(bestPoint.y-16)+'px;font-size:10px;color:#3b82f6;font-weight:600;';
+            label.textContent=minRank;container.appendChild(label);
+            container.onmousemove=function(e){
+                var rect=container.getBoundingClientRect();var mouseX=e.clientX-rect.left;
+                var closest=points[0],minDist=Math.abs(mouseX-points[0].x);
+                for(var j=0;j<points.length;j++){var dist=Math.abs(mouseX-points[j].x);if(dist<minDist){minDist=dist;closest=points[j];}}
+                if(tooltip){tooltip.style.display='block';tooltip.style.left=(e.clientX+10)+'px';tooltip.style.top=(e.clientY-40)+'px';tooltip.innerHTML=closest.date+'<br/>排名: '+closest.rank;}
+            };
+            container.onmouseleave=function(){if(tooltip)tooltip.style.display='none';};
+        }
+
+        // ===== Novelty Aggregation: render table ======
+        function renderNoveltyAggTable(themes) {
+            var tbody = document.getElementById('noveltyAggregationTableBody');
+            if (!Array.isArray(themes) || themes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                return;
+            }
+            tbody.innerHTML = themes.map(function(theme) {
+                var themeId = Number(theme.id);
+                var rawTitle = theme.summary_subject_title || '-';
+                var title = escapeHtml(rawTitle);
+                var titleAttr = rawTitle.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                var trendData = theme.rank_trend_7d || [];
+                var chartId = 'novelty-agg-trend-' + themeId;
+                var isChecked = noveltyAggSelectedIds.has(themeId);
+                var trendHTML = trendData.length > 0
+                    ? '<div class="score-trend-chart" id="'+chartId+'"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display:none;position:fixed;background:rgba(0,0,0,0.8);color:white;padding:6px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;white-space:nowrap;"></div></div>'
+                    : '-';
+                var avgDays = theme.avg_launch_days;
+                var avgDaysHTML = (avgDays !== null && avgDays !== undefined) ? escapeHtml(avgDays) + ' 天' : '-';
+                var isExpanded = noveltyAggExpandedIds.has(themeId);
+                return '<tr data-theme-id="'+themeId+'">' +
+                    '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="'+themeId+'"'+(isChecked?' checked':'')+' onchange="handleAggRowCheckboxChange(this)"></td>' +
+                    '<td><div class="subject-main clickable-subject" onclick="toggleNoveltyAggDetail('+themeId+')" title="'+titleAttr+'">'+title+'</div></td>' +
+                    '<td>'+escapeHtml(theme.appear_count ?? '-')+'</td>' +
+                    '<td>'+avgDaysHTML+'</td>' +
+                    '<td>'+trendHTML+'</td>' +
+                    '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleNoveltyAggDetail('+themeId+')">'+(isExpanded?'收起':'ASIN详情')+'</button></td>' +
+                    '</tr>' +
+                    '<tr id="novelty-agg-detail-row-'+themeId+'" class="detail-row" style="display:none;">' +
+                    '<td colspan="6" class="detail-content" id="novelty-agg-detail-content-'+themeId+'">' +
+                    '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
+                    '</td></tr>';
+            }).join('');
+            themes.forEach(function(theme){
+                var trendData=theme.rank_trend_7d||[];
+                if(trendData.length>0) initRankTrendChart('novelty-agg-trend-'+theme.id,trendData);
+            });
+            syncAggSelectAllState();
+        }
+
+        // ===== Novelty Aggregation: checkbox ======
+        function toggleAggSelectAll() {
+            var checkbox = document.getElementById('aggSelectAll');
+            document.querySelectorAll('.agg-row-checkbox').forEach(function(cb){
+                var themeId = parseInt(cb.dataset.themeId,10);
+                cb.checked = checkbox.checked;
+                if(checkbox.checked) noveltyAggSelectedIds.add(themeId);
+                else noveltyAggSelectedIds.delete(themeId);
+            });
+            syncAggSelectAllState();
+        }
+        function clearAggSelection() {
+            noveltyAggSelectedIds.clear();
+            var selectAll = document.getElementById('aggSelectAll');
+            if(selectAll) selectAll.checked = false;
+            document.querySelectorAll('.agg-row-checkbox').forEach(function(cb){cb.checked=false;});
+        }
+        function handleAggRowCheckboxChange(checkbox) {
+            var themeId = parseInt(checkbox.dataset.themeId,10);
+            if(checkbox.checked) noveltyAggSelectedIds.add(themeId);
+            else noveltyAggSelectedIds.delete(themeId);
+            syncAggSelectAllState();
+        }
+        function syncAggSelectAllState() {
+            var selectAll = document.getElementById('aggSelectAll');
+            var rowCheckboxes = Array.from(document.querySelectorAll('.agg-row-checkbox'));
+            if(!selectAll) return;
+            selectAll.checked = rowCheckboxes.length > 0 && rowCheckboxes.every(function(cb){return cb.checked;});
+        }
+
+        // ===== Novelty Aggregation: ASIN detail expand ======
+        function toggleNoveltyAggDetail(themeId) {
+            var detailRow = document.getElementById('novelty-agg-detail-row-'+themeId);
+            var btn = document.querySelector('button[onclick="toggleNoveltyAggDetail('+themeId+')"]');
+            if(!detailRow) return;
+            if(noveltyAggExpandedIds.has(themeId)){
+                detailRow.style.display='none';noveltyAggExpandedIds.delete(themeId);
+                if(btn){btn.textContent='ASIN详情';btn.classList.remove('expanded');}
+            } else {
+                detailRow.style.display='table-row';noveltyAggExpandedIds.add(themeId);
+                if(btn){btn.textContent='收起';btn.classList.add('expanded');}
+                loadNoveltyAggAsins(themeId);
+            }
+        }
+
+        async function loadNoveltyAggAsins(themeId) {
+            var contentCell = document.getElementById('novelty-agg-detail-content-'+themeId);
+            if(!contentCell) return;
+            contentCell.innerHTML = '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i><div>正在加载ASIN详情...</div></div>';
+            try {
+                var response = await fetch("{% url 'theme:api_novelty_aggregation_asins' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ theme_id: themeId })
+                });
+                var result = await response.json();
+                if(!response.ok || !result.success) throw new Error(result.message||'数据加载失败');
+                var asins = result.data && result.data.asins || [];
+                if(asins.length===0){contentCell.innerHTML='<div class="agg-detail-empty"><i class="fas fa-box-open"></i><div>暂无ASIN数据</div></div>';return;}
+                var html='<div class="asin-detail-card"><div class="asin-detail-header"><div class="asin-detail-header-main">'+
+                    '<span class="asin-detail-icon"><i class="fas fa-cubes"></i></span><div class="asin-detail-header-copy">'+
+                    '<div class="asin-detail-title">ASIN列表</div><div class="asin-detail-subtitle">按聚合主题展示关联产品明细</div></div></div>'+
+                    '<span class="asin-detail-count">'+asins.length+' 个产品</span></div>'+
+                    '<div class="asin-detail-body"><div class="asin-detail-table-wrapper"><table class="asin-detail-table">'+
+                    '<thead><tr><th>ASIN</th><th>图片</th><th>标题</th><th>主题</th><th>排名趋势</th><th>上架日期</th></tr></thead><tbody>';
+                asins.forEach(function(row){
+                    var asin=escapeHtml(row.asin||'');var asinRaw=row.asin||'';
+                    var title=escapeHtml(row.title||'');var titleTrans=escapeHtml(row.title_translation||'');
+                    var subject=escapeHtml(row.subject||'');var subjectTrans=escapeHtml(row.subject_translation||'');
+                    var launchDate=escapeHtml(row.launch_date||'-');var imageUrl=row.image_url||'';
+                    var trendData=row.rank_trend_7d||[];
+                    var chartId='novelty-asin-trend-'+themeId+'-'+asinRaw.replace(/[^a-zA-Z0-9]/g,'');
+                    var trendHTML=trendData.length>0?'<div class="score-trend-chart" id="'+chartId+'"><svg width="120" height="50"></svg><div class="trend-tooltip" style="display:none;position:fixed;background:rgba(0,0,0,0.8);color:white;padding:6px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;white-space:nowrap;"></div></div>':'-';
+                    html+='<tr><td class="asin-cell"><a href="https://www.amazon.com/dp/'+asin+'" target="_blank" class="agg-asin-link">'+asin+'</a></td>'+
+                        '<td>'+(imageUrl?'<img src="'+imageUrl+'" class="detail-product-thumbnail" loading="lazy" onerror="this.onerror=null;this.remove();">':'-')+'</td>'+
+                        '<td class="asin-title-cell"><div class="asin-text-block"><span class="asin-text-line is-primary" title="'+(title||'-')+'">'+(title||'-')+'</span>'+
+                        (titleTrans?'<span class="asin-text-line is-secondary" title="'+titleTrans+'">'+titleTrans+'</span>':'')+'</div></td>'+
+                        '<td class="asin-subject-cell"><div class="asin-text-block"><span class="asin-text-line is-primary" title="'+(subject||'-')+'">'+(subject||'-')+'</span>'+
+                        (subjectTrans?'<span class="asin-text-line is-secondary" title="'+subjectTrans+'">'+subjectTrans+'</span>':'')+'</div></td>'+
+                        '<td>'+trendHTML+'</td><td class="date-cell">'+launchDate+'</td></tr>';
+                });
+                html+='</tbody></table></div></div></div>';
+                contentCell.innerHTML=html;
+                asins.forEach(function(row){
+                    var trendData=row.rank_trend_7d||[];
+                    if(trendData.length>0){var asinRaw=row.asin||'';initRankTrendChart('novelty-asin-trend-'+themeId+'-'+asinRaw.replace(/[^a-zA-Z0-9]/g,''),trendData,{width:120,height:50});}
+                });
+            } catch(error) {
+                contentCell.innerHTML='<div class="agg-detail-empty"><i class="fas fa-exclamation-circle"></i><div>'+escapeHtml(error.message||'加载失败')+'</div></div>';
+            }
+        }
+
+        // ===== Novelty Aggregation: stats ======
+        function updateNoveltyAggStats(stats) {
+            if(!stats) return;
+            var el;
+            el=document.getElementById('aggTotalThemes');if(el) el.textContent=stats.total_themes??'-';
+            el=document.getElementById('aggRecentThemes7d');if(el) el.textContent=stats.recent_themes_7d??'-';
+            el=document.getElementById('aggRecentThemesMonth');if(el) el.textContent=stats.recent_themes_month??'-';
+        }
+
+        // ===== Novelty Aggregation: sort ======
+        function handleNoveltyAggSort(field) {
+            if(noveltyAggState.sort_field===field){noveltyAggState.sort_order=noveltyAggState.sort_order==='asc'?'desc':'asc';}
+            else{noveltyAggState.sort_field=field;noveltyAggState.sort_order=field==='summary_subject_title'?'asc':'desc';}
+            updateNoveltyAggSortHeaders();
+            if(field==='avg_launch_days'&&noveltyAggCurrentThemes.length>0){
+                var order=noveltyAggState.sort_order==='asc'?1:-1;
+                var sorted=noveltyAggCurrentThemes.slice().sort(function(a,b){
+                    var va=(a.avg_launch_days!==null&&a.avg_launch_days!==undefined&&a.avg_launch_days!=='-')?parseFloat(a.avg_launch_days):-1;
+                    var vb=(b.avg_launch_days!==null&&b.avg_launch_days!==undefined&&b.avg_launch_days!=='-')?parseFloat(b.avg_launch_days):-1;
+                    return (va-vb)*order;
+                });
+                renderNoveltyAggTable(sorted);return;
+            }
+            noveltyAggState.page=1;loadNoveltyAggregationTable();
+        }
+        function updateNoveltyAggSortHeaders() {
+            document.querySelectorAll('#aggregation-tab th.sortable').forEach(function(th){
+                var field=th.dataset.field;th.classList.toggle('active',field===noveltyAggState.sort_field);
+            });
+        }
+
+        // ===== Novelty Aggregation: filters ======
+        function applyNoveltyAggregationFilters(){noveltyAggState.page=1;loadNoveltyAggregationTable();}
+        function applyNoveltyQuickFilter(btn){
+            var days=btn.getAttribute('data-days');
+            var allBtn=document.querySelector('#noveltyAggQuickFilter .agg-quick-filter-chip[data-days=""]');
+            if(btn.classList.contains('active')&&days!==''){btn.classList.remove('active');if(allBtn)allBtn.classList.add('active');noveltyAggState.new_theme_days='';}
+            else{document.querySelectorAll('#noveltyAggQuickFilter .agg-quick-filter-chip').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');noveltyAggState.new_theme_days=days;}
+            noveltyAggState.page=1;loadNoveltyAggregationTable();
+        }
+        function resetNoveltyAggregationFilters(){
+            document.getElementById('aggStartDate').value='';document.getElementById('aggEndDate').value='';document.getElementById('aggSubjectSearch').value='';
+            clearAggSelection();noveltyAggState.new_theme_days='';
+            document.querySelectorAll('#noveltyAggQuickFilter .agg-quick-filter-chip').forEach(function(b){b.classList.remove('active');});
+            var allBtn=document.querySelector('#noveltyAggQuickFilter .agg-quick-filter-chip[data-days=""]');if(allBtn)allBtn.classList.add('active');
+            noveltyAggState.page=1;loadNoveltyAggregationTable();
+        }
+
+        // ===== Novelty Aggregation: pagination ======
+        function updateAggPageSizeSelection(size){
+            var el=document.getElementById('aggPageSizeText');if(el) el.textContent=size+'条';
+            document.querySelectorAll('#aggPageSizeDropdown .page-size-option').forEach(function(opt){opt.classList.remove('selected');});
+            var selected=document.querySelector('#aggPageSizeDropdown .page-size-option[onclick="changeAggPageSize('+size+')"]');if(selected) selected.classList.add('selected');
+        }
+        function updateNoveltyAggPaginationStats(){
+            var page=noveltyAggState.page,pageSize=noveltyAggState.page_size,total=noveltyAggState.total;
+            var start=total===0?0:(page-1)*pageSize+1;var end=total===0?0:Math.min(page*pageSize,total);
+            var el=document.getElementById('aggPaginationStats');if(el) el.textContent=start+'-'+end+' / 共 '+total+' 条';
+        }
+        function renderNoveltyAggPagination(){
+            var buttonsContainer=document.getElementById('aggPaginationButtons');
+            var paginationJump=document.getElementById('aggPaginationJump');
+            if(!buttonsContainer||!paginationJump) return;
+            var page=noveltyAggState.page,total=noveltyAggState.total,totalPages=noveltyAggState.total_pages,pageSize=noveltyAggState.page_size;
+            updateAggPageSizeSelection(pageSize);updateNoveltyAggPaginationStats();
+            if(!total||!totalPages){buttonsContainer.innerHTML='<span style="color:var(--text-secondary);font-size:0.875rem;">暂无分页</span>';paginationJump.style.display='none';return;}
+            var html='';html+='<button class="pagination-btn-new" onclick="changeAggPage(1)" '+(page===1?'disabled':'')+'>首页</button>';
+            html+='<button class="pagination-btn-new" onclick="changeAggPage('+(page-1)+')" '+(page===1?'disabled':'')+'>上一页</button>';
+            var startPage=Math.max(1,page-2),endPage=Math.min(totalPages,page+2);
+            if(startPage>1){html+='<button class="pagination-btn-new" onclick="changeAggPage(1)">1</button>';if(startPage>2)html+='<span class="pagination-ellipsis">...</span>';}
+            for(var i=startPage;i<=endPage;i++){html+='<button class="pagination-btn-new '+(i===page?'active':'')+'" onclick="changeAggPage('+i+')">'+i+'</button>';}
+            if(endPage<totalPages){if(endPage<totalPages-1)html+='<span class="pagination-ellipsis">...</span>';html+='<button class="pagination-btn-new" onclick="changeAggPage('+totalPages+')">'+totalPages+'</button>';}
+            html+='<button class="pagination-btn-new" onclick="changeAggPage('+(page+1)+')" '+(page===totalPages?'disabled':'')+'>下一页</button>';
+            html+='<button class="pagination-btn-new" onclick="changeAggPage('+totalPages+')" '+(page===totalPages?'disabled':'')+'>尾页</button>';
+            buttonsContainer.innerHTML=html;paginationJump.style.display='inline-flex';
+        }
+        function changeAggPage(newPage){if(newPage<1||newPage>noveltyAggState.total_pages)return;noveltyAggState.page=newPage;loadNoveltyAggregationTable();document.getElementById('noveltyAggregationTableContainer').scrollIntoView({behavior:'smooth',block:'start'});}
+        function toggleAggPageSizeDropdown(){document.getElementById('aggPageSizeDropdown').classList.toggle('open');}
+        function changeAggPageSize(newSize){noveltyAggState.page_size=newSize;noveltyAggState.page=1;updateAggPageSizeSelection(newSize);document.getElementById('aggPageSizeDropdown').classList.remove('open');loadNoveltyAggregationTable();}
+        function handleAggPageJump(event){if(event.key!=='Enter')return;var page=parseInt(event.target.value,10);if(page&&page>=1&&page<=noveltyAggState.total_pages)changeAggPage(page);event.target.value='';}
+        document.addEventListener('click',function(event){
+            var wrapper=document.getElementById('aggPageSizeWrapper'),dropdown=document.getElementById('aggPageSizeDropdown');
+            if(wrapper&&dropdown&&!wrapper.contains(event.target))dropdown.classList.remove('open');
         });
     </script>
 {% endblock %}

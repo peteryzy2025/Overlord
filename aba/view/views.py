@@ -589,7 +589,7 @@ def _get_hot_word_categories(metric, trend_rows):
         categories.append('持续增长词')
     if growth_percent is not None and growth_percent > 70:
         categories.append('爆发词')
-    if growth_percent is not None and growth_percent >= 50:
+    if growth_percent is not None and 50 <= growth_percent <= 70:
         categories.append('飙升词')
     if growth_percent is not None and growth_percent >= 10:
         categories.append('潜力词')
@@ -673,7 +673,7 @@ def _apply_hot_word_filter(
     elif word_filter == 'burst':
         queryset = queryset.filter(rank_growth_percent__gt=70)
     elif word_filter == 'surging':
-        queryset = queryset.filter(rank_growth_percent__gte=50)
+        queryset = queryset.filter(rank_growth_percent__gte=50, rank_growth_percent__lte=70)
     elif word_filter == 'potential':
         queryset = queryset.filter(rank_growth_percent__gte=10)
     elif word_filter == 'golden':
@@ -1529,6 +1529,7 @@ def get_aba_new_words_api(request):
         category = _normalize_category_value(request.GET.get('category', ''))
         search_mode = request.GET.get('search_mode', '0')
         noise_status = request.GET.get('noise_status', 'all').strip()
+        word_filter = request.GET.get('word_filter', 'all').strip()
         page = max(int(request.GET.get('page', 1)), 1)
         page_size = int(request.GET.get('page_size', 20))
 
@@ -1571,6 +1572,28 @@ def get_aba_new_words_api(request):
             base_queryset = base_queryset.filter(denoising=True)
         elif noise_status == 'denoised':
             base_queryset = base_queryset.filter(denoising=False)
+
+        if word_filter in {'burst', 'surging', 'potential'}:
+            growth_filter_qs = SearchTermMetric.objects.using('aba_db').filter(
+                report_week=window_end,
+                last_week_rank__gt=0,
+                search_frequency_rank__gt=0,
+            ).annotate(
+                growth_pct=ExpressionWrapper(
+                    (Cast(F('last_week_rank'), FloatField()) - Cast(F('search_frequency_rank'), FloatField())) * Value(100.0) / Cast(F('last_week_rank'), FloatField()),
+                    output_field=FloatField(),
+                )
+            )
+            if word_filter == 'burst':
+                growth_filter_qs = growth_filter_qs.filter(growth_pct__gt=70)
+            elif word_filter == 'surging':
+                growth_filter_qs = growth_filter_qs.filter(growth_pct__gte=50, growth_pct__lte=70)
+            elif word_filter == 'potential':
+                growth_filter_qs = growth_filter_qs.filter(growth_pct__gte=10)
+
+            base_queryset = base_queryset.filter(
+                id__in=Subquery(growth_filter_qs.values('search_term_id'))
+            )
 
         candidate_queryset = base_queryset.order_by('-first_seen', 'id')
 
