@@ -1,0 +1,243 @@
+import json
+from datetime import datetime, timedelta
+
+from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from django.db.models import Count, Q
+from django.http import JsonResponse
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+
+from theme.models import AmazonThemeNovelty, ThemeDailyData, ThemeNoveltySummary
+from theme.view.permissions import theme_access_required
+
+
+@theme_access_required
+@csrf_exempt
+@require_POST
+def api_novelty_aggregation_list(request):
+    try:
+        data = json.loads(request.body or '{}')
+
+        start_date_str = str(data.get('start_date', '')).strip()
+        end_date_str = str(data.get('end_date', '')).strip()
+
+        date_filter = Q()
+        if start_date_str:
+            try:
+                start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+                date_filter &= Q(summary_subject__updated_at__date__gte=start_date)
+            except ValueError:
+                pass
+        if end_date_str:
+            try:
+                end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+                date_filter &= Q(summary_subject__updated_at__date__lte=end_date)
+            except ValueError:
+                pass
+
+        new_theme_days = data.get('new_theme_days')
+        new_theme_filter = Q()
+        if new_theme_days:
+            try:
+                days = int(new_theme_days)
+                if days > 0:
+                    cutoff = timezone.now() - timedelta(days=days)
+                    new_theme_filter = Q(created_time__gte=cutoff)
+            except (ValueError, TypeError):
+                pass
+
+        qs = ThemeNoveltySummary.objects.annotate(
+            appear_count=Count('summary_subject', filter=date_filter, distinct=True)
+        ).filter(appear_count__gt=0).filter(new_theme_filter)
+
+        subject_search = str(data.get('subject_search', '')).strip()
+        if subject_search:
+            qs = qs.filter(
+                Q(summary_subject__subject__icontains=subject_search)
+                | Q(summary_subject__subject_translation__icontains=subject_search)
+            ).distinct()
+
+        sort_field = str(data.get('sort_field', 'appear_count')).strip()
+        sort_order = str(data.get('sort_order', 'desc')).strip().lower()
+
+        if sort_field == 'summary_subject_title':
+            order_field = 'summary_subject_title'
+            if sort_order == 'desc':
+                order_field = f'-{order_field}'
+        else:
+            order_field = '-appear_count' if sort_order == 'desc' else 'appear_count'
+
+        qs = qs.order_by(order_field)
+
+        page = int(data.get('page', 1) or 1)
+        page_size = int(data.get('page_size', 20) or 20)
+        if page_size not in (20, 50, 100, 200):
+            page_size = 20
+
+        paginator = Paginator(qs, page_size)
+        try:
+            current_page = paginator.page(page)
+        except PageNotAnInteger:
+            current_page = paginator.page(1)
+        except EmptyPage:
+            current_page = paginator.page(paginator.num_pages)
+
+        theme_ids = [item.id for item in current_page.object_list]
+
+        asin_theme_map = {}
+        theme_launch_stats = {tid: {'total_days': 0, 'count': 0} for tid in theme_ids}
+        theme_category_counts = {tid: {} for tid in theme_ids}
+        for novelty in AmazonThemeNovelty.objects.filter(
+            theme_novelty_summary_id__in=theme_ids
+        ).values('asin', 'theme_novelty_summary_id', 'launch_date'):
+            asin_theme_map[novelty['asin']] = novelty['theme_novelty_summary_id']
+            tid = novelty['theme_novelty_summary_id']
+            today = timezone.now().date()
+            launch_date = novelty.get('launch_date', '')
+            if launch_date and isinstance(launch_date, datetime):
+                launch_date = launch_date.date()
+            if launch_date and tid in theme_launch_stats:
+                days = (today - launch_date).days
+                theme_launch_stats[tid]['total_days'] += days
+                theme_launch_stats[tid]['count'] += 1
+
+        theme_trend_lookup = {}
+        if asin_theme_map:
+            trend_data = (
+                ThemeDailyData.objects.filter(product__asin__in=list(asin_theme_map.keys()))
+                .values('product__asin', 'crawl_date', 'rank')
+                .order_by('product__asin', 'crawl_date')
+            )
+
+            theme_date_ranks = {}
+            for row in trend_data:
+                theme_id = asin_theme_map.get(row['product__asin'])
+                if theme_id is None or row['crawl_date'] is None or row['rank'] is None:
+                    continue
+                date_str = row['crawl_date'].strftime('%Y-%m-%d')
+                theme_date_ranks.setdefault(theme_id, {}).setdefault(date_str, []).append(row['rank'])
+
+            for tid, date_ranks in theme_date_ranks.items():
+                trend_list = []
+                for d in sorted(date_ranks.keys()):
+                    ranks = date_ranks[d]
+                    avg_rank = round(sum(ranks) / len(ranks), 1)
+                    trend_list.append({'date': d, 'rank': avg_rank})
+                theme_trend_lookup[tid] = trend_list[-7:]
+
+        theme_rows = []
+        for item in current_page.object_list:
+            launch_stat = theme_launch_stats.get(item.id, {'total_days': 0, 'count': 0})
+            if launch_stat['count'] > 0:
+                avg_days = round(launch_stat['total_days'] / launch_stat['count'], 1)
+            else:
+                avg_days = "-"
+
+            theme_rows.append({
+                'id': item.id,
+                'summary_subject_title': item.summary_subject_title,
+                'appear_count': item.appear_count,
+                'rank_trend_7d': theme_trend_lookup.get(item.id, []),
+                'avg_launch_days': avg_days,
+            })
+
+        now = timezone.now()
+        seven_days_ago_dt = now - timedelta(days=7)
+        first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        stats = {
+            'total_themes': ThemeNoveltySummary.objects.count(),
+            'recent_themes_7d': ThemeNoveltySummary.objects.filter(
+                summary_subject__updated_at__gte=seven_days_ago_dt
+            ).distinct().count(),
+            'recent_themes_month': ThemeNoveltySummary.objects.filter(
+                summary_subject__updated_at__gte=first_day_of_month
+            ).distinct().count(),
+        }
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'themes': theme_rows,
+                'total': paginator.count,
+                'total_pages': paginator.num_pages,
+                'current_page': current_page.number,
+                'page_size': page_size,
+                'has_next': current_page.has_next(),
+                'has_previous': current_page.has_previous(),
+                'next_page': current_page.next_page_number() if current_page.has_next() else None,
+                'previous_page': current_page.previous_page_number() if current_page.has_previous() else None,
+                'stats': stats,
+            },
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '无效的JSON数据格式'}, status=400)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
+
+
+@theme_access_required
+@csrf_exempt
+@require_POST
+def api_novelty_aggregation_asins(request):
+    try:
+        data = json.loads(request.body or '{}')
+        theme_id = data.get('theme_id')
+
+        if not theme_id:
+            return JsonResponse({'success': False, 'message': '缺少 theme_id 参数'}, status=400)
+
+        asins_qs = AmazonThemeNovelty.objects.filter(
+            theme_novelty_summary_id=theme_id
+        ).values(
+            'asin', 'title', 'title_translation', 'subject',
+            'subject_translation', 'image_url', 'launch_date',
+        ).order_by('-launch_date')
+
+        asin_list_raw = list(asins_qs)
+        asin_values = [row['asin'] for row in asin_list_raw if row['asin']]
+
+        rank_trend_lookup = {}
+        if asin_values:
+            trend_data = (
+                ThemeDailyData.objects.filter(product__asin__in=asin_values)
+                .values('product__asin', 'crawl_date', 'rank')
+                .order_by('product__asin', 'crawl_date')
+            )
+            for row in trend_data:
+                asin = row['product__asin']
+                if asin not in rank_trend_lookup:
+                    rank_trend_lookup[asin] = []
+                rank_trend_lookup[asin].append({
+                    'date': row['crawl_date'].strftime('%Y-%m-%d') if row['crawl_date'] else None,
+                    'rank': row['rank'],
+                })
+            for asin in rank_trend_lookup:
+                rank_trend_lookup[asin] = rank_trend_lookup[asin][-7:]
+
+        asin_list = []
+        for row in asin_list_raw:
+            asin = row['asin'] or ''
+            asin_list.append({
+                'asin': asin,
+                'title': row['title'] or '',
+                'title_translation': row['title_translation'] or '',
+                'subject': row['subject'] or '',
+                'subject_translation': row['subject_translation'] or '',
+                'image_url': row['image_url'] or '',
+                'launch_date': row['launch_date'].strftime('%Y-%m-%d') if row['launch_date'] else '',
+                'rank_trend_7d': rank_trend_lookup.get(asin, []),
+            })
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'asins': asin_list,
+                'total': len(asin_list),
+            },
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '无效的JSON数据格式'}, status=400)
+    except Exception as exc:
+        return JsonResponse({'success': False, 'message': f'服务器内部错误: {exc}'}, status=500)
