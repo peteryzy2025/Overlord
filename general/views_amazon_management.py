@@ -372,6 +372,8 @@ def get_amazon_shops_api(request):
                         '%Y-%m-%d') if shop.business_license_date else '-',
                     'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
                     'id_expiry_date': shop.id_expiry_date or '-',
+                    'id_card_address': shop.id_card_address or '-',
+                    'company_address': shop.company_address or '-',
                     'remark': shop.remark or '-',
                     'additional_remark': shop.additional_remark or '-',
                     'img1': shop.img1 or '',
@@ -548,6 +550,8 @@ def get_amazon_shops_api(request):
                     '%Y-%m-%d') if shop.business_license_date else '-',
                 'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
                 'id_expiry_date': shop.id_expiry_date or '-',
+                'id_card_address': shop.id_card_address or '-',
+                'company_address': shop.company_address or '-',
                 'remark': shop.remark or '-',
                 'additional_remark': shop.additional_remark or '-',
                 'img1': shop.img1 or '',
@@ -771,6 +775,8 @@ def create_amazon_shop_api(request):
                 business_license_date=data.get('business_license_date') or None,
                 birth_date=data.get('birth_date') or None,
                 id_expiry_date=data.get('id_expiry_date', '') or '',
+                id_card_address=data.get('id_card_address', '') or '',
+                company_address=data.get('company_address', '') or '',
                 additional_remark=data.get('additional_remark', '') or '',
                 img1=data.get('img1', '') or '',
             )
@@ -887,6 +893,8 @@ def update_amazon_shop_api(request, shop_id):
             shop.business_license_date = data.get('business_license_date') or None
             shop.birth_date = data.get('birth_date') or None
             shop.id_expiry_date = data.get('id_expiry_date', '') or ''
+            shop.id_card_address = data.get('id_card_address', '') or ''
+            shop.company_address = data.get('company_address', '') or ''
             shop.additional_remark = data.get('additional_remark', '') or ''
 
             # 其他
