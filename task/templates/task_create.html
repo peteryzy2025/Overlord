@@ -741,23 +741,25 @@
         const currentUserDiviUsername = "{{ request.user.operational_account.divi_username|default:'' }}";
         
         // 格式化店铺名称（加上运营人员和状态）- 仅用于 Amazon
-        const SHOP_STATUS_LABELS = {
-            'status-active': '正常',
-            'status-inactive': '停用',
-            'status-cancelled': '注销',
-            'status-warning': '救店中',
-            'status-pending': '审核中',
-            'status-unknown': '待定'
-        };
-
         function formatShopOption(shop) {
             const rawName = shop.raw_name || shop.shop_name || shop.name;
             const opsName = shop.ops_name || '无运营';
             const shopStatus = shop.shop_status || '';
-            const statusLabel = SHOP_STATUS_LABELS[shopStatus] || shopStatus;
+            
+            // 状态映射：将英文状态转换为中文（与 AmazonShop.ShopStatus 对应）
+            const statusMap = {
+                'status-active': '正常',
+                'status-inactive': '停用',
+                'status-cancelled': '注销',
+                'status-warning': '救店中',
+                'status-nurturing': '养店中',
+                'status-pending': '审核中',
+                'status-unknown': '待定'
+            };
+            const statusText = statusMap[shopStatus] || shopStatus;
             
             // 纯文本格式：店铺名（运营人员）[状态]
-            const label = rawName + `（${opsName}）` + (statusLabel ? `[${statusLabel}]` : '');
+            const label = rawName + `（${opsName}）` + (statusText ? `[${statusText}]` : '');
             
             return {
                 value: rawName,
@@ -2660,7 +2662,8 @@
                 if (result.success && result.data && result.data.length > 0) {
                     templateOptions = result.data.map(t => ({
                         value: String(t.template_id),
-                        label: t.template_name
+                        label: t.template_name_display || t.template_name,  // 显示带后缀的名称
+                        template_name: t.template_name  // 原始名称，用于保存到数据库
                     }));
                 }
 
@@ -2675,20 +2678,20 @@
                     templateSelect.setValue(String(selectedTemplateId));
                     const selectedOption = templateOptions.find(t => t.value === String(selectedTemplateId));
                     if (selectedOption) {
-                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
                     }
                 } else if (templateOptions.length > 0) {
                     // 默认选中第一个，但触发验证
                     templateSelect.setValue(templateOptions[0].value);
                     updateExportProRow(subtaskId, rowIndex, 'export_template_id', templateOptions[0].value);
-                    updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].label);
+                    updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].template_name);  // 保存原始名称
                 }
 
                 templateSelect.onChange = (value) => {
                     updateExportProRow(subtaskId, rowIndex, 'export_template_id', value);
                     const selectedOption = templateOptions.find(t => t.value === value);
                     if (selectedOption) {
-                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.label);
+                        updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
                     }
                 };
 

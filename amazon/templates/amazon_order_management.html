@@ -1595,7 +1595,7 @@
                     } else if (![3, 4, 5].includes(order.divi_order_status)) {
                         shipButtonTooltip = 'DIVI订单状态未达标';
                     } else if (order.shop_status !== 'status-active') {
-                        shipButtonTooltip = `店铺状态为"${shopStatusMap[order.shop_status]?.text || order.shop_status}"，无法发货`;
+                        shipButtonTooltip = `店铺状态为"${order.shop_status}"，无法发货`;
                     }
                 } else {
                     shipButtonTooltip = '点击执行发货操作';
@@ -1614,7 +1614,7 @@
                     exportTooltip = '该订单类型不支持导单';
                 } else if (order.shop_status !== 'status-active') {
                     canExportToDivi = false;
-                    exportTooltip = `店铺状态为"${shopStatusMap[order.shop_status]?.text || order.shop_status}"，不可导单`;
+                    exportTooltip = `店铺状态为"${order.shop_status}"，不可导单`;
                 }
 
                 const markRealBtn = order.masked_single ? `
