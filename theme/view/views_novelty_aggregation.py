@@ -18,7 +18,7 @@ from theme.view.permissions import theme_access_required
 def api_novelty_aggregation_list(request):
     try:
         data = json.loads(request.body or '{}')
-
+        print(data)
         start_date_str = str(data.get('start_date', '')).strip()
         end_date_str = str(data.get('end_date', '')).strip()
 
