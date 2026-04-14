@@ -110,6 +110,7 @@ urlpatterns = [
     
     # ===== DIVI 汇出模板接口 =====
     path('api/divi/export-templates/', task_api_views.get_divi_export_templates_api, name='get_divi_export_templates'),
+    path('api/divi/export-templates/by-shop/', task_api_views.get_divi_export_templates_by_shop_api, name='get_divi_export_templates_by_shop'),
     
     # ===== DIVI 图库分类接口 =====
     path('api/divi/image-classifies/', task_api_views.get_divi_image_classifies_api, name='get_divi_image_classifies'),

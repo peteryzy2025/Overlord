@@ -292,6 +292,11 @@ def validate_subtask_params(subtask_type, params, user):
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计开始日期不能为空'}
                     if not row.get('design_end_date'):
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计结束日期不能为空'}
+                
+                # 验证汇出模板名称必须包含4位数字
+                export_template_name = row.get('export_template_name', '')
+                if not re.search(r'\d{4}', export_template_name):
+                    return {'valid': False, 'message': f'第 {i + 1} 行选择模板不符合自动化规则，请重新选择'}
 
             return {'valid': True, 'message': ''}
 

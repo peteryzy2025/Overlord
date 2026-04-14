@@ -972,7 +972,11 @@ def create_task_api(request):
         #    return JsonResponse({'success': False, 'message': '任务标题不能为空'})
 
         # 确定所有者（可为他人创建）
-        owner_id = data.get('owner_id', current_user.id)
+        try:
+            owner_id = int(data.get('owner_id', current_user.id))
+        except (ValueError, TypeError):
+            owner_id = current_user.id
+        
         try:
             owner = User.objects.get(id=owner_id)
         except User.DoesNotExist:
@@ -996,8 +1000,12 @@ def create_task_api(request):
         if not subtasks_data:
             return JsonResponse({'success': False, 'message': '至少需要一个子任务'})
 
-        # 生成任务单号
-        task_no = generate_task_no(current_user)
+        # 生成任务单号（优先使用前端传入的复制单号，若已存在则重新生成）
+        task_no = data.get('task_no', '').strip()
+        if task_no and not Task.objects.filter(task_no=task_no).exists():
+            pass  # 使用前端传入的单号
+        else:
+            task_no = generate_task_no(current_user)
 
         # 获取任务类型
         task_type = data.get('task_type', TaskType.STANDARD)
@@ -1561,7 +1569,11 @@ def save_draft_api(request):
         else:
             # 创建新草稿
             title = data.get('title', '未命名任务')
-            task_no = generate_task_no(current_user)
+            task_no = data.get('task_no', '').strip()
+            if task_no and not Task.objects.filter(task_no=task_no).exists():
+                pass
+            else:
+                task_no = generate_task_no(current_user)
 
             task = Task.objects.create(
                 title=title,
@@ -2057,25 +2069,7 @@ def get_divi_export_templates_api(request):
         # 组装数据
         templates = queryset.order_by('-synced_at').values('template_id', 'template_name', 'template_type')
         
-        data = []
-        for tpl in templates:
-            # 原始名称（用于 webhook）
-            original_name = tpl['template_name'] or f"模板-{tpl['template_id']}"
-            # 根据模板类型添加后缀（用于前端显示）
-            suffix = '【系统】' if tpl['template_type'] == 1 else '【用户】'
-            display_name = original_name + suffix
-            # HTML 带颜色后缀
-            color = 'var(--warning-color)' if tpl['template_type'] == 1 else 'var(--success-color)'
-            html_display_name = f"{original_name}<span style=\"color:{color};font-weight:500\">{suffix}</span>"
-            
-            data.append({
-                'template_id': tpl['template_id'],
-                'template_name': original_name,  # 原始名称，给 webhook 使用
-                'template_name_display': display_name,  # 带后缀的名称，给前端显示
-                'html_label': html_display_name,  # 带颜色后缀的 HTML，给下拉框使用
-                'value': tpl['template_id'],
-                'label': display_name  # 下拉框显示用带后缀的
-            })
+        data = [_format_divi_export_template(tpl) for tpl in templates]
         
         return JsonResponse({
             'success': True,
@@ -2089,6 +2083,67 @@ def get_divi_export_templates_api(request):
             'success': False,
             'message': f'获取汇出模板列表失败: {str(e)}'
         }, status=500)
+
+
+def _format_divi_export_template(tpl):
+    """辅助函数：格式化 DIVI 汇出模板数据"""
+    original_name = tpl.get('template_name') or tpl.get('template_name__') or f"模板-{tpl.get('template_id')}"
+    template_type = tpl.get('template_type')
+    suffix = '【系统】' if template_type == 1 else '【用户】'
+    display_name = original_name + suffix
+    color = 'var(--warning-color)' if template_type == 1 else 'var(--success-color)'
+    html_display_name = f"{original_name}<span style=\"color:{color};font-weight:500\">{suffix}</span>"
+    return {
+        'template_id': tpl.get('template_id'),
+        'template_name': original_name,
+        'template_name_display': display_name,
+        'html_label': html_display_name,
+        'value': tpl.get('template_id'),
+        'label': display_name
+    }
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_divi_export_templates_by_shop_api(request):
+    """
+    获取某店铺+迪唯账号下的所有可用模板（不限制产品）
+    GET /api/divi/export-templates/by-shop/?shop=店铺名&divi_account=YMX-26
+    """
+    try:
+        from divi.models import DiviExportTemplate
+        from django.db.models import Q
+        
+        shop_name = request.GET.get('shop', '').strip()
+        divi_account = request.GET.get('divi_account', '').strip()
+        
+        company = request.user.company
+        if not company:
+            return JsonResponse({'success': True, 'data': []})
+        
+        # 系统模板：当前公司下所有类型=1的模板
+        system_query = Q(company=company, template_type=1)
+        
+        # 用户模板：当前公司 + 迪唯账号 + 店铺匹配
+        user_query = None
+        if divi_account:
+            user_query = Q(company=company, template_type=2, username=divi_account)
+            if shop_name:
+                user_query &= Q(shops__shop_name=shop_name)
+        
+        if user_query:
+            queryset = DiviExportTemplate.objects.filter(system_query | user_query).distinct()
+        else:
+            queryset = DiviExportTemplate.objects.filter(system_query).distinct()
+        
+        templates = queryset.order_by('-synced_at').values('template_id', 'template_name', 'template_type')
+        data = [_format_divi_export_template(tpl) for tpl in templates]
+        
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'message': f'获取汇出模板失败: {str(e)}'}, status=500)
 
 
 @login_required
@@ -2193,33 +2248,36 @@ def resend_task_webhook_api(request, task_id):
 @require_http_methods(["GET"])
 def get_user_export_shop_products_api(request):
     """
-    获取当前用户的汇出店铺-产品偏好设置
+    获取当前用户的汇出店铺-产品-模板偏好设置（组合式）
     GET /api/user/export-shop-products/
-    返回: [{ shop_id, shop_name, product_ids: [] }]
+    返回: [{ shop_id, shop_name, product_id, template_ids: [] }]
     """
     try:
         from collections import defaultdict
         from task.models import UserExportShopProductPreference
-        from general.models import AmazonShop
         
         prefs = UserExportShopProductPreference.objects.filter(
             user=request.user
-        ).select_related('shop', 'product').order_by('shop__shop_name', 'product__name')
+        ).select_related('shop', 'product', 'template').order_by('shop__shop_name', 'product__name')
         
-        shop_map = defaultdict(list)
+        # 按 (shop_id, product_id) 聚合 template_ids
+        group_map = defaultdict(list)
         shop_meta = {}
         for p in prefs:
-            shop_map[p.shop_id].append(p.product_id)
             shop_meta[p.shop_id] = {
                 'shop_name': p.shop_name or (p.shop.shop_name if p.shop else f"店铺-{p.shop_id}")
             }
+            if p.product_id:
+                group_map[(p.shop_id, p.product_id)].append(p.template_id)
         
         data = []
-        for shop_id in sorted(shop_map.keys()):
+        for (shop_id, product_id) in sorted(group_map.keys()):
+            template_ids = [tid for tid in group_map[(shop_id, product_id)] if tid is not None]
             data.append({
                 'shop_id': shop_id,
                 'shop_name': shop_meta.get(shop_id, {}).get('shop_name', f"店铺-{shop_id}"),
-                'product_ids': shop_map[shop_id]
+                'product_id': product_id,
+                'template_ids': template_ids
             })
         
         return JsonResponse({'success': True, 'data': data})
@@ -2231,9 +2289,9 @@ def get_user_export_shop_products_api(request):
 @require_http_methods(["POST"])
 def save_user_export_shop_products_api(request):
     """
-    保存/覆盖当前用户的汇出店铺-产品偏好设置
+    保存/覆盖当前用户的汇出店铺-产品-模板偏好设置（组合式）
     POST /api/user/export-shop-products/save/
-    请求体: { preferences: [{ shop_id, shop_name, product_ids: [] }] }
+    请求体: { preferences: [{ shop_id, shop_name, product_id, template_ids: [] }] }
     """
     try:
         import json
@@ -2244,7 +2302,7 @@ def save_user_export_shop_products_api(request):
         body = json.loads(request.body)
         preferences = body.get('preferences', [])
         
-        # 预查店铺名（如果前端没传，用数据库里的）
+        # 预查店铺名
         shop_ids = [item.get('shop_id') for item in preferences if item.get('shop_id')]
         shop_name_map = {}
         if shop_ids:
@@ -2257,16 +2315,28 @@ def save_user_export_shop_products_api(request):
             objs = []
             for item in preferences:
                 shop_id = item.get('shop_id')
-                product_ids = item.get('product_ids', [])
+                product_id = item.get('product_id')
+                template_ids = item.get('template_ids', [])
                 shop_name = item.get('shop_name') or shop_name_map.get(shop_id, f"店铺-{shop_id}")
-                if not shop_id or not product_ids:
+                if not shop_id or not product_id:
                     continue
-                for pid in product_ids:
+                if template_ids and len(template_ids) > 0:
+                    for tid in template_ids:
+                        objs.append(UserExportShopProductPreference(
+                            user=request.user,
+                            shop_id=shop_id,
+                            shop_name=shop_name,
+                            product_id=product_id,
+                            template_id=tid
+                        ))
+                else:
+                    # 占位：保存一条 template_id=None 的记录，使产品置顶仍生效
                     objs.append(UserExportShopProductPreference(
                         user=request.user,
                         shop_id=shop_id,
                         shop_name=shop_name,
-                        product_id=pid
+                        product_id=product_id,
+                        template_id=None
                     ))
             
             if objs:

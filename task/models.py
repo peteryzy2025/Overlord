@@ -889,7 +889,16 @@ class UserExportShopProductPreference(models.Model):
     product = models.ForeignKey(
         'divi.Product',
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         verbose_name='产品'
+    )
+    template = models.ForeignKey(
+        'divi.DiviExportTemplate',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='汇出模板'
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
@@ -897,7 +906,7 @@ class UserExportShopProductPreference(models.Model):
         db_table = 'task_user_export_shop_product_preference'
         verbose_name = '用户汇出店铺产品偏好'
         verbose_name_plural = '用户汇出店铺产品偏好'
-        unique_together = ('user', 'shop', 'product')
+        unique_together = ('user', 'shop', 'product', 'template')
 
 
 # ========== 导入审批模型 ==========
