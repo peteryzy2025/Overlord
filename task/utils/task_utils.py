@@ -234,15 +234,15 @@ def validate_subtask_params(subtask_type, params, user):
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
 
-            # 必须填写图库或本地图库路径之一
-            gallery_path_raw = params.get('gallery_path', '')
-            if isinstance(gallery_path_raw, list):
-                gallery_path = ' '.join(gallery_path_raw).strip()
-            else:
-                gallery_path = str(gallery_path_raw).strip()
-            local_gallery_path = params.get('local_gallery_path', '').strip()
-            if not gallery_path and not local_gallery_path:
-                return {'valid': False, 'message': '必须填写图库或本地图库路径'}
+            # 必须填写NAS路径或图库分类之一
+            nas_path = params.get('nas_path', '').strip()
+            image_classify = params.get('image_classify', [])
+            has_nas_path = nas_path != ''
+            has_image_classify = isinstance(image_classify, list) and len(image_classify) > 0
+            if not has_nas_path and not has_image_classify:
+                return {'valid': False, 'message': '必须填写NAS路径或图库分类'}
+            if has_nas_path and not nas_path.upper().startswith('\\\\ZT-NAS'):
+                return {'valid': False, 'message': 'NAS路径必须以 \\\\ZT-NAS 开头'}
 
             return {'valid': True, 'message': ''}
 
