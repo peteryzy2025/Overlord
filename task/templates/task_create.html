@@ -1814,11 +1814,12 @@
         }
 
         // ===== 渲染汇出产品行（Pro版本）=====
-        function renderExportProRow(subtaskId, rowIndex, rowData = {}, subtaskNeedSplit = false) {
+        function renderExportProRow(subtaskId, rowIndex, rowData = {}) {
             const colors = rowData.colors || [];
             const sizes = rowData.sizes || [];
             const exportShop = rowData.export_shop || '';
             const publishShops = rowData.publish_shops || [];
+            const dateDisabled = rowData.design_date_filter ? '' : 'disabled';
             
             return `
                 <div class="export-pro-row" id="export-pro-row-${subtaskId}-${rowIndex}" data-row-index="${rowIndex}" style="
@@ -1831,12 +1832,90 @@
                     border-radius: 8px;
                     margin-bottom: 0.75rem;
                     border: 1px solid var(--border-color);">
-                    
+
+                    <!-- 汇出店铺下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺 <span style="color: var(--danger-color);">*</span></label>
+                        <div id="export-pro-export-shop-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择汇出店铺"></div>
+                    </div>
+
+                    <!-- 上架店铺下拉框（多选） -->
+                    <div class="form-group" style="margin: 0; flex: 1.2; min-width: 160px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">上架店铺 <span style="color: var(--danger-color);">*</span></label>
+                        <div id="export-pro-publish-shops-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
+                             data-placeholder="选择上架店铺"></div>
+                    </div>
+
                     <!-- 产品选择下拉框 -->
                     <div class="form-group" style="margin: 0; flex: 1.5; min-width: 180px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品 <span style="color: var(--danger-color);">*</span></label>
                         <div id="export-pro-product-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择产品"></div>
+                    </div>
+
+                    <!-- 汇出模板下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 1.5; min-width: 200px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出模板 <span style="color: var(--danger-color);">*</span></label>
+                        <div id="export-pro-export-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择汇出模板"></div>
+                        <small id="export-template-hint-${subtaskId}-${rowIndex}" style="color: var(--text-tertiary); display: none;">请先选择产品和店铺</small>
+                    </div>
+
+                    <!-- 强制换行 -->
+                    <div style="flex-basis: 100%; height: 0;"></div>
+
+                    <!-- 设计产品日期筛选开关 -->
+                    <div class="form-group" style="margin: 0; flex: 0 0 auto; min-width: 60px; display: flex; flex-direction: column;">
+                        <label class="form-label" style="font-size: 0.75rem; margin: 0 0 0.25rem 0; height: 1.5rem; display: flex; align-items: center;">日期筛选</label>
+                        <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
+                            <label class="form-switch" style="margin: 0;">
+                                <input type="checkbox" class="switch-input"
+                                    ${rowData.design_date_filter ? 'checked' : ''}
+                                    onchange="toggleProDesignDateFilter(${subtaskId}, ${rowIndex}, this.checked)">
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 设计日期开始日期 -->
+                    <div class="form-group"
+                         style="margin: 0; flex: 1; min-width: 120px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计开始日期</label>
+                        <input type="date" class="form-control"
+                               id="export-pro-design-start-date-${subtaskId}-${rowIndex}"
+                               value="${rowData.design_start_date || ''}"
+                               ${dateDisabled}
+                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_start_date', this.value)">
+                    </div>
+
+                    <!-- 设计日期结束日期 -->
+                    <div class="form-group"
+                         style="margin: 0; flex: 1; min-width: 120px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计结束日期</label>
+                        <input type="date" class="form-control"
+                               id="export-pro-design-end-date-${subtaskId}-${rowIndex}"
+                               value="${rowData.design_end_date || ''}"
+                               ${dateDisabled}
+                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_end_date', this.value)">
+                    </div>
+
+                    <!-- 是否已汇出开关 -->
+                    <div class="form-group" style="margin: 0; width: auto; white-space: nowrap;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">是否已汇出</label>
+                        <label class="form-switch" style="margin: 0; justify-content: flex-start;">
+                            <input type="checkbox" class="switch-input"
+                                   ${rowData.is_exported ? 'checked' : ''}
+                                   onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'is_exported', this.checked)">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+
+                    <!-- 最大汇出数量下拉框 -->
+                    <div class="form-group" style="margin: 0; flex: 0.8; min-width: 100px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">最大汇出数量</label>
+                        <div id="export-pro-quantity-select-${subtaskId}-${rowIndex}" class="searchable-select single"
+                             data-placeholder="选择数量"></div>
                     </div>
 
                     <!-- 尺码多选下拉框 -->
@@ -1863,84 +1942,6 @@
                         </div>
                         <div id="export-pro-colors-select-${subtaskId}-${rowIndex}" class="searchable-select multiple"
                              data-placeholder="选择颜色"></div>
-                    </div>
-
-                    <!-- 设计产品日期筛选开关 -->
-                    <div class="form-group" style="margin: 0; flex: 0 0 auto; min-width: 60px; display: flex; flex-direction: column;">
-                        <label class="form-label" style="font-size: 0.75rem; margin: 0 0 0.25rem 0; height: 1.5rem; display: flex; align-items: center;">日期筛选</label>
-                        <div style="flex: 1; display: flex; justify-content: center; align-items: center;">
-                            <label class="form-switch" style="margin: 0;">
-                                <input type="checkbox" class="switch-input"
-                                    ${rowData.design_date_filter ? 'checked' : ''}
-                                    onchange="toggleProDesignDateFilter(${subtaskId}, ${rowIndex}, this.checked)">
-                                <span class="switch-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- 设计日期开始日期 -->
-                    <div class="form-group gs-date-range-custom-group ${rowData.design_date_filter ? 'is-visible' : ''}" 
-                         id="export-pro-design-date-start-group-${subtaskId}-${rowIndex}"
-                         style="margin: 0; flex: 1; min-width: 120px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计开始日期</label>
-                        <input type="date" class="form-control" 
-                               id="export-pro-design-start-date-${subtaskId}-${rowIndex}"
-                               value="${rowData.design_start_date || ''}"
-                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_start_date', this.value)">
-                    </div>
-
-                    <!-- 设计日期结束日期 -->
-                    <div class="form-group gs-date-range-custom-group ${rowData.design_date_filter ? 'is-visible' : ''}" 
-                         id="export-pro-design-date-end-group-${subtaskId}-${rowIndex}"
-                         style="margin: 0; flex: 1; min-width: 120px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">设计结束日期</label>
-                        <input type="date" class="form-control" 
-                               id="export-pro-design-end-date-${subtaskId}-${rowIndex}"
-                               value="${rowData.design_end_date || ''}"
-                               onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'design_end_date', this.value)">
-                    </div>
-
-                    <!-- 强制换行 -->
-                    <div style="flex-basis: 100%; height: 0;"></div>
-
-                    <!-- 是否已汇出开关 -->
-                    <div class="form-group" style="margin: 0; width: auto; white-space: nowrap;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">是否已汇出</label>
-                        <label class="form-switch" style="margin: 0; justify-content: flex-start;">
-                            <input type="checkbox" class="switch-input"
-                                   ${rowData.is_exported ? 'checked' : ''}
-                                   onchange="updateExportProRow(${subtaskId}, ${rowIndex}, 'is_exported', this.checked)">
-                            <span class="switch-slider"></span>
-                        </label>
-                    </div>
-
-                    <!-- 最大汇出数量下拉框 -->
-                    <div class="form-group" style="margin: 0; flex: 0.8; min-width: 100px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">最大汇出数量</label>
-                        <div id="export-pro-quantity-select-${subtaskId}-${rowIndex}" class="searchable-select single"
-                             data-placeholder="选择数量"></div>
-                    </div>
-
-                    <!-- 汇出店铺下拉框（仅切表时显示，单选） -->
-                    <div class="form-group export-pro-export-shop-${subtaskId}-${rowIndex}" style="margin: 0; flex: 1; min-width: 140px; display: ${subtaskNeedSplit ? 'block' : 'none'};">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺 <span style="color: var(--danger-color);">*</span></label>
-                        <div id="export-pro-export-shop-select-${subtaskId}-${rowIndex}" class="searchable-select single"
-                             data-placeholder="选择汇出店铺"></div>
-                    </div>
-
-                    <!-- 上架店铺下拉框（多选） -->
-                    <div class="form-group" style="margin: 0; flex: 1.2; min-width: 160px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">上架店铺 <span style="color: var(--danger-color);">*</span></label>
-                        <div id="export-pro-publish-shops-select-${subtaskId}-${rowIndex}" class="searchable-select ${subtaskNeedSplit ? 'multiple' : 'single'}"
-                             data-placeholder="选择上架店铺"></div>
-                    </div>
-
-                    <!-- 汇出模板下拉框 -->
-                    <div class="form-group" style="margin: 0; flex: 1.5; min-width: 200px;">
-                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出模板 <span style="color: var(--danger-color);">*</span></label>
-                        <div id="export-pro-export-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
-                             data-placeholder="选择汇出模板"></div>
-                        <small id="export-template-hint-${subtaskId}-${rowIndex}" style="color: var(--text-tertiary); display: none;">请先选择产品和店铺</small>
                     </div>
 
                     <!-- 删除按钮 -->
@@ -2653,19 +2654,7 @@
             if (!row) return;
 
             const productId = row.product_id;
-            const needSplit = subtask?.params?.need_split || false;
-            // publish_shops 可能是字符串或数组
-            let shop = '';
-            if (needSplit) {
-                shop = row.export_shop || '';
-            } else {
-                const ps = row.publish_shops;
-                if (Array.isArray(ps) && ps.length > 0) {
-                    shop = ps[0];
-                } else if (typeof ps === 'string' && ps) {
-                    shop = ps;
-                }
-            }
+            let shop = row.export_shop || '';
 
             // 如果没有产品或店铺，显示提示并创建空选择器
             if (!productId || !shop) {
@@ -2688,7 +2677,7 @@
                 // 获取当前迪唯账号
                 const diweiAccount = subtask?.params?.diwei_login_account || '';
                 
-                const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&need_split=${needSplit}&shop=${encodeURIComponent(shop)}&divi_account=${encodeURIComponent(diweiAccount)}`);
+                const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&shop=${encodeURIComponent(shop)}&divi_account=${encodeURIComponent(diweiAccount)}`);
                 const result = await response.json();
 
                 let templateOptions = [];
@@ -2849,28 +2838,21 @@
             selectEl._exportShopSelectInstance = shopSelect;
         }
 
-        // ===== 初始化 Pro 版本上架店铺选择器（根据切表状态决定单/多选）=====
-        function initExportProRowPublishShopsSelect(subtaskId, rowIndex, selectedShops = [], platform = 'amazon', needSplit = false) {
+        // ===== 初始化 Pro 版本上架店铺选择器（固定多选）=====
+        function initExportProRowPublishShopsSelect(subtaskId, rowIndex, selectedShops = [], platform = 'amazon') {
             const selectEl = document.querySelector(`#export-pro-publish-shops-select-${subtaskId}-${rowIndex}`);
             if (!selectEl || selectEl.dataset.initialized) return;
 
             const shopOptions = getProShopOptions(platform);
-            const isMultiple = needSplit; // 切表时多选，不切表时单选
 
             const shopSelect = new SearchableSelect(`#export-pro-publish-shops-select-${subtaskId}-${rowIndex}`, {
                 options: shopOptions,
-                multiple: isMultiple,
-                placeholder: isMultiple ? '选择上架店铺（多选）' : '选择上架店铺（单选）'
+                multiple: true,
+                placeholder: '选择上架店铺（多选）'
             });
 
-            // 如果不切表但传入了多个店铺，只保留第一个
-            let finalValue = selectedShops;
-            if (!needSplit && Array.isArray(selectedShops) && selectedShops.length > 1) {
-                finalValue = [selectedShops[0]];
-            }
-
-            shopSelect.setValue(finalValue);
-            updateExportProRow(subtaskId, rowIndex, 'publish_shops', finalValue);
+            shopSelect.setValue(selectedShops);
+            updateExportProRow(subtaskId, rowIndex, 'publish_shops', selectedShops);
 
             shopSelect.onChange = async (value) => {
                 updateExportProRow(subtaskId, rowIndex, 'publish_shops', value);
@@ -2920,7 +2902,6 @@
         function refreshProRowShopSelects(subtaskId, rowIndex, platform, clearSelection = false) {
             const subtask = taskData.subtasks.find(s => s.id === subtaskId);
             const row = subtask?.params?.export_rows?.[rowIndex];
-            const needSplit = subtask?.params?.need_split || false;
             
             // 重新初始化汇出店铺选择器
             const exportShopEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
@@ -2941,7 +2922,7 @@
                 }
                 publishShopsEl.dataset.initialized = '';
                 const publishShopsValue = clearSelection ? [] : (row?.publish_shops || []);
-                initExportProRowPublishShopsSelect(subtaskId, rowIndex, publishShopsValue, platform, needSplit);
+                initExportProRowPublishShopsSelect(subtaskId, rowIndex, publishShopsValue, platform);
             }
         }
 
@@ -3080,114 +3061,28 @@
             // 更新行数据
             row.design_date_filter = checked;
             
-            // 显示/隐藏日期选择框
-            const dateStartGroup = document.querySelector(`#export-pro-design-date-start-group-${subtaskId}-${rowIndex}`);
-            const dateEndGroup = document.querySelector(`#export-pro-design-date-end-group-${subtaskId}-${rowIndex}`);
-            if (dateStartGroup) {
-                if (checked) dateStartGroup.classList.add('is-visible');
-                else dateStartGroup.classList.remove('is-visible');
-            }
-            if (dateEndGroup) {
-                if (checked) dateEndGroup.classList.add('is-visible');
-                else dateEndGroup.classList.remove('is-visible');
-            }
+            // 启用/禁用日期选择框（始终占位显示）
+            const startInput = document.querySelector(`#export-pro-design-start-date-${subtaskId}-${rowIndex}`);
+            const endInput = document.querySelector(`#export-pro-design-end-date-${subtaskId}-${rowIndex}`);
+            if (startInput) startInput.disabled = !checked;
+            if (endInput) endInput.disabled = !checked;
             
-            // 如果开启且没有设置日期，默认填充：开始3天前，结束今天
+            // 如果开启且没有设置日期，默认填充：开始今天，结束今天
             if (checked) {
                 const today = new Date();
-                const threeDaysAgo = new Date(today);
-                threeDaysAgo.setDate(today.getDate() - 3);
+                const formatDate = (date) => date.toISOString().split('T')[0];
+                const defaultDate = formatDate(today);
                 
-                const formatDate = (date) => {
-                    return date.toISOString().split('T')[0];
-                };
-                
-                const defaultStartDate = formatDate(threeDaysAgo);
-                const defaultEndDate = formatDate(today);
-                
-                // 如果没有已有值，设置默认值
                 if (!row.design_start_date) {
-                    row.design_start_date = defaultStartDate;
-                    const startInput = document.querySelector(`#export-pro-design-start-date-${subtaskId}-${rowIndex}`);
-                    if (startInput) startInput.value = defaultStartDate;
+                    row.design_start_date = defaultDate;
+                    if (startInput) startInput.value = defaultDate;
                 }
                 if (!row.design_end_date) {
-                    row.design_end_date = defaultEndDate;
-                    const endInput = document.querySelector(`#export-pro-design-end-date-${subtaskId}-${rowIndex}`);
-                    if (endInput) endInput.value = defaultEndDate;
+                    row.design_end_date = defaultDate;
+                    if (endInput) endInput.value = defaultDate;
                 }
             }
             
-            triggerAutoSave();
-        }
-
-        // ===== 子任务级别切换是否切表 =====
-        function toggleProSplitSubtask(subtaskId, checked) {
-            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
-            if (!subtask) return;
-
-            // 更新子任务级别的 need_split
-            subtask.params.need_split = checked;
-
-            // 重新渲染所有行，显示/隐藏汇出店铺列
-            const exportRows = subtask.params.export_rows || [];
-            exportRows.forEach((row, rowIndex) => {
-                // 显示/隐藏汇出店铺选择器
-                const exportShopGroup = document.querySelector(`.export-pro-export-shop-${subtaskId}-${rowIndex}`);
-                if (exportShopGroup) {
-                    exportShopGroup.style.display = checked ? 'block' : 'none';
-                    
-                    // 如果开启切表，初始化汇出店铺选择器
-                    if (checked) {
-                        const platform = subtask?.params?.platform || 'amazon';
-                        const exportShopSelectEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
-                        if (exportShopSelectEl) {
-                            if (exportShopSelectEl._exportShopSelectInstance) {
-                                exportShopSelectEl._exportShopSelectInstance.destroy?.();
-                            }
-                            exportShopSelectEl.dataset.initialized = '';
-                            initExportProRowExportShopSelect(subtaskId, rowIndex, row?.export_shop || '', platform);
-                        }
-                    }
-                }
-
-                // 重新初始化上架店铺选择器（切换单/多选模式）
-                const publishShopsSelectEl = document.querySelector(`#export-pro-publish-shops-select-${subtaskId}-${rowIndex}`);
-                if (publishShopsSelectEl) {
-                    const platform = subtask?.params?.platform || 'amazon';
-                    let currentShops = row?.publish_shops || [];
-                    
-                    // 如果从切表切换到不切表（checked=false），且当前有多个店铺，则清空重选
-                    if (!checked && Array.isArray(currentShops) && currentShops.length > 1) {
-                        currentShops = [];
-                        row.publish_shops = [];
-                        showNotification('已切换为单店铺模式，请重新选择上架店铺', 'info', 2000);
-                    }
-                    
-                    if (publishShopsSelectEl._publishShopsSelectInstance) {
-                        publishShopsSelectEl._publishShopsSelectInstance.destroy?.();
-                    }
-                    publishShopsSelectEl.dataset.initialized = '';
-                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, currentShops, platform, checked);
-                }
-                
-                // 切表状态变化时刷新汇出模板
-                refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
-            });
-            
-            // 延迟初始化汇出店铺选择器，确保DOM已更新
-            if (checked) {
-                setTimeout(() => {
-                    exportRows.forEach((row, rowIndex) => {
-                        const platform = subtask?.params?.platform || 'amazon';
-                        const exportShopSelectEl = document.querySelector(`#export-pro-export-shop-select-${subtaskId}-${rowIndex}`);
-                        if (exportShopSelectEl && !exportShopSelectEl.dataset.initialized) {
-                            initExportProRowExportShopSelect(subtaskId, rowIndex, row?.export_shop || '', platform);
-                        }
-                    });
-                }, 50);
-            }
-
             triggerAutoSave();
         }
 
@@ -3234,22 +3129,18 @@
             const rowIndex = subtask.params.export_rows.length - 1;
 
             const container = document.getElementById(`export-pro-rows-container-${subtaskId}`);
-            const subtaskNeedSplit = subtask?.params?.need_split || false;
             if (container) {
-                const rowHtml = renderExportProRow(subtaskId, rowIndex, newRow, subtaskNeedSplit);
+                const rowHtml = renderExportProRow(subtaskId, rowIndex, newRow);
                 container.insertAdjacentHTML('beforeend', rowHtml);
                 
                 setTimeout(async () => {
+                    const platform = subtask?.params?.platform || 'amazon';
+                    initExportProRowExportShopSelect(subtaskId, rowIndex, '', platform);
+                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform);
                     await initExportProRowProductSelect(subtaskId, rowIndex, '');
                     initExportProRowSizeSelect(subtaskId, rowIndex, [], []);
                     initExportProRowColorSelect(subtaskId, rowIndex, [], []);
                     initExportProRowQuantitySelect(subtaskId, rowIndex, 100);
-                    const platform = subtask?.params?.platform || 'amazon';
-                    // 如果开启了切表，初始化汇出店铺选择器
-                    if (subtaskNeedSplit) {
-                        initExportProRowExportShopSelect(subtaskId, rowIndex, '', platform);
-                    }
-                    initExportProRowPublishShopsSelect(subtaskId, rowIndex, [], platform, subtaskNeedSplit);
                     // 汇出模板放在最后初始化（依赖产品和店铺）
                     await initExportProRowExportTemplateSelect(subtaskId, rowIndex, '');
                 }, 0);
@@ -3277,9 +3168,8 @@
             subtask.params.export_rows.splice(rowIndex, 1);
 
             const container = document.getElementById(`export-pro-rows-container-${subtaskId}`);
-            const subtaskNeedSplit = subtask?.params?.need_split || false;
             if (container) {
-                container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportProRow(subtaskId, index, row, subtaskNeedSplit)).join('');
+                container.innerHTML = subtask.params.export_rows.map((row, index) => renderExportProRow(subtaskId, index, row)).join('');
                 
                 const platform = subtask?.params?.platform || 'amazon';
                 subtask.params.export_rows.forEach((row, index) => {
@@ -3289,10 +3179,11 @@
                         const sizes = row.sizes || [];
                         const exportTemplateId = row.export_template_id || '';
                         const maxExportQuantity = row.max_export_quantity || 100;
-                        const needSplit = subtaskNeedSplit;
                         const exportShop = row.export_shop || '';
                         const publishShops = row.publish_shops || [];
                         
+                        initExportProRowExportShopSelect(subtaskId, index, exportShop, platform);
+                        initExportProRowPublishShopsSelect(subtaskId, index, publishShops, platform);
                         await initExportProRowProductSelect(subtaskId, index, productId);
                         
                         if (productId) {
@@ -3303,10 +3194,6 @@
                         }
                         
                         initExportProRowQuantitySelect(subtaskId, index, maxExportQuantity);
-                        if (needSplit) {
-                            initExportProRowExportShopSelect(subtaskId, index, exportShop, platform);
-                        }
-                        initExportProRowPublishShopsSelect(subtaskId, index, publishShops, platform, needSplit);
                         // 汇出模板最后初始化
                         await initExportProRowExportTemplateSelect(subtaskId, index, exportTemplateId);
                     }, 0);
@@ -3750,7 +3637,6 @@
                 defaultParams = {
                     diwei_account: currentUserDiviUsername || '',
                     platform: 'amazon',
-                    need_split: false,
                     export_rows: []
                 };
             } else if (type === 'amazon_exempt') {
@@ -3787,7 +3673,6 @@
             } else if (type === 'divi_export_pro') {
                 if (!params.diwei_account) mergedParams.diwei_account = currentUserDiviUsername || '';
                 if (!params.platform) mergedParams.platform = 'amazon';
-                if (params.need_split === undefined) mergedParams.need_split = false;
                 if (!params.export_rows) mergedParams.export_rows = [];
                 // Pro版本默认参数
                 if (params.export_rows) {
@@ -4025,7 +3910,6 @@
             if (subtask.type === 'divi_export_pro') {
                 if (subtask.params.export_rows) {
                     const platform = subtask.params.platform || 'amazon';
-                    const subtaskNeedSplit = subtask.params.need_split || false;
                     setTimeout(async () => {
                         for (let index = 0; index < subtask.params.export_rows.length; index++) {
                             let row = subtask.params.export_rows[index];
@@ -4052,10 +3936,8 @@
                             // 初始化其他选择器
                             initExportProRowQuantitySelect(subtask.id, index, maxExportQuantity);
                             
-                            if (subtaskNeedSplit) {
-                                initExportProRowExportShopSelect(subtask.id, index, exportShop, platform);
-                            }
-                            initExportProRowPublishShopsSelect(subtask.id, index, publishShops, platform, subtaskNeedSplit);
+                            initExportProRowExportShopSelect(subtask.id, index, exportShop, platform);
+                            initExportProRowPublishShopsSelect(subtask.id, index, publishShops, platform);
                             
                             // 汇出模板最后初始化（依赖产品和店铺）
                             await initExportProRowExportTemplateSelect(subtask.id, index, exportTemplateId);
@@ -4642,28 +4524,16 @@
                             <div id="diwei-account-select-${subtask.id}" class="searchable-select single"
                                  data-placeholder="选择迪唯账号"></div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">平台 <span style="color: var(--danger-color);">*</span></label>
                             <div id="platform-select-${subtask.id}" class="searchable-select single"
                                  data-placeholder="选择平台"></div>
                         </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">是否切表 <span style="color: var(--danger-color);">*</span></label>
-                            <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <label class="form-switch" style="margin: 0;">
-                                    <input type="checkbox" class="switch-input"
-                                        ${subtask.params.need_split ? 'checked' : ''}
-                                        onchange="toggleProSplitSubtask(${subtask.id}, this.checked)">
-                                    <span class="switch-slider"></span>
-                                </label>
-                            </div>
-                        </div>
 
                         <div style="grid-column: 1 / -1; margin-top: 1rem;">
                             <div class="export-pro-rows-container" id="export-pro-rows-container-${subtask.id}" style="margin-bottom: 1rem;">
-                                ${(subtask.params.export_rows || []).map((row, index) => renderExportProRow(subtask.id, index, row, subtask.params.need_split || false)).join('')}
+                                ${(subtask.params.export_rows || []).map((row, index) => renderExportProRow(subtask.id, index, row)).join('')}
                             </div>
                             <button type="button" class="btn btn-secondary" onclick="addExportProRow(${subtask.id})" style="width: 100%;">
                                 <i class="fas fa-plus"></i> 添加产品
@@ -5716,14 +5586,11 @@
                             return false;
                         }
                         
-                        // 如果开启切表，验证汇出店铺必填
-                        const subtaskNeedSplit = subtask?.params?.need_split || false;
-                        if (subtaskNeedSplit) {
-                            const exportShop = row.export_shop || '';
-                            if (!exportShop || String(exportShop).trim() === '') {
-                                showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行开启了切表，汇出店铺不能为空`, 'warning');
-                                return false;
-                            }
+                        // 验证汇出店铺必填
+                        const exportShop = row.export_shop || '';
+                        if (!exportShop || String(exportShop).trim() === '') {
+                            showNotification(`子任务 #${subtask.order + 1} 第 ${i + 1} 行的汇出店铺不能为空`, 'warning');
+                            return false;
                         }
                         
                         // 如果开启设计日期筛选，验证日期必填
@@ -5899,6 +5766,11 @@
                     });
                 }
                 
+                // 清理废弃字段
+                if (subtask.type === 'divi_export_pro') {
+                    delete params.need_split;
+                }
+                
                 await addSubtask(subtask.type, params);
             }
 
@@ -5973,6 +5845,11 @@
                             delete row['颜色英文列表'];
                             delete row['店铺列表'];
                         });
+                    }
+
+                    // 清理废弃字段
+                    if (subtask.type === 'divi_export_pro') {
+                        delete params.need_split;
                     }
 
                     await addSubtask(subtask.type, params);

@@ -932,3 +932,48 @@ class ThemeNoveltySummary(models.Model):
 
     def __str__(self):
         return f'{self.summary_subject_title}'
+
+
+class DailyRecommendedTheme(models.Model):
+    """
+    每日推荐主题
+    """
+    id = models.AutoField(primary_key=True)
+    theme = models.CharField(
+        max_length=255,
+        verbose_name="推荐主题",
+        help_text="当天的推荐主题名称"
+    )
+    date = models.DateField(verbose_name="日期")
+
+    # 自动时间戳（建议保留，便于追踪）
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        db_table = 'theme_daily_recommended_theme'
+        verbose_name = '每日推荐主题'
+        verbose_name_plural = '每日推荐主题'
+        ordering = ['-date', '-created_at']
+
+        # 核心约束：同一天内主题不能重复
+        constraints = [
+            models.UniqueConstraint(
+                fields=['date', 'theme'],
+                name='unique_daily_theme'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.date}: {self.theme}"
+
+    @classmethod
+    def get_themes_by_date(cls, target_date):
+        """获取某天的所有推荐主题"""
+        return cls.objects.filter(date=target_date)
+
+    @classmethod
+    def add_theme(cls, date, theme_name):
+        """安全添加主题（重复则返回已存在记录）"""
+        return cls.objects.get_or_create(date=date, theme=theme_name)
+

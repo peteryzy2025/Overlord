@@ -1276,9 +1276,8 @@ def create_task_api(request):
                         }
                     elif st.subtask_type == 'divi_export_pro':
                         # 迪唯汇出上架-Pro - 转换汇出行数据
-                        # 获取子任务级别的平台和是否切表
+                        # 获取子任务级别的平台
                         platform_display = 'Amazon' if params.get('platform') == 'amazon' else 'Temu'
-                        need_split = bool(params.get('need_split', False))
                         
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
@@ -1325,7 +1324,6 @@ def create_task_api(request):
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
                             '平台': platform_display,
-                            '是否切表': need_split,
                             '汇出行列表': export_rows_cn
                         }
                     elif st.subtask_type == 'divi_gallery_upload':
@@ -2002,12 +2000,11 @@ def get_diwei_accounts_api(request):
 def get_divi_export_templates_api(request):
     """
     获取 DIVI 汇出模板列表（根据产品和店铺筛选）
-    GET /api/divi/export-templates/?product_id=123&need_split=false&shop=店铺名&divi_account=YMX-26
+    GET /api/divi/export-templates/?product_id=123&shop=汇出店铺名&divi_account=YMX-26
     
     参数:
         product_id: 产品ID（必填）
-        need_split: 是否切表（true/false，必填）
-        shop: 店铺名（必填，不切表时传上架店铺，切表时传汇出店铺）
+        shop: 汇出店铺名（必填）
         divi_account: 迪唯登录账号（如YMX-26，必填）
     
     返回: [{ template_id, template_name, value, label }]
@@ -2018,7 +2015,6 @@ def get_divi_export_templates_api(request):
         from django.db.models import Q
         
         product_id = request.GET.get('product_id')
-        need_split = request.GET.get('need_split', 'false').lower() == 'true'
         shop_name = request.GET.get('shop', '').strip()
         divi_account = request.GET.get('divi_account', '').strip()
         
