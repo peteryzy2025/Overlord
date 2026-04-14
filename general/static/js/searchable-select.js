@@ -65,6 +65,7 @@ class SearchableSelect {
         return {
             value: this.normalizeOptionValue(rawValue),
             label: String(rawLabel),
+            htmlLabel: option.htmlLabel || undefined,
             disabled: !!option.disabled
         };
     }
@@ -229,7 +230,7 @@ class SearchableSelect {
                 <div class="option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
                      data-value="${optionValue}">
                     ${this.config.multiple ? '<span class="checkbox"></span>' : ''}
-                    <span class="option-text">${opt.label}</span>
+                    <span class="option-text">${opt.htmlLabel || opt.label}</span>
                 </div>
             `;
         }).join('');
@@ -360,7 +361,7 @@ class SearchableSelect {
                 .filter((v) => !this.isAllValue(v))
                 .map((v) => {
                     const opt = this.options.find((o) => this.normalizeOptionValue(o.value) === this.normalizeOptionValue(v));
-                    return opt ? opt.label : v;
+                    return opt ? (opt.htmlLabel || opt.label) : v;
                 });
 
             // 多选显示 - 显示具体选项名，超出显示+N
@@ -370,11 +371,11 @@ class SearchableSelect {
                 // 根据容器宽度显示，简单实现：最多显示2个，超出显示+N
                 const maxDisplay = 2;
                 if (selectedLabels.length <= maxDisplay) {
-                    this.selectedText.textContent = selectedLabels.join('、');
+                    this.selectedText.innerHTML = selectedLabels.join('、');
                 } else {
                     const displayed = selectedLabels.slice(0, maxDisplay).join('、');
                     const remaining = selectedLabels.length - maxDisplay;
-                    this.selectedText.textContent = `${displayed} +${remaining}`;
+                    this.selectedText.innerHTML = `${displayed} +${remaining}`;
                 }
             }
         } else {
@@ -383,7 +384,7 @@ class SearchableSelect {
                 this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
             } else {
                 const opt = this.options.find(o => o.value == this.selectedValues);
-                this.selectedText.textContent = opt ? opt.label : this.selectedValues;
+                this.selectedText.innerHTML = opt ? (opt.htmlLabel || opt.label) : this.selectedValues;
             }
         }
 

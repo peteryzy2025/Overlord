@@ -1297,9 +1297,8 @@ def create_task_api(request):
                             if isinstance(publish_shops, str):
                                 publish_shops = [publish_shops] if publish_shops else []
                             
-                            # 处理汇出店铺 - 单元素列表
+                            # 处理汇出店铺
                             export_shop = row.get('export_shop', '')
-                            export_shops = [export_shop] if export_shop else []
                             
                             # 获取汇出模板信息
                             export_template_id = row.get('export_template_id', '')
@@ -1314,7 +1313,7 @@ def create_task_api(request):
                                 '汇出模板名称': export_template_name,
                                 '是否已汇出': bool(row.get('is_exported', False)),
                                 '最大汇出数量': row.get('max_export_quantity', 100),
-                                '汇出店铺列表': export_shops,
+                                '汇出店铺': export_shop,
                                 '上架店铺列表': publish_shops,
                                 '设计时间自定义': bool(row.get('design_date_filter', False)),
                                 '设计时间开始日期': row.get('design_start_date', '') if row.get('design_date_filter') else '',
@@ -2065,11 +2064,15 @@ def get_divi_export_templates_api(request):
             # 根据模板类型添加后缀（用于前端显示）
             suffix = '【系统】' if tpl['template_type'] == 1 else '【用户】'
             display_name = original_name + suffix
+            # HTML 带颜色后缀
+            color = 'var(--warning-color)' if tpl['template_type'] == 1 else 'var(--success-color)'
+            html_display_name = f"{original_name}<span style=\"color:{color};font-weight:500\">{suffix}</span>"
             
             data.append({
                 'template_id': tpl['template_id'],
                 'template_name': original_name,  # 原始名称，给 webhook 使用
                 'template_name_display': display_name,  # 带后缀的名称，给前端显示
+                'html_label': html_display_name,  # 带颜色后缀的 HTML，给下拉框使用
                 'value': tpl['template_id'],
                 'label': display_name  # 下拉框显示用带后缀的
             })

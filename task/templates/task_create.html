@@ -793,9 +793,16 @@
             // 纯文本格式：店铺名（运营人员）[状态]
             const label = rawName + `（${opsName}）` + (statusText ? `[${statusText}]` : '');
             
+            // HTML 格式：正常状态标绿
+            let htmlLabel = label;
+            if (statusText === '正常') {
+                htmlLabel = rawName + `（${opsName}）` + `<span style="color:var(--success-color);font-weight:500">[${statusText}]</span>`;
+            }
+            
             return {
                 value: rawName,
-                label: label
+                label: label,
+                htmlLabel: htmlLabel
             };
         }
 
@@ -2634,14 +2641,18 @@
                 label: `${p.id} - ${p.name}`
             }));
 
-            // 如果当前汇出店铺有偏好设置，将匹配产品置顶并加 [常用] 前缀
+            // 如果当前汇出店铺有偏好设置，将匹配产品置顶并加 [常用] 后缀（绿色）
             if (shopId && userExportShopProductPrefs[shopId]) {
                 const preferredIds = new Set(userExportShopProductPrefs[shopId].map(String));
                 const preferred = [];
                 const others = [];
                 productOptions.forEach(opt => {
                     if (preferredIds.has(opt.value)) {
-                        preferred.push({ ...opt, label: `[常用] ${opt.label}` });
+                        preferred.push({
+                            ...opt,
+                            label: `${opt.label} [常用]`,
+                            htmlLabel: `${opt.label} <span style="color:var(--success-color);font-weight:500">[常用]</span>`
+                        });
                     } else {
                         others.push(opt);
                     }
@@ -2772,6 +2783,7 @@
                     templateOptions = result.data.map(t => ({
                         value: String(t.template_id),
                         label: t.template_name_display || t.template_name,  // 显示带后缀的名称
+                        htmlLabel: t.html_label || undefined,  // 带颜色后缀的 HTML
                         template_name: t.template_name  // 原始名称，用于保存到数据库
                     }));
                 }
@@ -5849,6 +5861,12 @@
                         if (row.颜色ID列表 !== undefined) row.colors = row.颜色ID列表;
                         if (row.尺码ID列表 !== undefined) row.sizes = row.尺码ID列表;
                         if (row.店铺列表 !== undefined) row.shops = row.店铺列表;
+                        // 兼容旧数据：汇出店铺列表 -> 汇出店铺
+                        if (row.汇出店铺列表 !== undefined) {
+                            const arr = row.汇出店铺列表;
+                            row.export_shop = Array.isArray(arr) && arr.length > 0 ? arr[0] : (arr || '');
+                        }
+                        if (row.汇出店铺 !== undefined) row.export_shop = row.汇出店铺;
                         
                         // 删除所有中文字段名
                         delete row['产品ID'];
@@ -5859,6 +5877,8 @@
                         delete row['颜色中文列表'];
                         delete row['颜色英文列表'];
                         delete row['店铺列表'];
+                        delete row['汇出店铺列表'];
+                        delete row['汇出店铺'];
                     });
                 }
                 
@@ -5932,6 +5952,13 @@
                             if (row.颜色ID列表 !== undefined) row.colors = row.颜色ID列表;
                             if (row.尺码ID列表 !== undefined) row.sizes = row.尺码ID列表;
                             if (row.店铺列表 !== undefined) row.shops = row.店铺列表;
+                            // 兼容旧数据：汇出店铺列表 -> 汇出店铺
+                            if (row.汇出店铺列表 !== undefined) {
+                                const arr = row.汇出店铺列表;
+                                row.export_shop = Array.isArray(arr) && arr.length > 0 ? arr[0] : (arr || '');
+                            }
+                            if (row.汇出店铺 !== undefined) row.export_shop = row.汇出店铺;
+                            
                             delete row['产品ID'];
                             delete row['产品名称'];
                             delete row['尺码ID列表'];
@@ -5940,6 +5967,8 @@
                             delete row['颜色中文列表'];
                             delete row['颜色英文列表'];
                             delete row['店铺列表'];
+                            delete row['汇出店铺列表'];
+                            delete row['汇出店铺'];
                         });
                     }
 
