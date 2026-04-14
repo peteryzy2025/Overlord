@@ -265,9 +265,6 @@ def validate_subtask_params(subtask_type, params, user):
             if not platform or platform not in ['amazon', 'temu']:
                 return {'valid': False, 'message': '平台必须选择且必须是Amazon或Temu'}
 
-            # 获取子任务级别的是否切表
-            need_split = bool(params.get('need_split', False))
-
             # 验证汇出行
             export_rows = params.get('export_rows', [])
             if not export_rows or len(export_rows) == 0:
@@ -284,11 +281,10 @@ def validate_subtask_params(subtask_type, params, user):
                 if not publish_shops or len(publish_shops) == 0:
                     return {'valid': False, 'message': f'第 {i + 1} 行的上架店铺不能为空'}
 
-                # 如果开启切表，验证汇出店铺
-                if need_split:
-                    export_shop = row.get('export_shop', '')
-                    if not export_shop or str(export_shop).strip() == '':
-                        return {'valid': False, 'message': f'第 {i + 1} 行开启了切表，汇出店铺不能为空'}
+                # 验证汇出店铺
+                export_shop = row.get('export_shop', '')
+                if not export_shop or str(export_shop).strip() == '':
+                    return {'valid': False, 'message': f'第 {i + 1} 行的汇出店铺不能为空'}
                 
                 # 如果开启设计日期筛选，验证日期
                 if row.get('design_date_filter'):

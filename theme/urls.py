@@ -78,5 +78,6 @@ urlpatterns = [
     # Amazon数据抓取工具
     path('amazon-data-crawler/', views_crawler.amazon_data_crawler_page, name='amazon_data_crawler'),
     path('api/amazon-search/', views_crawler.api_amazon_search, name='api_amazon_search'),
+    path('api/amazon-search-page/', views_crawler.api_amazon_search_page, name='api_amazon_search_page'),
 ]
 

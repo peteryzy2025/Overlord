@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=1">
 <style>
     /* 复用 task_create 的容器样式 */
     .task-list-container {
@@ -22,6 +23,27 @@
         align-items: center;
         border-bottom: 1px solid var(--border-color);
         padding-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-stats {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+    }
+
+    .header-stats .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .header-stats .stat-item b {
+        color: var(--accent-color);
+        font-weight: 600;
     }
 
     .page-title {
@@ -78,49 +100,7 @@
         }
     }
 
-    /* 统计看板 - 复用 tracking_management 样式 */
-    .stats-dashboard {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
 
-    .stat-card {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: var(--shadow-light);
-        transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-medium);
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-    }
-
-    .stat-change {
-        font-size: 0.75rem;
-        margin-top: 0.5rem;
-        color: var(--text-secondary);
-    }
 
     /* 仅保留筛选组件样式，避免 general_style_1.css 全局规则覆盖同事页面样式 */
     .gs-date-range-custom-group {
@@ -462,50 +442,13 @@
     }
 
     /* 列表容器 */
-    .task-table-wrapper {
-        overflow-x: auto;
-    }
-
-    .task-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .task-table th {
-        background: var(--bg-secondary);
-        padding: 1rem;
-        text-align: left;
-        font-weight: 600;
-        color: var(--text-primary);
-        border-bottom: 1px solid var(--border-color);
-        white-space: nowrap;
-    }
-
-    .task-table td {
-        padding: 1rem;
-        border-bottom: 1px solid var(--border-color);
-        color: var(--text-primary);
-        vertical-align: middle;
-    }
-
-    .task-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .task-table tr:hover {
-        background: var(--bg-secondary);
-    }
-
-    /* 状态标签 */
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 500;
-        white-space: nowrap;
-    }
+    /* 状态标签（颜色扩展） */
+    .status-badge.status-draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
+    .status-badge.status-pending { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+    .status-badge.status-in_progress { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+    .status-badge.status-completed { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+    .status-badge.status-failed { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+    .status-badge.status-cancelled { background: rgba(107, 114, 128, 0.15); color: #6b7280; }
 
     .status-draft {
         background: var(--bg-tertiary);
@@ -565,30 +508,57 @@
         line-height: 1.2;
     }
 
-    /* 操作按钮 */
+    /* 操作按钮（复用 Amazon 订单管理风格） */
     .action-buttons {
         display: flex;
         gap: 0.5rem;
     }
 
     .btn-action {
-        width: 32px;
-        height: 32px;
-        display: flex;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        border-radius: 6px;
-        transition: all 0.2s ease;
-        border: 1px solid transparent;
-        background: transparent;
-        color: var(--text-secondary);
-        cursor: pointer;
+        min-width: 32px;
+        height: 32px;
+        color: #fff;
     }
 
-    .btn-action:hover {
-        background: var(--bg-tertiary);
-        color: var(--accent-color);
-        border-color: var(--border-color);
+    .btn-view {
+        background-color: var(--accent-color);
+    }
+
+    .btn-view:hover {
+        background-color: var(--accent-hover);
+    }
+
+    .btn-edit {
+        background-color: #3B82F6;
+    }
+
+    .btn-edit:hover {
+        background-color: #2563EB;
+    }
+
+    .btn-delete {
+        background-color: #EF4444;
+    }
+
+    .btn-delete:hover {
+        background-color: #DC2626;
+    }
+
+    .btn-resend {
+        background-color: #8B5CF6;
+    }
+
+    .btn-resend:hover {
+        background-color: #7C3AED;
     }
 
     /* 响应式 */
@@ -597,10 +567,7 @@
             padding: 1rem;
         }
 
-        .task-table th,
-        .task-table td {
-            padding: 0.75rem 0.5rem;
-        }
+
     }
 
     .dropdown-check-list {
@@ -685,46 +652,16 @@
         <h1 class="page-title">
             <i class="fas fa-tasks"></i> 任务列表
         </h1>
+        <div class="header-stats">
+            <span class="stat-item">总任务数：<b id="headerTotalCount">0</b></span>
+            <span class="stat-item">运行中：<b id="headerInProgressCount">0</b></span>
+            <span class="stat-item">待执行：<b id="headerPendingCount">0</b></span>
+            <span class="stat-item">草稿：<b id="headerDraftCount">0</b></span>
+        </div>
         <div class="header-actions">
             <button class="btn btn-primary" onclick="createNewTask()">
                 <i class="fas fa-plus"></i> 创建新任务
             </button>
-        </div>
-    </div>
-
-    <!-- 统计看板 -->
-    <div class="stats-dashboard" id="statsDashboard">
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-tasks"></i>
-                总任务数
-            </div>
-            <div class="stat-value" id="totalCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-file-alt"></i>
-                草稿
-            </div>
-            <div class="stat-value" id="draftCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-clock"></i>
-                待执行
-            </div>
-            <div class="stat-value" id="pendingCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-spinner"></i>
-                进行中
-            </div>
-            <div class="stat-value" id="inProgressCount">0</div>
-            <div class="stat-change">&nbsp;</div>
         </div>
     </div>
 
@@ -778,21 +715,21 @@
     </div>
 
     <!-- 任务列表 -->
-    <div class="task-card">
-        <div class="task-table-wrapper">
-            <table class="task-table" id="taskTable">
+    <div class="data-section">
+        <div class="table-container" id="taskTableContainer">
+            <table class="table" id="taskTable">
                 <thead>
                     <tr>
                         <th class="w-checkbox">
                             <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAllTasks()">
                         </th>
-                        <th style="width: 25%;">任务标题</th>
                         <th style="width: 120px;">任务单号</th>
+                        <th style="width: 25%;">任务标题</th>
                         <th>状态</th>
                         <th>创建人</th>
                         <th>所有者</th>
                         <th>创建时间</th>
-                        <th>操作</th>
+                        <th class="w-actions">操作</th>
                     </tr>
                 </thead>
                 <tbody id="taskTableBody">
@@ -1137,6 +1074,15 @@
         tbody.innerHTML = taskData.list.map(task => {
             const statusClass = `status-${task.status}`;
             const statusText = getStatusDisplay(task.status);
+            const subtaskHtml = task.subtasks.map(st => `
+                <span class="subtask-type-tag">
+                    <i class="fas ${getSubtaskIcon(st.type)}"></i>
+                    ${st.type_display || getSubtaskTypeText(st.type)}
+                    <span class="subtask-status-badge status-${st.status || 'draft'}">
+                        ${st.status_display || getStatusDisplay(st.status || 'draft')}
+                    </span>
+                </span>
+            `).join('') + `<span style="color: var(--text-tertiary);">共 ${task.subtasks.length} 个子任务</span>`;
 
             return `
                     <tr>
@@ -1144,25 +1090,12 @@
                             <input type="checkbox" class="row-checkbox" data-task-id="${task.id}" onchange="updateSelectAllTaskState()">
                         </td>
                         <td>
-                            <div style="font-weight: 500;">${task.title}</div>
-                            <div class="subtask-summary">
-                                ${task.subtasks.map(st => `
-                                    <span class="subtask-type-tag">
-                                        <i class="fas ${getSubtaskIcon(st.type)}"></i>
-                                        ${st.type_display || getSubtaskTypeText(st.type)}
-                                        <span class="subtask-status-badge status-${st.status || 'draft'}">
-                                            ${st.status_display || getStatusDisplay(st.status || 'draft')}
-                                        </span>
-                                    </span>
-                                `).join('')}
-                                <span style="color: var(--text-tertiary);">
-                                    共 ${task.subtasks.length} 个子任务
-                                </span>
-                            </div>
+                            ${task.task_no}
                         </td>
                         <td>
-                            <div style="font-family: 'Courier New', monospace; font-size: 0.875rem; color: var(--text-primary);">
-                                ${task.task_no}
+                            <div style="font-weight: 500;">${task.title}</div>
+                            <div class="subtask-summary">
+                                ${subtaskHtml}
                             </div>
                         </td>
                         <td>
@@ -1171,19 +1104,22 @@
                         <td>${task.creator_name}</td>
                         <td>${task.owner_name}</td>
                         <td>${formatDateTime(task.created_at)}</td>
-                        <td>
+                        <td class="w-actions">
                             <div class="action-buttons">
-                                <button class="btn-action" onclick="viewTask(${task.id})" title="查看详情">
+                                <button class="btn-action btn-view" onclick="viewTask(${task.id})" title="查看详情">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                ${task.status === 'draft' ? `
-                                    <button class="btn-action" onclick="editTask(${task.id})" title="编辑">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                ` : ''}
-                                <button class="btn-action" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" title="删除">
+                                <button class="btn-action btn-edit" onclick="copyTask(${task.id})" title="复制任务">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="btn-action btn-delete" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" title="删除">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                ${currentUser.permissions.includes('555') ? `
+                                    <button class="btn-action btn-resend" onclick="resendWebhook(${task.id})" title="重新发送 Webhook">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                ` : ''}
                             </div>
                         </td>
                     </tr>
@@ -1506,10 +1442,10 @@
             const result = await response.json();
 
             if (result.success) {
-                document.getElementById('totalCount').textContent = result.data.total;
-                document.getElementById('draftCount').textContent = result.data.draft;
-                document.getElementById('pendingCount').textContent = result.data.pending;
-                document.getElementById('inProgressCount').textContent = result.data.in_progress;
+                document.getElementById('headerTotalCount').textContent = result.data.total;
+                document.getElementById('headerDraftCount').textContent = result.data.draft;
+                document.getElementById('headerPendingCount').textContent = result.data.pending;
+                document.getElementById('headerInProgressCount').textContent = result.data.in_progress;
             }
         } catch (error) {
             console.error('加载统计失败:', error);
@@ -1521,14 +1457,33 @@
         window.location.href = '/task/create/';
     }
 
+    async function resendWebhook(taskId) {
+        try {
+            const response = await fetch(`/api/tasks/${taskId}/resend-webhook/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCsrfToken(),
+                }
+            });
+            const result = await response.json();
+            if (result.success) {
+                showNotification(result.message, 'success');
+            } else {
+                showNotification(result.message || '发送失败', 'warning');
+            }
+        } catch (error) {
+            showNotification('请求异常：' + error.message, 'error');
+        }
+    }
+
     function viewTask(taskId) {
         // 查看任务详情（可跳转到详情页）
         window.open(`/task/detail/${taskId}/`, '_blank');
     }
 
-    function editTask(taskId) {
-        // 编辑草稿任务（跳转到创建页面并加载数据）
-        window.location.href = `/task/create/?draft_id=${taskId}`;
+    function copyTask(taskId) {
+        // 复制任务（跳转到创建页面并加载原任务数据）
+        window.location.href = `/task/create/?copy_from=${taskId}`;
     }
 
     function deleteTask(taskId, taskTitle) {

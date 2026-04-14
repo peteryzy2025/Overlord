@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
+from universal.permission_utils import get_user_permission_codes
 
 from general.models import User, AmazonShop, TemuShop
 from task.models import Task, TaskStatus, TaskType, SubTask, TaskTemplate, ProductRequirement
@@ -884,6 +885,36 @@ def generate_task_no_api(request):
 
 @login_required
 @require_http_methods(["GET"])
+def generate_copy_task_no_api(request):
+    """
+    生成复制任务单号（A方案：在被复制单号后直接追加 -N）
+    GET /api/tasks/generate-copy-no/?base_no=XXX
+    """
+    try:
+        base_no = request.GET.get('base_no', '').strip()
+        if not base_no:
+            return JsonResponse({'success': False, 'message': '缺少 base_no 参数'}, status=400)
+
+        prefix = base_no + '-'
+        existing_nos = Task.objects.filter(task_no__startswith=prefix).values_list('task_no', flat=True)
+
+        max_suffix = 0
+        for no in existing_nos:
+            suffix_str = no[len(prefix):]
+            if suffix_str.isdigit():
+                max_suffix = max(max_suffix, int(suffix_str))
+
+        new_task_no = f"{prefix}{max_suffix + 1}"
+        return JsonResponse({'success': True, 'data': {'task_no': new_task_no}})
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'生成复制任务单号失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
 def suggest_gallery_paths_api(request):
     """
     获取图库路径建议（基于用户历史输入）
@@ -1146,6 +1177,8 @@ def create_task_api(request):
                         except Exception as e:
                             print(f"Webhook send failed: {e}")
 
+                    req.webhook_payload = webhook_data
+                    req.save(update_fields=['webhook_payload'])
                     transaction.on_commit(lambda data=webhook_data: threading.Thread(target=send_webhook_task, args=(data,)).start())
                 except Exception:
                     pass
@@ -1243,9 +1276,8 @@ def create_task_api(request):
                         }
                     elif st.subtask_type == 'divi_export_pro':
                         # 迪唯汇出上架-Pro - 转换汇出行数据
-                        # 获取子任务级别的平台和是否切表
+                        # 获取子任务级别的平台
                         platform_display = 'Amazon' if params.get('platform') == 'amazon' else 'Temu'
-                        need_split = bool(params.get('need_split', False))
                         
                         export_rows_cn = []
                         for row in params.get('export_rows', []):
@@ -1280,6 +1312,7 @@ def create_task_api(request):
                                 '颜色英文列表': color_en_names,
                                 '汇出模板ID': export_template_id,
                                 '汇出模板名称': export_template_name,
+                                '是否已汇出': bool(row.get('is_exported', False)),
                                 '最大汇出数量': row.get('max_export_quantity', 100),
                                 '汇出店铺列表': export_shops,
                                 '上架店铺列表': publish_shops,
@@ -1291,7 +1324,6 @@ def create_task_api(request):
                         subtask_params = {
                             '迪唯账号': params.get('diwei_account', ''),
                             '平台': platform_display,
-                            '是否切表': need_split,
                             '汇出行列表': export_rows_cn
                         }
                     elif st.subtask_type == 'divi_gallery_upload':
@@ -1384,7 +1416,8 @@ def create_task_api(request):
                                 'vertical_stagger': '纵向交错平铺',
                                 'mirror': '镜像平铺',
                                 'random': '随机平铺'
-                            }.get(params.get('tile_type'), params.get('tile_type', ''))
+                            }.get(params.get('tile_type'), params.get('tile_type', '')),
+                            '平铺间距': params.get('tile_spacing', 0)
                         }
                     elif st.subtask_type == 'amazon_upload':
                         # Amazon上传 - 从数据库获取实际目标路径
@@ -1456,9 +1489,11 @@ def create_task_api(request):
                     except Exception as e:
                         print(f"Webhook send failed: {e}")
 
+                task.webhook_payload = webhook_data
+                task.save(update_fields=['webhook_payload'])
                 # 事务提交后异步发送，避免阻塞响应且确保数据已持久化
                 transaction.on_commit(lambda: threading.Thread(target=send_webhook_task, args=(webhook_data,)).start())
-            
+
             except Exception as e:
                 # 仅打印错误，不影响任务创建流程
                 print(f"Error preparing webhook: {e}")
@@ -1965,12 +2000,11 @@ def get_diwei_accounts_api(request):
 def get_divi_export_templates_api(request):
     """
     获取 DIVI 汇出模板列表（根据产品和店铺筛选）
-    GET /api/divi/export-templates/?product_id=123&need_split=false&shop=店铺名&divi_account=YMX-26
+    GET /api/divi/export-templates/?product_id=123&shop=汇出店铺名&divi_account=YMX-26
     
     参数:
         product_id: 产品ID（必填）
-        need_split: 是否切表（true/false，必填）
-        shop: 店铺名（必填，不切表时传上架店铺，切表时传汇出店铺）
+        shop: 汇出店铺名（必填）
         divi_account: 迪唯登录账号（如YMX-26，必填）
     
     返回: [{ template_id, template_name, value, label }]
@@ -1981,7 +2015,6 @@ def get_divi_export_templates_api(request):
         from django.db.models import Q
         
         product_id = request.GET.get('product_id')
-        need_split = request.GET.get('need_split', 'false').lower() == 'true'
         shop_name = request.GET.get('shop', '').strip()
         divi_account = request.GET.get('divi_account', '').strip()
         
@@ -2114,3 +2147,40 @@ def get_divi_image_classifies_api(request):
             'success': False,
             'message': f'获取图库分类失败: {str(e)}'
         }, status=500)
+
+
+def _send_webhook_payload(payload):
+    """通用 webhook 发送辅助函数"""
+    url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/929623248793497600"
+    try:
+        requests.post(url, json=payload, timeout=10)
+        return True
+    except Exception as e:
+        print(f"Webhook send failed: {e}")
+        return False
+
+
+@login_required
+@require_http_methods(["POST"])
+def resend_task_webhook_api(request, task_id):
+    """
+    重新发送任务 webhook（仅 code=555 管理员可用）
+    POST /api/tasks/<int:task_id>/resend-webhook/
+    """
+    user_perms = get_user_permission_codes(request.user)
+    if 555 not in user_perms:
+        return JsonResponse({'success': False, 'message': '无权限执行此操作'}, status=403)
+
+    try:
+        task = Task.objects.get(id=task_id)
+    except Task.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '任务不存在'}, status=404)
+
+    payload = task.webhook_payload
+    if not payload:
+        return JsonResponse({'success': False, 'message': '该任务没有保存的 webhook 数据，无法重新发送'})
+
+    # 异步发送，避免阻塞
+    threading.Thread(target=_send_webhook_payload, args=(payload,)).start()
+
+    return JsonResponse({'success': True, 'message': 'Webhook 正在重新发送'})

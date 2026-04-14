@@ -71,6 +71,7 @@ class Task(models.Model):
     created_at = models.DateTimeField('创建时间', auto_now_add=True, db_comment='任务创建时间')
     updated_at = models.DateTimeField('更新时间', auto_now=True, db_comment='任务最后更新时间')
     submitted_at = models.DateTimeField('提交时间', null=True, blank=True, db_comment='任务提交时间（非草稿状态）')
+    webhook_payload = models.JSONField('Webhook payload', null=True, blank=True, db_comment='创建时发送的 webhook JSON 数据')
 
     class Meta:
         db_table = 'task_tasks'
@@ -602,6 +603,7 @@ class ProductRequirement(models.Model):
     )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
+    webhook_payload = models.JSONField('Webhook payload', null=True, blank=True, db_comment='创建时发送的 webhook JSON 数据')
 
     class Meta:
         db_table = 'task_product_requirements'

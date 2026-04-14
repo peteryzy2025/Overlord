@@ -60,6 +60,7 @@
                 <span>迪唯产业大数据</span>
             </a>
         </li>
+        {% if user.id == 555 %}
         <li class="sidebar-item">
             <a href="{% url 'theme:amazon_data_crawler' %}"
                class="sidebar-link {% if active_page == 'amazon_data_crawler' %}active{% endif %}">
@@ -67,5 +68,6 @@
                 <span>Amazon数据抓取工具</span>
             </a>
         </li>
+        {% endif %}
     </ul>
 {% endblock %}
