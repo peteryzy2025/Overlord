@@ -50,6 +50,7 @@ urlpatterns = [
 
     # 任务单号
     path('api/tasks/generate-no/', task_api_views.generate_task_no_api, name='generate_task_no'),
+    path('api/tasks/generate-copy-no/', task_api_views.generate_copy_task_no_api, name='generate_copy_task_no'),
 
     # 图库路径建议
     path('api/tasks/gallery-paths/suggest/', task_api_views.suggest_gallery_paths_api, name='suggest_gallery_paths'),

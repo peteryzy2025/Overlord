@@ -885,6 +885,36 @@ def generate_task_no_api(request):
 
 @login_required
 @require_http_methods(["GET"])
+def generate_copy_task_no_api(request):
+    """
+    生成复制任务单号（A方案：在被复制单号后直接追加 -N）
+    GET /api/tasks/generate-copy-no/?base_no=XXX
+    """
+    try:
+        base_no = request.GET.get('base_no', '').strip()
+        if not base_no:
+            return JsonResponse({'success': False, 'message': '缺少 base_no 参数'}, status=400)
+
+        prefix = base_no + '-'
+        existing_nos = Task.objects.filter(task_no__startswith=prefix).values_list('task_no', flat=True)
+
+        max_suffix = 0
+        for no in existing_nos:
+            suffix_str = no[len(prefix):]
+            if suffix_str.isdigit():
+                max_suffix = max(max_suffix, int(suffix_str))
+
+        new_task_no = f"{prefix}{max_suffix + 1}"
+        return JsonResponse({'success': True, 'data': {'task_no': new_task_no}})
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'生成复制任务单号失败: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
 def suggest_gallery_paths_api(request):
     """
     获取图库路径建议（基于用户历史输入）

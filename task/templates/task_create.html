@@ -390,10 +390,15 @@
 
                 <div class="form-group">
                     <label class="form-label">企业微信通知 URL</label>
-                    <input type="text" class="form-control" id="wxUrlInput" 
-                           placeholder="请输入企业微信消息通知 URL"
-                           value="{{ request.user.wx_url|default:'' }}"
-                           style="width: 100%;">
+                    <div style="display: flex; gap: 0.5rem; align-items: stretch;">
+                        <input type="text" class="form-control" id="wxUrlInput"
+                               placeholder="请输入企业微信消息通知 URL"
+                               value="{{ request.user.wx_url|default:'' }}"
+                               style="flex: 1; min-width: 0;">
+                        <button type="button" class="btn btn-secondary" onclick="fillMyWxUrl()" style="white-space: nowrap;">
+                            <i class="fas fa-user-check"></i> 填充我的 URL
+                        </button>
+                    </div>
                     <small style="color: var(--text-tertiary);">用于接收任务执行结果通知</small>
                 </div>
             </div>
@@ -736,6 +741,7 @@
         let galleryPathCache = [];
         let diweiAccountsCache = [];
         let draftDataToLoad = null;
+        const currentUserWxUrl = "{{ request.user.wx_url|default:'' }}";
         
         // 当前用户的迪唯账号（用于默认值）
         const currentUserDiviUsername = "{{ request.user.operational_account.divi_username|default:'' }}";
@@ -773,6 +779,15 @@
                 document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
         }
 
+        function fillMyWxUrl() {
+            if (currentUserWxUrl) {
+                document.getElementById('wxUrlInput').value = currentUserWxUrl;
+                showNotification('已填充您的企业微信 URL', 'success');
+            } else {
+                showNotification('您还没有设置企业微信 URL', 'warning');
+            }
+        }
+
         function showLoading(show = true) {
             const overlay = document.getElementById('loadingOverlay');
             if (overlay) {
@@ -800,12 +815,19 @@
                 await Promise.all([
                     loadAvailableOwners(),
                     loadAvailableShops(),
-                    generateTaskNoPreview()
                 ]);
 
-                initDragAndDrop();
-                setupAutoSave();
-                checkDraft();
+                // 检查是否是复制任务模式
+                const urlParams = new URLSearchParams(window.location.search);
+                const copyFromId = urlParams.get('copy_from');
+                if (copyFromId) {
+                    await loadCopyTask(copyFromId);
+                } else {
+                    await generateTaskNoPreview();
+                    initDragAndDrop();
+                    setupAutoSave();
+                    checkDraft();
+                }
 
             } catch (error) {
                 console.error('初始化失败:', error);
@@ -5881,6 +5903,88 @@
             }
 
             showNotification('草稿已加载', 'success');
+        }
+
+        async function generateCopyTaskNo(baseNo) {
+            try {
+                const response = await fetch(`/api/tasks/generate-copy-no/?base_no=${encodeURIComponent(baseNo)}`);
+                const result = await response.json();
+                return result.success ? result.data.task_no : null;
+            } catch (error) {
+                console.error('生成复制单号失败:', error);
+                return null;
+            }
+        }
+
+        async function loadCopyTask(taskId) {
+            try {
+                // 获取原任务详情
+                const detailResponse = await fetch(`/api/tasks/${taskId}/detail/`);
+                const detailResult = await detailResponse.json();
+                if (!detailResult.success) {
+                    showNotification(detailResult.message || '获取任务详情失败', 'error');
+                    return;
+                }
+
+                const originalTask = detailResult.data.task;
+                const originalSubtasks = detailResult.data.subtasks;
+
+                // 生成新的复制单号
+                const newTaskNo = await generateCopyTaskNo(originalTask.task_no);
+                if (newTaskNo) {
+                    document.getElementById('taskNoPreview').textContent = newTaskNo;
+                } else {
+                    document.getElementById('taskNoPreview').textContent = '生成失败';
+                }
+
+                // 填充标题（用户可以修改）
+                document.getElementById('taskTitle').value = originalTask.title || '';
+                taskData.title = originalTask.title || '';
+
+                // 所有者改为当前登录用户
+                const currentUserId = String("{{ request.user.id }}");
+                document.getElementById('taskOwner').value = currentUserId;
+                taskData.ownerId = currentUserId;
+                // 触发所有者选择器更新
+                if (typeof taskOwnerSelect !== 'undefined' && taskOwnerSelect && taskOwnerSelect.setValue) {
+                    taskOwnerSelect.setValue(currentUserId);
+                }
+
+                // 不设置 taskId，确保提交时创建新任务
+                taskData.taskId = null;
+
+                // 加载子任务（深拷贝 params，重置执行状态相关字段）
+                for (const subtask of originalSubtasks) {
+                    const params = JSON.parse(JSON.stringify(subtask.params || {}));
+
+                    // 清理 divi_export / divi_export_pro 的中文字段名
+                    if ((subtask.type === 'divi_export' || subtask.type === 'divi_export_pro') && params.export_rows) {
+                        params.export_rows.forEach(row => {
+                            if (row.产品ID !== undefined) row.product_id = row.产品ID;
+                            if (row.颜色ID列表 !== undefined) row.colors = row.颜色ID列表;
+                            if (row.尺码ID列表 !== undefined) row.sizes = row.尺码ID列表;
+                            if (row.店铺列表 !== undefined) row.shops = row.店铺列表;
+                            delete row['产品ID'];
+                            delete row['产品名称'];
+                            delete row['尺码ID列表'];
+                            delete row['尺码名称列表'];
+                            delete row['颜色ID列表'];
+                            delete row['颜色中文列表'];
+                            delete row['颜色英文列表'];
+                            delete row['店铺列表'];
+                        });
+                    }
+
+                    await addSubtask(subtask.type, params);
+                }
+
+                initDragAndDrop();
+                setupAutoSave();
+                showNotification('任务已复制，可修改后提交', 'success');
+            } catch (error) {
+                console.error('加载复制任务失败:', error);
+                showNotification('加载复制任务失败: ' + error.message, 'error');
+            }
         }
 
         // ===== 子任务使用说明数据 =====

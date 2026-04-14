@@ -23,6 +23,27 @@
         align-items: center;
         border-bottom: 1px solid var(--border-color);
         padding-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-stats {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        font-size: 0.95rem;
+        color: var(--text-secondary);
+    }
+
+    .header-stats .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .header-stats .stat-item b {
+        color: var(--accent-color);
+        font-weight: 600;
     }
 
     .page-title {
@@ -79,49 +100,7 @@
         }
     }
 
-    /* 统计看板 - 复用 tracking_management 样式 */
-    .stats-dashboard {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
 
-    .stat-card {
-        background: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: var(--shadow-light);
-        transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-medium);
-    }
-
-    .stat-label {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin-bottom: 0.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-    }
-
-    .stat-change {
-        font-size: 0.75rem;
-        margin-top: 0.5rem;
-        color: var(--text-secondary);
-    }
 
     /* 仅保留筛选组件样式，避免 general_style_1.css 全局规则覆盖同事页面样式 */
     .gs-date-range-custom-group {
@@ -673,46 +652,16 @@
         <h1 class="page-title">
             <i class="fas fa-tasks"></i> 任务列表
         </h1>
+        <div class="header-stats">
+            <span class="stat-item">总任务数：<b id="headerTotalCount">0</b></span>
+            <span class="stat-item">运行中：<b id="headerInProgressCount">0</b></span>
+            <span class="stat-item">待执行：<b id="headerPendingCount">0</b></span>
+            <span class="stat-item">草稿：<b id="headerDraftCount">0</b></span>
+        </div>
         <div class="header-actions">
             <button class="btn btn-primary" onclick="createNewTask()">
                 <i class="fas fa-plus"></i> 创建新任务
             </button>
-        </div>
-    </div>
-
-    <!-- 统计看板 -->
-    <div class="stats-dashboard" id="statsDashboard">
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-tasks"></i>
-                总任务数
-            </div>
-            <div class="stat-value" id="totalCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-file-alt"></i>
-                草稿
-            </div>
-            <div class="stat-value" id="draftCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-clock"></i>
-                待执行
-            </div>
-            <div class="stat-value" id="pendingCount">0</div>
-            <div class="stat-change">&nbsp;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label">
-                <i class="fas fa-spinner"></i>
-                进行中
-            </div>
-            <div class="stat-value" id="inProgressCount">0</div>
-            <div class="stat-change">&nbsp;</div>
         </div>
     </div>
 
@@ -1160,11 +1109,9 @@
                                 <button class="btn-action btn-view" onclick="viewTask(${task.id})" title="查看详情">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                ${task.status === 'draft' ? `
-                                    <button class="btn-action btn-edit" onclick="editTask(${task.id})" title="编辑">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                ` : ''}
+                                <button class="btn-action btn-edit" onclick="copyTask(${task.id})" title="复制任务">
+                                    <i class="fas fa-copy"></i>
+                                </button>
                                 <button class="btn-action btn-delete" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" title="删除">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -1495,10 +1442,10 @@
             const result = await response.json();
 
             if (result.success) {
-                document.getElementById('totalCount').textContent = result.data.total;
-                document.getElementById('draftCount').textContent = result.data.draft;
-                document.getElementById('pendingCount').textContent = result.data.pending;
-                document.getElementById('inProgressCount').textContent = result.data.in_progress;
+                document.getElementById('headerTotalCount').textContent = result.data.total;
+                document.getElementById('headerDraftCount').textContent = result.data.draft;
+                document.getElementById('headerPendingCount').textContent = result.data.pending;
+                document.getElementById('headerInProgressCount').textContent = result.data.in_progress;
             }
         } catch (error) {
             console.error('加载统计失败:', error);
@@ -1534,9 +1481,9 @@
         window.open(`/task/detail/${taskId}/`, '_blank');
     }
 
-    function editTask(taskId) {
-        // 编辑草稿任务（跳转到创建页面并加载数据）
-        window.location.href = `/task/create/?draft_id=${taskId}`;
+    function copyTask(taskId) {
+        // 复制任务（跳转到创建页面并加载原任务数据）
+        window.location.href = `/task/create/?copy_from=${taskId}`;
     }
 
     function deleteTask(taskId, taskTitle) {
