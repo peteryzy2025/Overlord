@@ -900,13 +900,18 @@ class UserExportShopProductPreference(models.Model):
         blank=True,
         verbose_name='汇出模板'
     )
+    diwei_account = models.CharField(
+        max_length=100,
+        default='',
+        verbose_name='迪唯账号'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
 
     class Meta:
         db_table = 'task_user_export_shop_product_preference'
         verbose_name = '用户汇出店铺产品偏好'
         verbose_name_plural = '用户汇出店铺产品偏好'
-        unique_together = ('user', 'shop', 'product', 'template')
+        unique_together = ('user', 'diwei_account', 'shop', 'product', 'template')
 
 
 # ========== 导入审批模型 ==========

@@ -2250,7 +2250,7 @@ def get_user_export_shop_products_api(request):
     """
     获取当前用户的汇出店铺-产品-模板偏好设置（组合式）
     GET /api/user/export-shop-products/
-    返回: [{ shop_id, shop_name, product_id, template_ids: [] }]
+    返回: [{ shop_id, shop_name, diwei_account, product_id, template_ids: [] }]
     """
     try:
         from collections import defaultdict
@@ -2258,9 +2258,9 @@ def get_user_export_shop_products_api(request):
         
         prefs = UserExportShopProductPreference.objects.filter(
             user=request.user
-        ).select_related('shop', 'product', 'template').order_by('shop__shop_name', 'product__name')
+        ).select_related('shop', 'product', 'template').order_by('diwei_account', 'shop__shop_name', 'product__name')
         
-        # 按 (shop_id, product_id) 聚合 template_ids
+        # 按 (diwei_account, shop_id, product_id) 聚合 template_ids
         group_map = defaultdict(list)
         shop_meta = {}
         for p in prefs:
@@ -2268,14 +2268,15 @@ def get_user_export_shop_products_api(request):
                 'shop_name': p.shop_name or (p.shop.shop_name if p.shop else f"店铺-{p.shop_id}")
             }
             if p.product_id:
-                group_map[(p.shop_id, p.product_id)].append(p.template_id)
+                group_map[(p.diwei_account or '', p.shop_id, p.product_id)].append(p.template_id)
         
         data = []
-        for (shop_id, product_id) in sorted(group_map.keys()):
-            template_ids = [tid for tid in group_map[(shop_id, product_id)] if tid is not None]
+        for (diwei_account, shop_id, product_id) in sorted(group_map.keys()):
+            template_ids = [tid for tid in group_map[(diwei_account, shop_id, product_id)] if tid is not None]
             data.append({
                 'shop_id': shop_id,
                 'shop_name': shop_meta.get(shop_id, {}).get('shop_name', f"店铺-{shop_id}"),
+                'diwei_account': diwei_account,
                 'product_id': product_id,
                 'template_ids': template_ids
             })
@@ -2291,7 +2292,7 @@ def save_user_export_shop_products_api(request):
     """
     保存/覆盖当前用户的汇出店铺-产品-模板偏好设置（组合式）
     POST /api/user/export-shop-products/save/
-    请求体: { preferences: [{ shop_id, shop_name, product_id, template_ids: [] }] }
+    请求体: { preferences: [{ shop_id, shop_name, diwei_account, product_id, template_ids: [] }] }
     """
     try:
         import json
@@ -2317,6 +2318,7 @@ def save_user_export_shop_products_api(request):
                 shop_id = item.get('shop_id')
                 product_id = item.get('product_id')
                 template_ids = item.get('template_ids', [])
+                diwei_account = item.get('diwei_account', '')
                 shop_name = item.get('shop_name') or shop_name_map.get(shop_id, f"店铺-{shop_id}")
                 if not shop_id or not product_id:
                     continue
@@ -2327,7 +2329,8 @@ def save_user_export_shop_products_api(request):
                             shop_id=shop_id,
                             shop_name=shop_name,
                             product_id=product_id,
-                            template_id=tid
+                            template_id=tid,
+                            diwei_account=diwei_account
                         ))
                 else:
                     # 占位：保存一条 template_id=None 的记录，使产品置顶仍生效
@@ -2336,7 +2339,8 @@ def save_user_export_shop_products_api(request):
                         shop_id=shop_id,
                         shop_name=shop_name,
                         product_id=product_id,
-                        template_id=None
+                        template_id=None,
+                        diwei_account=diwei_account
                     ))
             
             if objs:

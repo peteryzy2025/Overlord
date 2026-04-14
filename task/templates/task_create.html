@@ -695,7 +695,7 @@
 
     <!-- 汇出店铺-产品偏好设置模态框 -->
     <div class="modal-overlay" id="exportProPreferenceModal">
-        <div class="modal-content" style="max-width: 1050px; min-height: 75vh; max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-content" style="max-width: 1250px; min-height: 75vh; max-height: 90vh; display: flex; flex-direction: column;">
             <div class="modal-header">
                 <h3 class="modal-title">汇出店铺-产品偏好设置</h3>
                 <button class="btn-icon" onclick="closeExportProPreferenceModal()">
@@ -1784,12 +1784,14 @@
                     result.data.forEach(item => {
                         const shop = (availableShops.amazon || []).find(s => String(s.id) === String(item.shop_id));
                         const shopName = shop?.raw_name || item.shop_name || '';
+                        const diweiAccount = item.diwei_account || '';
                         if (shopName && item.product_id) {
-                            if (!productMap[shopName]) productMap[shopName] = [];
-                            if (!productMap[shopName].includes(item.product_id)) {
-                                productMap[shopName].push(item.product_id);
+                            const shopKey = `${diweiAccount}_${shopName}`;
+                            if (!productMap[shopKey]) productMap[shopKey] = [];
+                            if (!productMap[shopKey].includes(item.product_id)) {
+                                productMap[shopKey].push(item.product_id);
                             }
-                            const key = `${shopName}_${item.product_id}`;
+                            const key = `${diweiAccount}_${shopName}_${item.product_id}`;
                             templateMap[key] = item.template_ids || [];
                         }
                     });
@@ -2644,6 +2646,7 @@
             const subtask = taskData.subtasks.find(s => s.id == subtaskId);
             const row = subtask?.params?.export_rows?.[rowIndex];
             const shopId = row?.export_shop;
+            const diweiAccount = subtask?.params?.diwei_login_account || '';
 
             let productOptions = products.map(p => ({
                 value: String(p.id),
@@ -2651,8 +2654,9 @@
             }));
 
             // 如果当前汇出店铺有偏好设置，将匹配产品置顶并加 [常用] 后缀（绿色）
-            if (shopId && userExportShopProductPrefs[shopId]) {
-                const preferredIds = new Set(userExportShopProductPrefs[shopId].map(String));
+            const productPrefKey = diweiAccount && shopId ? `${diweiAccount}_${shopId}` : shopId;
+            if (productPrefKey && userExportShopProductPrefs[productPrefKey]) {
+                const preferredIds = new Set(userExportShopProductPrefs[productPrefKey].map(String));
                 const preferred = [];
                 const others = [];
                 productOptions.forEach(opt => {
@@ -2798,9 +2802,9 @@
                 }
                 
                 // 如果当前汇出店铺+产品有模板偏好设置，将匹配模板置顶并加 [常用] 后缀（绿色）
-                const prefKey = `${shop}_${productId}`;
-                if (shop && productId && userExportShopTemplatePrefs[prefKey]) {
-                    const preferredIds = new Set(userExportShopTemplatePrefs[prefKey].map(String));
+                const templatePrefKey = diweiAccount && shop && productId ? `${diweiAccount}_${shop}_${productId}` : `${shop}_${productId}`;
+                if (shop && productId && userExportShopTemplatePrefs[templatePrefKey]) {
+                    const preferredIds = new Set(userExportShopTemplatePrefs[templatePrefKey].map(String));
                     const preferred = [];
                     const others = [];
                     templateOptions.forEach(opt => {
@@ -6133,20 +6137,25 @@
             currentPreferenceModalSubtaskId = subtaskId;
             const [prefResult] = await Promise.all([
                 loadUserExportShopProductPrefs(),
-                loadDiviProducts()
+                loadDiviProducts(),
+                loadDiweiAccounts()
             ]);
+            
+            const subtask = taskData.subtasks.find(s => s.id === subtaskId);
+            const defaultDiweiAccount = subtask?.params?.diwei_login_account || '';
             
             const listEl = document.getElementById('export-pro-preference-list');
             listEl.innerHTML = '';
             preferenceRowCounter = 0;
             
-            // 后端直接返回组合式行数据：{ shop_id, shop_name, product_id, template_ids }
+            // 后端直接返回组合式行数据：{ shop_id, shop_name, diwei_account, product_id, template_ids }
             const rawRows = [];
             (prefResult.data || []).forEach(item => {
                 const shop = (availableShops.amazon || []).find(s => String(s.id) === String(item.shop_id));
                 const shopName = shop?.raw_name || item.shop_name || '';
                 if (shopName && item.product_id) {
                     rawRows.push({
+                        diwei_account: item.diwei_account || '',
                         shop_name: shopName,
                         product_id: item.product_id,
                         template_ids: item.template_ids || []
@@ -6155,9 +6164,9 @@
             });
             
             if (rawRows.length === 0) {
-                addExportProPreferenceRow();
+                addExportProPreferenceRow(defaultDiweiAccount, '', '', '');
             } else {
-                rawRows.forEach(row => addExportProPreferenceRow(row.shop_name, row.product_id, row.template_ids));
+                rawRows.forEach(row => addExportProPreferenceRow(row.diwei_account, row.shop_name, row.product_id, row.template_ids));
             }
             
             document.getElementById('exportProPreferenceModal').classList.add('active');
@@ -6168,7 +6177,7 @@
             currentPreferenceModalSubtaskId = null;
         }
 
-        function renderPreferenceRow(rowIndex, shopName = '', productId = '', templateIds = []) {
+        function renderPreferenceRow(rowIndex, diweiAccount = '', shopName = '', productId = '', templateIds = []) {
             return `
                 <div class="preference-row" id="preference-row-${rowIndex}" style="
                     display: flex;
@@ -6179,11 +6188,15 @@
                     border-radius: 8px;
                     border: 1px solid var(--border-color);
                 ">
-                    <div class="form-group" style="margin: 0; flex: 1; min-width: 160px;">
+                    <div class="form-group" style="margin: 0; flex: 1.2; min-width: 160px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">迪唯账号</label>
+                        <div id="pref-diwei-select-${rowIndex}" class="searchable-select single" data-placeholder="选择迪唯账号"></div>
+                    </div>
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 140px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺</label>
                         <div id="pref-shop-select-${rowIndex}" class="searchable-select single" data-placeholder="选择汇出店铺"></div>
                     </div>
-                    <div class="form-group" style="margin: 0; flex: 1.5; min-width: 180px;">
+                    <div class="form-group" style="margin: 0; flex: 1.3; min-width: 160px;">
                         <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">产品</label>
                         <div id="pref-product-select-${rowIndex}" class="searchable-select single" data-placeholder="选择产品"></div>
                     </div>
@@ -6198,27 +6211,22 @@
             `;
         }
 
-        async function loadPreferenceRowTemplates(rowIndex, shopName, productId, selectedTemplateIds = []) {
+        async function loadPreferenceRowTemplates(rowIndex, diweiAccount, shopName, productId, selectedTemplateIds = []) {
             const templatesEl = document.querySelector(`#pref-templates-select-${rowIndex}`);
             if (!templatesEl) return;
             if (templatesEl._templateSelectInstance) {
                 templatesEl._templateSelectInstance.destroy?.();
             }
             
-            if (!shopName || !productId) {
+            if (!diweiAccount || !shopName || !productId) {
                 const emptySelect = new SearchableSelect(`#pref-templates-select-${rowIndex}`, {
                     options: [],
                     multiple: true,
-                    placeholder: '请先选择店铺和产品'
+                    placeholder: '请先选择迪唯账号、店铺和产品'
                 });
                 templatesEl._templateSelectInstance = emptySelect;
                 return;
             }
-            
-            const subtask = currentPreferenceModalSubtaskId 
-                ? taskData.subtasks.find(s => s.id === currentPreferenceModalSubtaskId)
-                : null;
-            const diweiAccount = subtask?.params?.diwei_login_account || '';
             
             try {
                 const response = await fetch(`/api/divi/export-templates/?product_id=${productId}&shop=${encodeURIComponent(shopName)}&divi_account=${encodeURIComponent(diweiAccount)}`);
@@ -6246,11 +6254,23 @@
             }
         }
 
-        function addExportProPreferenceRow(shopName = '', productId = '', templateIds = []) {
+        function addExportProPreferenceRow(diweiAccount = '', shopName = '', productId = '', templateIds = []) {
             const rowIndex = preferenceRowCounter++;
             const listEl = document.getElementById('export-pro-preference-list');
-            const html = renderPreferenceRow(rowIndex, shopName, productId, templateIds);
+            const html = renderPreferenceRow(rowIndex, diweiAccount, shopName, productId, templateIds);
             listEl.insertAdjacentHTML('beforeend', html);
+            
+            // 初始化迪唯账号选择器
+            const diweiOptions = diweiAccountsCache.map(a => ({
+                value: a.diwei_account,
+                label: a.label
+            }));
+            const diweiSelect = new SearchableSelect(`#pref-diwei-select-${rowIndex}`, {
+                options: diweiOptions,
+                multiple: false,
+                placeholder: '选择迪唯账号'
+            });
+            if (diweiAccount) diweiSelect.setValue(String(diweiAccount));
             
             // 初始化店铺选择器（Amazon 店铺）
             const shopOptions = getProShopOptions('amazon');
@@ -6273,18 +6293,22 @@
             });
             if (productId) productSelect.setValue(String(productId));
             
-            // 店铺或产品变化时刷新模板
-            const refreshTemplates = () => {
+            // 迪唯账号、店铺或产品变化时刷新模板
+            const refreshTemplates = (clearSelection = false) => {
+                const currentDiwei = diweiSelect.getValue?.() || '';
                 const currentShop = shopSelect.getValue?.() || '';
                 const currentProduct = productSelect.getValue?.() || '';
-                loadPreferenceRowTemplates(rowIndex, currentShop, currentProduct);
+                loadPreferenceRowTemplates(rowIndex, currentDiwei, currentShop, currentProduct, clearSelection ? [] : undefined);
             };
-            shopSelect.onChange = refreshTemplates;
-            productSelect.onChange = refreshTemplates;
+            
+            // 迪唯账号变化时清空模板并刷新
+            diweiSelect.onChange = () => refreshTemplates(true);
+            shopSelect.onChange = () => refreshTemplates(false);
+            productSelect.onChange = () => refreshTemplates(false);
             
             // 初始化模板多选选择器（异步）
-            if (shopName && productId) {
-                loadPreferenceRowTemplates(rowIndex, shopName, productId, templateIds);
+            if (diweiAccount && shopName && productId) {
+                loadPreferenceRowTemplates(rowIndex, diweiAccount, shopName, productId, templateIds);
             } else {
                 const templatesEl = document.querySelector(`#pref-templates-select-${rowIndex}`);
                 if (templatesEl) {
@@ -6299,6 +6323,7 @@
             
             // 保存实例以便销毁
             const rowEl = document.getElementById(`preference-row-${rowIndex}`);
+            rowEl._diweiSelect = diweiSelect;
             rowEl._shopSelect = shopSelect;
             rowEl._productSelect = productSelect;
             rowEl._templateSelect = () => {
@@ -6310,6 +6335,7 @@
         function removeExportProPreferenceRow(rowIndex) {
             const rowEl = document.getElementById(`preference-row-${rowIndex}`);
             if (!rowEl) return;
+            if (rowEl._diweiSelect) rowEl._diweiSelect.destroy?.();
             if (rowEl._shopSelect) rowEl._shopSelect.destroy?.();
             if (rowEl._productSelect) rowEl._productSelect.destroy?.();
             const templateSelect = rowEl._templateSelect?.();
@@ -6323,15 +6349,17 @@
             
             const preferences = [];
             rowEls.forEach(rowEl => {
+                const diweiValue = rowEl._diweiSelect ? rowEl._diweiSelect.getValue?.() : '';
                 const shopName = rowEl._shopSelect ? rowEl._shopSelect.getValue?.() : '';
                 const productValue = rowEl._productSelect ? rowEl._productSelect.getValue?.() : '';
                 const templateValues = rowEl._templateSelect ? (rowEl._templateSelect().getValue?.() || []) : [];
-                if (shopName && productValue) {
+                if (diweiValue && shopName && productValue) {
                     const shop = (availableShops.amazon || []).find(s => s.raw_name === shopName);
                     const shopId = shop?.id;
                     if (!shopId) return;
                     
                     preferences.push({
+                        diwei_account: diweiValue,
                         shop_id: Number(shopId),
                         shop_name: shopName,
                         product_id: Number(productValue),
