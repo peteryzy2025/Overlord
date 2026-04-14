@@ -865,6 +865,41 @@ class AmazonUploadFile(models.Model):
         self.save()
 
 
+class UserExportShopProductPreference(models.Model):
+    """
+    用户汇出店铺-产品偏好设置
+    用于 divi_export_pro 中根据汇出店铺置顶常用产品
+    """
+    user = models.ForeignKey(
+        'general.User',
+        on_delete=models.CASCADE,
+        related_name='export_shop_prefs',
+        verbose_name='用户'
+    )
+    shop = models.ForeignKey(
+        'general.AmazonShop',
+        on_delete=models.CASCADE,
+        verbose_name='汇出店铺'
+    )
+    shop_name = models.CharField(
+        max_length=255,
+        default='',
+        verbose_name='汇出店铺名（缓存）'
+    )
+    product = models.ForeignKey(
+        'divi.Product',
+        on_delete=models.CASCADE,
+        verbose_name='产品'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+
+    class Meta:
+        db_table = 'task_user_export_shop_product_preference'
+        verbose_name = '用户汇出店铺产品偏好'
+        verbose_name_plural = '用户汇出店铺产品偏好'
+        unique_together = ('user', 'shop', 'product')
+
+
 # ========== 导入审批模型 ==========
 # 将审批系统模型导入到 task.models 命名空间，以便 Django ORM 正确识别
 from .approval_models import (

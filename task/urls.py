@@ -113,4 +113,8 @@ urlpatterns = [
     
     # ===== DIVI 图库分类接口 =====
     path('api/divi/image-classifies/', task_api_views.get_divi_image_classifies_api, name='get_divi_image_classifies'),
+    
+    # ===== 用户汇出店铺-产品偏好设置接口 =====
+    path('api/user/export-shop-products/', task_api_views.get_user_export_shop_products_api, name='get_user_export_shop_products'),
+    path('api/user/export-shop-products/save/', task_api_views.save_user_export_shop_products_api, name='save_user_export_shop_products'),
 ]

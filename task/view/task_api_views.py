@@ -2184,3 +2184,91 @@ def resend_task_webhook_api(request, task_id):
     threading.Thread(target=_send_webhook_payload, args=(payload,)).start()
 
     return JsonResponse({'success': True, 'message': 'Webhook 正在重新发送'})
+
+
+@login_required
+@require_http_methods(["GET"])
+def get_user_export_shop_products_api(request):
+    """
+    获取当前用户的汇出店铺-产品偏好设置
+    GET /api/user/export-shop-products/
+    返回: [{ shop_id, shop_name, product_ids: [] }]
+    """
+    try:
+        from collections import defaultdict
+        from task.models import UserExportShopProductPreference
+        from general.models import AmazonShop
+        
+        prefs = UserExportShopProductPreference.objects.filter(
+            user=request.user
+        ).select_related('shop', 'product').order_by('shop__shop_name', 'product__name')
+        
+        shop_map = defaultdict(list)
+        shop_meta = {}
+        for p in prefs:
+            shop_map[p.shop_id].append(p.product_id)
+            shop_meta[p.shop_id] = {
+                'shop_name': p.shop_name or (p.shop.shop_name if p.shop else f"店铺-{p.shop_id}")
+            }
+        
+        data = []
+        for shop_id in sorted(shop_map.keys()):
+            data.append({
+                'shop_id': shop_id,
+                'shop_name': shop_meta.get(shop_id, {}).get('shop_name', f"店铺-{shop_id}"),
+                'product_ids': shop_map[shop_id]
+            })
+        
+        return JsonResponse({'success': True, 'data': data})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'获取偏好设置失败: {str(e)}'}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def save_user_export_shop_products_api(request):
+    """
+    保存/覆盖当前用户的汇出店铺-产品偏好设置
+    POST /api/user/export-shop-products/save/
+    请求体: { preferences: [{ shop_id, shop_name, product_ids: [] }] }
+    """
+    try:
+        import json
+        from django.db import transaction
+        from general.models import AmazonShop
+        from task.models import UserExportShopProductPreference
+        
+        body = json.loads(request.body)
+        preferences = body.get('preferences', [])
+        
+        # 预查店铺名（如果前端没传，用数据库里的）
+        shop_ids = [item.get('shop_id') for item in preferences if item.get('shop_id')]
+        shop_name_map = {}
+        if shop_ids:
+            for s in AmazonShop.objects.filter(id__in=shop_ids).values('id', 'shop_name'):
+                shop_name_map[s['id']] = s['shop_name'] or f"店铺-{s['id']}"
+        
+        with transaction.atomic():
+            UserExportShopProductPreference.objects.filter(user=request.user).delete()
+            
+            objs = []
+            for item in preferences:
+                shop_id = item.get('shop_id')
+                product_ids = item.get('product_ids', [])
+                shop_name = item.get('shop_name') or shop_name_map.get(shop_id, f"店铺-{shop_id}")
+                if not shop_id or not product_ids:
+                    continue
+                for pid in product_ids:
+                    objs.append(UserExportShopProductPreference(
+                        user=request.user,
+                        shop_id=shop_id,
+                        shop_name=shop_name,
+                        product_id=pid
+                    ))
+            
+            if objs:
+                UserExportShopProductPreference.objects.bulk_create(objs)
+        
+        return JsonResponse({'success': True, 'message': '保存成功'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'保存偏好设置失败: {str(e)}'}, status=500)

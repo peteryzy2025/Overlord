@@ -692,6 +692,32 @@
             </div>
         </div>
     </div>
+
+    <!-- 汇出店铺-产品偏好设置模态框 -->
+    <div class="modal-overlay" id="exportProPreferenceModal">
+        <div class="modal-content" style="max-width: 1050px; min-height: 75vh; max-height: 90vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 class="modal-title">汇出店铺-产品偏好设置</h3>
+                <button class="btn-icon" onclick="closeExportProPreferenceModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <div id="export-pro-preference-list" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem;">
+                    <!-- 动态插入偏好行 -->
+                </div>
+                <button type="button" class="btn btn-secondary" onclick="addExportProPreferenceRow()" style="width: 100%;">
+                    <i class="fas fa-plus"></i> 添加店铺-产品配对
+                </button>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <button type="button" class="btn btn-secondary" onclick="closeExportProPreferenceModal()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveExportProPreferences()">
+                    <i class="fas fa-save"></i> 保存设置
+                </button>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -816,6 +842,9 @@
                     loadAvailableOwners(),
                     loadAvailableShops(),
                 ]);
+                
+                // 在店铺列表加载完成后再加载偏好设置（因为偏好设置需要用到 availableShops.amazon 做名字映射）
+                await loadUserExportShopProductPrefs();
 
                 // 检查是否是复制任务模式
                 const urlParams = new URLSearchParams(window.location.search);
@@ -1731,6 +1760,33 @@
         // ===== 全局变量：存储 DIVI 产品列表 =====
         let diviProductsCache = [];
 
+        // ===== 全局变量：存储用户汇出店铺-产品偏好 =====
+        let userExportShopProductPrefs = {};
+        let currentPreferenceModalSubtaskId = null;
+        let preferenceRowCounter = 0;
+
+        // ===== 加载用户汇出店铺-产品偏好 =====
+        async function loadUserExportShopProductPrefs() {
+            try {
+                const response = await fetch('/api/user/export-shop-products/');
+                const result = await response.json();
+                if (result.success && result.data) {
+                    const map = {};
+                    result.data.forEach(item => {
+                        // 优先用 availableShops.amazon 中该 ID 的当前名字，这样改名后能自动对齐
+                        const shop = (availableShops.amazon || []).find(s => String(s.id) === String(item.shop_id));
+                        const shopName = shop?.raw_name || item.shop_name || '';
+                        if (shopName) {
+                            map[shopName] = item.product_ids || [];
+                        }
+                    });
+                    userExportShopProductPrefs = map;
+                }
+            } catch (error) {
+                console.error('加载用户汇出店铺-产品偏好失败:', error);
+            }
+        }
+
         // ===== 加载 DIVI 产品列表 =====
         async function loadDiviProducts() {
             if (diviProductsCache.length > 0) return diviProductsCache;
@@ -2569,10 +2625,29 @@
             if (!selectEl || selectEl.dataset.initialized) return;
 
             const products = await loadDiviProducts();
-            const productOptions = products.map(p => ({
+            const subtask = taskData.subtasks.find(s => s.id == subtaskId);
+            const row = subtask?.params?.export_rows?.[rowIndex];
+            const shopId = row?.export_shop;
+
+            let productOptions = products.map(p => ({
                 value: String(p.id),
                 label: `${p.id} - ${p.name}`
             }));
+
+            // 如果当前汇出店铺有偏好设置，将匹配产品置顶并加 [常用] 前缀
+            if (shopId && userExportShopProductPrefs[shopId]) {
+                const preferredIds = new Set(userExportShopProductPrefs[shopId].map(String));
+                const preferred = [];
+                const others = [];
+                productOptions.forEach(opt => {
+                    if (preferredIds.has(opt.value)) {
+                        preferred.push({ ...opt, label: `[常用] ${opt.label}` });
+                    } else {
+                        others.push(opt);
+                    }
+                });
+                productOptions = [...preferred, ...others];
+            }
 
             const productSelect = new SearchableSelect(`#export-pro-product-select-${subtaskId}-${rowIndex}`, {
                 options: productOptions,
@@ -2596,6 +2671,18 @@
 
             selectEl.dataset.initialized = 'true';
             selectEl._productSelectInstance = productSelect;
+        }
+
+        // ===== 刷新 Pro 版本产品选择器（用于汇出店铺变化后重新置顶） =====
+        function refreshExportProRowProductSelect(subtaskId, rowIndex) {
+            const selectEl = document.querySelector(`#export-pro-product-select-${subtaskId}-${rowIndex}`);
+            if (!selectEl) return;
+            const currentValue = selectEl._productSelectInstance ? selectEl._productSelectInstance.getValue?.() || '' : '';
+            if (selectEl._productSelectInstance) {
+                selectEl._productSelectInstance.destroy?.();
+            }
+            selectEl.dataset.initialized = '';
+            initExportProRowProductSelect(subtaskId, rowIndex, currentValue || null);
         }
 
         // ===== 初始化 Pro 版本尺码选择器 =====
@@ -2832,6 +2919,8 @@
                 updateExportProRow(subtaskId, rowIndex, 'export_shop', value);
                 // 汇出店铺变化时刷新汇出模板
                 await refreshExportProRowExportTemplateSelect(subtaskId, rowIndex);
+                // 汇出店铺变化时刷新产品下拉框，以应用常用产品置顶
+                refreshExportProRowProductSelect(subtaskId, rowIndex);
             };
 
             selectEl.dataset.initialized = 'true';
@@ -3788,9 +3877,16 @@
                                 <i class="fas fa-question-circle" style="margin-left: 0.25rem; opacity: 0.6;"></i>
                             </span>
                         </div>
-                        <button class="btn-icon" onclick="deleteSubtask(${subtask.id})" title="删除">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            ${subtask.type === 'divi_export_pro' ? `
+                                <button class="btn-icon" onclick="openExportProPreferenceModal(${subtask.id})" title="汇出店铺-产品偏好设置">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                            ` : ''}
+                            <button class="btn-icon" onclick="deleteSubtask(${subtask.id})" title="删除">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="subtask-edit-form">
@@ -5959,6 +6055,173 @@
         // ===== 关闭子任务帮助模态框 =====
         function closeSubtaskHelpModal() {
             document.getElementById('subtaskHelpModal').classList.remove('active');
+        }
+
+        // ===== 汇出店铺-产品偏好设置模态框逻辑 =====
+        async function openExportProPreferenceModal(subtaskId) {
+            currentPreferenceModalSubtaskId = subtaskId;
+            await Promise.all([
+                loadUserExportShopProductPrefs(),
+                loadDiviProducts()
+            ]);
+            
+            const listEl = document.getElementById('export-pro-preference-list');
+            listEl.innerHTML = '';
+            preferenceRowCounter = 0;
+            
+            const rows = [];
+            Object.entries(userExportShopProductPrefs).forEach(([shopName, productIds]) => {
+                if (productIds && productIds.length > 0) {
+                    rows.push({ shop_name: shopName, product_ids: productIds });
+                }
+            });
+            
+            if (rows.length === 0) {
+                addExportProPreferenceRow();
+            } else {
+                rows.forEach(row => addExportProPreferenceRow(row.shop_name, row.product_ids));
+            }
+            
+            document.getElementById('exportProPreferenceModal').classList.add('active');
+        }
+
+        function closeExportProPreferenceModal() {
+            document.getElementById('exportProPreferenceModal').classList.remove('active');
+            currentPreferenceModalSubtaskId = null;
+        }
+
+        function renderPreferenceRow(rowIndex, shopName = '', productIds = []) {
+            return `
+                <div class="preference-row" id="preference-row-${rowIndex}" style="
+                    display: flex;
+                    gap: 0.75rem;
+                    align-items: flex-end;
+                    padding: 0.75rem;
+                    background: var(--bg-secondary);
+                    border-radius: 8px;
+                    border: 1px solid var(--border-color);
+                ">
+                    <div class="form-group" style="margin: 0; flex: 1; min-width: 160px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">汇出店铺</label>
+                        <div id="pref-shop-select-${rowIndex}" class="searchable-select single" data-placeholder="选择汇出店铺"></div>
+                    </div>
+                    <div class="form-group" style="margin: 0; flex: 2; min-width: 220px;">
+                        <label class="form-label" style="font-size: 0.75rem; margin-bottom: 0.25rem;">常用产品</label>
+                        <div id="pref-products-select-${rowIndex}" class="searchable-select multiple" data-placeholder="选择常用产品（多选）"></div>
+                    </div>
+                    <button type="button" class="btn btn-danger" onclick="removeExportProPreferenceRow(${rowIndex})" title="删除此行" style="height: 38px; padding: 0 0.75rem;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }
+
+        function addExportProPreferenceRow(shopName = '', productIds = []) {
+            const rowIndex = preferenceRowCounter++;
+            const listEl = document.getElementById('export-pro-preference-list');
+            const html = renderPreferenceRow(rowIndex, shopName, productIds);
+            listEl.insertAdjacentHTML('beforeend', html);
+            
+            // 初始化店铺选择器（Amazon 店铺）
+            const shopOptions = getProShopOptions('amazon');
+            const shopSelect = new SearchableSelect(`#pref-shop-select-${rowIndex}`, {
+                options: shopOptions,
+                multiple: false,
+                placeholder: '选择汇出店铺'
+            });
+            if (shopName) shopSelect.setValue(String(shopName));
+            
+            // 初始化产品多选选择器
+            const productOptions = diviProductsCache.map(p => ({
+                value: String(p.id),
+                label: `${p.id} - ${p.name}`
+            }));
+            const productSelect = new SearchableSelect(`#pref-products-select-${rowIndex}`, {
+                options: productOptions,
+                multiple: true,
+                placeholder: '选择常用产品（多选）'
+            });
+            if (productIds && productIds.length > 0) {
+                productSelect.setValue(productIds.map(String));
+            }
+            
+            // 保存实例以便销毁
+            const rowEl = document.getElementById(`preference-row-${rowIndex}`);
+            rowEl._shopSelect = shopSelect;
+            rowEl._productSelect = productSelect;
+        }
+
+        function removeExportProPreferenceRow(rowIndex) {
+            const rowEl = document.getElementById(`preference-row-${rowIndex}`);
+            if (!rowEl) return;
+            if (rowEl._shopSelect) rowEl._shopSelect.destroy?.();
+            if (rowEl._productSelect) rowEl._productSelect.destroy?.();
+            rowEl.remove();
+        }
+
+        async function saveExportProPreferences() {
+            const listEl = document.getElementById('export-pro-preference-list');
+            const rowEls = listEl.querySelectorAll('.preference-row');
+            
+            const preferences = [];
+            rowEls.forEach(rowEl => {
+                const shopName = rowEl._shopSelect ? rowEl._shopSelect.getValue?.() : '';
+                const productValues = rowEl._productSelect ? rowEl._productSelect.getValue?.() : [];
+                if (shopName && productValues && productValues.length > 0) {
+                    // 根据店铺名查找店铺ID
+                    const shop = (availableShops.amazon || []).find(s => s.raw_name === shopName);
+                    const shopId = shop?.id;
+                    if (!shopId) return;
+                    
+                    // 去重同一店铺的多行（如果用户添加了同一店铺的多个行，合并产品）
+                    const existing = preferences.find(p => String(p.shop_id) === String(shopId));
+                    if (existing) {
+                        productValues.forEach(pid => {
+                            if (!existing.product_ids.includes(Number(pid))) {
+                                existing.product_ids.push(Number(pid));
+                            }
+                        });
+                    } else {
+                        preferences.push({
+                            shop_id: Number(shopId),
+                            shop_name: shopName,
+                            product_ids: productValues.map(Number)
+                        });
+                    }
+                }
+            });
+            
+            try {
+                const response = await fetch('/api/user/export-shop-products/save/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ preferences })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    await loadUserExportShopProductPrefs();
+                    closeExportProPreferenceModal();
+                    showNotification('偏好设置保存成功', 'success');
+                    
+                    // 刷新当前打开的子任务中所有 Pro 行的产品下拉框
+                    if (currentPreferenceModalSubtaskId) {
+                        const subtask = taskData.subtasks.find(s => s.id === currentPreferenceModalSubtaskId);
+                        if (subtask && subtask.params.export_rows) {
+                            subtask.params.export_rows.forEach((_, rowIndex) => {
+                                refreshExportProRowProductSelect(subtask.id, rowIndex);
+                            });
+                        }
+                    }
+                } else {
+                    showNotification(result.message || '保存失败', 'error');
+                }
+            } catch (error) {
+                console.error('保存偏好设置失败:', error);
+                showNotification('保存失败: ' + error.message, 'error');
+            }
         }
 
         // ===== 防抖函数 =====
