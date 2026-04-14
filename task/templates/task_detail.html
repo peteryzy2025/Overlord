@@ -978,42 +978,24 @@
                 break;
             case 'divi_export_pro':
                 title = '迪唯汇出配置-Pro';
-                const needSplit = params.need_split || false;
+                const exportRows = params.export_rows;
+                const proColumns = getDynamicColumns(exportRows);
+                const proLabelMap = {
+                    diwei_account: '迪唯账号',
+                    platform: '平台',
+                    need_split: '是否切表',
+                    diwei_login_account: '迪唯登录账号'
+                };
+                const knownBaseKeys = ['export_rows'];
+                const baseFields = [];
+                Object.entries(params).forEach(([key, value]) => {
+                    if (knownBaseKeys.includes(key)) return;
+                    if (value === undefined || value === null) return;
+                    baseFields.push(field(proLabelMap[key] || key, value));
+                });
                 content = renderFieldGrid([
-                    field('迪唯账号', params.diwei_account),
-                    field('平台', params.platform === 'temu' ? 'Temu' : 'Amazon'),
-                    field('切表', needSplit ? '是' : '否'),
-                    field('汇出行', renderGroupedProductRows(params.export_rows, [
-                        { key: 'product_id', label: '产品 ID' },
-                        { key: 'sizes', label: '尺码' },
-                        { key: 'colors', label: '颜色' },
-                        { 
-                            key: 'design_date_filter', 
-                            label: '日期筛选',
-                            getValue: row => row.design_date_filter ? '是' : '否'
-                        },
-                        { 
-                            key: 'design_start_date', 
-                            label: '设计开始日期',
-                            getValue: row => row.design_date_filter ? (row.design_start_date || '-') : '-'
-                        },
-                        { 
-                            key: 'design_end_date', 
-                            label: '设计结束日期',
-                            getValue: row => row.design_date_filter ? (row.design_end_date || '-') : '-'
-                        },
-                        { 
-                            key: 'template_name', 
-                            label: '模板命名',
-                            getValue: row => row.template_name === 'shop_product_id' ? '汇出店铺_产品ID' : '产品ID'
-                        },
-                        { 
-                            key: 'export_shop', 
-                            label: '汇出店铺',
-                            getValue: row => needSplit ? (row.export_shop || '-') : '-'
-                        },
-                        { key: 'publish_shops', label: '上架店铺' }
-                    ]), true, true)
+                    ...baseFields,
+                    field('汇出行', renderGroupedProductRows(exportRows, proColumns), true, true)
                 ]);
                 break;
             case 'divi_gallery_upload':
@@ -1181,6 +1163,26 @@
         } catch {
             return datetimeStr;
         }
+    }
+
+    function getDynamicColumns(rows) {
+        if (!Array.isArray(rows) || rows.length === 0) return [];
+        const keys = new Set();
+        rows.forEach(row => {
+            if (row && typeof row === 'object') {
+                Object.keys(row).forEach(key => keys.add(key));
+            }
+        });
+        const columns = [];
+        if (keys.has('product_id')) {
+            columns.push({ key: 'product_id', label: 'product_id' });
+        }
+        keys.forEach(key => {
+            if (key !== 'product_id') {
+                columns.push({ key: key, label: key });
+            }
+        });
+        return columns;
     }
 
     function field(label, value, wide = false, isHtml = false) {
