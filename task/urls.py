@@ -72,6 +72,7 @@ urlpatterns = [
     path('api/tasks/creators/', task_api_views.get_task_creators_api, name='get_task_creators'),
     path('api/tasks/create/', task_api_views.create_task_api, name='create_task'),
     path('api/tasks/<int:task_id>/delete/', task_api_views.delete_task_api, name='delete_task'),
+    path('api/tasks/<int:task_id>/resend-webhook/', task_api_views.resend_task_webhook_api, name='resend_task_webhook'),
     path('api/tasks/save-draft/', task_api_views.save_draft_api, name='save_draft'),
     path('api/tasks/drafts/', task_api_views.get_drafts_api, name='get_drafts'),
     path('api/tasks/drafts/latest/', task_api_views.get_latest_draft_api, name='get_latest_draft'),

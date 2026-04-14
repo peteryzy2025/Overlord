@@ -899,22 +899,49 @@
         switch (subtask.type) {
             case 'divi_multi_side_custom':
                 title = '迪唯多面定制配置';
-                content = renderFieldGrid([
-                    field('模式', getModeDisplay(params.mode)),
-                    field('图库账号', params.gallery_account),
-                    field('工艺类型', getCraftTypeDisplay(params.craft_type)),
-                    field('定制方式', getCustomMethodDisplay(params.custom_method)),
-                    field('加黑边', params.add_black_border),
-                    field('识别主题', params.recognize_theme),
-                    field('启用定制坐标', params.add_custom_coords),
-                    field('定制坐标', params.custom_coords),
-                    field('启用背景色', params.add_background_color),
-                    field('背景色', params.background_color),
-                    field('产品行', renderProductIdRows(params.product_ids), true, true),
-                    field('图库目录', joinList(params.gallery_path), true),
-                    field('汇出店铺', joinList(params.export_shop_ids), true),
-                    field('汇出数量', params.export_quantity)
-                ]);
+                const multiSideLabelMap = {
+                    diwei_account: '迪唯账号',
+                    diwei_login_account: '迪唯登录账号',
+                    mode: '模式',
+                    craft_type: '工艺类型',
+                    custom_method: '定制方式',
+                    add_black_border: '是否添加黑色描边',
+                    recognize_theme: '是否判断主题',
+                    add_custom_coords: '是否添加定制坐标',
+                    custom_coords: '定制坐标',
+                    add_background_color: '是否需要添加背景色',
+                    background_color: '背景色',
+                    is_tiled: '是否平铺',
+                    tile_type: '平铺类型',
+                    tile_spacing: '平铺间距',
+                    product_ids: '产品',
+                    nas_path: 'NAS路径',
+                    image_classify_id: '图库分类ID',
+                    image_classify_path: '图库分类',
+                    export_shop_ids: '汇出店铺'
+                };
+                const multiSideSpecialKeys = ['product_ids', 'nas_path', 'image_classify_path', 'export_shop_ids', 'image_classify_id'];
+                const multiSideFields = [];
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value === undefined || value === null) return;
+                    let label = multiSideLabelMap[key] || key;
+                    let displayValue = value;
+                    let wide = false;
+                    let isHtml = false;
+                    if (key === 'product_ids') {
+                        displayValue = renderProductIdRows(value);
+                        wide = true;
+                        isHtml = true;
+                    } else if (key === 'nas_path' || key === 'image_classify_path' || key === 'export_shop_ids') {
+                        displayValue = joinList(value);
+                        wide = true;
+                    } else if (key === 'image_classify_id') {
+                        // 如果存在 image_classify_path，则 ID 通常不需要单独显示，避免重复
+                        if (params.image_classify_path) return;
+                    }
+                    multiSideFields.push(field(label, displayValue, wide, isHtml));
+                });
+                content = renderFieldGrid(multiSideFields);
                 break;
             case 'custom_upload':
                 title = '定制上架配置';
@@ -979,7 +1006,25 @@
             case 'divi_export_pro':
                 title = '迪唯汇出配置-Pro';
                 const exportRows = params.export_rows;
-                const proColumns = getDynamicColumns(exportRows);
+                const proRowLabelMap = {
+                    product_id: '产品',
+                    sizes: '尺码',
+                    colors: '颜色',
+                    size_names: '尺码名称',
+                    color_names: '颜色名称',
+                    color_en_names: '颜色英文名称',
+                    design_date_filter: '日期筛选',
+                    design_start_date: '设计开始日期',
+                    design_end_date: '设计结束日期',
+                    is_exported: '是否已汇出',
+                    export_shop: '汇出店铺',
+                    product_name: '产品名称',
+                    publish_shops: '上架店铺',
+                    export_template_id: '汇出模板ID',
+                    max_export_quantity: '最大汇出数量',
+                    export_template_name: '模板名称'
+                };
+                const proColumns = getDynamicColumns(exportRows, proRowLabelMap);
                 const proLabelMap = {
                     diwei_account: '迪唯账号',
                     platform: '平台',
@@ -1165,7 +1210,7 @@
         }
     }
 
-    function getDynamicColumns(rows) {
+    function getDynamicColumns(rows, labelMap = {}) {
         if (!Array.isArray(rows) || rows.length === 0) return [];
         const keys = new Set();
         rows.forEach(row => {
@@ -1175,11 +1220,11 @@
         });
         const columns = [];
         if (keys.has('product_id')) {
-            columns.push({ key: 'product_id', label: 'product_id' });
+            columns.push({ key: 'product_id', label: labelMap['product_id'] || 'product_id' });
         }
         keys.forEach(key => {
             if (key !== 'product_id') {
-                columns.push({ key: key, label: key });
+                columns.push({ key: key, label: labelMap[key] || key });
             }
         });
         return columns;

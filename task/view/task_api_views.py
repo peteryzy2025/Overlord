@@ -12,6 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.db.models import Q
 from django.db import transaction
+from universal.permission_utils import get_user_permission_codes
 
 from general.models import User, AmazonShop, TemuShop
 from task.models import Task, TaskStatus, TaskType, SubTask, TaskTemplate, ProductRequirement
@@ -1146,6 +1147,8 @@ def create_task_api(request):
                         except Exception as e:
                             print(f"Webhook send failed: {e}")
 
+                    req.webhook_payload = webhook_data
+                    req.save(update_fields=['webhook_payload'])
                     transaction.on_commit(lambda data=webhook_data: threading.Thread(target=send_webhook_task, args=(data,)).start())
                 except Exception:
                     pass
@@ -1458,9 +1461,11 @@ def create_task_api(request):
                     except Exception as e:
                         print(f"Webhook send failed: {e}")
 
+                task.webhook_payload = webhook_data
+                task.save(update_fields=['webhook_payload'])
                 # 事务提交后异步发送，避免阻塞响应且确保数据已持久化
                 transaction.on_commit(lambda: threading.Thread(target=send_webhook_task, args=(webhook_data,)).start())
-            
+
             except Exception as e:
                 # 仅打印错误，不影响任务创建流程
                 print(f"Error preparing webhook: {e}")
@@ -2116,3 +2121,40 @@ def get_divi_image_classifies_api(request):
             'success': False,
             'message': f'获取图库分类失败: {str(e)}'
         }, status=500)
+
+
+def _send_webhook_payload(payload):
+    """通用 webhook 发送辅助函数"""
+    url = "https://api.yingdao.com/api/tool/ipaas/webhook/callback/929623248793497600"
+    try:
+        requests.post(url, json=payload, timeout=10)
+        return True
+    except Exception as e:
+        print(f"Webhook send failed: {e}")
+        return False
+
+
+@login_required
+@require_http_methods(["POST"])
+def resend_task_webhook_api(request, task_id):
+    """
+    重新发送任务 webhook（仅 code=555 管理员可用）
+    POST /api/tasks/<int:task_id>/resend-webhook/
+    """
+    user_perms = get_user_permission_codes(request.user)
+    if 555 not in user_perms:
+        return JsonResponse({'success': False, 'message': '无权限执行此操作'}, status=403)
+
+    try:
+        task = Task.objects.get(id=task_id)
+    except Task.DoesNotExist:
+        return JsonResponse({'success': False, 'message': '任务不存在'}, status=404)
+
+    payload = task.webhook_payload
+    if not payload:
+        return JsonResponse({'success': False, 'message': '该任务没有保存的 webhook 数据，无法重新发送'})
+
+    # 异步发送，避免阻塞
+    threading.Thread(target=_send_webhook_payload, args=(payload,)).start()
+
+    return JsonResponse({'success': True, 'message': 'Webhook 正在重新发送'})
