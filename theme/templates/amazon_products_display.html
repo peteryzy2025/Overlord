@@ -1672,13 +1672,14 @@
                             <th class="sortable" data-field="summary_subject_title" onclick="handleNoveltyAggSort('summary_subject_title')">聚合主题</th>
                             <th class="sortable active" data-field="appear_count" onclick="handleNoveltyAggSort('appear_count')">出现次数</th>
                             <th class="sortable" data-field="avg_launch_days" onclick="handleNoveltyAggSort('avg_launch_days')">平均上架时间</th>
+                            <th class="sortable" data-field="avg_score" onclick="handleNoveltyAggSort('avg_score')">平均分值</th>
                             <th>平均排名趋势图</th>
                             <th>操作</th>
                         </tr>
                         </thead>
                         <tbody id="noveltyAggregationTableBody">
                         <tr>
-                            <td colspan="6" class="empty-state">
+                            <td colspan="7" class="empty-state">
                                 <i class="fas fa-info-circle"></i>
                                 <p>请选择日期范围并点击"应用筛选"</p>
                                 <p>主题聚合数据将在此处显示</p>
@@ -3920,7 +3921,7 @@
         async function loadNoveltyAggregationTable() {
             showLoading(true);
             var tbody = document.getElementById('noveltyAggregationTableBody');
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
             try {
                 var params = {
                     start_date: document.getElementById('aggStartDate').value,
@@ -3948,10 +3949,11 @@
                 renderNoveltyAggTable(noveltyAggCurrentThemes);
                 renderNoveltyAggPagination();
                 updateNoveltyAggStats(data.stats || {});
+                updateNoveltyAggSortHeaders();
                 var controls = document.getElementById('aggPaginationControls');
                 if (controls) controls.style.display = noveltyAggState.total > 0 ? 'flex' : 'none';
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
                 var controls = document.getElementById('aggPaginationControls');
                 if (controls) controls.style.display = 'none';
             } finally {
@@ -4014,7 +4016,7 @@
         function renderNoveltyAggTable(themes) {
             var tbody = document.getElementById('noveltyAggregationTableBody');
             if (!Array.isArray(themes) || themes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
                 return;
             }
             tbody.innerHTML = themes.map(function(theme) {
@@ -4029,18 +4031,21 @@
                     ? '<div class="score-trend-chart" id="'+chartId+'"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display:none;position:fixed;background:rgba(0,0,0,0.8);color:white;padding:6px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;white-space:nowrap;"></div></div>'
                     : '-';
                 var avgDays = theme.avg_launch_days;
-                var avgDaysHTML = (avgDays !== null && avgDays !== undefined) ? escapeHtml(avgDays) + ' 天' : '-';
+                var avgDaysHTML = (avgDays !== null && avgDays !== undefined && avgDays !== '-') ? escapeHtml(avgDays) + ' 天' : '-';
+                var avgScore = theme.avg_score;
+                var avgScoreHTML = (avgScore !== null && avgScore !== undefined && avgScore !== '-') ? escapeHtml(avgScore) : '-';
                 var isExpanded = noveltyAggExpandedIds.has(themeId);
                 return '<tr data-theme-id="'+themeId+'">' +
                     '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="'+themeId+'"'+(isChecked?' checked':'')+' onchange="handleAggRowCheckboxChange(this)"></td>' +
                     '<td><div class="subject-main clickable-subject" onclick="toggleNoveltyAggDetail('+themeId+')" title="'+titleAttr+'">'+title+'</div></td>' +
                     '<td>'+escapeHtml(theme.appear_count ?? '-')+'</td>' +
                     '<td>'+avgDaysHTML+'</td>' +
+                    '<td>'+avgScoreHTML+'</td>' +
                     '<td>'+trendHTML+'</td>' +
                     '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleNoveltyAggDetail('+themeId+')">'+(isExpanded?'收起':'ASIN详情')+'</button></td>' +
                     '</tr>' +
                     '<tr id="novelty-agg-detail-row-'+themeId+'" class="detail-row" style="display:none;">' +
-                    '<td colspan="6" class="detail-content" id="novelty-agg-detail-content-'+themeId+'">' +
+                    '<td colspan="7" class="detail-content" id="novelty-agg-detail-content-'+themeId+'">' +
                     '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
                     '</td></tr>';
             }).join('');
@@ -4157,15 +4162,6 @@
             if(noveltyAggState.sort_field===field){noveltyAggState.sort_order=noveltyAggState.sort_order==='asc'?'desc':'asc';}
             else{noveltyAggState.sort_field=field;noveltyAggState.sort_order=field==='summary_subject_title'?'asc':'desc';}
             updateNoveltyAggSortHeaders();
-            if(field==='avg_launch_days'&&noveltyAggCurrentThemes.length>0){
-                var order=noveltyAggState.sort_order==='asc'?1:-1;
-                var sorted=noveltyAggCurrentThemes.slice().sort(function(a,b){
-                    var va=(a.avg_launch_days!==null&&a.avg_launch_days!==undefined&&a.avg_launch_days!=='-')?parseFloat(a.avg_launch_days):-1;
-                    var vb=(b.avg_launch_days!==null&&b.avg_launch_days!==undefined&&b.avg_launch_days!=='-')?parseFloat(b.avg_launch_days):-1;
-                    return (va-vb)*order;
-                });
-                renderNoveltyAggTable(sorted);return;
-            }
             noveltyAggState.page=1;loadNoveltyAggregationTable();
         }
         function updateNoveltyAggSortHeaders() {
