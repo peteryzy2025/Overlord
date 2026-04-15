@@ -363,6 +363,30 @@ a.btn.gs-btn-icon-only::before {
     color: #ffffff;
 }
 
+.btn.gs-btn-search {
+    background-color: var(--bg-primary);
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-search:hover {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border-color: var(--accent-color);
+}
+
+.btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.btn.gs-btn-reset:hover {
+    background-color: var(--primary-200);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
 .filter-actions-main {
     position: static;
     right: auto;
@@ -940,6 +964,8 @@ a.btn.gs-btn-icon-only::before {
    ============================================ */
 
 .btn {
+    background-color: var(--accent-color);
+    color: white;
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 14px;
@@ -987,6 +1013,30 @@ a.btn.gs-btn-icon-only::before {
 .btn-ghost:hover {
     background: var(--bg-secondary);
     color: var(--text-primary);
+}
+
+/* 模态框按钮 */
+.btn-save-modal {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-save-modal:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-cancel-modal {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-cancel-modal:hover {
+    background: var(--primary-200);
 }
 
 .btn:disabled {
@@ -2056,7 +2106,7 @@ a.btn.gs-btn-icon-only::before {
     align-items: center;
 }
 
-.searchable-select .select-trigger .selected-text .placeholder {
+.searchable-select .select-trigger .selected-text .select-placeholder {
     background-color: transparent !important;
     line-height: 1.5;
     color: var(--text-secondary);
@@ -2608,6 +2658,54 @@ a.btn.gs-btn-icon-only::before {
 
 [data-theme="dark"] .btn-secondary:hover {
     background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search {
+    background-color: var(--bg-primary);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search:hover {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn.gs-btn-reset:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-save-modal {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+[data-theme="dark"] .btn-save-modal:hover {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-cancel-modal {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-cancel-modal:hover {
+    background-color: rgba(96, 165, 250, 0.15);
     color: #60a5fa;
     border-color: #60a5fa;
 }

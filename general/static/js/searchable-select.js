@@ -186,7 +186,7 @@ class SearchableSelect {
         // 构建HTML
         this.container.innerHTML = `
             <div class="select-trigger">
-                <span class="selected-text placeholder">${this.config.placeholder}</span>
+                <span class="selected-text select-placeholder">${this.config.placeholder}</span>
                 ${this.config.clearable ? '<span class="clear-btn" title="清空"><i class="fas fa-times-circle"></i></span>' : ''}
             </div>
             <div class="dropdown-panel">
@@ -366,7 +366,7 @@ class SearchableSelect {
 
             // 多选显示 - 显示具体选项名，超出显示+N
             if (selectedLabels.length === 0) {
-                this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
+                this.selectedText.innerHTML = `<span class="select-placeholder">${this.config.placeholder}</span>`;
             } else {
                 // 根据容器宽度显示，简单实现：最多显示2个，超出显示+N
                 const maxDisplay = 2;
@@ -381,7 +381,7 @@ class SearchableSelect {
         } else {
             // 单选显示
             if (!this.selectedValues) {
-                this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
+                this.selectedText.innerHTML = `<span class="select-placeholder">${this.config.placeholder}</span>`;
             } else {
                 const opt = this.options.find(o => o.value == this.selectedValues);
                 this.selectedText.innerHTML = opt ? (opt.htmlLabel || opt.label) : this.selectedValues;
