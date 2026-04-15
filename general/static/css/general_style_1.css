@@ -929,11 +929,12 @@ a.btn.gs-btn-icon-only::before {
 .btn-create {
     background-color: var(--accent-color);
     color: white;
-    padding: 0.625rem 1.25rem;
+    padding: 0.5rem 1rem;
     border-radius: 8px;
     font-weight: 500;
     border: 1px solid var(--accent-color);
     transition: all 0.3s ease;
+    font-size: 14px;
 }
 
 .btn-create:hover {

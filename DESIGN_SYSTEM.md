@@ -334,11 +334,11 @@ base/base.html（顶部导航一级 Base）
 |------|------|------|
 | 卡片 | `.data-card` | 一体化卡片容器（圆角 16px、阴影、边框） |
 | 卡片 | `.data-card-header` | 头部 Flex 区（标题 + 按钮），**底部自带分隔线** |
-| 卡片 | `.data-card-title` | 标题文字（`1.5rem`，支持左侧图标），**左侧自带 accent 色竖条** |
+| 卡片 | `.data-card-title` | 标题文字（`1.5rem`，支持左侧图标前缀） |
 | 卡片 | `.data-card-filter` | 筛选区（内部 Grid 布局），**底部自带分隔线** |
 | 表格 | `.table-container` | 表格外层 |
 | 表格 | `.table` | 表格本体 |
-| 批量 | `.bulk-action-bar` | 批量操作条（默认隐藏，轻量样式） |
+| 批量 | `.bulk-action-bar` | 批量操作条（默认隐藏，淡蓝虚线框背景） |
 | 批量 | `.bulk-action-bar.visible` | 显示状态 |
 | 批量 | `.selected-count` | 已选择数量文字 |
 | 分页 | `.pagination-container` | 分页容器（在 `.data-card` 内部时**顶部自带分隔线**） |
@@ -353,27 +353,25 @@ base/base.html（顶部导航一级 Base）
 
 ## 五、表格样式强制规范（已写入通用样式）
 
-### 5.1 卡片行表格（`.data-card` 内部）
+### 5.1 传统横线表格（当前采用风格）
 
-在 `.data-card` 内部的 `.table` 采用**卡片行**风格，禁止传统横线表格：
+在 `.data-card` 内部的 `.table` 采用**传统横线表格**风格：
 
-- **行间距**：`border-spacing: 0 8px`，行与行之间有 8px 间隙
-- **每行卡片化**：`border-radius: 10px`、`box-shadow: 0 0 0 1px var(--border-color)`、白色背景
-- **悬浮效果**：轻微抬升 `translateY(-1px)` + 柔和阴影
-- **无横线**：卡片行内部**没有** `border-bottom`
-- **表头**：纯色透明背景、底部 2px 边框线、文字颜色 `var(--text-secondary)`、无渐变
+- **每一行**有 `border-bottom: 1px solid var(--border-color)`
+- **最后一行**保留底部横线
+- **悬浮效果**：`background-color: var(--bg-secondary)`
 
 ### 5.2 表头
-- **背景**：透明（`background-color: transparent`），通过底部 2px 边框与内容区分
+- **背景**：`var(--bg-secondary)`（纯色背景）
 - **禁止**：使用任何 `linear-gradient` 渐变背景
-- **圆角**：在 `.data-card` 内部时，表头无圆角
+- **圆角**：在 `.data-card` 内部时，表头左右上圆角为 `0`
 - **字体**：表头及单元格文字统一使用系统默认字体，**无特殊说明不准加特殊字体**（如 `monospace`、自定义艺术字体等）
-- **尺寸**：表头 `padding: 1rem 1.5rem`，`font-size: 14px`，字重 600
+- **尺寸**：表头 `padding: 1rem 1.5rem`，`font-size: 1rem`（**必须比内容大一档**），字重 600
 
 ### 5.3 单元格
-- 在 `.data-card` 内部时，`padding: 0.875rem 1.5rem`
-- 每一行卡片条内的 `td` **无 border**
-- 卡片行左右端自带圆角（`:first-child` 和 `:last-child`）
+- 在 `.data-card` 内部时，`padding: 1rem 1.5rem`
+- 每一行都有 `border-bottom: 1px solid var(--border-color)`
+- **最后一行**必须有 `border-bottom`
 
 ### 5.4 斑马纹
 - Light 模式：默认由 Bootstrap `.table-striped` 控制
@@ -383,9 +381,9 @@ base/base.html（顶部导航一级 Base）
 - 第一列、第二列、最后一列在 `.table-container` 中为 `position: sticky`
 - Dark 模式下固定列阴影加深为 `rgba(0,0,0,0.35)`，确保边界清晰
 
-### 5.6 轻量按钮与标签（卡片行内部）
-- `.btn-sm`：透明背景、细边框、`border-radius: 6px`、hover 变蓝色
-- `.permission-tag`：**药丸形**（`border-radius: 999px`）、半透明蓝底、蓝色文字、更小更轻量
+### 5.6 按钮规范
+- `.btn-create`：`padding: 0.5rem 1rem`，`font-size: 14px`（统一变小，避免过大）
+- `.btn-sm`：通用小型按钮样式，各页面禁止私自调整尺寸
 
 ---
 
@@ -450,7 +448,7 @@ document.getElementById('xxxModalOverlay').addEventListener('click', function(e)
 - `.data-card-filter` 筛选区
 - `.bulk-action-bar` 批量操作条
 - 第一列复选框 + 全选逻辑
-- **卡片行表格**风格
+- 传统横线表格风格
 - 标准分页组件
 - 模态框禁止外部关闭
 - Dark Mode 完全适配
@@ -461,7 +459,7 @@ document.getElementById('xxxModalOverlay').addEventListener('click', function(e)
 
 - [ ] HTML 按顺序包含：`.data-card-header` → `.data-card-filter` → `.bulk-action-bar` → `.table-container` → `.pagination-container`
 - [ ] 表格第一列是 `<th class="w-checkbox">` 的复选框
-- [ ] 表格采用卡片行风格（行之间有 gap，每行圆角，无横线 border-bottom）
+- [ ] 表格采用传统横线风格（每行有 border-bottom，表头 `font-size` 比内容大一档）
 - [ ] 分页区无独立白底卡片感，顶部有横线
 - [ ] 模态框点击外部不关闭
 - [ ] 未在内联 `<style>` 中重写 `.data-card`、`.table`、`.pagination-container` 的结构样式
