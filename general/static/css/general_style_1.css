@@ -1065,6 +1065,11 @@ a.btn.gs-btn-icon-only::before {
     background-color: var(--bg-secondary);
 }
 
+/* 表格最后一行底部加横线 */
+.table tbody tr:last-child td {
+    border-bottom: 1px solid var(--border-color);
+}
+
 /* ============================================
    表格固定列样式（复选框/ID + 名称列）
    适用于：店铺管理、人员管理等页面
@@ -2468,9 +2473,13 @@ a.btn.gs-btn-icon-only::before {
     border-top-right-radius: 0;
 }
 
-.data-card .table td,
-.data-card .table th {
+.data-card .table td {
     padding: 1rem 1.5rem;
+}
+
+.data-card .table th {
+    padding: 1.25rem 1.5rem;
+    font-size: 1rem;
 }
 
 /* 大卡片内部的分页容器：去掉独立卡片感 */
