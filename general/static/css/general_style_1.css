@@ -19,7 +19,7 @@
     min-width: 0;
     max-width: 100%;
     width: 100%;
-    padding: 20px;
+    padding: 10px;
     box-sizing: border-box;
     overflow-x: hidden;
 }
@@ -1018,7 +1018,7 @@ a.btn.gs-btn-icon-only::before {
     position: sticky;
     top: 0;
     z-index: 12;
-    background-color: var(--bg-secondary);
+    background-color: var(--table-header-bg);
 }
 
 .table {
@@ -1030,7 +1030,7 @@ a.btn.gs-btn-icon-only::before {
 }
 
 .table th {
-    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    background-color: var(--bg-secondary);
     color: var(--text-primary);
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
@@ -1039,7 +1039,7 @@ a.btn.gs-btn-icon-only::before {
     position: sticky;
     top: 0;
     z-index: 11;
-    font-size: 0.875rem;
+    font-size: 1rem;
     text-align: center;
     vertical-align: middle;
 }
@@ -1058,6 +1058,7 @@ a.btn.gs-btn-icon-only::before {
     vertical-align: middle;
     white-space: nowrap;
     text-align: center;
+    font-size: 14px;
 }
 
 .table tbody tr:hover {
@@ -2397,7 +2398,6 @@ a.btn.gs-btn-icon-only::before {
     box-shadow: var(--shadow-light);
     border: 1px solid var(--border-color);
     padding: 1.5rem;
-    margin-bottom: 1.5rem;
 }
 
 .data-card-header {

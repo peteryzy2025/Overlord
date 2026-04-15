@@ -19,7 +19,7 @@
     min-width: 0;
     max-width: 100%;
     width: 100%;
-    padding: 20px;
+    padding: 10px;
     box-sizing: border-box;
     overflow-x: hidden;
 }
@@ -1018,7 +1018,7 @@ a.btn.gs-btn-icon-only::before {
     position: sticky;
     top: 0;
     z-index: 12;
-    background-color: var(--bg-secondary);
+    background-color: var(--table-header-bg);
 }
 
 .table {
@@ -1030,7 +1030,7 @@ a.btn.gs-btn-icon-only::before {
 }
 
 .table th {
-    background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+    background-color: var(--bg-secondary);
     color: var(--text-primary);
     font-weight: 600;
     border-bottom: 1px solid var(--border-color);
@@ -1039,7 +1039,7 @@ a.btn.gs-btn-icon-only::before {
     position: sticky;
     top: 0;
     z-index: 11;
-    font-size: 0.875rem;
+    font-size: 1rem;
     text-align: center;
     vertical-align: middle;
 }
@@ -1058,6 +1058,7 @@ a.btn.gs-btn-icon-only::before {
     vertical-align: middle;
     white-space: nowrap;
     text-align: center;
+    font-size: 14px;
 }
 
 .table tbody tr:hover {
@@ -1183,11 +1184,6 @@ a.btn.gs-btn-icon-only::before {
 .status-cancelled {
     background-color: #E2E8F0;
     color: #4A5568;
-}
-
-.status-nurturing {
-    background-color: #D1FAE5;
-    color: #065F46;
 }
 
 .status-warning {
@@ -2195,17 +2191,29 @@ a.btn.gs-btn-icon-only::before {
 .bulk-action-bar {
     display: none;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
     padding: 0.75rem 1rem;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin: 0.5rem 0;
-    animation: slideDown 0.3s ease;
+    background-color: rgba(59, 130, 246, 0.08);
+    border: 1px dashed rgba(59, 130, 246, 0.35);
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: all 0.3s ease;
 }
 
 .bulk-action-bar.visible {
     display: flex;
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.selected-count {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-right: auto;
 }
 
 /* 已选择信息 - 居左 */
@@ -2379,3 +2387,189 @@ a.btn.gs-btn-icon-only::before {
 }
 
 
+
+/* ============================================
+   19. 现代一体化数据卡片
+   ============================================ */
+
+.data-card {
+    background-color: var(--bg-primary);
+    border-radius: 16px;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+}
+
+.data-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.data-card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.data-card-filter {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 300px));
+    align-items: end;
+    justify-content: start;
+    gap: 0.875rem 1rem;
+}
+
+.data-card-filter > .filter-row,
+.data-card-filter > .filter-row-main,
+.data-card-filter > .filter-actions-row {
+    display: contents !important;
+}
+
+.data-card-filter > .quick-date-buttons,
+.data-card-filter > .date-inputs-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.875rem 1rem;
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.data-card-filter > .date-inputs-row .filter-group {
+    flex: 0 1 300px;
+    width: auto;
+}
+
+.data-card .table-container {
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    margin: 0 -1.5rem;
+    width: calc(100% + 3rem);
+}
+
+.data-card .table {
+    margin: 0;
+}
+
+.data-card .table th:first-child {
+    border-top-left-radius: 0;
+}
+
+.data-card .table th:last-child {
+    border-top-right-radius: 0;
+}
+
+.data-card .table td,
+.data-card .table th {
+    padding: 1rem 1.5rem;
+}
+
+/* 大卡片内部的分页容器：去掉独立卡片感 */
+.data-card > .pagination-container,
+.data-card .pagination-container {
+    margin-top: 1.25rem;
+    padding: 1.25rem 0 0 0;
+    background-color: transparent;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+    border-top: 1px solid var(--border-color);
+}
+
+/* 响应式：移动端单列 */
+@media (max-width: 768px) {
+    .data-card-filter {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .data-card-filter > .quick-date-buttons,
+    .data-card-filter > .date-inputs-row {
+        gap: 1rem;
+    }
+}
+
+/* ============================================
+   Dark Mode Overrides
+   ============================================ */
+
+[data-theme="dark"] .btn:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .ym-picker .ym-picker-input,
+[data-theme="dark"] .ymd-picker .ymd-picker-input {
+    background: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .ym-picker-btn--clear,
+[data-theme="dark"] .ymd-picker-btn--clear {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .ym-picker-today-btn,
+[data-theme="dark"] .ymd-picker-today-btn {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .ym-picker-today-btn:hover,
+[data-theme="dark"] .ymd-picker-today-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+/* 表格 dark 模式适配 */
+[data-theme="dark"] .table td {
+    background-color: var(--bg-primary);
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd) td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd):hover td {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table thead th {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table th.sortable:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* 固定列阴影在 dark 模式下加深 */
+[data-theme="dark"] .table-container td:nth-child(1),
+[data-theme="dark"] .table-container th:nth-child(1),
+[data-theme="dark"] .table-container td:nth-child(2),
+[data-theme="dark"] .table-container th:nth-child(2),
+[data-theme="dark"] .table-container th:last-child,
+[data-theme="dark"] .table-container td:last-child {
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.35);
+}
