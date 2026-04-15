@@ -1,0 +1,322 @@
+{% extends 'base/base_xxx.html' %}
+{% load static %}
+
+{% block title %}页面标题 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* 仅保留本页面特有样式，禁止重写 .data-card、.table、.pagination 等通用结构 */
+        .table-container table {
+            min-width: 1000px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <div class="data-card">
+            <!-- 1. 头部 -->
+            <div class="data-card-header">
+                <div class="data-card-title">
+                    <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>页面标题
+                </div>
+                {% if '555' in user_permissions or '551' in user_permissions %}
+                <button class="btn btn-create" onclick="openCreateModal()">
+                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- 2. 筛选区 -->
+            <div class="data-card-filter">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">状态</label>
+                        <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">搜索</label>
+                        <input type="text" class="form-control" id="keywordSearch" placeholder="关键词">
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterData()" title="筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 批量操作栏（强制预留） -->
+            {% if '555' in user_permissions or '551' in user_permissions %}
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="selected-count" id="selectedCountText">已选择 0 项</span>
+                <button class="btn btn-secondary" onclick="clearSelection()">
+                    <i class="fas fa-times"></i><span>取消选择</span>
+                </button>
+                <button class="btn btn-create" onclick="bulkAction1()">
+                    <i class="fas fa-building"></i><span>批量操作1</span>
+                </button>
+            </div>
+            {% endif %}
+
+            <!-- 4. 表格区 -->
+            <div class="table-container">
+                <table class="table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th>名称</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- 动态生成 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 5. 分页区 -->
+            <div class="pagination-container" id="paginationContainer">
+                <div class="pagination-info" data-total="0">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper" style="position: relative;">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown">
+                                <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pagination-new" id="paginationNew">
+                    <!-- 动态生成 -->
+                </div>
+                <div class="pagination-jump">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框（禁止点击框以外的地方关闭） -->
+    <div class="modal-overlay" id="exampleModalOverlay" onclick="if(event.target === this) return;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">标题</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 内容 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button type="button" class="btn btn-save-modal" onclick="saveData()">保存</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script>
+        // ==================== 全局变量 ====================
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalItems = 0;
+        let totalPages = 1;
+        let selectedIds = new Set();
+        let allData = [];
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            initSearchableSelects();
+            loadData();
+        });
+
+        function initSearchableSelects() {
+            // 示例：new SearchableSelect('#statusFilter', { options: [...] });
+        }
+
+        async function loadData() {
+            const params = new URLSearchParams({
+                page: currentPage,
+                page_size: pageSize,
+                // 其他筛选参数...
+            });
+            const response = await fetch(`/api/xxx/?${params}`);
+            const result = await response.json();
+            if (result.success) {
+                allData = result.data;
+                totalItems = result.total;
+                totalPages = Math.ceil(totalItems / pageSize) || 1;
+                renderTable(allData);
+                renderPagination();
+                updatePaginationStats();
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = data.map(item => `
+                <tr data-id="${item.id}">
+                    <td class="w-checkbox">
+                        <input type="checkbox" class="row-checkbox"
+                               ${selectedIds.has(item.id) ? 'checked' : ''}
+                               onchange="toggleSelectItem(${item.id})">
+                    </td>
+                    <td>${item.name}</td>
+                    <td>${item.status}</td>
+                    <td>
+                        <span class="link" onclick="openViewModal(${item.id})">查看</span>
+                        <span class="link" onclick="openEditModal(${item.id})" style="margin-left: 0.5rem;">编辑</span>
+                    </td>
+                </tr>
+            `).join('');
+            updateSelectAllCheckbox();
+            updateBulkActionBar();
+        }
+
+        function renderPagination() {
+            const pagination = document.getElementById('paginationNew');
+            let html = '';
+            html += `<button class="pagination-btn-new ${currentPage === 1 ? 'disabled' : ''}" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>`;
+            // 简化的页码逻辑，实际可扩展
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<button class="pagination-btn-new ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+            }
+            html += `<button class="pagination-btn-new ${currentPage === totalPages ? 'disabled' : ''}" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>`;
+            pagination.innerHTML = html;
+        }
+
+        function updatePaginationStats() {
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            document.getElementById('pageSizeText').textContent = pageSize + '条';
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                statsEl.style.marginLeft = '1rem';
+                statsEl.style.color = 'var(--text-secondary)';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            statsEl.textContent = totalItems === 0 ? '0' : `${start}-${end} / 共 ${totalItems} 条`;
+        }
+
+        // ==================== 选择操作 ====================
+        function toggleSelectItem(id) {
+            selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
+            updateBulkActionBar();
+            updateSelectAllCheckbox();
+        }
+
+        function toggleSelectAll() {
+            const checkbox = document.getElementById('selectAll');
+            document.querySelectorAll('.row-checkbox').forEach((cb, index) => {
+                const id = allData[index].id;
+                cb.checked = checkbox.checked;
+                checkbox.checked ? selectedIds.add(id) : selectedIds.delete(id);
+            });
+            updateBulkActionBar();
+        }
+
+        function updateSelectAllCheckbox() {
+            const checkbox = document.getElementById('selectAll');
+            const visibleIds = allData.map(d => d.id);
+            checkbox.checked = visibleIds.length > 0 && visibleIds.every(id => selectedIds.has(id));
+        }
+
+        function updateBulkActionBar() {
+            const bar = document.getElementById('bulkActionBar');
+            const countText = document.getElementById('selectedCountText');
+            if (!bar || !countText) return;
+            countText.textContent = `已选择 ${selectedIds.size} 项`;
+            bar.classList.toggle('visible', selectedIds.size > 0);
+        }
+
+        function clearSelection() {
+            selectedIds.clear();
+            document.getElementById('selectAll').checked = false;
+            renderTable(allData);
+            updateBulkActionBar();
+        }
+
+        // ==================== 分页操作 ====================
+        function goToPage(page) {
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadData();
+        }
+
+        function changePageSize(size) {
+            pageSize = size;
+            currentPage = 1;
+            document.getElementById('pageSizeText').textContent = size + '条';
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            document.querySelectorAll('.page-size-option').forEach(option => option.classList.remove('selected'));
+            const selectedOption = document.querySelector(`.page-size-option[onclick="changePageSize(${size})"]`);
+            if (selectedOption) selectedOption.classList.add('selected');
+            loadData();
+        }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(event) {
+            if (event.key === 'Enter') {
+                const page = parseInt(event.target.value);
+                if (page && page >= 1 && page <= totalPages) goToPage(page);
+                event.target.value = '';
+            }
+        }
+
+        // ==================== 筛选 ====================
+        function filterData() {
+            currentPage = 1;
+            loadData();
+        }
+
+        function resetFilters() {
+            document.getElementById('keywordSearch').value = '';
+            // 重置 searchable-select...
+            currentPage = 1;
+            loadData();
+        }
+
+        // ==================== 模态框（禁止点击外部关闭） ====================
+        function openCreateModal() {
+            document.getElementById('exampleModalOverlay').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('exampleModalOverlay').classList.remove('active');
+        }
+
+        function saveData() {
+            // 保存逻辑
+            closeModal();
+        }
+
+        function openViewModal(id) {
+            // 查看逻辑
+        }
+
+        function openEditModal(id) {
+            // 编辑逻辑
+        }
+
+        function bulkAction1() {
+            // 批量操作逻辑
+        }
+    </script>
+{% endblock %}
