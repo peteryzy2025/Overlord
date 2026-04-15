@@ -1942,6 +1942,9 @@
                         <div id="export-pro-export-template-select-${subtaskId}-${rowIndex}" class="searchable-select single"
                              data-placeholder="选择汇出模板"></div>
                         <small id="export-template-hint-${subtaskId}-${rowIndex}" style="color: var(--text-tertiary); display: none;">请先选择产品和店铺</small>
+                        <small id="export-template-error-${subtaskId}-${rowIndex}" style="color: var(--danger-color); display: none;">
+                            <i class="fas fa-exclamation-circle"></i> 模板名称必须包含产品ID才符合自动化规则
+                        </small>
                     </div>
 
                     <!-- 强制换行 -->
@@ -2835,18 +2838,32 @@
                     placeholder: templateOptions.length > 0 ? '选择汇出模板' : '无可用模板'
                 });
 
+                const updateTemplateErrorHint = (templateName) => {
+                    const errorEl = document.getElementById(`export-template-error-${subtaskId}-${rowIndex}`);
+                    if (!errorEl) return;
+                    if (templateName && !/\d{4}/.test(templateName)) {
+                        errorEl.style.display = 'block';
+                    } else {
+                        errorEl.style.display = 'none';
+                    }
+                };
+
                 // 设置默认值
                 if (selectedTemplateId && templateOptions.some(t => t.value === String(selectedTemplateId))) {
                     templateSelect.setValue(String(selectedTemplateId));
                     const selectedOption = templateOptions.find(t => t.value === String(selectedTemplateId));
                     if (selectedOption) {
                         updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
+                        updateTemplateErrorHint(selectedOption.template_name);
                     }
                 } else if (templateOptions.length > 0) {
                     // 默认选中第一个，但触发验证
                     templateSelect.setValue(templateOptions[0].value);
                     updateExportProRow(subtaskId, rowIndex, 'export_template_id', templateOptions[0].value);
                     updateExportProRow(subtaskId, rowIndex, 'export_template_name', templateOptions[0].template_name);  // 保存原始名称
+                    updateTemplateErrorHint(templateOptions[0].template_name);
+                } else {
+                    updateTemplateErrorHint('');
                 }
 
                 templateSelect.onChange = (value) => {
@@ -2855,9 +2872,12 @@
                     if (selectedOption) {
                         updateExportProRow(subtaskId, rowIndex, 'export_template_name', selectedOption.template_name);  // 保存原始名称
                         // 即时校验模板名称是否包含4位数字
+                        updateTemplateErrorHint(selectedOption.template_name);
                         if (!/\d{4}/.test(selectedOption.template_name)) {
                             showNotification('选择模板不符合自动化规则，请重新选择', 'warning');
                         }
+                    } else {
+                        updateTemplateErrorHint('');
                     }
                 };
 
