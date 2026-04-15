@@ -26,10 +26,42 @@ base/base.html（顶部导航一级 Base）
 
 ## 二、主题色与交互色
 
-| 模式 | 主色 | Hover/Active 背景 | 文字色 | 说明 |
-|------|------|-------------------|--------|------|
-| Light | `#3b82f6` | `#eff6ff` | `#3b82f6` | 导航、侧边栏、按钮、高亮 |
-| Dark | `#60a5fa` | `rgba(59, 130, 246, 0.18)` | `#60a5fa` | 导航、侧边栏、按钮、高亮 |
+**所有 CSS 变量统一定义在 `general/static/css/general_style_1.css` 中**，`base.html` 不再内联定义 `:root`。
+
+### 2.1 核心变量
+
+```css
+:root {
+    --primary-50: #F8FAFC;    /* 页面背景 */
+    --primary-100: #F1F5F9;   /* 卡片背景/表头 */
+    --primary-200: #E2E8F0;   /* 边框/分隔线 */
+    --primary-300: #CBD5E1;   /* 禁用状态边框 */
+    --primary-400: #94A3B8;   /* 次要文字/图标 */
+    --primary-500: #64748B;   /* 辅助文字 */
+    --primary-600: #475569;   /* 主文字颜色 */
+    --primary-700: #334155;   /* 标题/重要文字 */
+    --primary-800: #1E293B;   /* 深色强调 */
+    
+    --accent: #3B82F6;        /* 主按钮/链接/选中态 */
+    --accent-light: #DBEAFE;  /* 浅蓝背景（hover状态） */
+    --accent-dark: #2563EB;   /* 按下状态 */
+    
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F8FAFC;
+    --bg-tertiary: #F1F5F9;
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+    --text-tertiary: #94A3B8;
+    --border-color: #E2E8F0;
+}
+```
+
+### 2.2 交互色
+
+| 模式 | 主色 | Hover | 说明 |
+|------|------|-------|------|
+| Light | `#3B82F6` (`--accent`) | `#2563EB` (`--accent-dark`) | 唯一高饱和点，只用于主按钮和链接 |
+| Dark | `#60a5fa` | 深蓝半透明 | 导航、侧边栏、按钮 hover |
 
 **禁止**：使用橙色（`#ed8936`、`#dd6b20`、`#c05621`）作为任何交互色。
 
@@ -339,6 +371,7 @@ base/base.html（顶部导航一级 Base）
 | 表格 | `.table-container` | 表格外层 |
 | 表格 | `.table` | 表格本体 |
 | 批量 | `.bulk-action-bar` | 批量操作条（默认隐藏，淡蓝虚线框背景） |
+| 通用 | `.link` | 表格内蓝色文字链接（无边框无底色） |
 | 批量 | `.bulk-action-bar.visible` | 显示状态 |
 | 批量 | `.selected-count` | 已选择数量文字 |
 | 分页 | `.pagination-container` | 分页容器（在 `.data-card` 内部时**顶部自带分隔线**） |
@@ -381,9 +414,21 @@ base/base.html（顶部导航一级 Base）
 - 第一列、第二列、最后一列在 `.table-container` 中为 `position: sticky`
 - Dark 模式下固定列阴影加深为 `rgba(0,0,0,0.35)`，确保边界清晰
 
-### 5.6 按钮规范
-- `.btn-create`：`padding: 0.5rem 1rem`，`font-size: 14px`（统一变小，避免过大）
+### 5.6 按钮三档规范
+
+| 类名 | 样式 | 用途 |
+|------|------|------|
+| `.btn-primary` / `.btn-create` | `#3B82F6` 实底、白字、`border-radius: 6px`、`padding: 8px 16px`、`font-size: 14px` | 主操作（新建、保存） |
+| `.btn-secondary` | `#F1F5F9` 灰底、黑字(`--text-primary`)、细边框(`--border-color`) | 次要操作（导出、取消） |
+| `.btn-ghost` | 透明底、灰字(`--text-secondary`)、细边框 | 辅助操作（筛选、更多） |
+
+- 所有按钮统一 `border-radius: 6px`，`padding: 8px 16px`，`font-size: 14px`
 - `.btn-sm`：通用小型按钮样式，各页面禁止私自调整尺寸
+
+### 5.7 表格内链接
+- 表格中的单号、操作项统一使用 `<span class="link">` 或 `<a class="link">`
+- 颜色：`#3B82F6`（`--accent`），无下划线，hover 显示下划线
+- **简洁风**：不要边框、不要底色，纯文字链接
 
 ---
 
@@ -463,4 +508,5 @@ document.getElementById('xxxModalOverlay').addEventListener('click', function(e)
 - [ ] 分页区无独立白底卡片感，顶部有横线
 - [ ] 模态框点击外部不关闭
 - [ ] 未在内联 `<style>` 中重写 `.data-card`、`.table`、`.pagination-container` 的结构样式
+- [ ] 表格内操作项使用 `<span class="link">` 蓝色纯文字链接，不用带边框/底色的按钮
 - [ ] Dark 模式下无明显亮块或看不清的文字

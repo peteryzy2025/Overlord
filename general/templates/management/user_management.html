@@ -750,7 +750,7 @@
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
                     <td>
-                        ${IS_ADMIN ? `<button class="btn btn-sm" onclick="openViewModal(${user.id})" style="margin-right: 0.5rem;">查看</button><button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>` : `<button class="btn btn-sm" onclick="openViewModal(${user.id})">查看</button>`}
+                        ${IS_ADMIN ? `<span class="link" onclick="openViewModal(${user.id})" style="margin-right: 1rem;">查看</span><span class="link" onclick="openEditModal(${user.id})">编辑</span>` : `<span class="link" onclick="openViewModal(${user.id})">查看</span>`}
                     </td>
                 </tr>
             `}).join('');
