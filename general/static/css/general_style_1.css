@@ -2405,10 +2405,12 @@ a.btn.gs-btn-icon-only::before {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .data-card-title {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
     font-weight: 600;
     color: var(--text-primary);
 }
@@ -2480,6 +2482,7 @@ a.btn.gs-btn-icon-only::before {
     border-radius: 0;
     box-shadow: none;
     border: none;
+    border-top: 1px solid var(--border-color);
 }
 
 /* 响应式：移动端单列 */
