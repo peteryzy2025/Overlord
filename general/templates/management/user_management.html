@@ -198,7 +198,9 @@
         <!-- 一体化数据卡片 -->
         <div class="data-card">
             <div class="data-card-header">
-                <div class="data-card-title">人员管理</div>
+                <div class="data-card-title">
+                    <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>人员管理
+                </div>
                 {% if '555' in user_permissions or '551' in user_permissions %}
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建人员
