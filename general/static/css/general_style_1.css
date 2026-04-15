@@ -2374,3 +2374,80 @@ a.btn.gs-btn-icon-only::before {
 }
 
 
+
+/* ============================================
+   Dark Mode Overrides
+   ============================================ */
+
+[data-theme="dark"] .btn:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .ym-picker .ym-picker-input,
+[data-theme="dark"] .ymd-picker .ymd-picker-input {
+    background: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .ym-picker-btn--clear,
+[data-theme="dark"] .ymd-picker-btn--clear {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .ym-picker-today-btn,
+[data-theme="dark"] .ymd-picker-today-btn {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .ym-picker-today-btn:hover,
+[data-theme="dark"] .ymd-picker-today-btn:hover {
+    background: var(--bg-tertiary);
+}
+
+/* 表格 dark 模式适配 */
+[data-theme="dark"] .table td {
+    background-color: var(--bg-primary);
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd) td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd):hover td {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table thead th {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table th.sortable:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* 固定列阴影在 dark 模式下加深 */
+[data-theme="dark"] .table-container td:nth-child(1),
+[data-theme="dark"] .table-container th:nth-child(1),
+[data-theme="dark"] .table-container td:nth-child(2),
+[data-theme="dark"] .table-container th:nth-child(2),
+[data-theme="dark"] .table-container th:last-child,
+[data-theme="dark"] .table-container td:last-child {
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.35);
+}
