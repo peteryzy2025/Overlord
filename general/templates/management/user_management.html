@@ -577,9 +577,9 @@
                 loadOpsGroupsFromAPI(),
                 loadCompanyUsers()
             ]);
+            await loadPermissions();  // 先加载权限字典
             loadUsers();
             loadDepartments();
-            loadPermissions();
         });
 
         // ==================== SearchableSelect 初始化 ====================
