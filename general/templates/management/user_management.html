@@ -195,114 +195,111 @@
 
 {% block content %}
     <div id="user-management-tab" class="tab-content">
-        <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-users" style="color: var(--accent-color);"></i>
-                    人员管理
-                </h1>
-                <p class="page-subtitle">管理公司成员、权限和部门归属</p>
-            </div>
-            {% if '555' in user_permissions or '551' in user_permissions %}
-            <div>
+        <!-- 一体化数据卡片 -->
+        <div class="data-card">
+            <div class="data-card-header">
+                <div class="data-card-title">
+                    <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>人员管理
+                </div>
+                {% if '555' in user_permissions or '551' in user_permissions %}
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建人员
                 </button>
+                {% endif %}
             </div>
-            {% endif %}
-        </div>
 
-        <div class="filter-section">
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label class="filter-label">状态</label>
-                    <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">部门</label>
-                    <div id="departmentFilter" class="searchable-select single" data-placeholder="全部部门"></div>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">运营分组</label>
-                    <div id="opsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">搜索</label>
-                    <input type="text" class="form-control" id="userSearch" placeholder="用户名/姓名">
-                </div>
-                <div class="filter-actions">
-                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterUsers()" title="筛选"></button>
-                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
-                </div>
-            </div>
-        </div>
-
-        {% if '555' in user_permissions or '551' in user_permissions %}
-        <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
-            <span class="selected-count" id="selectedCountText">已选择 0 人</span>
-            <button class="btn btn-secondary" onclick="clearSelection()">
-                <i class="fas fa-times"></i>
-                <span>取消选择</span>
-            </button>
-            <button class="btn btn-create" onclick="openBulkDepartmentModal()">
-                <i class="fas fa-building"></i>
-                <span>批量设置部门</span>
-            </button>
-            <button class="btn btn-create" onclick="openBulkPermissionModal()">
-                <i class="fas fa-key"></i>
-                <span>批量设置权限</span>
-            </button>
-        </div>
-        {% endif %}
-
-        <div class="table-container">
-            <table class="table" id="usersTable">
-                <thead id="usersTableHead">
-                <tr>
-                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                    <th>姓名</th>
-                    <th>状态</th>
-                    <th>用户名</th>
-                    <th>部门</th>
-                    <th>直接上级</th>
-                    <th>部门角色</th>
-                    <th>权限</th>
-                    <th>企业微信通知</th>
-                    <th>操作</th>
-                </tr>
-                </thead>
-                <tbody id="usersTableBody">
-                <!-- 动态生成内容 -->
-                </tbody>
-            </table>
-        </div>
-
-        <div class="pagination-container" id="paginationContainer">
-            <div class="pagination-info" data-total="0">
-                <div class="page-size-wrapper" id="pageSizeWrapper">
-                    <span class="page-size-label">每页显示：</span>
-                    <div class="page-size-dropdown-wrapper" style="position: relative;">
-                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                            <span id="pageSizeText">20条</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="page-size-dropdown" id="pageSizeDropdown">
-                            <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
-                            <div class="page-size-option" onclick="changePageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changePageSize(100)">100条</div>
-                            <div class="page-size-option" onclick="changePageSize(200)">200条</div>
-                        </div>
+            <div class="data-card-filter">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">状态</label>
+                        <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">部门</label>
+                        <div id="departmentFilter" class="searchable-select single" data-placeholder="全部部门"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">运营分组</label>
+                        <div id="opsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">搜索</label>
+                        <input type="text" class="form-control" id="userSearch" placeholder="用户名/姓名">
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterUsers()" title="筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
                     </div>
                 </div>
             </div>
-            <div class="pagination-new" id="paginationNew">
-                <!-- 动态生成 -->
+
+            {% if '555' in user_permissions or '551' in user_permissions %}
+            <!-- 批量操作栏 -->
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="selected-count" id="selectedCountText">已选择 0 人</span>
+                <button class="btn btn-secondary" onclick="clearSelection()">
+                    <i class="fas fa-times"></i>
+                    <span>取消选择</span>
+                </button>
+                <button class="btn btn-create" onclick="openBulkDepartmentModal()">
+                    <i class="fas fa-building"></i>
+                    <span>批量设置部门</span>
+                </button>
+                <button class="btn btn-create" onclick="openBulkPermissionModal()">
+                    <i class="fas fa-key"></i>
+                    <span>批量设置权限</span>
+                </button>
             </div>
-            <div class="pagination-jump">
-                <span>跳至</span>
-                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-                <span>页</span>
+            {% endif %}
+
+            <div class="table-container">
+                <table class="table" id="usersTable">
+                    <thead id="usersTableHead">
+                    <tr>
+                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                        <th>姓名</th>
+                        <th>状态</th>
+                        <th>用户名</th>
+                        <th>部门</th>
+                        <th>直接上级</th>
+                        <th>部门角色</th>
+                        <th>权限</th>
+                        <th>企业微信通知</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    <!-- 动态生成内容 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-container" id="paginationContainer">
+                <div class="pagination-info" data-total="0">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper" style="position: relative;">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown">
+                                <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pagination-new" id="paginationNew">
+                    <!-- 动态生成 -->
+                </div>
+                <div class="pagination-jump">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
+                </div>
             </div>
         </div>
     </div>
@@ -580,9 +577,9 @@
                 loadOpsGroupsFromAPI(),
                 loadCompanyUsers()
             ]);
+            await loadPermissions();  // 先加载权限字典
             loadUsers();
             loadDepartments();
-            loadPermissions();
         });
 
         // ==================== SearchableSelect 初始化 ====================
@@ -753,7 +750,7 @@
                     <td>${permissionsHtml}</td>
                     <td>${wxStatusHtml}</td>
                     <td>
-                        ${IS_ADMIN ? `<button class="btn btn-sm" onclick="openViewModal(${user.id})" style="margin-right: 0.5rem;">查看</button><button class="btn btn-sm btn-edit" onclick="openEditModal(${user.id})">编辑</button>` : `<button class="btn btn-sm" onclick="openViewModal(${user.id})">查看</button>`}
+                        ${IS_ADMIN ? `<span class="link" onclick="openViewModal(${user.id})" style="margin-right: 1rem;">查看</span><span class="link" onclick="openEditModal(${user.id})">编辑</span>` : `<span class="link" onclick="openViewModal(${user.id})">查看</span>`}
                     </td>
                 </tr>
             `}).join('');

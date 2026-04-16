@@ -548,3 +548,30 @@
         min-width: 150px;
     }
 }
+/* ============================================
+   Dark Mode Overrides
+   ============================================ */
+
+[data-theme="dark"] .table td {
+    background-color: var(--bg-primary);
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd) td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .table tbody tr:nth-child(odd):hover td {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table thead th {
+    background-color: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table thead th:hover {
+    background-color: var(--bg-tertiary);
+}

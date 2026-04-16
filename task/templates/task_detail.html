@@ -979,10 +979,15 @@
                 break;
             case 'divi_custom':
                 title = '迪唯定制配置';
+                // 兼容新旧数据：优先显示新的 nas_path / image_classify_path，旧数据 fallback 到 gallery_path / local_gallery_path
+                const customNasPath = params.nas_path || params.local_gallery_path || '';
+                const customImageClassify = Array.isArray(params.image_classify) && params.image_classify.length > 0
+                    ? params.image_classify.join(' > ')
+                    : (params.image_classify_path || params.gallery_path || '');
                 content = renderFieldGrid([
                     field('迪唯账号', params.diwei_account),
-                    field('图库目录', joinList(params.gallery_path), true),
-                    field('本地图库路径', params.local_gallery_path, true),
+                    field('NAS路径', customNasPath, true),
+                    field('图库分类', customImageClassify, true),
                     field('定制行', renderGroupedProductRows(params.custom_rows, [
                         { key: 'product_id', label: '产品 ID' },
                         { key: 'mode', label: '模式', getValue: row => getModeDisplay(row.mode) },

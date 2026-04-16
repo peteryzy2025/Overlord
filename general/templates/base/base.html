@@ -21,40 +21,6 @@
     <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260321-content-width">
 
     <style>
-        :root {
-            --bg-primary: #FFFFFF;
-            --bg-secondary: #F7FAFC;
-            --bg-tertiary: #EDF2F7;
-            --text-primary: #1A202C;
-            --text-secondary: #4A5568;
-            --text-tertiary: #718096;
-            --border-color: #E2E8F0;
-            --accent-color: #667eea;
-            --accent-hover: #5a67d8;
-            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
-            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
-            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
-            --success-color: #48bb78;
-            --danger-color: #e53e3e;
-            --warning-color: #dd6b20;
-            --info-color: #3182ce;
-        }
-
-        [data-theme="dark"] {
-            --bg-primary: #1A202C;
-            --bg-secondary: #2D3748;
-            --bg-tertiary: #4A5568;
-            --text-primary: #F7FAFC;
-            --text-secondary: #E2E8F0;
-            --text-tertiary: #CBD5E0;
-            --border-color: #4A5568;
-            --accent-color: #667eea;
-            --accent-hover: #7c3aed;
-            --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
-            --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
-            --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
-        }
-
         * {
             margin: 0;
             padding: 0;
@@ -69,17 +35,56 @@
             transition: all 0.3s ease;
         }
 
-        /* 顶部导航栏（原有样式） */
+        /* 顶部导航栏 - 毛玻璃轻盈风格 */
         .navbar {
-            background-color: var(--bg-primary);
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             box-shadow: var(--shadow-light);
-            padding: 0.75rem 1.5rem;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            padding: 0 1.5rem;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
             transition: all 0.3s ease;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        [data-theme="dark"] .navbar {
+            background-color: rgba(26, 32, 44, 0.85);
+        }
+
+        [data-theme="dark"] .nav-link:hover {
+            background-color: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        [data-theme="dark"] .nav-link.active {
+            background-color: rgba(59, 130, 246, 0.18) !important;
+            color: #60a5fa !important;
+        }
+
+        [data-theme="dark"] .nav-link.active::after {
+            background-color: #60a5fa;
+        }
+
+        [data-theme="dark"] .nav-card-icon {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        [data-theme="dark"] .nav-dropdown-card:hover {
+            border-color: rgba(96, 165, 250, 0.4);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.2);
+        }
+
+        [data-theme="dark"] .nav-dropdown-card:hover .nav-card-icon {
+            background: #3b82f6;
+            color: white;
         }
 
         .navbar > .container-fluid {
@@ -102,7 +107,7 @@
         .navbar-nav {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 1rem;
             margin: 0;
             flex-direction: row;
         }
@@ -117,7 +122,7 @@
             color: var(--text-secondary);
             text-decoration: none;
             font-weight: 500;
-            padding: 0.5rem 1rem;
+            padding: 0.5rem 1.5rem;
             border-radius: 8px;
             transition: all 0.3s ease;
             position: relative;
@@ -125,17 +130,17 @@
         }
 
         .nav-link:hover {
-            color: #c05621;
-            background-color: #fff7ed;
+            color: #3b82f6;
+            background-color: #eff6ff;
         }
 
         .nav-link.active {
-            color: #ed8936 !important;
-            background-color: #fff7ed;
+            color: #3b82f6 !important;
+            background-color: #eff6ff;
         }
 
         .nav-link.active .dropdown-arrow {
-            color: #ed8936 !important;
+            color: #3b82f6 !important;
         }
 
         .nav-link.active::after {
@@ -146,88 +151,104 @@
             transform: translateX(-50%);
             width: 80%;
             height: 3px;
-            background-color: #dd6b20;
+            background-color: #3b82f6;
             border-radius: 2px;
         }
 
-        /* V2 箭头样式（相对于按钮定位） */
-        .nav-item-wrapper::after {
-            content: '';
-            position: absolute;
-            top: calc(100% - 5px);
-            /* 紧贴按钮下方 */
-            left: 50%;
-            transform: translateX(-50%) rotate(45deg);
-            width: 10px;
-            height: 10px;
-            background-color: var(--bg-primary);
-            border-left: 1px solid var(--border-color);
-            border-top: 1px solid var(--border-color);
-            z-index: 1002;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            /* 防止遮挡点击 */
-        }
-
-        .nav-item-wrapper:hover::after {
-            opacity: 1;
-        }
-
-        /* 移动端隐藏箭头 */
+        /* 移动端适配 */
         @media (max-width: 768px) {
             .nav-item-wrapper::after {
                 display: none;
             }
         }
 
+        /* Mega Menu 全宽下拉面板 */
         .nav-dropdown {
-            position: absolute;
-            top: 100%;
-            left: -50%;
-            background-color: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            box-shadow: var(--shadow-medium);
-            width: 200%;
+            position: fixed;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             opacity: 0;
             visibility: hidden;
             transform: translateY(-10px);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 1001;
-            overflow: hidden;
+            padding: 2.5rem 1.5rem;
         }
 
-        .nav-item-wrapper:hover .nav-dropdown {
+        .nav-dropdown.show {
             opacity: 1;
             visibility: visible;
             transform: translateY(0);
         }
 
-        .nav-dropdown-item {
-            display: block;
-            padding: 0.75rem 1rem;
-            color: var(--text-primary);
+        /* 网格布局 */
+        .nav-dropdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* 卡片式菜单项 */
+        .nav-dropdown-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
             text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-dropdown-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .nav-dropdown-card:hover .nav-card-icon {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .nav-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: #eff6ff;
+            color: #3b82f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
             transition: all 0.3s ease;
-            font-size: 0.875rem;
-            border-bottom: 1px solid var(--border-color);
         }
 
-        .nav-dropdown-item:last-child {
-            border-bottom: none;
+        .nav-card-content h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            transition: color 0.3s ease;
         }
 
-        .nav-dropdown-item:hover {
-            background-color: #fff7ed;
-            color: #c05621;
-            padding-left: 1.25rem;
+        .nav-dropdown-card:hover .nav-card-content h4 {
+            color: #3b82f6;
         }
 
-        .nav-dropdown-item i {
-            margin-right: 0.5rem;
-            width: 16px;
-            text-align: center;
+        .nav-card-content p {
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+            margin: 0;
+            line-height: 1.4;
         }
 
         .dropdown-arrow {
@@ -237,9 +258,9 @@
             transition: transform 0.3s ease;
         }
 
-        .nav-item-wrapper:hover .dropdown-arrow {
+        .nav-item-wrapper.active .dropdown-arrow {
             transform: rotate(180deg);
-            color: #c05621;
+            color: #3b82f6;
         }
 
         .user-area {
@@ -639,7 +660,7 @@
                 display: flex;
             }
 
-            .nav-item-wrapper:hover .nav-dropdown {
+            .nav-item-wrapper.active .nav-dropdown {
                 opacity: 0;
                 visibility: hidden;
             }
@@ -652,6 +673,9 @@
                 box-shadow: none;
                 margin-top: 0.5rem;
                 width: 100%;
+                padding: 1rem;
+                background: var(--bg-primary);
+                backdrop-filter: none;
             }
 
             /* 移动端隐藏优先级标签，避免换行 */
@@ -696,24 +720,57 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'general:user_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-users"></i> 人员管理
-                    </a>
-                    <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-item">
-                        <i class="fas fa-chart-line"></i> 绩效管理
-                    </a>
-                    <a href="{% url 'general:operation_log_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-history"></i> 操作日志
-                    </a>
-                    <a href="{% url 'general:announcement_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-bullhorn"></i> 公告管理
-                    </a>
-                    <a href="{% url 'general:amazon_management' %}" class="nav-dropdown-item">
-                        <i class="fab fa-amazon"></i> Amazon店铺
-                    </a>
-                    <a href="{% url 'general:temu_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-store"></i> Temu店铺
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'general:management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-home"></i></div>
+                            <div class="nav-card-content">
+                                <h4>综合管理</h4>
+                                <p>管理后台首页与功能导航</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:user_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-users"></i></div>
+                            <div class="nav-card-content">
+                                <h4>人员管理</h4>
+                                <p>团队账号权限与成员管理</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="nav-card-content">
+                                <h4>绩效管理</h4>
+                                <p>目标设定与业绩考核追踪</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:operation_log_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-history"></i></div>
+                            <div class="nav-card-content">
+                                <h4>操作日志</h4>
+                                <p>系统操作记录与审计查询</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:announcement_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-bullhorn"></i></div>
+                            <div class="nav-card-content">
+                                <h4>公告管理</h4>
+                                <p>内部通知发布与历史公告</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:amazon_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fab fa-amazon"></i></div>
+                            <div class="nav-card-content">
+                                <h4>Amazon店铺</h4>
+                                <p>店铺基础信息配置管理</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'general:temu_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-store"></i></div>
+                            <div class="nav-card-content">
+                                <h4>Temu店铺</h4>
+                                <p>Temu店铺资料维护</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -724,12 +781,22 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'amazon:dashboard' %}" class="nav-dropdown-item">
-                        <i class="fas fa-chart-line"></i> 驾驶舱
-                    </a>
-                    <a href="{% url 'amazon:ranking_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-trophy"></i> 登神长阶
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'amazon:dashboard' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="nav-card-content">
+                                <h4>数据驾驶舱</h4>
+                                <p>核心业务数据概览</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:ranking_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-trophy"></i></div>
+                            <div class="nav-card-content">
+                                <h4>登神长阶</h4>
+                                <p>业绩排行榜单</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -740,28 +807,58 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-shopping-cart"></i> 订单管理
-                    </a>
-                    <a href="{% url 'amazon:amazon_listing_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-search"></i> Listing侵权检测
-                    </a>
-                    <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-item">
-                        <i class="fas fa-bell"></i> 绩效通知
-                    </a>
-                    <a href="{% url 'amazon:amazon_shop_emails' %}" class="nav-dropdown-item">
-                        <i class="fas fa-envelope"></i> 店铺邮件
-                    </a>
-                    <a href="{% url 'amazon:amazon_risk_keywords' %}" class="nav-dropdown-item">
-                        <i class="fas fa-skull-crossbones"></i> 深渊
-                    </a>
-                    <a href="{% url 'amazon:amazon_upload_records' %}" class="nav-dropdown-item">
-                        <i class="fas fa-upload"></i> 店铺上货
-                    </a>
-                    <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-item"
-                       onclick="showComingSoon()">
-                        <i class="fas fa-clipboard-check"></i> 巡店报告
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'amazon:amazon_order_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-shopping-cart"></i></div>
+                            <div class="nav-card-content">
+                                <h4>订单管理</h4>
+                                <p>店铺订单查询与状态跟踪</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_listing_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-search"></i></div>
+                            <div class="nav-card-content">
+                                <h4>Listing侵权检测</h4>
+                                <p>产品Listing合规性审查</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_performance_notifications' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-bell"></i></div>
+                            <div class="nav-card-content">
+                                <h4>绩效通知</h4>
+                                <p>店铺绩效与健康度提醒</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_shop_emails' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="nav-card-content">
+                                <h4>店铺邮件</h4>
+                                <p>买家邮件收发与管理</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_risk_keywords' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-skull-crossbones"></i></div>
+                            <div class="nav-card-content">
+                                <h4>深渊</h4>
+                                <p>高风险关键词监控预警</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_upload_records' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-upload"></i></div>
+                            <div class="nav-card-content">
+                                <h4>店铺上货</h4>
+                                <p>批量上传记录与进度</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'amazon:amazon_daily_check_report_page' %}" class="nav-dropdown-card"
+                           onclick="showComingSoon()">
+                            <div class="nav-card-icon"><i class="fas fa-clipboard-check"></i></div>
+                            <div class="nav-card-content">
+                                <h4>巡店报告</h4>
+                                <p>日常店铺巡检报告</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -772,9 +869,15 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'temu:temu_order_management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-shopping-cart"></i> 订单管理
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'temu:temu_order_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-shopping-cart"></i></div>
+                            <div class="nav-card-content">
+                                <h4>订单管理</h4>
+                                <p>Temu订单查询与处理</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
             <div class="nav-item-wrapper">
@@ -783,18 +886,36 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'task:task_list_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-robot"></i> 自动化任务
-                    </a>
-                    <a href="{% url 'task:approval_ad_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-file-signature"></i> 广告审批
-                    </a>
-                    <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-lightbulb"></i> 产品需求
-                    </a>
-                    <a href="{% url 'data_req:list' %}" class="nav-dropdown-item">
-                        <i class="fas fa-chart-bar"></i> 数据部需求进度
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'task:task_list_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-robot"></i></div>
+                            <div class="nav-card-content">
+                                <h4>自动化任务</h4>
+                                <p>定时任务配置与执行日志</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'task:approval_ad_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-file-signature"></i></div>
+                            <div class="nav-card-content">
+                                <h4>广告审批</h4>
+                                <p>广告投放申请与审批流程</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-lightbulb"></i></div>
+                            <div class="nav-card-content">
+                                <h4>产品需求</h4>
+                                <p>新品开发需求提交与管理</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'data_req:list' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-chart-bar"></i></div>
+                            <div class="nav-card-content">
+                                <h4>数据部需求进度</h4>
+                                <p>数据需求工单跟踪</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
             <div class="nav-item-wrapper">
@@ -804,12 +925,22 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'track:tracking-management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-shipping-fast"></i> 物流管理
-                    </a>
-                    <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-item">
-                        <i class="fas fa-box-open"></i> 外采产品管理
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'track:tracking-management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-shipping-fast"></i></div>
+                            <div class="nav-card-content">
+                                <h4>物流管理</h4>
+                                <p>货物运输状态实时追踪</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-box-open"></i></div>
+                            <div class="nav-card-content">
+                                <h4>外采产品管理</h4>
+                                <p>外部采购产品信息维护</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -820,33 +951,71 @@
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
-                    <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-item">
-                        <i class="fas fa-store"></i> 亚马逊最新主题
-                    </a>
-                    <a href="{% url 'aba:aba_data' %}" class="nav-dropdown-item">
-                        <i class="fas fa-fire"></i> 亚马逊最热主题
-                    </a>
-                    <a href="{% url 'theme:theme_new_release_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-bolt"></i> 最新成交主题
-                    </a>
-                    <a href="{% url 'aba:aba_noise_words' %}" class="nav-dropdown-item">
-                        <i class="fas fa-filter"></i> ABA去噪词表
-                    </a>
-                    <a href="{% url 'theme:trend_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-search"></i> 侵权词判断
-                    </a>
-                    <a href="{% url 'theme:tro_table_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-gavel"></i> 侵权词库
-                    </a>
-                    <a href="{% url 'theme:trademark_info_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-registered"></i> 美标网词库
-                    </a>
-                    <a href="{% url 'theme:dw_data_page' %}" class="nav-dropdown-item">
-                        <i class="fas fa-industry"></i> 迪唯产业大数据
-                    </a>
-                    <a href="#" class="nav-dropdown-item" onclick="showComingSoon()">
-                        <i class="fas fa-chart-line"></i> 主题趋势
-                    </a>
+                    <div class="nav-dropdown-grid">
+                        <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-store"></i></div>
+                            <div class="nav-card-content">
+                                <h4>亚马逊最新主题</h4>
+                                <p>最新上架主题产品库</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'aba:aba_data' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-fire"></i></div>
+                            <div class="nav-card-content">
+                                <h4>亚马逊最热主题</h4>
+                                <p>ABA搜索排名热词分析</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'theme:theme_new_release_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-bolt"></i></div>
+                            <div class="nav-card-content">
+                                <h4>最新成交主题</h4>
+                                <p>近期成交爆款主题汇总</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'aba:aba_noise_words' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-filter"></i></div>
+                            <div class="nav-card-content">
+                                <h4>ABA去噪词表</h4>
+                                <p>搜索词过滤与优化词库</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'theme:trend_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-search"></i></div>
+                            <div class="nav-card-content">
+                                <h4>侵权词判断</h4>
+                                <p>商标侵权风险快速查询</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'theme:tro_table_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-gavel"></i></div>
+                            <div class="nav-card-content">
+                                <h4>侵权词库</h4>
+                                <p>TRO与侵权词汇总数据库</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'theme:trademark_info_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-registered"></i></div>
+                            <div class="nav-card-content">
+                                <h4>美标网词库</h4>
+                                <p>美国商标注册信息检索</p>
+                            </div>
+                        </a>
+                        <a href="{% url 'theme:dw_data_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-industry"></i></div>
+                            <div class="nav-card-content">
+                                <h4>迪唯产业大数据</h4>
+                                <p>行业趋势与市场洞察</p>
+                            </div>
+                        </a>
+                        <a href="#" class="nav-dropdown-card" onclick="showComingSoon()">
+                            <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="nav-card-content">
+                                <h4>主题趋势</h4>
+                                <p>主题销售趋势分析</p>
+                            </div>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -979,6 +1148,70 @@
                 html.setAttribute('data-theme', currentTheme);
                 localStorage.setItem('theme', currentTheme);
                 themeIcon.className = currentTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+            }
+        });
+    });
+
+    // ========== 导航下拉菜单（Click-triggered Mega Menu） ==========
+    document.addEventListener('DOMContentLoaded', function () {
+        const navWrappers = document.querySelectorAll('.nav-item-wrapper');
+        const navbar = document.querySelector('.navbar');
+
+        // 动态设置下拉面板顶部位置
+        function updateDropdownTop() {
+            if (navbar) {
+                const navbarHeight = navbar.offsetHeight;
+                document.querySelectorAll('.nav-dropdown').forEach(dropdown => {
+                    dropdown.style.top = navbarHeight + 'px';
+                });
+            }
+        }
+        updateDropdownTop();
+        window.addEventListener('resize', updateDropdownTop);
+
+        navWrappers.forEach(wrapper => {
+            const link = wrapper.querySelector('.nav-link');
+            if (!link) return;
+
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const dropdown = wrapper.querySelector('.nav-dropdown');
+                const isOpen = wrapper.classList.contains('active');
+
+                // 关闭其他所有下拉
+                navWrappers.forEach(w => {
+                    if (w !== wrapper) {
+                        w.classList.remove('active');
+                        const d = w.querySelector('.nav-dropdown');
+                        if (d) d.classList.remove('show');
+                    }
+                });
+
+                // 切换当前
+                wrapper.classList.toggle('active');
+                if (dropdown) dropdown.classList.toggle('show');
+            });
+        });
+
+        // 点击外部关闭
+        document.addEventListener('click', function (e) {
+            if (!e.target.closest('.nav-item-wrapper')) {
+                navWrappers.forEach(w => {
+                    w.classList.remove('active');
+                    const d = w.querySelector('.nav-dropdown');
+                    if (d) d.classList.remove('show');
+                });
+            }
+        });
+
+        // ESC 关闭
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                navWrappers.forEach(w => {
+                    w.classList.remove('active');
+                    const d = w.querySelector('.nav-dropdown');
+                    if (d) d.classList.remove('show');
+                });
             }
         });
     });

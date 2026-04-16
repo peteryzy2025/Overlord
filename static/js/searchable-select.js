@@ -65,6 +65,7 @@ class SearchableSelect {
         return {
             value: this.normalizeOptionValue(rawValue),
             label: String(rawLabel),
+            htmlLabel: option.htmlLabel || undefined,
             disabled: !!option.disabled
         };
     }
@@ -185,7 +186,7 @@ class SearchableSelect {
         // 构建HTML
         this.container.innerHTML = `
             <div class="select-trigger">
-                <span class="selected-text placeholder">${this.config.placeholder}</span>
+                <span class="selected-text select-placeholder">${this.config.placeholder}</span>
                 ${this.config.clearable ? '<span class="clear-btn" title="清空"><i class="fas fa-times-circle"></i></span>' : ''}
             </div>
             <div class="dropdown-panel">
@@ -218,42 +219,21 @@ class SearchableSelect {
             return `<div class="no-options">${this.config.noMatchText}</div>`;
         }
 
-        const fragment = document.createDocumentFragment();
-        
-        filtered.forEach(opt => {
+        return filtered.map(opt => {
             const optionValue = this.normalizeOptionValue(opt.value);
             const isSelected = this.config.multiple
                 ? this.selectedValues.includes(optionValue)
                 : this.normalizeOptionValue(this.selectedValues) === optionValue;
             const isDisabled = !!opt.disabled;
             
-            const div = document.createElement('div');
-            div.className = `option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}`;
-            div.dataset.value = optionValue;
-            
-            if (this.config.multiple) {
-                const checkbox = document.createElement('span');
-                checkbox.className = 'checkbox';
-                div.appendChild(checkbox);
-            }
-            
-            const textSpan = document.createElement('span');
-            textSpan.className = 'option-text';
-            // 使用 htmlLabel 时设置 innerHTML，否则使用 textContent
-            if (opt.htmlLabel) {
-                textSpan.innerHTML = opt.htmlLabel;
-            } else {
-                textSpan.textContent = opt.label;
-            }
-            div.appendChild(textSpan);
-            
-            fragment.appendChild(div);
-        });
-        
-        // 创建一个临时容器来返回 HTML 字符串
-        const temp = document.createElement('div');
-        temp.appendChild(fragment);
-        return temp.innerHTML;
+            return `
+                <div class="option ${isSelected ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}" 
+                     data-value="${optionValue}">
+                    ${this.config.multiple ? '<span class="checkbox"></span>' : ''}
+                    <span class="option-text">${opt.htmlLabel || opt.label}</span>
+                </div>
+            `;
+        }).join('');
     }
 
     getFilteredOptions() {
@@ -381,35 +361,30 @@ class SearchableSelect {
                 .filter((v) => !this.isAllValue(v))
                 .map((v) => {
                     const opt = this.options.find((o) => this.normalizeOptionValue(o.value) === this.normalizeOptionValue(v));
-                    return opt ? opt.label : v;
+                    return opt ? (opt.htmlLabel || opt.label) : v;
                 });
 
             // 多选显示 - 显示具体选项名，超出显示+N
             if (selectedLabels.length === 0) {
-                this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
+                this.selectedText.innerHTML = `<span class="select-placeholder">${this.config.placeholder}</span>`;
             } else {
                 // 根据容器宽度显示，简单实现：最多显示2个，超出显示+N
                 const maxDisplay = 2;
                 if (selectedLabels.length <= maxDisplay) {
-                    this.selectedText.textContent = selectedLabels.join('、');
+                    this.selectedText.innerHTML = selectedLabels.join('、');
                 } else {
                     const displayed = selectedLabels.slice(0, maxDisplay).join('、');
                     const remaining = selectedLabels.length - maxDisplay;
-                    this.selectedText.textContent = `${displayed} +${remaining}`;
+                    this.selectedText.innerHTML = `${displayed} +${remaining}`;
                 }
             }
         } else {
             // 单选显示
             if (!this.selectedValues) {
-                this.selectedText.innerHTML = `<span class="placeholder">${this.config.placeholder}</span>`;
+                this.selectedText.innerHTML = `<span class="select-placeholder">${this.config.placeholder}</span>`;
             } else {
                 const opt = this.options.find(o => o.value == this.selectedValues);
-                if (opt) {
-                    // 优先使用 htmlLabel（支持HTML），否则使用 label
-                    this.selectedText.innerHTML = opt.htmlLabel || opt.label;
-                } else {
-                    this.selectedText.textContent = this.selectedValues;
-                }
+                this.selectedText.innerHTML = opt ? (opt.htmlLabel || opt.label) : this.selectedValues;
             }
         }
 

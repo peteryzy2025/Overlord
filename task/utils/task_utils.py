@@ -234,15 +234,15 @@ def validate_subtask_params(subtask_type, params, user):
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
 
-            # 必须填写图库或本地图库路径之一
-            gallery_path_raw = params.get('gallery_path', '')
-            if isinstance(gallery_path_raw, list):
-                gallery_path = ' '.join(gallery_path_raw).strip()
-            else:
-                gallery_path = str(gallery_path_raw).strip()
-            local_gallery_path = params.get('local_gallery_path', '').strip()
-            if not gallery_path and not local_gallery_path:
-                return {'valid': False, 'message': '必须填写图库或本地图库路径'}
+            # 必须填写NAS路径或图库分类之一
+            nas_path = params.get('nas_path', '').strip()
+            image_classify = params.get('image_classify', [])
+            has_nas_path = nas_path != ''
+            has_image_classify = isinstance(image_classify, list) and len(image_classify) > 0
+            if not has_nas_path and not has_image_classify:
+                return {'valid': False, 'message': '必须填写NAS路径或图库分类'}
+            if has_nas_path and not nas_path.upper().startswith('\\\\ZT-NAS'):
+                return {'valid': False, 'message': 'NAS路径必须以 \\\\ZT-NAS 开头'}
 
             return {'valid': True, 'message': ''}
 
@@ -292,6 +292,11 @@ def validate_subtask_params(subtask_type, params, user):
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计开始日期不能为空'}
                     if not row.get('design_end_date'):
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计结束日期不能为空'}
+                
+                # 验证汇出模板名称必须包含4位数字
+                export_template_name = row.get('export_template_name', '')
+                if not re.search(r'\d{4}', export_template_name):
+                    return {'valid': False, 'message': f'第 {i + 1} 行选择模板不符合自动化规则，请重新选择'}
 
             return {'valid': True, 'message': ''}
 

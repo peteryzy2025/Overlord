@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlord Button Styles Demo</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --primary-50: #F8FAFC;
+    --primary-100: #F1F5F9;
+    --primary-200: #E2E8F0;
+    --primary-300: #CBD5E1;
+    --primary-400: #94A3B8;
+    --primary-500: #64748B;
+    --primary-600: #475569;
+    --primary-700: #334155;
+    --primary-800: #1E293B;
+
+    --accent: #3B82F6;
+    --accent-light: #DBEAFE;
+    --accent-dark: #2563EB;
+
+    --success-color: #10B981;
+    --warning-color: #F59E0B;
+    --danger-color: #EF4444;
+    --info-color: #0EA5E9;
+
+    --bg-primary: #FFFFFF;
+    --bg-secondary: #F8FAFC;
+    --bg-tertiary: #F1F5F9;
+    --text-primary: #1E293B;
+    --text-secondary: #64748B;
+    --text-tertiary: #94A3B8;
+    --border-color: #E2E8F0;
+
+    --accent-color: var(--accent);
+    --accent-hover: var(--accent-dark);
+    --table-header-bg: var(--bg-tertiary);
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+  [data-theme="dark"] {
+    --bg-primary: #1A202C;
+    --bg-secondary: #2D3748;
+    --bg-tertiary: #334155;
+    --text-primary: #F7FAFC;
+    --text-secondary: #E2E8F0;
+    --text-tertiary: #94A3B8;
+    --border-color: #4A5568;
+    --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-heavy: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 2rem;
+    margin: 0;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  body.dark {
+    background: #1A202C;
+  }
+
+  h1, h2 {
+    margin-bottom: 1rem;
+  }
+
+  .section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .toggle-dark {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+
+  /* 修复筛选按钮高度与输入框一致 */
+.filter-actions .btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.gs-filter-search-btn {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: none;
+}
+
+.gs-filter-search-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.gs-filter-reset-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: none;
+}
+
+.gs-filter-reset-btn:hover {
+    background-color: var(--border-color);
+}
+
+/* 筛选动作语义类：用通用类决定图标，不在模板里手写 fa-* */
+.gs-btn-iconized,
+.gs-filter-search-btn,
+.gs-filter-reset-btn,
+.gs-btn-notify {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.gs-btn-iconized::before,
+.gs-filter-search-btn::before,
+.gs-filter-reset-btn::before,
+.gs-btn-notify::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+}
+
+.gs-btn-search::before,
+.gs-filter-search-btn::before {
+    content: "\f002";
+}
+
+.gs-btn-reset::before,
+.gs-filter-reset-btn::before {
+    content: "\f2f9";
+}
+
+.gs-btn-notify::before {
+    content: "\f0f3";
+}
+
+.gs-btn-search > i,
+.gs-btn-reset > i,
+.gs-btn-notify > i,
+.gs-filter-search-btn > i,
+.gs-filter-reset-btn > i {
+    display: none !important;
+}
+
+.btn.gs-btn-icon-only,
+a.btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 8px;
+}
+
+.btn.gs-btn-icon-only::before,
+a.btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only),
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only),
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only) {
+    width: auto;
+    min-width: 42px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only)::before,
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only)::before,
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only)::before {
+    font-size: 0.95rem;
+}
+
+.filter-actions .btn.gs-btn-icon-only,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 8px;
+}
+
+.filter-actions .btn.gs-btn-icon-only::before,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.btn.gs-btn-notify {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-notify:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #ffffff;
+}
+
+.btn.gs-btn-search {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-search:hover {
+    background-color: var(--bg-primary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--primary-600);
+    border: 1px solid var(--border-color);
+}
+
+.btn.gs-btn-reset:hover {
+    background-color: var(--primary-100);
+    color: var(--primary-800);
+    border-color: var(--primary-300);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   5. 按钮样式
+   ============================================ */
+
+.btn {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.btn-primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--primary-200);
+    border-color: var(--primary-300);
+    color: var(--primary-700);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-ghost:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--primary-400);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* 模态框按钮 */
+.btn-save-modal {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-save-modal:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-save-modal:active {
+    color: white;
+}
+
+.btn-cancel-modal {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-cancel-modal:hover {
+    background: var(--primary-200);
+    border-color: var(--primary-300);
+    color: var(--primary-700);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* 新建按钮 - 使用主题色 */
+.btn-create {
+    background: var(--accent);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    border: 1px solid var(--accent);
+    transition: all 0.2s;
+    font-size: 14px;
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.btn-create:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-create:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+    color: white;
+}
+
+/* 导出按钮 - 次要样式 */
+.btn-export {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    margin-left: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.btn-export:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   Dark Mode Overrides
+   ============================================ */
+
+[data-theme="dark"] .btn:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search:hover {
+    background-color: var(--bg-primary);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn.gs-btn-reset:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-save-modal {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+[data-theme="dark"] .btn-save-modal:hover {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-cancel-modal {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-cancel-modal:hover {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+</style>
+</head>
+<body>
+<button class="btn btn-primary toggle-dark" onclick="toggleDark()"><i class="fas fa-moon"></i> 切换 Dark</button>
+
+<h1>Overlord 全部 Button 样式</h1>
+
+<div class="section">
+  <h2>基础按钮</h2>
+  <div class="row">
+    <button class="btn">.btn</button>
+    <button class="btn btn-primary">.btn-primary</button>
+    <button class="btn btn-secondary">.btn-secondary</button>
+    <button class="btn btn-ghost">.btn-ghost</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>语义/功能按钮</h2>
+  <div class="row">
+    <button class="btn btn-create">.btn-create</button>
+    <button class="btn btn-export">.btn-export</button>
+    <button class="btn btn-save-modal">.btn-save-modal</button>
+    <button class="btn btn-cancel-modal">.btn-cancel-modal</button>
+    <button class="btn btn-secondary btn-sm">.btn-sm</button>
+    <button class="btn" disabled>.btn disabled</button>
+  </div>
+</div>
+
+<div class="section">
+  <h2>筛选/图标按钮（含 Font Awesome 图标）</h2>
+  <div class="row">
+    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" title="搜索"></button>
+    <button class="btn gs-btn-reset gs-btn-iconized gs-btn-icon-only" title="重置"></button>
+    <button class="btn gs-btn-notify gs-btn-iconized" title="通知">通知</button>
+  </div>
+  <p style="color: var(--text-secondary); font-size: 0.875rem;">
+    说明：gs-btn-iconized 通过 ::before 插入图标，gs-btn-icon-only 表示纯图标（width=42px）。
+  </p>
+</div>
+
+<div class="section">
+  <h2>组合示例（与人员管理页保持一致）</h2>
+  <div class="row" style="background: var(--bg-tertiary); padding: 1rem; border-radius: 8px;">
+    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" title="筛选"></button>
+    <button class="btn gs-btn-reset gs-btn-iconized gs-btn-icon-only" title="重置"></button>
+    <button class="btn btn-primary"><i class="fas fa-plus"></i> 新建</button>
+    <button class="btn btn-save-modal">保存</button>
+    <button class="btn btn-cancel-modal">取消</button>
+  </div>
+</div>
+
+<script>
+function toggleDark() {
+  document.body.classList.toggle('dark');
+  const isDark = document.body.classList.contains('dark');
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+}
+</script>
+</body>
+</html>
