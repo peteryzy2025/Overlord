@@ -83,6 +83,7 @@ def api_novelty_aggregation_list(request):
             all_score_stats = {
                 tid: {"total_score": 0, "count": 0} for tid in all_theme_ids
             }
+            asins_with_launch_date = set()
             for novelty in AmazonThemeNovelty.objects.filter(
                 theme_novelty_summary_id__in=all_theme_ids
             ).values("asin", "theme_novelty_summary_id", "launch_date"):
@@ -93,13 +94,21 @@ def api_novelty_aggregation_list(request):
                 launch_date = novelty.get("launch_date", "")
                 if launch_date and isinstance(launch_date, datetime):
                     launch_date = launch_date.date()
-                if launch_date and tid in all_launch_stats:
-                    days = (timezone.now().date() - launch_date).days
-                    all_launch_stats[tid]["total_days"] += days
-                    all_launch_stats[tid]["count"] += 1
+                if launch_date:
+                    asins_with_launch_date.add(novelty["asin"])
+                    if tid in all_launch_stats:
+                        days = (timezone.now().date() - launch_date).days
+                        all_launch_stats[tid]["total_days"] += days
+                        all_launch_stats[tid]["count"] += 1
 
             if all_asin_theme_map:
-                score_filter = Q(product__asin__in=list(all_asin_theme_map.keys()))
+                score_filter = Q(
+                    product__asin__in=list(
+                        k
+                        for k in all_asin_theme_map.keys()
+                        if k in asins_with_launch_date
+                    )
+                )
                 if start_date_str:
                     try:
                         score_start = datetime.strptime(
@@ -275,6 +284,7 @@ def api_novelty_aggregation_list(request):
             theme_ids = [item.id for item in current_page.object_list]
 
             asin_theme_map = {}
+            asins_with_launch_date = set()
             theme_launch_stats = {
                 tid: {"total_days": 0, "count": 0} for tid in theme_ids
             }
@@ -286,10 +296,12 @@ def api_novelty_aggregation_list(request):
                 launch_date = novelty.get("launch_date", "")
                 if launch_date and isinstance(launch_date, datetime):
                     launch_date = launch_date.date()
-                if launch_date and tid in theme_launch_stats:
-                    days = (timezone.now().date() - launch_date).days
-                    theme_launch_stats[tid]["total_days"] += days
-                    theme_launch_stats[tid]["count"] += 1
+                if launch_date:
+                    asins_with_launch_date.add(novelty["asin"])
+                    if tid in theme_launch_stats:
+                        days = (timezone.now().date() - launch_date).days
+                        theme_launch_stats[tid]["total_days"] += days
+                        theme_launch_stats[tid]["count"] += 1
 
             theme_trend_lookup = {}
             theme_score_stats = {
@@ -325,7 +337,11 @@ def api_novelty_aggregation_list(request):
                         )
                     theme_trend_lookup[tid] = trend_list[-7:]
 
-                score_filter = Q(product__asin__in=list(asin_theme_map.keys()))
+                score_filter = Q(
+                    product__asin__in=list(
+                        k for k in asin_theme_map.keys() if k in asins_with_launch_date
+                    )
+                )
                 if start_date_str:
                     try:
                         score_start = datetime.strptime(
