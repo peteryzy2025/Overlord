@@ -130,6 +130,8 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "ES-USPS GA（美西）": "500518-23411",
         "ES-USPS PM（美西）": "500518-23412",
         "SWIFTX EXPRESS(美西)": "500518-23413",
+        "顺丰国际电商专递-CD": "500518-21734",
+        "顺丰国际电商专递-标准": "500518-30771",
         #新增记得改大写！！！
     }
     if method in exact_map:
@@ -140,7 +142,6 @@ def get_divi_logistics_code(divi_logistics_method: str,
         "FEDEX": "500518-22808",
         # "GOFO": "500518-21672",
         "DHL": "500518-22809",
-        "顺丰": "500518-21734",
         "UNIUNI": "500518-21736",
     }
     for key, code in contain_map.items():

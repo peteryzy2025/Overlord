@@ -298,7 +298,10 @@ a.btn.gs-btn-icon-only::before {
 }
 
 /* 模态框按钮 */
-.btn-save-modal {
+.btn.btn-save-modal,
+.btn.btn-save-modal:focus,
+.btn.btn-save-modal:focus-visible,
+.btn.btn-save-modal:active {
     background: var(--accent);
     color: white;
     border-color: var(--accent);
@@ -309,10 +312,6 @@ a.btn.gs-btn-icon-only::before {
     border-color: var(--accent-dark);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.btn-save-modal:active {
-    color: white;
 }
 
 .btn-cancel-modal {
@@ -335,7 +334,10 @@ a.btn.gs-btn-icon-only::before {
 }
 
 /* 新建按钮 - 使用主题色 */
-.btn-create {
+.btn.btn-create,
+.btn.btn-create:focus,
+.btn.btn-create:focus-visible,
+.btn.btn-create:active {
     background: var(--accent);
     color: white;
     padding: 8px 16px;
@@ -352,12 +354,6 @@ a.btn.gs-btn-icon-only::before {
     border-color: var(--accent-dark);
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.btn-create:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-    color: white;
 }
 
 /* 导出按钮 - 次要样式 */
@@ -1249,6 +1245,7 @@ a.btn.gs-btn-icon-only::before {
     border-spacing: 0;
 }
 
+.table thead th,
 .table th {
     background-color: var(--bg-tertiary);
     color: var(--text-secondary);

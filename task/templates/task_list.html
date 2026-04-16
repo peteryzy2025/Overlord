@@ -105,6 +105,13 @@
         line-height: 1.2;
     }
 
+    .action-links {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        vertical-align: middle;
+    }
+
     /* 模态框 */
     .modal-overlay {
         display: none;
@@ -715,7 +722,7 @@
                         <td>${task.owner_name}</td>
                         <td>${formatDateTime(task.created_at)}</td>
                         <td class="w-actions">
-                            <div style="display: flex; gap: 0.75rem;">
+                            <div class="action-links">
                                 <a href="javascript:void(0)" class="link" onclick="viewTask(${task.id})">查看</a>
                                 <a href="javascript:void(0)" class="link" onclick="copyTask(${task.id})">复制</a>
                                 <a href="javascript:void(0)" class="link link-danger" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')">删除</a>
