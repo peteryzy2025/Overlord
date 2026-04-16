@@ -45,8 +45,8 @@ base/base.html（顶部导航一级 Base）
 
 每个管理后台列表页必须采用 `.data-card` 一体化卡片，以下 **5 个区块必须按顺序出现**：
 
-1. **`.data-card-header`** — 标题 + 新建按钮
-2. **`.data-card-filter`** — 筛选条件 + 搜索/重置按钮
+1. **`.data-card-header`** — 标题 + 操作按钮/Tab 导航
+2. **`.data-card-filter`** — 筛选条件 + 搜索/重置按钮（可包含第二行快速筛选）
 3. **`.bulk-action-bar`** — 批量操作条（即使业务暂无批量功能，也必须预留 DOM 结构）
 4. **`.table-container` → `table.table`** — 表格
 5. **`.pagination-container`** — 分页
@@ -74,10 +74,73 @@ base/base.html（顶部导航一级 Base）
 </div>
 ```
 
+## Header 内 Tab 导航
+
+如果页面存在二级页面切换（如 热门搜索词/新词榜），Tab 导航放在 `.data-card-header` 右侧，与标题保持同一行：
+
+```html
+<div class="data-card-header">
+    <div class="data-card-title">...标题...</div>
+    <div class="tab-nav">
+        <div class="tab-nav-item active" onclick="switchTab('a')">Tab A</div>
+        <div class="tab-nav-item" onclick="switchTab('b')">Tab B</div>
+    </div>
+</div>
+```
+
+## 筛选区规范
+
+### 基础筛选行
+标准写法：
+```html
+<div class="data-card-filter">
+    <div class="filter-row">
+        <div class="filter-group"><label class="filter-label">状态</label>...select...</div>
+        <div class="filter-group"><input class="form-control" placeholder="关键词"></div>
+        <div class="filter-actions">
+            <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only"></button>
+            <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only"></button>
+        </div>
+    </div>
+</div>
+```
+
+### 快速筛选（第二行）
+当需要快速筛选时，**必须独占第二行**，放在 `.data-card-filter` 内部：
+
+```html
+<div class="data-card-filter">
+    <!-- 第一行：基础筛选 -->
+    <div class="filter-row">...</div>
+    <!-- 第二行：快速筛选 -->
+    <div class="quick-filter-row">
+        <span class="quick-filter-label">快速筛选</span>
+        <!-- 切换式（如 噪声/去噪后/全部） -->
+        <div class="tri-state-toggle">
+            <div class="toggle-indicator"></div>
+            <div class="toggle-option active">状态 A</div>
+            <div class="toggle-option">状态 B</div>
+        </div>
+        <!-- 点选式（如 全部/持续增长词/爆发词） -->
+        <div class="quick-filter-options">
+            <button class="quick-filter-chip active">全部</button>
+            <button class="quick-filter-chip">条件1</button>
+        </div>
+    </div>
+</div>
+```
+
+快速筛选两种形态：
+
+| 类型 | 类名 | 说明 |
+|------|------|------|
+| **切换式** | `.tri-state-toggle` + `.toggle-option` | 互斥状态，滑块背景跟随（背景色由业务 JS 自定义） |
+| **点选式** | `.quick-filter-chip` | 圆角 pill 按钮，active 状态为主题蓝色 |
+
 ## 表格规范
 
 - **风格**：传统横线表格。每行必须有 `border-bottom: 1px solid var(--border-color)`，包括最后一行。
-- **表头**：背景 `var(--bg-secondary)`，**禁止**使用任何 `linear-gradient` 渐变。表头字号 `1rem`，字重 600，必须比内容大一档。
+- **表头**：背景 `var(--bg-tertiary)`，**禁止**使用任何 `linear-gradient` 渐变。表头字号 `1rem`，字重 600，必须比内容大一档。
 - **单元格**：`padding: 1rem 1.5rem`，字号 `14px`。
 - **操作列**：**禁止**使用带边框/底色的按钮。统一使用 `<span class="link">` 或 `<a class="link">` 蓝色纯文字链接。
 - **斑马纹**：Light 模式由 Bootstrap `.table-striped` 控制；Dark 模式已覆盖，禁止重写。

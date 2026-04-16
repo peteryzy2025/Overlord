@@ -164,16 +164,6 @@
             width: 100%;
         }
 
-        .aba-quick-filter-row {
-            display: flex;
-            align-items: center;
-            gap: 0.875rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
-            width: 100%;
-            flex: 1 1 100%;
-        }
-
         .tri-state-toggle {
             display: inline-flex;
             background-color: #f3f4f6;
@@ -584,44 +574,6 @@
             overflow-wrap: anywhere;
         }
 
-        .tab-nav {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-            border-bottom: 2px solid var(--border-color);
-        }
-
-        .tab-nav-item {
-            padding: 0.35rem 1rem;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            transition: all 0.3s ease;
-            color: var(--text-secondary);
-            font-size: 0.9rem;
-        }
-
-        .tab-nav-item.active {
-            color: var(--accent-color);
-            border-bottom-color: var(--accent-color);
-            font-weight: 600;
-        }
-
-        .data-card-header .tab-nav {
-            display: flex;
-            gap: 0.5rem;
-            border-bottom: none;
-            margin: 0;
-        }
-
-        .tab-pane {
-            display: none;
-        }
-
-        .tab-pane.active {
-            display: block;
-        }
-
         .aba-table-window-note {
             display: none;
             padding: 0.35rem 0.6rem;
@@ -645,44 +597,6 @@
         }
 
 
-
-        .aba-quick-filter-label {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .aba-quick-filter-options {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            flex-wrap: wrap;
-        }
-
-        .aba-quick-filter-chip {
-            border: 1px solid var(--border-color);
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-            border-radius: 999px;
-            padding: 0.4rem 0.9rem;
-            font-size: 0.875rem;
-            line-height: 1;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .aba-quick-filter-chip:hover {
-            border-color: var(--accent-color);
-            color: var(--accent-color);
-        }
-
-        .aba-quick-filter-chip.active {
-            background: rgba(16, 185, 129, 0.12);
-            border-color: rgba(16, 185, 129, 0.4);
-            color: #047857;
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.14);
-        }
 
         @media (max-width: 1400px) {
             .data-card-filter > .filter-row.aba-filter-row {
@@ -766,23 +680,23 @@
                     </div>
                 </div>
 
-                <div class="aba-quick-filter-row" id="hotWordQuickFilterRow">
-                    <div class="aba-quick-filter-label">快速筛选</div>
+                <div class="quick-filter-row" id="hotWordQuickFilterRow">
+                    <div class="quick-filter-label">快速筛选</div>
                     <div class="tri-state-toggle" id="noiseStatusToggle" data-state="denoised">
                         <div class="toggle-indicator"></div>
                         <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
                         <div class="toggle-option active" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
                         <div class="toggle-option" data-value="all" onclick="setNoiseStatus('all')">全部</div>
                     </div>
-                    <div class="aba-quick-filter-options">
-                        <button type="button" class="aba-quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')" title="过去 3个周期内持续增长；重点是“连续”，阈值基本是只增长即可">持续增长词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')" title="单周期内明显飙升，大于70%的增长阈值">爆发词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')" title="单周期内明显飙升，50%<=增长阈值<=70%">飙升词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')" title="单周期有至少10%的增长幅度">潜力词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')" title="有曝光/点击份额，但前三商品总转化份额为 0">黄金词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')" title="前三商品总点击份额至少 70％，说明头部商品强垄断">竞争词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')" title="当前排名靠后且前三商品总转化份额低于30%">捡漏词</button>
+                    <div class="quick-filter-options">
+                        <button type="button" class="quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
+                        <button type="button" class="quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')" title="过去 3个周期内持续增长；重点是“连续”，阈值基本是只增长即可">持续增长词</button>
+                        <button type="button" class="quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')" title="单周期内明显飙升，大于70%的增长阈值">爆发词</button>
+                        <button type="button" class="quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')" title="单周期内明显飙升，50%<=增长阈值<=70%">飙升词</button>
+                        <button type="button" class="quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')" title="单周期有至少10%的增长幅度">潜力词</button>
+                        <button type="button" class="quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')" title="有曝光/点击份额，但前三商品总转化份额为 0">黄金词</button>
+                        <button type="button" class="quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')" title="前三商品总点击份额至少 70％，说明头部商品强垄断">竞争词</button>
+                        <button type="button" class="quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')" title="当前排名靠后且前三商品总转化份额低于30%">捡漏词</button>
                     </div>
                 </div>
             </div>
@@ -1099,7 +1013,7 @@
                 item.classList.toggle('active', item.dataset.tab === activeLeaderboard);
             });
 
-            document.querySelectorAll('.aba-quick-filter-chip').forEach(item => {
+            document.querySelectorAll('.quick-filter-chip').forEach(item => {
                 item.classList.toggle('active', item.dataset.value === currentHotWordFilter);
             });
         }

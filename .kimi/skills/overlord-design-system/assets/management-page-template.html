@@ -15,11 +15,18 @@
 {% block content %}
     <div class="tab-content">
         <div class="data-card">
-            <!-- 1. 头部 -->
+            <!-- 1. 头部：标题 + 操作按钮/Tab 导航 -->
             <div class="data-card-header">
                 <div class="data-card-title">
                     <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>页面标题
                 </div>
+                <!-- 示例：二级 Tab 导航（如热门搜索词/新词榜） -->
+                <!--
+                <div class="tab-nav">
+                    <div class="tab-nav-item active" onclick="switchTab('a')">Tab A</div>
+                    <div class="tab-nav-item" onclick="switchTab('b')">Tab B</div>
+                </div>
+                -->
                 {% if '555' in user_permissions or '551' in user_permissions %}
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建
@@ -27,7 +34,7 @@
                 {% endif %}
             </div>
 
-            <!-- 2. 筛选区 -->
+            <!-- 2. 筛选区：可包含第二行快速筛选 -->
             <div class="data-card-filter">
                 <div class="filter-row">
                     <div class="filter-group">
@@ -43,6 +50,21 @@
                         <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
                     </div>
                 </div>
+                <!-- 示例：快速筛选第二行（可选） -->
+                <!--
+                <div class="quick-filter-row">
+                    <span class="quick-filter-label">快速筛选</span>
+                    <div class="tri-state-toggle">
+                        <div class="toggle-indicator"></div>
+                        <div class="toggle-option active">状态A</div>
+                        <div class="toggle-option">状态B</div>
+                    </div>
+                    <div class="quick-filter-options">
+                        <button class="quick-filter-chip active">全部</button>
+                        <button class="quick-filter-chip">条件1</button>
+                    </div>
+                </div>
+                -->
             </div>
 
             <!-- 3. 批量操作栏（强制预留） -->

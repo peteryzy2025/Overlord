@@ -2586,6 +2586,117 @@ a.btn.gs-btn-icon-only::before {
     width: auto;
 }
 
+/* Header 内 Tab 导航 */
+.data-card-header .tab-nav {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: none;
+    margin: 0;
+}
+
+.tab-nav-item {
+    padding: 0.35rem 1rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: all 0.3s ease;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.tab-nav-item.active {
+    color: var(--accent-color);
+    border-bottom-color: var(--accent-color);
+    font-weight: 600;
+}
+
+/* 快速筛选行（放在 .data-card-filter 内第二行） */
+.data-card-filter > .quick-filter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+    flex: 1 1 100%;
+}
+
+.quick-filter-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.quick-filter-options {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+}
+
+.quick-filter-chip {
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.875rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.quick-filter-chip:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.quick-filter-chip.active {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: var(--accent-color);
+    box-shadow: 0 6px 16px rgba(59, 130, 246, 0.14);
+}
+
+/* 三态切换滑块 */
+.tri-state-toggle {
+    display: inline-flex;
+    background-color: var(--bg-tertiary);
+    border-radius: 8px;
+    padding: 4px;
+    position: relative;
+    border: 1px solid var(--border-color);
+}
+
+.toggle-option {
+    padding: 4px 12px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    z-index: 1;
+    position: relative;
+    transition: color 0.3s;
+    font-weight: 500;
+    user-select: none;
+}
+
+.toggle-option.active {
+    color: var(--text-primary);
+}
+
+.toggle-indicator {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0.0, 0.2, 1), background-color 0.3s ease;
+    z-index: 0;
+}
+
 .data-card .table-container {
     background: transparent;
     border-radius: 0;
