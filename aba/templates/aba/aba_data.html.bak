@@ -115,48 +115,47 @@
             color: var(--accent-color);
         }
 
-        .data-card-filter > .filter-row.aba-filter-row {
-            display: flex;
-            flex-wrap: nowrap;
-            align-items: flex-end;
+        .filter-section {
+            display: block !important;
+        }
+
+        .filter-section > .filter-row.aba-filter-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            align-items: flex-end !important;
             gap: 1rem;
         }
 
-        .data-card-filter > .filter-row.aba-filter-row > .filter-group {
-            flex: 1 1 0;
-            min-width: 0;
-            width: auto;
-            max-width: none;
+        .filter-section > .filter-row.aba-filter-row > .filter-group {
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+            width: auto !important;
+            max-width: none !important;
         }
 
-        .data-card-filter > .filter-row.aba-filter-row > .filter-actions {
-            display: flex;
+        .filter-section > .filter-row.aba-filter-row > .filter-actions {
+            display: flex !important;
             align-items: flex-end;
             gap: 0.5rem;
             margin-left: 0;
             align-self: flex-end;
-            flex: 0 0 auto;
-            width: auto;
+            flex: 0 0 auto !important;
+            width: auto !important;
             justify-self: auto;
             white-space: nowrap;
         }
 
-        .data-card-filter > .filter-row.aba-filter-row > .aba-filter-week-group {
-            flex: 0 0 400px;
-            width: 400px;
-            max-width: 400px;
+        .aba-filter-week-group,
+        .aba-filter-category-group {
+            flex: 1 1 0 !important;
+            width: auto;
+            max-width: none;
         }
 
-        .data-card-filter > .filter-row.aba-filter-row > .aba-filter-category-group {
-            flex: 0 0 240px;
-            width: 240px;
-            max-width: 240px;
-        }
-
-        .data-card-filter > .filter-row.aba-filter-row > .aba-filter-search-group {
-            flex: 0 0 400px;
-            width: 400px;
-            max-width: 400px;
+        .aba-filter-search-group {
+            flex: 1 1 0 !important;
+            min-width: 0;
+            max-width: none;
         }
 
         .aba-search-input-wrap {
@@ -164,14 +163,20 @@
             width: 100%;
         }
 
-        .aba-quick-filter-row {
+        .aba-table-header {
             display: flex;
             align-items: center;
-            gap: 0.875rem;
-            margin-top: 1rem;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 1rem;
             flex-wrap: wrap;
-            width: 100%;
-            flex: 1 1 100%;
+        }
+
+        .aba-table-title {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+            font-weight: 600;
         }
 
         .tri-state-toggle {
@@ -402,6 +407,12 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             gap: 1rem;
             flex-wrap: wrap;
             overflow: visible;
@@ -592,13 +603,12 @@
         }
 
         .tab-nav-item {
-            padding: 0.35rem 1rem;
+            padding: 0.75rem 1.5rem;
             cursor: pointer;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
             transition: all 0.3s ease;
             color: var(--text-secondary);
-            font-size: 0.9rem;
         }
 
         .tab-nav-item.active {
@@ -607,19 +617,19 @@
             font-weight: 600;
         }
 
-        .data-card-header .tab-nav {
-            display: flex;
-            gap: 0.5rem;
-            border-bottom: none;
-            margin: 0;
-        }
-
         .tab-pane {
             display: none;
         }
 
         .tab-pane.active {
             display: block;
+        }
+
+        .aba-table-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
         }
 
         .aba-table-window-note {
@@ -644,7 +654,13 @@
             display: none !important;
         }
 
-
+        .filter-section > .aba-quick-filter-row {
+            display: flex !important;
+            align-items: center;
+            gap: 0.875rem;
+            margin: 1rem 0 0;
+            flex-wrap: wrap;
+        }
 
         .aba-quick-filter-label {
             font-size: 0.875rem;
@@ -685,23 +701,21 @@
         }
 
         @media (max-width: 1400px) {
-            .data-card-filter > .filter-row.aba-filter-row {
+            .filter-section > .filter-row.aba-filter-row {
                 flex-wrap: wrap;
             }
 
-            .data-card-filter > .filter-row.aba-filter-row > .aba-filter-week-group,
-            .data-card-filter > .filter-row.aba-filter-row > .aba-filter-category-group,
-            .data-card-filter > .filter-row.aba-filter-row > .aba-filter-search-group {
+            .aba-filter-week-group,
+            .aba-filter-category-group {
                 flex: 1 1 220px;
                 max-width: none;
-                width: auto;
             }
 
             .aba-filter-search-group {
                 flex: 1 1 100%;
             }
 
-            .data-card-filter > .filter-row.aba-filter-row > .filter-actions {
+            .filter-section > .filter-row.aba-filter-row > .filter-actions {
                 flex: 0 1 auto;
             }
 
@@ -719,165 +733,168 @@
 {% endblock %}
 
 {% block content %}
-    <div class="tab-content">
-        <div class="data-card">
-            <!-- 1. 头部 -->
-            <div class="data-card-header">
-                <div class="data-card-title">
-                    <i class="fas fa-chart-line" style="color: var(--accent-color); margin-right: 0.5rem;"></i>
+    <div id="aba-data-tab" class="tab-content">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-chart-line" style="color: var(--accent-color);"></i>
                     亚马逊最热主题
-                    <span class="aba-table-window-note" id="newWordsWindowNote"></span>
-                </div>
-                <div class="tab-nav" role="tablist" aria-label="ABA 子页面切换">
-                    <div class="tab-nav-item active" data-tab="hot" onclick="switchAbaTab('hot')">热门搜索词</div>
-                    <div class="tab-nav-item" data-tab="new" onclick="switchAbaTab('new')">新词榜</div>
-                </div>
-            </div>
-
-            <!-- 2. 筛选区 -->
-            <div class="data-card-filter">
-                <div class="filter-row aba-filter-row">
-                    <div class="filter-group aba-filter-week-group" id="hotWeekFilterGroup">
-                        <label class="filter-label">周期</label>
-                        <div id="weekFilter" class="searchable-select single" data-placeholder="选择周期"></div>
-                    </div>
-                    <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsStartWeekGroup">
-                        <label class="filter-label">开始周期</label>
-                        <div id="startWeekFilter" class="searchable-select single" data-placeholder="选择开始周期"></div>
-                    </div>
-                    <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsEndWeekGroup">
-                        <label class="filter-label">结束周期</label>
-                        <div id="endWeekFilter" class="searchable-select single" data-placeholder="选择结束周期"></div>
-                    </div>
-                    <div class="filter-group aba-filter-category-group">
-                        <label class="filter-label">品类</label>
-                        <div id="categoryFilter" class="searchable-select single" data-placeholder="选择品类"></div>
-                    </div>
-                    <div class="filter-group aba-filter-search-group">
-                        <label class="filter-label">搜索词</label>
-                        <div class="aba-search-input-wrap">
-                            <input type="text" class="form-control" id="searchTermInput" placeholder="请输入搜索词" onkeypress="handleSearchKeypress(event)" style="padding-left: 90px; width: 100%;">
-                            <button type="button" id="searchModeBtn" onclick="toggleSearchMode()" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); padding: 2px 10px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">模糊查询</button>
-                        </div>
-                    </div>
-                    <div class="filter-actions">
-                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterData()" title="搜索"></button>
-                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
-                    </div>
-                </div>
-
-                <div class="aba-quick-filter-row" id="hotWordQuickFilterRow">
-                    <div class="aba-quick-filter-label">快速筛选</div>
-                    <div class="tri-state-toggle" id="noiseStatusToggle" data-state="denoised">
-                        <div class="toggle-indicator"></div>
-                        <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
-                        <div class="toggle-option active" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
-                        <div class="toggle-option" data-value="all" onclick="setNoiseStatus('all')">全部</div>
-                    </div>
-                    <div class="aba-quick-filter-options">
-                        <button type="button" class="aba-quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')" title="过去 3个周期内持续增长；重点是“连续”，阈值基本是只增长即可">持续增长词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')" title="单周期内明显飙升，大于70%的增长阈值">爆发词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')" title="单周期内明显飙升，50%<=增长阈值<=70%">飙升词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')" title="单周期有至少10%的增长幅度">潜力词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')" title="有曝光/点击份额，但前三商品总转化份额为 0">黄金词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')" title="前三商品总点击份额至少 70％，说明头部商品强垄断">竞争词</button>
-                        <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')" title="当前排名靠后且前三商品总转化份额低于30%">捡漏词</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. 批量操作栏 -->
-            <div class="bulk-action-bar visible" id="bulkActionBar">
-                <span class="selected-count" id="selectedCountText">已选择 0 项</span>
-                <button class="btn btn-sm btn-noise" id="bulkDenoisingBtn" onclick="executeBulkDenoising()">
-                    批量去噪
-                </button>
-                <button class="btn btn-sm btn-custom-denoise" id="customDenoisingBtn" onclick="openCustomDenoisingModal()">
-                    自定义去噪
-                </button>
-                <button class="btn btn-secondary" id="clearSelectionBtn" onclick="clearSelection()">
-                    <i class="fas fa-times"></i>
-                    <span>取消选择</span>
-                </button>
-            </div>
-
-            <!-- 4. 表格区 -->
-            <div class="table-container">
-                <table class="table" id="abaTable">
-                    <thead id="abaTableHead">
-                    <tr>
-                        <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                        <th>搜索词</th>
-                        <th>排名</th>
-                        <th>周排行趋势</th>
-                        <th>前三商品总点击份额</th>
-                        <th>前三商品总转化份额</th>
-                        <th>#1 前三商品详情/点击份额/转化份额</th>
-                        <th>#2 前三商品详情/点击份额/转化份额</th>
-                        <th>#3 前三商品详情/点击份额/转化份额</th>
-                        <th>操作</th>
-                    </tr>
-                    </thead>
-                    <tbody id="abaTableBody">
-                    <!-- 动态生成内容 -->
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 5. 分页区 -->
-            <div class="pagination-container" id="paginationContainer">
-                <div class="pagination-info" data-total="0">
-                    <div class="page-size-wrapper" id="pageSizeWrapper">
-                        <span class="page-size-label">每页显示：</span>
-                        <div class="page-size-dropdown-wrapper" style="position: relative;">
-                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                                <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
-                                <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
-                                <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="pagination-new" id="paginationNew">
-                    <!-- 动态生成 -->
-                </div>
-                <div class="pagination-jump" id="paginationJump" style="display: none;">
-                    <span>跳至</span>
-                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-                    <span>页</span>
-                </div>
-                <div class="pagination-total-pages" id="paginationTotalPages" style="display: none;"></div>
+                </h1>
+                <p class="page-subtitle">亚马逊品牌分析搜索词数据管理</p>
             </div>
         </div>
-    </div>
 
-    <!-- 模态框（禁止点击外部关闭） -->
-    <div class="custom-denoise-modal" id="customDenoisingModal" onclick="if(event.target === this) return;">
-        <div class="custom-denoise-dialog" role="dialog" aria-modal="true" aria-labelledby="customDenoisingTitle">
-            <div class="custom-denoise-header">
-                <h4 class="custom-denoise-title" id="customDenoisingTitle">自定义去噪</h4>
-                <button type="button" class="custom-denoise-close" id="customDenoisingCloseBtn" onclick="closeCustomDenoisingModal()" aria-label="关闭">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="custom-denoise-body">
-                <div class="custom-denoise-helper">一行一个去噪词/词组，原始输入会记录到 ABA 去噪词表</div>
-                <textarea
-                    id="customDenoisingKeywordsInput"
-                    class="custom-denoise-textarea"
-                    placeholder="例如：&#10;free shipping&#10;template&#10;svg bundle"
-                ></textarea>
-                <div class="custom-denoise-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelCustomDenoisingBtn" onclick="closeCustomDenoisingModal()">取消</button>
-                    <button type="button" class="btn btn-noise" id="confirmCustomDenoisingBtn" onclick="submitCustomDenoising()">确认并去噪</button>
+        <div class="tab-nav" role="tablist" aria-label="ABA 子页面切换">
+            <div class="tab-nav-item active" data-tab="hot" onclick="switchAbaTab('hot')">热门搜索词</div>
+            <div class="tab-nav-item" data-tab="new" onclick="switchAbaTab('new')">新词榜</div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row aba-filter-row">
+                <div class="filter-group aba-filter-week-group" id="hotWeekFilterGroup">
+                    <label class="filter-label">周期</label>
+                    <div id="weekFilter" class="searchable-select single" data-placeholder="选择周期"></div>
+                </div>
+                <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsStartWeekGroup">
+                    <label class="filter-label">开始周期</label>
+                    <div id="startWeekFilter" class="searchable-select single" data-placeholder="选择开始周期"></div>
+                </div>
+                <div class="filter-group aba-filter-week-group aba-filter-group-hidden" id="newWordsEndWeekGroup">
+                    <label class="filter-label">结束周期</label>
+                    <div id="endWeekFilter" class="searchable-select single" data-placeholder="选择结束周期"></div>
+                </div>
+                <div class="filter-group aba-filter-category-group">
+                    <label class="filter-label">品类</label>
+                    <div id="categoryFilter" class="searchable-select single" data-placeholder="选择品类"></div>
+                </div>
+                <div class="filter-group aba-filter-search-group">
+                    <label class="filter-label">搜索词</label>
+                    <div class="aba-search-input-wrap">
+                        <input type="text" class="form-control" id="searchTermInput" placeholder="请输入搜索词" onkeypress="handleSearchKeypress(event)" style="padding-left: 90px; width: 100%;">
+                        <button type="button" id="searchModeBtn" onclick="toggleSearchMode()" style="position: absolute; left: 8px; top: 50%; transform: translateY(-50%); padding: 2px 10px; font-size: 12px; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; white-space: nowrap; transition: all 0.2s;">模糊查询</button>
+                    </div>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterData()" title="搜索"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
                 </div>
             </div>
+
+            <div class="aba-quick-filter-row" id="hotWordQuickFilterRow">
+                <div class="aba-quick-filter-label">快速筛选</div>
+                <div class="aba-quick-filter-options">
+                    <button type="button" class="aba-quick-filter-chip active" data-value="all" onclick="setHotWordFilter('all')">全部</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="continuous_growth" onclick="setHotWordFilter('continuous_growth')" title="过去 3个周期内持续增长；重点是“连续”，阈值基本是只增长即可">持续增长词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="burst" onclick="setHotWordFilter('burst')" title="单周期内明显飙升，大于70%的增长阈值">爆发词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="surging" onclick="setHotWordFilter('surging')" title="单周期内明显飙升，50%<=增长阈值<=70%">飙升词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="potential" onclick="setHotWordFilter('potential')" title="单周期有至少10%的增长幅度">潜力词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="golden" onclick="setHotWordFilter('golden')" title="有曝光/点击份额，但前三商品总转化份额为 0">黄金词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="competitive" onclick="setHotWordFilter('competitive')" title="前三商品总点击份额至少 70％，说明头部商品强垄断">竞争词</button>
+                    <button type="button" class="aba-quick-filter-chip" data-value="pickup" onclick="setHotWordFilter('pickup')" title="当前排名靠后且前三商品总转化份额低于30%">捡漏词</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="aba-table-header">
+            <div class="aba-table-title-wrap">
+                <h3 class="aba-table-title" id="leaderboardTitle">搜索词列表</h3>
+                <span class="aba-table-window-note" id="newWordsWindowNote"></span>
+            </div>
+            <div class="tri-state-toggle" id="noiseStatusToggle" data-state="denoised">
+                <div class="toggle-indicator"></div>
+                <div class="toggle-option" data-value="noise" onclick="setNoiseStatus('noise')">噪声</div>
+                <div class="toggle-option active" data-value="denoised" onclick="setNoiseStatus('denoised')">去噪后</div>
+                <div class="toggle-option" data-value="all" onclick="setNoiseStatus('all')">全部</div>
+            </div>
+        </div>
+
+        <!-- 批量操作栏 -->
+        <div class="bulk-action-bar visible" id="bulkActionBar">
+            <span class="selected-count" id="selectedCountText">已选择 0 项</span>
+            <button class="btn btn-sm btn-noise" id="bulkDenoisingBtn" onclick="executeBulkDenoising()">
+                批量去噪
+            </button>
+            <button class="btn btn-sm btn-custom-denoise" id="customDenoisingBtn" onclick="openCustomDenoisingModal()">
+                自定义去噪
+            </button>
+            <button class="btn btn-secondary" id="clearSelectionBtn" onclick="clearSelection()">
+                <i class="fas fa-times"></i>
+                <span>取消选择</span>
+            </button>
+        </div>
+
+        <div class="custom-denoise-modal" id="customDenoisingModal" onclick="handleCustomDenoisingModalBackdrop(event)">
+            <div class="custom-denoise-dialog" role="dialog" aria-modal="true" aria-labelledby="customDenoisingTitle">
+                <div class="custom-denoise-header">
+                    <h4 class="custom-denoise-title" id="customDenoisingTitle">自定义去噪</h4>
+                    <button type="button" class="custom-denoise-close" id="customDenoisingCloseBtn" onclick="closeCustomDenoisingModal()" aria-label="关闭">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="custom-denoise-body">
+                    <div class="custom-denoise-helper">一行一个去噪词/词组，原始输入会记录到 ABA 去噪词表</div>
+                    <textarea
+                        id="customDenoisingKeywordsInput"
+                        class="custom-denoise-textarea"
+                        placeholder="例如：&#10;free shipping&#10;template&#10;svg bundle"
+                    ></textarea>
+                    <div class="custom-denoise-actions">
+                        <button type="button" class="btn btn-secondary" id="cancelCustomDenoisingBtn" onclick="closeCustomDenoisingModal()">取消</button>
+                        <button type="button" class="btn btn-noise" id="confirmCustomDenoisingBtn" onclick="submitCustomDenoising()">确认并去噪</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="table" id="abaTable">
+                <thead id="abaTableHead">
+                <tr>
+                    <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                    <th>搜索词</th>
+                    <th>排名</th>
+                    <th>周排行趋势</th>
+                    <th>前三商品总点击份额</th>
+                    <th>前三商品总转化份额</th>
+                    <th>#1 前三商品详情/点击份额/转化份额</th>
+                    <th>#2 前三商品详情/点击份额/转化份额</th>
+                    <th>#3 前三商品详情/点击份额/转化份额</th>
+                    <th>操作</th>
+                </tr>
+                </thead>
+                <tbody id="abaTableBody">
+                <!-- 动态生成内容 -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-info" data-total="0">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">20条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option selected" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option" data-value="100" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationNew">
+                <!-- 动态生成 -->
+            </div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
+            <div class="pagination-total-pages" id="paginationTotalPages" style="display: none;"></div>
         </div>
     </div>
 {% endblock %}
@@ -1057,6 +1074,7 @@
 
         function updateLeaderboardChrome() {
             const config = getActiveLeaderboardConfig();
+            const titleEl = document.getElementById('leaderboardTitle');
             const noteEl = document.getElementById('newWordsWindowNote');
             const noiseToggle = document.getElementById('noiseStatusToggle');
             const tableHead = document.getElementById('abaTableHead');
@@ -1064,6 +1082,10 @@
             const newWordsStartWeekGroup = document.getElementById('newWordsStartWeekGroup');
             const newWordsEndWeekGroup = document.getElementById('newWordsEndWeekGroup');
             const hotWordQuickFilterRow = document.getElementById('hotWordQuickFilterRow');
+
+            if (titleEl) {
+                titleEl.textContent = config.title;
+            }
 
             if (tableHead) {
                 tableHead.innerHTML = config.headerHtml;
