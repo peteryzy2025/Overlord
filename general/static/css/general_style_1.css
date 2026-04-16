@@ -199,8 +199,8 @@
     flex-direction: column;
     gap: 0.5rem;
     min-width: 0;
-    width: 100%;
-    max-width: 300px;
+    flex: 0 1 240px;
+    max-width: 280px;
 }
 
 /* 筛选区域的 input 高度与 searchable-select 保持一致 */
@@ -1224,7 +1224,7 @@ a.btn.gs-btn-icon-only::before {
 
 .table-container th:nth-child(1) {
     z-index: 12;
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-tertiary);
 }
 
 /* 第一列是复选框时的特殊处理 */
@@ -1247,7 +1247,7 @@ a.btn.gs-btn-icon-only::before {
 
 .table-container th:nth-child(2) {
     z-index: 13;
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-tertiary);
 }
 
 /* 右侧操作列固定 */
@@ -1262,7 +1262,7 @@ a.btn.gs-btn-icon-only::before {
 
 .table-container th:last-child {
     z-index: 14;
-    background-color: var(--bg-secondary);
+    background-color: var(--bg-tertiary);
 }
 
 /* 可排序表头 */
@@ -2558,10 +2558,10 @@ a.btn.gs-btn-icon-only::before {
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--border-color);
     margin-bottom: 1rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 300px));
-    align-items: end;
-    justify-content: start;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-start;
     gap: 0.875rem 1rem;
 }
 
@@ -2577,8 +2577,8 @@ a.btn.gs-btn-icon-only::before {
     flex-wrap: wrap;
     align-items: flex-end;
     gap: 0.875rem 1rem;
-    grid-column: 1 / -1;
     width: 100%;
+    flex: 1 1 100%;
 }
 
 .data-card-filter > .date-inputs-row .filter-group {
@@ -2631,7 +2631,15 @@ a.btn.gs-btn-icon-only::before {
 /* 响应式：移动端单列 */
 @media (max-width: 768px) {
     .data-card-filter {
-        grid-template-columns: minmax(0, 1fr);
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .data-card-filter > .filter-group,
+    .data-card-filter .filter-group {
+        flex: 1 1 auto;
+        max-width: none;
+        width: 100%;
     }
 
     .data-card-filter > .quick-date-buttons,

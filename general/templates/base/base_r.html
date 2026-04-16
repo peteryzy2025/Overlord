@@ -24,10 +24,17 @@
     flex-shrink: 0;
     }
 
-    /* 侧边栏收缩状态 */
+    /* 第二级：收缩状态（仅图标） */
     .sidebar.collapsed {
     width: 70px;
     padding: 2rem 0;
+    }
+
+    /* 第一级：完全隐藏（不占位置） */
+    .sidebar.mini {
+    width: 0;
+    padding: 0;
+    border-right: none;
     }
 
     /* 侧边栏切换按钮 - 固定在视口垂直中间 */
@@ -38,7 +45,7 @@
     transform: translateY(-50%);
     width: 24px;
     height: 64px;
-    background: var(--bg-primary);
+    background: rgba(255, 255, 255, 0.85);
     border: 1px solid var(--border-color);
     cursor: pointer;
     display: flex;
@@ -49,16 +56,18 @@
     border-radius: 12px 0 0 12px; /* 朝向左 */
     border-left: 1px solid var(--border-color);
     border-right: none;
-    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.08);
+    box-shadow: -2px 0 8px rgba(0, 0, 0, 0.06);
+    opacity: 0.6;
     }
 
     .sidebar-toggle:hover {
     background: #3b82f6;
     border-color: #3b82f6;
     box-shadow: -2px 0 12px rgba(59, 130, 246, 0.25);
+    opacity: 1;
     }
 
-    /* 收缩状态：按钮在sidebar外部，左侧贴紧边缘 */
+    /* 第二级：按钮在sidebar外部，左侧贴紧边缘 */
     body.sidebar-collapsed .sidebar-toggle {
     left: 70px; /* 贴着sidebar右侧 */
     border-radius: 0 12px 12px 0; /* 朝向右 */
@@ -67,7 +76,17 @@
     box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
     }
 
-    body.sidebar-collapsed .sidebar-toggle:hover {
+    /* 第一级：按钮在最左侧 */
+    body.sidebar-mini .sidebar-toggle {
+    left: 0;
+    border-radius: 0 12px 12px 0;
+    border-left: none;
+    border-right: 1px solid var(--border-color);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+    }
+
+    body.sidebar-collapsed .sidebar-toggle:hover,
+    body.sidebar-mini .sidebar-toggle:hover {
     background: #3b82f6;
     border-color: #3b82f6;
     box-shadow: 2px 0 12px rgba(59, 130, 246, 0.25);
@@ -83,6 +102,12 @@
     color: white;
     }
 
+    /* 第一级箭头向右 */
+    body.sidebar-mini .toggle-arrow {
+    transform: rotate(180deg);
+    }
+
+    /* 第二级箭头也向右 */
     body.sidebar-collapsed .toggle-arrow {
     transform: rotate(180deg);
     }
@@ -110,13 +135,22 @@
     font-size: 1.25rem;
     }
 
-    /* 子菜单在收缩状态下隐藏 */
-    .sidebar.collapsed .submenu {
+    /* 子菜单在收缩/mini状态下隐藏 */
+    .sidebar.collapsed .submenu,
+    .sidebar.mini .submenu {
     display: none !important;
     }
 
-    .sidebar.collapsed .dropdown-arrow {
+    .sidebar.collapsed .dropdown-arrow,
+    .sidebar.mini .dropdown-arrow {
     display: none;
+    }
+
+    /* mini状态下隐藏所有菜单内容 */
+    .sidebar.mini .sidebar-menu {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
     }
 
     /* 主内容区域过渡 */
@@ -281,40 +315,47 @@
         });
     });
 
-    // 侧边栏收缩/展开功能
+    // 侧边栏三级切换功能
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     
     if (sidebar && sidebarToggle) {
-        // 从 localStorage 读取状态，默认为收缩
-        const sidebarCollapsed = localStorage.getItem('sidebarCollapsed') !== 'false';
-        if (sidebarCollapsed) {
-            sidebar.classList.add('collapsed');
-            updateTogglePosition(true);
-        } else {
-            updateTogglePosition(false);
+        // 从 localStorage 读取状态：0=mini, 1=collapsed, 2=expanded
+        let sidebarState = parseInt(localStorage.getItem('sidebarState'));
+        if (isNaN(sidebarState) || sidebarState < 0 || sidebarState > 2) {
+            sidebarState = 1; // 默认 collapsed
         }
+        applySidebarState(sidebarState);
         
-        // 点击切换
+        // 点击切换：mini -> collapsed -> expanded -> mini
         sidebarToggle.addEventListener('click', function() {
-            const isCollapsed = sidebar.classList.toggle('collapsed');
-            updateTogglePosition(isCollapsed);
-            // 保存状态到 localStorage
-            localStorage.setItem('sidebarCollapsed', isCollapsed);
+            sidebarState = (sidebarState + 1) % 3;
+            applySidebarState(sidebarState);
+            localStorage.setItem('sidebarState', sidebarState);
         });
         
-        // 更新按钮位置和样式
-        function updateTogglePosition(isCollapsed) {
-            document.body.classList.toggle('sidebar-collapsed', !!isCollapsed);
-            if (isCollapsed) {
-                // 收缩状态：按钮在外部，左侧贴紧sidebar右侧
+        function applySidebarState(state) {
+            sidebar.classList.remove('mini', 'collapsed');
+            document.body.classList.remove('sidebar-mini', 'sidebar-collapsed', 'sidebar-expanded');
+            
+            if (state === 0) {
+                sidebar.classList.add('mini');
+                document.body.classList.add('sidebar-mini');
+                sidebarToggle.style.left = '0px';
+                sidebarToggle.style.borderRadius = '0 12px 12px 0';
+                sidebarToggle.style.borderLeft = 'none';
+                sidebarToggle.style.borderRight = '1px solid var(--border-color)';
+                sidebarToggle.style.boxShadow = '2px 0 8px rgba(0, 0, 0, 0.08)';
+            } else if (state === 1) {
+                sidebar.classList.add('collapsed');
+                document.body.classList.add('sidebar-collapsed');
                 sidebarToggle.style.left = '70px';
                 sidebarToggle.style.borderRadius = '0 12px 12px 0';
                 sidebarToggle.style.borderLeft = 'none';
                 sidebarToggle.style.borderRight = '1px solid var(--border-color)';
                 sidebarToggle.style.boxShadow = '2px 0 8px rgba(0, 0, 0, 0.08)';
             } else {
-                // 展开状态：按钮在内部，右侧贴紧sidebar右侧
+                document.body.classList.add('sidebar-expanded');
                 sidebarToggle.style.left = '256px';
                 sidebarToggle.style.borderRadius = '12px 0 0 12px';
                 sidebarToggle.style.borderLeft = '1px solid var(--border-color)';
