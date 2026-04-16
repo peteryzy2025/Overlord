@@ -18,7 +18,7 @@ def new_release_page(request):
     total_products = AmazonNewReleaseRank.objects.count()
 
     seven_days_ago = timezone.now().date() - timedelta(days=7)
-    recent_subjects_7d = (
+    recent_subjects_7d = ( #最近7天的主题数量有几条
         AmazonNewReleaseRank.objects.filter(launch_date__gte=seven_days_ago)
         .exclude(subject__isnull=True)
         .exclude(subject='')
@@ -29,7 +29,7 @@ def new_release_page(request):
 
     now = timezone.now()
     first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    recent_products = AmazonNewReleaseRank.objects.filter(created_at__gte=first_day_of_month).count()
+    recent_products = AmazonNewReleaseRank.objects.filter(created_at__gte=first_day_of_month).count() #本月上架产品数量
 
     product_date_range = AmazonNewReleaseRank.objects.aggregate(
         min_launch_date=Min('launch_date'),
@@ -47,14 +47,14 @@ def new_release_page(request):
         .distinct()
         .order_by('category')
     )
-
-    total_themes = ThemeSummary.objects.count()
-    recent_themes_7d = (
+#===============以下是针对ThemeSummary==========================================
+    total_themes = ThemeSummary.objects.count() #聚合主题总条数
+    recent_themes_7d = ( #7天聚合主题数
         ThemeSummary.objects.filter(
             summary_subject__updated_at__gte=timezone.now() - timedelta(days=7)
         ).distinct().count()
     )
-    recent_themes_month = (
+    recent_themes_month = ( #本月迄今为止聚合主题数
         ThemeSummary.objects.filter(
             summary_subject__updated_at__gte=first_day_of_month
         ).distinct().count()
@@ -64,23 +64,23 @@ def new_release_page(request):
         'page_title': '亚马逊最新成交主题',
         'active_nav': 'theme_new_release',
         'active_page':'theme_new_release_page',
-        'stats': {
+        'stats': {#新品榜顶部卡
             'total_products': total_products,
             'recent_subjects_7d': recent_subjects_7d,
             'recent_products': recent_products,
         },
-        'aggregation_stats': {
+        'aggregation_stats': { #主题句和顶部卡
             'total_themes': total_themes,
             'recent_themes_7d': recent_themes_7d,
             'recent_themes_month': recent_themes_month,
         },
-        'date_range': {
+        'date_range': { #时间筛选
             'min_launch_date': product_date_range['min_launch_date'],
             'max_launch_date': product_date_range['max_launch_date'],
             'min_crawl_date': daily_date_range['min_crawl_date'],
             'max_crawl_date': daily_date_range['max_crawl_date'],
         },
-        'category_options': category_options,
+        'category_options': category_options,#品类筛选
     }
     return render(request, 'new_release.html', context)
 
@@ -95,7 +95,7 @@ def api_new_release_list(request):
         filtered_queryset = ThemeNewDailyData.objects.select_related('product').all()
 
         category_values = [value.strip() for value in str(data.get('category', '')).split(',') if value.strip()]
-        if category_values:
+        if category_values: #if前端传入category,则筛出category列含有category_values列表中的品类的数据行
             filtered_queryset = filtered_queryset.filter(product__category__in=category_values)
 
         launch_date_start = str(data.get('launch_date_start', '')).strip()
