@@ -66,6 +66,394 @@
     overflow-x: hidden;
 }
 
+/* 修复筛选按钮高度与输入框一致 */
+.filter-actions .btn {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+}
+
+.gs-filter-search-btn {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: none;
+}
+
+.gs-filter-search-btn:hover {
+    background-color: var(--accent-hover);
+}
+
+.gs-filter-reset-btn {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: none;
+}
+
+.gs-filter-reset-btn:hover {
+    background-color: var(--border-color);
+}
+
+/* 筛选动作语义类：用通用类决定图标，不在模板里手写 fa-* */
+.gs-btn-iconized,
+.gs-filter-search-btn,
+.gs-filter-reset-btn,
+.gs-btn-notify {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.gs-btn-iconized::before,
+.gs-filter-search-btn::before,
+.gs-filter-reset-btn::before,
+.gs-btn-notify::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+}
+
+.gs-btn-search::before,
+.gs-filter-search-btn::before {
+    content: "\f002";
+}
+
+.gs-btn-reset::before,
+.gs-filter-reset-btn::before {
+    content: "\f2f9";
+}
+
+.gs-btn-notify::before {
+    content: "\f0f3";
+}
+
+.gs-btn-search > i,
+.gs-btn-reset > i,
+.gs-btn-notify > i,
+.gs-filter-search-btn > i,
+.gs-filter-reset-btn > i {
+    display: none !important;
+}
+
+.btn.gs-btn-icon-only,
+a.btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 8px;
+}
+
+.btn.gs-btn-icon-only::before,
+a.btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only),
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only),
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only) {
+    width: auto;
+    min-width: 42px;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.875rem;
+}
+
+.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only)::before,
+.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only)::before,
+.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only)::before {
+    font-size: 0.95rem;
+}
+
+.filter-actions .btn.gs-btn-icon-only,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    min-height: 42px;
+    padding: 0;
+    font-size: 0;
+    border-radius: 8px;
+}
+
+.filter-actions .btn.gs-btn-icon-only::before,
+.filter-actions .gs-filter-action-btn.gs-btn-icon-only::before {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.btn.gs-btn-notify {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-notify:hover {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #ffffff;
+}
+
+.btn.gs-btn-search {
+    background-color: var(--accent-color);
+    color: #ffffff;
+    border: 1px solid var(--accent-color);
+}
+
+.btn.gs-btn-search:hover {
+    background-color: var(--bg-primary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--primary-600);
+    border: 1px solid var(--border-color);
+}
+
+.btn.gs-btn-reset:hover {
+    background-color: var(--primary-100);
+    color: var(--primary-800);
+    border-color: var(--primary-300);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================
+   5. 按钮样式
+   ============================================ */
+
+.btn {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.btn-primary:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--primary-200);
+    border-color: var(--primary-300);
+    color: var(--primary-700);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+.btn-ghost:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--primary-400);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* 模态框按钮 */
+.btn-save-modal {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+.btn-save-modal:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-save-modal:active {
+    color: white;
+}
+
+.btn-cancel-modal {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.btn-cancel-modal:hover {
+    background: var(--primary-200);
+    border-color: var(--primary-300);
+    color: var(--primary-700);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* 新建按钮 - 使用主题色 */
+.btn-create {
+    background: var(--accent);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    border: 1px solid var(--accent);
+    transition: all 0.2s;
+    font-size: 14px;
+    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
+}
+
+.btn-create:hover {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
+}
+
+.btn-create:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+    color: white;
+}
+
+/* 导出按钮 - 次要样式 */
+.btn-export {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    margin-left: 0.75rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.btn-export:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    transform: translateY(-1px);
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* ============================================
+   Dark Mode Overrides
+   ============================================ */
+
+[data-theme="dark"] .btn:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-search:hover {
+    background-color: var(--bg-primary);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn.gs-btn-reset {
+    background-color: var(--bg-primary);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn.gs-btn-reset:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-save-modal {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
+
+[data-theme="dark"] .btn-save-modal:hover {
+    background-color: rgba(96, 165, 250, 0.2);
+    color: #ffffff;
+    border-color: #60a5fa;
+}
+
+[data-theme="dark"] .btn-cancel-modal {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .btn-cancel-modal:hover {
+    background-color: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+
 .tab-content {
     display: block;
     flex: 1 1 auto;
@@ -218,18 +606,6 @@
     width: max-content;
 }
 
-/* 修复筛选按钮高度与输入框一致 */
-.filter-actions .btn {
-    width: 42px;
-    height: 42px;
-    padding: 0;
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-}
-
 /* 筛选动作按钮统一样式（与人员管理页面保持一致） */
 .gs-filter-action-btn {
     width: 42px;
@@ -242,149 +618,6 @@
     justify-content: center;
     font-size: 1.25rem;
     line-height: 1;
-}
-
-.gs-filter-search-btn {
-    background-color: var(--accent-color);
-    color: #ffffff;
-    border: none;
-}
-
-.gs-filter-search-btn:hover {
-    background-color: var(--accent-hover);
-}
-
-.gs-filter-reset-btn {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: none;
-}
-
-.gs-filter-reset-btn:hover {
-    background-color: var(--border-color);
-}
-
-/* 筛选动作语义类：用通用类决定图标，不在模板里手写 fa-* */
-.gs-btn-iconized,
-.gs-filter-search-btn,
-.gs-filter-reset-btn,
-.gs-btn-notify {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.gs-btn-iconized::before,
-.gs-filter-search-btn::before,
-.gs-filter-reset-btn::before,
-.gs-btn-notify::before {
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    font-style: normal;
-    line-height: 1;
-    display: inline-block;
-}
-
-.gs-btn-search::before,
-.gs-filter-search-btn::before {
-    content: "\f002";
-}
-
-.gs-btn-reset::before,
-.gs-filter-reset-btn::before {
-    content: "\f2f9";
-}
-
-.gs-btn-notify::before {
-    content: "\f0f3";
-}
-
-.gs-btn-search > i,
-.gs-btn-reset > i,
-.gs-btn-notify > i,
-.gs-filter-search-btn > i,
-.gs-filter-reset-btn > i {
-    display: none !important;
-}
-
-.btn.gs-btn-icon-only,
-a.btn.gs-btn-icon-only {
-    width: 42px;
-    min-width: 42px;
-    padding: 0;
-    font-size: 0;
-}
-
-.btn.gs-btn-icon-only::before,
-a.btn.gs-btn-icon-only::before {
-    margin: 0;
-    font-size: 1.25rem;
-}
-
-.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only),
-.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only),
-.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only) {
-    width: auto;
-    min-width: 42px;
-    padding: 0.5rem 0.875rem;
-    font-size: 0.875rem;
-}
-
-.filter-actions .btn.gs-btn-iconized:not(.gs-btn-icon-only)::before,
-.filter-actions .btn.gs-btn-notify:not(.gs-btn-icon-only)::before,
-.filter-actions .gs-filter-action-btn:not(.gs-btn-icon-only)::before {
-    font-size: 0.95rem;
-}
-
-.filter-actions .btn.gs-btn-icon-only,
-.filter-actions .gs-filter-action-btn.gs-btn-icon-only {
-    width: 42px;
-    min-width: 42px;
-    padding: 0;
-    font-size: 0;
-}
-
-.filter-actions .btn.gs-btn-icon-only::before,
-.filter-actions .gs-filter-action-btn.gs-btn-icon-only::before {
-    margin: 0;
-    font-size: 1.25rem;
-}
-
-.btn.gs-btn-notify {
-    background-color: var(--accent-color);
-    color: #ffffff;
-    border: 1px solid var(--accent-color);
-}
-
-.btn.gs-btn-notify:hover {
-    background-color: var(--accent-hover);
-    border-color: var(--accent-hover);
-    color: #ffffff;
-}
-
-.btn.gs-btn-search {
-    background-color: var(--bg-primary);
-    color: var(--accent-color);
-    border: 1px solid var(--accent-color);
-}
-
-.btn.gs-btn-search:hover {
-    background-color: var(--accent-color);
-    color: #ffffff;
-    border-color: var(--accent-color);
-}
-
-.btn.gs-btn-reset {
-    background-color: var(--bg-primary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-color);
-}
-
-.btn.gs-btn-reset:hover {
-    background-color: var(--primary-200);
-    color: var(--text-primary);
-    border-color: var(--border-color);
 }
 
 .filter-actions-main {
@@ -959,140 +1192,6 @@ a.btn.gs-btn-icon-only::before {
     background: #f9fafb;
 }
 
-/* ============================================
-   5. 按钮样式
-   ============================================ */
-
-.btn {
-    background-color: var(--accent-color);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.btn-primary {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
-}
-
-.btn-primary:hover {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.btn-secondary {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.btn-secondary:hover {
-    background: var(--primary-200);
-}
-
-.btn-ghost {
-    background: transparent;
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-}
-
-.btn-ghost:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-/* 模态框按钮 */
-.btn-save-modal {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-.btn-save-modal:hover {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.btn-cancel-modal {
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-.btn-cancel-modal:hover {
-    background: var(--primary-200);
-}
-
-.btn:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-/* 新建按钮 - 使用主题色 */
-.btn-create {
-    background: var(--accent);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-weight: 500;
-    border: 1px solid var(--accent);
-    transition: all 0.2s;
-    font-size: 14px;
-    box-shadow: 0 1px 2px rgba(59, 130, 246, 0.1);
-}
-
-.btn-create:hover {
-    background: var(--accent-dark);
-    border-color: var(--accent-dark);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);
-}
-
-.btn-create:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
-}
-
-/* 导出按钮 - 次要样式 */
-.btn-export {
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    margin-left: 0.75rem;
-    padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    font-weight: 500;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.btn-export:hover {
-    background-color: var(--bg-secondary);
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-    transform: translateY(-1px);
-}
-
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-
 /* 展开/收起按钮 */
 .expand-toggle {
     background: var(--bg-secondary);
@@ -1197,6 +1296,14 @@ a.btn.gs-btn-icon-only::before {
 
 .table .link:hover {
     text-decoration: underline;
+}
+
+.table .link-danger {
+    color: var(--danger-color, #ef4444);
+}
+
+.table .link-danger:hover {
+    color: #dc2626;
 }
 
 /* 表格最后一行底部加横线 */
@@ -1961,30 +2068,30 @@ a.btn.gs-btn-icon-only::before {
         padding: 1rem;
     }
 
-    .page-header {
+.page-header {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    .filter-section,
+.filter-section,
     .control-panel {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .filter-section > .quick-date-buttons,
+.filter-section > .quick-date-buttons,
     .filter-section > .date-inputs-row,
     .control-panel > .quick-date-buttons,
     .control-panel > .date-inputs-row {
         gap: 1rem;
     }
 
-    .filter-group {
+.filter-group {
         min-width: auto;
         width: 100%;
         max-width: none;
     }
 
-    .filter-actions,
+.filter-actions,
     .filter-actions-secondary {
         margin-left: 0;
         margin-top: 1rem;
@@ -1992,7 +2099,7 @@ a.btn.gs-btn-icon-only::before {
         width: 100%;
     }
 
-    .filter-actions-row,
+.filter-actions-row,
     .filter-actions-main,
     .filter-actions-secondary {
         width: 100%;
@@ -2001,23 +2108,23 @@ a.btn.gs-btn-icon-only::before {
         justify-content: flex-end;
     }
 
-    .pagination-container,
+.pagination-container,
     .pagination-wrapper {
         flex-direction: column;
         gap: 1rem;
         align-items: stretch;
     }
 
-    .pagination,
+.pagination,
     .pagination-new {
         justify-content: center;
     }
 
-    .pagination-left {
+.pagination-left {
         justify-content: center;
     }
 
-    /* 移动端简化固定列 */
+/* 移动端简化固定列 */
     .table-container td:nth-child(1),
     .table-container th:nth-child(1),
     .table-container td:nth-child(2),
@@ -2525,8 +2632,6 @@ a.btn.gs-btn-icon-only::before {
     display: block;
 }
 
-
-
 /* ============================================
    19. 现代一体化数据卡片
    ============================================ */
@@ -2745,88 +2850,18 @@ a.btn.gs-btn-icon-only::before {
         flex-direction: column;
         align-items: stretch;
     }
-    
-    .data-card-filter > .filter-group,
+
+.data-card-filter > .filter-group,
     .data-card-filter .filter-group {
         flex: 1 1 auto;
         max-width: none;
         width: 100%;
     }
 
-    .data-card-filter > .quick-date-buttons,
+.data-card-filter > .quick-date-buttons,
     .data-card-filter > .date-inputs-row {
         gap: 1rem;
     }
-}
-
-/* ============================================
-   Dark Mode Overrides
-   ============================================ */
-
-[data-theme="dark"] .btn:hover {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border-color: #60a5fa;
-}
-
-[data-theme="dark"] .btn-secondary {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .btn-secondary:hover {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border-color: #60a5fa;
-}
-
-[data-theme="dark"] .btn.gs-btn-search {
-    background-color: var(--bg-primary);
-    color: #60a5fa;
-    border-color: #60a5fa;
-}
-
-[data-theme="dark"] .btn.gs-btn-search:hover {
-    background-color: rgba(96, 165, 250, 0.15);
-    color: #ffffff;
-    border-color: #60a5fa;
-}
-
-[data-theme="dark"] .btn.gs-btn-reset {
-    background-color: var(--bg-primary);
-    color: var(--text-secondary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .btn.gs-btn-reset:hover {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .btn-save-modal {
-    background-color: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-[data-theme="dark"] .btn-save-modal:hover {
-    background-color: rgba(96, 165, 250, 0.2);
-    color: #ffffff;
-    border-color: #60a5fa;
-}
-
-[data-theme="dark"] .btn-cancel-modal {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-    border-color: var(--border-color);
-}
-
-[data-theme="dark"] .btn-cancel-modal:hover {
-    background-color: rgba(96, 165, 250, 0.15);
-    color: #60a5fa;
-    border-color: #60a5fa;
 }
 
 [data-theme="dark"] .ym-picker .ym-picker-input,

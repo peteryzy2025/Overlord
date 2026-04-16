@@ -7,12 +7,27 @@
 <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
 <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=1">
 <style>
-    .data-card-header {
-        flex-wrap: wrap;
-        gap: 1rem;
+    /* 复用 task_create 的容器样式 */
+    .task-list-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        width: 100%;
+        margin: 0 auto;
+        padding: 2rem;
     }
 
-    .data-card-header .header-stats {
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1.5rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .header-stats {
         display: flex;
         gap: 1.5rem;
         align-items: center;
@@ -20,17 +35,74 @@
         color: var(--text-secondary);
     }
 
-    .data-card-header .header-stats .stat-item {
+    .header-stats .stat-item {
         display: flex;
         align-items: center;
         gap: 0.35rem;
     }
 
-    .data-card-header .header-stats .stat-item b {
+    .header-stats .stat-item b {
         color: var(--accent-color);
         font-weight: 600;
     }
 
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    /* 复用 task_create 的卡片样式 */
+    .task-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-light);
+    }
+
+    #paginationContainer.pagination-container {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        box-shadow: var(--shadow-light);
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    #paginationContainer .pagination-new {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+    #paginationContainer .pagination-jump {
+        margin-left: auto;
+    }
+
+    @media (max-width: 768px) {
+        #paginationContainer .pagination-new {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        #paginationContainer .pagination-jump {
+            margin-left: 0;
+        }
+    }
+
+
+
+    /* 仅保留筛选组件样式，避免 general_style_1.css 全局规则覆盖同事页面样式 */
     .gs-date-range-custom-group {
         display: none !important;
     }
@@ -39,7 +111,338 @@
         display: flex !important;
     }
 
-    /* 状态标签 */
+    .searchable-select {
+        position: relative;
+        width: 100%;
+        display: block;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .select-trigger {
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.5rem 2rem 0.5rem 0.75rem;
+        cursor: pointer;
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        height: 42px;
+        width: 100%;
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .select-trigger:hover {
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select.open .select-trigger {
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-radius: 8px 8px 0 0;
+    }
+
+    .searchable-select .select-trigger::after {
+        content: "\f078";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        transition: transform 0.2s;
+        margin-left: 0.5rem;
+    }
+
+    .searchable-select.open .select-trigger::after {
+        transform: rotate(180deg);
+    }
+
+    .searchable-select .select-trigger .selected-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        background-color: transparent !important;
+        line-height: 1.5;
+        min-height: 1.5em;
+        display: flex;
+        align-items: center;
+    }
+
+    .searchable-select .select-trigger .selected-text .placeholder {
+        background-color: transparent !important;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        font-weight: 400;
+        opacity: 1;
+        letter-spacing: normal;
+    }
+
+    .searchable-select .dropdown-panel {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--accent-color);
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 280px;
+        overflow: hidden;
+        z-index: 1000;
+        display: none;
+        box-shadow: var(--shadow-heavy);
+    }
+
+    .searchable-select.open .dropdown-panel {
+        display: block;
+    }
+
+    .searchable-select .search-input-wrapper {
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .search-input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        box-sizing: border-box;
+    }
+
+    .searchable-select .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+    }
+
+    .searchable-select .search-input::placeholder {
+        color: var(--text-secondary);
+    }
+
+    .searchable-select .options-list {
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.25rem 0;
+    }
+
+    .searchable-select .option {
+        padding: 0.5rem 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: background-color 0.15s;
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .option:hover {
+        background-color: var(--bg-secondary);
+    }
+
+    .searchable-select .option.selected {
+        background-color: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+
+    .searchable-select .option.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .searchable-select .option .checkbox {
+        width: 16px;
+        height: 16px;
+        border: 2px solid var(--border-color);
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+    }
+
+    .searchable-select .option.selected .checkbox {
+        background-color: var(--accent-color);
+        border-color: var(--accent-color);
+    }
+
+    .searchable-select .option.selected .checkbox::after {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.625rem;
+        color: white;
+    }
+
+    .searchable-select .option .option-text {
+        flex: 1;
+    }
+
+    .searchable-select .no-options {
+        padding: 1rem;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .searchable-select .select-trigger .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+    }
+
+    .searchable-select .select-trigger .tag {
+        background-color: var(--accent-color);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    .searchable-select .select-trigger .tag .remove {
+        cursor: pointer;
+        opacity: 0.8;
+    }
+
+    .searchable-select .select-trigger .tag .remove:hover {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn {
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 0.25rem;
+        margin-right: 0.25rem;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .searchable-select:hover .clear-btn {
+        opacity: 1;
+    }
+
+    .searchable-select .clear-btn:hover {
+        color: var(--accent-color);
+    }
+
+    .searchable-select.single .option.selected::before {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        font-size: 0.75rem;
+        color: var(--accent-color);
+        margin-right: 0.25rem;
+    }
+
+    .searchable-select.disabled .select-trigger {
+        background-color: var(--bg-tertiary);
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+
+    /* 模态框样式 - 复用 tracking_management 样式 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+        align-items: center;
+        justify-content: center;
+        overscroll-behavior: contain;
+    }
+
+    .modal-overlay[style*="display: block"] {
+        display: flex !important;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: var(--bg-primary);
+        border-radius: 16px;
+        padding: 2rem;
+        width: 90%;
+        max-width: 500px;
+        /* 调整为适合删除确认框的宽度 */
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: var(--shadow-heavy);
+        border: 1px solid var(--border-color);
+        z-index: 10000;
+    }
+
+    .modal-header {
+        flex-shrink: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 1.5rem;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .modal-close,
+    .btn-icon {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        line-height: 1;
+        transition: all 0.2s;
+    }
+
+    .modal-close:hover,
+    .btn-icon:hover {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+    }
+
+    .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .task-filter-panel {
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+
+    /* 列表容器 */
+    /* 状态标签（颜色扩展） */
     .status-badge.status-draft { background: rgba(148, 163, 184, 0.15); color: #94a3b8; }
     .status-badge.status-pending { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
     .status-badge.status-in_progress { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
@@ -105,75 +508,66 @@
         line-height: 1.2;
     }
 
-    /* 模态框 */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 9999;
-        backdrop-filter: blur(4px);
+    /* 操作按钮（复用 Amazon 订单管理风格） */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        color: #fff;
     }
 
-    .modal-overlay.active {
-        display: flex;
+    .btn-view {
+        background-color: var(--accent-color);
     }
 
-    .modal-content {
-        background-color: var(--bg-primary);
-        border-radius: 16px;
-        width: 90%;
-        max-width: 420px;
-        max-height: 85vh;
-        display: flex;
-        flex-direction: column;
-        box-shadow: var(--shadow-heavy);
-        border: 1px solid var(--border-color);
-        z-index: 10000;
-        overflow: hidden;
+    .btn-view:hover {
+        background-color: var(--accent-hover);
     }
 
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
+    .btn-edit {
+        background-color: #3B82F6;
     }
 
-    .modal-header h3 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
+    .btn-edit:hover {
+        background-color: #2563EB;
     }
 
-    .modal-close {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        font-size: 1.25rem;
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: 4px;
-        line-height: 1;
+    .btn-delete {
+        background-color: #EF4444;
     }
 
-    .modal-close:hover {
-        background-color: var(--bg-secondary);
-        color: var(--text-primary);
+    .btn-delete:hover {
+        background-color: #DC2626;
     }
 
-    .modal-body {
-        padding: 1.5rem;
+    .btn-resend {
+        background-color: #8B5CF6;
     }
 
-    .modal-footer {
-        display: flex;
-        gap: 0.75rem;
-        padding: 1rem 1.5rem 1.5rem;
-        justify-content: flex-end;
+    .btn-resend:hover {
+        background-color: #7C3AED;
+    }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+        .task-list-container {
+            padding: 1rem;
+        }
+
+
     }
 
     .dropdown-check-list {
@@ -252,20 +646,19 @@
 {% endblock %}
 
 {% block content %}
-<div class="tab-content">
-<div class="data-card">
+<div class="task-list-container">
     <!-- 页面标题 -->
-    <div class="data-card-header">
-        <div class="data-card-title">
-            <i class="fas fa-tasks" style="color: var(--accent-color); margin-right: 0.5rem;"></i>任务列表
-        </div>
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-tasks"></i> 任务列表
+        </h1>
         <div class="header-stats">
             <span class="stat-item">总任务数：<b id="headerTotalCount">0</b></span>
             <span class="stat-item">运行中：<b id="headerInProgressCount">0</b></span>
             <span class="stat-item">待执行：<b id="headerPendingCount">0</b></span>
             <span class="stat-item">草稿：<b id="headerDraftCount">0</b></span>
         </div>
-        <div class="data-card-actions">
+        <div class="header-actions">
             <button class="btn btn-primary" onclick="createNewTask()">
                 <i class="fas fa-plus"></i> 创建新任务
             </button>
@@ -273,125 +666,120 @@
     </div>
 
     <!-- 筛选面板 -->
-    <div class="data-card-filter">
-        <div class="filter-row">
-            <div class="filter-group">
+    <div class="task-card">
+        <div class="control-panel task-filter-panel">
+            <div class="filter-row">
+                <div class="filter-group">
                 <label class="filter-label">搜索</label>
                 <div style="position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
-                    <input type="text" class="form-control" id="searchInput" placeholder="搜索任务标题、任务单号..."
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索任务标题、任务单号..." 
                            style="padding-left: 2.5rem; width: 100%;"
                            onkeyup="handleSearch(event)">
                 </div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">状态筛选</label>
+                    <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">创建人</label>
+                    <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">时间范围</label>
+                    <div id="dateRangeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="startDate">
+                </div>
+
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="endDate">
+                </div>
             </div>
 
-            <div class="filter-group">
-                <label class="filter-label">状态筛选</label>
-                <div id="statusFilter" class="searchable-select multiple" data-placeholder="全部状态"></div>
+            <div class="filter-actions-row">
+                <div class="filter-actions">
+                    <button class="gs-filter-action-btn gs-filter-search-btn gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
+                    <button class="gs-filter-action-btn gs-filter-reset-btn gs-btn-icon-only" onclick="resetFilters()" title="重置筛选"></button>
+                </div>
             </div>
-
-            <div class="filter-group">
-                <label class="filter-label">创建人</label>
-                <div id="creatorFilter" class="searchable-select multiple" data-placeholder="全部人员"></div>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label">时间范围</label>
-                <div id="dateRangeFilter" class="searchable-select single" data-placeholder="点击选择日期范围"></div>
-            </div>
-
-            <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
-                <label class="filter-label">开始日期</label>
-                <input type="date" class="form-control" id="startDate">
-            </div>
-
-            <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
-                <label class="filter-label">结束日期</label>
-                <input type="date" class="form-control" id="endDate">
-            </div>
-        </div>
-
-        <div class="filter-actions-row">
-            <div class="filter-actions">
-                <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
-                <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置筛选"></button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 批量操作占位 -->
-    <div class="bulk-action-bar" id="bulkActionBar">
-        <span class="bulk-action-count">已选择 <b>0</b> 项</span>
-        <div class="bulk-action-buttons">
-            <!-- 预留批量操作按钮位置 -->
         </div>
     </div>
 
     <!-- 任务列表 -->
-    <div class="table-container" id="taskTableContainer">
-        <table class="table" id="taskTable">
-            <thead>
-                <tr>
-                    <th class="w-checkbox">
-                        <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAllTasks()">
-                    </th>
-                    <th style="width: 120px;">任务单号</th>
-                    <th style="width: 25%;">任务标题</th>
-                    <th>状态</th>
-                    <th>创建人</th>
-                    <th>所有者</th>
-                    <th>创建时间</th>
-                    <th class="w-actions">操作</th>
-                </tr>
-            </thead>
-            <tbody id="taskTableBody">
-                <tr>
-                    <td colspan="8" class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>暂无任务数据</p>
-                        <p>点击"创建新任务"开始</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <div class="data-section">
+        <div class="table-container" id="taskTableContainer">
+            <table class="table" id="taskTable">
+                <thead>
+                    <tr>
+                        <th class="w-checkbox">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAllTasks()">
+                        </th>
+                        <th style="width: 120px;">任务单号</th>
+                        <th style="width: 25%;">任务标题</th>
+                        <th>状态</th>
+                        <th>创建人</th>
+                        <th>所有者</th>
+                        <th>创建时间</th>
+                        <th class="w-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无任务数据</p>
+                            <p>点击"创建新任务"开始</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-    <!-- 分页控件 -->
-    <div class="pagination-container" id="paginationContainer" style="display: none;">
-        <div class="pagination-info" id="paginationInfo">
-            <div class="page-size-wrapper" id="pageSizeWrapper">
-                <span class="page-size-label">每页显示：</span>
-                <div class="page-size-dropdown-wrapper" style="position: relative;">
-                    <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                        <span id="pageSizeText">100条</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                        <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
-                        <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                        <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
-                        <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+        <!-- 分页控件 -->
+        <div class="pagination-container pagination-toolbar" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">100条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+                        </div>
                     </div>
+                    <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
                 </div>
-                <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+            </div>
+            <div class="pagination-new" id="paginationButtons"></div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
             </div>
         </div>
-        <div class="pagination-new" id="paginationButtons"></div>
-        <div class="pagination-jump" id="paginationJump" style="display: none;">
-            <span>跳至</span>
-            <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-            <span>页</span>
-        </div>
     </div>
-</div>
 </div>
 
 <!-- 确认删除模态框 -->
-<div class="modal-overlay" id="deleteModal" onclick="if(event.target === this) return;">
-    <div class="modal-content">
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
             <h3>确认删除</h3>
-            <button class="modal-close" onclick="closeDeleteModal()">
+            <button class="btn-icon" onclick="closeDeleteModal()">
                 <i class="fas fa-times"></i>
             </button>
         </div>
@@ -400,12 +788,14 @@
             <p style="color: var(--text-tertiary); font-size: 0.875rem; margin-top: 0.5rem;">
                 删除后无法恢复，请谨慎操作。
             </p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-cancel-modal" onclick="closeDeleteModal()">取消</button>
-            <button class="btn btn-danger" onclick="confirmDelete()">
-                <i class="fas fa-trash"></i> 删除
-            </button>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex: 1;">
+                    取消
+                </button>
+                <button class="btn btn-danger" onclick="confirmDelete()" style="flex: 1;">
+                    <i class="fas fa-trash"></i> 删除
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -715,12 +1105,20 @@
                         <td>${task.owner_name}</td>
                         <td>${formatDateTime(task.created_at)}</td>
                         <td class="w-actions">
-                            <div style="display: flex; gap: 0.75rem;">
-                                <a href="javascript:void(0)" class="link" onclick="viewTask(${task.id})">查看</a>
-                                <a href="javascript:void(0)" class="link" onclick="copyTask(${task.id})">复制</a>
-                                <a href="javascript:void(0)" class="link link-danger" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')">删除</a>
+                            <div class="action-buttons">
+                                <button class="btn-action btn-view" onclick="viewTask(${task.id})" title="查看详情">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn-action btn-edit" onclick="copyTask(${task.id})" title="复制任务">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="btn-action btn-delete" onclick="deleteTask(${task.id}, '${task.title.replace(/'/g, "\\'")}')" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                                 ${currentUser.permissions.includes('555') ? `
-                                    <a href="javascript:void(0)" class="link" onclick="resendWebhook(${task.id})">重发</a>
+                                    <button class="btn-action btn-resend" onclick="resendWebhook(${task.id})" title="重新发送 Webhook">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
                                 ` : ''}
                             </div>
                         </td>
@@ -933,7 +1331,6 @@
             selectAllCheckbox.checked = false;
             selectAllCheckbox.indeterminate = true;
         }
-        updateBulkActionBar();
     }
 
     function resetTaskSelectionState() {
@@ -946,16 +1343,6 @@
         document.querySelectorAll('#taskTableBody .row-checkbox').forEach(checkbox => {
             checkbox.checked = false;
         });
-        updateBulkActionBar();
-    }
-
-    function updateBulkActionBar() {
-        const bar = document.getElementById('bulkActionBar');
-        if (!bar) return;
-        const checkedCount = Array.from(document.querySelectorAll('#taskTableBody .row-checkbox')).filter(cb => cb.checked).length;
-        const countEl = bar.querySelector('.bulk-action-count b');
-        if (countEl) countEl.textContent = String(checkedCount);
-        bar.classList.toggle('visible', checkedCount > 0);
     }
 
     // ===== 搜索功能 =====
