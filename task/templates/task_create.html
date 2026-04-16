@@ -3522,7 +3522,7 @@
             // 实时验证路径前缀
             const errorEl = document.getElementById(`local-gallery-path-error-${subtaskId}`);
             if (errorEl) {
-                if (value && !value.startsWith('\\\\ZT-NAS')) {
+                if (value && !value.toUpperCase().startsWith('\\\\ZT-NAS')) {
                     errorEl.style.display = 'block';
                     element.style.borderColor = 'var(--danger-color)';
                 } else {
@@ -5844,7 +5844,7 @@
                         return false;
                     }
                     // 验证本地路径必须以 \\ZT-NAS 开头
-                    if (!localGalleryPath.startsWith('\\\\ZT-NAS')) {
+                    if (!localGalleryPath.toUpperCase().startsWith('\\\\ZT-NAS')) {
                         showNotification(`子任务 #${subtask.order + 1} 的本地路径必须以 \\\\ZT-NAS 开头`, 'warning');
                         return false;
                     }
