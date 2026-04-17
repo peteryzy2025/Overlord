@@ -43,13 +43,16 @@ base/base.html（顶部导航一级 Base）
 
 ## 标准页面结构（强制）
 
-每个管理后台列表页必须采用 `.data-card` 一体化卡片，以下 **5 个区块必须按顺序出现**：
+每个管理后台列表页推荐采用 **筛选卡片 + 数据卡片** 的双层结构，以增强层次感：
 
-1. **`.data-card-header`** — 标题 + 操作按钮/Tab 导航
-2. **`.data-card-filter`** — 筛选条件 + 搜索/重置按钮（可包含第二行快速筛选）
-3. **`.bulk-action-bar`** — 批量操作条（即使业务暂无批量功能，也必须预留 DOM 结构）
-4. **`.table-container` → `table.table`** — 表格
-5. **`.pagination-container`** — 分页
+- **`.filter-card`** — 筛选条件 + 搜索/重置按钮（可包含第二行快速筛选）
+- **`.data-card`** — 数据主卡片，内部包含：
+  1. **`.data-card-header`** — 标题 + 操作按钮/Tab 导航
+  2. **`.bulk-action-bar`** — 批量操作条（默认隐藏，选中后显示）
+  3. **`.table-container.table-bordered`** — 带独立细边框+圆角的表格区
+  4. **`.pagination-container`** — 分页
+
+若页面筛选条件极少，也可把 `.data-card-filter` 放在 `.data-card` 内部第一行。
 
 **新建页面时**：直接复制 `assets/management-page-template.html`，在此基础上修改业务逻辑。
 
@@ -82,8 +85,12 @@ base/base.html（顶部导航一级 Base）
 <div class="data-card-header">
     <div class="data-card-title">...标题...</div>
     <div class="tab-nav">
-        <div class="tab-nav-item active" onclick="switchTab('a')">Tab A</div>
-        <div class="tab-nav-item" onclick="switchTab('b')">Tab B</div>
+        <div class="tab-nav-item active" onclick="switchTab('a')">
+            <i class="fas fa-chart-line"></i> Tab A
+        </div>
+        <div class="tab-nav-item" onclick="switchTab('b')">
+            <i class="fas fa-bolt"></i> Tab B
+        </div>
     </div>
 </div>
 ```
@@ -146,6 +153,7 @@ base/base.html（顶部导航一级 Base）
 - **斑马纹**：Light 模式由 Bootstrap `.table-striped` 控制；Dark 模式已覆盖，禁止重写。
 - **固定列**：第一列、第二列、最后一列在 `.table-container` 中为 `position: sticky`；Dark 模式下阴影已覆盖。
 - **复选框列宽度**：第一列表头必须用 `<th class="w-checkbox">`（样式已锁定 45px）。
+- **表格容器边框**：推荐在 `.table-container` 上加 `.table-bordered`，形成独立的 `1px solid var(--border-color)` 圆角边框（`border-radius: 12px`），增强卡片内的层次感。
 
 ## 下拉框（Searchable Select）
 
