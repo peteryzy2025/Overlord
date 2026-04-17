@@ -563,6 +563,13 @@ class AmazonShop(models.Model):
     browser = models.CharField(max_length=255, db_comment='浏览器')
     divi_shop_id = models.IntegerField(blank=True, null=True, unique=True,db_comment='迪唯店铺id')
     qupital_if = models.BooleanField(db_comment='是否绑定qupital', default=False)
+    authorized_users = models.ManyToManyField(
+        'general.User',
+        blank=True,
+        related_name='authorized_shops',
+        verbose_name='授权管理人员',
+        db_comment='被授权管理该店铺的用户，一个店铺可关联多个用户'
+    )
 
     class Meta:
         db_table = 'amazon_shop'

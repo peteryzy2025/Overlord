@@ -91,6 +91,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: nowrap;
         }
 
         .navbar-brand {
@@ -155,8 +156,8 @@
             border-radius: 2px;
         }
 
-        /* 移动端适配 */
-        @media (max-width: 768px) {
+        /* 平板及以下适配 */
+        @media (max-width: 1100px) {
             .nav-item-wrapper::after {
                 display: none;
             }
@@ -638,8 +639,8 @@
             opacity: 0.8;
         }
 
-        /* 移动端适配（V1 原有） */
-        @media (max-width: 768px) {
+        /* 平板及以下适配（V1 原有） */
+        @media (max-width: 1100px) {
             .navbar-nav {
                 display: none;
             }

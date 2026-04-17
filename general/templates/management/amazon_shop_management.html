@@ -329,6 +329,14 @@
                     <i class="fas fa-user-edit"></i>
                     <span>批量设置运营人员</span>
                 </button>
+                <button class="btn btn-create" onclick="openBulkAuthorizeModal()">
+                    <i class="fas fa-user-friends"></i>
+                    <span>批量设置辅助人员</span>
+                </button>
+                <button class="btn btn-secondary" onclick="submitBulkClearAuthorizedUsers()">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>批量清空辅助人员</span>
+                </button>
             </div>
 
             <div class="table-container table-bordered">
@@ -341,6 +349,7 @@
                         <th>项目</th>
                         <th>客户</th>
                         <th>运营人员</th>
+                        <th>辅助人员</th>
                         <th>角色</th>
                         <th>运营分组</th>
                         <th>亚马逊名称</th>
@@ -500,11 +509,52 @@
         </div>
     </div>
 </div>
+
+<!-- 授权辅助人员模态框（单店铺） -->
+<div class="modal-overlay" id="authorizeModalOverlay" onclick="if(event.target === this) return;">
+    <div class="modal-content" style="max-width: 600px; min-height: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">授权辅助人员</h2>
+            <button class="modal-close" onclick="closeAuthorizeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>选择辅助人员（多选）</label>
+                <div id="authorizeUsersSelect" class="searchable-select multiple"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeAuthorizeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitAuthorize()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 批量设置辅助人员模态框 -->
+<div class="modal-overlay" id="bulkAuthorizeModalOverlay" onclick="if(event.target === this) return;">
+    <div class="modal-content" style="max-width: 600px; min-height: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">批量设置辅助人员</h2>
+            <button class="modal-close" onclick="closeBulkAuthorizeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="bulkAuthorizeDesc" style="margin-bottom: 1rem; color: var(--text-secondary);">请选择辅助人员：</p>
+            <div class="form-group">
+                <label>选择辅助人员（多选）</label>
+                <div id="bulkAuthorizeUsersSelect" class="searchable-select multiple"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeBulkAuthorizeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitBulkAuthorize()">保存</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260417-sticky-fix"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // 全局变量
@@ -512,8 +562,10 @@
     let allGroups = [];
     let allCustomers = [];
     let allProjects = [];
+    let allCompanyUsers = [];
     let modalMode = null;
     let currentShopId = null;
+    let currentAuthorizeShopId = null;
     let currentPage = 1;
     let currentPageSize = 20;
     
@@ -522,10 +574,11 @@
     // 将权限码统一转为字符串比较
     const userPermsStr = USER_PERMISSIONS.map(p => String(p));
     const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552');
+    const CURRENT_USER_ID = {{ current_user_id|default:'null' }};
     
     // 普通用户只能看到邮箱密码及之前的列
     const NON_ADMIN_VISIBLE_KEYS = [
-        'shop_name', 'project_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
+        'shop_name', 'project_name', 'customer', 'ops_first_name', 'authorized_users_display', 'ops_role', 'ops_group',
         'shop_status', 'amazon_shop_name', 'shop_date', 'shop_number', 'seller_mark',
         'qu_dao', 'ip_address', 'browser', 'whitelist', 'email_account', 'email_password'
     ];
@@ -537,6 +590,7 @@
         { key: 'project_name', label: '项目', group: '基本信息', tableVisible: true },
         { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
         { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true },
+        { key: 'authorized_users_display', label: '辅助人员', group: '基本信息', tableVisible: true },
         { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'amazon_shop_name', label: '亚马逊名称', group: '基本信息', tableVisible: true },
@@ -592,7 +646,8 @@
         await Promise.all([
             loadGroupsFromAPI(),  // 先加载分组（不传参数）
             loadCustomersFromAPI(),
-            loadProjectsFromAPI()
+            loadProjectsFromAPI(),
+            loadCompanyUsersFromAPI()
         ]);
         
         // 分组加载完成后，根据当前选中的分组加载人员
@@ -846,9 +901,17 @@
                 return `<td class="field-${col.key}">${value || '-'}</td>`;
             }).join('');
             
-            const actionCell = IS_ADMIN
-                ? `<td><button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button></td>`
-                : `<td><button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;">不可编辑</button></td>`;
+            let actionButtons = '';
+            if (IS_ADMIN) {
+                actionButtons += `<button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>`;
+            }
+            if (IS_ADMIN || shop.ops_id === CURRENT_USER_ID) {
+                actionButtons += `<button class="btn btn-sm btn-secondary" onclick="openAuthorizeModal(${shop.id})" style="margin-left:4px;">授权</button>`;
+            }
+            if (!actionButtons) {
+                actionButtons = `<button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;">不可编辑</button>`;
+            }
+            const actionCell = `<td>${actionButtons}</td>`;
             
             return `<tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">${checkboxCell}${cells}${actionCell}</tr>`;
         }).join('');
@@ -867,6 +930,21 @@
     // ==========================================
     // 下拉框数据更新
     // ==========================================
+    async function loadCompanyUsersFromAPI() {
+        try {
+            const response = await fetch('/api/company/users/');
+            const result = await response.json();
+            if (result.success) {
+                allCompanyUsers = result.data.map(u => ({
+                    value: String(u.id),
+                    label: u.display_name || u.first_name || u.username
+                }));
+            }
+        } catch (error) {
+            console.error('加载公司用户失败:', error);
+        }
+    }
+
     async function loadOperatorsFromAPI(opsGroups) {
         // 使用新API，platform=amazon
         const params = new URLSearchParams({ platform: 'amazon' });
@@ -1525,6 +1603,203 @@
     function closeBulkProjectModal() {
         document.getElementById('bulkProjectModalOverlay').style.display = 'none';
         bulkActionType = null;
+    }
+
+    // ========== 授权辅助人员 ==========
+    let authorizeUsersSelect = null;
+    let bulkAuthorizeUsersSelect = null;
+
+    function openAuthorizeModal(shopId) {
+        currentAuthorizeShopId = shopId;
+        document.getElementById('authorizeModalOverlay').style.display = 'block';
+
+        // 初始化选择器（只初始化一次）
+        if (!authorizeUsersSelect) {
+            authorizeUsersSelect = new SearchableSelect('#authorizeUsersSelect', {
+                options: allCompanyUsers,
+                placeholder: '请选择辅助人员',
+                multiple: true
+            });
+        }
+
+        // 获取当前店铺的已授权用户并预选中
+        const shopRow = document.querySelector(`tr[data-shop-id="${shopId}"]`);
+        // 从当前表格数据或重新获取
+        fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data.length > 0) {
+                    const userIds = result.data[0].authorized_users.map(u => String(u.id));
+                    authorizeUsersSelect.setValue(userIds);
+                }
+            });
+    }
+
+    function closeAuthorizeModal() {
+        document.getElementById('authorizeModalOverlay').style.display = 'none';
+        currentAuthorizeShopId = null;
+    }
+
+    async function submitAuthorize() {
+        if (!currentAuthorizeShopId) return;
+        const userIds = authorizeUsersSelect ? authorizeUsersSelect.getValue() : [];
+
+        try {
+            const response = await fetch(`/api/amazon-shops/${currentAuthorizeShopId}/authorized-users/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ user_ids: userIds.map(id => parseInt(id)) })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                closeAuthorizeModal();
+                showNotification('辅助人员更新成功！', 'success');
+                loadShopsTable();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('更新辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
+    }
+
+    function openBulkAuthorizeModal() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        document.getElementById('bulkAuthorizeDesc').textContent = `请选择要将 ${checkedBoxes.length} 个店铺设置的辅助人员：`;
+        document.getElementById('bulkAuthorizeModalOverlay').style.display = 'block';
+
+        if (!bulkAuthorizeUsersSelect) {
+            bulkAuthorizeUsersSelect = new SearchableSelect('#bulkAuthorizeUsersSelect', {
+                options: allCompanyUsers,
+                placeholder: '请选择辅助人员',
+                multiple: true
+            });
+        }
+
+        // 计算所有选中店铺已授权用户的交集并预选中
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        fetch(`/api/amazon-shops/?page=1&page_size=${shopIds.length}&id=${shopIds.join(',')}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data.length > 0) {
+                    // 计算所有店铺已授权用户的交集
+                    const userIdSets = result.data.map(shop =>
+                        new Set(shop.authorized_users.map(u => String(u.id)))
+                    );
+                    if (userIdSets.length > 0) {
+                        let commonIds = Array.from(userIdSets[0]);
+                        for (let i = 1; i < userIdSets.length; i++) {
+                            commonIds = commonIds.filter(id => userIdSets[i].has(id));
+                        }
+                        bulkAuthorizeUsersSelect.setValue(commonIds);
+                    } else {
+                        bulkAuthorizeUsersSelect.setValue([]);
+                    }
+                } else {
+                    bulkAuthorizeUsersSelect.setValue([]);
+                }
+            })
+            .catch(err => {
+                console.error('预加载辅助人员失败:', err);
+                bulkAuthorizeUsersSelect.setValue([]);
+            });
+    }
+
+    function closeBulkAuthorizeModal() {
+        document.getElementById('bulkAuthorizeModalOverlay').style.display = 'none';
+    }
+
+    async function submitBulkClearAuthorizedUsers() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        if (!shopIds.length) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        if (!confirm(`确认清空 ${shopIds.length} 个店铺的辅助人员？`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/amazon-shops/bulk-update-authorized-users/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    shop_ids: shopIds,
+                    user_ids: []
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('批量清空辅助人员成功！', 'success');
+                loadShopsTable();
+                document.getElementById('selectAll').checked = false;
+                document.querySelectorAll('.shop-select-checkbox').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('批量清空辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
+    }
+
+    async function submitBulkAuthorize() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        const userIds = bulkAuthorizeUsersSelect ? bulkAuthorizeUsersSelect.getValue() : [];
+
+        if (!shopIds.length) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/amazon-shops/bulk-update-authorized-users/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    shop_ids: shopIds,
+                    user_ids: userIds.map(id => parseInt(id))
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                closeBulkAuthorizeModal();
+                showNotification('批量设置辅助人员成功！', 'success');
+                loadShopsTable();
+                document.getElementById('selectAll').checked = false;
+                document.querySelectorAll('.shop-select-checkbox').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('批量设置辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
     }
 
     // ========== 批量设置运营人员 ==========

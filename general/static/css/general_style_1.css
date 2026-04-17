@@ -1345,7 +1345,8 @@ a.btn.gs-btn-icon-only::before {
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
 }
 
-.table-container th:nth-child(1) {
+.table-container thead th:nth-child(1),
+.table-container .table thead th:nth-child(1) {
     z-index: 12;
     background-color: var(--bg-tertiary);
 }
@@ -1368,7 +1369,8 @@ a.btn.gs-btn-icon-only::before {
     box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
 }
 
-.table-container th:nth-child(2) {
+.table-container thead th:nth-child(2),
+.table-container .table thead th:nth-child(2) {
     z-index: 13;
     background-color: var(--bg-tertiary);
 }
@@ -1383,7 +1385,8 @@ a.btn.gs-btn-icon-only::before {
     box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
 }
 
-.table-container th:last-child {
+.table-container thead th:last-child,
+.table-container .table thead th:last-child {
     z-index: 14;
     background-color: var(--bg-tertiary);
 }

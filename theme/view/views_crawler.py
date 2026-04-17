@@ -34,52 +34,107 @@ def convert_to_original(url):
     return f"{base_url}/{clean_filename}"
 
 
-async def fetch_page(session, keyword, page_num):
+async def fetch_page(session, keyword, page_num, referer=None):
     """获取单页数据"""
     # 页面间添加随机延迟，避免被拦截
     if page_num > 1:
-        await asyncio.sleep(random.uniform(0.5, 1.5))
+        await asyncio.sleep(random.uniform(0.8, 2.0))
     
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
         "Connection": "keep-alive",
+        "DNT": "1",
         "Host": "www.amazon.com",
         "Pragma": "no-cache",
-        "Cache-Control": "no-cache",
-        "sec-ch-ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Site": "same-origin" if referer else "none",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-User": "?1",
         "Sec-Fetch-Dest": "document",
-        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Upgrade-Insecure-Requests": "1",
     }
+    
+    if referer:
+        headers["Referer"] = referer
 
     search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
+    print(f"[Amazon爬虫] 正在请求: {search_url}", flush=True)
     
-    async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
-        html_content = await response.text()
-        
-        if "dogs of amazon" in html_content.lower() or response.status != 200:
-            return None
-        
-        tree = html.fromstring(html_content)
-        image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
-        
-        return image_urls
+    try:
+        async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
+            html_content = await response.text()
+            print(f"[Amazon爬虫] 响应状态码: {response.status}, 内容长度: {len(html_content)}", flush=True)
+            
+            if response.status != 200:
+                print(f"[Amazon爬虫] 非200状态码, status={response.status}", flush=True)
+                print(f"[Amazon爬虫] HTML片段: {html_content[:800]}", flush=True)
+                return None
+            
+            lower_html = html_content.lower()
+            if "dogs of amazon" in lower_html:
+                print(f"[Amazon爬虫] 检测到拦截页面(dogs of amazon)", flush=True)
+                print(f"[Amazon爬虫] HTML片段: {html_content[:800]}", flush=True)
+                return None
+            
+            if any(x in lower_html for x in [
+                "automated access",
+                "api-services-support",
+                "sorry, we just need to make sure you're not a robot",
+                "enter the characters you see below"
+            ]):
+                print(f"[Amazon爬虫] 检测到反机器人验证页面", flush=True)
+                print(f"[Amazon爬虫] HTML片段: {html_content[:800]}", flush=True)
+                return None
+            
+            tree = html.fromstring(html_content)
+            image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
+            print(f"[Amazon爬虫] 解析到 {len(image_urls)} 张图片", flush=True)
+            
+            return image_urls
+    except Exception as e:
+        print(f"[Amazon爬虫] fetch_page异常: {type(e).__name__}: {e}", flush=True)
+        raise
 
 
 async def search_amazon_images_async(keyword, max_pages=3):
     """异步搜索Amazon图片，默认爬3页"""
     all_image_urls = []
     
+    # 预热：先访问首页建立 Cookie
+    home_url = "https://www.amazon.com/"
+    base_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "DNT": "1",
+        "Pragma": "no-cache",
+        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"Windows"',
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1",
+        "Sec-Fetch-Dest": "document",
+        "Upgrade-Insecure-Requests": "1",
+    }
+    
     async with aiohttp.ClientSession() as session:
+        print(f"[Amazon爬虫-批量] 预热: {home_url}", flush=True)
+        async with session.get(home_url, headers={**base_headers, "Host": "www.amazon.com"}, ssl=ssl_context) as home_resp:
+            home_html = await home_resp.text()
+            print(f"[Amazon爬虫-批量] 首页状态码: {home_resp.status}, 长度: {len(home_html)}", flush=True)
+        
         for page in range(1, max_pages + 1):
-            image_urls = await fetch_page(session, keyword, page)
+            image_urls = await fetch_page(session, keyword, page, referer=home_url)
             
             if image_urls is None:
                 # 被拦截了，终止爬取
@@ -140,47 +195,91 @@ def amazon_data_crawler_page(request):
 
 async def fetch_single_page_async(keyword, page_num):
     """获取单页数据（用于逐页搜索API）"""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0",
+    base_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br, zstd",
-        "Connection": "keep-alive",
-        "Host": "www.amazon.com",
-        "Pragma": "no-cache",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
         "Cache-Control": "no-cache",
-        "sec-ch-ua": '"Chromium";v="128", "Not;A=Brand";v="24", "Google Chrome";v="128"',
+        "Connection": "keep-alive",
+        "DNT": "1",
+        "Pragma": "no-cache",
+        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Site": "same-origin",
         "Sec-Fetch-Mode": "navigate",
         "Sec-Fetch-User": "?1",
         "Sec-Fetch-Dest": "document",
-        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Upgrade-Insecure-Requests": "1",
     }
 
     search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
+    print(f"[Amazon爬虫-单页] 正在请求: {search_url}", flush=True)
     
-    async with aiohttp.ClientSession() as session:
-        async with session.get(search_url, headers=headers, ssl=ssl_context) as response:
-            html_content = await response.text()
+    try:
+        # 先访问首页建立 Cookie 会话，再搜索
+        async with aiohttp.ClientSession() as session:
+            # 1) 预热：访问首页
+            home_url = "https://www.amazon.com/"
+            print(f"[Amazon爬虫-单页] 预热: {home_url}", flush=True)
+            async with session.get(home_url, headers={**base_headers, "Host": "www.amazon.com"}, ssl=ssl_context) as home_resp:
+                home_html = await home_resp.text()
+                print(f"[Amazon爬虫-单页] 首页状态码: {home_resp.status}, 长度: {len(home_html)}", flush=True)
             
-            if "dogs of amazon" in html_content.lower() or response.status != 200:
-                return None, f"访问被拦截 (Status: {response.status})"
+            await asyncio.sleep(random.uniform(0.8, 1.5))
             
-            tree = html.fromstring(html_content)
-            image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
+            # 2) 搜索请求，带上 Referer
+            search_headers = {
+                **base_headers,
+                "Host": "www.amazon.com",
+                "Referer": home_url,
+                "Sec-Fetch-Site": "same-origin",
+            }
             
-            results = []
-            for idx, url in enumerate(image_urls):
-                original_url = convert_to_original(url)
-                results.append({
-                    "thumb_url": url,
-                    "original_url": original_url,
-                    "id": idx
-                })
-            
-            return results, f"找到 {len(results)} 张图片"
+            async with session.get(search_url, headers=search_headers, ssl=ssl_context) as response:
+                html_content = await response.text()
+                print(f"[Amazon爬虫-单页] 响应状态码: {response.status}, 内容长度: {len(html_content)}", flush=True)
+                
+                if response.status != 200:
+                    print(f"[Amazon爬虫-单页] 非200状态码拦截, status={response.status}", flush=True)
+                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                    return None, f"访问被拦截 (Status: {response.status})"
+                
+                if "dogs of amazon" in html_content.lower():
+                    print(f"[Amazon爬虫-单页] 检测到拦截页面(dogs of amazon)", flush=True)
+                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                    return None, f"访问被拦截 (Status: {response.status})"
+                
+                # 再检查是否返回了 robot/check 页面（常见反爬特征）
+                lower_html = html_content.lower()
+                if any(x in lower_html for x in [
+                    "automated access",
+                    "api-services-support",
+                    "sorry, we just need to make sure you're not a robot",
+                    "enter the characters you see below"
+                ]):
+                    print(f"[Amazon爬虫-单页] 检测到反机器人验证页面", flush=True)
+                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                    return None, f"访问被拦截 (Status: {response.status})"
+                
+                tree = html.fromstring(html_content)
+                image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
+                print(f"[Amazon爬虫-单页] 解析到 {len(image_urls)} 张图片", flush=True)
+                
+                results = []
+                for idx, url in enumerate(image_urls):
+                    original_url = convert_to_original(url)
+                    results.append({
+                        "thumb_url": url,
+                        "original_url": original_url,
+                        "id": idx
+                    })
+                
+                return results, f"找到 {len(results)} 张图片"
+    except Exception as e:
+        print(f"[Amazon爬虫-单页] fetch_single_page_async异常: {type(e).__name__}: {e}", flush=True)
+        raise
 
 
 @login_required
@@ -231,6 +330,9 @@ def api_amazon_search_page(request):
         })
 
     except Exception as e:
+        import traceback
+        print(f"[Amazon爬虫-API] api_amazon_search_page异常: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'message': f'搜索失败: {str(e)}'
@@ -306,6 +408,9 @@ def api_amazon_search(request):
         })
 
     except Exception as e:
+        import traceback
+        print(f"[Amazon爬虫-API] api_amazon_search异常: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
         return JsonResponse({
             'success': False,
             'message': f'搜索失败: {str(e)}'
