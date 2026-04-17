@@ -584,8 +584,14 @@ a.btn.gs-btn-icon-only::before {
     flex-direction: column;
     gap: 0.5rem;
     min-width: 0;
-    flex: 0 1 240px;
+    flex: 0 1 260px;
     max-width: 280px;
+}
+
+.filter-group.longsearch {
+    flex: 0 0 300px;
+    min-width: 300px;
+    max-width: 300px;
 }
 
 /* 筛选区域的 input 高度与 searchable-select 保持一致 */
@@ -601,6 +607,14 @@ a.btn.gs-btn-icon-only::before {
     align-self: flex-end;
     justify-self: start;
     width: max-content;
+}
+
+/* 覆盖 amazon_css.css 的 margin-left: auto，确保筛选按钮紧跟筛选项 */
+.filter-card > .filter-row > .filter-actions,
+.filter-card > .filter-row-main > .filter-actions,
+.data-card-filter > .filter-row > .filter-actions,
+.data-card-filter > .filter-row-main > .filter-actions {
+    margin-left: 0;
 }
 
 /* 筛选动作按钮统一样式（与人员管理页面保持一致） */
@@ -1247,7 +1261,9 @@ a.btn.gs-btn-icon-only::before {
 }
 
 .table thead th,
-.table th {
+.table th,
+.table-container .table thead th,
+.table-container .table th {
     background-color: var(--bg-tertiary);
     color: var(--text-secondary);
     font-weight: 600;
@@ -1260,6 +1276,8 @@ a.btn.gs-btn-icon-only::before {
     font-size: 13px;
     text-align: center;
     vertical-align: middle;
+    cursor: default;
+    user-select: text;
 }
 
 .table th:first-child {

@@ -4,7 +4,6 @@
 {% block title %}任务列表 - Divi智管{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
 <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=1">
 <style>
     .data-card-header {
@@ -26,7 +25,7 @@
         gap: 0.35rem;
     }
 
-    .data-card-header .header-stats .stat-item b {
+    .header-stats .stat-item b {
         color: var(--accent-color);
         font-weight: 600;
     }
@@ -260,29 +259,23 @@
 
 {% block content %}
 <div class="tab-content">
-<div class="data-card">
-    <!-- 页面标题 -->
-    <div class="data-card-header">
-        <div class="data-card-title">
-            <i class="fas fa-tasks" style="color: var(--accent-color); margin-right: 0.5rem;"></i>任务列表
-        </div>
-        <div class="header-stats">
+    <div class="page-header">
+        <h1 class="page-title"><i class="fas fa-tasks" style="color: var(--accent-color); margin-right: 0.5rem;"></i>任务列表</h1>
+        <div class="header-stats" style="margin: 0 auto;">
             <span class="stat-item">总任务数：<b id="headerTotalCount">0</b></span>
             <span class="stat-item">运行中：<b id="headerInProgressCount">0</b></span>
             <span class="stat-item">待执行：<b id="headerPendingCount">0</b></span>
             <span class="stat-item">草稿：<b id="headerDraftCount">0</b></span>
         </div>
-        <div class="data-card-actions">
-            <button class="btn btn-primary" onclick="createNewTask()">
-                <i class="fas fa-plus"></i> 创建新任务
-            </button>
-        </div>
+        <button class="btn btn-primary" onclick="createNewTask()">
+            <i class="fas fa-plus"></i> 创建新任务
+        </button>
     </div>
 
-    <!-- 筛选面板 -->
-    <div class="data-card-filter">
+    <!-- 筛选卡片 -->
+    <div class="filter-card">
         <div class="filter-row">
-            <div class="filter-group">
+            <div class="filter-group longsearch">
                 <label class="filter-label">搜索</label>
                 <div style="position: relative;">
                     <i class="fas fa-search" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-secondary);"></i>
@@ -316,9 +309,7 @@
                 <label class="filter-label">结束日期</label>
                 <input type="date" class="form-control" id="endDate">
             </div>
-        </div>
 
-        <div class="filter-actions-row">
             <div class="filter-actions">
                 <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选"></button>
                 <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置筛选"></button>
@@ -326,71 +317,73 @@
         </div>
     </div>
 
-    <!-- 批量操作占位 -->
-    <div class="bulk-action-bar" id="bulkActionBar">
-        <span class="bulk-action-count">已选择 <b>0</b> 项</span>
-        <div class="bulk-action-buttons">
-            <!-- 预留批量操作按钮位置 -->
-        </div>
-    </div>
-
-    <!-- 任务列表 -->
-    <div class="table-container" id="taskTableContainer">
-        <table class="table" id="taskTable">
-            <thead>
-                <tr>
-                    <th class="w-checkbox">
-                        <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAllTasks()">
-                    </th>
-                    <th style="width: 120px;">任务单号</th>
-                    <th style="width: 25%;">任务标题</th>
-                    <th>状态</th>
-                    <th>创建人</th>
-                    <th>所有者</th>
-                    <th>创建时间</th>
-                    <th class="w-actions">操作</th>
-                </tr>
-            </thead>
-            <tbody id="taskTableBody">
-                <tr>
-                    <td colspan="8" class="empty-state">
-                        <i class="fas fa-inbox"></i>
-                        <p>暂无任务数据</p>
-                        <p>点击"创建新任务"开始</p>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 分页控件 -->
-    <div class="pagination-container" id="paginationContainer" style="display: none;">
-        <div class="pagination-info" id="paginationInfo">
-            <div class="page-size-wrapper" id="pageSizeWrapper">
-                <span class="page-size-label">每页显示：</span>
-                <div class="page-size-dropdown-wrapper" style="position: relative;">
-                    <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                        <span id="pageSizeText">100条</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
-                        <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
-                        <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
-                        <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
-                        <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
-                    </div>
-                </div>
-                <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+    <!-- 数据主卡片 -->
+    <div class="data-card">
+        <!-- 批量操作占位 -->
+        <div class="bulk-action-bar" id="bulkActionBar">
+            <span class="bulk-action-count">已选择 <b>0</b> 项</span>
+            <div class="bulk-action-buttons">
+                <!-- 预留批量操作按钮位置 -->
             </div>
         </div>
-        <div class="pagination-new" id="paginationButtons"></div>
-        <div class="pagination-jump" id="paginationJump" style="display: none;">
-            <span>跳至</span>
-            <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
-            <span>页</span>
+
+        <!-- 任务列表 -->
+        <div class="table-container table-bordered" id="taskTableContainer">
+            <table class="table" id="taskTable">
+                <thead>
+                    <tr>
+                        <th class="w-checkbox">
+                            <input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAllTasks()">
+                        </th>
+                        <th style="width: 120px;">任务单号</th>
+                        <th style="width: 25%;">任务标题</th>
+                        <th>状态</th>
+                        <th>创建人</th>
+                        <th>所有者</th>
+                        <th>创建时间</th>
+                        <th class="w-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <i class="fas fa-inbox"></i>
+                            <p>暂无任务数据</p>
+                            <p>点击"创建新任务"开始</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info" id="paginationInfo">
+                <div class="page-size-wrapper" id="pageSizeWrapper">
+                    <span class="page-size-label">每页显示：</span>
+                    <div class="page-size-dropdown-wrapper" style="position: relative;">
+                        <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                            <span id="pageSizeText">100条</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="page-size-dropdown" id="pageSizeDropdown" style="display: none;">
+                            <div class="page-size-option" data-value="20" onclick="changePageSize(20)">20条</div>
+                            <div class="page-size-option" data-value="50" onclick="changePageSize(50)">50条</div>
+                            <div class="page-size-option selected" data-value="100" onclick="changePageSize(100)">100条</div>
+                            <div class="page-size-option" data-value="200" onclick="changePageSize(200)">200条</div>
+                        </div>
+                    </div>
+                    <span class="pagination-stats" id="paginationStats">0-0 / 共 0 条</span>
+                </div>
+            </div>
+            <div class="pagination-new" id="paginationButtons"></div>
+            <div class="pagination-jump" id="paginationJump" style="display: none;">
+                <span>跳至</span>
+                <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                <span>页</span>
+            </div>
         </div>
     </div>
-</div>
 </div>
 
 <!-- 确认删除模态框 -->
@@ -409,7 +402,7 @@
             </p>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-cancel-modal" onclick="closeDeleteModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
             <button class="btn btn-danger" onclick="confirmDelete()">
                 <i class="fas fa-trash"></i> 删除
             </button>
