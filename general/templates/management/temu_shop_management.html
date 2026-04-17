@@ -53,33 +53,6 @@
             display: flex;
         }
 
-        .filter-section {
-            display: block !important;
-            width: 100%;
-        }
-
-        body .filter-section > .filter-row {
-            display: flex !important;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: flex-end;
-            width: 100%;
-        }
-
-        body .filter-section > .filter-row > .filter-group {
-            flex: 1 1 0%;
-            min-width: 260px;
-            max-width: 300px;
-        }
-
-        body .filter-section > .filter-row > .filter-actions {
-            display: flex !important;
-            gap: 0.5rem;
-            align-items: flex-end;
-            margin-left: auto;
-            width: auto;
-        }
-
         .selected-count {
             color: var(--text-secondary);
             font-size: 0.875rem;
@@ -94,17 +67,6 @@
             to {
                 opacity: 1;
                 transform: translateY(0);
-            }
-        }
-
-        @media (max-width: 992px) {
-            body .filter-section > .filter-row > .filter-group {
-                min-width: 100%;
-                max-width: none;
-            }
-
-            body .filter-section > .filter-row > .filter-actions {
-                margin-left: 0;
             }
         }
 
@@ -153,13 +115,10 @@
 {% block content %}
     <div id="temu-shops-tab" class="tab-content">
         <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fas fa-store" style="color: var(--accent-color);"></i>
-                    Temu店铺管理
-                </h1>
-                <p class="page-subtitle">管理Temu店铺信息和配置</p>
-            </div>
+            <h1 class="page-title">
+                <i class="fas fa-store" style="color: var(--accent-color);"></i>
+                Temu店铺管理
+            </h1>
             <div>
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus"></i>
@@ -172,7 +131,7 @@
             </div>
         </div>
 
-        <div class="filter-section">
+        <div class="filter-card">
             <div class="filter-row">
                 <div class="filter-group">
                     <label class="filter-label">店铺状态</label>
@@ -200,7 +159,7 @@
                     <div id="temuDimensionsFilter" class="searchable-select single" data-placeholder="全部"></div>
                 </div>
 
-                <div class="filter-group">
+                <div class="filter-group longsearch">
                     <label class="filter-label">搜索店铺</label>
                     <input type="text" class="form-control" id="temuShopSearch" placeholder="搜索店铺名称/账号/TemuID">
                 </div>
@@ -211,9 +170,10 @@
             </div>
         </div>
 
-        {% if is_admin %}
-        <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
+        <div class="data-card">
+            {% if is_admin %}
+            <!-- 批量操作栏 -->
+            <div class="bulk-action-bar" id="bulkActionBar">
             <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
             <button class="btn btn-create" onclick="openBulkProjectModal('add')">
                 <i class="fas fa-plus-circle"></i>
@@ -230,8 +190,8 @@
         </div>
         {% endif %}
 
-        <div class="table-container">
-            <table class="table" id="temuShopsTable">
+            <div class="table-container table-bordered">
+                <table class="table" id="temuShopsTable">
                 <thead id="temuShopsTableHead">
                 <tr>
                     <th class="w-checkbox">
@@ -268,9 +228,9 @@
                 <!-- 动态生成内容 -->
                 </tbody>
             </table>
-        </div>
+            </div>
 
-        <div class="pagination-container" id="paginationContainer">
+            <div class="pagination-container" id="paginationContainer">
             <div class="pagination-info" data-total="0">
                 <div class="page-size-wrapper" id="pageSizeWrapper">
                     <span class="page-size-label">每页显示：</span>
@@ -301,7 +261,7 @@
     </div>
 
     <!-- 批量项目操作模态框 -->
-    <div class="modal-overlay" id="bulkProjectModalOverlay">
+    <div class="modal-overlay" id="bulkProjectModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2 class="modal-title" id="bulkProjectModalTitle">批量设置项目</h2>
@@ -315,14 +275,14 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeBulkProjectModal()">取消</button>
+                <button class="btn btn-secondary" onclick="closeBulkProjectModal()">取消</button>
                 <button class="btn btn-save-modal" onclick="submitBulkProject()">确认</button>
             </div>
         </div>
     </div>
 
     <!-- 批量设置运营人员模态框 -->
-    <div class="modal-overlay" id="bulkOperatorModalOverlay">
+    <div class="modal-overlay" id="bulkOperatorModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 500px; min-height: 300px;">
             <div class="modal-header">
                 <h2 class="modal-title">批量设置运营人员</h2>
@@ -342,7 +302,7 @@
     </div>
 
     <!-- 导出模态框 -->
-    <div class="modal-overlay" id="exportModalOverlay">
+    <div class="modal-overlay" id="exportModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 800px; max-height: 80vh;">
             <div class="modal-header">
                 <h2 class="modal-title">选择要导出的列</h2>
@@ -354,14 +314,14 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="selectAllExportColumns(false)">全不选</button>
                 <button class="btn btn-secondary" onclick="selectAllExportColumns(true)">全选</button>
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
+                <button class="btn btn-secondary" onclick="closeExportModal()">取消</button>
                 <button class="btn btn-save-modal" onclick="confirmExport()">确认导出</button>
             </div>
         </div>
     </div>
 
     <!-- 店铺编辑模态框 -->
-    <div class="modal-overlay" id="shopModalOverlay">
+    <div class="modal-overlay" id="shopModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
@@ -371,14 +331,14 @@
                 <!-- 动态生成表单内容 -->
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
                 <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
             </div>
         </div>
     </div>
 
     <!-- 尺寸重量编辑模态框 -->
-    <div class="modal-overlay" id="dimensionsModalOverlay">
+    <div class="modal-overlay" id="dimensionsModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2 class="modal-title">编辑尺寸重量</h2>
@@ -405,7 +365,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-cancel-modal" onclick="closeDimensionsModal()">取消</button>
+                <button class="btn btn-secondary" onclick="closeDimensionsModal()">取消</button>
                 <button class="btn btn-save-modal" onclick="saveDimensions()">保存</button>
             </div>
         </div>

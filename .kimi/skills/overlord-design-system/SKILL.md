@@ -82,6 +82,7 @@ base/base.html（顶部导航一级 Base）
 - `.page-title` 固定在左侧
 - `.header-stats` 通过 `margin: 0 auto;` 居中
 - 操作按钮固定在右侧
+- **禁止**在 `.page-header` 内添加副标题、描述文字或 `.page-subtitle` 等元素
 
 ## 按钮规范（禁止自创类名）
 
