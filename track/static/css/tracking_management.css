@@ -106,7 +106,7 @@
     width: 100%;
 }
 
-#logisticsMethodFilter, #statusFilter, #trackingUpdateFilter {
+#statusFilter, #trackingUpdateFilter {
     padding-right: 40px;
     width: 100%;
 }

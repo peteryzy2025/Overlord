@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from theme.view import views, views_vocabulary, views_trend, views_dw_data, views_new_release, views_novelty_aggregation
 from theme.view import views, views_vocabulary, views_trend, views_dw_data, views_new_release, views_crawler

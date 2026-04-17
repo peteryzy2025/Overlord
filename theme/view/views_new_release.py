@@ -1,4 +1,4 @@
-﻿from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import Avg, Count, Max, Min, OuterRef, Q, Subquery
 from django.http import JsonResponse
