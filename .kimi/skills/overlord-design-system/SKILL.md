@@ -158,6 +158,22 @@ base/base.html（顶部导航一级 Base）
 </div>
 ```
 
+### 日期范围
+**禁止**把"开始日期~结束日期"挤在一个 `.filter-group` 里。推荐拆成两个独立的 `.filter-group`：
+
+```html
+<div class="filter-row">
+    <div class="filter-group">
+        <label class="filter-label">开始日期</label>
+        <input type="date" class="form-control" id="startDate">
+    </div>
+    <div class="filter-group">
+        <label class="filter-label">结束日期</label>
+        <input type="date" class="form-control" id="endDate">
+    </div>
+</div>
+```
+
 ### 点选式快速筛选（pill）
 当需要 pill 快速筛选时，**必须独占新行并放在 `.filter-card` 内部**：
 
@@ -173,6 +189,30 @@ base/base.html（顶部导航一级 Base）
     </div>
 </div>
 ```
+
+### 更多筛选项（展开/收起）
+当筛选项过多时，可在 `.filter-card` 内使用 `.filter-row-secondary` 作为第二行，默认隐藏，通过 `.expand-toggle` 按钮展开：
+
+```html
+<div class="filter-card">
+    <div class="filter-row filter-row-main">
+        <div class="filter-group">...核心筛选项...</div>
+        <div class="filter-actions">
+            <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" title="筛选"></button>
+            <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" title="重置"></button>
+        </div>
+        <button class="expand-toggle" onclick="toggleSecondaryFilters()">
+            <i class="fas fa-chevron-down"></i>
+        </button>
+    </div>
+    <div class="filter-row-secondary" id="secondaryFilters">
+        <div class="filter-group">...更多筛选项...</div>
+    </div>
+</div>
+```
+
+- 搜索/重置按钮**始终固定在第一行**，禁止通过 JS 把按钮搬到第二行
+- `.expand-toggle` 放在第一行末尾，用于控制 `.filter-row-secondary` 的显隐
 
 ### 切换式快速筛选（tri-state toggle）
 当需要 噪声/去噪后/全部 这类切换式筛选时，**放在 `.data-card` 内部、表格上方**，使用 `.data-quick-filter`：
