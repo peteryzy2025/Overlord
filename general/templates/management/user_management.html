@@ -195,44 +195,41 @@
 
 {% block content %}
     <div id="user-management-tab" class="tab-content">
-        <!-- 一体化数据卡片 -->
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>人员管理</h1>
+            {% if '555' in user_permissions or '551' in user_permissions %}
+            <button class="btn btn-create" onclick="openCreateModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建人员
+            </button>
+            {% endif %}
+        </div>
+
+        <div class="filter-card">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">部门</label>
+                    <div id="departmentFilter" class="searchable-select single" data-placeholder="全部部门"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">运营分组</label>
+                    <div id="opsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="userSearch" placeholder="用户名/姓名">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterUsers()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
+                </div>
+            </div>
+        </div>
+
         <div class="data-card">
-            <div class="data-card-header">
-                <div class="data-card-title">
-                    <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>人员管理
-                </div>
-                {% if '555' in user_permissions or '551' in user_permissions %}
-                <button class="btn btn-create" onclick="openCreateModal()">
-                    <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建人员
-                </button>
-                {% endif %}
-            </div>
-
-            <div class="data-card-filter">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label class="filter-label">状态</label>
-                        <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">部门</label>
-                        <div id="departmentFilter" class="searchable-select single" data-placeholder="全部部门"></div>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">运营分组</label>
-                        <div id="opsGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">搜索</label>
-                        <input type="text" class="form-control" id="userSearch" placeholder="用户名/姓名">
-                    </div>
-                    <div class="filter-actions">
-                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterUsers()" title="筛选"></button>
-                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
-                    </div>
-                </div>
-            </div>
-
             {% if '555' in user_permissions or '551' in user_permissions %}
             <!-- 批量操作栏 -->
             <div class="bulk-action-bar" id="bulkActionBar">
@@ -252,7 +249,7 @@
             </div>
             {% endif %}
 
-            <div class="table-container">
+            <div class="table-container table-bordered">
                 <table class="table" id="usersTable">
                     <thead id="usersTableHead">
                     <tr>
@@ -305,7 +302,7 @@
     </div>
 
     <!-- 新建/编辑用户模态框 -->
-    <div class="modal-overlay" id="userModalOverlay">
+    <div class="modal-overlay" id="userModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
             <div class="modal-header">
                 <h2 class="modal-title" id="userModalTitle">新建人员</h2>
@@ -465,7 +462,7 @@
     </div>
 
     <!-- 批量部门模态框 -->
-    <div class="modal-overlay" id="bulkDepartmentModalOverlay">
+    <div class="modal-overlay" id="bulkDepartmentModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 500px; min-height: 300px;">
             <div class="modal-header">
                 <h2 class="modal-title">批量设置部门</h2>
@@ -485,7 +482,7 @@
     </div>
 
     <!-- 批量权限模态框 -->
-    <div class="modal-overlay" id="bulkPermissionModalOverlay">
+    <div class="modal-overlay" id="bulkPermissionModalOverlay" onclick="if(event.target === this) return;">
         <div class="modal-content" style="max-width: 800px;">
             <div class="modal-header">
                 <h2 class="modal-title">批量设置权限</h2>

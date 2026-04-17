@@ -13,6 +13,7 @@ description: |
 - **任何前端改动**（无论新建页面还是加一列/加一个按钮）都必须先遵循此规范。
 - 所有通用样式已写入 `general/static/css/general_style_1.css`，**禁止**在页面内联 `<style>` 中重写 `.data-card`、`.table`、`.pagination-container`、`.btn` 的结构或颜色。
 - 如果页面缺少 `.data-card` 结构，**必须**整体迁移到标准结构，禁止局部拼凑。
+- **缓存版本**：页面引用 `general_style_1.css` 时必须带版本参数（如 `?v=20260417`）。若修改了 `general_style_1.css`，**必须同步更新**所有引用页面中的版本号，否则浏览器会加载旧缓存。
 
 ## 文件定位
 
@@ -43,22 +44,44 @@ base/base.html（顶部导航一级 Base）
 
 ## 标准页面结构（强制）
 
-每个管理后台列表页推荐采用 **筛选卡片 + 数据卡片** 的双层结构，以增强层次感：
+每个管理后台列表页推荐采用 **页面标题 + 筛选卡片 + 数据卡片** 的三层结构，以增强层次感：
 
+- **`.page-header`** — 页面大标题 + 可选的统计信息/创建按钮
+  - 标题在左，统计居中，按钮在右
+  - 若页面筛选条件复杂或有 Tab 切换，建议把标题从 `.data-card` 里提出来放这里
 - **`.filter-card`** — 筛选条件容器，内部从上到下依次为：
   1. **`.filter-card-header`** — 二级 Tab 导航（如 热门搜索词/新词榜），必须独占第一行
   2. **`.filter-row`** — 具体筛选项（搜索框、下拉框、日期等），可折行
   3. **`.quick-filter-row`** — 点选式快速筛选 pills（如 全部/持续增长词/爆发词），必须独占新行
 - **`.data-card`** — 数据主卡片，内部包含：
-  1. **`.data-card-header`** — 标题 + 新建/导出按钮（Tab 导航**禁止**放这里）
+  1. **`.data-card-header`** — 可选。当标题已放在 `.page-header` 时，这里可只保留操作按钮或统计；若筛选条件极少，也可直接省略
   2. **`.data-quick-filter`** — 切换式快速筛选（如 噪声/去噪后/全部），放在表格上方
   3. **`.bulk-action-bar`** — 批量操作条（默认隐藏，选中后显示）
   4. **`.table-container.table-bordered`** — 带独立细边框+圆角的表格区
   5. **`.pagination-container`** — 分页
 
-若页面筛选条件极少且没有 Tab 切换，也可把 `.data-card-filter` 放在 `.data-card` 内部第一行。
-
 **新建页面时**：直接复制 `assets/management-page-template.html`，在此基础上修改业务逻辑。
+
+## 页面标题规范
+
+当页面需要把标题从数据卡片中剥离出来时，使用 `.page-header`：
+
+```html
+<div class="page-header">
+    <h1 class="page-title"><i class="fas fa-tasks"></i> 页面标题</h1>
+    <div class="header-stats" style="margin: 0 auto;">
+        <span class="stat-item">总任务数：<b>0</b></span>
+        <span class="stat-item">运行中：<b>0</b></span>
+    </div>
+    <button class="btn btn-primary" onclick="createNewTask()">
+        <i class="fas fa-plus"></i> 创建新任务
+    </button>
+</div>
+```
+
+- `.page-title` 固定在左侧
+- `.header-stats` 通过 `margin: 0 auto;` 居中
+- 操作按钮固定在右侧
 
 ## 按钮规范（禁止自创类名）
 
@@ -70,6 +93,7 @@ base/base.html（顶部导航一级 Base）
 | `.btn-secondary` | `#F1F5F9` 灰底、黑字、细边框 | 次要操作：导出、取消 |
 | `.btn-ghost` | 透明底、灰字、细边框 | 辅助操作 |
 | `.btn-save-modal` | 蓝色保存按钮（模态框专用） | 模态框确认/保存 |
+| `.btn-danger` | 红色危险按钮 | 删除等不可逆操作 |
 | `.gs-btn-search` | 42×42 图标按钮，放大镜图标 | 筛选区搜索 |
 | `.gs-btn-reset` | 42×42 图标按钮，刷新图标 | 筛选区重置 |
 
@@ -80,6 +104,12 @@ base/base.html（顶部导航一级 Base）
     <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
 </div>
 ```
+
+**模态框底部按钮**：
+- 取消统一用 `.btn-secondary`
+- 保存/确认统一用 `.btn-save-modal`
+- 删除统一用 `.btn-danger`
+- **禁止**自创 `.btn-cancel-modal` 等类名
 
 ## Tab 导航位置（强制）
 
@@ -115,6 +145,15 @@ base/base.html（顶部导航一级 Base）
         <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only"></button>
         <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only"></button>
     </div>
+</div>
+```
+
+### 搜索框加宽
+当搜索框需要更宽时，使用 `.filter-group.longsearch`：
+```html
+<div class="filter-group longsearch">
+    <label class="filter-label">搜索</label>
+    <input type="text" class="form-control" placeholder="关键词">
 </div>
 ```
 
@@ -164,8 +203,8 @@ base/base.html（顶部导航一级 Base）
 
 - **风格**：传统横线表格。每行必须有 `border-bottom: 1px solid var(--border-color)`，包括最后一行。
 - **表头**：背景 `var(--bg-tertiary)`，**禁止**使用任何 `linear-gradient` 渐变。
-  - 表头 `padding: 1rem 1.5rem`
-  - 表头字号 `13px`，字重 600
+  - 表头 `padding: 1.25rem 1.5rem`
+  - 表头字号 `1rem`，字重 600
   - 表头文字颜色 `var(--text-secondary)`
   - 表头文字居中 `text-align: center`
   - 表头 `cursor: default`（只有明确可排序的列才额外加 `.sortable`）
@@ -232,12 +271,14 @@ base/base.html（顶部导航一级 Base）
 - 禁止模态框点击外部关闭。
 - 禁止重复写入 Dark Mode 样式（已在 `general_style_1.css` 中全局覆盖）。
 - **禁止**把 Tab 导航放在 `.data-card-header` 里；有 Tab 切换时必须放在 `.filter-card-header` 独占第一行。
+- **禁止**使用 `.btn-cancel-modal` 等非标准按钮类名。
+- **禁止**引用 `amazon/static/css/amazon_css.css` 作为通用表格样式。
 
 ## 工作流（修改页面时）
 
 1. 打开目标模板，确认继承链正确。
 2. 检查是否已有 `.data-card`；如果没有，用 `assets/management-page-template.html` 整体替换结构。
-3. 检查 5 大区块顺序是否正确（尤其 Tab 是否在 `.filter-card-header`）。
+3. 检查 3 大区块顺序是否正确（`.page-header` → `.filter-card` → `.data-card`，尤其 Tab 是否在 `.filter-card-header`）。
 4. 检查按钮类名是否符合规范。
 5. 检查表格操作列是否使用 `.link`。
 6. 检查模态框是否有 `onclick="if(event.target === this) return;"`。
