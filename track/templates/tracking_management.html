@@ -4,290 +4,15 @@
 {% block title %}物流追踪管理 - Divi智管{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260321-filter-horizontal">
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260417">
 <link rel="stylesheet" href="{% static 'css/tracking_management.css' %}">
 <style>
-    /* 仅保留筛选组件样式，避免 general_style_1.css 的全局表格规则覆盖同事页面样式 */
     .gs-date-range-custom-group {
         display: none !important;
     }
 
     .gs-date-range-custom-group.is-visible {
         display: flex !important;
-    }
-
-    .searchable-select {
-        position: relative;
-        width: 100%;
-        display: block;
-        box-sizing: border-box;
-    }
-
-    .searchable-select .select-trigger {
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        border-radius: 8px;
-        padding: 0.5rem 2rem 0.5rem 0.75rem;
-        cursor: pointer;
-        position: relative;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        height: 42px;
-        width: 100%;
-        box-sizing: border-box;
-        transition: all 0.3s ease;
-        background-color: var(--bg-secondary);
-    }
-
-    .searchable-select .select-trigger:hover {
-        border-color: var(--accent-color);
-    }
-
-    .searchable-select.open .select-trigger {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        border-radius: 8px 8px 0 0;
-    }
-
-    .searchable-select .select-trigger::after {
-        content: "\f078";
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-        transition: transform 0.2s;
-        margin-left: 0.5rem;
-    }
-
-    .searchable-select.open .select-trigger::after {
-        transform: rotate(180deg);
-    }
-
-    .searchable-select .select-trigger .selected-text {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        background-color: transparent !important;
-        line-height: 1.5;
-        min-height: 1.5em;
-        display: flex;
-        align-items: center;
-    }
-
-    .searchable-select .select-trigger .selected-text .placeholder {
-        background-color: transparent !important;
-        line-height: 1.5;
-        color: var(--text-secondary);
-        font-weight: 400;
-        opacity: 1;
-        letter-spacing: normal;
-    }
-
-    #paginationControls.pagination-container {
-        margin-top: 1.5rem;
-        padding: 1rem;
-        background-color: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        box-shadow: var(--shadow-light);
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    #paginationControls .pagination-new {
-        flex: 1 1 auto;
-        justify-content: center;
-    }
-
-    #paginationControls .pagination-jump {
-        margin-left: auto;
-    }
-
-    @media (max-width: 768px) {
-        #paginationControls .pagination-new {
-            width: 100%;
-            justify-content: flex-start;
-        }
-
-        #paginationControls .pagination-jump {
-            margin-left: 0;
-        }
-    }
-
-    .searchable-select .dropdown-panel {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        background-color: var(--bg-primary);
-        border: 1px solid var(--accent-color);
-        border-top: none;
-        border-radius: 0 0 8px 8px;
-        max-height: 280px;
-        overflow: hidden;
-        z-index: 1000;
-        display: none;
-        box-shadow: var(--shadow-heavy);
-    }
-
-    .searchable-select.open .dropdown-panel {
-        display: block;
-    }
-
-    .searchable-select .search-input-wrapper {
-        padding: 0.5rem;
-        border-bottom: 1px solid var(--border-color);
-        background-color: var(--bg-secondary);
-    }
-
-    .searchable-select .search-input {
-        width: 100%;
-        padding: 0.5rem 0.75rem;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background-color: var(--bg-primary);
-        color: var(--text-primary);
-        font-size: 0.875rem;
-        box-sizing: border-box;
-    }
-
-    .searchable-select .search-input:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-    }
-
-    .searchable-select .search-input::placeholder {
-        color: var(--text-secondary);
-    }
-
-    .searchable-select .options-list {
-        max-height: 200px;
-        overflow-y: auto;
-        padding: 0.25rem 0;
-    }
-
-    .searchable-select .option {
-        padding: 0.5rem 0.75rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        transition: background-color 0.15s;
-        font-size: 0.875rem;
-    }
-
-    .searchable-select .option:hover {
-        background-color: var(--bg-secondary);
-    }
-
-    .searchable-select .option.selected {
-        background-color: rgba(59, 130, 246, 0.1);
-        color: var(--accent-color);
-    }
-
-    .searchable-select .option.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .searchable-select .option .checkbox {
-        width: 16px;
-        height: 16px;
-        border: 2px solid var(--border-color);
-        border-radius: 3px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.15s;
-        flex-shrink: 0;
-    }
-
-    .searchable-select .option.selected .checkbox {
-        background-color: var(--accent-color);
-        border-color: var(--accent-color);
-    }
-
-    .searchable-select .option.selected .checkbox::after {
-        content: "\f00c";
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        font-size: 0.625rem;
-        color: white;
-    }
-
-    .searchable-select .option .option-text {
-        flex: 1;
-    }
-
-    .searchable-select .no-options {
-        padding: 1rem;
-        text-align: center;
-        color: var(--text-secondary);
-        font-size: 0.875rem;
-    }
-
-    .searchable-select .select-trigger .tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-        flex: 1;
-    }
-
-    .searchable-select .select-trigger .tag {
-        background-color: var(--accent-color);
-        color: white;
-        padding: 0.15rem 0.5rem;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    .searchable-select .select-trigger .tag .remove {
-        cursor: pointer;
-        opacity: 0.8;
-    }
-
-    .searchable-select .select-trigger .tag .remove:hover {
-        opacity: 1;
-    }
-
-    .searchable-select .clear-btn {
-        color: var(--text-secondary);
-        cursor: pointer;
-        padding: 0.25rem;
-        margin-right: 0.25rem;
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-
-    .searchable-select:hover .clear-btn {
-        opacity: 1;
-    }
-
-    .searchable-select .clear-btn:hover {
-        color: var(--accent-color);
-    }
-
-    .searchable-select.single .option.selected::before {
-        content: "\f00c";
-        font-family: "Font Awesome 5 Free";
-        font-weight: 900;
-        font-size: 0.75rem;
-        color: var(--accent-color);
-        margin-right: 0.25rem;
-    }
-
-    .searchable-select.disabled .select-trigger {
-        background-color: var(--bg-tertiary);
-        cursor: not-allowed;
-        opacity: 0.7;
     }
 </style>
 {% endblock %}
@@ -303,15 +28,7 @@
 <div class="tracking-main">
     <!-- 页面头部 -->
     <div class="page-header">
-        <div>
-            <h1 class="page-title">物流追踪管理</h1>
-            <p class="page-subtitle">查看和管理所有运单轨迹，支持异常监控与批量刷新</p>
-        </div>
-        <div>
-            <button class="btn" onclick="refreshData(event)">
-                <i class="fas fa-sync-alt"></i> 刷新数据
-            </button>
-        </div>
+        <h1 class="page-title"><i class="fas fa-shipping-fast" style="color: var(--accent-color); margin-right: 0.5rem;"></i>物流追踪管理</h1>
     </div>
 
     <!-- 统计看板 -->
@@ -351,7 +68,7 @@
     </div>
 
     <!-- 控制面板 - 筛选区 -->
-    <div class="control-panel">
+    <div class="filter-card">
         <div class="filter-row">
             <!-- 日期范围 -->
             <div class="filter-group">
@@ -498,8 +215,6 @@
                     </button>
                 </div>
             </div>
-        </div>
-        <div class="filter-actions-row">
             <div class="filter-actions">
                 <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
                 <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters(event)" title="重置" aria-label="重置"></button>
@@ -508,17 +223,17 @@
     </div>
 
     <!-- 数据表格区 -->
-    <div class="data-section">
+    <div class="data-card">
         <!-- 批量操作栏 -->
-        <div class="bulk-actions-bar" id="bulkActionsBar">
+        <div class="bulk-action-bar" id="bulkActionsBar">
             <span>已选择 <strong id="selectedCount">0</strong> 条</span>
-            <button class="btn" onclick="batchRefreshTracking()">
+            <button class="btn btn-create" onclick="batchRefreshTracking()">
                 <i class="fas fa-sync-alt"></i> 批量刷新轨迹
             </button>
-            <button class="btn" onclick="batchToggleCancel('cancel')">
+            <button class="btn btn-secondary" onclick="batchToggleCancel('cancel')">
                 <i class="fas fa-ban"></i> 批量取消
             </button>
-            <button class="btn" onclick="batchToggleCancel('undo')">
+            <button class="btn btn-secondary" onclick="batchToggleCancel('undo')">
                 <i class="fas fa-undo"></i> 批量恢复
             </button>
             <button class="btn btn-secondary" onclick="clearSelection()">
@@ -526,28 +241,29 @@
             </button>
         </div>
 
-        <!-- 表格头部 -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 class="section-title">运单列表</h3>
-            <div style="display: flex; gap: 0.5rem;">
-                <button class="btn" onclick="openImportModal()">
+        <div class="data-card-header">
+            <div class="data-card-title">
+                <i class="fas fa-table" style="color: var(--accent-color); margin-right: 0.5rem;"></i>运单列表
+            </div>
+            <div class="data-card-actions">
+                <button class="btn btn-create" onclick="openImportModal()">
                     <i class="fas fa-plus"></i> 新增物流单号
                 </button>
                 <button class="btn btn-secondary" onclick="exportTrackingToExcel(event)">
                     <i class="fas fa-download"></i> 导出Excel
                 </button>
-                <button class="btn" onclick="updateStats()">
+                <button class="btn btn-secondary" onclick="updateStats()">
                     <i class="fas fa-chart-line"></i> 更新统计
                 </button>
             </div>
         </div>
 
         <!-- 表格 -->
-        <div class="table-container" id="trackingTableContainer">
+        <div class="table-container table-bordered" id="trackingTableContainer">
             <table class="table" id="trackingTable">
                 <thead>
                     <tr>
-                        <th class="checkbox-col">
+                        <th class="w-checkbox">
                             <input type="checkbox" id="selectAll" onclick="toggleSelectAll()">
                         </th>
                         <th>运单号</th>
@@ -611,7 +327,7 @@
 </div>
 {% endblock %}
 {% block modals %}
-<div class="modal-overlay" id="importModalOverlay">
+<div class="modal-overlay" id="importModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content">
         <div class="modal-header">
             <h5 class="modal-title" id="importModalLabel">新增物流单号</h5>
@@ -661,9 +377,9 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-cancel-modal" onclick="closeImportModal()">取消
+            <button type="button" class="btn btn-secondary" onclick="closeImportModal()">取消
             </button>
-            <button type="button" class="btn btn-primary-modal" id="confirmImportBtn" onclick="confirmImport()"
+            <button type="button" class="btn btn-save-modal" id="confirmImportBtn" onclick="confirmImport()"
                 disabled>
                 <i class="fas fa-check"></i> 确认导入
             </button>
@@ -671,7 +387,7 @@
     </div>
 </div>
 <!-- 导入结果模态框 -->
-<div class="modal-overlay" id="importResultModalOverlay">
+<div class="modal-overlay" id="importResultModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content">
         <div class="modal-header">
             <h5 class="modal-title" id="importResultModalLabel">导入结果</h5>
@@ -686,10 +402,10 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-cancel-modal" onclick="closeImportResultModal()">
+            <button type="button" class="btn btn-secondary" onclick="closeImportResultModal()">
                 关闭
             </button>
-            <button type="button" class="btn btn-primary-modal" onclick="downloadFailedList()" id="downloadFailedBtn"
+            <button type="button" class="btn btn-save-modal" onclick="downloadFailedList()" id="downloadFailedBtn"
                 style="display: none;">
                 <i class="fas fa-download"></i> 下载失败列表
             </button>
