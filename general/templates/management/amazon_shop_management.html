@@ -172,6 +172,20 @@
             justify-content: center;
         }
 
+        .expand-toggle {
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            align-self: flex-end;
+        }
+
         .pagination-btn-new {
             min-width: 40px;
             padding: 0 10px;
@@ -192,139 +206,6 @@
             padding: 0 5px;
         }
 
-        /* Amazon 顶部筛选卡片使用紧凑换行布局，避免字段溢出卡片 */
-        #amazon-shops-tab .filter-section {
-            overflow: visible;
-            display: block;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-main {
-            display: grid !important;
-            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            padding-right: 0;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-secondary {
-            display: none;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            padding-right: 0;
-            margin-top: 0.875rem;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-secondary.expanded {
-            display: grid !important;
-        }
-
-        #amazon-shops-tab .filter-actions-row {
-            display: grid !important;
-            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            margin-top: 0.875rem;
-        }
-
-        #amazon-shops-tab .filter-row-main > .filter-group,
-        #amazon-shops-tab .filter-row-secondary > .filter-group {
-            flex: 1 1 220px;
-            min-width: 220px;
-            max-width: none;
-        }
-
-        #amazon-shops-tab .filter-group .form-control,
-        #amazon-shops-tab .filter-group .searchable-select,
-        #amazon-shops-tab .filter-group .searchable-select-trigger,
-        #amazon-shops-tab .date-range-group {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            box-sizing: border-box;
-        }
-
-        #amazon-shops-tab .date-range-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        #amazon-shops-tab .date-range-group input {
-            flex: 1 1 0;
-            min-width: 0;
-        }
-
-        #amazon-shops-tab .expand-toggle {
-            width: 42px;
-            min-width: 42px;
-            align-self: flex-end;
-        }
-
-        #amazon-shops-tab .filter-actions {
-            margin-left: 0;
-            align-self: flex-end;
-            grid-column: 7;
-            justify-self: end;
-        }
-
-        #amazon-shops-tab .filter-row-secondary.expanded .filter-actions {
-            grid-column: auto;
-            justify-self: start;
-            align-self: end;
-        }
-
-        #amazon-shops-tab #shopDateRangeGroup {
-            grid-column: span 2 !important;
-            max-width: none !important;
-        }
-
-        #amazon-shops-tab .filter-row-secondary.expanded > .filter-actions {
-            grid-column: 3;
-        }
-
-        #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-            display: none !important;
-        }
-
-        @media (max-width: 900px) {
-            #amazon-shops-tab .filter-section > .filter-row-main {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-section > .filter-row-secondary {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-actions-row,
-            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-group {
-                flex-basis: 200px;
-                min-width: 200px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            #amazon-shops-tab .filter-section > .filter-row-main,
-            #amazon-shops-tab .filter-section > .filter-row-secondary {
-                grid-template-columns: 1fr;
-            }
-
-            #amazon-shops-tab .filter-actions-row,
-            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-                grid-template-columns: 1fr;
-            }
-
-            #amazon-shops-tab .filter-actions {
-                grid-column: 1;
-                justify-content: flex-end;
-                justify-self: end;
-            }
-        }
-
     </style>
 {% endblock %}
 
@@ -332,13 +213,10 @@
 <div class="content">
     <div id="amazon-shops-tab" class="tab-content">
         <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fab fa-amazon" style="color: var(--accent-color);"></i>
-                    Amazon店铺管理
-                </h1>
-                <p class="page-subtitle">管理Amazon店铺信息和配置</p>
-            </div>
+            <h1 class="page-title">
+                <i class="fab fa-amazon" style="color: var(--accent-color);"></i>
+                Amazon店铺管理
+            </h1>
             <div>
                 {% if is_admin %}
                 <button class="btn btn-create" onclick="openCreateModal()">
@@ -353,9 +231,9 @@
             </div>
         </div>
 
-        <div class="filter-section">
+        <div class="filter-card" id="amazonShopFilterCard">
             <!-- 第一行筛选器 -->
-            <div class="filter-row-main">
+            <div class="filter-row filter-row-main">
                 <div class="filter-group">
                     <label class="filter-label">店铺状态</label>
                     <div id="amazonShopStatusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
@@ -364,7 +242,7 @@
                     <label class="filter-label">客户</label>
                     <div id="amazonCustomerFilter" class="searchable-select single" data-placeholder="全部客户"></div>
                 </div>
-                                <div class="filter-group">
+                <div class="filter-group">
                     <label class="filter-label">运营分组</label>
                     <div id="amazonGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
@@ -372,7 +250,6 @@
                     <label class="filter-label">运营人员</label>
                     <div id="amazonOperatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
-
                 <div class="filter-group">
                     <label class="filter-label">项目</label>
                     <div id="amazonProjectFilter" class="searchable-select single" data-placeholder="全部项目"></div>
@@ -381,7 +258,10 @@
                     <label class="filter-label">搜索店铺</label>
                     <input type="text" class="form-control" id="amazonShopSearch" placeholder="搜索店铺名称/亚马逊名称">
                 </div>
-
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAmazonShops()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAmazonShopFilters()" title="重置"></button>
+                </div>
                 <!-- 展开/收起按钮 -->
                 <button class="expand-toggle" id="expandToggle" onclick="toggleExpand()" title="展开更多筛选">
                     <i class="fas fa-chevron-down" id="expandIcon"></i>
@@ -422,43 +302,37 @@
                     <label class="filter-label">邮箱账号</label>
                     <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
                 </div>
-                <div class="filter-group" id="shopDateRangeGroup">
-                    <label class="filter-label">下店日期范围</label>
-                    <div class="date-range-group">
-                        <input type="date" class="form-control" id="shopDateStartFilter">
-                        <span>至</span>
-                        <input type="date" class="form-control" id="shopDateEndFilter">
-                    </div>
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="shopDateStartFilter">
                 </div>
-
-            </div>
-            <div class="filter-actions-row">
-                <div class="filter-actions">
-                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAmazonShops()" title="筛选"></button>
-                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAmazonShopFilters()" title="重置"></button>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="shopDateEndFilter">
                 </div>
             </div>
         </div>
 
-        <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
-            <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
-            <button class="btn btn-create" onclick="openBulkProjectModal('add')">
-                <i class="fas fa-plus-circle"></i>
-                <span>批量设置项目</span>
-            </button>
-            <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
-                <i class="fas fa-minus-circle"></i>
-                <span>移除出项目</span>
-            </button>
-            <button class="btn btn-create" onclick="openBulkOperatorModal()">
-                <i class="fas fa-user-edit"></i>
-                <span>批量设置运营人员</span>
-            </button>
-        </div>
+        <div class="data-card">
+            <!-- 批量操作栏 -->
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
+                <button class="btn btn-create" onclick="openBulkProjectModal('add')">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>批量设置项目</span>
+                </button>
+                <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
+                    <i class="fas fa-minus-circle"></i>
+                    <span>移除出项目</span>
+                </button>
+                <button class="btn btn-create" onclick="openBulkOperatorModal()">
+                    <i class="fas fa-user-edit"></i>
+                    <span>批量设置运营人员</span>
+                </button>
+            </div>
 
-        <div class="table-container">
-            <table class="table" id="amazonShopsTable">
+            <div class="table-container table-bordered">
+                <table class="table" id="amazonShopsTable">
                 <thead id="amazonShopsTableHead">
                     <tr>
                         <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
@@ -542,12 +416,13 @@
                 <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                 <span>页</span>
             </div>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- 模态框 -->
-<div class="modal-overlay" id="shopModalOverlay">
+<div class="modal-overlay" id="shopModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
@@ -557,14 +432,14 @@
             <!-- 动态生成表单内容 -->
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeModal()">取消</button>
             <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
         </div>
     </div>
 </div>
 
 <!-- 导出配置模态框 -->
-<div class="modal-overlay" id="exportModalOverlay">
+<div class="modal-overlay" id="exportModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="width: 800px; max-height: 90vh;">
         <div class="modal-header">
             <h2 class="modal-title">选择要导出的列</h2>
@@ -580,14 +455,14 @@
             <div id="columnsContainer"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeExportModal()">取消</button>
             <button class="btn btn-save-modal" id="confirmExportBtn">确认导出</button>
         </div>
     </div>
 </div>
 
 <!-- 批量项目操作模态框 -->
-<div class="modal-overlay" id="bulkProjectModalOverlay">
+<div class="modal-overlay" id="bulkProjectModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <h2 class="modal-title" id="bulkProjectModalTitle">批量设置项目</h2>
@@ -600,14 +475,14 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeBulkProjectModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeBulkProjectModal()">取消</button>
             <button class="btn btn-save-modal" onclick="submitBulkProject()">确认</button>
         </div>
     </div>
 </div>
 
 <!-- 批量设置运营人员模态框 -->
-<div class="modal-overlay" id="bulkOperatorModalOverlay">
+<div class="modal-overlay" id="bulkOperatorModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="max-width: 500px; min-height: 300px;">
         <div class="modal-header">
             <h2 class="modal-title">批量设置运营人员</h2>
@@ -732,7 +607,7 @@
         loadShopsTable();
 
         // 监听回车键搜索
-        const filterSection = document.querySelector('.filter-section');
+        const filterSection = document.querySelector('#amazonShopFilterCard');
         if (filterSection) {
             filterSection.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
@@ -830,40 +705,17 @@
         browserSelect.onChange = () => filterAmazonShops();
     }
 
-    function syncFilterActionsPlacement(expanded) {
-        const secondaryRow = document.getElementById('secondaryFilters');
-        const actionsRow = document.querySelector('#amazon-shops-tab .filter-actions-row');
-        const actions = document.querySelector('#amazon-shops-tab .filter-actions');
-
-        if (!secondaryRow || !actionsRow || !actions) return;
-
-        if (expanded) {
-            if (actions.parentElement !== secondaryRow) {
-                secondaryRow.appendChild(actions);
-            }
-        } else {
-            if (actions.parentElement !== actionsRow) {
-                actionsRow.appendChild(actions);
-            }
-        }
-    }
-
     function toggleExpand() {
         const secondaryRow = document.getElementById('secondaryFilters');
         const icon = document.getElementById('expandIcon');
-        const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
         const isExpanded = secondaryRow.classList.contains('expanded');
 
         if (isExpanded) {
             secondaryRow.classList.remove('expanded');
-            if (filterSection) filterSection.classList.remove('expanded');
-            syncFilterActionsPlacement(false);
             icon.className = 'fas fa-chevron-down';
             localStorage.setItem('amazon_filter_expanded', 'false');
         } else {
             secondaryRow.classList.add('expanded');
-            if (filterSection) filterSection.classList.add('expanded');
-            syncFilterActionsPlacement(true);
             icon.className = 'fas fa-chevron-up';
             localStorage.setItem('amazon_filter_expanded', 'true');
         }
@@ -873,11 +725,8 @@
         const expanded = localStorage.getItem('amazon_filter_expanded') === 'true';
         if (expanded) {
             document.getElementById('secondaryFilters').classList.add('expanded');
-            const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
-            if (filterSection) filterSection.classList.add('expanded');
             document.getElementById('expandIcon').className = 'fas fa-chevron-up';
         }
-        syncFilterActionsPlacement(expanded);
     }
 
     // ==========================================
