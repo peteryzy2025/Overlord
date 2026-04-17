@@ -752,13 +752,16 @@ def get_available_shops_api(request):
         else:
             return JsonResponse({'success': False, 'message': '无效的店铺类型'}, status=400)
 
-        # 权限过滤（完全复制邮件视图逻辑）
+        # 权限过滤（完全复制邮件视图逻辑，Amazon增加辅助人员可见）
         if 'ops_all' not in permissions:
             if 'ops_group' in permissions and hasattr(request.user, 'operational_account'):
                 group_name = request.user.operational_account.ops_group
                 if group_name:
                     if shop_type == 'amazon':
-                        queryset = queryset.filter(ops__operational_account__ops_group=group_name)
+                        queryset = queryset.filter(
+                            Q(ops__operational_account__ops_group=group_name) |
+                            Q(authorized_users=request.user)
+                        ).distinct()
                     else:
                         # Temu：ops_id不是外键，需要用子查询
                         queryset = queryset.filter(
@@ -768,7 +771,10 @@ def get_available_shops_api(request):
                         )
             else:
                 if shop_type == 'amazon':
-                    queryset = queryset.filter(ops=request.user)
+                    queryset = queryset.filter(
+                        Q(ops=request.user) |
+                        Q(authorized_users=request.user)
+                    ).distinct()
                 else:
                     queryset = queryset.filter(ops_id=request.user.id)
 
