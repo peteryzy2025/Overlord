@@ -181,6 +181,94 @@
         color: var(--text-tertiary);
     }
 
+    /* 操作弹框 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1050;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+    .modal-overlay.open {
+        display: flex;
+    }
+    .modal-content {
+        background: var(--bg-primary);
+        border-radius: 12px;
+        box-shadow: var(--shadow-heavy, 0 10px 40px rgba(0,0,0,0.15));
+        width: 100%;
+        max-width: 480px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        line-height: 1;
+    }
+    .modal-close:hover {
+        color: var(--text-primary);
+    }
+    .action-modal-body {
+        padding: 1.25rem;
+    }
+    .action-modal-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    .action-modal-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        resize: vertical;
+        min-height: 80px;
+        box-sizing: border-box;
+    }
+    .action-modal-textarea:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .action-modal-hint {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        margin-top: 0.35rem;
+    }
+    .action-modal-hint.required {
+        color: var(--danger-color);
+    }
+    .action-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
     @media (max-width: 768px) {
         .task-list-container {
             padding: 1rem;
@@ -240,6 +328,28 @@
             </select>
             <button class="btn btn-secondary" type="button" id="prevPageBtn" onclick="changePage(-1)">上一页</button>
             <button class="btn btn-secondary" type="button" id="nextPageBtn" onclick="changePage(1)">下一页</button>
+        </div>
+    </div>
+</div>
+
+<!-- 审批操作弹框 -->
+<div class="modal-overlay" id="actionModal" onclick="if(event.target === this) closeActionModal();">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title" id="actionModalTitle">审批操作</h5>
+            <button type="button" class="modal-close" onclick="closeActionModal()">&times;</button>
+        </div>
+        <div class="action-modal-body">
+            <div id="actionModalInfo" style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                审批单号：<span id="actionApprovalNo" style="color: var(--text-primary); font-weight: 600;"></span>
+            </div>
+            <label class="action-modal-label" id="actionCommentLabel">审批意见</label>
+            <textarea class="action-modal-textarea" id="actionComment" rows="3" placeholder="请输入审批意见..."></textarea>
+            <div class="action-modal-hint" id="actionCommentHint">通过时可不填，驳回时必须填写</div>
+            <div class="action-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeActionModal()">取消</button>
+                <button type="button" class="btn btn-primary" id="actionConfirmBtn" onclick="confirmAction()">确认</button>
+            </div>
         </div>
     </div>
 </div>
@@ -307,8 +417,8 @@
                 <td><span style="color:var(--text-tertiary)">--</span></td>
                 <td>
                     <div class="approval-actions">
-                        <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
-                        <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
+                        <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved', '${escapeHtml(row.approval_no)}')" ${isProcessing ? 'disabled' : ''}>通过</button>
+                        <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected', '${escapeHtml(row.approval_no)}')" ${isProcessing ? 'disabled' : ''}>驳回</button>
                     </div>
                 </td>
             </tr>`;
@@ -324,8 +434,8 @@
                         <td>${escapeHtml(detail.shop_name)}</td>
                         <td>
                             <div class="approval-actions">
-                                <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved')" ${isProcessing ? 'disabled' : ''}>通过</button>
-                                <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected')" ${isProcessing ? 'disabled' : ''}>驳回</button>
+                                <button class="btn btn-primary" type="button" onclick="handleApprovalAction(${row.approval_id}, 'approved', '${escapeHtml(row.approval_no)}')" ${isProcessing ? 'disabled' : ''}>通过</button>
+                                <button class="btn btn-danger" type="button" onclick="handleApprovalAction(${row.approval_id}, 'rejected', '${escapeHtml(row.approval_no)}')" ${isProcessing ? 'disabled' : ''}>驳回</button>
                             </div>
                         </td>
                     </tr>`;
@@ -384,12 +494,40 @@
         loadLeaderApprovals(1);
     }
 
-    async function handleApprovalAction(approvalId, action) {
+    let actionModalState = { approvalId: null, action: null, approvalNo: '' };
+
+    function handleApprovalAction(approvalId, action, approvalNo) {
+        actionModalState = { approvalId, action, approvalNo: approvalNo || '' };
+        const isApprove = action === 'approved';
+        document.getElementById('actionModalTitle').textContent = isApprove ? '通过审批' : '驳回审批';
+        document.getElementById('actionApprovalNo').textContent = actionModalState.approvalNo;
+        document.getElementById('actionCommentLabel').textContent = isApprove ? '通过意见（选填）' : '驳回原因（必填）';
+        document.getElementById('actionComment').value = '';
+        const hint = document.getElementById('actionCommentHint');
+        hint.textContent = isApprove ? '通过时可不填，如有补充意见可在此填写' : '请填写驳回原因，以便申请人了解并修改';
+        hint.className = isApprove ? 'action-modal-hint' : 'action-modal-hint required';
+        const btn = document.getElementById('actionConfirmBtn');
+        btn.textContent = isApprove ? '确认通过' : '确认驳回';
+        btn.className = isApprove ? 'btn btn-primary' : 'btn btn-danger';
+        document.getElementById('actionModal').classList.add('open');
+    }
+
+    function closeActionModal() {
+        document.getElementById('actionModal').classList.remove('open');
+        actionModalState = { approvalId: null, action: null, approvalNo: '' };
+    }
+
+    async function confirmAction() {
+        const { approvalId, action } = actionModalState;
+        if (!approvalId || !action) return;
+        const comment = document.getElementById('actionComment').value.trim();
+        if (action === 'rejected' && !comment) {
+            if (typeof showNotification === 'function') showNotification('请填写驳回原因', 'error');
+            document.getElementById('actionComment').focus();
+            return;
+        }
         const actionLabel = action === 'approved' ? '通过' : '驳回';
-        const confirmMessage = action === 'approved'
-            ? '确定通过该审批单吗？'
-            : '确定驳回该审批单吗？系统将自动复制一张新的审批草稿。';
-        if (!window.confirm(confirmMessage)) return;
+        closeActionModal();
 
         leaderApprovalState.loadingApprovalId = approvalId;
         renderTable();
@@ -403,7 +541,8 @@
                 },
                 body: JSON.stringify({
                     approval_id: approvalId,
-                    action: action
+                    action: action,
+                    comment: comment
                 })
             });
             if (typeof showNotification === 'function') showNotification(result.message || `审批已${actionLabel}`, 'success');

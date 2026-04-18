@@ -568,7 +568,6 @@ class AmazonShop(models.Model):
         blank=True,
         related_name='authorized_shops',
         verbose_name='授权管理人员',
-        db_comment='被授权管理该店铺的用户，一个店铺可关联多个用户'
     )
 
     class Meta:
