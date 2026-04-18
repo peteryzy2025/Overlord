@@ -1078,6 +1078,7 @@ def approval_list_data_api(request):
             'shop_count': len(shop_names_set),
             'shop_names': ', '.join(sorted(shop_names_set)),
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'submitted_at': approval.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if approval.submitted_at else None,
             'can_operate': can_operate,
             'can_delete': has_admin_555(request.user),
             'can_edit': can_edit,
