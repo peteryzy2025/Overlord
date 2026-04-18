@@ -208,12 +208,13 @@
                                 <th>审批类型</th>
                                 <th>申请者</th>
                                 <th>当前状态</th>
+                                <th>当前审批人</th>
                                 <th>提交日期</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
                         <tbody id="allTableBody">
-                            <tr><td colspan="7" class="empty-state">正在加载...</td></tr>
+                            <tr><td colspan="8" class="empty-state">正在加载...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -255,7 +256,8 @@
                                 <th>审批类型</th>
                                 <th>申请者</th>
                                 <th>当前状态</th>
-                                <th>店铺名称</th>
+                                <th>当前审批人</th>
+                                <th>提交日期</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -475,8 +477,8 @@
             const result = await fetchJson('/api/task/approvals/list/stats/');
             document.getElementById('statTotal').textContent = result.data.total;
             document.getElementById('statPending').textContent = result.data.pending;
-            document.getElementById('statInProcess').textContent = result.data.pending;
             document.getElementById('statApproved').textContent = result.data.approved;
+            document.getElementById('statRejected').textContent = result.data.rejected;
         } catch (e) {
             if (typeof showNotification === 'function') showNotification('加载统计失败: ' + e.message, 'error');
         }
