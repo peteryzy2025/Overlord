@@ -90,21 +90,26 @@ def user_has_shop_access(user, sid):
 
 
 def get_current_status_label(approval):
+    """返回审批流程主状态标签（与RPA执行状态分离）"""
+    # 审批通过后进入RPA执行阶段，统一显示"已通过"
+    if approval.status in (
+        ApprovalStatus.APPROVED,
+        ApprovalStatus.WAITING,
+        ApprovalStatus.EXECUTING,
+        ApprovalStatus.SUCCESS,
+        ApprovalStatus.FAILED,
+    ):
+        return '已通过'
     status_map = {
-        ApprovalStatus.APPROVED: '已通过',
         ApprovalStatus.REJECTED: '已驳回',
         ApprovalStatus.DRAFT: '草稿',
-        ApprovalStatus.WAITING: '待执行',
-        ApprovalStatus.EXECUTING: '执行中',
-        ApprovalStatus.SUCCESS: '执行成功',
-        ApprovalStatus.FAILED: '执行失败',
     }
     if approval.status in status_map:
         return status_map[approval.status]
     if approval.current_step_sequence == 0:
-        return '组长审核中'
+        return '待组长审批'
     if approval.current_step_sequence == 1:
-        return '主管审核中'
+        return '待主管审批'
     if approval.current_step_sequence == 2:
         return '已通过'
     return f'第{approval.current_step_sequence}步审核中'
@@ -898,7 +903,7 @@ def _has_approval_operate_permission(user):
     return user.permission_configs.filter(code__in=[555, 2]).exists()
 
 
-def _process_approval_action(approval, user, action):
+def _process_approval_action(approval, user, action, comment=''):
     current_step = (
         approval.steps
         .filter(status=StepStatus.PENDING, approver__isnull=False)
@@ -913,6 +918,7 @@ def _process_approval_action(approval, user, action):
         step=current_step,
         approver=user,
         result=action,
+        comment=comment,
     )
     current_step.status = StepStatus.COMPLETED
     current_step.save()
@@ -982,7 +988,15 @@ def approval_list_stats_api(request):
         'data': {
             'total': base_qs.count(),
             'pending': base_qs.filter(status=ApprovalStatus.PENDING).count(),
-            'approved': base_qs.filter(status=ApprovalStatus.APPROVED).count(),
+            'approved': base_qs.filter(
+                status__in=[
+                    ApprovalStatus.APPROVED,
+                    ApprovalStatus.WAITING,
+                    ApprovalStatus.EXECUTING,
+                    ApprovalStatus.SUCCESS,
+                    ApprovalStatus.FAILED,
+                ]
+            ).count(),
             'rejected': base_qs.filter(status=ApprovalStatus.REJECTED).count(),
         }
     })
@@ -1035,10 +1049,7 @@ def approval_list_data_api(request):
     for approval in page_obj.object_list:
         applicant_name = approval.applicant.first_name or approval.applicant.username
         status_label = get_current_status_label(approval)
-
         exec_status_label, exec_status_code = get_exec_status_summary(approval)
-        if exec_status_label is not None:
-            status_label = exec_status_label
 
         shop_names_set = set()
         ad_detail = getattr(approval, 'ad_detail', None)
@@ -1047,6 +1058,30 @@ def approval_list_data_api(request):
             for config in configs:
                 if config.lingxing_shop and config.lingxing_shop.name:
                     shop_names_set.add(config.lingxing_shop.name)
+
+        # 当前待审批步骤信息
+        pending_step = None
+        pending_step_name = None
+        pending_approver_name = None
+        if approval.status == ApprovalStatus.PENDING:
+            pending_step = (
+                approval.steps
+                .filter(status=StepStatus.PENDING, approver__isnull=False)
+                .order_by('sequence')
+                .select_related('approver')
+                .first()
+            )
+            if pending_step:
+                pending_step_name = pending_step.step_name
+                pending_approver_name = pending_step.approver.first_name or pending_step.approver.username if pending_step.approver else None
+
+        # 当前用户是否为此审批单的指定审批人
+        can_operate_this = False
+        if approval.status == ApprovalStatus.PENDING and pending_step:
+            can_operate_this = pending_step.approver_id == request.user.id
+        # 管理员（555权限）始终可操作
+        if not can_operate_this:
+            can_operate_this = has_admin_555(request.user)
 
         can_edit = (
             approval.applicant_id == request.user.id
@@ -1075,6 +1110,9 @@ def approval_list_data_api(request):
             'status': approval.status,
             'status_label': status_label,
             'exec_status': exec_status_code,
+            'pending_step_name': pending_step_name,
+            'pending_approver_name': pending_approver_name,
+            'can_operate_this': can_operate_this,
             'shop_count': len(shop_names_set),
             'shop_names': ', '.join(sorted(shop_names_set)),
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
@@ -1106,6 +1144,7 @@ def approval_detail_api(request, approval_id):
         Approval.objects
         .filter(id=approval_id, company=request.user.company)
         .select_related('applicant', 'ad_detail')
+        .prefetch_related('steps__records__approver')
         .first()
     )
     if not approval:
@@ -1118,18 +1157,24 @@ def approval_detail_api(request, approval_id):
 
     status_label = get_current_status_label(approval)
     exec_status_label, exec_status_code = get_exec_status_summary(approval)
-    if exec_status_label is not None:
-        status_label = exec_status_label
 
     detail_rows = []
     negative_keyword_lib_names = []
     ad_detail = getattr(approval, 'ad_detail', None)
+    rpa_progress = []
     if ad_detail:
         configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related(asin_prefetch).order_by('sequence', 'id')
         for config in configs:
             if config.negative_keyword_lib and config.negative_keyword_lib.name not in negative_keyword_lib_names:
                 negative_keyword_lib_names.append(config.negative_keyword_lib.name)
         for config in configs:
+            shop_name = config.lingxing_shop.name if config.lingxing_shop else f"sid_未知"
+            rpa_progress.append({
+                'sequence': config.sequence,
+                'shop_name': shop_name,
+                'exec_status': config.exec_status,
+                'exec_status_label': dict(ExecStatus.choices).get(config.exec_status, config.exec_status),
+            })
             for listing in config.asins.all():
                 shop_name = ''
                 if listing.lingxing_shop and listing.lingxing_shop.name:
@@ -1147,6 +1192,32 @@ def approval_detail_api(request, approval_id):
                     'fulfillment_channel_type': listing.fulfillment_channel_type or '',
                 })
 
+    # 审批记录
+    records = []
+    for step in approval.steps.all().order_by('sequence'):
+        step_record = step.records.order_by('-created_at').first()
+        records.append({
+            'step_name': step.step_name,
+            'sequence': step.sequence,
+            'approver_name': step.approver.first_name or step.approver.username if step.approver else '—',
+            'result': step_record.result if step_record else None,
+            'comment': step_record.comment if step_record else '',
+            'created_at': step_record.created_at.strftime('%Y-%m-%d %H:%M:%S') if step_record else None,
+            'is_pending': step.status == StepStatus.PENDING and not step_record,
+        })
+
+    # 审批链
+    leader, supervisor = get_approval_chain(approval.applicant)
+
+    # 当前用户是否可操作此审批单
+    can_operate_this = False
+    if approval.status == ApprovalStatus.PENDING:
+        pending_step = approval.steps.filter(status=StepStatus.PENDING, approver__isnull=False).order_by('sequence').first()
+        if pending_step:
+            can_operate_this = pending_step.approver_id == request.user.id
+    if not can_operate_this:
+        can_operate_this = has_admin_555(request.user)
+
     return JsonResponse({
         'success': True,
         'data': {
@@ -1160,6 +1231,13 @@ def approval_detail_api(request, approval_id):
             'remark': ad_detail.remark if ad_detail else '',
             'negative_keyword_lib_names': negative_keyword_lib_names,
             'detail_rows': detail_rows,
+            'records': records,
+            'approval_chain': {
+                'leader_name': leader.first_name or leader.username if leader else '未配置',
+                'supervisor_name': supervisor.first_name or supervisor.username if supervisor else '未配置',
+            },
+            'rpa_progress': rpa_progress,
+            'can_operate_this': can_operate_this,
             'created_at': approval.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             'submitted_at': approval.submitted_at.strftime('%Y-%m-%d %H:%M:%S') if approval.submitted_at else '',
         }
@@ -1187,9 +1265,6 @@ def approval_delete_api(request, approval_id):
 @require_http_methods(["POST"])
 @transaction.atomic
 def approval_list_action_api(request):
-    if not _has_approval_operate_permission(request.user):
-        return JsonResponse({'success': False, 'message': '无审批操作权限'}, status=403)
-
     try:
         payload = json.loads(request.body or '{}')
     except json.JSONDecodeError:
@@ -1224,7 +1299,16 @@ def approval_list_action_api(request):
     if not approval:
         return JsonResponse({'success': False, 'message': '审批单不存在或当前不可审批'}, status=404)
 
-    step, response = _process_approval_action(approval, request.user, action)
+    # 权限校验：当前用户必须是指定审批人，或 555 权限
+    is_approver = False
+    pending_step = approval.steps.filter(status=StepStatus.PENDING, approver__isnull=False).order_by('sequence').first()
+    if pending_step and pending_step.approver_id == request.user.id:
+        is_approver = True
+    is_admin = has_admin_555(request.user)
+    if not is_approver and not is_admin:
+        return JsonResponse({'success': False, 'message': '你不是该审批单的指定审批人'}, status=403)
+
+    step, response = _process_approval_action(approval, request.user, action, comment)
     return response
 
 
