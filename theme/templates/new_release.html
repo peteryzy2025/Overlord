@@ -824,6 +824,34 @@
             border: 1px solid var(--border-color);
         }
 
+        .core-tags-cell .badge-category {
+            margin: 1px 2px;
+            background: #eff6ff;
+            color: #3b82f6;
+            border-color: #bfdbfe;
+        }
+
+        .burst-high { color: #dc2626; font-weight: 700; }
+        .burst-medium { color: #f59e0b; font-weight: 600; }
+        .burst-low { color: #22c55e; font-weight: 500; }
+
+        .burst-bar-bg {
+            width: 60px;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin-top: 3px;
+            overflow: hidden;
+        }
+        .burst-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        .burst-bar-fill.burst-high { background: #dc2626; }
+        .burst-bar-fill.burst-medium { background: #f59e0b; }
+        .burst-bar-fill.burst-low { background: #22c55e; }
+
         /* 迷你堆叠百分比条（聚合主题行） */
         .fulfillment-bar {
             display: flex;
@@ -1205,7 +1233,7 @@
                         <i class="fas fa-layer-group"></i>
                         总主题数
                     </div>
-                    <div class="stat-value" id="aggTotalThemes">{{ aggregation_stats.total_themes|default:"-" }}</div>
+                    <div class="stat-value" id="aggTotalThemes">{{ cluster_stats.total_themes|default:"-" }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
                 <div class="stat-card">
@@ -1213,7 +1241,7 @@
                         <i class="fas fa-clock"></i>
                         近7日更新
                     </div>
-                    <div class="stat-value" id="aggRecentThemes7d">{{ aggregation_stats.recent_themes_7d|default:"-" }}</div>
+                    <div class="stat-value" id="aggRecentThemes7d">{{ cluster_stats.recent_themes_7d|default:"-" }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
                 <div class="stat-card">
@@ -1221,7 +1249,7 @@
                         <i class="fas fa-calendar-check"></i>
                         本月更新
                     </div>
-                    <div class="stat-value" id="aggRecentThemesMonth">{{ aggregation_stats.recent_themes_month|default:'-' }}</div>
+                    <div class="stat-value" id="aggRecentThemesMonth">{{ cluster_stats.recent_themes_month|default:'-' }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
             </div>
@@ -1272,9 +1300,10 @@
                         <thead>
                         <tr>
                             <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
-                            <th class="sortable" data-field="summary_subject_title" onclick="handleAggregationSort('summary_subject_title')">聚合主题</th>
-                            <th class="sortable active" data-field="appear_count" onclick="handleAggregationSort('appear_count')">出现次数</th>
-                            <th class="sortable" data-field="avg_launch_days" onclick="handleAggregationSort('avg_launch_days')">平均上架时间</th>
+                            <th class="sortable" data-field="display_title" onclick="handleAggregationSort('display_title')">聚合主题</th>
+                            <th>核心标签</th>
+                            <th class="sortable" data-field="asin_count" onclick="handleAggregationSort('asin_count')">ASIN数</th>
+                            <th class="sortable" data-field="burst_score" onclick="handleAggregationSort('burst_score')">爆发指数</th>
                             <th>平均排名趋势图</th>
                             <th>配送方式</th>
                             <th>品类占比</th>
@@ -1283,7 +1312,7 @@
                         </thead>
                         <tbody id="aggregationTableBody">
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="9" class="empty-state">
                                 <i class="fas fa-info-circle"></i>
                                 <p>请选择日期范围并点击"应用筛选"</p>
                                 <p>主题聚合数据将在此处显示</p>
@@ -1991,7 +2020,7 @@
         // ====== Aggregation state ======
         var aggregationState = {
             loaded: false,
-            sort_field: 'appear_count',
+            sort_field: 'asin_count',
             sort_order: 'desc',
             page: 1,
             page_size: 20,
@@ -2004,7 +2033,7 @@
         async function loadAggregationTable() {
             showLoading(true);
             var tbody = document.getElementById('aggregationTableBody');
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>正在加载主题聚合数据...</p></td></tr>';
 
             try {
                 var params = {
@@ -2018,7 +2047,7 @@
                     new_theme_days: aggregationState.new_theme_days
                 };
 
-                var response = await fetch("{% url 'theme:api_theme_aggregation_list' %}", {
+                var response = await fetch("{% url 'theme:api_cluster_aggregation_list' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
@@ -2045,7 +2074,7 @@
                     controls.style.display = aggregationState.total > 0 ? 'flex' : 'none';
                 }
             } catch (error) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-exclamation-circle"></i><p>' + escapeHtml(error.message || '加载失败') + '</p></td></tr>';
                 var controls = document.getElementById('aggregationPaginationControls');
                 if (controls) controls.style.display = 'none';
             } finally {
@@ -2170,7 +2199,7 @@
         function renderAggregationTable(themes) {
             var tbody = document.getElementById('aggregationTableBody');
             if (!Array.isArray(themes) || themes.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-box-open"></i><p>当前筛选条件下没有数据</p></td></tr>';
                 return;
             }
 
@@ -2186,23 +2215,36 @@
                 var fulfillmentHTML = renderFulfillmentBar(theme.fulfillment_stats);
                 var categoryHTML = renderCategoryBar(theme.category_stats);
 
-                // 处理平均上架时间显示
-                var avgDays = theme.avg_launch_days;
-                var avgDaysHTML = (avgDays !== null && avgDays !== undefined) ? escapeHtml(avgDays) + ' 天' : '-';
+                // 核心标签
+                var coreTags = theme.core_tags || [];
+                var coreTagsHTML = coreTags.length > 0
+                    ? coreTags.slice(0, 5).map(function(t){ return '<span class="badge-category">' + escapeHtml(t) + '</span>'; }).join(' ')
+                    : '-';
+
+                // 爆发指数
+                var burstScore = theme.burst_score || 0;
+                var burstPct = Math.round(burstScore * 100);
+                var burstCls = burstPct >= 50 ? 'burst-high' : burstPct >= 20 ? 'burst-medium' : 'burst-low';
+                var burstHTML = '<span class="' + burstCls + '">' + burstPct + '%</span>' +
+                    '<div class="burst-bar-bg"><div class="burst-bar-fill ' + burstCls + '" style="width:' + burstPct + '%;"></div></div>';
+
+                var asinCount = theme.asin_count || 0;
+                var asinCountHTML = asinCount > 0 ? '<strong>' + asinCount + '</strong>' : '-';
 
                 var isExpanded = aggExpandedThemeIds.has(themeId);
                 return '<tr data-theme-id="' + themeId + '">' +
                     '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="' + themeId + '"' + (isChecked ? ' checked' : '') + ' onchange="handleAggRowCheckboxChange(this)"></td>' +
                     '<td><div class="subject-main clickable-subject" onclick="toggleAggDetail(' + themeId + ')" title="点击展开/收起ASIN详情">' + title + '</div></td>' +
-                    '<td>' + escapeHtml(theme.appear_count ?? '-') + '</td>' +
-                    '<td>' + avgDaysHTML + '</td>' +
+                    '<td class="core-tags-cell">' + coreTagsHTML + '</td>' +
+                    '<td>' + asinCountHTML + '</td>' +
+                    '<td>' + burstHTML + '</td>' +
                     '<td>' + trendHTML + '</td>' +
                     '<td class="agg-fulfillment-cell">' + fulfillmentHTML + '</td>' +
                     '<td class="agg-fulfillment-cell">' + categoryHTML + '</td>' +
                     '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleAggDetail(' + themeId + ')">' + (isExpanded ? '收起' : 'ASIN详情') + '</button></td>' +
                     '</tr>' +
                     '<tr id="agg-detail-row-' + themeId + '" class="detail-row" style="display:none;">' +
-                    '<td colspan="8" class="detail-content" id="agg-detail-content-' + themeId + '">' +
+                    '<td colspan="9" class="detail-content" id="agg-detail-content-' + themeId + '">' +
                     '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>' +
                     '</td>' +
                     '</tr>';
@@ -2301,7 +2343,7 @@
             contentCell.innerHTML = '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i><div>正在加载ASIN详情...</div></div>';
 
             try {
-                var response = await fetch("{% url 'theme:api_theme_aggregation_asins' %}", {
+                var response = await fetch("{% url 'theme:api_cluster_aggregation_asins' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
                     body: JSON.stringify({ theme_id: themeId })
@@ -2409,21 +2451,9 @@
                 aggregationState.sort_order = aggregationState.sort_order === 'asc' ? 'desc' : 'asc';
             } else {
                 aggregationState.sort_field = field;
-                aggregationState.sort_order = field === 'summary_subject_title' ? 'asc' : 'desc';
+                aggregationState.sort_order = field === 'display_title' ? 'asc' : 'desc';
             }
             updateAggregationSortHeaders();
-
-            // avg_launch_days 在后端是分页后Python计算的，无法数据库排序，改用前端排序
-            if (field === 'avg_launch_days' && aggregationCurrentThemes.length > 0) {
-                var order = aggregationState.sort_order === 'asc' ? 1 : -1;
-                var sorted = aggregationCurrentThemes.slice().sort(function(a, b) {
-                    var va = (a.avg_launch_days !== null && a.avg_launch_days !== undefined && a.avg_launch_days !== '-') ? parseFloat(a.avg_launch_days) : -1;
-                    var vb = (b.avg_launch_days !== null && b.avg_launch_days !== undefined && b.avg_launch_days !== '-') ? parseFloat(b.avg_launch_days) : -1;
-                    return (va - vb) * order;
-                });
-                renderAggregationTable(sorted);
-                return;
-            }
 
             aggregationState.page = 1;
             loadAggregationTable();
