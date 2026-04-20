@@ -591,10 +591,20 @@
 
             const libSelector = `#negative-lib-select-${config.id}`;
             if (document.querySelector(libSelector)) {
+                const libOptions = approvalState.negativeKeywordLibs.map(lib => {
+                    const isOfficial = lib.lib_type === 'official';
+                    const suffix = isOfficial ? '【系统】' : '【用户】';
+                    const color = isOfficial ? '#ed8936' : '#48bb78';
+                    return {
+                        value: String(lib.id),
+                        label: `${lib.name}${suffix}`,
+                        htmlLabel: `${lib.name} <span style="color:${color};font-weight:500">${suffix}</span>`
+                    };
+                });
                 const libInstance = new SearchableSelect(libSelector, {
-                    options: approvalState.negativeKeywordLibs.map(lib => ({ value: String(lib.id), label: lib.name })),
+                    options: libOptions,
                     multiple: false,
-                    placeholder: '请选择否定词库（可不选）'
+                    placeholder: '请选择否定词库'
                 });
                 libInstance.onChange = (value) => handleNegativeLibChange(config.id, value);
                 if (config.negativeKeywordLibId) libInstance.setValue(String(config.negativeKeywordLibId));

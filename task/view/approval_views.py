@@ -17,7 +17,7 @@ from django.views.decorators.http import require_http_methods
 
 from amazon.listing_models import AmazonListingV2
 from amazon.models import LingXingAmazonShop
-from general.models import OperationalAccount
+from general.models import OperationalAccount, User
 from task.approval_models import (
     ApprovalRecord,
     ApprovalStatus,
@@ -28,7 +28,9 @@ from task.approval_models import (
     Approval,
     RecordResult,
     StepStatus,
-    ApprovalType, NegativeKeywordLibrary,
+    ApprovalType,
+    NegativeKeywordLibrary,
+    ApprovalFlowConfig,
 )
 from task.utils.task_utils import parse_permissions
 
@@ -109,7 +111,7 @@ def get_current_status_label(approval):
     if approval.current_step_sequence == 0:
         return '待组长审批'
     if approval.current_step_sequence == 1:
-        return '待主管审批'
+        return '待组长上级审批'
     if approval.current_step_sequence == 2:
         return '已通过'
     return f'第{approval.current_step_sequence}步审核中'
@@ -128,24 +130,52 @@ def get_exec_status_summary(approval):
 
 
 def create_approval_steps(approval, applicant):
+    """
+    根据 ApprovalFlowConfig 配置动态创建审批步骤。
+    返回 (step_1, step_2, skipped)
+    skipped=True 表示该员工配置了跳过审批，不需要创建任何步骤。
+    """
+    flow_config = ApprovalFlowConfig.objects.filter(
+        company=applicant.company,
+        applicant=applicant,
+        approval_type=approval.approval_type,
+    ).first()
+
+    if flow_config and flow_config.skip_approval:
+        return None, None, True
+
     leader, supervisor = get_approval_chain(applicant)
+
+    if flow_config:
+        # 有配置记录时，完全尊重配置；没填的字段不创建对应步骤
+        step_1_approver = flow_config.proxy_approver or leader
+        step_2_approver = flow_config.step2_approver  # 可能为 None，表示不创建 step2
+    else:
+        # 无配置时，默认流程：组长 → 组长上级
+        step_1_approver = leader
+        step_2_approver = supervisor
+
     step_1 = ApprovalStep.objects.create(
         company=approval.company,
         approval=approval,
         sequence=1,
         step_name='组长审核',
-        approver=leader,
+        approver=step_1_approver,
         status=StepStatus.PENDING,
     )
-    step_2 = ApprovalStep.objects.create(
-        company=approval.company,
-        approval=approval,
-        sequence=2,
-        step_name='主管审核',
-        approver=supervisor,
-        status=StepStatus.PENDING,
-    )
-    return step_1, step_2
+
+    step_2 = None
+    if step_2_approver:
+        step_2 = ApprovalStep.objects.create(
+            company=approval.company,
+            approval=approval,
+            sequence=2,
+            step_name='组长上级审核',
+            approver=step_2_approver,
+            status=StepStatus.PENDING,
+        )
+
+    return step_1, step_2, False
 
 
 def clone_rejected_approval(original_approval):
@@ -679,7 +709,7 @@ def create_ad_approval_api(request):
             approval.steps.all().delete()
             ad_approval.shop_configs.all().delete()
 
-        create_approval_steps(approval, request.user)
+        step_1, step_2, skipped = create_approval_steps(approval, request.user)
 
         for sequence, config in enumerate(normalized_configs, start=1):
             lingxing_shop = LingXingAmazonShop.objects.filter(sid=config['sid']).first()
@@ -703,6 +733,26 @@ def create_ad_approval_api(request):
                 negative_keyword_lib=negative_keyword_lib,
             )
             shop_config.asins.set(config['listings'])
+
+        if skipped:
+            approval.status = ApprovalStatus.WAITING
+            approval.current_step_sequence = approval.total_steps
+            approval.submitted_at = timezone.now()
+            approval.completed_at = timezone.now()
+            approval.save()
+            _send_approval_webhook(approval)
+            if approval.original_approval_id:
+                approval.original_approval.delete()
+            return JsonResponse({
+                'success': True,
+                'message': '广告审批已提交（该员工已配置免审批，直接进入执行队列）',
+                'data': {
+                    'approval_id': approval.id,
+                    'approval_no': approval.approval_no,
+                    'total_steps': approval.total_steps,
+                    'current_step_sequence': approval.current_step_sequence,
+                }
+            })
 
         approval.status = ApprovalStatus.PENDING
         approval.current_step_sequence = 0
@@ -799,7 +849,7 @@ def approval_leader_action_api(request):
             approval.save()
             return JsonResponse({
                 'success': True,
-                'message': '审批已通过，已流转至主管审核',
+                'message': '审批已通过，已流转至组长上级审核',
                 'data': {
                     'approval_id': approval.id,
                     'approval_no': approval.approval_no,
@@ -972,10 +1022,15 @@ def _process_approval_action(approval, user, action, comment=''):
 @login_required(login_url='/login/')
 def approval_ad_page(request):
     can_operate = _has_approval_operate_permission(request.user)
+    can_configure_flow = (
+        has_admin_555(request.user)
+        or (hasattr(request.user, 'is_group_leader') and request.user.is_group_leader())
+    )
     return render(request, 'approval_list.html', {
         'active_nav': 'task',
         'active_page': 'approval_ad_page',
         'can_operate_approval': can_operate,
+        'can_configure_flow': can_configure_flow,
     })
 
 
@@ -1438,3 +1493,222 @@ def external_update_exec_status_api(request):
             'success': False,
             'message': f'更新执行状态失败: {str(e)}'
         }, status=500)
+
+
+# ==================== 审批流程配置 API ====================
+
+def _get_configurable_members(user):
+    """返回当前用户可配置审批流程的组员列表（QuerySet）"""
+    if has_admin_555(user):
+        return User.objects.filter(company=user.company, is_active=True).exclude(id=user.id)
+    return User.objects.filter(company=user.company, manager=user, is_active=True)
+
+
+def _can_configure_applicant(configurator, applicant):
+    """检查 configurator 是否有权限配置 applicant 的审批流程"""
+    if has_admin_555(configurator):
+        return True
+    return applicant.manager_id == configurator.id
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["GET"])
+def approval_flow_config_list_api(request):
+    """
+    GET /api/task/approvals/flow-config/
+    列出当前用户可配置的组员及他们的审批流程配置
+    """
+    if not (has_admin_555(request.user) or (hasattr(request.user, 'is_group_leader') and request.user.is_group_leader())):
+        return JsonResponse({'success': False, 'message': '无权访问'}, status=403)
+
+    members_qs = _get_configurable_members(request.user)
+    configs_qs = ApprovalFlowConfig.objects.filter(
+        company=request.user.company,
+        applicant__in=members_qs,
+    )
+
+    config_map = {}
+    for cfg in configs_qs:
+        key = (cfg.applicant_id, cfg.approval_type)
+        config_map[key] = {
+            'skip_approval': cfg.skip_approval,
+            'step1_approver_id': cfg.proxy_approver_id,
+            'step1_approver_name': (
+                cfg.proxy_approver.first_name or cfg.proxy_approver.username
+                if cfg.proxy_approver else None
+            ),
+            'step2_approver_id': cfg.step2_approver_id,
+            'step2_approver_name': (
+                cfg.step2_approver.first_name or cfg.step2_approver.username
+                if cfg.step2_approver else None
+            ),
+        }
+
+    members = []
+    for user in members_qs.order_by('first_name', 'username'):
+        member_configs = {}
+        for atype, _ in ApprovalType.choices:
+            key = (user.id, atype)
+            if key in config_map:
+                member_configs[atype] = config_map[key]
+        members.append({
+            'user_id': user.id,
+            'user_name': user.first_name or user.username,
+            'configs': member_configs,
+        })
+
+    proxies = []
+    for user in members_qs.order_by('first_name', 'username'):
+        proxies.append({
+            'user_id': user.id,
+            'user_name': user.first_name or user.username,
+        })
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'is_admin': has_admin_555(request.user),
+            'members': members,
+            'available_proxies': proxies,
+        }
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["POST"])
+@csrf_exempt
+def approval_flow_config_save_api(request):
+    """
+    POST /api/task/approvals/flow-config/save/
+    保存/更新某个组员的审批流程配置
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '请求体不是有效 JSON'}, status=400)
+
+    applicant_id = payload.get('applicant_id')
+    approval_type = payload.get('approval_type') or ApprovalType.AMAZON_AD
+    skip_approval = bool(payload.get('skip_approval', False))
+    step1_approver_id = payload.get('step1_approver_id')
+    step2_approver_id = payload.get('step2_approver_id')
+
+    if not applicant_id:
+        return JsonResponse({'success': False, 'message': '缺少 applicant_id'}, status=400)
+
+    try:
+        applicant = User.objects.get(id=int(applicant_id), company=request.user.company, is_active=True)
+    except (User.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': '员工不存在'}, status=404)
+
+    if not _can_configure_applicant(request.user, applicant):
+        return JsonResponse({'success': False, 'message': '无权配置该员工的审批流程'}, status=403)
+
+    if skip_approval and (step1_approver_id or step2_approver_id):
+        return JsonResponse({'success': False, 'message': '跳过审批与设置审批人不能同时设置'}, status=400)
+
+    step1_approver = None
+    if step1_approver_id:
+        try:
+            step1_approver = User.objects.get(
+                id=int(step1_approver_id),
+                company=request.user.company,
+                is_active=True,
+            )
+        except (User.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': '一级审批人不存在'}, status=404)
+
+    step2_approver = None
+    if step2_approver_id:
+        try:
+            step2_approver = User.objects.get(
+                id=int(step2_approver_id),
+                company=request.user.company,
+                is_active=True,
+            )
+        except (User.DoesNotExist, ValueError, TypeError):
+            return JsonResponse({'success': False, 'message': '二级审批人不存在'}, status=404)
+
+    # 如果 skip=False 且 step1=None 且 step2=None，视为删除配置
+    if not skip_approval and not step1_approver and not step2_approver:
+        ApprovalFlowConfig.objects.filter(
+            company=request.user.company,
+            applicant=applicant,
+            approval_type=approval_type,
+        ).delete()
+        return JsonResponse({
+            'success': True,
+            'message': '已恢复默认审批流程',
+            'data': {'applicant_id': applicant.id, 'approval_type': approval_type}
+        })
+
+    config, created = ApprovalFlowConfig.objects.update_or_create(
+        company=request.user.company,
+        applicant=applicant,
+        approval_type=approval_type,
+        defaults={
+            'skip_approval': skip_approval,
+            'proxy_approver': step1_approver,
+            'step2_approver': step2_approver,
+        }
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': '配置已保存',
+        'data': {
+            'applicant_id': applicant.id,
+            'approval_type': approval_type,
+            'skip_approval': config.skip_approval,
+            'step1_approver_id': config.proxy_approver_id,
+            'step1_approver_name': (
+                config.proxy_approver.first_name or config.proxy_approver.username
+                if config.proxy_approver else None
+            ),
+            'step2_approver_id': config.step2_approver_id,
+            'step2_approver_name': (
+                config.step2_approver.first_name or config.step2_approver.username
+                if config.step2_approver else None
+            ),
+        }
+    })
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["DELETE"])
+@csrf_exempt
+def approval_flow_config_delete_api(request):
+    """
+    DELETE /api/task/approvals/flow-config/delete/
+    删除某个组员的审批流程配置，恢复默认
+    """
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '请求体不是有效 JSON'}, status=400)
+
+    applicant_id = payload.get('applicant_id')
+    approval_type = payload.get('approval_type') or ApprovalType.AMAZON_AD
+
+    if not applicant_id:
+        return JsonResponse({'success': False, 'message': '缺少 applicant_id'}, status=400)
+
+    try:
+        applicant = User.objects.get(id=int(applicant_id), company=request.user.company, is_active=True)
+    except (User.DoesNotExist, ValueError, TypeError):
+        return JsonResponse({'success': False, 'message': '员工不存在'}, status=404)
+
+    if not _can_configure_applicant(request.user, applicant):
+        return JsonResponse({'success': False, 'message': '无权配置该员工的审批流程'}, status=403)
+
+    deleted, _ = ApprovalFlowConfig.objects.filter(
+        company=request.user.company,
+        applicant=applicant,
+        approval_type=approval_type,
+    ).delete()
+
+    return JsonResponse({
+        'success': True,
+        'message': '配置已删除，恢复默认审批流程',
+        'data': {'applicant_id': applicant.id, 'approval_type': approval_type, 'deleted': deleted > 0}
+    })

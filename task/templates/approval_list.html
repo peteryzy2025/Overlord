@@ -245,6 +245,140 @@
         margin-top: 1.25rem;
     }
 
+    /* 审批设置模态框 */
+    .flow-config-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+    }
+    .flow-config-table th {
+        background: var(--bg-secondary);
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+    .flow-config-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    .flow-config-table tr:last-child td {
+        border-bottom: none;
+    }
+    .flow-config-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .flow-config-badge.default { background: var(--bg-tertiary); color: var(--text-secondary); }
+    .flow-config-badge.skip { background: rgba(72, 187, 120, 0.12); color: #2f855a; }
+    .flow-config-badge.proxy { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+    .flow-config-edit-row {
+        background: var(--bg-secondary);
+    }
+    .flow-config-edit-row td {
+        padding: 1rem 0.75rem;
+    }
+    .flow-config-form {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .flow-config-form-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .flow-config-form-group label {
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    .flow-config-select {
+        min-width: 140px;
+        height: 36px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+    }
+    .flow-config-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .flow-config-switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
+    }
+    .flow-config-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .flow-config-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: var(--border-color);
+        border-radius: 22px;
+        transition: .3s;
+    }
+    .flow-config-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: .3s;
+    }
+    .flow-config-switch input:checked + .flow-config-slider {
+        background-color: var(--accent-color);
+    }
+    .flow-config-switch input:checked + .flow-config-slider:before {
+        transform: translateX(18px);
+    }
+    .flow-config-edit-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .flow-config-edit-btn:hover {
+        background: var(--bg-secondary);
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+    .flow-config-edit-btn.active {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: #fff;
+    }
+
     .approval-actions {
         display: flex;
         align-items: center;
@@ -321,6 +455,11 @@
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-clipboard-check" style="color: var(--accent-color); margin-right: 0.5rem;"></i>审批列表</h1>
             <div class="header-actions">
+                {% if can_configure_flow %}
+                <button type="button" class="btn btn-secondary" onclick="openFlowConfigModal()">
+                    <i class="fas fa-cog"></i> 审批设置
+                </button>
+                {% endif %}
                 <a href="/task/approval/create/" class="btn btn-primary">
                     <i class="fas fa-plus"></i> 创建审批
                 </a>
@@ -529,10 +668,24 @@
         </div>
     </div>
 </div>
+
+<!-- 审批流程设置模态框 -->
+<div class="modal-overlay" id="flowConfigModal" onclick="if(event.target === this) closeFlowConfigModal();">
+    <div class="modal-content" style="max-width: 720px;">
+        <div class="modal-header">
+            <h5 class="modal-title">审批流程设置</h5>
+            <button type="button" class="modal-close" onclick="closeFlowConfigModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="flowConfigModalBody">
+            <div class="empty-state" style="padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> 正在加载...</div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/general_style_1.js' %}?v=20260417"></script>
+<script src="{% static 'js/searchable-select.js' %}"></script>
 <script>
     const canOperateApproval = {{ can_operate_approval|yesno:'true,false' }};
     let currentTab = 'all';
@@ -1044,6 +1197,218 @@
             loadCurrentTabData();
         } catch (e) {
             if (typeof showNotification === 'function') showNotification('审批' + actionLabel + '失败: ' + e.message, 'error');
+        }
+    }
+
+    // ========== 审批流程设置 ==========
+    let flowConfigData = { members: [], available_proxies: [], is_admin: false };
+    let flowConfigEditState = {}; // userId -> { editing: bool, skip: bool, proxyId: string|null }
+    let flowConfigSelectMap = {}; // userId -> SearchableSelect instance
+
+    async function openFlowConfigModal() {
+        document.getElementById('flowConfigModal').classList.add('open');
+        await loadFlowConfigData();
+    }
+
+    function closeFlowConfigModal() {
+        document.getElementById('flowConfigModal').classList.remove('open');
+        flowConfigEditState = {};
+    }
+
+    async function loadFlowConfigData() {
+        const body = document.getElementById('flowConfigModalBody');
+        body.innerHTML = '<div class="empty-state" style="padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> 正在加载...</div>';
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/');
+            flowConfigData = result.data || { members: [], available_proxies: [], is_admin: false };
+            renderFlowConfigTable();
+        } catch (e) {
+            body.innerHTML = `<div class="empty-state" style="padding: 2rem; color: var(--danger-color);">加载失败: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function renderFlowConfigTable() {
+        const body = document.getElementById('flowConfigModalBody');
+        const members = flowConfigData.members || [];
+        const proxies = flowConfigData.available_proxies || [];
+
+        if (!members.length) {
+            body.innerHTML = '<div class="empty-state" style="padding: 2rem;"><i class="fas fa-inbox"></i><p>暂无可配置的组员</p></div>';
+            return;
+        }
+
+        let html = '<table class="flow-config-table"><thead><tr><th>组员</th><th>广告审批流程</th><th style="width: 80px;">操作</th></tr></thead><tbody>';
+        for (const m of members) {
+            const cfg = m.configs && m.configs['amazon_ad'] ? m.configs['amazon_ad'] : null;
+            let statusBadge = '<span class="flow-config-badge default">默认</span>';
+            let statusText = '组长审批 → 组长上级审批';
+            if (cfg) {
+                if (cfg.skip_approval) {
+                    statusBadge = '<span class="flow-config-badge skip">直接通过</span>';
+                    statusText = '提交后无需审批，直接进入执行';
+                } else {
+                    const s1 = cfg.step1_approver_name || '组长';
+                    const s2 = cfg.step2_approver_name || (cfg.step2_approver_id ? '未知' : '组长上级');
+                    if (cfg.step1_approver_id && cfg.step2_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `${escapeHtml(s1)} 审批 → ${escapeHtml(s2)} 审批`;
+                    } else if (cfg.step1_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `${escapeHtml(s1)} 审批`;
+                    } else if (cfg.step2_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `组长审批 → ${escapeHtml(s2)} 审批`;
+                    }
+                }
+            }
+
+            const isEditing = flowConfigEditState[m.user_id] && flowConfigEditState[m.user_id].editing;
+
+            html += `<tr>
+                <td>${escapeHtml(m.user_name)}</td>
+                <td>${statusBadge}<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">${statusText}</div></td>
+                <td><button type="button" class="flow-config-edit-btn ${isEditing ? 'active' : ''}" onclick="toggleEditRow(${m.user_id})"><i class="fas fa-${isEditing ? 'times' : 'pen'}"></i> ${isEditing ? '取消' : '编辑'}</button></td>
+            </tr>`;
+
+            if (isEditing) {
+                const state = flowConfigEditState[m.user_id];
+                html += `<tr class="flow-config-edit-row">
+                    <td colspan="3">
+                        <div class="flow-config-form">
+                            <div class="flow-config-form-group">
+                                <label class="flow-config-switch">
+                                    <input type="checkbox" id="skip-${m.user_id}" ${state.skip ? 'checked' : ''} onchange="onSkipChange(${m.user_id})">
+                                    <span class="flow-config-slider"></span>
+                                </label>
+                                <label for="skip-${m.user_id}">跳过审批</label>
+                            </div>
+                            <div class="flow-config-form-group" id="step1-group-${m.user_id}" style="opacity: ${state.skip ? '0.5' : '1'}; pointer-events: ${state.skip ? 'none' : 'auto'};">
+                                <label>一级审批人</label>
+                                <div id="step1-select-${m.user_id}" class="searchable-select single" style="min-width: 160px;" data-placeholder="默认（组长）"></div>
+                            </div>
+                            <div class="flow-config-form-group" id="step2-group-${m.user_id}" style="opacity: ${state.skip ? '0.5' : '1'}; pointer-events: ${state.skip ? 'none' : 'auto'};">
+                                <label>二级审批人（可选）<small style="color: var(--text-tertiary); font-weight: 400; margin-left: 0.25rem;">留空则无需二级审批</small></label>
+                                <div id="step2-select-${m.user_id}" class="searchable-select single" style="min-width: 160px;" data-placeholder="默认（组长上级）"></div>
+                            </div>
+                            <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+                                ${cfg ? `<button class="btn btn-secondary" type="button" onclick="deleteFlowConfig(${m.user_id})">恢复默认</button>` : ''}
+                                <button class="btn btn-primary" type="button" onclick="saveFlowConfig(${m.user_id})">保存</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
+            }
+        }
+        html += '</tbody></table>';
+        body.innerHTML = html;
+
+        // 初始化 SearchableSelect
+        for (const m of members) {
+            if (flowConfigEditState[m.user_id] && flowConfigEditState[m.user_id].editing) {
+                const state = flowConfigEditState[m.user_id];
+                const options = [{ value: '', label: '默认' }].concat(
+                    proxies.map(p => ({ value: String(p.user_id), label: p.user_name }))
+                );
+                flowConfigSelectMap[m.user_id] = {};
+
+                ['step1', 'step2'].forEach(step => {
+                    const selector = `#${step}-select-${m.user_id}`;
+                    const el = document.querySelector(selector);
+                    if (el && typeof SearchableSelect !== 'undefined') {
+                        const select = new SearchableSelect(selector, {
+                            options: options,
+                            multiple: false,
+                            placeholder: step === 'step1' ? '默认（组长）' : '默认（组长上级）'
+                        });
+                        const val = step === 'step1' ? state.step1Id : state.step2Id;
+                        if (val) select.setValue(String(val));
+                        flowConfigSelectMap[m.user_id][step] = select;
+                    }
+                });
+            }
+        }
+    }
+
+    function toggleEditRow(userId) {
+        const m = flowConfigData.members.find(x => x.user_id === userId);
+        const cfg = m && m.configs && m.configs['amazon_ad'] ? m.configs['amazon_ad'] : null;
+        if (flowConfigEditState[userId] && flowConfigEditState[userId].editing) {
+            delete flowConfigEditState[userId];
+        } else {
+            flowConfigEditState[userId] = {
+                editing: true,
+                skip: cfg ? cfg.skip_approval : false,
+                step1Id: cfg ? (cfg.step1_approver_id || '') : '',
+                step2Id: cfg ? (cfg.step2_approver_id || '') : ''
+            };
+        }
+        renderFlowConfigTable();
+    }
+
+    function onSkipChange(userId) {
+        const skip = document.getElementById('skip-' + userId).checked;
+        if (flowConfigEditState[userId]) {
+            flowConfigEditState[userId].skip = skip;
+        }
+        ['step1', 'step2'].forEach(step => {
+            const group = document.getElementById(step + '-group-' + userId);
+            if (group) {
+                group.style.opacity = skip ? '0.5' : '1';
+                group.style.pointerEvents = skip ? 'none' : 'auto';
+            }
+        });
+    }
+
+    async function saveFlowConfig(userId) {
+        const skip = document.getElementById('skip-' + userId).checked;
+        let step1Id = '';
+        let step2Id = '';
+        const selects = flowConfigSelectMap[userId];
+        if (selects) {
+            if (selects.step1) step1Id = selects.step1.getValue() || '';
+            if (selects.step2) step2Id = selects.step2.getValue() || '';
+        }
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/save/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({
+                    applicant_id: userId,
+                    approval_type: 'amazon_ad',
+                    skip_approval: skip,
+                    step1_approver_id: step1Id ? Number(step1Id) : null,
+                    step2_approver_id: step2Id ? Number(step2Id) : null
+                })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '配置已保存', 'success');
+            delete flowConfigEditState[userId];
+            await loadFlowConfigData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('保存失败: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteFlowConfig(userId) {
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/delete/', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({
+                    applicant_id: userId,
+                    approval_type: 'amazon_ad'
+                })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '配置已删除', 'success');
+            delete flowConfigEditState[userId];
+            await loadFlowConfigData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('删除失败: ' + e.message, 'error');
         }
     }
 
