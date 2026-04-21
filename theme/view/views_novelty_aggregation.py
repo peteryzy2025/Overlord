@@ -572,8 +572,16 @@ def api_novelty_cluster_aggregation_list(request):
             try:
                 days = int(new_theme_days)
                 if days > 0:
-                    cutoff = timezone.now() - timedelta(days=days)
-                    qs = qs.filter(created_at__gte=cutoff)
+                    cutoff = timezone.now().date() - timedelta(days=days)
+                    cluster_ids_with_recent_asin = (
+                        AmazonThemeNovelty.objects.filter(
+                            fingerprint__cluster_id__isnull=False,
+                            launch_date__gte=cutoff,
+                        )
+                        .values_list("fingerprint__cluster_id", flat=True)
+                        .distinct()
+                    )
+                    qs = qs.filter(id__in=cluster_ids_with_recent_asin)
             except (ValueError, TypeError):
                 pass
 

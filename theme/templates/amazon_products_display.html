@@ -1226,9 +1226,9 @@
             text-align: center; vertical-align: middle; padding: 0.5rem !important;
         }
         .w-checkbox input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent-color); margin: 0; }
-        #noveltyAggregationTableContainer .table { min-width: 780px; }
+        #noveltyAggregationTableContainer .table { min-width: 810px; }
         #noveltyAggregationTableContainer td:nth-child(2),
-        #noveltyAggregationTableContainer th:nth-child(2) { max-width: 320px; }
+        #noveltyAggregationTableContainer th:nth-child(2) { max-width: 350px; }
         .detail-row { display: none; }
         .detail-row.open { display: table-row; }
         .detail-row > td { background: transparent !important; padding: 0 !important; border-top: none !important; }
@@ -1261,7 +1261,7 @@
         .asin-detail-table-wrapper { overflow-x: auto; }
         .asin-detail-table {
             width: 100%; border-collapse: separate; border-spacing: 0;
-            font-size: 0.875rem; table-layout: fixed; min-width: 1000px;
+            font-size: 0.875rem; table-layout: fixed; min-width: 1100px;
         }
         .asin-detail-table thead { background: #f8fafc; }
         .asin-detail-table th {
@@ -1269,11 +1269,11 @@
             font-weight: 600; border-bottom: 2px solid var(--border-color);
             white-space: nowrap; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px;
         }
-        .asin-detail-table th:nth-child(1), .asin-detail-table td:nth-child(1) { width: 160px; }
-        .asin-detail-table th:nth-child(2), .asin-detail-table td:nth-child(2) { width: 80px; text-align: center; }
-        .asin-detail-table th:nth-child(3), .asin-detail-table td:nth-child(3) { width: 25%; }
-        .asin-detail-table th:nth-child(4), .asin-detail-table td:nth-child(4) { width: 20%; }
-        .asin-detail-table th:nth-child(5), .asin-detail-table td:nth-child(5) { width: 130px; }
+        .asin-detail-table th:nth-child(1), .asin-detail-table td:nth-child(1) { width: 140px; overflow: visible !important; }
+        .asin-detail-table th:nth-child(2), .asin-detail-table td:nth-child(2) { width: 60px; text-align: center; }
+        .asin-detail-table th:nth-child(3), .asin-detail-table td:nth-child(3) { width: 30%; }
+        .asin-detail-table th:nth-child(4), .asin-detail-table td:nth-child(4) { width: 15%; }
+        .asin-detail-table th:nth-child(5), .asin-detail-table td:nth-child(5) { width: 160px; overflow: visible !important; }
         .asin-detail-table th:nth-child(6), .asin-detail-table td:nth-child(6) { width: 120px; }
         .asin-detail-table th:first-child { padding-left: 1.5rem; }
         .asin-detail-table th:last-child { padding-right: 1.5rem; }
@@ -1282,11 +1282,12 @@
         .asin-detail-table td {
             padding: 1rem; color: var(--text-primary);
             border-bottom: 1px solid var(--border-color); vertical-align: middle;
+            overflow: visible !important; white-space: normal;
         }
         .asin-detail-table td:first-child { padding-left: 1.5rem; }
         .asin-detail-table td:last-child { padding-right: 1.5rem; }
         .asin-detail-table tbody tr:last-child td { border-bottom: none; }
-        .asin-cell { font-size: 0.85rem; }
+        .asin-cell { font-size: 0.85rem; overflow: visible !important; white-space: nowrap; }
         .asin-title-cell, .asin-subject-cell { min-width: 0; }
         .asin-text-block { min-width: 0; }
         .asin-text-line {
@@ -1368,6 +1369,10 @@
         }
         #noveltyAggregationTableContainer .table tbody tr { height: 64px; }
         #noveltyAggregationTableContainer .table tbody td { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        #noveltyAggregationTableContainer td:nth-child(3),
+        #noveltyAggregationTableContainer th:nth-child(3) { max-width: 160px; min-width: 100px; }
+        #noveltyAggregationTableContainer td:nth-child(6),
+        #noveltyAggregationTableContainer th:nth-child(6) { min-width: 180px; overflow: visible !important; white-space: nowrap; }
     </style>
 {% endblock %}
 
