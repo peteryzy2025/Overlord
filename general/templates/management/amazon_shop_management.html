@@ -172,6 +172,20 @@
             justify-content: center;
         }
 
+        .expand-toggle {
+            width: 42px;
+            height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            align-self: flex-end;
+        }
+
         .pagination-btn-new {
             min-width: 40px;
             padding: 0 10px;
@@ -192,139 +206,6 @@
             padding: 0 5px;
         }
 
-        /* Amazon 顶部筛选卡片使用紧凑换行布局，避免字段溢出卡片 */
-        #amazon-shops-tab .filter-section {
-            overflow: visible;
-            display: block;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-main {
-            display: grid !important;
-            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            padding-right: 0;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-secondary {
-            display: none;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            padding-right: 0;
-            margin-top: 0.875rem;
-        }
-
-        #amazon-shops-tab .filter-section > .filter-row-secondary.expanded {
-            display: grid !important;
-        }
-
-        #amazon-shops-tab .filter-actions-row {
-            display: grid !important;
-            grid-template-columns: repeat(6, minmax(0, 1fr)) 42px;
-            gap: 0.875rem 1rem;
-            align-items: flex-end;
-            margin-top: 0.875rem;
-        }
-
-        #amazon-shops-tab .filter-row-main > .filter-group,
-        #amazon-shops-tab .filter-row-secondary > .filter-group {
-            flex: 1 1 220px;
-            min-width: 220px;
-            max-width: none;
-        }
-
-        #amazon-shops-tab .filter-group .form-control,
-        #amazon-shops-tab .filter-group .searchable-select,
-        #amazon-shops-tab .filter-group .searchable-select-trigger,
-        #amazon-shops-tab .date-range-group {
-            width: 100%;
-            max-width: 100%;
-            min-width: 0;
-            box-sizing: border-box;
-        }
-
-        #amazon-shops-tab .date-range-group {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        #amazon-shops-tab .date-range-group input {
-            flex: 1 1 0;
-            min-width: 0;
-        }
-
-        #amazon-shops-tab .expand-toggle {
-            width: 42px;
-            min-width: 42px;
-            align-self: flex-end;
-        }
-
-        #amazon-shops-tab .filter-actions {
-            margin-left: 0;
-            align-self: flex-end;
-            grid-column: 7;
-            justify-self: end;
-        }
-
-        #amazon-shops-tab .filter-row-secondary.expanded .filter-actions {
-            grid-column: auto;
-            justify-self: start;
-            align-self: end;
-        }
-
-        #amazon-shops-tab #shopDateRangeGroup {
-            grid-column: span 2 !important;
-            max-width: none !important;
-        }
-
-        #amazon-shops-tab .filter-row-secondary.expanded > .filter-actions {
-            grid-column: 3;
-        }
-
-        #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-            display: none !important;
-        }
-
-        @media (max-width: 900px) {
-            #amazon-shops-tab .filter-section > .filter-row-main {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-section > .filter-row-secondary {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-actions-row,
-            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            #amazon-shops-tab .filter-group {
-                flex-basis: 200px;
-                min-width: 200px;
-            }
-        }
-
-        @media (max-width: 640px) {
-            #amazon-shops-tab .filter-section > .filter-row-main,
-            #amazon-shops-tab .filter-section > .filter-row-secondary {
-                grid-template-columns: 1fr;
-            }
-
-            #amazon-shops-tab .filter-actions-row,
-            #amazon-shops-tab .filter-section.expanded .filter-actions-row {
-                grid-template-columns: 1fr;
-            }
-
-            #amazon-shops-tab .filter-actions {
-                grid-column: 1;
-                justify-content: flex-end;
-                justify-self: end;
-            }
-        }
-
     </style>
 {% endblock %}
 
@@ -332,13 +213,10 @@
 <div class="content">
     <div id="amazon-shops-tab" class="tab-content">
         <div class="page-header">
-            <div>
-                <h1 class="page-title">
-                    <i class="fab fa-amazon" style="color: var(--accent-color);"></i>
-                    Amazon店铺管理
-                </h1>
-                <p class="page-subtitle">管理Amazon店铺信息和配置</p>
-            </div>
+            <h1 class="page-title">
+                <i class="fab fa-amazon" style="color: var(--accent-color);"></i>
+                Amazon店铺管理
+            </h1>
             <div>
                 {% if is_admin %}
                 <button class="btn btn-create" onclick="openCreateModal()">
@@ -353,9 +231,9 @@
             </div>
         </div>
 
-        <div class="filter-section">
+        <div class="filter-card" id="amazonShopFilterCard">
             <!-- 第一行筛选器 -->
-            <div class="filter-row-main">
+            <div class="filter-row filter-row-main">
                 <div class="filter-group">
                     <label class="filter-label">店铺状态</label>
                     <div id="amazonShopStatusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
@@ -364,7 +242,7 @@
                     <label class="filter-label">客户</label>
                     <div id="amazonCustomerFilter" class="searchable-select single" data-placeholder="全部客户"></div>
                 </div>
-                                <div class="filter-group">
+                <div class="filter-group">
                     <label class="filter-label">运营分组</label>
                     <div id="amazonGroupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
@@ -372,7 +250,6 @@
                     <label class="filter-label">运营人员</label>
                     <div id="amazonOperatorFilter" class="searchable-select single" data-placeholder="全部人员"></div>
                 </div>
-
                 <div class="filter-group">
                     <label class="filter-label">项目</label>
                     <div id="amazonProjectFilter" class="searchable-select single" data-placeholder="全部项目"></div>
@@ -381,7 +258,10 @@
                     <label class="filter-label">搜索店铺</label>
                     <input type="text" class="form-control" id="amazonShopSearch" placeholder="搜索店铺名称/亚马逊名称">
                 </div>
-
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAmazonShops()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAmazonShopFilters()" title="重置"></button>
+                </div>
                 <!-- 展开/收起按钮 -->
                 <button class="expand-toggle" id="expandToggle" onclick="toggleExpand()" title="展开更多筛选">
                     <i class="fas fa-chevron-down" id="expandIcon"></i>
@@ -422,43 +302,45 @@
                     <label class="filter-label">邮箱账号</label>
                     <input type="text" class="form-control" id="emailAccountFilter" placeholder="搜索邮箱账号">
                 </div>
-                <div class="filter-group" id="shopDateRangeGroup">
-                    <label class="filter-label">下店日期范围</label>
-                    <div class="date-range-group">
-                        <input type="date" class="form-control" id="shopDateStartFilter">
-                        <span>至</span>
-                        <input type="date" class="form-control" id="shopDateEndFilter">
-                    </div>
+                <div class="filter-group">
+                    <label class="filter-label">开始日期</label>
+                    <input type="date" class="form-control" id="shopDateStartFilter">
                 </div>
-
-            </div>
-            <div class="filter-actions-row">
-                <div class="filter-actions">
-                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterAmazonShops()" title="筛选"></button>
-                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetAmazonShopFilters()" title="重置"></button>
+                <div class="filter-group">
+                    <label class="filter-label">结束日期</label>
+                    <input type="date" class="form-control" id="shopDateEndFilter">
                 </div>
             </div>
         </div>
 
-        <!-- 批量操作栏 -->
-        <div class="bulk-action-bar" id="bulkActionBar">
-            <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
-            <button class="btn btn-create" onclick="openBulkProjectModal('add')">
-                <i class="fas fa-plus-circle"></i>
-                <span>批量设置项目</span>
-            </button>
-            <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
-                <i class="fas fa-minus-circle"></i>
-                <span>移除出项目</span>
-            </button>
-            <button class="btn btn-create" onclick="openBulkOperatorModal()">
-                <i class="fas fa-user-edit"></i>
-                <span>批量设置运营人员</span>
-            </button>
-        </div>
+        <div class="data-card">
+            <!-- 批量操作栏 -->
+            <div class="bulk-action-bar" id="bulkActionBar">
+                <span class="selected-count" id="selectedCountText">已选择 0 个店铺</span>
+                <button class="btn btn-create" onclick="openBulkProjectModal('add')">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>批量设置项目</span>
+                </button>
+                <button class="btn btn-secondary" onclick="openBulkProjectModal('remove')">
+                    <i class="fas fa-minus-circle"></i>
+                    <span>移除出项目</span>
+                </button>
+                <button class="btn btn-create" onclick="openBulkOperatorModal()">
+                    <i class="fas fa-user-edit"></i>
+                    <span>批量设置运营人员</span>
+                </button>
+                <button class="btn btn-create" onclick="openBulkAuthorizeModal()">
+                    <i class="fas fa-user-friends"></i>
+                    <span>批量设置辅助人员</span>
+                </button>
+                <button class="btn btn-secondary" onclick="submitBulkClearAuthorizedUsers()">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>批量清空辅助人员</span>
+                </button>
+            </div>
 
-        <div class="table-container">
-            <table class="table" id="amazonShopsTable">
+            <div class="table-container table-bordered">
+                <table class="table" id="amazonShopsTable">
                 <thead id="amazonShopsTableHead">
                     <tr>
                         <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
@@ -467,6 +349,7 @@
                         <th>项目</th>
                         <th>客户</th>
                         <th>运营人员</th>
+                        <th>辅助人员</th>
                         <th>角色</th>
                         <th>运营分组</th>
                         <th>亚马逊名称</th>
@@ -542,12 +425,13 @@
                 <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
                 <span>页</span>
             </div>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- 模态框 -->
-<div class="modal-overlay" id="shopModalOverlay">
+<div class="modal-overlay" id="shopModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content">
         <div class="modal-header">
             <h2 class="modal-title" id="modalTitle">编辑店铺</h2>
@@ -557,14 +441,14 @@
             <!-- 动态生成表单内容 -->
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeModal()">取消</button>
             <button class="btn btn-save-modal" onclick="saveShopModal()">保存</button>
         </div>
     </div>
 </div>
 
 <!-- 导出配置模态框 -->
-<div class="modal-overlay" id="exportModalOverlay">
+<div class="modal-overlay" id="exportModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="width: 800px; max-height: 90vh;">
         <div class="modal-header">
             <h2 class="modal-title">选择要导出的列</h2>
@@ -580,14 +464,14 @@
             <div id="columnsContainer"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeExportModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeExportModal()">取消</button>
             <button class="btn btn-save-modal" id="confirmExportBtn">确认导出</button>
         </div>
     </div>
 </div>
 
 <!-- 批量项目操作模态框 -->
-<div class="modal-overlay" id="bulkProjectModalOverlay">
+<div class="modal-overlay" id="bulkProjectModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
             <h2 class="modal-title" id="bulkProjectModalTitle">批量设置项目</h2>
@@ -600,14 +484,14 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary btn-cancel-modal" onclick="closeBulkProjectModal()">取消</button>
+            <button class="btn btn-secondary" onclick="closeBulkProjectModal()">取消</button>
             <button class="btn btn-save-modal" onclick="submitBulkProject()">确认</button>
         </div>
     </div>
 </div>
 
 <!-- 批量设置运营人员模态框 -->
-<div class="modal-overlay" id="bulkOperatorModalOverlay">
+<div class="modal-overlay" id="bulkOperatorModalOverlay" onclick="if(event.target === this) return;">
     <div class="modal-content" style="max-width: 500px; min-height: 300px;">
         <div class="modal-header">
             <h2 class="modal-title">批量设置运营人员</h2>
@@ -625,11 +509,52 @@
         </div>
     </div>
 </div>
+
+<!-- 授权辅助人员模态框（单店铺） -->
+<div class="modal-overlay" id="authorizeModalOverlay" onclick="if(event.target === this) return;">
+    <div class="modal-content" style="max-width: 600px; min-height: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">授权辅助人员</h2>
+            <button class="modal-close" onclick="closeAuthorizeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>选择辅助人员（多选）</label>
+                <div id="authorizeUsersSelect" class="searchable-select multiple"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeAuthorizeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitAuthorize()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 批量设置辅助人员模态框 -->
+<div class="modal-overlay" id="bulkAuthorizeModalOverlay" onclick="if(event.target === this) return;">
+    <div class="modal-content" style="max-width: 600px; min-height: 600px;">
+        <div class="modal-header">
+            <h2 class="modal-title">批量设置辅助人员</h2>
+            <button class="modal-close" onclick="closeBulkAuthorizeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="bulkAuthorizeDesc" style="margin-bottom: 1rem; color: var(--text-secondary);">请选择辅助人员：</p>
+            <div class="form-group">
+                <label>选择辅助人员（多选）</label>
+                <div id="bulkAuthorizeUsersSelect" class="searchable-select multiple"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeBulkAuthorizeModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="submitBulkAuthorize()">保存</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="{% static 'js/searchable-select.js' %}"></script>
-<script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260417-sticky-fix"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // 全局变量
@@ -637,8 +562,10 @@
     let allGroups = [];
     let allCustomers = [];
     let allProjects = [];
+    let allCompanyUsers = [];
     let modalMode = null;
     let currentShopId = null;
+    let currentAuthorizeShopId = null;
     let currentPage = 1;
     let currentPageSize = 20;
     
@@ -647,10 +574,11 @@
     // 将权限码统一转为字符串比较
     const userPermsStr = USER_PERMISSIONS.map(p => String(p));
     const IS_ADMIN = userPermsStr.includes('555') || userPermsStr.includes('552');
+    const CURRENT_USER_ID = {{ current_user_id|default:'null' }};
     
     // 普通用户只能看到邮箱密码及之前的列
     const NON_ADMIN_VISIBLE_KEYS = [
-        'shop_name', 'project_name', 'customer', 'ops_first_name', 'ops_role', 'ops_group',
+        'shop_name', 'project_name', 'customer', 'ops_first_name', 'authorized_users_display', 'ops_role', 'ops_group',
         'shop_status', 'amazon_shop_name', 'shop_date', 'shop_number', 'seller_mark',
         'qu_dao', 'ip_address', 'browser', 'whitelist', 'email_account', 'email_password'
     ];
@@ -662,6 +590,7 @@
         { key: 'project_name', label: '项目', group: '基本信息', tableVisible: true },
         { key: 'customer', label: '客户', group: '基本信息', tableVisible: true },
         { key: 'ops_first_name', label: '运营人员', group: '基本信息', tableVisible: true, isRelated: true },
+        { key: 'authorized_users_display', label: '辅助人员', group: '基本信息', tableVisible: true },
         { key: 'ops_role', label: '角色', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'ops_group', label: '运营分组', group: '基本信息', tableVisible: true, isRelated: true },
         { key: 'amazon_shop_name', label: '亚马逊名称', group: '基本信息', tableVisible: true },
@@ -717,7 +646,8 @@
         await Promise.all([
             loadGroupsFromAPI(),  // 先加载分组（不传参数）
             loadCustomersFromAPI(),
-            loadProjectsFromAPI()
+            loadProjectsFromAPI(),
+            loadCompanyUsersFromAPI()
         ]);
         
         // 分组加载完成后，根据当前选中的分组加载人员
@@ -732,7 +662,7 @@
         loadShopsTable();
 
         // 监听回车键搜索
-        const filterSection = document.querySelector('.filter-section');
+        const filterSection = document.querySelector('#amazonShopFilterCard');
         if (filterSection) {
             filterSection.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
@@ -830,40 +760,17 @@
         browserSelect.onChange = () => filterAmazonShops();
     }
 
-    function syncFilterActionsPlacement(expanded) {
-        const secondaryRow = document.getElementById('secondaryFilters');
-        const actionsRow = document.querySelector('#amazon-shops-tab .filter-actions-row');
-        const actions = document.querySelector('#amazon-shops-tab .filter-actions');
-
-        if (!secondaryRow || !actionsRow || !actions) return;
-
-        if (expanded) {
-            if (actions.parentElement !== secondaryRow) {
-                secondaryRow.appendChild(actions);
-            }
-        } else {
-            if (actions.parentElement !== actionsRow) {
-                actionsRow.appendChild(actions);
-            }
-        }
-    }
-
     function toggleExpand() {
         const secondaryRow = document.getElementById('secondaryFilters');
         const icon = document.getElementById('expandIcon');
-        const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
         const isExpanded = secondaryRow.classList.contains('expanded');
 
         if (isExpanded) {
             secondaryRow.classList.remove('expanded');
-            if (filterSection) filterSection.classList.remove('expanded');
-            syncFilterActionsPlacement(false);
             icon.className = 'fas fa-chevron-down';
             localStorage.setItem('amazon_filter_expanded', 'false');
         } else {
             secondaryRow.classList.add('expanded');
-            if (filterSection) filterSection.classList.add('expanded');
-            syncFilterActionsPlacement(true);
             icon.className = 'fas fa-chevron-up';
             localStorage.setItem('amazon_filter_expanded', 'true');
         }
@@ -873,11 +780,8 @@
         const expanded = localStorage.getItem('amazon_filter_expanded') === 'true';
         if (expanded) {
             document.getElementById('secondaryFilters').classList.add('expanded');
-            const filterSection = document.querySelector('#amazon-shops-tab .filter-section');
-            if (filterSection) filterSection.classList.add('expanded');
             document.getElementById('expandIcon').className = 'fas fa-chevron-up';
         }
-        syncFilterActionsPlacement(expanded);
     }
 
     // ==========================================
@@ -997,9 +901,17 @@
                 return `<td class="field-${col.key}">${value || '-'}</td>`;
             }).join('');
             
-            const actionCell = IS_ADMIN
-                ? `<td><button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button></td>`
-                : `<td><button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;">不可编辑</button></td>`;
+            let actionButtons = '';
+            if (IS_ADMIN) {
+                actionButtons += `<button class="btn btn-sm btn-edit" onclick="openEditModal(${shop.id})">编辑</button>`;
+            }
+            if (IS_ADMIN || shop.ops_id === CURRENT_USER_ID) {
+                actionButtons += `<button class="btn btn-sm btn-secondary" onclick="openAuthorizeModal(${shop.id})" style="margin-left:4px;">授权</button>`;
+            }
+            if (!actionButtons) {
+                actionButtons = `<button class="btn btn-sm" disabled style="opacity:0.6;cursor:not-allowed;">不可编辑</button>`;
+            }
+            const actionCell = `<td>${actionButtons}</td>`;
             
             return `<tr data-shop-id="${shop.id}" data-ops-id="${shop.ops_id}">${checkboxCell}${cells}${actionCell}</tr>`;
         }).join('');
@@ -1018,6 +930,21 @@
     // ==========================================
     // 下拉框数据更新
     // ==========================================
+    async function loadCompanyUsersFromAPI() {
+        try {
+            const response = await fetch('/api/company/users/');
+            const result = await response.json();
+            if (result.success) {
+                allCompanyUsers = result.data.map(u => ({
+                    value: String(u.id),
+                    label: u.display_name || u.first_name || u.username
+                }));
+            }
+        } catch (error) {
+            console.error('加载公司用户失败:', error);
+        }
+    }
+
     async function loadOperatorsFromAPI(opsGroups) {
         // 使用新API，platform=amazon
         const params = new URLSearchParams({ platform: 'amazon' });
@@ -1676,6 +1603,203 @@
     function closeBulkProjectModal() {
         document.getElementById('bulkProjectModalOverlay').style.display = 'none';
         bulkActionType = null;
+    }
+
+    // ========== 授权辅助人员 ==========
+    let authorizeUsersSelect = null;
+    let bulkAuthorizeUsersSelect = null;
+
+    function openAuthorizeModal(shopId) {
+        currentAuthorizeShopId = shopId;
+        document.getElementById('authorizeModalOverlay').style.display = 'block';
+
+        // 初始化选择器（只初始化一次）
+        if (!authorizeUsersSelect) {
+            authorizeUsersSelect = new SearchableSelect('#authorizeUsersSelect', {
+                options: allCompanyUsers,
+                placeholder: '请选择辅助人员',
+                multiple: true
+            });
+        }
+
+        // 获取当前店铺的已授权用户并预选中
+        const shopRow = document.querySelector(`tr[data-shop-id="${shopId}"]`);
+        // 从当前表格数据或重新获取
+        fetch(`/api/amazon-shops/?page=1&page_size=1&id=${shopId}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data.length > 0) {
+                    const userIds = result.data[0].authorized_users.map(u => String(u.id));
+                    authorizeUsersSelect.setValue(userIds);
+                }
+            });
+    }
+
+    function closeAuthorizeModal() {
+        document.getElementById('authorizeModalOverlay').style.display = 'none';
+        currentAuthorizeShopId = null;
+    }
+
+    async function submitAuthorize() {
+        if (!currentAuthorizeShopId) return;
+        const userIds = authorizeUsersSelect ? authorizeUsersSelect.getValue() : [];
+
+        try {
+            const response = await fetch(`/api/amazon-shops/${currentAuthorizeShopId}/authorized-users/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ user_ids: userIds.map(id => parseInt(id)) })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                closeAuthorizeModal();
+                showNotification('辅助人员更新成功！', 'success');
+                loadShopsTable();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('更新辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
+    }
+
+    function openBulkAuthorizeModal() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        if (checkedBoxes.length === 0) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        document.getElementById('bulkAuthorizeDesc').textContent = `请选择要将 ${checkedBoxes.length} 个店铺设置的辅助人员：`;
+        document.getElementById('bulkAuthorizeModalOverlay').style.display = 'block';
+
+        if (!bulkAuthorizeUsersSelect) {
+            bulkAuthorizeUsersSelect = new SearchableSelect('#bulkAuthorizeUsersSelect', {
+                options: allCompanyUsers,
+                placeholder: '请选择辅助人员',
+                multiple: true
+            });
+        }
+
+        // 计算所有选中店铺已授权用户的交集并预选中
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        fetch(`/api/amazon-shops/?page=1&page_size=${shopIds.length}&id=${shopIds.join(',')}`)
+            .then(res => res.json())
+            .then(result => {
+                if (result.success && result.data.length > 0) {
+                    // 计算所有店铺已授权用户的交集
+                    const userIdSets = result.data.map(shop =>
+                        new Set(shop.authorized_users.map(u => String(u.id)))
+                    );
+                    if (userIdSets.length > 0) {
+                        let commonIds = Array.from(userIdSets[0]);
+                        for (let i = 1; i < userIdSets.length; i++) {
+                            commonIds = commonIds.filter(id => userIdSets[i].has(id));
+                        }
+                        bulkAuthorizeUsersSelect.setValue(commonIds);
+                    } else {
+                        bulkAuthorizeUsersSelect.setValue([]);
+                    }
+                } else {
+                    bulkAuthorizeUsersSelect.setValue([]);
+                }
+            })
+            .catch(err => {
+                console.error('预加载辅助人员失败:', err);
+                bulkAuthorizeUsersSelect.setValue([]);
+            });
+    }
+
+    function closeBulkAuthorizeModal() {
+        document.getElementById('bulkAuthorizeModalOverlay').style.display = 'none';
+    }
+
+    async function submitBulkClearAuthorizedUsers() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        if (!shopIds.length) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        if (!confirm(`确认清空 ${shopIds.length} 个店铺的辅助人员？`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/amazon-shops/bulk-update-authorized-users/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    shop_ids: shopIds,
+                    user_ids: []
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                showNotification('批量清空辅助人员成功！', 'success');
+                loadShopsTable();
+                document.getElementById('selectAll').checked = false;
+                document.querySelectorAll('.shop-select-checkbox').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('批量清空辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
+    }
+
+    async function submitBulkAuthorize() {
+        const checkedBoxes = document.querySelectorAll('.shop-select-checkbox:checked');
+        const shopIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        const userIds = bulkAuthorizeUsersSelect ? bulkAuthorizeUsersSelect.getValue() : [];
+
+        if (!shopIds.length) {
+            showNotification('请先选择要操作的店铺', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/amazon-shops/bulk-update-authorized-users/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({
+                    shop_ids: shopIds,
+                    user_ids: userIds.map(id => parseInt(id))
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                closeBulkAuthorizeModal();
+                showNotification('批量设置辅助人员成功！', 'success');
+                loadShopsTable();
+                document.getElementById('selectAll').checked = false;
+                document.querySelectorAll('.shop-select-checkbox').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            } else {
+                showNotification('操作失败：' + (result.error || '未知错误'), 'error');
+            }
+        } catch (error) {
+            console.error('批量设置辅助人员失败:', error);
+            showNotification('操作失败，请检查网络连接', 'error');
+        }
     }
 
     // ========== 批量设置运营人员 ==========

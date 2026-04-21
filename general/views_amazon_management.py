@@ -31,6 +31,13 @@ def can_access_shop_management(user):
     return has_perm_code(user, '555') or has_perm_code(user, '552')
 
 
+def can_manage_shop_authorized_users(user, shop):
+    """管理员或店铺绑定的运营人员可以管理辅助人员"""
+    if can_access_shop_management(user):
+        return True
+    return shop.ops_id == user.id
+
+
 def is_ops_leader(user):
     """检查用户是否是运营组长"""
     if not user or user.department != 'operation':
@@ -89,6 +96,7 @@ def amazon_management_view(request):
         'user_permissions_json': json.dumps(user_perms),  # 用于JS
         'is_admin': can_access_shop_management(user),
         'is_ops_leader': is_ops_leader(user),
+        'current_user_id': request.user.id,
     }
     return render(request, 'management/amazon_shop_management.html', context)
 
@@ -312,83 +320,98 @@ def get_amazon_shops_api(request):
     """
     try:
         permissions = parse_permissions(getattr(request.user, 'permission', ''))
-        # 优先处理指定 ID 查询
+        # 优先处理指定 ID 查询（支持单个 id 或逗号分隔的多个 id）
         shop_id = request.GET.get('id')
         if shop_id:
             try:
-                shop = AmazonShop.objects.select_related('ops__operational_account').get(id=int(shop_id))
+                shop_ids = [int(s.strip()) for s in shop_id.split(',') if s.strip().isdigit()]
+                if not shop_ids:
+                    return JsonResponse({'success': False, 'error': '无效的店铺ID'}, status=400)
 
-                ops_group = '-'
-                ops_role = '-'
-                if shop.ops and hasattr(shop.ops, 'operational_account'):
-                    ops_group = shop.ops.operational_account.ops_group or '-'
-                    ops_role = shop.ops.role or '-'
+                shops = AmazonShop.objects.select_related('ops__operational_account').prefetch_related('authorized_users').filter(id__in=shop_ids)
+                # 权限范围过滤
+                visible_ops_ids = get_visible_ops_ids(request.user)
+                if visible_ops_ids is not None:
+                    shops = shops.filter(ops_id__in=visible_ops_ids)
 
-                shop_dict = {
-                    'id': shop.id,
-                    'shop_name': shop.shop_name or '-',
-                    'amazon_shop_name': shop.amazon_shop_name or '-',
-                    'customer': shop.customer or '-',
-                    'project_id': shop.project_id,
-                    'project_name': shop.project.name if shop.project else '-',
-                    'ops_id': shop.ops.id if shop.ops else None,
-                    'ops_first_name': shop.ops.first_name if shop.ops else '-',
-                    'ops_role': ops_role,
-                    'ops_group': ops_group,
-                    'shop_status': shop.shop_status or '-',
-                    'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
-                    'shop_number': shop.shop_number or '',
-                    'seller_mark': shop.seller_mark or '-',
-                    'qu_dao': shop.qu_dao or '-',
-                    'ip_address': shop.ip_address or '-',
-                    'browser': shop.browser or '-',
-                    'whitelist': shop.whitelist or '-',
-                    'email_account': shop.email_account or '-',
-                    'email_password': shop.email_password or '-',
-                    'shop_password': shop.shop_password or '-',
-                    'registered_phone': shop.registered_phone or '-',
-                    'backup_email_or_phone': shop.backup_email_or_phone or '-',
-                    'voucher_163': shop.voucher_163 or '-',
-                    'email_163_account': shop.email_163_account or '-',
-                    'ling_xing_if': shop.ling_xing_if or 0,
-                    'divi_shop_id': shop.divi_shop_id or '',
-                    'credit_card_channel': shop.credit_card_channel or '-',
-                    'credit_card_number': shop.credit_card_number or '-',
-                    'credit_card_expiry': shop.credit_card_expiry or '-',
-                    'credit_card_cvv': shop.credit_card_cvv or '-',
-                    'is_consolidated': shop.is_consolidated or '-',
-                    'bind_collection': shop.bind_collection or '-',
-                    'collection_channel': shop.collection_channel or '-',
-                    'xunhui_login_account': shop.xunhui_login_account or '-',
-                    'login_password': shop.login_password or '-',
-                    'bind_phone': shop.bind_phone or '-',
-                    'collection_card_number': shop.collection_card_number or '-',
-                    'payment_password': shop.payment_password or '-',
-                    'id_number': shop.id_number or '-',
-                    'legal_person_phone': shop.legal_person_phone or '-',
-                    'company_name': shop.company_name or '-',
-                    'license_number': shop.license_number or '-',
-                    'business_license_date': shop.business_license_date.strftime(
-                        '%Y-%m-%d') if shop.business_license_date else '-',
-                    'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
-                    'id_expiry_date': shop.id_expiry_date or '-',
-                    'id_card_address': shop.id_card_address or '-',
-                    'company_address': shop.company_address or '-',
-                    'remark': shop.remark or '-',
-                    'additional_remark': shop.additional_remark or '-',
-                    'img1': shop.img1 or '',
-                }
+                data = []
+                for shop in shops:
+                    ops_group = '-'
+                    ops_role = '-'
+                    if shop.ops and hasattr(shop.ops, 'operational_account'):
+                        ops_group = shop.ops.operational_account.ops_group or '-'
+                        ops_role = shop.ops.role or '-'
+
+                    authorized_users = [{'id': u.id, 'first_name': u.first_name} for u in shop.authorized_users.all()]
+                    authorized_users_display = ', '.join([u['first_name'] for u in authorized_users]) or '-'
+
+                    data.append({
+                        'id': shop.id,
+                        'shop_name': shop.shop_name or '-',
+                        'amazon_shop_name': shop.amazon_shop_name or '-',
+                        'customer': shop.customer or '-',
+                        'project_id': shop.project_id,
+                        'project_name': shop.project.name if shop.project else '-',
+                        'ops_id': shop.ops.id if shop.ops else None,
+                        'ops_first_name': shop.ops.first_name if shop.ops else '-',
+                        'ops_role': ops_role,
+                        'ops_group': ops_group,
+                        'shop_status': shop.shop_status or '-',
+                        'shop_date': shop.shop_date.strftime('%Y-%m-%d') if shop.shop_date else '-',
+                        'shop_number': shop.shop_number or '',
+                        'seller_mark': shop.seller_mark or '-',
+                        'qu_dao': shop.qu_dao or '-',
+                        'ip_address': shop.ip_address or '-',
+                        'browser': shop.browser or '-',
+                        'whitelist': shop.whitelist or '-',
+                        'email_account': shop.email_account or '-',
+                        'email_password': shop.email_password or '-',
+                        'shop_password': shop.shop_password or '-',
+                        'registered_phone': shop.registered_phone or '-',
+                        'backup_email_or_phone': shop.backup_email_or_phone or '-',
+                        'voucher_163': shop.voucher_163 or '-',
+                        'email_163_account': shop.email_163_account or '-',
+                        'ling_xing_if': shop.ling_xing_if or 0,
+                        'divi_shop_id': shop.divi_shop_id or '',
+                        'credit_card_channel': shop.credit_card_channel or '-',
+                        'credit_card_number': shop.credit_card_number or '-',
+                        'credit_card_expiry': shop.credit_card_expiry or '-',
+                        'credit_card_cvv': shop.credit_card_cvv or '-',
+                        'is_consolidated': shop.is_consolidated or '-',
+                        'bind_collection': shop.bind_collection or '-',
+                        'collection_channel': shop.collection_channel or '-',
+                        'xunhui_login_account': shop.xunhui_login_account or '-',
+                        'login_password': shop.login_password or '-',
+                        'bind_phone': shop.bind_phone or '-',
+                        'collection_card_number': shop.collection_card_number or '-',
+                        'payment_password': shop.payment_password or '-',
+                        'id_number': shop.id_number or '-',
+                        'legal_person_phone': shop.legal_person_phone or '-',
+                        'company_name': shop.company_name or '-',
+                        'license_number': shop.license_number or '-',
+                        'business_license_date': shop.business_license_date.strftime(
+                            '%Y-%m-%d') if shop.business_license_date else '-',
+                        'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
+                        'id_expiry_date': shop.id_expiry_date or '-',
+                        'id_card_address': shop.id_card_address or '-',
+                        'company_address': shop.company_address or '-',
+                        'remark': shop.remark or '-',
+                        'additional_remark': shop.additional_remark or '-',
+                        'img1': shop.img1 or '',
+                        'authorized_users': authorized_users,
+                        'authorized_users_display': authorized_users_display,
+                    })
 
                 return JsonResponse({
                     'success': True,
-                    'data': [shop_dict],
-                    'total': 1,
+                    'data': data,
+                    'total': len(data),
                     'page': 1,
-                    'page_size': 1
+                    'page_size': len(data)
                 })
 
-            except AmazonShop.DoesNotExist:
-                return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
+            except Exception as e:
+                return JsonResponse({'success': False, 'error': f'查询店铺错误: {str(e)}'}, status=500)
 
         # ====== 正常分页 / 筛选逻辑 ======
         page = int(request.GET.get('page', 1))
@@ -436,7 +459,7 @@ def get_amazon_shops_api(request):
         # 公司隔离：只查本公司店铺
         query = AmazonShop.objects.filter(
             company=request.user.company
-        ).select_related('ops', 'project').prefetch_related('ops__operational_account')
+        ).select_related('ops', 'project').prefetch_related('ops__operational_account', 'authorized_users')
 
         # 权限范围过滤：555/552查看全部；运营组长查看本组；普通运营查看本人
         visible_ops_ids = get_visible_ops_ids(request.user)
@@ -502,6 +525,9 @@ def get_amazon_shops_api(request):
                 except OperationalAccount.DoesNotExist:
                     pass
 
+            authorized_users = [{'id': u.id, 'first_name': u.first_name} for u in shop.authorized_users.all()]
+            authorized_users_display = ', '.join([u['first_name'] for u in authorized_users]) or '-'
+
             shops_data.append({
                 'id': shop.id,
                 'shop_name': shop.shop_name or '-',
@@ -555,6 +581,8 @@ def get_amazon_shops_api(request):
                 'remark': shop.remark or '-',
                 'additional_remark': shop.additional_remark or '-',
                 'img1': shop.img1 or '',
+                'authorized_users': authorized_users,
+                'authorized_users_display': authorized_users_display,
             })
 
         return JsonResponse({
@@ -655,6 +683,67 @@ def bulk_update_operator_api(request):
 
     except Exception as e:
         print(f"批量设置运营人员错误: {str(e)}")
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def update_authorized_users_api(request, shop_id):
+    """更新单个店铺的辅助人员（完全替换）"""
+    try:
+        shop = AmazonShop.objects.get(id=shop_id, company=request.user.company)
+        if not can_manage_shop_authorized_users(request.user, shop):
+            return JsonResponse({'success': False, 'error': '无权限操作，仅管理员或店铺运营人员可用'}, status=403)
+        data = json.loads(request.body or '{}')
+        user_ids = data.get('user_ids', [])
+
+        with transaction.atomic():
+            shop.authorized_users.set(user_ids)
+            shop.updated_at = timezone.now()
+            shop.save(update_fields=['updated_at'])
+
+        return JsonResponse({'success': True, 'message': '辅助人员更新成功'})
+    except AmazonShop.DoesNotExist:
+        return JsonResponse({'success': False, 'error': '店铺不存在'}, status=404)
+    except Exception as e:
+        print(f"更新辅助人员错误: {str(e)}")
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+@require_POST
+@csrf_exempt
+@login_required
+def bulk_update_authorized_users_api(request):
+    """批量设置店铺的辅助人员（完全替换）"""
+    try:
+        data = json.loads(request.body)
+        shop_ids = data.get('shop_ids', [])
+        user_ids = data.get('user_ids', [])
+
+        if not shop_ids:
+            return JsonResponse({'success': False, 'error': '未选择店铺'}, status=400)
+
+        # 过滤出用户有权限的店铺（管理员全部，运营人员仅自己绑定的店铺）
+        shops_query = AmazonShop.objects.filter(id__in=shop_ids, company=request.user.company)
+        if not can_access_shop_management(request.user):
+            shops_query = shops_query.filter(ops_id=request.user.id)
+
+        shops = list(shops_query)
+        if not shops:
+            return JsonResponse({'success': False, 'error': '未选择有权限的店铺，仅管理员或店铺运营人员可操作'}, status=403)
+
+        with transaction.atomic():
+            for shop in shops:
+                shop.authorized_users.set(user_ids)
+                shop.updated_at = timezone.now()
+                shop.save(update_fields=['updated_at'])
+
+        return JsonResponse({'success': True, 'message': f'已成功更新 {len(shops)} 个店铺的辅助人员'})
+    except Exception as e:
+        print(f"批量设置辅助人员错误: {str(e)}")
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
 
 

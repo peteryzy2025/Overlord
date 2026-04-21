@@ -14,19 +14,56 @@
 
 {% block content %}
     <div class="tab-content">
+        <!-- 1. 筛选卡片 -->
+        <div class="filter-card">
+            <!-- 示例：二级 Tab 导航（如热门搜索词/新词榜）必须独占第一行 -->
+            <!--
+            <div class="filter-card-header">
+                <div class="tab-nav">
+                    <div class="tab-nav-item active" onclick="switchTab('a')">
+                        <i class="fas fa-chart-line"></i> Tab A
+                    </div>
+                    <div class="tab-nav-item" onclick="switchTab('b')">
+                        <i class="fas fa-bolt"></i> Tab B
+                    </div>
+                </div>
+            </div>
+            -->
+
+            <!-- 具体筛选项 -->
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label">状态</label>
+                    <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="keywordSearch" placeholder="关键词">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterData()" title="筛选"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
+                </div>
+            </div>
+
+            <!-- 示例：点选式快速筛选 pill（可选，必须独占新行） -->
+            <!--
+            <div class="quick-filter-row">
+                <span class="quick-filter-label">快速筛选</span>
+                <div class="quick-filter-options">
+                    <button class="quick-filter-chip active">全部</button>
+                    <button class="quick-filter-chip">条件1</button>
+                </div>
+            </div>
+            -->
+        </div>
+
+        <!-- 2. 数据主卡片 -->
         <div class="data-card">
-            <!-- 1. 头部：标题 + 操作按钮/Tab 导航 -->
             <div class="data-card-header">
                 <div class="data-card-title">
                     <i class="fas fa-users" style="color: var(--accent-color); margin-right: 0.5rem;"></i>页面标题
                 </div>
-                <!-- 示例：二级 Tab 导航（如热门搜索词/新词榜） -->
-                <!--
-                <div class="tab-nav">
-                    <div class="tab-nav-item active" onclick="switchTab('a')">Tab A</div>
-                    <div class="tab-nav-item" onclick="switchTab('b')">Tab B</div>
-                </div>
-                -->
                 {% if '555' in user_permissions or '551' in user_permissions %}
                 <button class="btn btn-create" onclick="openCreateModal()">
                     <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建
@@ -34,40 +71,20 @@
                 {% endif %}
             </div>
 
-            <!-- 2. 筛选区：可包含第二行快速筛选 -->
-            <div class="data-card-filter">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label class="filter-label">状态</label>
-                        <div id="statusFilter" class="searchable-select single" data-placeholder="全部状态"></div>
-                    </div>
-                    <div class="filter-group">
-                        <label class="filter-label">搜索</label>
-                        <input type="text" class="form-control" id="keywordSearch" placeholder="关键词">
-                    </div>
-                    <div class="filter-actions">
-                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="filterData()" title="筛选"></button>
-                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
-                    </div>
+            <!-- 示例：切换式快速筛选（如 噪声/去噪后/全部），放在表格内部上方（可选） -->
+            <!--
+            <div class="data-quick-filter">
+                <span class="quick-filter-label">显示模式</span>
+                <div class="tri-state-toggle">
+                    <div class="toggle-indicator"></div>
+                    <div class="toggle-option active">状态A</div>
+                    <div class="toggle-option">状态B</div>
+                    <div class="toggle-option">全部</div>
                 </div>
-                <!-- 示例：快速筛选第二行（可选） -->
-                <!--
-                <div class="quick-filter-row">
-                    <span class="quick-filter-label">快速筛选</span>
-                    <div class="tri-state-toggle">
-                        <div class="toggle-indicator"></div>
-                        <div class="toggle-option active">状态A</div>
-                        <div class="toggle-option">状态B</div>
-                    </div>
-                    <div class="quick-filter-options">
-                        <button class="quick-filter-chip active">全部</button>
-                        <button class="quick-filter-chip">条件1</button>
-                    </div>
-                </div>
-                -->
             </div>
+            -->
 
-            <!-- 3. 批量操作栏（强制预留） -->
+            <!-- 3. 批量操作栏（强制预留，默认隐藏，选中后 JS 添加 .visible） -->
             {% if '555' in user_permissions or '551' in user_permissions %}
             <div class="bulk-action-bar" id="bulkActionBar">
                 <span class="selected-count" id="selectedCountText">已选择 0 项</span>
@@ -81,7 +98,7 @@
             {% endif %}
 
             <!-- 4. 表格区 -->
-            <div class="table-container">
+            <div class="table-container table-bordered">
                 <table class="table" id="dataTable">
                     <thead>
                         <tr>

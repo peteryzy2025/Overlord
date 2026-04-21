@@ -469,3 +469,74 @@ class AmazonAdShopConfig(models.Model):
 
     def __str__(self):
         return f"{self.lingxing_shop.name} - {self.asins.count()}个ASIN"
+
+
+class ApprovalFlowConfig(models.Model):
+    """
+    审批流程配置表
+    为每个员工 + 审批类型独立配置审批流程
+    """
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.CASCADE,
+        verbose_name='所属公司',
+        db_comment='数据隔离边界'
+    )
+
+    applicant = models.ForeignKey(
+        'general.User',
+        on_delete=models.CASCADE,
+        related_name='approval_flow_configs',
+        verbose_name='被配置员工',
+        db_comment='该配置适用的员工'
+    )
+
+    approval_type = models.CharField(
+        '审批类型',
+        max_length=30,
+        choices=ApprovalType.choices,
+        default=ApprovalType.AMAZON_AD,
+        db_comment='审批业务类型'
+    )
+
+    skip_approval = models.BooleanField(
+        '跳过审批',
+        default=False,
+        db_comment='为 True 时该员工提交此类型审批直接通过，不经过任何人'
+    )
+
+    proxy_approver = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='proxy_approval_configs',
+        verbose_name='一级审批人',
+        db_comment='代替组长审批该员工审批单的人（step1）'
+    )
+
+    step2_approver = models.ForeignKey(
+        'general.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='step2_approval_configs',
+        verbose_name='二级审批人',
+        db_comment='代替主管审批该员工审批单的人（step2，可选）'
+    )
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'approval_flow_configs'
+        verbose_name = '审批流程配置'
+        verbose_name_plural = '审批流程配置列表'
+        unique_together = ['company', 'applicant', 'approval_type']
+        indexes = [
+            models.Index(fields=['company', 'applicant'], name='idx_flowcfg_company_applicant'),
+            models.Index(fields=['company', 'approval_type'], name='idx_flowcfg_company_type'),
+        ]
+
+    def __str__(self):
+        return f"{self.applicant} - {self.approval_type}"

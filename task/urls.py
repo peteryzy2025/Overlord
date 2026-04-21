@@ -41,6 +41,9 @@ urlpatterns = [
     path('api/task/approvals/<int:approval_id>/detail/', approval_views.approval_detail_api, name='approval_detail_api'),
     path('api/task/approvals/<int:approval_id>/delete/', approval_views.approval_delete_api, name='approval_delete_api'),
     path('api/task/approvals/list/action/', approval_views.approval_list_action_api, name='approval_list_action_api'),
+    path('api/task/approvals/flow-config/', approval_views.approval_flow_config_list_api, name='approval_flow_config_list_api'),
+    path('api/task/approvals/flow-config/save/', approval_views.approval_flow_config_save_api, name='approval_flow_config_save_api'),
+    path('api/task/approvals/flow-config/delete/', approval_views.approval_flow_config_delete_api, name='approval_flow_config_delete_api'),
 
     # 所有者相关
     path('api/tasks/available-owners/', task_api_views.get_available_owners_api, name='get_available_owners'),

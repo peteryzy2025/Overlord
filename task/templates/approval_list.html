@@ -4,129 +4,379 @@
 {% block title %}审批列表 - Divi智管{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260407-approval-list">
-<link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260407-approval-list">
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260417">
 <style>
-    .tab-content {
-        padding: 20px;
-    }
-
     .stats-dashboard {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.25rem;
     }
 
     .stat-card {
         background: var(--bg-primary);
         border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: var(--shadow-light);
-        transition: all 0.3s ease;
+        border-radius: 10px;
+        padding: 1rem 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.875rem;
     }
 
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-medium);
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: var(--bg-tertiary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent-color);
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .stat-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
     }
 
     .stat-label {
-        font-size: 0.875rem;
+        font-size: 0.8rem;
         color: var(--text-secondary);
+        line-height: 1;
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+
+    .status-pending { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+    .status-approved { background: rgba(72, 187, 120, 0.12); color: #2f855a; }
+    .status-rejected { background: rgba(229, 62, 62, 0.12); color: var(--danger-color); }
+    .status-draft { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); }
+
+    /* 双层状态标签 */
+    .status-stack {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    .status-sub {
+        font-size: 0.7rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 4px;
+        font-weight: 500;
+        line-height: 1.2;
+    }
+    .sub-status-waiting { background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); }
+    .sub-status-executing { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+    .sub-status-success { background: rgba(72, 187, 120, 0.12); color: #2f855a; }
+    .sub-status-failed { background: rgba(229, 62, 62, 0.12); color: var(--danger-color); }
+
+    /* 审批记录 */
+    .record-list {
+        margin-top: 1rem;
+    }
+    .record-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .record-item:last-child {
+        border-bottom: none;
+    }
+    .record-step {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .record-step.done {
+        background: rgba(72, 187, 120, 0.15);
+        color: #2f855a;
+    }
+    .record-step.pending {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--accent-color);
+    }
+    .record-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .record-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .record-meta {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.15rem;
+    }
+    .record-result {
+        font-size: 0.8rem;
+        font-weight: 500;
+        margin-top: 0.25rem;
+    }
+    .record-result.approved { color: #2f855a; }
+    .record-result.rejected { color: var(--danger-color); }
+    .record-comment {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        margin-top: 0.25rem;
+        padding: 0.4rem 0.6rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+    }
+
+    /* 审批链 */
+    .chain-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .chain-node {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        background: var(--bg-secondary);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+    }
+    .chain-arrow {
+        color: var(--text-tertiary);
+        font-size: 0.75rem;
+    }
+
+    /* RPA 进度 */
+    .rpa-progress-list {
+        margin-top: 0.5rem;
+    }
+    .rpa-progress-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+    .rpa-progress-item:last-child {
+        border-bottom: none;
+    }
+    .rpa-shop-name {
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+    .rpa-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 0.35rem;
+    }
+    .rpa-dot-waiting { background: var(--text-tertiary); }
+    .rpa-dot-executing { background: var(--accent-color); }
+    .rpa-dot-success { background: #48bb78; }
+    .rpa-dot-failed { background: var(--danger-color); }
+
+    /* 操作弹框 */
+    .action-modal-body {
+        padding: 1.5rem;
+    }
+    .action-modal-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+    }
+    .action-modal-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-primary);
         margin-bottom: 0.5rem;
+        display: block;
+    }
+    .action-modal-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        resize: vertical;
+        min-height: 80px;
+        box-sizing: border-box;
+    }
+    .action-modal-textarea:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .action-modal-hint {
+        font-size: 0.75rem;
+        color: var(--text-tertiary);
+        margin-top: 0.35rem;
+    }
+    .action-modal-hint.required {
+        color: var(--danger-color);
+    }
+    .action-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.25rem;
+    }
+
+    /* 审批设置模态框 */
+    .flow-config-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 0.5rem;
+    }
+    .flow-config-table th {
+        background: var(--bg-secondary);
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 600;
+        color: var(--text-primary);
+        border-bottom: 1px solid var(--border-color);
+        font-size: 0.85rem;
+    }
+    .flow-config-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+        vertical-align: middle;
+    }
+    .flow-config-table tr:last-child td {
+        border-bottom: none;
+    }
+    .flow-config-badge {
+        display: inline-block;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .flow-config-badge.default { background: var(--bg-tertiary); color: var(--text-secondary); }
+    .flow-config-badge.skip { background: rgba(72, 187, 120, 0.12); color: #2f855a; }
+    .flow-config-badge.proxy { background: rgba(59, 130, 246, 0.1); color: var(--accent-color); }
+    .flow-config-edit-row {
+        background: var(--bg-secondary);
+    }
+    .flow-config-edit-row td {
+        padding: 1rem 0.75rem;
+    }
+    .flow-config-form {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .flow-config-form-group {
         display: flex;
         align-items: center;
         gap: 0.5rem;
     }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
+    .flow-config-form-group label {
+        font-size: 0.85rem;
         color: var(--text-primary);
-        line-height: 1;
-    }
-
-    .tab-nav {
-        display: flex;
-        gap: 0;
-        margin-bottom: 1.5rem;
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .tab-nav-item {
-        padding: 0.75rem 1.5rem;
-        cursor: pointer;
-        font-size: 0.95rem;
         font-weight: 500;
-        color: var(--text-secondary);
-        border-bottom: 2px solid transparent;
-        margin-bottom: -2px;
-        transition: all 0.2s ease;
-        user-select: none;
+        white-space: nowrap;
     }
-
-    .tab-nav-item:hover {
+    .flow-config-select {
+        min-width: 140px;
+        height: 36px;
+        padding: 0 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.85rem;
+    }
+    .flow-config-select:focus {
+        outline: none;
+        border-color: var(--accent-color);
+    }
+    .flow-config-switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 22px;
+    }
+    .flow-config-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .flow-config-slider {
+        position: absolute;
+        cursor: pointer;
+        inset: 0;
+        background-color: var(--border-color);
+        border-radius: 22px;
+        transition: .3s;
+    }
+    .flow-config-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        border-radius: 50%;
+        transition: .3s;
+    }
+    .flow-config-switch input:checked + .flow-config-slider {
+        background-color: var(--accent-color);
+    }
+    .flow-config-switch input:checked + .flow-config-slider:before {
+        transform: translateX(18px);
+    }
+    .flow-config-edit-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .flow-config-edit-btn:hover {
+        background: var(--bg-secondary);
+        border-color: var(--accent-color);
         color: var(--accent-color);
     }
-
-    .tab-nav-item.active {
-        color: var(--accent-color);
-        border-bottom-color: var(--accent-color);
-    }
-
-    .tab-pane {
-        display: none;
-    }
-
-    .tab-pane.active {
-        display: block;
-    }
-
-    .status-pending {
-        background: rgba(59, 130, 246, 0.1);
-        color: var(--accent-color);
-    }
-
-    .status-approved {
-        background: rgba(72, 187, 120, 0.12);
-        color: #2f855a;
-    }
-
-    .status-rejected {
-        background: rgba(229, 62, 62, 0.12);
-        color: var(--danger-color);
-    }
-
-    .status-draft {
-        background: rgba(107, 114, 128, 0.1);
-        color: var(--text-secondary);
-    }
-
-    .status-exec-status-pending {
-        background: rgba(107, 114, 128, 0.1);
-        color: var(--text-secondary);
-    }
-
-    .status-exec-status-executing {
-        background: rgba(59, 130, 246, 0.1);
-        color: var(--accent-color);
-    }
-
-    .status-exec-status-completed {
-        background: rgba(72, 187, 120, 0.12);
-        color: #2f855a;
-    }
-
-    .status-exec-status-failed {
-        background: rgba(229, 62, 62, 0.12);
-        color: var(--danger-color);
-    }
-
-    .status-exec-status-mixed {
-        background: rgba(237, 137, 54, 0.12);
-        color: #c05621;
+    .flow-config-edit-btn.active {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: #fff;
     }
 
     .approval-actions {
@@ -137,66 +387,17 @@
         justify-content: center;
     }
 
-    .btn-danger {
-        background-color: #e53e3e;
-        color: white;
-        border: 1px solid #e53e3e;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        white-space: nowrap;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
+    .link-disabled {
+        color: var(--text-tertiary);
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+        user-select: none;
     }
 
-    .btn-danger:hover {
-        background-color: #fff;
-        color: #e53e3e;
-        border-color: #e53e3e;
-    }
-
-    .filter-bar {
+    /* 模态框打开状态 */
+    .modal-overlay.open {
         display: flex;
-        gap: 1rem;
-        align-items: center;
-        margin-bottom: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .filter-bar .search-input {
-        position: relative;
-        flex: 1;
-        min-width: 200px;
-        max-width: 400px;
-    }
-
-    .filter-bar .search-input input {
-        width: 100%;
-        padding: 0.5rem 0.75rem 0.5rem 2.5rem;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        background: var(--bg-secondary);
-        color: var(--text-primary);
-        height: 38px;
-        box-sizing: border-box;
-    }
-
-    .filter-bar .search-input input:focus {
-        outline: none;
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    }
-
-    .filter-bar .search-input i {
-        position: absolute;
-        left: 0.75rem;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--text-secondary);
     }
 
     .detail-info-grid {
@@ -249,172 +450,242 @@
 {% endblock %}
 
 {% block content %}
-<div class="tab-content">
+<div class="content">
+    <div class="tab-content">
         <div class="page-header">
-        <h1 class="page-title"><i class="fas fa-clipboard-check"></i> 审批列表</h1>
-        <div class="header-actions">
-            <a href="/task/approval/create/" class="btn btn-secondary">
-                <i class="fas fa-plus"></i> 创建审批
-            </a>
-        </div>
-    </div>
-
-    <div class="stats-dashboard" id="statsDashboard">
-        <div class="stat-card">
-            <div class="stat-label"><i class="fas fa-clipboard-list"></i> 总审批单数</div>
-            <div class="stat-value" id="statTotal">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label"><i class="fas fa-clock"></i> 待审批</div>
-            <div class="stat-value" id="statPending">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label"><i class="fas fa-spinner"></i> 审批中</div>
-            <div class="stat-value" id="statInProcess">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-label"><i class="fas fa-check-circle"></i> 审批通过</div>
-            <div class="stat-value" id="statApproved">0</div>
-        </div>
-    </div>
-
-    <div class="tab-nav">
-        <div class="tab-nav-item active" onclick="switchTab('all')">全部</div>
-        <div class="tab-nav-item" onclick="switchTab('pending')">待审批</div>
-    </div>
-
-    <div class="tab-pane active" id="tab-all">
-        <div class="filter-bar">
-            <div class="search-input">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInputAll" placeholder="搜索审批单号、申请者..." onkeyup="handleSearchAll(event)">
+            <h1 class="page-title"><i class="fas fa-clipboard-check" style="color: var(--accent-color); margin-right: 0.5rem;"></i>审批列表</h1>
+            <div class="header-actions">
+                {% if can_configure_flow %}
+                <button type="button" class="btn btn-secondary" onclick="openFlowConfigModal()">
+                    <i class="fas fa-cog"></i> 审批设置
+                </button>
+                {% endif %}
+                <a href="/task/approval/create/" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> 创建审批
+                </a>
             </div>
         </div>
-        <div class="table-container">
-            <table class="table" id="allTable">
-                <thead>
-                    <tr>
-                        <th>审批单号</th>
-                        <th>审批类型</th>
-                        <th>申请者</th>
-                        <th>当前状态</th>
-                        <th>店铺名称</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="allTableBody">
-                    <tr><td colspan="6" class="empty-state">正在加载...</td></tr>
-                </tbody>
-            </table>
+
+        <div class="stats-dashboard" id="statsDashboard">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">总审批单数</div>
+                    <div class="stat-value" id="statTotal">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">待审批</div>
+                    <div class="stat-value" id="statPending">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">审批通过</div>
+                    <div class="stat-value" id="statApproved">0</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="stat-body">
+                    <div class="stat-label">已驳回</div>
+                    <div class="stat-value" id="statRejected">0</div>
+                </div>
+            </div>
         </div>
-        <div class="pagination-container" id="allPagination" style="display:none;">
-            <div class="pagination-info" id="allPaginationInfo" data-total="0">
-                <div class="page-size-wrapper">
-                    <span class="page-size-label">每页显示：</span>
-                    <div style="position:relative;">
-                        <button class="page-size-trigger" onclick="toggleAllPageSize()">
-                            <span id="allPageSizeText">20条</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="page-size-dropdown" id="allPageSizeDropdown">
-                            <div class="page-size-option selected" onclick="changeAllPageSize(20)">20条</div>
-                            <div class="page-size-option" onclick="changeAllPageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changeAllPageSize(100)">100条</div>
+
+        <div class="filter-card">
+            <div class="filter-card-header">
+                <div class="tab-nav">
+                    <div class="tab-nav-item active" onclick="switchTab('all')">全部</div>
+                    <div class="tab-nav-item" onclick="switchTab('pending')">待审批</div>
+                </div>
+            </div>
+            <div class="filter-row">
+                <div class="filter-group longsearch">
+                    <label class="filter-label">搜索</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索审批单号、申请者..." onkeyup="handleSearch(event)">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="applySearch()" title="搜索"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetSearch()" title="重置"></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane active" id="tab-all">
+            <div class="data-card">
+                <div class="table-container table-bordered">
+                    <table class="table" id="allTable">
+                        <thead>
+                            <tr>
+                                <th class="w-checkbox"><input type="checkbox" id="selectAllAll" onclick="toggleSelectAll('all')"></th>
+                                <th>审批单号</th>
+                                <th>审批类型</th>
+                                <th>申请者</th>
+                                <th>审批状态</th>
+                                <th>RPA状态</th>
+                                <th>当前审批人</th>
+                                <th>提交日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allTableBody">
+                            <tr><td colspan="9" class="empty-state">正在加载...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="allPagination" style="display:none;">
+                    <div class="pagination-info" id="allPaginationInfo" data-total="0">
+                        <div class="page-size-wrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div style="position:relative;">
+                                <button class="page-size-trigger" onclick="toggleAllPageSize()">
+                                    <span id="allPageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="allPageSizeDropdown">
+                                    <div class="page-size-option selected" onclick="changeAllPageSize(20)">20条</div>
+                                    <div class="page-size-option" onclick="changeAllPageSize(50)">50条</div>
+                                    <div class="page-size-option" onclick="changeAllPageSize(100)">100条</div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="pagination-new" id="allPaginationNew"></div>
+                    <div class="pagination-jump">
+                        <span>跳至</span>
+                        <input type="number" id="allPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleAllPageJump(event)">
+                        <span>页</span>
                     </div>
                 </div>
             </div>
-            <div class="pagination-new" id="allPaginationNew"></div>
-            <div class="pagination-jump">
-                <span>跳至</span>
-                <input type="number" id="allPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handleAllPageJump(event)">
-                <span>页</span>
-            </div>
         </div>
-    </div>
 
-    <div class="tab-pane" id="tab-pending">
-        <div class="filter-bar">
-            <div class="search-input">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInputPending" placeholder="搜索审批单号、申请者..." onkeyup="handleSearchPending(event)">
-            </div>
-        </div>
-        <div class="table-container">
-            <table class="table" id="pendingTable">
-                <thead>
-                    <tr>
-                        <th>审批单号</th>
-                        <th>审批类型</th>
-                        <th>申请者</th>
-                        <th>当前状态</th>
-                        <th>店铺名称</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="pendingTableBody">
-                    <tr><td colspan="6" class="empty-state">正在加载...</td></tr>
-                </tbody>
-            </table>
-        </div>
-        <div class="pagination-container" id="pendingPagination" style="display:none;">
-            <div class="pagination-info" id="pendingPaginationInfo" data-total="0">
-                <div class="page-size-wrapper">
-                    <span class="page-size-label">每页显示：</span>
-                    <div style="position:relative;">
-                        <button class="page-size-trigger" onclick="togglePendingPageSize()">
-                            <span id="pendingPageSizeText">20条</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="page-size-dropdown" id="pendingPageSizeDropdown">
-                            <div class="page-size-option selected" onclick="changePendingPageSize(20)">20条</div>
-                            <div class="page-size-option" onclick="changePendingPageSize(50)">50条</div>
-                            <div class="page-size-option" onclick="changePendingPageSize(100)">100条</div>
+        <div class="tab-pane" id="tab-pending">
+            <div class="data-card">
+                <div class="table-container table-bordered">
+                    <table class="table" id="pendingTable">
+                        <thead>
+                            <tr>
+                                <th class="w-checkbox"><input type="checkbox" id="selectAllPending" onclick="toggleSelectAll('pending')"></th>
+                                <th>审批单号</th>
+                                <th>审批类型</th>
+                                <th>申请者</th>
+                                <th>审批状态</th>
+                                <th>RPA状态</th>
+                                <th>当前审批人</th>
+                                <th>提交日期</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingTableBody">
+                            <tr><td colspan="9" class="empty-state">正在加载...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination-container" id="pendingPagination" style="display:none;">
+                    <div class="pagination-info" id="pendingPaginationInfo" data-total="0">
+                        <div class="page-size-wrapper">
+                            <span class="page-size-label">每页显示：</span>
+                            <div style="position:relative;">
+                                <button class="page-size-trigger" onclick="togglePendingPageSize()">
+                                    <span id="pendingPageSizeText">20条</span>
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                <div class="page-size-dropdown" id="pendingPageSizeDropdown">
+                                    <div class="page-size-option selected" onclick="changePendingPageSize(20)">20条</div>
+                                    <div class="page-size-option" onclick="changePendingPageSize(50)">50条</div>
+                                    <div class="page-size-option" onclick="changePendingPageSize(100)">100条</div>
+                                </div>
+                            </div>
                         </div>
+                    </div>
+                    <div class="pagination-new" id="pendingPaginationNew"></div>
+                    <div class="pagination-jump">
+                        <span>跳至</span>
+                        <input type="number" id="pendingPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePendingPageJump(event)">
+                        <span>页</span>
                     </div>
                 </div>
             </div>
-            <div class="pagination-new" id="pendingPaginationNew"></div>
-            <div class="pagination-jump">
-                <span>跳至</span>
-                <input type="number" id="pendingPageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePendingPageJump(event)">
-                <span>页</span>
-            </div>
         </div>
+
     </div>
 </div>
 
-<div class="modal-overlay" id="deleteModal">
+<!-- 删除确认模态框 -->
+<div class="modal-overlay" id="deleteModal" onclick="if(event.target === this) return;">
     <div class="modal-content" style="max-width:400px;">
         <div class="modal-header">
-            <h3>确认删除</h3>
-            <button class="btn-action" onclick="closeDeleteModal()"><i class="fas fa-times"></i></button>
+            <h5 class="modal-title">确认删除</h5>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
         </div>
         <div class="modal-body">
             <p>确定要删除审批单 <strong id="deleteApprovalNo"></strong> 吗？</p>
             <p style="color:var(--text-tertiary);font-size:0.875rem;margin-top:0.5rem;">删除后无法恢复，请谨慎操作。</p>
-            <div style="display:flex;gap:0.75rem;margin-top:1.5rem;">
-                <button class="btn btn-secondary" onclick="closeDeleteModal()" style="flex:1;">取消</button>
-                <button class="btn btn-danger" onclick="confirmDelete()" style="flex:1;"><i class="fas fa-trash"></i> 删除</button>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">取消</button>
+            <button type="button" class="btn btn-danger" onclick="confirmDelete()"><i class="fas fa-trash"></i> 删除</button>
+        </div>
+    </div>
+</div>
+
+<!-- 审批单详情模态框 -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target === this) return;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title">审批单详情</h5>
+            <button type="button" class="modal-close" onclick="closeDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="detailModalBody">
+        </div>
+    </div>
+</div>
+
+<!-- 审批操作弹框 -->
+<div class="modal-overlay" id="actionModal" onclick="if(event.target === this) closeActionModal();">
+    <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-header">
+            <h5 class="modal-title" id="actionModalTitle">审批操作</h5>
+            <button type="button" class="modal-close" onclick="closeActionModal()">&times;</button>
+        </div>
+        <div class="action-modal-body">
+            <div id="actionModalInfo" style="margin-bottom: 1rem; padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                审批单号：<span id="actionApprovalNo" style="color: var(--text-primary); font-weight: 600;"></span>
+            </div>
+            <label class="action-modal-label" id="actionCommentLabel">审批意见</label>
+            <textarea class="action-modal-textarea" id="actionComment" rows="3" placeholder="请输入审批意见..."></textarea>
+            <div class="action-modal-hint" id="actionCommentHint">通过时可不填，驳回时必须填写</div>
+            <div class="action-modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeActionModal()">取消</button>
+                <button type="button" class="btn btn-primary" id="actionConfirmBtn" onclick="confirmAction()">确认</button>
             </div>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="detailModal">
-    <div class="modal-content">
+<!-- 审批流程设置模态框 -->
+<div class="modal-overlay" id="flowConfigModal" onclick="if(event.target === this) closeFlowConfigModal();">
+    <div class="modal-content" style="max-width: 720px;">
         <div class="modal-header">
-            <h3>审批单详情</h3>
-            <button class="btn-action" onclick="closeDetailModal()"><i class="fas fa-times"></i></button>
+            <h5 class="modal-title">审批流程设置</h5>
+            <button type="button" class="modal-close" onclick="closeFlowConfigModal()">&times;</button>
         </div>
-        <div class="modal-body" id="detailModalBody">
+        <div class="modal-body" id="flowConfigModalBody">
+            <div class="empty-state" style="padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> 正在加载...</div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/general_style_1.js' %}?v=20260407-approval-list"></script>
+<script src="{% static 'js/general_style_1.js' %}?v=20260417"></script>
+<script src="{% static 'js/searchable-select.js' %}"></script>
 <script>
     const canOperateApproval = {{ can_operate_approval|yesno:'true,false' }};
     let currentTab = 'all';
@@ -442,52 +713,72 @@
     }
 
     function getStatusClassByCode(code) {
-        const map = { 'pending': 'status-pending', 'approved': 'status-approved', 'rejected': 'status-rejected', 'draft': 'status-draft' };
+        const map = {
+            'pending': 'status-pending',
+            'approved': 'status-approved',
+            'waiting': 'status-approved',
+            'executing': 'status-approved',
+            'success': 'status-approved',
+            'failed': 'status-approved',
+            'rejected': 'status-rejected',
+            'draft': 'status-draft'
+        };
         return map[code] || 'status-pending';
     }
 
     function getStatusBadgeClass(row) {
-        if (row.status === 'approved' && row.exec_status) {
-            return 'status-exec-status-' + row.exec_status;
-        }
         return getStatusClassByCode(row.status);
     }
 
+    function getSubStatusClass(code) {
+        const map = { 'waiting': 'sub-status-waiting', 'executing': 'sub-status-executing', 'success': 'sub-status-success', 'failed': 'sub-status-failed' };
+        return map[code] || 'sub-status-waiting';
+    }
+
+    function getSubStatusLabel(code) {
+        const map = { 'waiting': '待执行', 'executing': '执行中', 'success': '执行成功', 'failed': '执行失败' };
+        return map[code] || code;
+    }
+
     function renderRow(row, showViewDelete) {
-        const shopDisplay = row.shop_count > 0 ? `共${row.shop_count}个店铺` : '--';
+        const submittedAt = row.submitted_at || '--';
         let actionsHtml = '';
 
         if (showViewDelete) {
             actionsHtml = `
                 <div class="approval-actions">
-                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
-                    ${row.can_edit && row.draft_approval_id ? `<button class="btn btn-sm" type="button" onclick="window.location.href='/task/approval/create/?draft_id=${row.draft_approval_id}'">编辑</button>` : ''}
-                    ${row.can_delete ? `<button class="btn-danger btn-sm" type="button" onclick="openDeleteModal(${row.approval_id}, '${escapeHtml(row.approval_no)}')">删除</button>` : `<button class="btn-danger btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">删除</button>`}
+                    <span class="link" onclick="viewDetail(${row.approval_id})">详情</span>
+                    ${row.can_edit && row.draft_approval_id ? `<span class="link" onclick="window.location.href='/task/approval/create/?draft_id=${row.draft_approval_id}'">编辑</span>` : ''}
+                    ${row.can_delete ? `<span class="link" style="color: var(--danger-color);" onclick="openDeleteModal(${row.approval_id}, '${escapeHtml(row.approval_no)}')">删除</span>` : '<span class="link-disabled">删除</span>'}
                 </div>`;
         } else {
-            if (canOperateApproval && row.can_operate) {
+            if (row.can_operate_this) {
                 actionsHtml = `
                 <div class="approval-actions">
-                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
-                    <button class="btn btn-sm" type="button" onclick="handleAction(${row.approval_id}, 'approved')">通过</button>
-                    <button class="btn-danger btn-sm" type="button" onclick="handleAction(${row.approval_id}, 'rejected')">驳回</button>
+                    <span class="link" onclick="viewDetail(${row.approval_id})">详情</span>
+                    <span class="link" onclick="handleAction(${row.approval_id}, 'approved', '${escapeHtml(row.approval_no)}')">通过</span>
+                    <span class="link" style="color: var(--danger-color);" onclick="handleAction(${row.approval_id}, 'rejected', '${escapeHtml(row.approval_no)}')">驳回</span>
                 </div>`;
             } else {
                 actionsHtml = `
                 <div class="approval-actions">
-                    <button class="btn btn-sm" type="button" onclick="viewDetail(${row.approval_id})">详情</button>
-                    <button class="btn btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">通过</button>
-                    <button class="btn-danger btn-sm" type="button" disabled style="opacity:0.4;cursor:not-allowed;">驳回</button>
+                    <span class="link" onclick="viewDetail(${row.approval_id})">详情</span>
+                    <span class="link-disabled">通过</span>
+                    <span class="link-disabled">驳回</span>
                 </div>`;
             }
         }
 
+        const pendingApprover = row.pending_approver_name || '—';
         return `<tr>
+            <td class="w-checkbox"><input type="checkbox" class="row-checkbox" value="${row.approval_id}" data-tab="${showViewDelete ? 'all' : 'pending'}"></td>
             <td>${escapeHtml(row.approval_no)}</td>
             <td>${escapeHtml(row.approval_type_label)}</td>
             <td>${escapeHtml(row.applicant_name)}</td>
             <td><span class="status-badge ${getStatusBadgeClass(row)}">${escapeHtml(row.status_label)}</span></td>
-            <td>${shopDisplay}</td>
+            <td>${row.exec_status ? `<span class="status-sub ${getSubStatusClass(row.exec_status)}">${escapeHtml(getSubStatusLabel(row.exec_status))}</span>` : '—'}</td>
+            <td>${escapeHtml(pendingApprover)}</td>
+            <td>${escapeHtml(submittedAt)}</td>
             <td>${actionsHtml}</td>
         </tr>`;
     }
@@ -495,7 +786,7 @@
     function renderTable(tbodyId, rows, showViewDelete) {
         const tbody = document.getElementById(tbodyId);
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state"><i class="fas fa-inbox"></i><p>暂无数据</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state"><i class="fas fa-inbox"></i><p>暂无数据</p></td></tr>';
             return;
         }
         tbody.innerHTML = rows.map(r => renderRow(r, showViewDelete)).join('');
@@ -562,8 +853,8 @@
             const result = await fetchJson('/api/task/approvals/list/stats/');
             document.getElementById('statTotal').textContent = result.data.total;
             document.getElementById('statPending').textContent = result.data.pending;
-            document.getElementById('statInProcess').textContent = result.data.pending;
             document.getElementById('statApproved').textContent = result.data.approved;
+            document.getElementById('statRejected').textContent = result.data.rejected;
         } catch (e) {
             if (typeof showNotification === 'function') showNotification('加载统计失败: ' + e.message, 'error');
         }
@@ -582,7 +873,7 @@
             renderTable('allTableBody', allState.rows, true);
             renderPagination('allPagination', 'allPaginationNew', 'allPaginationInfo', allState);
         } catch (e) {
-            document.getElementById('allTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
+            document.getElementById('allTableBody').innerHTML = `<tr><td colspan="9" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
             document.getElementById('allPagination').style.display = 'none';
         }
     }
@@ -600,7 +891,7 @@
             renderTable('pendingTableBody', pendingState.rows, false);
             renderPagination('pendingPagination', 'pendingPaginationNew', 'pendingPaginationInfo', pendingState);
         } catch (e) {
-            document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="6" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
+            document.getElementById('pendingTableBody').innerHTML = `<tr><td colspan="9" class="empty-state">${escapeHtml(e.message)}</td></tr>`;
             document.getElementById('pendingPagination').style.display = 'none';
         }
     }
@@ -617,28 +908,60 @@
         if (tab === 'all') {
             document.querySelector('.tab-nav-item:nth-child(1)').classList.add('active');
             document.getElementById('tab-all').classList.add('active');
+            document.getElementById('searchInput').value = allState.search;
         } else {
             document.querySelector('.tab-nav-item:nth-child(2)').classList.add('active');
             document.getElementById('tab-pending').classList.add('active');
+            document.getElementById('searchInput').value = pendingState.search;
         }
     }
 
-    let searchAllTimer = null;
-    function handleSearchAll(event) {
-        clearTimeout(searchAllTimer);
-        searchAllTimer = setTimeout(function() {
-            allState.search = document.getElementById('searchInputAll').value.trim();
-            loadAllData(1);
+    let searchTimer = null;
+    function handleSearch(event) {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function() {
+            const value = document.getElementById('searchInput').value.trim();
+            if (currentTab === 'all') {
+                allState.search = value;
+                loadAllData(1);
+            } else {
+                pendingState.search = value;
+                loadPendingData(1);
+            }
         }, 400);
     }
 
-    let searchPendingTimer = null;
-    function handleSearchPending(event) {
-        clearTimeout(searchPendingTimer);
-        searchPendingTimer = setTimeout(function() {
-            pendingState.search = document.getElementById('searchInputPending').value.trim();
+    function applySearch() {
+        clearTimeout(searchTimer);
+        const value = document.getElementById('searchInput').value.trim();
+        if (currentTab === 'all') {
+            allState.search = value;
+            loadAllData(1);
+        } else {
+            pendingState.search = value;
             loadPendingData(1);
-        }, 400);
+        }
+    }
+
+    function resetSearch() {
+        document.getElementById('searchInput').value = '';
+        if (currentTab === 'all') {
+            allState.search = '';
+            loadAllData(1);
+        } else {
+            pendingState.search = '';
+            loadPendingData(1);
+        }
+    }
+
+    function toggleSelectAll(tab) {
+        const checkboxId = tab === 'all' ? 'selectAllAll' : 'selectAllPending';
+        const tbodyId = tab === 'all' ? 'allTableBody' : 'pendingTableBody';
+        const master = document.getElementById(checkboxId);
+        const checked = master.checked;
+        document.querySelectorAll('#' + tbodyId + ' .row-checkbox').forEach(function(cb) {
+            cb.checked = checked;
+        });
     }
 
     function toggleAllPageSize() {
@@ -696,10 +1019,12 @@
     }
 
     function getDetailStatusBadgeClass(d) {
-        if (d.status === 'approved' && d.exec_status) {
-            return 'status-exec-status-' + d.exec_status;
-        }
         return getStatusClassByCode(d.status);
+    }
+
+    function getDetailSubStatusHtml(d) {
+        if (!d.exec_status) return '';
+        return `<span class="status-sub ${getSubStatusClass(d.exec_status)}">${escapeHtml(getSubStatusLabel(d.exec_status))}</span>`;
     }
 
     async function viewDetail(approvalId) {
@@ -712,7 +1037,7 @@
                     <div class="detail-info-item"><div class="detail-info-label">审批类型</div><div class="detail-info-value">${escapeHtml(d.approval_type_label)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">申请者</div><div class="detail-info-value">${escapeHtml(d.applicant_name)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">否定词库</div><div class="detail-info-value">${(d.negative_keyword_lib_names && d.negative_keyword_lib_names.length) ? escapeHtml(d.negative_keyword_lib_names.join('、')) : '--'}</div></div>
-                    <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><span class="status-badge ${getDetailStatusBadgeClass(d)}">${escapeHtml(d.status_label)}</span></div></div>
+                    <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><div class="status-stack"><span class="status-badge ${getDetailStatusBadgeClass(d)}">${escapeHtml(d.status_label)}</span>${getDetailSubStatusHtml(d)}</div></div></div>
                     <div class="detail-info-item"><div class="detail-info-label">创建时间</div><div class="detail-info-value">${escapeHtml(d.created_at)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">提交时间</div><div class="detail-info-value">${d.submitted_at ? escapeHtml(d.submitted_at) : '--'}</div></div>
                 </div>`;
@@ -728,26 +1053,80 @@
             } else {
                 html += '<p style="color:var(--text-tertiary);">暂无详细配置数据</p>';
             }
+
+            // 审批链
+            if (d.approval_chain) {
+                html += `
+                <div style="margin-top:1.5rem;">
+                    <div class="detail-info-label">审批链</div>
+                    <div class="chain-bar">
+                        <div class="chain-node"><i class="fas fa-user" style="font-size:0.75rem;color:var(--text-tertiary);"></i> ${escapeHtml(d.approval_chain.leader_name)}</div>
+                        <span class="chain-arrow"><i class="fas fa-chevron-right"></i></span>
+                        <div class="chain-node"><i class="fas fa-user-tie" style="font-size:0.75rem;color:var(--text-tertiary);"></i> ${escapeHtml(d.approval_chain.supervisor_name)}</div>
+                    </div>
+                </div>`;
+            }
+
+            // 审批记录
+            if (d.records && d.records.length > 0) {
+                html += `
+                <div class="record-list">
+                    <div class="detail-info-label">审批记录</div>`;
+                for (const rec of d.records) {
+                    const stepClass = rec.is_pending ? 'pending' : (rec.result ? 'done' : '');
+                    const resultText = rec.result === 'approved' ? '已通过' : (rec.result === 'rejected' ? '已驳回' : (rec.is_pending ? '待审批' : ''));
+                    const resultClass = rec.result === 'approved' ? 'approved' : (rec.result === 'rejected' ? 'rejected' : '');
+                    html += `
+                    <div class="record-item">
+                        <div class="record-step ${stepClass}">${rec.sequence + 1}</div>
+                        <div class="record-body">
+                            <div class="record-title">${escapeHtml(rec.step_name)}</div>
+                            <div class="record-meta">审批人：${escapeHtml(rec.approver_name)}${rec.created_at ? ' · ' + escapeHtml(rec.created_at) : ''}</div>
+                            ${resultText ? `<div class="record-result ${resultClass}">${resultText}</div>` : ''}
+                            ${rec.comment ? `<div class="record-comment">${escapeHtml(rec.comment)}</div>` : ''}
+                        </div>
+                    </div>`;
+                }
+                html += `</div>`;
+            }
+
+            // RPA 执行进度
+            if (d.rpa_progress && d.rpa_progress.length > 0) {
+                html += `
+                <div style="margin-top:1.5rem;">
+                    <div class="detail-info-label">RPA 执行进度</div>
+                    <div class="rpa-progress-list">`;
+                for (const rp of d.rpa_progress) {
+                    const dotClass = 'rpa-dot-' + (rp.exec_status || 'waiting');
+                    html += `
+                    <div class="rpa-progress-item">
+                        <span class="rpa-shop-name">${escapeHtml(rp.shop_name)}</span>
+                        <span><span class="rpa-status-dot ${dotClass}"></span>${escapeHtml(rp.exec_status_label)}</span>
+                    </div>`;
+                }
+                html += `</div></div>`;
+            }
+
             document.getElementById('detailModalBody').innerHTML = html;
-            document.getElementById('detailModal').style.display = 'block';
+            document.getElementById('detailModal').classList.add('open');
         } catch (e) {
             if (typeof showNotification === 'function') showNotification('加载详情失败: ' + e.message, 'error');
         }
     }
 
     function closeDetailModal() {
-        document.getElementById('detailModal').style.display = 'none';
+        document.getElementById('detailModal').classList.remove('open');
     }
 
     function openDeleteModal(approvalId, approvalNo) {
         deleteTargetId = approvalId;
         document.getElementById('deleteApprovalNo').textContent = approvalNo;
-        document.getElementById('deleteModal').style.display = 'block';
+        document.getElementById('deleteModal').classList.add('open');
     }
 
     function closeDeleteModal() {
         deleteTargetId = null;
-        document.getElementById('deleteModal').style.display = 'none';
+        document.getElementById('deleteModal').classList.remove('open');
     }
 
     async function confirmDelete() {
@@ -766,17 +1145,43 @@
         }
     }
 
-    async function handleAction(approvalId, action) {
+    let actionModalState = { approvalId: null, action: null, approvalNo: '' };
+
+    function handleAction(approvalId, action, approvalNo) {
         if (!canOperateApproval) {
             if (typeof showNotification === 'function') showNotification('无审批操作权限', 'error');
             return;
         }
-        const actionLabel = action === 'approved' ? '通过' : '驳回';
-        const msg = action === 'approved'
-            ? '确定通过该审批单吗？'
-            : '确定驳回该审批单吗？系统将自动复制一张新的审批草稿。';
-        if (!window.confirm(msg)) return;
+        actionModalState = { approvalId, action, approvalNo: approvalNo || '' };
+        const isApprove = action === 'approved';
+        document.getElementById('actionModalTitle').textContent = isApprove ? '通过审批' : '驳回审批';
+        document.getElementById('actionApprovalNo').textContent = actionModalState.approvalNo;
+        document.getElementById('actionCommentLabel').textContent = isApprove ? '通过意见（选填）' : '驳回原因（必填）';
+        document.getElementById('actionComment').value = '';
+        const hint = document.getElementById('actionCommentHint');
+        hint.textContent = isApprove ? '通过时可不填，如有补充意见可在此填写' : '请填写驳回原因，以便申请人了解并修改';
+        hint.className = isApprove ? 'action-modal-hint' : 'action-modal-hint required';
+        const btn = document.getElementById('actionConfirmBtn');
+        btn.textContent = isApprove ? '确认通过' : '确认驳回';
+        btn.className = isApprove ? 'btn btn-primary' : 'btn btn-danger';
+        document.getElementById('actionModal').classList.add('open');
+    }
 
+    function closeActionModal() {
+        document.getElementById('actionModal').classList.remove('open');
+        actionModalState = { approvalId: null, action: null, approvalNo: '' };
+    }
+
+    async function confirmAction() {
+        const { approvalId, action } = actionModalState;
+        if (!approvalId || !action) return;
+        const comment = document.getElementById('actionComment').value.trim();
+        if (action === 'rejected' && !comment) {
+            if (typeof showNotification === 'function') showNotification('请填写驳回原因', 'error');
+            document.getElementById('actionComment').focus();
+            return;
+        }
+        const actionLabel = action === 'approved' ? '通过' : '驳回';
         try {
             const result = await fetchJson('/api/task/approvals/list/action/', {
                 method: 'POST',
@@ -784,13 +1189,226 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
                 },
-                body: JSON.stringify({ approval_id: approvalId, action: action })
+                body: JSON.stringify({ approval_id: approvalId, action: action, comment: comment })
             });
             if (typeof showNotification === 'function') showNotification(result.message || '审批已' + actionLabel, 'success');
+            closeActionModal();
             loadStats();
             loadCurrentTabData();
         } catch (e) {
             if (typeof showNotification === 'function') showNotification('审批' + actionLabel + '失败: ' + e.message, 'error');
+        }
+    }
+
+    // ========== 审批流程设置 ==========
+    let flowConfigData = { members: [], available_proxies: [], is_admin: false };
+    let flowConfigEditState = {}; // userId -> { editing: bool, skip: bool, proxyId: string|null }
+    let flowConfigSelectMap = {}; // userId -> SearchableSelect instance
+
+    async function openFlowConfigModal() {
+        document.getElementById('flowConfigModal').classList.add('open');
+        await loadFlowConfigData();
+    }
+
+    function closeFlowConfigModal() {
+        document.getElementById('flowConfigModal').classList.remove('open');
+        flowConfigEditState = {};
+    }
+
+    async function loadFlowConfigData() {
+        const body = document.getElementById('flowConfigModalBody');
+        body.innerHTML = '<div class="empty-state" style="padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> 正在加载...</div>';
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/');
+            flowConfigData = result.data || { members: [], available_proxies: [], is_admin: false };
+            renderFlowConfigTable();
+        } catch (e) {
+            body.innerHTML = `<div class="empty-state" style="padding: 2rem; color: var(--danger-color);">加载失败: ${escapeHtml(e.message)}</div>`;
+        }
+    }
+
+    function renderFlowConfigTable() {
+        const body = document.getElementById('flowConfigModalBody');
+        const members = flowConfigData.members || [];
+        const proxies = flowConfigData.available_proxies || [];
+
+        if (!members.length) {
+            body.innerHTML = '<div class="empty-state" style="padding: 2rem;"><i class="fas fa-inbox"></i><p>暂无可配置的组员</p></div>';
+            return;
+        }
+
+        let html = '<table class="flow-config-table"><thead><tr><th>组员</th><th>广告审批流程</th><th style="width: 80px;">操作</th></tr></thead><tbody>';
+        for (const m of members) {
+            const cfg = m.configs && m.configs['amazon_ad'] ? m.configs['amazon_ad'] : null;
+            let statusBadge = '<span class="flow-config-badge default">默认</span>';
+            let statusText = '组长审批 → 组长上级审批';
+            if (cfg) {
+                if (cfg.skip_approval) {
+                    statusBadge = '<span class="flow-config-badge skip">直接通过</span>';
+                    statusText = '提交后无需审批，直接进入执行';
+                } else {
+                    const s1 = cfg.step1_approver_name || '组长';
+                    const s2 = cfg.step2_approver_name || (cfg.step2_approver_id ? '未知' : '组长上级');
+                    if (cfg.step1_approver_id && cfg.step2_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `${escapeHtml(s1)} 审批 → ${escapeHtml(s2)} 审批`;
+                    } else if (cfg.step1_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `${escapeHtml(s1)} 审批`;
+                    } else if (cfg.step2_approver_id) {
+                        statusBadge = '<span class="flow-config-badge proxy">自定义流程</span>';
+                        statusText = `组长审批 → ${escapeHtml(s2)} 审批`;
+                    }
+                }
+            }
+
+            const isEditing = flowConfigEditState[m.user_id] && flowConfigEditState[m.user_id].editing;
+
+            html += `<tr>
+                <td>${escapeHtml(m.user_name)}</td>
+                <td>${statusBadge}<div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem;">${statusText}</div></td>
+                <td><button type="button" class="flow-config-edit-btn ${isEditing ? 'active' : ''}" onclick="toggleEditRow(${m.user_id})"><i class="fas fa-${isEditing ? 'times' : 'pen'}"></i> ${isEditing ? '取消' : '编辑'}</button></td>
+            </tr>`;
+
+            if (isEditing) {
+                const state = flowConfigEditState[m.user_id];
+                html += `<tr class="flow-config-edit-row">
+                    <td colspan="3">
+                        <div class="flow-config-form">
+                            <div class="flow-config-form-group">
+                                <label class="flow-config-switch">
+                                    <input type="checkbox" id="skip-${m.user_id}" ${state.skip ? 'checked' : ''} onchange="onSkipChange(${m.user_id})">
+                                    <span class="flow-config-slider"></span>
+                                </label>
+                                <label for="skip-${m.user_id}">跳过审批</label>
+                            </div>
+                            <div class="flow-config-form-group" id="step1-group-${m.user_id}" style="opacity: ${state.skip ? '0.5' : '1'}; pointer-events: ${state.skip ? 'none' : 'auto'};">
+                                <label>一级审批人</label>
+                                <div id="step1-select-${m.user_id}" class="searchable-select single" style="min-width: 160px;" data-placeholder="默认（组长）"></div>
+                            </div>
+                            <div class="flow-config-form-group" id="step2-group-${m.user_id}" style="opacity: ${state.skip ? '0.5' : '1'}; pointer-events: ${state.skip ? 'none' : 'auto'};">
+                                <label>二级审批人（可选）<small style="color: var(--text-tertiary); font-weight: 400; margin-left: 0.25rem;">留空则无需二级审批</small></label>
+                                <div id="step2-select-${m.user_id}" class="searchable-select single" style="min-width: 160px;" data-placeholder="默认（组长上级）"></div>
+                            </div>
+                            <div style="margin-left: auto; display: flex; gap: 0.5rem; align-items: center;">
+                                ${cfg ? `<button class="btn btn-secondary" type="button" onclick="deleteFlowConfig(${m.user_id})">恢复默认</button>` : ''}
+                                <button class="btn btn-primary" type="button" onclick="saveFlowConfig(${m.user_id})">保存</button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
+            }
+        }
+        html += '</tbody></table>';
+        body.innerHTML = html;
+
+        // 初始化 SearchableSelect
+        for (const m of members) {
+            if (flowConfigEditState[m.user_id] && flowConfigEditState[m.user_id].editing) {
+                const state = flowConfigEditState[m.user_id];
+                const options = [{ value: '', label: '默认' }].concat(
+                    proxies.map(p => ({ value: String(p.user_id), label: p.user_name }))
+                );
+                flowConfigSelectMap[m.user_id] = {};
+
+                ['step1', 'step2'].forEach(step => {
+                    const selector = `#${step}-select-${m.user_id}`;
+                    const el = document.querySelector(selector);
+                    if (el && typeof SearchableSelect !== 'undefined') {
+                        const select = new SearchableSelect(selector, {
+                            options: options,
+                            multiple: false,
+                            placeholder: step === 'step1' ? '默认（组长）' : '默认（组长上级）'
+                        });
+                        const val = step === 'step1' ? state.step1Id : state.step2Id;
+                        if (val) select.setValue(String(val));
+                        flowConfigSelectMap[m.user_id][step] = select;
+                    }
+                });
+            }
+        }
+    }
+
+    function toggleEditRow(userId) {
+        const m = flowConfigData.members.find(x => x.user_id === userId);
+        const cfg = m && m.configs && m.configs['amazon_ad'] ? m.configs['amazon_ad'] : null;
+        if (flowConfigEditState[userId] && flowConfigEditState[userId].editing) {
+            delete flowConfigEditState[userId];
+        } else {
+            flowConfigEditState[userId] = {
+                editing: true,
+                skip: cfg ? cfg.skip_approval : false,
+                step1Id: cfg ? (cfg.step1_approver_id || '') : '',
+                step2Id: cfg ? (cfg.step2_approver_id || '') : ''
+            };
+        }
+        renderFlowConfigTable();
+    }
+
+    function onSkipChange(userId) {
+        const skip = document.getElementById('skip-' + userId).checked;
+        if (flowConfigEditState[userId]) {
+            flowConfigEditState[userId].skip = skip;
+        }
+        ['step1', 'step2'].forEach(step => {
+            const group = document.getElementById(step + '-group-' + userId);
+            if (group) {
+                group.style.opacity = skip ? '0.5' : '1';
+                group.style.pointerEvents = skip ? 'none' : 'auto';
+            }
+        });
+    }
+
+    async function saveFlowConfig(userId) {
+        const skip = document.getElementById('skip-' + userId).checked;
+        let step1Id = '';
+        let step2Id = '';
+        const selects = flowConfigSelectMap[userId];
+        if (selects) {
+            if (selects.step1) step1Id = selects.step1.getValue() || '';
+            if (selects.step2) step2Id = selects.step2.getValue() || '';
+        }
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/save/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({
+                    applicant_id: userId,
+                    approval_type: 'amazon_ad',
+                    skip_approval: skip,
+                    step1_approver_id: step1Id ? Number(step1Id) : null,
+                    step2_approver_id: step2Id ? Number(step2Id) : null
+                })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '配置已保存', 'success');
+            delete flowConfigEditState[userId];
+            await loadFlowConfigData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('保存失败: ' + e.message, 'error');
+        }
+    }
+
+    async function deleteFlowConfig(userId) {
+        try {
+            const result = await fetchJson('/api/task/approvals/flow-config/delete/', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || ''
+                },
+                body: JSON.stringify({
+                    applicant_id: userId,
+                    approval_type: 'amazon_ad'
+                })
+            });
+            if (typeof showNotification === 'function') showNotification(result.message || '配置已删除', 'success');
+            delete flowConfigEditState[userId];
+            await loadFlowConfigData();
+        } catch (e) {
+            if (typeof showNotification === 'function') showNotification('删除失败: ' + e.message, 'error');
         }
     }
 
