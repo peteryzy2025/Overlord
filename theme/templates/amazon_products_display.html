@@ -1226,9 +1226,9 @@
             text-align: center; vertical-align: middle; padding: 0.5rem !important;
         }
         .w-checkbox input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; accent-color: var(--accent-color); margin: 0; }
-        #noveltyAggregationTableContainer .table { min-width: 780px; }
+        #noveltyAggregationTableContainer .table { min-width: 810px; }
         #noveltyAggregationTableContainer td:nth-child(2),
-        #noveltyAggregationTableContainer th:nth-child(2) { max-width: 320px; }
+        #noveltyAggregationTableContainer th:nth-child(2) { max-width: 350px; }
         .detail-row { display: none; }
         .detail-row.open { display: table-row; }
         .detail-row > td { background: transparent !important; padding: 0 !important; border-top: none !important; }
@@ -1261,7 +1261,7 @@
         .asin-detail-table-wrapper { overflow-x: auto; }
         .asin-detail-table {
             width: 100%; border-collapse: separate; border-spacing: 0;
-            font-size: 0.875rem; table-layout: fixed; min-width: 1000px;
+            font-size: 0.875rem; table-layout: fixed; min-width: 1100px;
         }
         .asin-detail-table thead { background: #f8fafc; }
         .asin-detail-table th {
@@ -1269,11 +1269,11 @@
             font-weight: 600; border-bottom: 2px solid var(--border-color);
             white-space: nowrap; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px;
         }
-        .asin-detail-table th:nth-child(1), .asin-detail-table td:nth-child(1) { width: 160px; }
-        .asin-detail-table th:nth-child(2), .asin-detail-table td:nth-child(2) { width: 80px; text-align: center; }
-        .asin-detail-table th:nth-child(3), .asin-detail-table td:nth-child(3) { width: 25%; }
-        .asin-detail-table th:nth-child(4), .asin-detail-table td:nth-child(4) { width: 20%; }
-        .asin-detail-table th:nth-child(5), .asin-detail-table td:nth-child(5) { width: 130px; }
+        .asin-detail-table th:nth-child(1), .asin-detail-table td:nth-child(1) { width: 140px; overflow: visible !important; }
+        .asin-detail-table th:nth-child(2), .asin-detail-table td:nth-child(2) { width: 60px; text-align: center; }
+        .asin-detail-table th:nth-child(3), .asin-detail-table td:nth-child(3) { width: 30%; }
+        .asin-detail-table th:nth-child(4), .asin-detail-table td:nth-child(4) { width: 15%; }
+        .asin-detail-table th:nth-child(5), .asin-detail-table td:nth-child(5) { width: 160px; overflow: visible !important; }
         .asin-detail-table th:nth-child(6), .asin-detail-table td:nth-child(6) { width: 120px; }
         .asin-detail-table th:first-child { padding-left: 1.5rem; }
         .asin-detail-table th:last-child { padding-right: 1.5rem; }
@@ -1282,11 +1282,12 @@
         .asin-detail-table td {
             padding: 1rem; color: var(--text-primary);
             border-bottom: 1px solid var(--border-color); vertical-align: middle;
+            overflow: visible !important; white-space: normal;
         }
         .asin-detail-table td:first-child { padding-left: 1.5rem; }
         .asin-detail-table td:last-child { padding-right: 1.5rem; }
         .asin-detail-table tbody tr:last-child td { border-bottom: none; }
-        .asin-cell { font-size: 0.85rem; }
+        .asin-cell { font-size: 0.85rem; overflow: visible !important; white-space: nowrap; }
         .asin-title-cell, .asin-subject-cell { min-width: 0; }
         .asin-text-block { min-width: 0; }
         .asin-text-line {
@@ -1330,6 +1331,21 @@
             font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 4px;
             font-weight: 500; border: 1px solid var(--border-color);
         }
+        .core-tags-cell .badge-category {
+            margin: 1px 2px;
+            background: #eff6ff; color: #3b82f6; border-color: #bfdbfe;
+        }
+        .burst-high { color: #dc2626; font-weight: 700; }
+        .burst-medium { color: #f59e0b; font-weight: 600; }
+        .burst-low { color: #22c55e; font-weight: 500; }
+        .burst-bar-bg {
+            width: 60px; height: 6px; background: #e5e7eb;
+            border-radius: 3px; margin-top: 3px; overflow: hidden;
+        }
+        .burst-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+        .burst-bar-fill.burst-high { background: #dc2626; }
+        .burst-bar-fill.burst-medium { background: #f59e0b; }
+        .burst-bar-fill.burst-low { background: #22c55e; }
         .clickable-subject {
             cursor: pointer; transition: color 0.2s ease;
             display: block; max-width: 100%;
@@ -1353,6 +1369,10 @@
         }
         #noveltyAggregationTableContainer .table tbody tr { height: 64px; }
         #noveltyAggregationTableContainer .table tbody td { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        #noveltyAggregationTableContainer td:nth-child(3),
+        #noveltyAggregationTableContainer th:nth-child(3) { max-width: 160px; min-width: 100px; }
+        #noveltyAggregationTableContainer td:nth-child(6),
+        #noveltyAggregationTableContainer th:nth-child(6) { min-width: 180px; overflow: visible !important; white-space: nowrap; }
     </style>
 {% endblock %}
 
@@ -1608,17 +1628,17 @@
             <div class="stats-dashboard" id="aggregationStatsDashboard">
                 <div class="stat-card">
                     <div class="stat-label"><i class="fas fa-layer-group"></i> 总主题数</div>
-                    <div class="stat-value" id="aggTotalThemes">{{ aggregation_stats.total_themes|default:"-" }}</div>
+                    <div class="stat-value" id="aggTotalThemes">{{ cluster_stats.total_themes|default:"-" }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label"><i class="fas fa-clock"></i> 近7日更新</div>
-                    <div class="stat-value" id="aggRecentThemes7d">{{ aggregation_stats.recent_themes_7d|default:"-" }}</div>
+                    <div class="stat-value" id="aggRecentThemes7d">{{ cluster_stats.recent_themes_7d|default:"-" }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label"><i class="fas fa-calendar-check"></i> 本月更新</div>
-                    <div class="stat-value" id="aggRecentThemesMonth">{{ aggregation_stats.recent_themes_month|default:"-" }}</div>
+                    <div class="stat-value" id="aggRecentThemesMonth">{{ cluster_stats.recent_themes_month|default:"-" }}</div>
                     <div class="stat-change">&nbsp;</div>
                 </div>
             </div>
@@ -1669,10 +1689,10 @@
                         <thead>
                         <tr>
                             <th class="w-checkbox"><input type="checkbox" id="aggSelectAll" onclick="toggleAggSelectAll()"></th>
-                            <th class="sortable" data-field="summary_subject_title" onclick="handleNoveltyAggSort('summary_subject_title')">聚合主题</th>
-                            <th class="sortable active" data-field="appear_count" onclick="handleNoveltyAggSort('appear_count')">出现次数</th>
-                            <th class="sortable" data-field="avg_launch_days" onclick="handleNoveltyAggSort('avg_launch_days')">平均上架时间</th>
-                            <th class="sortable" data-field="avg_score" onclick="handleNoveltyAggSort('avg_score')">平均分值</th>
+                            <th class="sortable" data-field="display_title" onclick="handleNoveltyAggSort('display_title')">聚合主题</th>
+                            <th>核心标签</th>
+                            <th class="sortable active" data-field="asin_count" onclick="handleNoveltyAggSort('asin_count')">ASIN数</th>
+                            <th class="sortable" data-field="burst_score" onclick="handleNoveltyAggSort('burst_score')">爆发指数</th>
                             <th>平均排名趋势图</th>
                             <th>操作</th>
                         </tr>
@@ -3905,7 +3925,7 @@
         // ===== Novelty Aggregation state ======
         var noveltyAggState = {
             loaded: false,
-            sort_field: 'appear_count',
+            sort_field: 'asin_count',
             sort_order: 'desc',
             page: 1,
             page_size: 20,
@@ -3933,7 +3953,7 @@
                     page_size: noveltyAggState.page_size,
                     new_theme_days: noveltyAggState.new_theme_days
                 };
-                var response = await fetch("{% url 'theme:api_novelty_aggregation_list' %}", {
+                var response = await fetch("{% url 'theme:api_novelty_cluster_aggregation_list' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
@@ -4030,17 +4050,28 @@
                 var trendHTML = trendData.length > 0
                     ? '<div class="score-trend-chart" id="'+chartId+'"><svg width="160" height="60"></svg><div class="trend-tooltip" style="display:none;position:fixed;background:rgba(0,0,0,0.8);color:white;padding:6px 10px;border-radius:4px;font-size:12px;pointer-events:none;z-index:1000;white-space:nowrap;"></div></div>'
                     : '-';
-                var avgDays = theme.avg_launch_days;
-                var avgDaysHTML = (avgDays !== null && avgDays !== undefined && avgDays !== '-') ? escapeHtml(avgDays) + ' 天' : '-';
-                var avgScore = theme.avg_score;
-                var avgScoreHTML = (avgScore !== null && avgScore !== undefined && avgScore !== '-') ? escapeHtml(avgScore) : '-';
+
+                var coreTags = theme.core_tags || [];
+                var coreTagsHTML = coreTags.length > 0
+                    ? coreTags.slice(0, 5).map(function(t){ return '<span class="badge-category">' + escapeHtml(t) + '</span>'; }).join(' ')
+                    : '-';
+
+                var burstScore = theme.burst_score || 0;
+                var burstPct = Math.round(burstScore * 100);
+                var burstCls = burstPct >= 50 ? 'burst-high' : burstPct >= 20 ? 'burst-medium' : 'burst-low';
+                var burstHTML = '<span class="' + burstCls + '">' + burstPct + '%</span>' +
+                    '<div class="burst-bar-bg"><div class="burst-bar-fill ' + burstCls + '" style="width:' + burstPct + '%;"></div></div>';
+
+                var asinCount = theme.asin_count || 0;
+                var asinCountHTML = asinCount > 0 ? '<strong>' + asinCount + '</strong>' : '-';
+
                 var isExpanded = noveltyAggExpandedIds.has(themeId);
                 return '<tr data-theme-id="'+themeId+'">' +
                     '<td class="w-checkbox"><input type="checkbox" class="agg-row-checkbox" data-theme-id="'+themeId+'"'+(isChecked?' checked':'')+' onchange="handleAggRowCheckboxChange(this)"></td>' +
                     '<td><div class="subject-main clickable-subject" onclick="toggleNoveltyAggDetail('+themeId+')" title="'+titleAttr+'">'+title+'</div></td>' +
-                    '<td>'+escapeHtml(theme.appear_count ?? '-')+'</td>' +
-                    '<td>'+avgDaysHTML+'</td>' +
-                    '<td>'+avgScoreHTML+'</td>' +
+                    '<td class="core-tags-cell">' + coreTagsHTML + '</td>' +
+                    '<td>' + asinCountHTML + '</td>' +
+                    '<td>' + burstHTML + '</td>' +
                     '<td>'+trendHTML+'</td>' +
                     '<td><button class="btn btn-sm agg-detail-btn" onclick="toggleNoveltyAggDetail('+themeId+')">'+(isExpanded?'收起':'ASIN详情')+'</button></td>' +
                     '</tr>' +
@@ -4106,7 +4137,7 @@
             if(!contentCell) return;
             contentCell.innerHTML = '<div class="agg-detail-loading"><i class="fas fa-spinner fa-spin"></i><div>正在加载ASIN详情...</div></div>';
             try {
-                var response = await fetch("{% url 'theme:api_novelty_aggregation_asins' %}", {
+                var response = await fetch("{% url 'theme:api_novelty_cluster_aggregation_asins' %}", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ theme_id: themeId })
@@ -4160,7 +4191,7 @@
         // ===== Novelty Aggregation: sort ======
         function handleNoveltyAggSort(field) {
             if(noveltyAggState.sort_field===field){noveltyAggState.sort_order=noveltyAggState.sort_order==='asc'?'desc':'asc';}
-            else{noveltyAggState.sort_field=field;noveltyAggState.sort_order=field==='summary_subject_title'?'asc':'desc';}
+            else{noveltyAggState.sort_field=field;noveltyAggState.sort_order=field==='display_title'?'asc':'desc';}
             updateNoveltyAggSortHeaders();
             noveltyAggState.page=1;loadNoveltyAggregationTable();
         }
