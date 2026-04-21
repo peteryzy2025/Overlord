@@ -300,7 +300,7 @@
 /* 图片网格 */
 .images-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 1rem;
     padding: 1rem;
 }
@@ -314,7 +314,8 @@
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px solid transparent;
-    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 .image-card:hover {
@@ -339,12 +340,13 @@
 
 .image-wrapper {
     width: 100%;
-    height: 100%;
+    aspect-ratio: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     background-color: var(--bg-tertiary);
+    flex-shrink: 0;
 }
 
 .image-wrapper img {
@@ -361,6 +363,60 @@
 .image-placeholder {
     color: var(--text-secondary);
     font-size: 2rem;
+}
+
+/* 商品信息区域 */
+.product-info {
+    padding: 0.6rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-height: 0;
+    flex: 1;
+}
+
+.product-brand {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.product-title {
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.product-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 0.15rem;
+    flex-wrap: wrap;
+}
+
+.product-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.product-meta-item i {
+    font-size: 0.7rem;
+}
+
+.product-meta-item .fire-icon {
+    color: #f59e0b;
+}
+
+.product-meta-item .star-icon {
+    color: #fbbf24;
 }
 
 /* 空状态 */
@@ -382,6 +438,187 @@
     font-weight: 500;
     color: var(--text-primary);
     margin-bottom: 0.5rem;
+}
+
+/* 设置模态框 */
+.settings-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.settings-modal-overlay.visible {
+    display: flex;
+}
+
+.settings-modal-content {
+    background-color: var(--bg-primary);
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.settings-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.settings-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.settings-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.settings-modal-close:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.settings-modal-body {
+    padding: 1.5rem;
+}
+
+.settings-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.settings-form-group label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.settings-form-group .required {
+    color: var(--danger-color, #ef4444);
+}
+
+.settings-form-group input {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.settings-form-group input:focus {
+    border-color: var(--accent-color);
+}
+
+.settings-form-group .hint {
+    font-size: 0.8rem;
+    color: var(--text-tertiary);
+}
+
+.settings-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* 设置图标 */
+.crawler-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.settings-btn {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.settings-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* 下载按钮 */
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.download-btn {
+    display: none;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent-color);
+    color: white;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.download-btn.visible {
+    display: flex;
+}
+
+.download-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+}
+
+.download-btn:disabled {
+    background: var(--text-tertiary);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
 /* 图片预览模态框 */
@@ -523,7 +760,15 @@
 {% block content %}
 <div class="crawler-page">
     <!-- 标题 -->
-    <h1 class="crawler-title">Amazon数据抓取工具</h1>
+    <div class="crawler-header">
+        <h1 class="crawler-title">Amazon数据抓取工具</h1>
+        <button class="settings-btn" id="settingsBtn" onclick="openSettingsModal()" title="设置">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+    </div>
 
     <!-- 搜索区域 -->
     <div class="crawler-search">
@@ -574,6 +819,16 @@
                     已选择 <span class="count" id="selectedCount">0</span> 张
                 </span>
             </div>
+            <div class="toolbar-right">
+                <button class="download-btn" id="downloadBtn" onclick="downloadSelectedImages()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    下载选中图片
+                </button>
+            </div>
         </div>
 
         <!-- 虚拟滚动容器 -->
@@ -581,6 +836,37 @@
             <div class="virtual-scroll-content" id="virtualContent">
                 <div class="images-grid" id="imagesGrid"></div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- 设置模态框 -->
+<div class="settings-modal-overlay" id="settingsModal" onclick="if(event.target === this) return;">
+    <div class="settings-modal-content" onclick="event.stopPropagation()">
+        <div class="settings-modal-header">
+            <h3 class="settings-modal-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                设置
+            </h3>
+            <button class="settings-modal-close" onclick="closeSettingsModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="settings-modal-body">
+            <div class="settings-form-group">
+                <label for="savePathInput">
+                    保存文件路径 <span class="required">*</span>
+                </label>
+                <input type="text" id="savePathInput" placeholder="例如：\\\\ZT-NAS\\公共区-不可编辑\\靓仔测试">
+                <span class="hint">必须是 \\ZT-NAS 开头的 NAS 路径，下载时会自动按日期分文件夹（如 \\ZT-NAS\xxx\2026-04-20\）</span>
+            </div>
+        </div>
+        <div class="settings-modal-footer">
+            <button class="btn btn-secondary" onclick="closeSettingsModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="saveSettings()">保存</button>
         </div>
     </div>
 </div>
@@ -618,6 +904,139 @@ let selectedImages = new Set();
 let currentKeyword = '';
 let currentPageCount = 1;
 let isLoading = false;
+
+// 设置管理
+const SETTINGS_KEY = 'amazon_crawler_settings';
+
+function getSettings() {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : { savePath: '' };
+}
+
+function saveSettingsToStorage(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function openSettingsModal() {
+    const settings = getSettings();
+    document.getElementById('savePathInput').value = settings.savePath || '';
+    document.getElementById('settingsModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+function saveSettings() {
+    const savePath = document.getElementById('savePathInput').value.trim();
+    if (!savePath) {
+        showNotification('保存文件路径为必填项', 'warning');
+        document.getElementById('savePathInput').focus();
+        return;
+    }
+    // 校验必须是 \\ZT-NAS 开头的 NAS 路径（不区分大小写）
+    if (!savePath.match(/^\\\\ZT-NAS/i)) {
+        showNotification('保存路径必须是 \\ZT-NAS 开头的 NAS 路径', 'warning');
+        document.getElementById('savePathInput').focus();
+        return;
+    }
+    saveSettingsToStorage({ savePath });
+    showNotification('设置已保存', 'success');
+    closeSettingsModal();
+}
+
+function getSavePath() {
+    return getSettings().savePath || '';
+}
+
+// 更新下载按钮显示状态
+function updateDownloadButton() {
+    const btn = document.getElementById('downloadBtn');
+    if (selectedImages.size > 0) {
+        btn.classList.add('visible');
+    } else {
+        btn.classList.remove('visible');
+    }
+}
+
+// 下载选中图片
+async function downloadSelectedImages() {
+    const savePath = getSavePath();
+    if (!savePath) {
+        showNotification('请先设置保存文件路径', 'warning');
+        openSettingsModal();
+        return;
+    }
+    if (selectedImages.size === 0) {
+        showNotification('请先勾选要下载的图片', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('downloadBtn');
+    btn.disabled = true;
+    btn.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+        下载中...
+    `;
+
+    const selectedProducts = [];
+    selectedImages.forEach(index => {
+        if (allImages[index]) {
+            selectedProducts.push(allImages[index]);
+        }
+    });
+
+    try {
+        const response = await fetch('/api/amazon-batch-download/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                products: selectedProducts,
+                save_path: savePath,
+                keyword: currentKeyword
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showNotification(`下载完成：成功 ${data.success_count || selectedProducts.length} 张，保存到 ${data.save_dir || savePath}`, 'success');
+        } else {
+            throw new Error(data.message || '下载失败');
+        }
+    } catch (error) {
+        console.warn('后端下载接口调用失败:', error);
+        showNotification('下载失败：' + (error.message || '请检查网络连接'), 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            下载选中图片
+        `;
+    }
+}
+
+// 添加旋转动画
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(style);
 
 // 历史记录管理
 const HISTORY_KEY = 'amazon_crawler_history';
@@ -788,9 +1207,18 @@ function renderImages() {
                    onclick="event.stopPropagation(); toggleImageSelection(${index})">
             <div class="image-wrapper">
                 <img src="${img.thumb_url}" 
-                     alt="图片${index + 1}" 
+                     alt="${img.title || '图片' + (index + 1)}" 
                      loading="eager"
                      onerror="this.parentElement.innerHTML='<i class=\'fas fa-image image-placeholder\'></i>'">
+            </div>
+            <div class="product-info">
+                <div class="product-title">${escapeHtml(img.title || '')}</div>
+                <div class="product-meta">
+                    <span class="product-meta-item"><i class="fas fa-hashtag"></i> ${img.sort_order || (index + 1)}</span>
+                    <span class="product-meta-item"><i class="fas fa-barcode"></i> ${escapeHtml(img.asin || '')}</span>
+                    ${img.monthly_sales ? `<span class="product-meta-item"><i class="fas fa-fire fire-icon"></i> ${escapeHtml(img.monthly_sales)}</span>` : ''}
+                    ${img.rating_count ? `<span class="product-meta-item"><i class="fas fa-star star-icon"></i> ${escapeHtml(img.rating_count)}</span>` : ''}
+                </div>
             </div>
         </div>
     `).join('');
@@ -810,6 +1238,7 @@ function toggleImageSelection(index) {
     
     updateSelectedCount();
     updateSelectAllState();
+    updateDownloadButton();
 }
 
 // 全选/取消全选
@@ -841,6 +1270,14 @@ function updateSelectedCount() {
     document.getElementById('selectedCount').textContent = selectedImages.size;
 }
 
+// HTML转义
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // 打开图片预览
 function openModal(index) {
     const img = allImages[index];
@@ -849,10 +1286,27 @@ function openModal(index) {
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
     const modalUrl = document.getElementById('modalUrl');
+    const modalInfo = document.getElementById('modalInfo');
 
     modalImg.src = img.original_url;
     modalImg.dataset.url = img.original_url;
     modalUrl.textContent = img.original_url;
+    
+    // 填充商品信息
+    modalInfo.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+            <div style="font-size: 0.9rem; color: var(--text-secondary);">
+                ${escapeHtml(img.title || '')}
+            </div>
+            <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.85rem; color: var(--text-tertiary); flex-wrap: wrap;">
+                <span><i class="fas fa-hashtag"></i> 序号: ${img.sort_order || (index + 1)}</span>
+                <span><i class="fas fa-barcode"></i> ASIN: ${escapeHtml(img.asin || '')}</span>
+                ${img.monthly_sales ? `<span><i class="fas fa-fire" style="color: #f59e0b;"></i> 月销量: ${escapeHtml(img.monthly_sales)}</span>` : ''}
+                ${img.rating_count ? `<span><i class="fas fa-star" style="color: #fbbf24;"></i> 评分: ${escapeHtml(img.rating_count)}</span>` : ''}
+            </div>
+        </div>
+    `;
+    
     modal.classList.add('visible');
     document.body.style.overflow = 'hidden';
 }
@@ -922,7 +1376,10 @@ document.getElementById('pageInput').addEventListener('keypress', (e) => {
 
 // ESC关闭模态框
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+        closeModal();
+        closeSettingsModal();
+    }
 });
 
 // 页面加载性能监控

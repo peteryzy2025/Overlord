@@ -34,6 +34,99 @@ def convert_to_original(url):
     return f"{base_url}/{clean_filename}"
 
 
+def parse_product_from_item(item_div):
+    """从单个商品div解析所有字段"""
+    result = {
+        'thumb_url': '',
+        'original_url': '',
+        'asin': '',
+        'title': '',
+        'monthly_sales': '',
+        'rating_count': '',
+    }
+
+    # ASIN
+    asin = item_div.get('data-asin', '')
+    result['asin'] = asin
+
+    # 图片
+    img = item_div.xpath('.//img[@class="s-image"]')
+    if img:
+        thumb_url = img[0].get('src', '')
+        result['thumb_url'] = thumb_url
+        result['original_url'] = convert_to_original(thumb_url)
+
+    # 标题: 从 h2 提取完整文本
+    h2_elems = item_div.xpath('.//h2[contains(@class,"a-size-base-plus")]')
+    if h2_elems:
+        result['title'] = h2_elems[0].text_content().strip()
+
+    # 月销量: 找包含数字+的 a-size-base a-color-secondary span
+    sales_spans = item_div.xpath('.//span[@class="a-size-base a-color-secondary"]')
+    for s in sales_spans:
+        text = s.text_content().strip()
+        match = re.search(r'(\d+\+?)', text)
+        if match:
+            result['monthly_sales'] = match.group(1)
+            break
+
+    # 评分数量: (6)
+    rating_els = item_div.xpath('.//span[@class="a-size-mini puis-normal-weight-text s-underline-text"]/text()')
+    for text in rating_els:
+        text = text.strip()
+        match = re.search(r'\((\d+)\)', text)
+        if match:
+            result['rating_count'] = match.group(1)
+            break
+
+    return result
+
+
+def sort_products(products):
+    """
+    对商品列表进行排序
+    规则:
+    1. 有月销量优先，按销量降序
+    2. 销量相同，按评分数量降序
+    3. 无销量，按评分数量降序
+    4. 都没有，保持原始顺序
+    """
+    def sort_key(product):
+        sales_str = product.get('monthly_sales', '')
+        rating_str = product.get('rating_count', '')
+        
+        # 提取销量数字
+        sales_num = 0
+        if sales_str:
+            match = re.search(r'(\d+)', sales_str)
+            if match:
+                sales_num = int(match.group(1))
+        
+        # 提取评分数字
+        rating_num = 0
+        if rating_str:
+            match = re.search(r'(\d+)', rating_str)
+            if match:
+                rating_num = int(match.group(1))
+        
+        # 排序键: (-是否有销量, -销量, -评分, 原始索引)
+        # 有销量的 sales_num > 0，放前面
+        has_sales = 1 if sales_num > 0 else 0
+        
+        return (-has_sales, -sales_num, -rating_num)
+    
+    # 保留原始索引用于同分时保持顺序
+    indexed = [(i, p) for i, p in enumerate(products)]
+    indexed.sort(key=lambda x: (sort_key(x[1]), x[0]))
+    
+    sorted_products = []
+    for new_idx, (old_idx, product) in enumerate(indexed, 1):
+        product['sort_order'] = new_idx
+        sorted_products.append(product)
+    
+    return sorted_products
+
+
 async def fetch_page(session, keyword, page_num, referer=None):
     """获取单页数据"""
     # 页面间添加随机延迟，避免被拦截
@@ -93,10 +186,17 @@ async def fetch_page(session, keyword, page_num, referer=None):
                 return None
             
             tree = html.fromstring(html_content)
-            image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
-            print(f"[Amazon爬虫] 解析到 {len(image_urls)} 张图片", flush=True)
+            # 获取每个商品div
+            item_divs = tree.xpath('//div[@role="listitem" and @data-asin]')
+            print(f"[Amazon爬虫] 解析到 {len(item_divs)} 个商品", flush=True)
             
-            return image_urls
+            products = []
+            for item_div in item_divs:
+                product = parse_product_from_item(item_div)
+                if product['thumb_url']:
+                    products.append(product)
+            
+            return products
     except Exception as e:
         print(f"[Amazon爬虫] fetch_page异常: {type(e).__name__}: {e}", flush=True)
         raise
@@ -104,28 +204,38 @@ async def fetch_page(session, keyword, page_num, referer=None):
 
 async def search_amazon_images_async(keyword, max_pages=3):
     """异步搜索Amazon图片，默认爬3页"""
-    all_image_urls = []
+    all_products = []
     
     # 预热：先访问首页建立 Cookie
     home_url = "https://www.amazon.com/"
-    base_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "DNT": "1",
-        "Pragma": "no-cache",
-        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
-        "Sec-Fetch-Dest": "document",
-        "Upgrade-Insecure-Requests": "1",
-    }
+    base_headers = headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.amazon.com/",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+    "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Microsoft Edge\";v=\"146\"",
+    "sec-ch-ua-full-version-list": "\"Chromium\";v=\"146.0.7680.166\", \"Not-A.Brand\";v=\"24.0.0.0\", \"Microsoft Edge\";v=\"146.0.3856.84\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-ch-ua-platform-version": "\"15.0.0\"",
+    "sec-ch-viewport-width": "1912",
+    "sec-ch-dpr": "1",
+    "sec-ch-device-memory": "8",
+    "device-memory": "8",
+    "viewport-width": "1912",
+    "dpr": "1",
+    "ect": "4g",
+    "rtt": "150",
+    "downlink": "8.7",
+    "Connection": "keep-alive",
+    "Cache-Control": "max-age=0",
+}
     
     async with aiohttp.ClientSession() as session:
         print(f"[Amazon爬虫-批量] 预热: {home_url}", flush=True)
@@ -134,39 +244,40 @@ async def search_amazon_images_async(keyword, max_pages=3):
             print(f"[Amazon爬虫-批量] 首页状态码: {home_resp.status}, 长度: {len(home_html)}", flush=True)
         
         for page in range(1, max_pages + 1):
-            image_urls = await fetch_page(session, keyword, page, referer=home_url)
+            products = await fetch_page(session, keyword, page, referer=home_url)
             
-            if image_urls is None:
+            if products is None:
                 # 被拦截了，终止爬取
                 if page == 1:
                     return [], "访问被拦截"
                 break
             
-            if not image_urls:
+            if not products:
                 # 该页没有数据，结束
                 break
             
-            all_image_urls.extend(image_urls)
+            all_products.extend(products)
     
-    if not all_image_urls:
+    if not all_products:
         return [], "未找到图片"
     
-    # 去重（根据缩略图URL）
+    # 去重（根据ASIN）
     seen = set()
     unique_results = []
-    idx = 0
-    for url in all_image_urls:
-        if url not in seen:
-            seen.add(url)
-            original_url = convert_to_original(url)
-            unique_results.append({
-                "thumb_url": url,
-                "original_url": original_url,
-                "id": idx
-            })
-            idx += 1
+    for product in all_products:
+        key = product.get('asin', '') or product.get('thumb_url', '')
+        if key and key not in seen:
+            seen.add(key)
+            unique_results.append(product)
     
-    return unique_results, f"找到 {len(unique_results)} 张图片"
+    # 排序
+    sorted_results = sort_products(unique_results)
+    
+    # 重新分配 id
+    for idx, product in enumerate(sorted_results):
+        product['id'] = idx
+    
+    return sorted_results, f"找到 {len(sorted_results)} 个商品"
 
 
 def has_crawler_permission(user):
@@ -195,24 +306,34 @@ def amazon_data_crawler_page(request):
 
 async def fetch_single_page_async(keyword, page_num):
     """获取单页数据（用于逐页搜索API）"""
-    base_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-        "DNT": "1",
-        "Pragma": "no-cache",
-        "sec-ch-ua": '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-        "Sec-Fetch-Site": "same-origin",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
-        "Sec-Fetch-Dest": "document",
-        "Upgrade-Insecure-Requests": "1",
-    }
+    base_headers = headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.amazon.com/",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-User": "?1",
+    "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Microsoft Edge\";v=\"146\"",
+    "sec-ch-ua-full-version-list": "\"Chromium\";v=\"146.0.7680.166\", \"Not-A.Brand\";v=\"24.0.0.0\", \"Microsoft Edge\";v=\"146.0.3856.84\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-ch-ua-platform-version": "\"15.0.0\"",
+    "sec-ch-viewport-width": "1912",
+    "sec-ch-dpr": "1",
+    "sec-ch-device-memory": "8",
+    "device-memory": "8",
+    "viewport-width": "1912",
+    "dpr": "1",
+    "ect": "4g",
+    "rtt": "150",
+    "downlink": "8.7",
+    "Connection": "keep-alive",
+    "Cache-Control": "max-age=0",
+}
 
     search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
     print(f"[Amazon爬虫-单页] 正在请求: {search_url}", flush=True)
@@ -264,19 +385,21 @@ async def fetch_single_page_async(keyword, page_num):
                     return None, f"访问被拦截 (Status: {response.status})"
                 
                 tree = html.fromstring(html_content)
-                image_urls = tree.xpath('//div[@role="listitem"]//img[@class="s-image"]/@src')
-                print(f"[Amazon爬虫-单页] 解析到 {len(image_urls)} 张图片", flush=True)
+                item_divs = tree.xpath('//div[@role="listitem" and @data-asin]')
+                print(f"[Amazon爬虫-单页] 解析到 {len(item_divs)} 个商品", flush=True)
                 
                 results = []
-                for idx, url in enumerate(image_urls):
-                    original_url = convert_to_original(url)
-                    results.append({
-                        "thumb_url": url,
-                        "original_url": original_url,
-                        "id": idx
-                    })
+                for item_div in item_divs:
+                    product = parse_product_from_item(item_div)
+                    if product['thumb_url']:
+                        results.append(product)
                 
-                return results, f"找到 {len(results)} 张图片"
+                # 排序
+                sorted_results = sort_products(results)
+                for idx, product in enumerate(sorted_results):
+                    product['id'] = idx
+                
+                return sorted_results, f"找到 {len(sorted_results)} 个商品"
     except Exception as e:
         print(f"[Amazon爬虫-单页] fetch_single_page_async异常: {type(e).__name__}: {e}", flush=True)
         raise
@@ -336,6 +459,162 @@ def api_amazon_search_page(request):
         return JsonResponse({
             'success': False,
             'message': f'搜索失败: {str(e)}'
+        })
+
+
+@login_required
+@require_POST
+def api_amazon_batch_download(request):
+    """
+    批量下载选中的Amazon图片到服务器指定路径
+    请求体: { products: [{thumb_url, original_url, asin, brand, title, ...}], save_path: "\\\\ZT-NAS\\xxx", keyword: "250 T-shirt" }
+    权限要求：code=555 或 code=9
+    """
+    if not has_crawler_permission(request.user):
+        return JsonResponse({
+            'success': False,
+            'message': '权限不足'
+        }, status=403)
+
+    try:
+        import json
+        data = json.loads(request.body)
+        products = data.get('products', [])
+        save_path = data.get('save_path', '').strip()
+        keyword = data.get('keyword', '').strip()
+
+        if not products:
+            return JsonResponse({
+                'success': False,
+                'message': '未选择任何商品'
+            })
+
+        if not save_path:
+            return JsonResponse({
+                'success': False,
+                'message': '保存路径不能为空'
+            })
+
+        # 安全检查：必须是 NAS 路径，以 \\ZT-NAS 开头（不区分大小写）
+        save_path = os.path.normpath(save_path)
+        if '..' in save_path:
+            return JsonResponse({
+                'success': False,
+                'message': '保存路径不合法'
+            })
+        if not re.match(r'(?i)^\\\\ZT-NAS', save_path):
+            return JsonResponse({
+                'success': False,
+                'message': '保存路径必须是 \\ZT-NAS 开头的 NAS 路径'
+            })
+
+        # 构建保存目录：save_path\YYYY-MM-DD\
+        date_folder = datetime.now().strftime('%Y-%m-%d')
+        target_dir = os.path.join(save_path, date_folder)
+        os.makedirs(target_dir, exist_ok=True)
+
+        # 下载headers
+        download_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": "https://www.amazon.com/",
+        }
+
+        async def download_image(session, product, idx):
+            """单张图片下载，文件名包含ASIN"""
+            url = product.get('original_url') or product.get('thumb_url', '')
+            asin = product.get('asin', '')
+            brand = product.get('brand', '')
+            title = product.get('title', '')
+            
+            if not url:
+                return {'asin': asin, 'status': 'failed', 'error': '无图片URL'}
+            
+            try:
+                # 构建文件名：ASIN_品牌_标题.jpg（清理非法字符）
+                safe_brand = re.sub(r'[\\/:*?"<>|]', '_', brand)[:30] if brand else ''
+                safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)[:40] if title else ''
+                
+                if asin:
+                    file_name = f"{asin}"
+                    if safe_brand:
+                        file_name += f"_{safe_brand}"
+                    if safe_title:
+                        file_name += f"_{safe_title}"
+                else:
+                    # 无ASIN时从URL取文件名
+                    parsed = url.split('/')[-1]
+                    file_name = re.sub(r'[\\/:*?"<>|]', '_', parsed)
+                    if not file_name or file_name == '_':
+                        file_name = f"image_{idx}"
+                
+                # 确保有扩展名
+                if '.' not in file_name:
+                    file_name += '.jpg'
+                
+                file_path = os.path.join(target_dir, file_name)
+                # 如果文件名已存在，添加序号
+                counter = 1
+                original_file_path = file_path
+                while os.path.exists(file_path):
+                    name, ext = os.path.splitext(original_file_path)
+                    file_path = f"{name}_{counter}{ext}"
+                    counter += 1
+
+                async with session.get(url, headers=download_headers, ssl=ssl_context, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                    if resp.status == 200:
+                        content = await resp.read()
+                        with open(file_path, 'wb') as f:
+                            f.write(content)
+                        return {
+                            'asin': asin,
+                            'status': 'success',
+                            'path': file_path,
+                            'size': len(content),
+                            'brand': brand,
+                            'title': title
+                        }
+                    else:
+                        return {'asin': asin, 'status': 'failed', 'error': f'HTTP {resp.status}'}
+            except Exception as e:
+                return {'asin': asin, 'status': 'failed', 'error': str(e)}
+
+        async def download_all():
+            async with aiohttp.ClientSession() as session:
+                tasks = [download_image(session, product, i) for i, product in enumerate(products)]
+                return await asyncio.gather(*tasks)
+
+        # 执行异步下载
+        if os.name == 'nt':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        results = loop.run_until_complete(download_all())
+        loop.close()
+
+        success_count = sum(1 for r in results if r['status'] == 'success')
+        failed_count = len(results) - success_count
+        failed_items = [r for r in results if r['status'] == 'failed']
+
+        return JsonResponse({
+            'success': True,
+            'message': f'下载完成：成功 {success_count} 张，失败 {failed_count} 张',
+            'save_dir': target_dir,
+            'total': len(products),
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'failed_items': failed_items
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"[Amazon下载] 批量下载异常: {type(e).__name__}: {e}", flush=True)
+        traceback.print_exc()
+        return JsonResponse({
+            'success': False,
+            'message': f'下载失败: {str(e)}'
         })
 
 
