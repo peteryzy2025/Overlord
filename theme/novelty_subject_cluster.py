@@ -1,14 +1,30 @@
 """
-Amazon 主题指纹提取 & 拓扑聚类全链路 Pipeline
+Amazon 新奇特主题指纹提取 & 拓扑聚类全链路 Pipeline
 ==============================================
 四阶段流水线:
-  Stage 1 — N-Gram 动态识别与脱水预处理 → 生成 ThemeFingerprint
+  Stage 1 — N-Gram 动态识别与脱水预处理 → 生成 ThemeFingerprintNovelty
   Stage 2 — TF-IDF 全局权重计算
   Stage 3 — 连通分量图算法 (倒排索引 + networkx)
   Stage 4 — 数据聚合与 DB 落盘
 
 外部重型依赖: networkx
 """
+# import os
+# import sys
+# import re
+# import time
+# import importlib
+# import django
+# from pathlib import Path
+# from datetime import datetime, timedelta
+# from decimal import Decimal
+# from typing import List, Dict, Tuple
+#
+# project_root = Path(__file__).parent.parent.parent
+# sys.path.insert(0, str(project_root))
+# os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Overlord.settings')
+# django.setup()
+
 
 import logging
 import math
@@ -24,9 +40,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from theme.models import (
-    AmazonNewReleaseRank,
-    AmazonThemeCluster,
-    ThemeFingerprint,
+    AmazonThemeClusterNovelty,
+    AmazonThemeNovelty,
+    ThemeFingerprintNovelty,
 )
 
 logger = logging.getLogger(__name__)
@@ -346,15 +362,15 @@ STOP_WORDS = frozenset(
 )
 
 
-class AmazonThemeClusteringPipeline:
+class AmazonNoveltyClusteringPipeline:
     """
     从散装 ASIN 标题提取指纹并进行拓扑聚类的全链路 Pipeline。
 
     用法::
 
-        pipeline = AmazonThemeClusteringPipeline()
+        pipeline = AmazonNoveltyClusteringPipeline()
         pipeline.run(reset=False)   # 增量模式
-        pipeline.run(reset=True)    # 全量重建模式
+        pipeline.run(reset=True)    # 全量重建
     """
 
     BLACKLIST_TAGS = frozenset(
@@ -742,7 +758,7 @@ class AmazonThemeClusteringPipeline:
         self._fp_token_sets: dict[int, frozenset] = {}
         self._fp_core_tags: dict[int, list[str]] = {}
         self._token_idf: dict[str, float] = {}
-        self._fp_instances: dict[int, ThemeFingerprint] = {}
+        self._fp_instances: dict[int, ThemeFingerprintNovelty] = {}
 
         self._product_pattern = (
             r"\b(?:"
@@ -766,10 +782,10 @@ class AmazonThemeClusteringPipeline:
         Parameters
         ----------
         reset : bool
-            True  → 清空所有 ThemeFingerprint / AmazonThemeCluster,
-                    并将 AmazonNewReleaseRank.denoising 重置为 False,
+            True  → 清空所有 ThemeFingerprintNovelty / AmazonThemeClusterNovelty,
+                    并将 AmazonThemeNovelty.fingerprint 重置为 None,
                     然后全量重建。
-            False → 增量模式, 只处理 denoising=False 的记录。
+            False → 增量模式, 只处理 fingerprint 为空的记录。
         """
         logger.info("========== Pipeline 启动 ==========")
         logger.info("模式: %s", "全量重建" if reset else "增量")
@@ -789,22 +805,36 @@ class AmazonThemeClusteringPipeline:
     # ==================================================================
 
     def _stage1_ngram_tokenization(self):
+        """
+        阶段 1:
+          1) 读取所有未关联指纹的 ASIN subject
+          2) 基础清洗 → 小写 + 剔除非字母数字
+          3) 构建全局 Bigram / Trigram 语料库
+          4) 计算 PMI, 筛选固定短语
+          5) 将固定短语替换为下划线连接形式
+          6) 停用词脱水 (保留下划线短语)
+          7) 生成 fingerprint_key 并入库
+        """
         logger.info("[Stage 1] N-Gram 动态识别与脱水预处理 — 开始")
 
-        queryset = AmazonNewReleaseRank.objects.filter(denoising=False)
+        # ---------- 1.1 读取原始数据 ----------
+        queryset = AmazonThemeNovelty.objects.filter(fingerprint__isnull=True)
         total = queryset.count()
         if total == 0:
             logger.info("[Stage 1] 无待处理数据, 跳过")
             return
         logger.info("[Stage 1] 待处理 ASIN 数: %d", total)
 
-        raw_records: list[AmazonNewReleaseRank] = []
+        raw_records: list[AmazonThemeNovelty] = []
         for record in queryset.iterator(chunk_size=BATCH_SIZE):
             raw_records.append(record)
 
         subjects = [rec.subject or "" for rec in raw_records]
+
+        # ---------- 1.2 并行清洗 ----------
         cleaned_texts = self._parallel_clean(subjects)
 
+        # ---------- 1.3 & 1.4 构建 N-Gram 语料库 + PMI 筛选 ----------
         ngram_dict = self._build_ngram_corpus(cleaned_texts)
         logger.info(
             "[Stage 1] 合格 N-Gram 短语数: %d (freq>=%d, PMI>=%.2f)",
@@ -813,10 +843,11 @@ class AmazonThemeClusteringPipeline:
             self.pmi_threshold,
         )
 
+        # ---------- 1.5 并行指纹生成 ----------
         fp_results = self._parallel_fingerprint(cleaned_texts, ngram_dict)
 
         fp_map: dict[str, str] = {}
-        fp_key_to_records: dict[str, list[AmazonNewReleaseRank]] = defaultdict(list)
+        fp_key_to_records: dict[str, list[AmazonThemeNovelty]] = defaultdict(list)
 
         for idx, fp_key in enumerate(fp_results):
             if fp_key is None:
@@ -827,19 +858,20 @@ class AmazonThemeClusteringPipeline:
 
         logger.info("[Stage 1] 去重后指纹数: %d", len(fp_map))
 
+        # ---------- 1.6 批量写入 ThemeFingerprintNovelty ----------
         with transaction.atomic():
             existing_keys = set(
-                ThemeFingerprint.objects.filter(
+                ThemeFingerprintNovelty.objects.filter(
                     fingerprint_key__in=fp_map.keys()
                 ).values_list("fingerprint_key", flat=True)
             )
 
-            new_fps: list[ThemeFingerprint] = []
+            new_fps: list[ThemeFingerprintNovelty] = []
             for fp_key, title in fp_map.items():
                 if fp_key in existing_keys:
                     continue
                 new_fps.append(
-                    ThemeFingerprint(
+                    ThemeFingerprintNovelty(
                         fingerprint_key=fp_key,
                         representative_title=title,
                         asin_count=len(fp_key_to_records[fp_key]),
@@ -847,53 +879,55 @@ class AmazonThemeClusteringPipeline:
                 )
 
             if new_fps:
-                created = ThemeFingerprint.objects.bulk_create(
+                created = ThemeFingerprintNovelty.objects.bulk_create(
                     new_fps,
                     ignore_conflicts=True,
                     batch_size=BATCH_SIZE,
                 )
-                logger.info("[Stage 1] 新建 ThemeFingerprint: %d 条", len(created))
+                logger.info(
+                    "[Stage 1] 新建 ThemeFingerprintNovelty: %d 条", len(created)
+                )
 
-            existing_fps = ThemeFingerprint.objects.filter(
+            existing_fps = ThemeFingerprintNovelty.objects.filter(
                 fingerprint_key__in=fp_key_to_records.keys()
             )
-            fps_to_update: list[ThemeFingerprint] = []
+            fps_to_update: list[ThemeFingerprintNovelty] = []
             for fp in existing_fps:
                 new_count = len(fp_key_to_records.get(fp.fingerprint_key, []))
                 if new_count > fp.asin_count:
                     fp.asin_count = new_count
                     fps_to_update.append(fp)
             if fps_to_update:
-                ThemeFingerprint.objects.bulk_update(
+                ThemeFingerprintNovelty.objects.bulk_update(
                     fps_to_update,
                     ["asin_count"],
                     batch_size=BATCH_SIZE,
                 )
 
+        # ---------- 1.7 反向关联 ASIN → Fingerprint ----------
         all_fps = {
             fp.fingerprint_key: fp
-            for fp in ThemeFingerprint.objects.filter(
+            for fp in ThemeFingerprintNovelty.objects.filter(
                 fingerprint_key__in=fp_key_to_records.keys()
             )
         }
 
-        records_to_update: list[AmazonNewReleaseRank] = []
+        records_to_update: list[AmazonThemeNovelty] = []
         for fp_key, records in fp_key_to_records.items():
             fp_instance = all_fps.get(fp_key)
             if fp_instance is None:
                 continue
             for rec in records:
                 rec.fingerprint = fp_instance
-                rec.denoising = True
                 records_to_update.append(rec)
 
         if records_to_update:
             with transaction.atomic():
                 for i in range(0, len(records_to_update), BATCH_SIZE):
                     batch = records_to_update[i : i + BATCH_SIZE]
-                    AmazonNewReleaseRank.objects.bulk_update(
+                    AmazonThemeNovelty.objects.bulk_update(
                         batch,
-                        ["fingerprint", "denoising"],
+                        ["fingerprint"],
                         batch_size=BATCH_SIZE,
                     )
             logger.info(
@@ -988,7 +1022,7 @@ class AmazonThemeClusteringPipeline:
 
         if len(chunks) > 1:
             with ThreadPoolExecutor(max_workers=len(chunks)) as pool:
-                results = list(pool.map(_nr_count_ngrams_worker, chunks))
+                results = list(pool.map(_count_ngrams_worker, chunks))
             for ug, bg, tg, cnt in results:
                 unigram_freq.update(ug)
                 bigram_freq.update(bg)
@@ -1001,9 +1035,11 @@ class AmazonThemeClusteringPipeline:
                     continue
                 total_unigrams += len(words)
                 unigram_freq.update(words)
-                for bg in zip(words, words[1:]):
+                bigrams = list(zip(words, words[1:]))
+                for bg in bigrams:
                     bigram_freq[bg] += 1
-                for tg in zip(words, words[1:], words[2:]):
+                trigrams = list(zip(words, words[1:], words[2:]))
+                for tg in trigrams:
                     trigram_freq[tg] += 1
 
         if total_unigrams == 0:
@@ -1109,7 +1145,9 @@ class AmazonThemeClusteringPipeline:
     def _stage2_tfidf_weighting(self):
         logger.info("[Stage 2] TF-IDF 全局权重计算 — 开始")
 
-        all_fps = list(ThemeFingerprint.objects.all().iterator(chunk_size=BATCH_SIZE))
+        all_fps = list(
+            ThemeFingerprintNovelty.objects.all().iterator(chunk_size=BATCH_SIZE)
+        )
         if not all_fps:
             logger.info("[Stage 2] 无指纹数据, 跳过")
             return
@@ -1189,6 +1227,7 @@ class AmazonThemeClusteringPipeline:
             for fp_id, tokens in self._fp_token_sets.items()
         }
 
+        # ---------- 并行生成边 ----------
         tags_with_pairs = [
             (tag, cands) for tag, cands in inverted_index.items() if len(cands) >= 2
         ]
@@ -1316,11 +1355,11 @@ class AmazonThemeClusteringPipeline:
         seven_days_ago = timezone.now().date() - timedelta(days=7)
 
         with transaction.atomic():
-            ThemeFingerprint.objects.all().update(cluster=None)
-            AmazonThemeCluster.objects.all().delete()
+            ThemeFingerprintNovelty.objects.all().update(cluster=None)
+            AmazonThemeClusterNovelty.objects.all().delete()
             logger.info("[Stage 4] 已清除旧 Cluster 数据, 开始重建")
 
-            clusters_to_create: list[AmazonThemeCluster] = []
+            clusters_to_create: list[AmazonThemeClusterNovelty] = []
             cluster_data: list[dict] = []
 
             for component in components:
@@ -1353,7 +1392,7 @@ class AmazonThemeClusteringPipeline:
                     ]
                     top_tags = title_tags[:10]
 
-                cluster = AmazonThemeCluster(
+                cluster = AmazonThemeClusterNovelty(
                     display_title=display_title,
                     core_tags=top_tags,
                     fingerprint_count=len(component),
@@ -1366,17 +1405,17 @@ class AmazonThemeClusteringPipeline:
                     }
                 )
 
-            created_clusters = AmazonThemeCluster.objects.bulk_create(
+            created_clusters = AmazonThemeClusterNovelty.objects.bulk_create(
                 clusters_to_create,
                 batch_size=BATCH_SIZE,
             )
             logger.info(
-                "[Stage 4] 创建 AmazonThemeCluster: %d 条", len(created_clusters)
+                "[Stage 4] 创建 AmazonThemeClusterNovelty: %d 条", len(created_clusters)
             )
 
             for data, cluster in zip(cluster_data, created_clusters):
                 batch_ids = data["fp_ids"]
-                ThemeFingerprint.objects.filter(id__in=batch_ids).update(
+                ThemeFingerprintNovelty.objects.filter(id__in=batch_ids).update(
                     cluster=cluster
                 )
 
@@ -1385,8 +1424,8 @@ class AmazonThemeClusteringPipeline:
         # --- 事务已提交，现在并行统计 ---
         logger.info("[Stage 4] 开始统计 asin_count / burst_score")
 
-        def _compute_stats(cluster: AmazonThemeCluster):
-            asin_qs = AmazonNewReleaseRank.objects.filter(fingerprint__cluster=cluster)
+        def _compute_stats(cluster: AmazonThemeClusterNovelty):
+            asin_qs = AmazonThemeNovelty.objects.filter(fingerprint__cluster=cluster)
             asin_count = asin_qs.count()
             new_asin_7d = asin_qs.filter(launch_date__gte=seven_days_ago).count()
             burst_score = new_asin_7d / asin_count if asin_count > 0 else 0.0
@@ -1395,7 +1434,7 @@ class AmazonThemeClusteringPipeline:
             cluster.burst_score = round(burst_score, 4)
             return cluster
 
-        clusters_to_update: list[AmazonThemeCluster] = []
+        clusters_to_update: list[AmazonThemeClusterNovelty] = []
         n_workers = min(self._n_workers, max(1, len(created_clusters) // 4))
         if n_workers > 1 and len(created_clusters) > 20:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
@@ -1414,7 +1453,7 @@ class AmazonThemeClusteringPipeline:
                 clusters_to_update.append(_compute_stats(cluster))
 
         if clusters_to_update:
-            AmazonThemeCluster.objects.bulk_update(
+            AmazonThemeClusterNovelty.objects.bulk_update(
                 clusters_to_update,
                 ["asin_count", "new_asin_7d", "burst_score"],
                 batch_size=BATCH_SIZE,
@@ -1433,14 +1472,14 @@ class AmazonThemeClusteringPipeline:
         logger.info("[Reset] 开始全量重置...")
 
         with transaction.atomic():
-            AmazonNewReleaseRank.objects.all().update(denoising=False, fingerprint=None)
-            ThemeFingerprint.objects.all().delete()
-            AmazonThemeCluster.objects.all().delete()
+            AmazonThemeNovelty.objects.all().update(fingerprint=None)
+            ThemeFingerprintNovelty.objects.all().delete()
+            AmazonThemeClusterNovelty.objects.all().delete()
 
         logger.info("[Reset] 全量重置完成")
 
 
-def _nr_count_ngrams_worker(
+def _count_ngrams_worker(
     texts: list[str],
 ) -> tuple[Counter, Counter, Counter, int]:
     unigram_freq: Counter = Counter()

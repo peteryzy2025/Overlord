@@ -120,6 +120,16 @@ urlpatterns = [
         name="api_novelty_aggregation_asins",
     ),
     path(
+        "api/novelty-cluster-aggregation/",
+        views_novelty_aggregation.api_novelty_cluster_aggregation_list,
+        name="api_novelty_cluster_aggregation_list",
+    ),
+    path(
+        "api/novelty-cluster-aggregation/asins/",
+        views_novelty_aggregation.api_novelty_cluster_aggregation_asins,
+        name="api_novelty_cluster_aggregation_asins",
+    ),
+    path(
         "api/amazon-products/batch-risk-check/",
         views.api_batch_risk_check,
         name="api_batch_risk_check",

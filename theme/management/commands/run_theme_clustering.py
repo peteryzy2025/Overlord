@@ -11,7 +11,7 @@ Django Management Command: run_theme_clustering
     python manage.py run_theme_clustering --reset
 
     # 自定义参数
-    python manage.py run_theme_clustering --pmi-threshold=4.0 --jaccard-threshold=0.4
+    python manage.py run_theme_clustering --pmi-threshold=4.0 --jaccard-threshold=0.5
 """
 
 from django.core.management.base import BaseCommand
@@ -44,14 +44,26 @@ class Command(BaseCommand):
         parser.add_argument(
             "--jaccard-threshold",
             type=float,
-            default=0.35,
-            help="Jaccard 相似度阈值 (默认: 0.35)",
+            default=0.5,
+            help="Jaccard 相似度阈值 (默认: 0.5)",
         )
         parser.add_argument(
             "--core-tag-count",
             type=int,
             default=5,
             help="每个指纹提取的 Core Tag 数量 (默认: 5)",
+        )
+        parser.add_argument(
+            "--min-intersection",
+            type=int,
+            default=3,
+            help="交集最低词数门槛 (默认: 3)",
+        )
+        parser.add_argument(
+            "--idf-threshold",
+            type=float,
+            default=1.0,
+            help="交集词最低 IDF 门槛 (默认: 1.0)",
         )
 
     def handle(self, *args, **options):
@@ -60,6 +72,8 @@ class Command(BaseCommand):
             min_freq=options["min_freq"],
             jaccard_threshold=options["jaccard_threshold"],
             core_tag_count=options["core_tag_count"],
+            min_intersection=options["min_intersection"],
+            idf_threshold=options["idf_threshold"],
         )
         pipeline.run(reset=options["reset"])
 

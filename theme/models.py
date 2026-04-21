@@ -62,6 +62,60 @@ class ProductRankHistory(models.Model):
         rank_display = self.rank if self.rank is not None else '暂无排名'
         return f"{self.product.asin} - {self.crawl_date} - 排名:{rank_display}"
 
+#=============尝试新的聚类算法（新奇特）=======================
+class AmazonThemeClusterNovelty(models.Model):
+    """
+    第三层：主题聚类层 (The "Master" Themes)
+    代表最终的业务概念
+    """
+    display_title = models.CharField(max_length=500, verbose_name="展示标题")
+    core_tags = models.JSONField(default=list, help_text="算法提取的核心特征词",verbose_name='核心词')
+
+    # 统计信息，方便在 Admin 后台查看规模
+    fingerprint_count = models.IntegerField(default=0,verbose_name='聚类主题下Fingerprint数')
+    asin_count = models.IntegerField(default=0,verbose_name='聚类主题下ASIN数')
+    burst_score = models.FloatField(default=0.0, verbose_name="爆发指数",null=True,blank=True) #launch_date <= 7d ASIN数 / 该Cluster下的ASIN总数
+    new_asin_7d = models.IntegerField(default=0, verbose_name="7天内新上架数",null=True,blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'theme_novelty_cluster'
+        verbose_name = "新奇特主题聚类"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.display_title
+
+class ThemeFingerprintNovelty(models.Model):
+    """
+    第二层：指纹层 (Normalized Fingerprints)
+    处理字面完全一致的情况，消灭大小写、缩写差异。
+    """
+    # 归一化后的字符串唯一索引，如 "am i jesus project ..."
+    fingerprint_key = models.CharField(max_length=500, unique=True, db_index=True,verbose_name='指纹')
+
+    # 该指纹组下最具有代表性的原始文本（用于自动给 Cluster 命名）
+    representative_title = models.CharField(max_length=500,verbose_name='代表性标题')
+
+    # 关联到大主题，如果为 Null，逻辑上视为待分配或孤儿
+    cluster = models.ForeignKey(
+        AmazonThemeClusterNovelty,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='cluster_theme_novelty',
+        verbose_name = '聚合标题'
+    )
+
+    asin_count = models.IntegerField(default=0)
+    class Meta:
+        db_table = 'theme_novelty_fingerprint'
+        verbose_name = '新奇特主题聚合指纹'
+
+    def __str__(self):
+        return f"FingerPrint: {self.representative_title[:50]}"
+
 
 class AmazonThemeNovelty(models.Model):
     """亚马逊主题，存放稳定的基础信息"""
@@ -93,6 +147,15 @@ class AmazonThemeNovelty(models.Model):
         related_name='summary_subject',
         verbose_name='所属新奇特聚合主题'
     )
+    fingerprint = models.ForeignKey(
+        'ThemeFingerprintNovelty',
+        on_delete=models.SET_NULL,
+        related_name='fingerprint_novelty',
+        verbose_name='关联指纹',
+        null=True,
+        blank=True,
+    )
+
 
     class Meta:
         db_table = 'theme_amazon_novelty'
@@ -500,6 +563,64 @@ class NicheMarket(models.Model):
         return f"{self.market_name_cn or self.market_name}"
 
 
+
+#=============尝试新的聚类算法(新品榜)=======================
+class AmazonThemeCluster(models.Model):
+    """
+    第三层：主题聚类层 (The "Master" Themes)
+    代表最终的业务概念，如 "USA 250th Anniversary" 或 "Folk Art Bird"
+    """
+    display_title = models.CharField(max_length=500, verbose_name="展示标题")
+    core_tags = models.JSONField(default=list, help_text="算法提取的核心特征词, 如 ['1776', '250th']",verbose_name='核心词')
+
+    # 统计信息，方便在 Admin 后台查看规模
+    fingerprint_count = models.IntegerField(default=0,verbose_name='聚类主题下Fingerprint数')
+    asin_count = models.IntegerField(default=0,verbose_name='聚类主题下ASIN数')
+    burst_score = models.FloatField(default=0.0, verbose_name="爆发指数",null=True,blank=True) #launch_date <= 7d ASIN数 / 该Cluster下的ASIN总数
+    new_asin_7d = models.IntegerField(default=0, verbose_name="7天内新上架数",null=True,blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'theme_new_release_cluster'
+        verbose_name = "新品榜主题聚类"
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return self.display_title
+
+
+
+
+class ThemeFingerprint(models.Model):
+    """
+    第二层：指纹层 (Normalized Fingerprints)
+    处理字面完全一致的情况，消灭大小写、缩写差异。
+    """
+    # 归一化后的字符串唯一索引，如 "am i jesus project ..."
+    fingerprint_key = models.CharField(max_length=500, unique=True, db_index=True,verbose_name='指纹')
+
+    # 该指纹组下最具有代表性的原始文本（用于自动给 Cluster 命名）
+    representative_title = models.CharField(max_length=500,verbose_name='代表性标题')
+
+    # 关联到大主题，如果为 Null，逻辑上视为待分配或孤儿
+    cluster = models.ForeignKey(
+        AmazonThemeCluster,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='cluster_theme',
+        verbose_name = '聚合标题'
+    )
+
+    asin_count = models.IntegerField(default=0)
+    class Meta:
+        db_table = 'theme_new_release_fingerprint'
+
+    def __str__(self):
+        return f"FingerPrint: {self.representative_title[:50]}"
+
+
 class AmazonNewReleaseRank(models.Model):
     """亚马逊新品榜主题，存放稳定的基础信息"""
 
@@ -524,6 +645,15 @@ class AmazonNewReleaseRank(models.Model):
         related_name='summary_subject',
         verbose_name='汇总主题'
     )
+
+    fingerprint = models.ForeignKey(
+        ThemeFingerprint,
+        on_delete=models.SET_NULL,
+        related_name='fingerprint',
+        verbose_name='关联指纹',
+        null=True,
+        blank=True,
+    )
     report = models.BooleanField(default=False, verbose_name='举报ASIN')
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='首次入库时间')
@@ -534,6 +664,7 @@ class AmazonNewReleaseRank(models.Model):
                                    null=True,
                                    blank=True,
                                    verbose_name="配送方式")
+
 
     class Meta:
         db_table = 'theme_amazon_new_release_rank'
@@ -626,6 +757,8 @@ class NewReleaseThemeReport(models.Model):
     def __str__(self):
         reporter_name = self.reporter or '未知用户'
         return f"{reporter_name} 举报主题:{self.theme.summary_subject_title[:20]}"
+
+
 
 
 class NewReleaseAsinReport(models.Model):
