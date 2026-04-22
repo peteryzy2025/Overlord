@@ -90,6 +90,7 @@
                 <span>巡店报告</span>
             </a>
         </li>
+        {% if request.user.permission_configs.filter(code=555).exists %}
         <li class="sidebar-item">
             <a href="{% url 'amazon:amazon_profit_detail' %}"
                class="sidebar-link {% if active_page == 'amazon_profit' %}active{% endif %}">
@@ -97,5 +98,6 @@
                 <span>利润明细</span>
             </a>
         </li>
+        {% endif %}
     </ul>
 {% endblock %}

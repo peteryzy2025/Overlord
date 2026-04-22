@@ -859,6 +859,7 @@
                                 <p>日常店铺巡检报告</p>
                             </div>
                         </a>
+                        {% if request.user.permission_configs.filter(code=555).exists %}
                         <a href="{% url 'amazon:amazon_profit_detail' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
                             <div class="nav-card-content">
@@ -866,6 +867,7 @@
                                 <p>MSKU日利润数据查询</p>
                             </div>
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -941,7 +943,11 @@
                                 <p>货物运输状态实时追踪</p>
                             </div>
                         </a>
+                        {% if request.user.permission_configs.filter(code=555).exists %}
                         <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-card">
+                        {% else %}
+                        <a href="javascript:void(0)" class="nav-dropdown-card disabled" style="opacity: 0.5; cursor: not-allowed;" onclick="return false;">
+                        {% endif %}
                             <div class="nav-card-icon"><i class="fas fa-box-open"></i></div>
                             <div class="nav-card-content">
                                 <h4>外采产品管理</h4>
