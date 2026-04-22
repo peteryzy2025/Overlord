@@ -8,7 +8,7 @@ from amazon import (
 from amazon.view import views_dashboard, views_amazon_listing_management
 from amazon.view import views_amazon_order, views_amazon_performance, views_amazon_shop_emails,views_amazon_daily_check
 from amazon.view import views_rpa_sync, views_risk_keywords,views_amazon_listing_management
-from amazon.view import views_amazon_upload_records
+from amazon.view import views_amazon_upload_records, views_amazon_profit
 from amazon.api.shop_check import init_daily_shop_check, get_daily_check_list, update_daily_check, save_upload_record, get_upload_record_by_filename
 from amazon.api.shop_info import get_shop_info_by_name
 
@@ -136,4 +136,9 @@ urlpatterns = [
     # ========== Amazon店铺上货情况 ==========
     path('amazon/upload-records/', views_amazon_upload_records.amazon_upload_records_page, name='amazon_upload_records'),
     path('api/amazon/upload-records/', views_amazon_upload_records.get_amazon_upload_records_api, name='api_amazon_upload_records'),
+
+    # ========== 利润明细 ==========
+    path('amazon/profit-detail/', views_amazon_profit.amazon_profit_detail_page, name='amazon_profit_detail'),
+    path('api/amazon-profit-detail/', views_amazon_profit.get_amazon_profit_detail_api, name='api_amazon_profit_detail'),
+    path('api/amazon-profit-filter-options/', views_amazon_profit.get_amazon_profit_filter_options_api, name='api_amazon_profit_filter_options'),
 ]

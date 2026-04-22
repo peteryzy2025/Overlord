@@ -1,67 +1,137 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+批量历史 MSKU-SKU Listing 配对
+从 AmazonOrderItem 取所有不重复的 seller_sku，调用领星批量配对接口
+"""
+
 import os
 import sys
-import time
+
+# 修复 Windows GBK 控制台输出
+sys.stdout.reconfigure(encoding='utf-8')
 
 import django
-from datetime import datetime
-
-from api.Y.y_tiem import Timer
 
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+PROJECT_ROOT = CURRENT_DIR
 sys.path.append(PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
-from aba.models import SearchTerm
-import pandas as pd
-import re
+import asyncio
+from django.db import connection
+from api.lingxing.Y_OpenApi import get_api_resp
 
 
-def export_search_terms(keyword="hat"):
-    """导出精确匹配搜索词到 Excel
+def get_all_seller_skus():
+    """使用原生 SQL 获取所有不重复的 seller_sku"""
+    print("[步骤1] 从 AmazonOrderItem 提取不重复的 seller_sku...")
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT DISTINCT seller_sku 
+            FROM amazon_order_item 
+            WHERE seller_sku IS NOT NULL AND seller_sku != ''
+            ORDER BY seller_sku
+        """)
+        skus = [row[0] for row in cursor.fetchall()]
+    print(f"  -> 共找到 {len(skus)} 个不重复的 seller_sku")
+    return skus
+
+
+async def process_batch(batch, batch_num, total_batches):
+    """处理单批数据"""
+    print(f"\n--- 第 {batch_num}/{total_batches} 批 | 数量: {len(batch)} ---")
     
-    Args:
-        keyword: 要匹配的搜索词，默认为 "hat"
-                 匹配规则：必须是独立的单词，不是其他词的一部分
-                 例如：keyword="hat" 会匹配 "hat", "red hat", "red hat 1", "red hat blue"
-                 但不会匹配 "xxxhat" 或 "hatxx"
-    """
+    data_list = []
+    for sku in batch:
+        data_list.append({
+            "sku": sku,
+            "msku": sku,
+            "is_sync_pic": 1
+        })
     
-    # 从 SearchTerm 表查询：使用正则表达式确保是独立单词
-    # PostgreSQL 中 \y 表示单词边界（不同于 Python 的 \b）
-    # 匹配 "hat", "red hat", "red hat 1", "red hat blue"
-    # 但不匹配 "xxxhat" 或 "hatxx"
-    search_terms = SearchTerm.objects.filter(
-        term__iregex=rf'\y{re.escape(keyword)}\y'
-    ).values_list('term', 'denoising')
+    req_body = {"data": data_list}
     
-    # 转换为列表
-    data = list(search_terms)
-    
-    print(f"关键词: '{keyword}'")
-    print(f"找到 {len(data)} 条记录")
-    
-    if data:
-        # 创建 DataFrame，处理 denoising 列：True 显示"已去噪"，否则为空
-        df = pd.DataFrame(data, columns=['搜索词', 'denoising'])
-        df['状态'] = df['denoising'].apply(lambda x: '已去噪' if x else '')
-        df = df[['搜索词', '状态']]  # 只保留需要的两列
+    try:
+        resp = await asyncio.wait_for(
+            get_api_resp(
+                req_body=req_body,
+                api_path="/erp/sc/storage/product/link"
+            ),
+            timeout=30
+        )
         
-        # 生成文件名
-        output_file = f"search_terms_{keyword}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        code = getattr(resp, 'code', None)
+        data = getattr(resp, 'data', {})
         
-        # 保存到 Excel
-        df.to_excel(output_file, index=False, engine='openpyxl')
+        # code=0 或 code=1000 都表示接口调用成功
+        # 业务结果在 data.success / data.error 中
+        if code in (0, 1000):
+            success = data.get('success', 0) if isinstance(data, dict) else 0
+            error = data.get('error', 0) if isinstance(data, dict) else len(batch)
+            print(f"  [完成] success={success}, error={error}")
+            return success, error
+        else:
+            print(f"  [接口失败] code={code}")
+            return 0, len(batch)
+            
+    except asyncio.TimeoutError:
+        print(f"  [超时]")
+        return 0, len(batch)
+    except Exception as e:
+        print(f"  [异常] {type(e).__name__}: {str(e)}")
+        return 0, len(batch)
+
+
+async def run_batches(seller_skus):
+    """异步执行批量配对"""
+    batch_size = 100
+    total = len(seller_skus)
+    total_batches = (total + batch_size - 1) // batch_size
+    
+    print(f"\n{'=' * 60}")
+    print(f"开始批量配对 | 总数量: {total} | 每批: {batch_size} | 共 {total_batches} 批")
+    print(f"{'=' * 60}\n")
+    
+    success_count = 0
+    fail_count = 0
+    
+    for i in range(total_batches):
+        batch = seller_skus[i * batch_size:(i + 1) * batch_size]
+        s, f = await process_batch(batch, i + 1, total_batches)
+        success_count += s
+        fail_count += f
         
-        print(f"Excel 已生成: {output_file}")
-        print(f"包含 {len(data)} 个搜索词")
-    else:
-        print("未找到符合条件的数据")
+        # 每10批暂停一下
+        if (i + 1) % 10 == 0:
+            print(f"\n  [暂停] 已处理 {i+1} 批，休息2秒...")
+            await asyncio.sleep(2)
+    
+    print(f"\n{'=' * 60}")
+    print(f"批量配对完成 | 成功: {success_count} | 失败: {fail_count}")
+    print(f"{'=' * 60}\n")
+
+
+def main():
+    """主流程"""
+    print("\n" + "=" * 60)
+    print("历史 MSKU-SKU Listing 批量配对工具")
+    print("=" * 60)
+    
+    seller_skus = get_all_seller_skus()
+    
+    if len(seller_skus) == 0:
+        print("  -> 没有数据需要处理，退出")
+        return
+    
+    print(f"  -> 前5个示例: {seller_skus[:5]}")
+    
+    asyncio.run(run_batches(seller_skus))
+    
+    print("\n处理完毕！")
 
 
 if __name__ == "__main__":
-    # 默认搜索 "hat"，传入其他参数可搜索不同关键词
-    export_search_terms("hat")
-    export_search_terms("shirt")
+    main()

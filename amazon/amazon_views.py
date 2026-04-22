@@ -317,7 +317,7 @@ def get_operator_pie_chart_api(request):
         })
 
     except Exception as e:
-        print(f"\n❌ 饼图API错误: {str(e)}")
+        print(f"\n[错误] 饼图API错误: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({
@@ -605,7 +605,7 @@ def determine_filter_type_and_value(request, data, permissions):
                             return 'ops_id', valid_user_ids[0]
                         return 'ops_id_list', valid_user_ids
                     else:
-                        print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组成员")
+                        print(f"  [警告] 越权警告：用户 {user.id} 试图查询非本组成员")
                         return 'none', None
                 except (ValueError, TypeError):
                     return 'none', None
@@ -616,7 +616,7 @@ def determine_filter_type_and_value(request, data, permissions):
                 if all(g.strip() == user_group for g in group_list):
                     return 'ops_group', user_group
                 else:
-                    print(f"  ⚠️ 越权警告：用户 {user.id} 试图查询非本组")
+                    print(f"  [警告] 越权警告：用户 {user.id} 试图查询非本组")
                     return 'none', None
 
             # 默认查询全组
@@ -632,7 +632,7 @@ def determine_filter_type_and_value(request, data, permissions):
 
     # 无权限
     else:
-        print("❌ 权限校验失败: 用户无任何运营权限，返回空数据")
+        print("[警告] 权限校验失败: 用户无任何运营权限，返回空数据")
         return 'none', None
 
 
@@ -891,7 +891,7 @@ def get_shop_ids_by_filter(filter_type, filter_value, user=None):
     base_qs = AmazonShop.objects.all()
     if user and hasattr(user, 'company') and user.company:
         base_qs = base_qs.filter(company=user.company)
-        # print(f"🏢 已应用公司过滤: {user.company.name}")
+        # print(f"[公司] 已应用公司过滤: {user.company.name}")
 
     if filter_type == 'ops_id':
         print(f"按运营ID筛选: ops_id={filter_value}")
@@ -908,16 +908,16 @@ def get_shop_ids_by_filter(filter_type, filter_value, user=None):
         ).values_list('user_id', flat=True)
 
         user_ids_list = list(user_ids)
-        print(f"✅ 找到用户ID: {user_ids_list}")
+        print(f"[成功] 找到用户ID: {user_ids_list}")
 
         if user_ids_list:
             shop_ids = base_qs.filter(
                 ops_id__in=user_ids_list
             ).values_list('id', flat=True)
-            print(f"✅ 找到店铺ID: {list(shop_ids)}")
+            print(f"[成功] 找到店铺ID: {list(shop_ids)}")
             return shop_ids
         else:
-            print(f"⚠️ 分组 '{filter_value}' 没有成员")
+            print(f"[警告] 分组 '{filter_value}' 没有成员")
             return AmazonShop.objects.none().values_list('id', flat=True)
 
     elif filter_type == 'ops_group_list':
@@ -927,16 +927,16 @@ def get_shop_ids_by_filter(filter_type, filter_value, user=None):
         ).values_list('user_id', flat=True)
 
         user_ids_list = list(user_ids)
-        print(f"✅ 找到用户ID: {user_ids_list}")
+        print(f"[成功] 找到用户ID: {user_ids_list}")
 
         if user_ids_list:
             shop_ids = base_qs.filter(
                 ops_id__in=user_ids_list
             ).values_list('id', flat=True)
-            print(f"✅ 找到店铺ID: {list(shop_ids)}")
+            print(f"[成功] 找到店铺ID: {list(shop_ids)}")
             return shop_ids
         else:
-            print(f"⚠️ 分组列表没有成员")
+            print(f"[警告] 分组列表没有成员")
             return AmazonShop.objects.none().values_list('id', flat=True)
 
     elif filter_type == 'all':
@@ -944,11 +944,11 @@ def get_shop_ids_by_filter(filter_type, filter_value, user=None):
         return base_qs.values_list('id', flat=True)
 
     elif filter_type == 'none':
-        print("⚠️ 权限不足，返回空QuerySet")
+        print("[警告] 权限不足，返回空QuerySet")
         return AmazonShop.objects.none().values_list('id', flat=True)
 
     else:
-        print(f"⚠️ 未知的筛选类型: {filter_type}")
+        print(f"[警告] 未知的筛选类型: {filter_type}")
         return AmazonShop.objects.none().values_list('id', flat=True)
 
 
@@ -960,7 +960,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
 
     # 调试日志（部署后可注释掉）
     print(f"\n{'=' * 60}")
-    print(f"🔍 get_shop_ids_by_filter_with_platform:")
+    print(f"[查询] get_shop_ids_by_filter_with_platform:")
     print(f"   filter_type: {filter_type}")
     print(f"   filter_value: {filter_value} (type: {type(filter_value)})")
     print(f"   platform_info: {platform_info}")
@@ -975,7 +975,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
     if user and hasattr(user, 'company') and user.company:
         amazon_base_qs = amazon_base_qs.filter(company=user.company)
         temu_base_qs = temu_base_qs.filter(company=user.company)
-        print(f"🏢 已应用公司过滤: {user.company.name}")
+        print(f"[公司] 已应用公司过滤: {user.company.name}")
 
     # ========== 亚马逊店铺 ==========
     if platform_info['source'] in ['amazon_only', 'mixed']:
@@ -983,14 +983,14 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             # 强制转换为int，避免类型不匹配
             shops = amazon_base_qs.filter(ops_id=int(filter_value))
             result['amazon'] = list(shops.values_list('id', flat=True))
-            print(f"✅ Amazon查询: ops_id={filter_value} → 找到 {len(result['amazon'])} 个店铺")
+            print(f"[成功] Amazon查询: ops_id={filter_value} -> 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_id_list':
             # 多选运营人员
             ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
             result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=ops_ids
             ).values_list('id', flat=True))
-            print(f"✅ Amazon多选人员查询: ops_ids={ops_ids} → 找到 {len(result['amazon'])} 个店铺")
+            print(f"[成功] Amazon多选人员查询: ops_ids={ops_ids} -> 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
@@ -998,7 +998,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
-            print(f"✅ Amazon组查询: {filter_value} → 找到 {len(result['amazon'])} 个店铺")
+            print(f"[成功] Amazon组查询: {filter_value} -> 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_group_list':
             # 多选分组
             groups = filter_value if isinstance(filter_value, list) else [filter_value]
@@ -1008,24 +1008,24 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
-            print(f"✅ Amazon多选组查询: groups={groups} → 找到 {len(result['amazon'])} 个店铺")
+            print(f"[成功] Amazon多选组查询: groups={groups} -> 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'all':
             result['amazon'] = list(amazon_base_qs.values_list('id', flat=True))
-            print(f"⚠️ Amazon全量查询: 找到 {len(result['amazon'])} 个店铺")
+            print(f"[警告] Amazon全量查询: 找到 {len(result['amazon'])} 个店铺")
 
     # ========== Temu店铺 ==========
     if platform_info['source'] in ['temu_only', 'mixed']:
         if filter_type == 'ops_id':
             shops = temu_base_qs.filter(ops_id=int(filter_value))
             result['temu'] = list(shops.values_list('id', flat=True))
-            print(f"✅ Temu查询: ops_id={filter_value} → 找到 {len(result['temu'])} 个店铺")
+            print(f"[成功] Temu查询: ops_id={filter_value} -> 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_id_list':
             # 多选运营人员
             ops_ids = [int(v) for v in filter_value] if isinstance(filter_value, list) else [int(filter_value)]
             result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=ops_ids
             ).values_list('id', flat=True))
-            print(f"✅ Temu多选人员查询: ops_ids={ops_ids} → 找到 {len(result['temu'])} 个店铺")
+            print(f"[成功] Temu多选人员查询: ops_ids={ops_ids} -> 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_group':
             user_ids = OperationalAccount.objects.filter(
                 ops_group=filter_value
@@ -1033,7 +1033,7 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
-            print(f"✅ Temu组查询: {filter_value} → 找到 {len(result['temu'])} 个店铺")
+            print(f"[成功] Temu组查询: {filter_value} -> 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_group_list':
             # 多选分组
             groups = filter_value if isinstance(filter_value, list) else [filter_value]
@@ -1043,13 +1043,13 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
-            print(f"✅ Temu多选组查询: groups={groups} → 找到 {len(result['temu'])} 个店铺")
+            print(f"[成功] Temu多选组查询: groups={groups} -> 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'all':
             result['temu'] = list(temu_base_qs.values_list('id', flat=True))
-            print(f"⚠️ Temu全量查询: 找到 {len(result['temu'])} 个店铺")
+            print(f"[警告] Temu全量查询: 找到 {len(result['temu'])} 个店铺")
 
     # 最终日志
-    print(f"\n📊 最终结果: Amazon={len(result['amazon'])}个, Temu={len(result['temu'])}个\n")
+    print(f"\n[结果] 最终结果: Amazon={len(result['amazon'])}个, Temu={len(result['temu'])}个\n")
     return result
 
 
@@ -1070,7 +1070,7 @@ def get_sales_trend_data(lingxing_shop_ids, start_date=None, end_date=None):
     print(f"领星店铺IDs: {lingxing_shop_ids}")
 
     if not lingxing_shop_ids:
-        print("⚠️ 没有店铺数据，返回空趋势数据")
+        print("[警告] 没有店铺数据，返回空趋势数据")
         return []
 
     # ========== 修复：排除退货订单（使用 exclude） ==========
@@ -1107,7 +1107,7 @@ def get_sales_trend_data(lingxing_shop_ids, start_date=None, end_date=None):
             'sales': sales
         })
 
-    print(f"✅ 返回 {len(result)} 天的完整销量数据（已排除退货）")
+    print(f"[成功] 返回 {len(result)} 天的完整销量数据（已排除退货）")
     print(f"{'=' * 60}\n")
 
     return result
@@ -1167,7 +1167,7 @@ def filter_amazon_data_api(request):
 
         # ========== 调试日志：输出实际查询的店铺明细 ==========
         print(f"\n{'=' * 60}")
-        print(f"🔍 实际查询的店铺明细:")
+        print(f"[查询] 实际查询的店铺明细:")
         print(f"  用户: {user.first_name} (ID: {user.id})")
         print(f"  权限: {permissions}")
         print(f"  筛选类型: {filter_type}")
@@ -1339,7 +1339,7 @@ def filter_amazon_data_api(request):
 
     except Exception as e:
         print(f"\n{'=' * 60}")
-        print(f"❌ 错误发生: {str(e)}")
+        print(f"[错误] 错误发生: {str(e)}")
         import traceback
         traceback.print_exc()
         print(f"{'=' * 60}\n")
@@ -1496,7 +1496,7 @@ def get_temu_sales_trend_data(temu_shop_ids, start_date=None, end_date=None):
             'sales': sales
         })
 
-    print(f"✅ 返回 {len(result)} 天的完整销量数据（已排除退货）")
+    print(f"[成功] 返回 {len(result)} 天的完整销量数据（已排除退货）")
     print(f"{'=' * 60}\n")
 
     return result
@@ -1595,7 +1595,7 @@ def assemble_response_data(filter_type, filter_value, current_start, current_end
     }
 
     print(f"\n{'=' * 60}")
-    print("⚠️ 返回空数据（未找到符合条件的记录）:")
+    print("[警告] 返回空数据（未找到符合条件的记录）:")
     print(json.dumps(response_data, indent=2, ensure_ascii=False))
     print(f"{'=' * 60}\n")
 
@@ -1872,7 +1872,7 @@ def get_operator_sales_pie_chart_api(request):
         })
 
     except Exception as e:
-        print(f"❌ 销量饼图API错误: {str(e)}")
+        print(f"[错误] 销量饼图API错误: {str(e)}")
         import traceback
         traceback.print_exc()
         return JsonResponse({

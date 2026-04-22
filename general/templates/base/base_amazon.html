@@ -90,5 +90,12 @@
                 <span>巡店报告</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'amazon:amazon_profit_detail' %}"
+               class="sidebar-link {% if active_page == 'amazon_profit' %}active{% endif %}">
+                <i class="fas fa-chart-line sidebar-icon"></i>
+                <span>利润明细</span>
+            </a>
+        </li>
     </ul>
 {% endblock %}
