@@ -100,6 +100,16 @@ urlpatterns = [
         name="api_theme_aggregation_asins",
     ),
     path(
+        "api/theme-cluster-aggregation/",
+        views_new_release.api_cluster_aggregation_list,
+        name="api_cluster_aggregation_list",
+    ),
+    path(
+        "api/theme-cluster-aggregation/asins/",
+        views_new_release.api_cluster_aggregation_asins,
+        name="api_cluster_aggregation_asins",
+    ),
+    path(
         "api/theme-novelty-aggregation/",
         views_novelty_aggregation.api_novelty_aggregation_list,
         name="api_novelty_aggregation_list",
