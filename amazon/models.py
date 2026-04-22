@@ -1731,4 +1731,5 @@ class AmazonShopUploadRecord(models.Model):
 # 旧的 AmazonListing 已改名为 AmazonListingLegacy 保留历史数据
 # 新的 AmazonListing 使用 amazon_listing_v2 表
 from .listing_models import AmazonListingV2
+from .profit_models import *
 

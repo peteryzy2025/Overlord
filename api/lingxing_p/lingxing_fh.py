@@ -216,6 +216,28 @@ async def step1_set_sku(sku: str, cg_price: str, execute: bool = True, app_id: s
     # print(f"   → 返回结果   = {resp.dict().get('msg', 'OK')}")
 
 
+async def step1b_link_sku(sku: str, msku: str, execute: bool = True, app_id: str = None, app_secret: str = None):
+    """
+    绑定 SKU 与 MSKU 的 Listing 配对
+    sku 和 msku 传一样的值
+    """
+    print(f"\n【步骤1b】link_sku (Listing配对) 传参：")
+    print(f"   → sku   = {sku}")
+    print(f"   → msku  = {msku}")
+    if not execute:
+        print("   → [预览模式] 不执行")
+        return
+    req_body = {
+        "data": [{
+            "sku": sku,
+            "msku": msku,
+            "is_sync_pic": 0
+        }]
+    }
+    resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/storage/product/link", app_id=app_id, app_secret=app_secret)
+    print(f"   → Listing配对结果 = {resp}")
+
+
 async def step2_update_order_binding(global_order_no: str, items: list, execute: bool = True, app_id: str = None, app_secret: str = None):
     print(f"\n【步骤2】批量绑定商品 updateOrder 传参：")
     print(f"   → global_order_no = {global_order_no}")
@@ -375,9 +397,11 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
             print(f"\n{'*' * 40} 完整发货模式（5步全执行） {'*' * 40}")
 
         await step1_set_sku(items[0]['sku'], items[0]['price_per_unit'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
+        await step1b_link_sku(items[0]['sku'], items[0]['sku'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
         if len(items) > 1:
             for it in items[1:]:
                 await step1_set_sku(it['sku'], it['price_per_unit'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
+                await step1b_link_sku(it['sku'], it['sku'], execute=execute_step1, app_id=app_id, app_secret=app_secret)
 
         await step2_update_order_binding(order_no, items, execute=execute_step2, app_id=app_id, app_secret=app_secret)
         await step3_add_warehousing(items, execute=execute_step3, app_id=app_id, app_secret=app_secret)
