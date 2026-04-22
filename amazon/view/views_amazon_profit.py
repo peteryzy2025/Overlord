@@ -34,10 +34,12 @@ def amazon_profit_detail_page(request):
     """利润明细页面"""
     user = request.user
     is_admin = has_perm_code(user, '555')
+    user_permissions = list(user.permission_configs.values_list('code', flat=True))
     return render(request, 'amazon_profit_detail.html', {
         'active_nav': 'amazon_profit',
         'active_page': 'amazon_profit',
         'is_admin': is_admin,
+        'user_permissions': user_permissions,
     })
 
 
@@ -68,15 +70,11 @@ def get_amazon_profit_detail_api(request):
         # 排序参数
         sort_field = data.get('sort_field', 'amount')  # 默认按销售额
         sort_order = data.get('sort_order', 'desc')    # 默认降序
-        # 合法的排序字段映射
-        SORT_FIELD_MAP = {
+        # 数据库可排序字段映射（order_by 可用）
+        DB_SORT_FIELD_MAP = {
             'seller_sku': 'seller_sku',
             'asin': 'asin',
             'shop_name': 'sid',
-            'ad_cost_ratio': 'ad_cost_ratio',
-            'cost_ratio': 'cost_ratio',
-            'logistics_ratio': 'logistics_ratio',
-            'profit_ratio': 'profit_ratio',
             'volume': 'volume',
             'afn_volume': 'afn_volume',
             'mfn_volume': 'mfn_volume',
@@ -96,6 +94,9 @@ def get_amazon_profit_detail_api(request):
             'total_costs': 'total_costs',
             'net_profit': 'net_profit',
         }
+
+        # 计算字段（Python 端排序，非数据库列）
+        COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio'}
 
         # 日期筛选
         start_date_str = data.get('start_date', '')
@@ -277,10 +278,10 @@ def get_amazon_profit_detail_api(request):
                     'seller_sku': seller_sku,
                     'asin': asin_map.get(key, ''),
                     'item_name': sku_meta.get(key, {}).get('item_name', ''),
-                    'ad_cost_ratio': f"{ad_cost_ratio:.1f}",
-                    'cost_ratio': f"{cost_ratio:.1f}",
-                    'logistics_ratio': f"{logistics_ratio:.1f}",
-                    'profit_ratio': f"{profit_ratio:.1f}",
+                    'ad_cost_ratio': ad_cost_ratio,
+                    'cost_ratio': cost_ratio,
+                    'logistics_ratio': logistics_ratio,
+                    'profit_ratio': profit_ratio,
                     'volume': item['volume_sum'] or 0,
                     'afn_volume': item['afn_volume_sum'] or 0,
                     'mfn_volume': item['mfn_volume_sum'] or 0,
@@ -301,95 +302,192 @@ def get_amazon_profit_detail_api(request):
                     'net_profit': str(net_profit),
                 })
 
-            # 聚合后手动分页
+            # 聚合后手动分页前，支持计算字段排序
+            if sort_field in COMPUTED_FIELDS:
+                reverse = sort_order == 'desc'
+                profit_list.sort(key=lambda x: x[sort_field], reverse=reverse)
+
             total = len(profit_list)
             total_pages = (total + page_size - 1) // page_size
             start_idx = (page - 1) * page_size
             end_idx = start_idx + page_size
             profit_list = profit_list[start_idx:end_idx]
 
+            # 格式化占比字段（分页后统一格式化）
+            for item in profit_list:
+                item['ad_cost_ratio'] = f"{item['ad_cost_ratio']:.1f}"
+                item['cost_ratio'] = f"{item['cost_ratio']:.1f}"
+                item['logistics_ratio'] = f"{item['logistics_ratio']:.1f}"
+                item['profit_ratio'] = f"{item['profit_ratio']:.1f}"
+
         else:
             # 单天：直接分页显示
-            # 应用排序
-            db_sort_field = SORT_FIELD_MAP.get(sort_field, 'amount')
-            order_prefix = '-' if sort_order == 'desc' else ''
-            if db_sort_field in ['seller_sku', 'sid']:
-                profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}")
+            # 判断是否为计算字段排序
+            is_computed_sort = sort_field in COMPUTED_FIELDS
+
+            if is_computed_sort:
+                # 计算字段：先按销售额排序取全部数据，再在 Python 端排序分页
+                profits_qs = profits_qs.order_by('seller_sku', 'sid')
+                all_profits = list(profits_qs)
+
+                # 构建完整列表并计算占比
+                profit_list_all = []
+                for profit in all_profits:
+                    shop_info = sid_to_shop.get(profit.sid, {})
+
+                    # 获取 ASIN
+                    asin = ''
+                    price_list = profit.price_list.first()
+                    if price_list:
+                        asin = price_list.asin or ''
+
+                    # 计算净利润和占比
+                    amount = profit.amount or Decimal('0')
+                    spend = profit.spend or Decimal('0')
+                    total_costs = profit.total_costs or Decimal('0')
+                    net_profit = amount + spend + total_costs
+
+                    amount_abs = abs(amount) if amount else Decimal('0')
+                    spend_abs = abs(spend) if spend else Decimal('0')
+                    ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
+                    cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    logistics_cost = profit.logistics_costs or Decimal('0')
+                    logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
+                    logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
+
+                    profit_list_all.append({
+                        'id': profit.id,
+                        'sync_date': profit.sync_date.strftime('%Y-%m-%d'),
+                        'shop_name': shop_info.get('shop_name', f'店铺{profit.sid}'),
+                        'sid': profit.sid,
+                        'seller_sku': profit.seller_sku,
+                        'asin': asin,
+                        'item_name': profit.item_name or '',
+                        'ad_cost_ratio': ad_cost_ratio,
+                        'cost_ratio': cost_ratio,
+                        'logistics_ratio': logistics_ratio,
+                        'profit_ratio': profit_ratio,
+                        'volume': profit.volume or 0,
+                        'afn_volume': profit.afn_volume or 0,
+                        'mfn_volume': profit.mfn_volume or 0,
+                        'ad_volume': profit.ad_volume or 0,
+                        'amount': str(amount) if amount else '0.00',
+                        'afn_amount': str(profit.afn_amount) if profit.afn_amount else '0.00',
+                        'mfn_amount': str(profit.mfn_amount) if profit.mfn_amount else '0.00',
+                        'ad_sales_amount': str(profit.ad_sales_amount) if profit.ad_sales_amount else '0.00',
+                        'spend': str(spend) if spend else '0.00',
+                        'ads_sp_cost': str(profit.ads_sp_cost) if profit.ads_sp_cost else '0.00',
+                        'ads_sb_cost': str(profit.ads_sb_cost) if profit.ads_sb_cost else '0.00',
+                        'ads_sbv_cost': str(profit.ads_sbv_cost) if profit.ads_sbv_cost else '0.00',
+                        'ads_sd_cost': str(profit.ads_sd_cost) if profit.ads_sd_cost else '0.00',
+                        'purchase_costs': str(profit.purchase_costs) if profit.purchase_costs else '0.00',
+                        'logistics_costs': str(profit.logistics_costs) if profit.logistics_costs else '0.00',
+                        'other_costs': str(profit.other_costs) if profit.other_costs else '0.00',
+                        'total_costs': str(total_costs) if total_costs else '0.00',
+                        'net_profit': str(net_profit),
+                    })
+
+                # Python 端排序（Decimal 精度安全）
+                reverse = sort_order == 'desc'
+                profit_list_all.sort(key=lambda x: x[sort_field], reverse=reverse)
+
+                # 手动分页
+                total = len(profit_list_all)
+                total_pages = (total + page_size - 1) // page_size
+                start_idx = (page - 1) * page_size
+                end_idx = start_idx + page_size
+                profit_list = profit_list_all[start_idx:end_idx]
+
+                # 格式化占比字段
+                for item in profit_list:
+                    item['ad_cost_ratio'] = f"{item['ad_cost_ratio']:.1f}"
+                    item['cost_ratio'] = f"{item['cost_ratio']:.1f}"
+                    item['logistics_ratio'] = f"{item['logistics_ratio']:.1f}"
+                    item['profit_ratio'] = f"{item['profit_ratio']:.1f}"
+
             else:
-                profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}", 'seller_sku')
-            paginator = Paginator(profits_qs, page_size)
-            total = paginator.count
+                # 数据库字段：直接用 order_by 排序分页
+                db_sort_field = DB_SORT_FIELD_MAP.get(sort_field, 'amount')
+                order_prefix = '-' if sort_order == 'desc' else ''
+                if db_sort_field in ['seller_sku', 'sid']:
+                    profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}")
+                else:
+                    profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}", 'seller_sku')
+                paginator = Paginator(profits_qs, page_size)
+                total = paginator.count
 
-            try:
-                page_obj = paginator.page(page)
-            except (EmptyPage, PageNotAnInteger):
-                page_obj = paginator.page(1)
-                page = 1
+                try:
+                    page_obj = paginator.page(page)
+                except (EmptyPage, PageNotAnInteger):
+                    page_obj = paginator.page(1)
+                    page = 1
 
-            total_pages = paginator.num_pages
+                total_pages = paginator.num_pages
 
-            profit_list = []
-            for profit in page_obj:
-                shop_info = sid_to_shop.get(profit.sid, {})
+                profit_list = []
+                for profit in page_obj:
+                    shop_info = sid_to_shop.get(profit.sid, {})
 
-                # 获取 ASIN（从 price_list 子表取第一个）
-                asin = ''
-                price_list = profit.price_list.first()
-                if price_list:
-                    asin = price_list.asin or ''
+                    # 获取 ASIN（从 price_list 子表取第一个）
+                    asin = ''
+                    price_list = profit.price_list.first()
+                    if price_list:
+                        asin = price_list.asin or ''
 
-                # 计算净利润 = 销售额 + 广告花费(负数) + 合计成本(负数)
-                amount = profit.amount or Decimal('0')
-                spend = profit.spend or Decimal('0')
-                total_costs = profit.total_costs or Decimal('0')
-                net_profit = amount + spend + total_costs
+                    # 计算净利润 = 销售额 + 广告花费(负数) + 合计成本(负数)
+                    amount = profit.amount or Decimal('0')
+                    spend = profit.spend or Decimal('0')
+                    total_costs = profit.total_costs or Decimal('0')
+                    net_profit = amount + spend + total_costs
 
-                # 计算占比（销售额为分母，注意销售额可能为0或负数）
-                amount_abs = abs(amount) if amount else Decimal('0')
-                # spend 在数据库中为负数（表示支出），取绝对值计算占比
-                spend_abs = abs(spend) if spend else Decimal('0')
-                ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                # 成本占比 = |合计成本| / 销售额
-                total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
-                cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                # 运费占比 = |头程成本| / 销售额
-                logistics_cost = profit.logistics_costs or Decimal('0')
-                logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
-                logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                # 利润率 = 净利润 / |销售额| * 100
-                profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
+                    # 计算占比（销售额为分母，注意销售额可能为0或负数）
+                    amount_abs = abs(amount) if amount else Decimal('0')
+                    # spend 在数据库中为负数（表示支出），取绝对值计算占比
+                    spend_abs = abs(spend) if spend else Decimal('0')
+                    ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    # 成本占比 = |合计成本| / 销售额
+                    total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
+                    cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    # 运费占比 = |头程成本| / 销售额
+                    logistics_cost = profit.logistics_costs or Decimal('0')
+                    logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
+                    logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
+                    # 利润率 = 净利润 / |销售额| * 100
+                    profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
 
-                profit_list.append({
-                    'id': profit.id,
-                    'sync_date': profit.sync_date.strftime('%Y-%m-%d'),
-                    'shop_name': shop_info.get('shop_name', f'店铺{profit.sid}'),
-                    'sid': profit.sid,
-                    'seller_sku': profit.seller_sku,
-                    'asin': asin,
-                    'item_name': profit.item_name or '',
-                    'ad_cost_ratio': f"{ad_cost_ratio:.1f}",
-                    'cost_ratio': f"{cost_ratio:.1f}",
-                    'logistics_ratio': f"{logistics_ratio:.1f}",
-                    'profit_ratio': f"{profit_ratio:.1f}",
-                    'volume': profit.volume or 0,
-                    'afn_volume': profit.afn_volume or 0,
-                    'mfn_volume': profit.mfn_volume or 0,
-                    'ad_volume': profit.ad_volume or 0,
-                    'amount': str(amount) if amount else '0.00',
-                    'afn_amount': str(profit.afn_amount) if profit.afn_amount else '0.00',
-                    'mfn_amount': str(profit.mfn_amount) if profit.mfn_amount else '0.00',
-                    'ad_sales_amount': str(profit.ad_sales_amount) if profit.ad_sales_amount else '0.00',
-                    'spend': str(spend) if spend else '0.00',
-                    'ads_sp_cost': str(profit.ads_sp_cost) if profit.ads_sp_cost else '0.00',
-                    'ads_sb_cost': str(profit.ads_sb_cost) if profit.ads_sb_cost else '0.00',
-                    'ads_sbv_cost': str(profit.ads_sbv_cost) if profit.ads_sbv_cost else '0.00',
-                    'ads_sd_cost': str(profit.ads_sd_cost) if profit.ads_sd_cost else '0.00',
-                    'purchase_costs': str(profit.purchase_costs) if profit.purchase_costs else '0.00',
-                    'logistics_costs': str(profit.logistics_costs) if profit.logistics_costs else '0.00',
-                    'other_costs': str(profit.other_costs) if profit.other_costs else '0.00',
-                    'total_costs': str(total_costs) if total_costs else '0.00',
-                    'net_profit': str(net_profit),
-                })
+                    profit_list.append({
+                        'id': profit.id,
+                        'sync_date': profit.sync_date.strftime('%Y-%m-%d'),
+                        'shop_name': shop_info.get('shop_name', f'店铺{profit.sid}'),
+                        'sid': profit.sid,
+                        'seller_sku': profit.seller_sku,
+                        'asin': asin,
+                        'item_name': profit.item_name or '',
+                        'ad_cost_ratio': f"{ad_cost_ratio:.1f}",
+                        'cost_ratio': f"{cost_ratio:.1f}",
+                        'logistics_ratio': f"{logistics_ratio:.1f}",
+                        'profit_ratio': f"{profit_ratio:.1f}",
+                        'volume': profit.volume or 0,
+                        'afn_volume': profit.afn_volume or 0,
+                        'mfn_volume': profit.mfn_volume or 0,
+                        'ad_volume': profit.ad_volume or 0,
+                        'amount': str(amount) if amount else '0.00',
+                        'afn_amount': str(profit.afn_amount) if profit.afn_amount else '0.00',
+                        'mfn_amount': str(profit.mfn_amount) if profit.mfn_amount else '0.00',
+                        'ad_sales_amount': str(profit.ad_sales_amount) if profit.ad_sales_amount else '0.00',
+                        'spend': str(spend) if spend else '0.00',
+                        'ads_sp_cost': str(profit.ads_sp_cost) if profit.ads_sp_cost else '0.00',
+                        'ads_sb_cost': str(profit.ads_sb_cost) if profit.ads_sb_cost else '0.00',
+                        'ads_sbv_cost': str(profit.ads_sbv_cost) if profit.ads_sbv_cost else '0.00',
+                        'ads_sd_cost': str(profit.ads_sd_cost) if profit.ads_sd_cost else '0.00',
+                        'purchase_costs': str(profit.purchase_costs) if profit.purchase_costs else '0.00',
+                        'logistics_costs': str(profit.logistics_costs) if profit.logistics_costs else '0.00',
+                        'other_costs': str(profit.other_costs) if profit.other_costs else '0.00',
+                        'total_costs': str(total_costs) if total_costs else '0.00',
+                        'net_profit': str(net_profit),
+                    })
 
         return JsonResponse({
             'success': True,

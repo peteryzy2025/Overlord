@@ -859,7 +859,7 @@
                                 <p>日常店铺巡检报告</p>
                             </div>
                         </a>
-                        {% if request.user.permission_configs.filter(code=555).exists %}
+                        {% if 555 in user_permissions %}
                         <a href="{% url 'amazon:amazon_profit_detail' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
                             <div class="nav-card-content">
@@ -943,7 +943,7 @@
                                 <p>货物运输状态实时追踪</p>
                             </div>
                         </a>
-                        {% if request.user.permission_configs.filter(code=555).exists %}
+                        {% if 555 in user_permissions %}
                         <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-card">
                         {% else %}
                         <a href="javascript:void(0)" class="nav-dropdown-card disabled" style="opacity: 0.5; cursor: not-allowed;" onclick="return false;">
