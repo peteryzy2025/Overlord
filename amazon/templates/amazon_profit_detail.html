@@ -16,6 +16,24 @@
             color: #EF4444;
             font-weight: 600;
         }
+        /* 排序样式 */
+        th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        th.sortable:hover {
+            background-color: var(--bg-hover, rgba(59, 130, 246, 0.05));
+        }
+        th.sortable .sort-icon {
+            margin-left: 4px;
+            font-size: 12px;
+            color: var(--text-tertiary, #9CA3AF);
+        }
+        th.sortable.sort-asc .sort-icon,
+        th.sortable.sort-desc .sort-icon {
+            color: var(--accent-color, #3B82F6);
+        }
         .summary-stats {
             display: flex;
             gap: 2rem;
@@ -68,10 +86,14 @@
         <div class="filter-card">
             <div class="filter-row">
                 <div class="filter-group">
+                    <label class="filter-label">日期范围</label>
+                    <div id="dateRange" class="searchable-select single" data-placeholder="日期范围"></div>
+                </div>
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup">
                     <label class="filter-label">开始日期</label>
                     <input type="date" class="form-control" id="startDate">
                 </div>
-                <div class="filter-group">
+                <div class="filter-group gs-date-range-custom-group" id="customDateGroup2">
                     <label class="filter-label">结束日期</label>
                     <input type="date" class="form-control" id="endDate">
                 </div>
@@ -113,29 +135,32 @@
                 <table class="table" id="dataTable">
                     <thead>
                         <tr>
-                            <th>日期</th>
-                            <th>店铺名称</th>
-                            <th>MSKU</th>
-                            <th>ASIN</th>
-                            <th>品名</th>
-                            <th>销量</th>
-                            <th>FBA销量</th>
-                            <th>FBM销量</th>
-                            <th>广告销量</th>
-                            <th>销售额</th>
-                            <th>FBA销售额</th>
-                            <th>FBM销售额</th>
-                            <th>广告销售额</th>
-                            <th>总花费</th>
-                            <th>SP花费</th>
-                            <th>SB花费</th>
-                            <th>SBV花费</th>
-                            <th>SD花费</th>
-                            <th>采购成本</th>
-                            <th>头程成本</th>
-                            <th>其他成本</th>
-                            <th>合计成本</th>
-                            <th>净利润</th>
+                            <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th class="sortable" data-field="seller_sku" onclick="toggleSort('seller_sku')">MSKU <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="asin" onclick="toggleSort('asin')">ASIN <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="shop_name" onclick="toggleSort('shop_name')">店铺 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ad_cost_ratio" onclick="toggleSort('ad_cost_ratio')">广告占比 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="cost_ratio" onclick="toggleSort('cost_ratio')">成本占比 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="logistics_ratio" onclick="toggleSort('logistics_ratio')">运费占比 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="profit_ratio" onclick="toggleSort('profit_ratio')">利润率 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="volume" onclick="toggleSort('volume')">销量 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="afn_volume" onclick="toggleSort('afn_volume')">FBA销量 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="mfn_volume" onclick="toggleSort('mfn_volume')">FBM销量 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ad_volume" onclick="toggleSort('ad_volume')">广告销量 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="amount" onclick="toggleSort('amount')">销售额 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="afn_amount" onclick="toggleSort('afn_amount')">FBA销售额 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="mfn_amount" onclick="toggleSort('mfn_amount')">FBM销售额 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ad_sales_amount" onclick="toggleSort('ad_sales_amount')">广告销售额 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="spend" onclick="toggleSort('spend')">总花费 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ads_sp_cost" onclick="toggleSort('ads_sp_cost')">SP花费 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ads_sb_cost" onclick="toggleSort('ads_sb_cost')">SB花费 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ads_sbv_cost" onclick="toggleSort('ads_sbv_cost')">SBV花费 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="ads_sd_cost" onclick="toggleSort('ads_sd_cost')">SD花费 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="purchase_costs" onclick="toggleSort('purchase_costs')">采购成本 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="logistics_costs" onclick="toggleSort('logistics_costs')">头程成本 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="other_costs" onclick="toggleSort('other_costs')">其他成本 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="total_costs" onclick="toggleSort('total_costs')">合计成本 <span class="sort-icon"></span></th>
+                            <th class="sortable" data-field="net_profit" onclick="toggleSort('net_profit')">净利润 <span class="sort-icon"></span></th>
                         </tr>
                     </thead>
                     <tbody id="dataTableBody">
@@ -151,13 +176,14 @@
                         <span class="page-size-label">每页显示：</span>
                         <div class="page-size-dropdown-wrapper" style="position: relative;">
                             <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
-                                <span id="pageSizeText">20条</span>
+                                <span id="pageSizeText">100条</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <div class="page-size-dropdown" id="pageSizeDropdown">
-                                <div class="page-size-option selected" onclick="changePageSize(20)">20条</div>
                                 <div class="page-size-option" onclick="changePageSize(50)">50条</div>
-                                <div class="page-size-option" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option selected" onclick="changePageSize(100)">100条</div>
+                                <div class="page-size-option" onclick="changePageSize(200)">200条</div>
+                                <div class="page-size-option" onclick="changePageSize(500)">500条</div>
                             </div>
                         </div>
                     </div>
@@ -177,10 +203,11 @@
 
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
+    <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
     <script>
         // ==================== 全局变量 ====================
         let currentPage = 1;
-        let pageSize = 20;
+        let pageSize = 100;
         let totalItems = 0;
         let totalPages = 1;
         let allData = [];
@@ -189,22 +216,100 @@
         let shopSelect = null;
         let operatorSelect = null;
         let groupSelect = null;
+        let dateRangeController = null;
+        let currentSortField = 'amount';
+        let currentSortOrder = 'desc';
 
         // ==================== 初始化 ====================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('[利润明细] 页面初始化开始');
-            // 设置默认日期（昨天）
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            document.getElementById('startDate').value = yesterdayStr;
-            document.getElementById('endDate').value = yesterdayStr;
 
+            initDateRangeFilter();
             initSearchableSelects();
             loadFilterOptions();
+            updateSortIcons();
             loadData();
             console.log('[利润明细] 页面初始化完成');
         });
+
+        // ==================== 日期范围筛选 ====================
+        function initDateRangeFilter() {
+            if (window.GeneralStyleDateRangeFilter) {
+                dateRangeController = window.GeneralStyleDateRangeFilter.init({
+                    select: '#dateRange',
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    defaultValue: 'yesterday',
+                    customValue: 'custom',
+                    customGroups: ['#customDateGroup', '#customDateGroup2'],
+                    startInput: '#startDate',
+                    endInput: '#endDate',
+                    onChange: function() {
+                        currentPage = 1;
+                        loadData();
+                    }
+                });
+            } else {
+                // 回退：使用普通 SearchableSelect
+                const dateRangeSelect = new SearchableSelect('#dateRange', {
+                    options: [
+                        {value: 'yesterday', label: '昨日'},
+                        {value: 'today', label: '今日'},
+                        {value: 'last7days', label: '最近7天'},
+                        {value: 'last30days', label: '最近30天'},
+                        {value: 'custom', label: '自定义范围'}
+                    ],
+                    placeholder: '日期范围',
+                    multiple: false
+                });
+                dateRangeSelect.setValue('yesterday');
+                dateRangeSelect.onChange = function() {
+                    syncDateRangeVisibility();
+                    currentPage = 1;
+                    loadData();
+                };
+                syncDateRangeVisibility();
+            }
+        }
+
+        function syncDateRangeVisibility() {
+            const dateRange = document.getElementById('dateRange');
+            const customGroup = document.getElementById('customDateGroup');
+            const customGroup2 = document.getElementById('customDateGroup2');
+            if (!dateRange || !customGroup || !customGroup2) return;
+            const value = dateRange.dataset.value || 'yesterday';
+            if (value === 'custom') {
+                customGroup.style.display = 'flex';
+                customGroup2.style.display = 'flex';
+            } else {
+                customGroup.style.display = 'none';
+                customGroup2.style.display = 'none';
+            }
+        }
+
+        function getDateRangeValue() {
+            if (dateRangeController) {
+                return {
+                    date_range: dateRangeController.getValue(),
+                    start_date: dateRangeController.isCustom() ? dateRangeController.getStartDate() : '',
+                    end_date: dateRangeController.isCustom() ? dateRangeController.getEndDate() : ''
+                };
+            }
+            // 回退
+            const dateRange = document.getElementById('dateRange');
+            const value = dateRange ? (dateRange.dataset.value || 'yesterday') : 'yesterday';
+            return {
+                date_range: value,
+                start_date: value === 'custom' ? document.getElementById('startDate').value : '',
+                end_date: value === 'custom' ? document.getElementById('endDate').value : ''
+            };
+        }
 
         // ==================== 初始化下拉框 ====================
         function initSearchableSelects() {
@@ -270,8 +375,7 @@
 
         // ==================== 加载数据 ====================
         async function loadData() {
-            const startDate = document.getElementById('startDate').value;
-            const endDate = document.getElementById('endDate').value;
+            const dateRange = getDateRangeValue();
             const keyword = document.getElementById('keywordSearch').value.trim();
 
             const shopIds = shopSelect ? shopSelect.getValue() : [];
@@ -281,8 +385,8 @@
             const body = {
                 page: currentPage,
                 page_size: pageSize,
-                start_date: startDate,
-                end_date: endDate,
+                start_date: dateRange.start_date,
+                end_date: dateRange.end_date,
                 keyword: keyword,
             };
 
@@ -295,6 +399,10 @@
             if (groups.length > 0) {
                 body.group = groups.join(',');
             }
+
+            // 添加排序参数
+            body.sort_field = currentSortField;
+            body.sort_order = currentSortOrder;
 
             try {
                 console.log('[利润明细] 发送请求:', body);
@@ -333,21 +441,25 @@
         function renderTable(data) {
             const tbody = document.getElementById('dataTableBody');
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="23" style="text-align: center; padding: 3rem;">暂无数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="25" style="text-align: center; padding: 3rem;">暂无数据</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(item => {
                 const netProfit = parseFloat(item.net_profit);
                 const profitClass = netProfit >= 0 ? 'net-profit-positive' : 'net-profit-negative';
+                const profitRatioClass = parseFloat(item.profit_ratio) >= 0 ? 'net-profit-positive' : 'net-profit-negative';
 
                 return `
                     <tr data-id="${item.id}">
-                        <td>${item.sync_date}</td>
-                        <td>${escapeHtml(item.shop_name)}</td>
-                        <td>${escapeHtml(item.seller_sku)}</td>
+                        <td class="w-checkbox"><input type="checkbox" class="row-checkbox" value="${item.id}" onclick="updateSelectAllState()"></td>
+                        <td title="${escapeHtml(item.item_name)}">${escapeHtml(item.seller_sku)}</td>
                         <td>${escapeHtml(item.asin)}</td>
-                        <td>${escapeHtml(item.item_name)}</td>
+                        <td>${escapeHtml(item.shop_name)}</td>
+                        <td>${item.ad_cost_ratio}%</td>
+                        <td>${item.cost_ratio}%</td>
+                        <td>${item.logistics_ratio}%</td>
+                        <td class="${profitRatioClass}">${item.profit_ratio}%</td>
                         <td>${item.volume}</td>
                         <td>${item.afn_volume}</td>
                         <td>${item.mfn_volume}</td>
@@ -482,6 +594,37 @@
             }
         }
 
+        // ==================== 排序操作 ====================
+        function toggleSort(field) {
+            if (currentSortField === field) {
+                // 切换升序/降序
+                currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                // 新字段，默认降序
+                currentSortField = field;
+                currentSortOrder = 'desc';
+            }
+            updateSortIcons();
+            currentPage = 1;
+            loadData();
+        }
+
+        function updateSortIcons() {
+            document.querySelectorAll('th.sortable').forEach(th => {
+                const field = th.dataset.field;
+                const icon = th.querySelector('.sort-icon');
+                if (!icon) return;
+
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (field === currentSortField) {
+                    th.classList.add(currentSortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+                    icon.textContent = currentSortOrder === 'asc' ? '▲' : '▼';
+                } else {
+                    icon.textContent = '⇅';
+                }
+            });
+        }
+
         // ==================== 筛选操作 ====================
         function filterData() {
             currentPage = 1;
@@ -489,11 +632,17 @@
         }
 
         function resetFilters() {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split('T')[0];
-            document.getElementById('startDate').value = yesterdayStr;
-            document.getElementById('endDate').value = yesterdayStr;
+            if (dateRangeController) {
+                dateRangeController.setValue('yesterday');
+                dateRangeController.clearCustomDates();
+            } else {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                document.getElementById('startDate').value = yesterdayStr;
+                document.getElementById('endDate').value = yesterdayStr;
+                syncDateRangeVisibility();
+            }
             document.getElementById('keywordSearch').value = '';
 
             if (shopSelect) shopSelect.setValue([]);
@@ -502,6 +651,26 @@
 
             currentPage = 1;
             loadData();
+        }
+
+        // ==================== 复选框操作 ====================
+        function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            rowCheckboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+        }
+
+        function updateSelectAllState() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+            if (rowCheckboxes.length === 0) {
+                selectAllCheckbox.checked = false;
+                return;
+            }
+            const allChecked = Array.from(rowCheckboxes).every(cb => cb.checked);
+            selectAllCheckbox.checked = allChecked;
         }
 
         // 点击页面其他地方关闭下拉框

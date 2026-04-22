@@ -253,7 +253,24 @@ base/base.html（顶部导航一级 Base）
 - **操作列**：**禁止**使用带边框/底色的按钮。统一使用 `<span class="link">` 或 `<a class="link">` 蓝色纯文字链接。
 - **斑马纹**：Light 模式由 Bootstrap `.table-striped` 控制；Dark 模式已覆盖，禁止重写。
 - **固定列**：第一列、第二列、最后一列在 `.table-container` 中为 `position: sticky`；Dark 模式下阴影已覆盖。
-- **复选框列宽度**：第一列表头必须用 `<th class="w-checkbox">`（样式已锁定 45px）。
+- **复选框列**：
+  - 表头必须用 `<th class="w-checkbox">`（样式已锁定 45px）
+  - **数据行也必须用 `<td class="w-checkbox">`**，不能只给表头加 class
+  - 示例：
+    ```html
+    <thead>
+      <tr>
+        <th class="w-checkbox"><input type="checkbox" id="selectAll"></th>
+        ...
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="w-checkbox"><input type="checkbox" class="row-checkbox"></td>
+        ...
+      </tr>
+    </tbody>
+    ```
 - **表格容器边框**：推荐在 `.table-container` 上加 `.table-bordered`，形成独立的 `1px solid var(--border-color)` 圆角边框（`border-radius: 12px`），增强卡片内的层次感。
 - **主样式来源**：所有表格样式统一由 `general/static/css/general_style_1.css` 控制。**禁止**再引用 `amazon/static/css/amazon_css.css` 作为通用表格样式；如发现页面仍引用该文件，应逐步移除并验证。
 
