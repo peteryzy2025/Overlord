@@ -979,22 +979,82 @@
                 break;
             case 'divi_custom':
                 title = '迪唯定制配置';
-                // 兼容新旧数据：优先显示新的 nas_path / image_classify_path，旧数据 fallback 到 gallery_path / local_gallery_path
-                const customNasPath = params.nas_path || params.local_gallery_path || '';
-                const customImageClassify = Array.isArray(params.image_classify) && params.image_classify.length > 0
-                    ? params.image_classify.join(' > ')
-                    : (params.image_classify_path || params.gallery_path || '');
-                content = renderFieldGrid([
-                    field('迪唯账号', params.diwei_account),
-                    field('NAS路径', customNasPath, true),
-                    field('图库分类', customImageClassify, true),
-                    field('定制行', renderGroupedProductRows(params.custom_rows, [
-                        { key: 'product_id', label: '产品 ID' },
-                        { key: 'mode', label: '模式', getValue: row => getModeDisplay(row.mode) },
-                        { key: 'use_background', label: '背景图', getValue: row => row.use_background ? '是' : '否' },
-                        { key: 'background_color', label: '背景色' }
-                    ]), true, true)
-                ]);
+                // 兼容中英文键名：优先匹配中文键名，fallback 到英文键名
+                const diviCustomLabelMap = {
+                    '迪唯账号': '迪唯账号',
+                    'diwei_account': '迪唯账号',
+                    '本地路径': 'NAS路径',
+                    'nas_path': 'NAS路径',
+                    'local_gallery_path': 'NAS路径',
+                    '图库路径': '图库分类',
+                    'image_classify_path': '图库分类',
+                    'gallery_path': '图库分类',
+                    'image_classify': '图库分类',
+                    '定制行列表': '定制行',
+                    'custom_rows': '定制行',
+                    '报错信息': '报错信息',
+                    'error_message': '报错信息'
+                };
+                const diviCustomKnownKeys = ['定制行列表', 'custom_rows', '报错信息', 'error_message'];
+                const diviCustomFields = [];
+
+                Object.entries(params).forEach(([key, value]) => {
+                    if (value === undefined || value === null) return;
+                    const label = diviCustomLabelMap[key] || key;
+                    let displayValue = value;
+                    let wide = false;
+                    let isHtml = false;
+
+                    if (key === '定制行列表' || key === 'custom_rows') {
+                        // 兼容中英文定制行字段名
+                        const rowLabelMap = {
+                            '产品ID': '产品 ID', 'product_id': '产品 ID',
+                            '模式': '模式', 'mode': '模式',
+                            '背景颜色': '背景色', 'background_color': '背景色',
+                            '使用背景图': '背景图', 'use_background': '背景图'
+                        };
+                        const rowColumns = [];
+                        if (Array.isArray(value) && value.length > 0) {
+                            const firstRow = value[0];
+                            // 按固定顺序收集存在的字段
+                            const orderedKeys = ['产品ID', 'product_id', '模式', 'mode', '使用背景图', 'use_background', '背景颜色', 'background_color'];
+                            orderedKeys.forEach(k => {
+                                if (k in firstRow && !rowColumns.some(c => c.label === rowLabelMap[k])) {
+                                    rowColumns.push({
+                                        key: k,
+                                        label: rowLabelMap[k] || k,
+                                        getValue: row => {
+                                            const v = row[k];
+                                            if (k === '模式' || k === 'mode') return getModeDisplay(v);
+                                            if (k === '使用背景图' || k === 'use_background') return v ? '是' : '否';
+                                            return v;
+                                        }
+                                    });
+                                }
+                            });
+                            // 补充其他未知字段
+                            Object.keys(firstRow).forEach(k => {
+                                if (!orderedKeys.includes(k)) {
+                                    rowColumns.push({ key: k, label: rowLabelMap[k] || k });
+                                }
+                            });
+                        }
+                        displayValue = renderGroupedProductRows(value, rowColumns);
+                        wide = true;
+                        isHtml = true;
+                    } else if (key === '本地路径' || key === 'nas_path' || key === 'local_gallery_path' ||
+                               key === '图库路径' || key === 'image_classify_path' || key === 'gallery_path') {
+                        displayValue = Array.isArray(value) ? (value.length > 0 ? value.join(' > ') : '--') : formatDisplayValue(value);
+                        wide = true;
+                    } else if (key === '图库分类' || key === 'image_classify') {
+                        displayValue = Array.isArray(value) ? (value.length > 0 ? value.join(' > ') : '--') : formatDisplayValue(value);
+                        wide = true;
+                    }
+
+                    diviCustomFields.push(field(label, displayValue, wide, isHtml));
+                });
+
+                content = renderFieldGrid(diviCustomFields);
                 break;
             case 'divi_export':
                 title = '迪唯汇出配置';

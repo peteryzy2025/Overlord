@@ -246,6 +246,10 @@
                     <i class="fas fa-key"></i>
                     <span>批量设置权限</span>
                 </button>
+                <button class="btn btn-danger" onclick="openBulkRemovePermissionModal()">
+                    <i class="fas fa-user-slash"></i>
+                    <span>批量移除权限</span>
+                </button>
             </div>
             {% endif %}
 
@@ -506,6 +510,28 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="closeBulkPermissionModal()">取消</button>
                 <button class="btn btn-save-modal" onclick="confirmBulkPermission()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量移除权限模态框 -->
+    <div class="modal-overlay" id="bulkRemovePermissionModalOverlay" onclick="if(event.target === this) return;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 class="modal-title">批量移除权限</h2>
+                <button class="modal-close" onclick="closeBulkRemovePermissionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>选择要移除的权限</label>
+                    <div class="permissions-grid" id="bulkRemovePermissionsGrid">
+                        <!-- 动态生成 -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeBulkRemovePermissionModal()">取消</button>
+                <button class="btn btn-danger" onclick="confirmBulkRemovePermission()">确认移除</button>
             </div>
         </div>
     </div>
@@ -805,6 +831,31 @@
                     `;
                 }).join('');
                 bindPermissionCheckboxState(bulkGrid);
+            }
+
+            const bulkRemoveGrid = document.getElementById('bulkRemovePermissionsGrid');
+            if (bulkRemoveGrid) {
+                bulkRemoveGrid.innerHTML = allPermissions.map(perm => {
+                    const isAdmin = perm.code === '555' || perm.code === '5555';
+                    // 非555管理员不能设置管理员权限
+                    if (isAdmin && !IS_SUPER_ADMIN) {
+                        return '';
+                    }
+                    const desc = perm.description || '暂无说明';
+                    return `
+                        <label class="permission-checkbox ${isAdmin ? 'admin' : ''}" title="${desc}">
+                            <input type="checkbox" name="bulkRemovePermission" value="${perm.code}">
+                            <div class="permission-checkbox-content">
+                                <div class="permission-header">
+                                    <span class="permission-code">[${perm.code}]</span>
+                                    <span class="permission-name">${perm.name}</span>
+                                </div>
+                                <span class="permission-desc">${desc}</span>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+                bindPermissionCheckboxState(bulkRemoveGrid);
             }
         }
 
@@ -1628,6 +1679,58 @@
             }
         }
 
+        // ==================== 批量移除权限 ====================
+        function openBulkRemovePermissionModal() {
+            // 清空之前的选择
+            document.querySelectorAll('input[name="bulkRemovePermission"]').forEach(cb => {
+                cb.checked = false;
+                cb.closest('.permission-checkbox').classList.remove('is-checked');
+            });
+            document.getElementById('bulkRemovePermissionModalOverlay').style.display = 'block';
+        }
+
+        function closeBulkRemovePermissionModal() {
+            document.getElementById('bulkRemovePermissionModalOverlay').style.display = 'none';
+        }
+
+        async function confirmBulkRemovePermission() {
+            const permissions = Array.from(document.querySelectorAll('input[name="bulkRemovePermission"]:checked')).map(cb => cb.value);
+
+            if (permissions.length === 0) {
+                showNotification('请至少选择一个要移除的权限', 'warning');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/users/bulk-permissions/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        user_ids: Array.from(selectedUserIds),
+                        action: 'remove',
+                        permissions: permissions
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    closeBulkRemovePermissionModal();
+                    selectedUserIds.clear();
+                    loadUsers();
+                } else {
+                    showNotification(result.error || '操作失败', 'error');
+                }
+            } catch (error) {
+                console.error('批量移除权限操作失败:', error);
+                showNotification('操作失败', 'error');
+            }
+        }
+
         // ==================== 工具函数 ====================
         function getCsrfToken() {
             const name = 'csrftoken';
@@ -1660,6 +1763,7 @@
             if (e.key === 'Escape') {
                 closeUserModal();
                 closeBulkPermissionModal();
+                closeBulkRemovePermissionModal();
             }
         });
 
