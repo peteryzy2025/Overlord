@@ -616,7 +616,7 @@ class AmazonShop(models.Model):
         except ValueError:
             return None
 
-        today = timezone.localdate()
+        today = timezone.now().date()
         age = today.year - birth_day.year
         if (today.month, today.day) < (birth_day.month, birth_day.day):
             age -= 1

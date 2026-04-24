@@ -345,6 +345,7 @@ def get_amazon_shops_api(request):
                     authorized_users = [{'id': u.id, 'first_name': u.first_name} for u in shop.authorized_users.all()]
                     authorized_users_display = ', '.join([u['first_name'] for u in authorized_users]) or '-'
 
+                    legal_person_age = shop.get_id_number_age()
                     data.append({
                         'id': shop.id,
                         'shop_name': shop.shop_name or '-',
@@ -388,6 +389,7 @@ def get_amazon_shops_api(request):
                         'id_number': shop.id_number or '-',
                         'legal_person_phone': shop.legal_person_phone or '-',
                         'company_name': shop.company_name or '-',
+                        'legal_person_age': legal_person_age if legal_person_age is not None else '-',
                         'license_registered_capital': shop.license_registered_capital or '-',
                         'license_number': shop.license_number or '-',
                         'business_license_date': shop.business_license_date.strftime(
@@ -531,6 +533,7 @@ def get_amazon_shops_api(request):
             authorized_users = [{'id': u.id, 'first_name': u.first_name} for u in shop.authorized_users.all()]
             authorized_users_display = ', '.join([u['first_name'] for u in authorized_users]) or '-'
 
+            legal_person_age = shop.get_id_number_age()
             shops_data.append({
                 'id': shop.id,
                 'shop_name': shop.shop_name or '-',
@@ -574,6 +577,7 @@ def get_amazon_shops_api(request):
                 'id_number': shop.id_number or '-',
                 'legal_person_phone': shop.legal_person_phone or '-',
                 'company_name': shop.company_name or '-',
+                'legal_person_age': legal_person_age if legal_person_age is not None else '-',
                 'license_registered_capital': shop.license_registered_capital or '-',
                 'license_number': shop.license_number or '-',
                 'business_license_date': shop.business_license_date.strftime(
