@@ -1,10 +1,294 @@
+{% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>无权访问 - Divi</title>
+    <link rel="icon" href="{% static 'img/ico/favicon.ico' %}" type="image/x-icon">
+    <style>
+        :root {
+            --page-bg: #f4f7fb;
+            --panel-bg: #ffffff;
+            --panel-border: #dbe3ef;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --text-soft: #8ba0bd;
+            --brand-blue: #3b82f6;
+            --brand-blue-dark: #2563eb;
+            --brand-orange: #f59e0b;
+            --line: #e6edf6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(244, 247, 251, 0.98)),
+                var(--page-bg);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+        }
+
+        .error-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .error-header {
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 clamp(24px, 5vw, 56px);
+            border-bottom: 1px solid rgba(219, 227, 239, 0.72);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .brand-logo {
+            height: 42px;
+            width: auto;
+            display: block;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid #fed7aa;
+            border-radius: 999px;
+            color: #92400e;
+            background: #fff7ed;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--brand-orange);
+        }
+
+        .error-main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 24px;
+        }
+
+        .error-panel {
+            width: min(960px, 100%);
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+            overflow: hidden;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            background: var(--panel-bg);
+            box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+        }
+
+        .error-content {
+            padding: clamp(32px, 5vw, 56px);
+        }
+
+        .eyebrow {
+            margin: 0 0 14px;
+            color: var(--brand-blue);
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(30px, 4vw, 44px);
+            line-height: 1.18;
+            letter-spacing: 0;
+        }
+
+        .message {
+            max-width: 620px;
+            margin: 18px 0 0;
+            color: var(--text-muted);
+            font-size: 16px;
+            line-height: 1.75;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 32px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 112px;
+            height: 40px;
+            padding: 0 18px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            color: #ffffff;
+            background: var(--brand-blue);
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-blue-dark);
+        }
+
+        .btn-secondary {
+            color: #334155;
+            border-color: #d8e2f0;
+            background: #ffffff;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .error-meta {
+            padding: clamp(28px, 4vw, 40px);
+            border-left: 1px solid var(--line);
+            background: #fbfdff;
+        }
+
+        .meta-title {
+            margin: 0 0 20px;
+            font-size: 15px;
+            font-weight: 800;
+        }
+
+        .meta-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .meta-item {
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .meta-item:last-child {
+            padding-bottom: 0;
+            border-bottom: 0;
+        }
+
+        .meta-label {
+            margin: 0 0 6px;
+            color: var(--text-soft);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .meta-value {
+            margin: 0;
+            color: #334155;
+            font-size: 14px;
+            line-height: 1.55;
+            word-break: break-all;
+        }
+
+        .module-name {
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 9px;
+            border-radius: 999px;
+            color: #1d4ed8;
+            background: #eaf2ff;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 760px) {
+            .error-header {
+                padding: 0 20px;
+            }
+
+            .brand-logo {
+                height: 36px;
+            }
+
+            .status-pill {
+                display: none;
+            }
+
+            .error-main {
+                align-items: flex-start;
+                padding: 24px 16px;
+            }
+
+            .error-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .error-meta {
+                border-left: 0;
+                border-top: 1px solid var(--line);
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="error-shell">
+        <header class="error-header">
+            <img src="{% static 'img/y/logo.png' %}" alt="Divi" class="brand-logo">
+            <div class="status-pill">
+                <span class="status-dot"></span>
+                公司模块未授权
+            </div>
+        </header>
 
+        <main class="error-main">
+            <section class="error-panel" aria-labelledby="errorTitle">
+                <div class="error-content">
+                    <p class="eyebrow">403 ACCESS DENIED</p>
+                    <h1 id="errorTitle">当前公司暂无访问权限</h1>
+                    <p class="message">{{ message|default:'当前账号或公司暂无该页面权限，请联系管理员处理。' }}</p>
+
+                    <div class="actions">
+                        <a class="btn btn-primary" href="{% url 'general:main' %}">返回首页</a>
+                        <button class="btn btn-secondary" type="button" onclick="history.back()">返回上一页</button>
+                    </div>
+                </div>
+
+                <aside class="error-meta" aria-label="访问详情">
+                    <h2 class="meta-title">访问详情</h2>
+                    <div class="meta-list">
+                        <div class="meta-item">
+                            <p class="meta-label">状态</p>
+                            <p class="meta-value">请求已被权限系统拦截</p>
+                        </div>
+                        <div class="meta-item">
+                            <p class="meta-label">访问路径</p>
+                            <p class="meta-value">{{ request.path|default:'-' }}</p>
+                        </div>
+                        <div class="meta-item">
+                            <p class="meta-label">处理方式</p>
+                            <p class="meta-value">由平台总后台为该公司开通对应模块。</p>
+                        </div>
+                    </div>
+                </aside>
+            </section>
+        </main>
+    </div>
 </body>
 </html>

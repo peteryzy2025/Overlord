@@ -8,7 +8,7 @@ from general import (
     views_announcement_management,
     views_profile
 )
-from general.view import view_operation_log, views_general, views_user_management
+from general.view import view_operation_log, views_general, views_user_management, views_system_admin
 from api.general import group_and_ops
 from general.api import divi_account_api
 
@@ -19,6 +19,21 @@ urlpatterns = [
     # ========== 重构 ==============
     path('api/ops/list', views_general.get_ops_list, name='get_ops_list_api'),
     path('api/ops-groups/list', views_general.get_ops_groups_api, name='get_ops_groups_list_api'),
+
+    # ========== 平台总后台（仅 user.id == 555） ==========
+    path('system-admin/', views_system_admin.system_admin_view, name='system_admin'),
+    path('api/system-admin/modules/', views_system_admin.system_modules_api,
+         name='system_modules_api'),
+    path('api/system-admin/permissions/', views_system_admin.system_permissions_api,
+         name='system_permissions_api'),
+    path('api/system-admin/companies/', views_system_admin.system_companies_api,
+         name='system_companies_api'),
+    path('api/system-admin/companies/create/', views_system_admin.system_company_create_api,
+         name='system_company_create_api'),
+    path('api/system-admin/companies/<int:company_id>/update/',
+         views_system_admin.system_company_update_api, name='system_company_update_api'),
+    path('api/system-admin/companies/<int:company_id>/owners/create/',
+         views_system_admin.system_company_owner_create_api, name='system_company_owner_create_api'),
 
     # ========== 通用运营分组和人员查询接口（新） ==========
     path('api/general/ops-groups/', group_and_ops.get_ops_groups_api, name='api_general_ops_groups'),
@@ -128,4 +143,3 @@ urlpatterns = [
     path('api/profile/basic-info/', views_profile.update_basic_info_api, name='profile_update_basic_info'),
     path('api/profile/password/', views_profile.change_password_api, name='profile_change_password'),
 ]
-

@@ -8,6 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -124,6 +125,7 @@ def filter_sensitive_fields(shop: AmazonShop) -> dict:
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["GET", "POST"])
 def get_shop_info_by_name(request):
     """
@@ -183,7 +185,10 @@ def get_shop_info_by_name(request):
             return json_response(False, message="缺少必填参数: shopname", status_code=400)
         
         # 3. 查询店铺（精确匹配，返回第一个）
-        shop = AmazonShop.objects.filter(shop_name=shop_name).select_related(
+        shop = AmazonShop.objects.filter(
+            shop_name=shop_name,
+            company=request.user.company
+        ).select_related(
             'company', 'project', 'ops', 'channel_risk'
         ).first()
         

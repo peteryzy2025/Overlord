@@ -2,7 +2,6 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.db import IntegrityError
 from django.db.models import Q
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
@@ -14,6 +13,8 @@ from django.http import FileResponse, Http404
 from django.conf import settings
 import pandas as pd
 from django.utils import timezone
+
+from general.module_utils import module_access_required
 
 # ============================================
 # 1. 页面渲染视图
@@ -45,7 +46,7 @@ def is_tro_admin(user):
         return False
 
 
-@login_required
+@module_access_required('infringement', '侵权板块')
 def tro_table_page(request):
     """
     侵权词库页面
@@ -58,7 +59,7 @@ def tro_table_page(request):
     })
 
 
-@login_required
+@module_access_required('infringement', '侵权板块')
 def trademark_info_page(request):
     """
     美标网词库页面
@@ -97,7 +98,7 @@ CATEGORY_MAPPING = {
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_tro_table_list(request):
     """
     获取侵权词库列表
@@ -106,7 +107,10 @@ def api_tro_table_list(request):
         data = json.loads(request.body)
 
         # 基础查询集
-        queryset = TroTable.objects.all()
+        queryset = TroTable.objects.filter(
+            Q(shop__company=request.user.company) |
+            Q(shop__isnull=True, creator__company=request.user.company)
+        ).distinct()
 
         # 筛选条件
         theme_name = data.get('theme_name', '').strip()
@@ -207,7 +211,7 @@ def api_tro_table_list(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_create_tro_record(request):
     """
     创建新的侵权词记录
@@ -238,6 +242,10 @@ def api_create_tro_record(request):
         intl_class_codes = data.get('international_classes')
         force_replace = bool(data.get('force_replace'))
         shop_id = data.get('shop_id') or None
+
+        if shop_id:
+            if not AmazonShop.objects.filter(id=shop_id, company=request.user.company).exists():
+                return JsonResponse({'success': False, 'message': '无权选择该店铺'}, status=403)
 
         existing_record = TroTable.objects.filter(theme_name__iexact=theme_name).first()
         if existing_record and not force_replace:
@@ -328,7 +336,7 @@ def api_create_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_update_tro_record(request):
     """
     编辑侵权词记录
@@ -344,6 +352,11 @@ def api_update_tro_record(request):
 
         try:
             record = TroTable.objects.get(id=record_id)
+            if request.user.company_id:
+                if record.shop and record.shop.company_id != request.user.company_id:
+                    return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
+                if not record.shop and record.creator and record.creator.company_id != request.user.company_id:
+                    return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
         except TroTable.DoesNotExist:
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
 
@@ -375,11 +388,15 @@ def api_update_tro_record(request):
         replacement_word = replacement_word.strip() if replacement_word else None
         category = data.get('category')
         category = int(category) if category else None
+        shop_id = data.get('shop_id') or None
+        if shop_id:
+            if not AmazonShop.objects.filter(id=shop_id, company=request.user.company).exists():
+                return JsonResponse({'success': False, 'message': '无权选择该店铺'}, status=403)
         record.theme_name = theme_name
         record.replacement_word = replacement_word
         record.name_type = name_type
         record.category = category
-        record.shop_id = data.get('shop_id') or None
+        record.shop_id = shop_id
         record.save()
         
         # 更新国际类关联（传入空列表会清空所有关联）
@@ -411,7 +428,7 @@ def api_update_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_delete_tro_record(request):
     """
     删除侵权词记录
@@ -430,6 +447,11 @@ def api_delete_tro_record(request):
         try:
             record = TroTable.objects.get(id=record_id)
             theme_name = record.theme_name  # 先保存名称用于日志
+            if request.user.company_id:
+                if record.shop and record.shop.company_id != request.user.company_id:
+                    return JsonResponse({'success': False, 'message': '无权限删除此记录'}, status=403)
+                if not record.shop and record.creator and record.creator.company_id != request.user.company_id:
+                    return JsonResponse({'success': False, 'message': '无权限删除此记录'}, status=403)
             record.delete()
         except TroTable.DoesNotExist:
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
@@ -459,7 +481,7 @@ def api_delete_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_trademark_info_list(request):
     """
     获取美标网词库列表
@@ -557,6 +579,7 @@ def api_trademark_info_list(request):
         }, status=500)
 
 #====================更新：下载批量上传模板（2026.2.4）==========================
+@module_access_required('infringement', '侵权板块')
 def download_templates(request):
     file_path = os.path.join(settings.BASE_DIR, 'theme/static/media/templates/侵权词上传.xlsx')
     if os.path.exists(file_path):
@@ -568,7 +591,7 @@ def download_templates(request):
 
 
 #====================更新：批量导入侵权词（2026.2.4）==========================
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_nice_classification_list(request):
     """
     获取尼斯分类（国际类）列表
@@ -594,13 +617,13 @@ def api_nice_classification_list(request):
         }, status=500)
 
 
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_shop_list(request):
     """
     获取店铺列表
     """
     try:
-        shops = AmazonShop.objects.all().order_by('shop_name')
+        shops = AmazonShop.objects.filter(company=request.user.company).order_by('shop_name')
         data_list = [
             {
                 'id': item.id,
@@ -621,7 +644,7 @@ def api_shop_list(request):
 
 @csrf_exempt
 @require_POST
-@login_required
+@module_access_required('infringement', '侵权板块')
 def api_import_tro_records(request):
     """
     批量导入侵权词记录

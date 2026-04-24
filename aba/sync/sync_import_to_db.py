@@ -85,6 +85,24 @@ def normalize_noise_match_text(raw_text: str) -> str:
     return re.sub(r'\s+', ' ', raw_text.casefold()).strip()
 
 
+def _is_regex_word_char(char: str) -> bool:
+    """Return whether a character is treated as a regex \\w character."""
+    return char == '_' or char.isalnum()
+
+
+def _has_regex_word_boundaries(text: str, start_index: int, end_index: int) -> bool:
+    """Check whether text[start:end] is wrapped by regex-style \\b boundaries."""
+    if start_index < 0 or end_index >= len(text) or start_index > end_index:
+        return False
+
+    before_is_word = start_index > 0 and _is_regex_word_char(text[start_index - 1])
+    first_is_word = _is_regex_word_char(text[start_index])
+    last_is_word = _is_regex_word_char(text[end_index])
+    after_is_word = end_index + 1 < len(text) and _is_regex_word_char(text[end_index + 1])
+
+    return before_is_word != first_is_word and last_is_word != after_is_word
+
+
 def generate_display_label(report_week: datetime.date) -> str:
     """
     生成展示文案，格式：2026年第10周 (03.08-03.14)
@@ -159,7 +177,7 @@ class ABAImporter:
                 continue
 
             seen_words.add(normalized_word)
-            automaton.add_word(normalized_word, normalized_word)
+            automaton.add_word(normalized_word, (normalized_word, raw_word))
 
         if seen_words:
             automaton.make_automaton()
@@ -168,19 +186,21 @@ class ABAImporter:
         self.stats['noise_words_loaded'] = len(seen_words)
         print(f"   已加载 {len(seen_words)} 个去噪词")
 
-    def _contains_noise_word(self, term: str) -> bool:
-        """判断搜索词是否命中去噪词库。"""
+    def _get_matched_noise_word(self, term: str) -> str:
+        """返回命中的去噪词；未命中则返回空字符串。"""
         if self.noise_word_matcher is None:
-            return False
+            return ''
 
         normalized_term = normalize_noise_match_text(term)
         if not normalized_term:
-            return False
+            return ''
 
-        for _end_index, _matched_word in self.noise_word_matcher.iter(normalized_term):
-            return True
+        for end_index, (matched_word, raw_word) in self.noise_word_matcher.iter(normalized_term):
+            start_index = end_index - len(matched_word) + 1
+            if _has_regex_word_boundaries(normalized_term, start_index, end_index):
+                return raw_word
 
-        return False
+        return ''
     
     def _get_last_week_rank(self, term_id: int) -> Tuple[int, int]:
         """
@@ -258,7 +278,9 @@ class ABAImporter:
         filtered_terms = 0
         
         for term, data in aggregated.items():
-            if self._contains_noise_word(term):
+            matched_noise_word = self._get_matched_noise_word(term)
+            if matched_noise_word:
+                print(f"被过滤的搜索词: {term}，命中去噪词: {matched_noise_word}")
                 filtered_terms += 1
                 continue
 

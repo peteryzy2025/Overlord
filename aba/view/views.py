@@ -14,11 +14,11 @@ from django.db.models import Case, Count, DecimalField, ExpressionWrapper, F, Fl
 from django.db.models.functions import Cast, Coalesce
 from django.db import close_old_connections, transaction
 from django.http import JsonResponse
-from django.shortcuts import render,redirect
-from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
 from aba.models import AbaNoiseWord, AbaReportWeek, SearchTerm, SearchTermMetric
+from general.module_utils import permission_denied_response, user_company_has_module
 
 
 CUSTOM_DENOISING_CACHE_PREFIX = 'aba:custom-denoising:'
@@ -56,19 +56,22 @@ def can_access_aba(user):
 
 def aba_permission_required(view_func):
     """统一保护 ABA 页面与 API。"""
-    @login_required
     @wraps(view_func)
     def wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return permission_denied_response(request, '未登录或会话已过期', status=401)
+
+        if not user_company_has_module(request.user, 'theme'):
+            return permission_denied_response(
+                request,
+                '当前公司未开通主题板块，请联系平台管理员授权。',
+                status=403,
+            )
+
         if can_access_aba(request.user):
             return view_func(request, *args, **kwargs)
 
-        if request.path.startswith('/api/') or request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': False,
-                'message': '无权访问 ABA 页面',
-            }, status=403)
-
-        return redirect('general:main')
+        return permission_denied_response(request, '无权访问 ABA 页面', status=403)
 
     return wrapped_view
 

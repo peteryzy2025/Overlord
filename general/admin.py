@@ -12,7 +12,15 @@ from django.http import HttpResponse
 import csv
 from datetime import datetime
 
-from .models import User, OperationalAccount,Announcement,UserAnnouncementRead,Company
+from .models import (
+    User,
+    OperationalAccount,
+    Announcement,
+    UserAnnouncementRead,
+    Company,
+    SystemModule,
+    CompanyModuleGrant,
+)
 
 
 # ========== 内联管理运营账号（在User编辑页面显示） ==========
@@ -269,6 +277,26 @@ class UserAnnouncementReadAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """禁止手动添加已读记录（应该由用户操作自动生成）"""
         return False
+
+
+@admin.register(SystemModule)
+class SystemModuleAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'category', 'sort_order', 'is_active', 'is_builtin', 'updated_at')
+    list_filter = ('category', 'is_active', 'is_builtin')
+    search_fields = ('code', 'name', 'description')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('category', 'sort_order', 'code')
+
+
+@admin.register(CompanyModuleGrant)
+class CompanyModuleGrantAdmin(admin.ModelAdmin):
+    list_display = ('company', 'module', 'enabled', 'starts_at', 'expires_at', 'updated_by', 'updated_at')
+    list_filter = ('enabled', 'module__category', 'module', 'starts_at', 'expires_at')
+    search_fields = ('company__name', 'company__code', 'module__code', 'module__name', 'remark')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('company', 'module', 'created_by', 'updated_by')
+    ordering = ('company', 'module__sort_order')
+
 
 # ========== 公司管理（多租户核心）==========
 @admin.register(Company)

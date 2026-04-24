@@ -9,6 +9,7 @@ from decimal import Decimal
 
 from django.db import IntegrityError, transaction
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -44,6 +45,7 @@ def json_response(success: bool, data=None, message: str = "", status_code: int 
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def init_daily_shop_check(request):
     """
@@ -101,7 +103,7 @@ def init_daily_shop_check(request):
                 return json_response(False, message="project_id 必须是整数", status_code=400)
         
         # 4. 查询符合条件的店铺
-        shops = AmazonShop.objects.filter(**filters)
+        shops = AmazonShop.objects.filter(company=request.user.company, **filters)
         total_shops = shops.count()
         
         if total_shops == 0:
@@ -155,6 +157,7 @@ def init_daily_shop_check(request):
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["GET"])
 def get_daily_check_list(request):
     """
@@ -240,7 +243,10 @@ def get_daily_check_list(request):
             filters["withdrawal_processed"] = withdrawal_processed.lower() == "true"
         
         # 4. 查询记录
-        records = AmazonShopDailyCheck.objects.filter(**filters).select_related("shop")
+        records = AmazonShopDailyCheck.objects.filter(
+            shop__company=request.user.company,
+            **filters
+        ).select_related("shop")
         
         # 5. 构建返回数据
         record_list = []
@@ -278,6 +284,7 @@ def get_daily_check_list(request):
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def update_daily_check(request):
     """
@@ -318,7 +325,10 @@ def update_daily_check(request):
             return json_response(False, message="缺少必填参数: id", status_code=400)
         
         try:
-            record = AmazonShopDailyCheck.objects.get(id=record_id)
+            record = AmazonShopDailyCheck.objects.get(
+                id=record_id,
+                shop__company=request.user.company
+            )
         except AmazonShopDailyCheck.DoesNotExist:
             return json_response(False, message="巡店记录不存在", status_code=404)
         
@@ -404,6 +414,7 @@ def update_daily_check(request):
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["GET"])
 def get_upload_record_by_filename(request):
     """
@@ -440,7 +451,10 @@ def get_upload_record_by_filename(request):
         # 2. 查询记录
         from amazon.models import AmazonShopUploadRecord
         
-        records = AmazonShopUploadRecord.objects.filter(file_name=file_name).select_related("shop")
+        records = AmazonShopUploadRecord.objects.filter(
+            file_name=file_name,
+            shop__company=request.user.company
+        ).select_related("shop")
         count = records.count()
         
         # 3. 检查结果数量
@@ -482,6 +496,7 @@ def get_upload_record_by_filename(request):
 
 
 @csrf_exempt
+@login_required
 @require_http_methods(["POST"])
 def save_upload_record(request):
     """
@@ -586,7 +601,7 @@ def save_upload_record(request):
         
         # 5. 检查店铺是否存在
         try:
-            shop = AmazonShop.objects.get(id=shop_id)
+            shop = AmazonShop.objects.get(id=shop_id, company=request.user.company)
         except AmazonShop.DoesNotExist:
             return json_response(False, message=f"店铺不存在: shop_id={shop_id}", status_code=404)
         

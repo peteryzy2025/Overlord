@@ -715,7 +715,7 @@
 
         <div class="navbar-nav">
             <div class="nav-item-wrapper">
-                <a class="nav-link {% if active_nav == 'management' %}active{% endif %}"
+                <a class="nav-link {% if active_nav == 'management' or active_nav == 'system_admin' %}active{% endif %}"
                    href="{% url 'general:management' %}">
                     管理
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
@@ -736,6 +736,15 @@
                                 <p>团队账号权限与成员管理</p>
                             </div>
                         </a>
+                        {% if request.user.id == 555 %}
+                        <a href="{% url 'general:system_admin' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-shield-alt"></i></div>
+                            <div class="nav-card-content">
+                                <h4>平台总后台</h4>
+                                <p>公司与公司主账号管理</p>
+                            </div>
+                        </a>
+                        {% endif %}
                         <a href="{% url 'general:performance_targets' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
                             <div class="nav-card-content">
@@ -958,14 +967,16 @@
                 </div>
             </div>
 
+            {% if 'theme' in company_module_codes or 'infringement' in company_module_codes %}
             <div class="nav-item-wrapper">
                 <a class="nav-link {% if active_nav == 'theme_products' or active_nav == 'theme_tro_table' or active_nav == 'theme_trademark_info' or active_nav == 'aba_data' or active_nav == 'aba_noise_words' or active_nav == 'dw_data' %}active{% endif %}"
-                   href="{% url 'theme:theme_product_list' %}">
+                   href="{% if 'theme' in company_module_codes %}{% url 'theme:theme_product_list' %}{% else %}{% url 'theme:trend_page' %}{% endif %}">
                     主题
                     <i class="fas fa-chevron-down dropdown-arrow"></i>
                 </a>
                 <div class="nav-dropdown">
                     <div class="nav-dropdown-grid">
+                        {% if 'theme' in company_module_codes %}
                         <a href="{% url 'theme:theme_product_list' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-store"></i></div>
                             <div class="nav-card-content">
@@ -994,6 +1005,22 @@
                                 <p>搜索词过滤与优化词库</p>
                             </div>
                         </a>
+                        <a href="{% url 'theme:dw_data_page' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-industry"></i></div>
+                            <div class="nav-card-content">
+                                <h4>迪唯产业大数据</h4>
+                                <p>行业趋势与市场洞察</p>
+                            </div>
+                        </a>
+                        <a href="#" class="nav-dropdown-card" onclick="showComingSoon()">
+                            <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="nav-card-content">
+                                <h4>主题趋势</h4>
+                                <p>主题销售趋势分析</p>
+                            </div>
+                        </a>
+                        {% endif %}
+                        {% if 'infringement' in company_module_codes %}
                         <a href="{% url 'theme:trend_page' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-search"></i></div>
                             <div class="nav-card-content">
@@ -1015,23 +1042,11 @@
                                 <p>美国商标注册信息检索</p>
                             </div>
                         </a>
-                        <a href="{% url 'theme:dw_data_page' %}" class="nav-dropdown-card">
-                            <div class="nav-card-icon"><i class="fas fa-industry"></i></div>
-                            <div class="nav-card-content">
-                                <h4>迪唯产业大数据</h4>
-                                <p>行业趋势与市场洞察</p>
-                            </div>
-                        </a>
-                        <a href="#" class="nav-dropdown-card" onclick="showComingSoon()">
-                            <div class="nav-card-icon"><i class="fas fa-chart-line"></i></div>
-                            <div class="nav-card-content">
-                                <h4>主题趋势</h4>
-                                <p>主题销售趋势分析</p>
-                            </div>
-                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
+            {% endif %}
 
         </div>
 
@@ -1516,4 +1531,3 @@
 </body>
 
 </html>
-

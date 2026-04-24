@@ -2,6 +2,15 @@
 
 {% block sidebar %}
     <ul class="sidebar-menu">
+        {% if request.user.id == 555 %}
+        <li class="sidebar-item">
+            <a href="{% url 'general:system_admin' %}"
+               class="sidebar-link {% if active_page == 'system_admin' %}active{% endif %}">
+                <i class="fas fa-shield-alt sidebar-icon"></i>
+                <span>平台总后台</span>
+            </a>
+        </li>
+        {% endif %}
         <li class="sidebar-item">
             <a href="{% url 'general:user_management' %}"
                class="sidebar-link {% if active_page == 'user_management' %}active{% endif %}">

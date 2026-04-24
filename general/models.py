@@ -40,7 +40,15 @@ class Company(models.Model):
 
     # 可选：公司级配置（如功能开关）
     settings = models.JSONField('公司配置', default=dict, blank=True,
-                                help_text='{"enable_risk_check": true, "max_shops": 100}')  # 预留字段，暂时没用
+                                help_text='{"enable_risk_check": true}')  # 预留字段，暂时没用
+
+    modules = models.ManyToManyField(
+        'SystemModule',
+        through='CompanyModuleGrant',
+        related_name='companies',
+        blank=True,
+        verbose_name='开通模块'
+    )
 
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
@@ -52,6 +60,33 @@ class Company(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class SystemModule(models.Model):
+    """
+    系统模块字典：定义平台可授权给公司的功能模块。
+    公司是否能使用某个模块，由 CompanyModuleGrant 决定。
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    code = models.SlugField('模块编码', max_length=64, unique=True)
+    name = models.CharField('模块名称', max_length=100)
+    category = models.CharField('模块分类', max_length=50, blank=True)
+    description = models.TextField('模块说明', blank=True)
+    icon = models.CharField('图标', max_length=80, blank=True)
+    sort_order = models.IntegerField('排序', default=0)
+    is_active = models.BooleanField('是否启用', default=True)
+    is_builtin = models.BooleanField('系统内置', default=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'system_modules'
+        verbose_name = '系统模块'
+        verbose_name_plural = verbose_name
+        ordering = ['category', 'sort_order', 'code']
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
 
 
 class Project(models.Model):
@@ -366,6 +401,73 @@ class User(AbstractUser):
             current = current.manager
 
         return False
+
+
+class CompanyModuleGrant(models.Model):
+    """
+    公司模块授权：定义某个公司是否开通某个系统模块。
+    这是公司级功能开关，不等同于用户级 PermissionConfig。
+    """
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.CASCADE,
+        related_name='module_grants',
+        verbose_name='公司'
+    )
+    module = models.ForeignKey(
+        SystemModule,
+        on_delete=models.CASCADE,
+        related_name='company_grants',
+        verbose_name='模块'
+    )
+    enabled = models.BooleanField('是否开通', default=True)
+    starts_at = models.DateTimeField('开始时间', null=True, blank=True)
+    expires_at = models.DateTimeField('到期时间', null=True, blank=True)
+    settings = models.JSONField('模块配置', default=dict, blank=True)
+    remark = models.TextField('备注', blank=True)
+    created_by = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_module_grants',
+        verbose_name='创建人'
+    )
+    updated_by = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_module_grants',
+        verbose_name='更新人'
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'company_module_grants'
+        verbose_name = '公司模块授权'
+        verbose_name_plural = verbose_name
+        unique_together = [['company', 'module']]
+        indexes = [
+            models.Index(fields=['company', 'enabled'], name='idx_grant_company_enabled'),
+            models.Index(fields=['module', 'enabled'], name='idx_grant_module_enabled'),
+        ]
+
+    def __str__(self):
+        status = '开通' if self.enabled else '停用'
+        return f"{self.company.name} / {self.module.name} / {status}"
+
+    def is_effective(self, at_time=None):
+        at_time = at_time or timezone.now()
+        if not self.enabled:
+            return False
+        if self.starts_at and self.starts_at > at_time:
+            return False
+        if self.expires_at and self.expires_at < at_time:
+            return False
+        return True
 
 
 class OperationalAccount(models.Model):

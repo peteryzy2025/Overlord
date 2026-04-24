@@ -62,6 +62,34 @@ def get_user_operation_permissions(user):
     return permissions
 
 
+def get_company_amazon_shop_queryset(user):
+    queryset = AmazonShop.objects.all()
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(company=user.company)
+    return queryset
+
+
+def get_company_temu_shop_queryset(user):
+    queryset = TemuShop.objects.all()
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(company=user.company)
+    return queryset
+
+
+def get_company_operational_account_queryset(user):
+    queryset = OperationalAccount.objects.all()
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(user__company=user.company)
+    return queryset
+
+
+def get_company_user_queryset(user):
+    queryset = User.objects.all()
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(company=user.company)
+    return queryset
+
+
 @login_required
 def get_operator_pie_chart_api(request):
     """
@@ -111,7 +139,7 @@ def get_operator_pie_chart_api(request):
         shop_ids_by_platform = {}
         if filter_type != 'none':
             shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
-                filter_type, filter_value, platform_info
+                filter_type, filter_value, platform_info, user=user
             )
 
         # 根据filter_type决定聚合维度
@@ -120,7 +148,7 @@ def get_operator_pie_chart_api(request):
         # ========== 场景1：全部分组/全部人员 ==========
         if filter_type == 'all' or (filter_type == 'ops_id' and filter_value == 'all'):
             # 返回所有一级分组（ops_group）的单量占比
-            groups = OperationalAccount.objects.exclude(
+            groups = get_company_operational_account_queryset(user).exclude(
                 ops_group__isnull=True
             ).exclude(
                 ops_group=''
@@ -128,7 +156,7 @@ def get_operator_pie_chart_api(request):
 
             for group in groups:
                 # 获取组内所有用户ID
-                user_ids = OperationalAccount.objects.filter(
+                user_ids = get_company_operational_account_queryset(user).filter(
                     ops_group=group
                 ).values_list('user_id', flat=True)
 
@@ -137,7 +165,7 @@ def get_operator_pie_chart_api(request):
                 temu_count = 0
 
                 if shop_ids_by_platform.get('amazon'):
-                    amazon_shops = AmazonShop.objects.filter(ops_id__in=user_ids)
+                    amazon_shops = get_company_amazon_shop_queryset(user).filter(ops_id__in=user_ids)
                     amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
                     lingxing_shops = LingXingAmazonShop.objects.filter(
                         amazon_shop_id__in=amazon_shop_ids
@@ -151,7 +179,7 @@ def get_operator_pie_chart_api(request):
                     ).exclude(order_status='Canceled').count()
 
                 if shop_ids_by_platform.get('temu'):
-                    temu_shops = TemuShop.objects.filter(ops_id__in=user_ids)
+                    temu_shops = get_company_temu_shop_queryset(user).filter(ops_id__in=user_ids)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
                     # 先获取所有订单，提取退货订单号
@@ -183,11 +211,11 @@ def get_operator_pie_chart_api(request):
         # ========== 场景2：具体分组 ==========
         elif filter_type == 'ops_group':
             # 返回组内每个人员的单量占比
-            user_ids = OperationalAccount.objects.filter(
+            user_ids = get_company_operational_account_queryset(user).filter(
                 ops_group=filter_value
             ).values_list('user_id', flat=True)
 
-            users = User.objects.filter(id__in=user_ids)
+            users = get_company_user_queryset(user).filter(id__in=user_ids)
 
             for u in users:
                 # 统计该成员的订单
@@ -195,7 +223,7 @@ def get_operator_pie_chart_api(request):
                 temu_count = 0
 
                 if shop_ids_by_platform.get('amazon'):
-                    amazon_shops = AmazonShop.objects.filter(ops_id=u.id)
+                    amazon_shops = get_company_amazon_shop_queryset(user).filter(ops_id=u.id)
                     amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
                     lingxing_shops = LingXingAmazonShop.objects.filter(
                         amazon_shop_id__in=amazon_shop_ids
@@ -209,7 +237,7 @@ def get_operator_pie_chart_api(request):
                     ).exclude(order_status='Canceled').count()
 
                 if shop_ids_by_platform.get('temu'):
-                    temu_shops = TemuShop.objects.filter(ops_id=u.id)
+                    temu_shops = get_company_temu_shop_queryset(user).filter(ops_id=u.id)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
                     # 先获取所有订单，提取退货订单号
@@ -365,12 +393,12 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
 
         # 场景 B：查询具体分组 → 动态检测组内平台
         elif filter_type == 'ops_group':
-            user_ids = OperationalAccount.objects.filter(
+            user_ids = get_company_operational_account_queryset(user).filter(
                 ops_group=filter_value
             ).values_list('user_id', flat=True)
 
-            has_amazon = AmazonShop.objects.filter(ops_id__in=user_ids).exists()
-            has_temu = TemuShop.objects.filter(ops_id__in=user_ids).exists()
+            has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id__in=user_ids).exists()
+            has_temu = get_company_temu_shop_queryset(user).filter(ops_id__in=user_ids).exists()
 
             if has_amazon and has_temu:
                 return filter_type, filter_value, {"source": "mixed"}
@@ -383,8 +411,8 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
 
         # 场景 C：查询具体人员 → 动态检测个人平台
         elif filter_type == 'ops_id':
-            has_amazon = AmazonShop.objects.filter(ops_id=filter_value).exists()
-            has_temu = TemuShop.objects.filter(ops_id=filter_value).exists()
+            has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id=filter_value).exists()
+            has_temu = get_company_temu_shop_queryset(user).filter(ops_id=filter_value).exists()
 
             if has_amazon and has_temu:
                 return filter_type, filter_value, {"source": "mixed"}
@@ -414,15 +442,15 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
             if ops_id_raw and ops_id_raw not in ['all', '全部人员']:
                 try:
                     target_user_id = int(ops_id_raw)
-                    target_user = User.objects.filter(
+                    target_user = get_company_user_queryset(user).filter(
                         id=target_user_id,
                         operational_account__ops_group=user_group
                     ).first()
 
                     if target_user:
                         # 检测目标用户平台
-                        has_amazon = AmazonShop.objects.filter(ops_id=target_user_id).exists()
-                        has_temu = TemuShop.objects.filter(ops_id=target_user_id).exists()
+                        has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id=target_user_id).exists()
+                        has_temu = get_company_temu_shop_queryset(user).filter(ops_id=target_user_id).exists()
 
                         if has_amazon and has_temu:
                             platform_info = {"source": "mixed"}
@@ -443,12 +471,12 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
             elif ops_group_raw and ops_group_raw not in ['all', '全部分组']:
                 if ops_group_raw.strip() == user_group:
                     # 检测组内平台
-                    user_ids = OperationalAccount.objects.filter(
+                    user_ids = get_company_operational_account_queryset(user).filter(
                         ops_group=user_group
                     ).values_list('user_id', flat=True)
 
-                    has_amazon = AmazonShop.objects.filter(ops_id__in=user_ids).exists()
-                    has_temu = TemuShop.objects.filter(ops_id__in=user_ids).exists()
+                    has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id__in=user_ids).exists()
+                    has_temu = get_company_temu_shop_queryset(user).filter(ops_id__in=user_ids).exists()
 
                     if has_amazon and has_temu:
                         platform_info = {"source": "mixed"}
@@ -465,12 +493,12 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
 
             # 情况3：默认查询全组
             else:
-                user_ids = OperationalAccount.objects.filter(
+                user_ids = get_company_operational_account_queryset(user).filter(
                     ops_group=user_group
                 ).values_list('user_id', flat=True)
 
-                has_amazon = AmazonShop.objects.filter(ops_id__in=user_ids).exists()
-                has_temu = TemuShop.objects.filter(ops_id__in=user_ids).exists()
+                has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id__in=user_ids).exists()
+                has_temu = get_company_temu_shop_queryset(user).filter(ops_id__in=user_ids).exists()
 
                 if has_amazon and has_temu:
                     platform_info = {"source": "mixed"}
@@ -489,8 +517,8 @@ def determine_filter_type_and_value_with_platform(request, data, permissions):
     # ========== 权限3: ops - 强制查询自己 ==========
     elif 'ops' in permissions:
         user_id = user.id
-        has_amazon = AmazonShop.objects.filter(ops_id=user_id).exists()
-        has_temu = TemuShop.objects.filter(ops_id=user_id).exists()
+        has_amazon = get_company_amazon_shop_queryset(user).filter(ops_id=user_id).exists()
+        has_temu = get_company_temu_shop_queryset(user).filter(ops_id=user_id).exists()
 
         if has_amazon and has_temu:
             platform_info = {"source": "mixed"}
@@ -992,9 +1020,8 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             ).values_list('id', flat=True))
             print(f"[成功] Amazon多选人员查询: ops_ids={ops_ids} -> 找到 {len(result['amazon'])} 个店铺")
         elif filter_type == 'ops_group':
-            user_ids = OperationalAccount.objects.filter(
-                ops_group=filter_value
-            ).values_list('user_id', flat=True)
+            account_queryset = get_company_operational_account_queryset(user) if user else OperationalAccount.objects.all()
+            user_ids = account_queryset.filter(ops_group=filter_value).values_list('user_id', flat=True)
             result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
@@ -1002,9 +1029,8 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
         elif filter_type == 'ops_group_list':
             # 多选分组
             groups = filter_value if isinstance(filter_value, list) else [filter_value]
-            user_ids = OperationalAccount.objects.filter(
-                ops_group__in=groups
-            ).values_list('user_id', flat=True)
+            account_queryset = get_company_operational_account_queryset(user) if user else OperationalAccount.objects.all()
+            user_ids = account_queryset.filter(ops_group__in=groups).values_list('user_id', flat=True)
             result['amazon'] = list(amazon_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
@@ -1027,9 +1053,8 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
             ).values_list('id', flat=True))
             print(f"[成功] Temu多选人员查询: ops_ids={ops_ids} -> 找到 {len(result['temu'])} 个店铺")
         elif filter_type == 'ops_group':
-            user_ids = OperationalAccount.objects.filter(
-                ops_group=filter_value
-            ).values_list('user_id', flat=True)
+            account_queryset = get_company_operational_account_queryset(user) if user else OperationalAccount.objects.all()
+            user_ids = account_queryset.filter(ops_group=filter_value).values_list('user_id', flat=True)
             result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
@@ -1037,9 +1062,8 @@ def get_shop_ids_by_filter_with_platform(filter_type, filter_value, platform_inf
         elif filter_type == 'ops_group_list':
             # 多选分组
             groups = filter_value if isinstance(filter_value, list) else [filter_value]
-            user_ids = OperationalAccount.objects.filter(
-                ops_group__in=groups
-            ).values_list('user_id', flat=True)
+            account_queryset = get_company_operational_account_queryset(user) if user else OperationalAccount.objects.all()
+            user_ids = account_queryset.filter(ops_group__in=groups).values_list('user_id', flat=True)
             result['temu'] = list(temu_base_qs.filter(
                 ops_id__in=list(user_ids)
             ).values_list('id', flat=True))
@@ -1651,7 +1675,7 @@ def get_operator_sales_pie_chart_api(request):
         shop_ids_by_platform = {}
         if filter_type != 'none':
             shop_ids_by_platform = get_shop_ids_by_filter_with_platform(
-                filter_type, filter_value, platform_info
+                filter_type, filter_value, platform_info, user=user
             )
 
         # 核心：按场景统计销量（排除退货后的商品件数）
@@ -1660,7 +1684,7 @@ def get_operator_sales_pie_chart_api(request):
         # ========== 场景1：全部分组/全部人员 ==========
         if filter_type == 'all' or (filter_type == 'ops_id' and filter_value == 'all'):
             # 返回所有一级分组（ops_group）的销量占比
-            groups = OperationalAccount.objects.exclude(
+            groups = get_company_operational_account_queryset(user).exclude(
                 ops_group__isnull=True
             ).exclude(
                 ops_group=''
@@ -1668,7 +1692,7 @@ def get_operator_sales_pie_chart_api(request):
 
             for group in groups:
                 # 获取组内所有用户ID
-                user_ids = OperationalAccount.objects.filter(
+                user_ids = get_company_operational_account_queryset(user).filter(
                     ops_group=group
                 ).values_list('user_id', flat=True)
 
@@ -1678,7 +1702,7 @@ def get_operator_sales_pie_chart_api(request):
 
                 # Amazon销量（排除退货）
                 if shop_ids_by_platform.get('amazon'):
-                    amazon_shops = AmazonShop.objects.filter(ops_id__in=user_ids)
+                    amazon_shops = get_company_amazon_shop_queryset(user).filter(ops_id__in=user_ids)
                     amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
                     lingxing_shops = LingXingAmazonShop.objects.filter(
                         amazon_shop_id__in=amazon_shop_ids
@@ -1696,7 +1720,7 @@ def get_operator_sales_pie_chart_api(request):
 
                 # Temu销量（排除退货）
                 if shop_ids_by_platform.get('temu'):
-                    temu_shops = TemuShop.objects.filter(ops_id__in=user_ids)
+                    temu_shops = get_company_temu_shop_queryset(user).filter(ops_id__in=user_ids)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
                     if temu_shop_ids:
@@ -1732,18 +1756,18 @@ def get_operator_sales_pie_chart_api(request):
         # ========== 场景2：具体分组 ==========
         elif filter_type == 'ops_group':
             # 返回组内每个人员的销量占比
-            user_ids = OperationalAccount.objects.filter(
+            user_ids = get_company_operational_account_queryset(user).filter(
                 ops_group=filter_value
             ).values_list('user_id', flat=True)
 
-            users = User.objects.filter(id__in=user_ids)
+            users = get_company_user_queryset(user).filter(id__in=user_ids)
 
             for u in users:
                 amazon_sales = 0
                 temu_sales = 0
 
                 if shop_ids_by_platform.get('amazon'):
-                    amazon_shops = AmazonShop.objects.filter(ops_id=u.id)
+                    amazon_shops = get_company_amazon_shop_queryset(user).filter(ops_id=u.id)
                     amazon_shop_ids = list(amazon_shops.values_list('id', flat=True))
                     lingxing_shops = LingXingAmazonShop.objects.filter(
                         amazon_shop_id__in=amazon_shop_ids
@@ -1760,7 +1784,7 @@ def get_operator_sales_pie_chart_api(request):
                         ).aggregate(total=Sum('quantity_ordered'))['total'] or 0
 
                 if shop_ids_by_platform.get('temu'):
-                    temu_shops = TemuShop.objects.filter(ops_id=u.id)
+                    temu_shops = get_company_temu_shop_queryset(user).filter(ops_id=u.id)
                     temu_shop_ids = list(temu_shops.values_list('id', flat=True))
 
                     if temu_shop_ids:

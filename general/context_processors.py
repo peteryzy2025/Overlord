@@ -3,6 +3,8 @@
 import json
 from django.utils.safestring import mark_safe
 
+from general.module_utils import get_user_company_module_codes
+
 
 def announcements_processor(request):
     """
@@ -22,8 +24,11 @@ def user_permissions_processor(request):
     供模板中 {% if 555 in user_permissions %} 使用
     """
     user_permissions = []
+    company_module_codes = []
     if request.user.is_authenticated:
         user_permissions = list(request.user.permission_configs.values_list('code', flat=True))
+        company_module_codes = sorted(get_user_company_module_codes(request.user))
     return {
         'user_permissions': user_permissions,
+        'company_module_codes': company_module_codes,
     }

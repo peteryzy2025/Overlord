@@ -32,6 +32,13 @@ def get_date_range_from_option(option):
     return base_get_date_range(option)
 
 
+def get_company_amazon_shop_queryset(user):
+    queryset = AmazonShop.objects.all()
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(company=user.company)
+    return queryset
+
+
 @login_required(login_url='/login/')
 def amazon_daily_check_report_page(request):
     """巡店报告管理页面渲染"""
@@ -106,7 +113,7 @@ def get_amazon_daily_check_list_api(request):
             })
 
         # 获取权限范围内的店铺
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
+        shop_ids = get_shop_ids_by_filter(filter_type, filter_value, user=user)
 
         # 构建查询条件
         daily_check_filter = Q(shop_id__in=list(shop_ids))
@@ -123,8 +130,9 @@ def get_amazon_daily_check_list_api(request):
                 daily_check_filter &= Q(shop__ops_id__in=operator_ids)
             elif 'ops_group' in permissions:
                 valid_shop_ids = set(shop_ids)
-                operator_shops = AmazonShop.objects.filter(ops_id__in=operator_ids).values_list('id', flat=True)
-                valid_operator_ids = AmazonShop.objects.filter(
+                base_shop_qs = get_company_amazon_shop_queryset(user)
+                operator_shops = base_shop_qs.filter(ops_id__in=operator_ids).values_list('id', flat=True)
+                valid_operator_ids = base_shop_qs.filter(
                     id__in=valid_shop_ids.intersection(operator_shops)
                 ).values_list('ops_id', flat=True)
                 daily_check_filter &= Q(shop__ops_id__in=valid_operator_ids)
@@ -236,7 +244,7 @@ def get_amazon_daily_check_list_api(request):
         today = timezone.now().date()
         if (not current_start or not current_end) or (current_start <= today <= current_end):
             # 获取所有可见店铺
-            all_shops = AmazonShop.objects.filter(id__in=list(shop_ids))
+            all_shops = get_company_amazon_shop_queryset(user).filter(id__in=list(shop_ids))
             # 统计已巡检的店铺
             checked_today = AmazonShopDailyCheck.objects.filter(
                 shop_id__in=list(shop_ids),
@@ -326,14 +334,14 @@ def get_daily_check_operators_api(request):
 
         # 判断权限范围
         if 'ops_all' in permissions:
-            shops = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
+            shops = get_company_amazon_shop_queryset(user).filter(ops__isnull=False).select_related('ops')
         elif 'ops_group' in permissions and hasattr(user, 'operational_account') and user.operational_account.ops_group:
             group_name = user.operational_account.ops_group
-            shops = AmazonShop.objects.filter(
+            shops = get_company_amazon_shop_queryset(user).filter(
                 ops__operational_account__ops_group=group_name
             ).select_related('ops')
         else:
-            shops = AmazonShop.objects.filter(ops=user).select_related('ops')
+            shops = get_company_amazon_shop_queryset(user).filter(ops=user).select_related('ops')
 
         # 去重并组装数据
         operators_dict = {}
@@ -401,6 +409,8 @@ def reset_today_daily_check_api(request):
 
         # 构建查询条件：获取今日有巡检记录的店铺
         reset_filter = Q(check_date=today)
+        if getattr(user, 'company', None):
+            reset_filter &= Q(shop__company=user.company)
 
         # 根据筛选条件中的运营人员范围进行限制（如果提供了）
         operator_ids = data.get('operator_ids', [])

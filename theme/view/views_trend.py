@@ -9,8 +9,8 @@ import string
 from collections import defaultdict
 from nltk.tokenize import TweetTokenizer
 # from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
-from django.contrib.auth.decorators import login_required
 from theme.models import *
+from general.module_utils import module_access_required
 from general.models import UserOperationLog
 
 # 中风险状态码集合（美标网）- 只有这些状态码才视为中风险
@@ -26,7 +26,7 @@ LOW_RISK_NAME_TYPES = {1, 9}
 SPECIAL_INTL_CLASSES = {'006', '015', '016', '018', '024', '025', '027', '035'}
 
 
-@login_required
+@module_access_required('infringement', '侵权板块')
 def trend_page(request):
     nice_classifications = list(
         NiceClassification.objects.all().order_by('code').values('code', 'name')
@@ -41,6 +41,7 @@ def trend_page(request):
 
 @require_POST
 @csrf_exempt
+@module_access_required('infringement', '侵权板块')
 def trend_search(request):
     query = request.POST.get('trendQueryInput', '').strip()
     mode = int(request.POST.get('searchMode', 1))
@@ -584,7 +585,7 @@ def should_skip_word(word):
     return False
 
 
-@login_required
+@module_access_required('infringement', '侵权板块')
 def words_split_api(request):
     theme = (request.POST.get('theme') or request.GET.get('theme') or '').strip()
     if not theme:

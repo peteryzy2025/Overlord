@@ -7,9 +7,11 @@ from django.views.decorators.http import require_http_methods
 from django.core.paginator import Paginator
 from django.db.models import Q
 
+from general.module_utils import module_access_required
 from theme.models import MarketCategory, NicheMarket
 
 
+@module_access_required('theme', '主题板块')
 def dw_data_page(request):
     """
     迪唯产业大数据模型页面
@@ -18,6 +20,7 @@ def dw_data_page(request):
 
 
 @require_http_methods(["GET"])
+@module_access_required('theme', '主题板块')
 def api_market_categories(request):
     """
     获取市场分类列表 API
@@ -119,6 +122,7 @@ def build_category_tree(parent_id=None):
 
 
 @require_http_methods(["GET"])
+@module_access_required('theme', '主题板块')
 def api_niche_markets(request):
     """
     获取细分市场数据列表 API

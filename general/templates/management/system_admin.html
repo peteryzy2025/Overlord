@@ -1,0 +1,905 @@
+{% extends 'base/base_management.html' %}
+{% load static %}
+
+{% block title %}平台总后台 - Overlord{% endblock %}
+
+{% block extra_css %}
+    <style>
+        .system-table table {
+            min-width: 1120px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+            padding: 0 0.55rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .status-badge.active {
+            color: #047857;
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .status-badge.disabled {
+            color: #b91c1c;
+            background: rgba(239, 68, 68, 0.12);
+        }
+
+        .admin-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .admin-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+            font-size: 0.78rem;
+        }
+
+        .module-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
+            color: var(--accent-color);
+            background: rgba(59, 130, 246, 0.08);
+            font-size: 0.78rem;
+        }
+
+        .action-group {
+            display: inline-flex;
+            gap: 0.75rem;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .modal-content.system-modal {
+            width: 92%;
+            max-width: 1080px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .form-grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .permission-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 0.7rem;
+            max-height: 260px;
+            overflow: auto;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-secondary);
+        }
+
+        #companyModuleList {
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            max-height: 430px;
+        }
+
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            padding: 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            cursor: pointer;
+        }
+
+        .permission-item input {
+            margin-top: 0.15rem;
+        }
+
+        .permission-item.is-required {
+            border-color: rgba(239, 68, 68, 0.45);
+        }
+
+        .permission-code {
+            color: var(--accent-color);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .permission-name {
+            color: var(--text-primary);
+            font-size: 0.86rem;
+            font-weight: 600;
+        }
+
+        .permission-desc {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            line-height: 1.35;
+            margin-top: 0.15rem;
+        }
+
+        .empty-row {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 2rem !important;
+        }
+
+        .header-stats {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+
+        .stat-item b {
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="tab-content">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-shield-alt" style="color: var(--accent-color); margin-right: 0.5rem;"></i>平台总后台
+            </h1>
+            <div class="header-stats">
+                <span class="stat-item">公司总数：<b id="statCompanyCount">-</b></span>
+                <span class="stat-item">正常公司：<b id="statActiveCompanyCount">-</b></span>
+                <span class="stat-item">停用公司：<b id="statDisabledCompanyCount">-</b></span>
+                <span class="stat-item">用户总数：<b id="statUserCount">-</b></span>
+            </div>
+            <button class="btn btn-create" onclick="openCreateCompanyModal()">
+                <i class="fas fa-plus" style="margin-right: 0.5rem;"></i>新建公司
+            </button>
+        </div>
+
+        <div class="filter-card">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label class="filter-label" for="statusFilter">状态</label>
+                    <select id="statusFilter" class="form-select" onchange="reloadCompanies()">
+                        <option value="">全部状态</option>
+                        <option value="1">正常</option>
+                        <option value="2">停用</option>
+                    </select>
+                </div>
+                <div class="filter-group longsearch">
+                    <label class="filter-label" for="searchInput">搜索</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="公司名称 / 公司代码"
+                           onkeyup="if(event.key === 'Enter') reloadCompanies()">
+                </div>
+                <div class="filter-actions">
+                    <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" onclick="reloadCompanies()" title="查询"></button>
+                    <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" onclick="resetFilters()" title="重置"></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="data-card">
+            <div class="table-container table-bordered system-table">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>公司名称</th>
+                        <th>公司代码</th>
+                        <th>状态</th>
+                        <th>用户数</th>
+                        <th>开通模块</th>
+                        <th>公司管理员</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="companyTableBody">
+                    <tr>
+                        <td colspan="9" class="empty-row">加载中...</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-container" id="paginationContainer">
+                <div class="pagination-info">
+                    <div class="page-size-wrapper" id="pageSizeWrapper">
+                        <span class="page-size-label">每页显示：</span>
+                        <div class="page-size-dropdown-wrapper" style="position: relative;">
+                            <button class="page-size-trigger" id="pageSizeTrigger" onclick="togglePageSizeDropdown()">
+                                <span id="pageSizeText">20条</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="page-size-dropdown" id="pageSizeDropdown">
+                                <div class="page-size-option" data-page-size="10" onclick="changePageSize(10)">10条</div>
+                                <div class="page-size-option selected" data-page-size="20" onclick="changePageSize(20)">20条</div>
+                                <div class="page-size-option" data-page-size="50" onclick="changePageSize(50)">50条</div>
+                                <div class="page-size-option" data-page-size="100" onclick="changePageSize(100)">100条</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pagination-new" id="paginationNew"></div>
+                <div class="pagination-jump">
+                    <span>跳至</span>
+                    <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeypress="handlePageJump(event)">
+                    <span>页</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="companyModalOverlay" onclick="if(event.target === this) return;">
+        <div class="modal-content system-modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="companyModalTitle">新建公司</h2>
+                <button class="modal-close" onclick="closeCompanyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="companyForm">
+                    <input type="hidden" id="companyId">
+                    <div class="section-title"><i class="fas fa-building"></i> 公司信息</div>
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="companyName">公司名称 <span class="required">*</span></label>
+                            <input type="text" id="companyName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="companyCode">公司代码</label>
+                            <input type="text" id="companyCode" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="companyStatus">状态</label>
+                            <select id="companyStatus" class="form-select">
+                                <option value="1">正常</option>
+                                <option value="2">停用</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="companySettings">公司配置 JSON</label>
+                            <textarea id="companySettings" class="form-control" rows="3">{}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="section-title"><i class="fas fa-layer-group"></i> 模块授权</div>
+                    <div class="permission-list" id="companyModuleList"></div>
+
+                    <div id="companyOwnerSection">
+                        <div class="section-title"><i class="fas fa-user-shield"></i> 公司主账号</div>
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="ownerUsername">用户名 <span class="required">*</span></label>
+                                <input type="text" id="ownerUsername" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ownerFirstName">姓名 <span class="required">*</span></label>
+                                <input type="text" id="ownerFirstName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ownerPassword">密码</label>
+                                <input type="text" id="ownerPassword" class="form-control password-input" placeholder="默认 default123">
+                            </div>
+                            <div class="form-group">
+                                <label for="ownerPhone">手机号</label>
+                                <input type="text" id="ownerPhone" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="section-title"><i class="fas fa-key"></i> 权限</div>
+                        <div class="permission-list" id="companyPermissionList"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCompanyModal()">取消</button>
+                <button type="button" class="btn btn-save-modal" id="companySaveButton" onclick="saveCompany()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="ownerModalOverlay" onclick="if(event.target === this) return;">
+        <div class="modal-content system-modal">
+            <div class="modal-header">
+                <h2 class="modal-title" id="ownerModalTitle">创建公司主账号</h2>
+                <button class="modal-close" onclick="closeOwnerModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="ownerForm">
+                    <input type="hidden" id="ownerCompanyId">
+                    <div class="form-grid-2">
+                        <div class="form-group">
+                            <label for="newOwnerUsername">用户名 <span class="required">*</span></label>
+                            <input type="text" id="newOwnerUsername" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newOwnerFirstName">姓名 <span class="required">*</span></label>
+                            <input type="text" id="newOwnerFirstName" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newOwnerPassword">密码</label>
+                            <input type="text" id="newOwnerPassword" class="form-control password-input" placeholder="默认 default123">
+                        </div>
+                        <div class="form-group">
+                            <label for="newOwnerPhone">手机号</label>
+                            <input type="text" id="newOwnerPhone" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="section-title"><i class="fas fa-key"></i> 权限</div>
+                    <div class="permission-list" id="ownerPermissionList"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeOwnerModal()">取消</button>
+                <button type="button" class="btn btn-save-modal" onclick="createOwner()">保存</button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        const COMPANY_ADMIN_CODE = 555;
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalItems = 0;
+        let permissions = [];
+        let systemModules = [];
+        let companiesById = new Map();
+        let editingCompanyId = null;
+
+        document.addEventListener('DOMContentLoaded', async function () {
+            document.getElementById('companyTableBody').addEventListener('click', handleCompanyAction);
+            await loadModules();
+            await loadPermissions();
+            await loadCompanies();
+        });
+
+        function getCsrfToken() {
+            const name = 'csrftoken';
+            const cookies = document.cookie ? document.cookie.split(';') : [];
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === `${name}=`) {
+                    return decodeURIComponent(cookie.substring(name.length + 1));
+                }
+            }
+            return '';
+        }
+
+        function notify(message, type = 'info') {
+            if (window.SearchableSelect && SearchableSelect.notify) {
+                SearchableSelect.notify(message, type);
+            } else if (window.showNotification) {
+                window.showNotification(message, type);
+            } else {
+                alert(message);
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        async function requestJson(url, options = {}) {
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken(),
+                    ...(options.headers || {})
+                }
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || result.message || '请求失败');
+            }
+            return result;
+        }
+
+        async function loadPermissions() {
+            try {
+                const result = await requestJson('/api/system-admin/permissions/', {method: 'GET'});
+                permissions = result.data || [];
+                renderPermissionList('companyPermissionList');
+                renderPermissionList('ownerPermissionList');
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        async function loadModules() {
+            try {
+                const result = await requestJson('/api/system-admin/modules/', {method: 'GET'});
+                systemModules = result.data || [];
+                renderModuleList();
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        async function loadCompanies() {
+            try {
+                const params = new URLSearchParams({
+                    page: currentPage,
+                    page_size: pageSize,
+                    status: document.getElementById('statusFilter').value,
+                    search: document.getElementById('searchInput').value.trim()
+                });
+                const result = await requestJson(`/api/system-admin/companies/?${params}`, {method: 'GET'});
+                totalItems = result.total || 0;
+                renderStats(result.stats || {});
+                renderCompanyTable(result.data || []);
+                renderPagination(result.page || currentPage, result.page_size || pageSize);
+            } catch (error) {
+                document.getElementById('companyTableBody').innerHTML =
+                    `<tr><td colspan="9" class="empty-row">${escapeHtml(error.message)}</td></tr>`;
+                notify(error.message, 'error');
+            }
+        }
+
+        function reloadCompanies() {
+            currentPage = 1;
+            loadCompanies();
+        }
+
+        function resetFilters() {
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('searchInput').value = '';
+            reloadCompanies();
+        }
+
+        function renderStats(stats) {
+            document.getElementById('statCompanyCount').textContent = stats.company_count ?? '-';
+            document.getElementById('statActiveCompanyCount').textContent = stats.active_company_count ?? '-';
+            document.getElementById('statDisabledCompanyCount').textContent = stats.disabled_company_count ?? '-';
+            document.getElementById('statUserCount').textContent = stats.user_count ?? '-';
+        }
+
+        function renderCompanyTable(companies) {
+            const body = document.getElementById('companyTableBody');
+            companiesById = new Map(companies.map(company => [Number(company.id), company]));
+            if (!companies.length) {
+                body.innerHTML = '<tr><td colspan="9" class="empty-row">暂无数据</td></tr>';
+                return;
+            }
+
+            body.innerHTML = companies.map(company => {
+                const moduleChips = renderModuleChips(company.enabled_module_codes || []);
+                const admins = company.admins && company.admins.length
+                    ? `<div class="admin-list">${company.admins.map(admin => `
+                        <span class="admin-chip" title="ID ${admin.id}">
+                            <i class="fas fa-user-shield"></i>
+                            ${escapeHtml(admin.first_name || admin.username)}
+                        </span>
+                    `).join('')}</div>`
+                    : '<span style="color: var(--text-tertiary);">-</span>';
+
+                const nextStatus = company.status === 1 ? 2 : 1;
+                const statusActionText = company.status === 1 ? '停用' : '启用';
+                const statusActionClass = company.status === 1 ? 'link-danger' : '';
+
+                return `
+                    <tr>
+                        <td>${company.id}</td>
+                        <td>${escapeHtml(company.name)}</td>
+                        <td>${escapeHtml(company.code || '-')}</td>
+                        <td>
+                            <span class="status-badge ${company.status === 1 ? 'active' : 'disabled'}">
+                                ${escapeHtml(company.status_label)}
+                            </span>
+                        </td>
+                        <td>${company.user_count}</td>
+                        <td>${moduleChips}</td>
+                        <td>${admins}</td>
+                        <td>${escapeHtml(company.created_at)}</td>
+                        <td>
+                            <div class="action-group">
+                                <span class="link" data-action="edit-company" data-company-id="${company.id}">
+                                    <i class="fas fa-pen"></i> 编辑
+                                </span>
+                                <span class="link" data-action="add-owner" data-company-id="${company.id}">
+                                    <i class="fas fa-user-plus"></i> 主账号
+                                </span>
+                                <span class="link ${statusActionClass}" data-action="toggle-status" data-company-id="${company.id}" data-next-status="${nextStatus}">
+                                    ${statusActionText}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function handleCompanyAction(event) {
+            const actionEl = event.target.closest('[data-action]');
+            if (!actionEl) return;
+
+            const companyId = Number(actionEl.dataset.companyId);
+            const company = companiesById.get(companyId);
+            if (!company) {
+                notify('未找到公司数据，请刷新后重试', 'warning');
+                return;
+            }
+
+            if (actionEl.dataset.action === 'edit-company') {
+                openEditCompanyModal(companyId);
+            } else if (actionEl.dataset.action === 'add-owner') {
+                openOwnerModal(companyId);
+            } else if (actionEl.dataset.action === 'toggle-status') {
+                toggleCompanyStatus(companyId, Number(actionEl.dataset.nextStatus));
+            }
+        }
+
+        function renderPagination(page, size) {
+            const totalPages = Math.max(Math.ceil(totalItems / size), 1);
+            currentPage = Math.min(page, totalPages);
+            document.getElementById('paginationNew').innerHTML = buildPaginationHtml(totalPages);
+            updatePaginationStats();
+        }
+
+        function buildPaginationHtml(totalPages) {
+            let html = `
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+            `;
+
+            const pages = [];
+            if (totalPages <= 7) {
+                for (let i = 1; i <= totalPages; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (currentPage > 4) pages.push('...');
+                const start = Math.max(2, currentPage - 1);
+                const end = Math.min(totalPages - 1, currentPage + 1);
+                for (let i = start; i <= end; i++) pages.push(i);
+                if (currentPage < totalPages - 3) pages.push('...');
+                pages.push(totalPages);
+            }
+
+            html += pages.map(page => {
+                if (page === '...') {
+                    return '<button class="pagination-btn-new ellipsis" disabled>...</button>';
+                }
+                return `
+                    <button class="pagination-btn-new ${page === currentPage ? 'active' : ''}" onclick="goToPage(${page})">
+                        ${page}
+                    </button>
+                `;
+            }).join('');
+
+            html += `
+                <button class="pagination-btn-new" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            `;
+            return html;
+        }
+
+        function goToPage(page) {
+            const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            loadCompanies();
+        }
+
+        function changePageSize(size) {
+            pageSize = Number(size);
+            document.getElementById('pageSizeText').textContent = `${pageSize}条`;
+            document.getElementById('pageSizeDropdown').classList.remove('open');
+            document.querySelectorAll('.page-size-option').forEach(option => {
+                option.classList.toggle('selected', Number(option.dataset.pageSize) === pageSize);
+            });
+            reloadCompanies();
+        }
+
+        function togglePageSizeDropdown() {
+            document.getElementById('pageSizeDropdown').classList.toggle('open');
+        }
+
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') return;
+            const page = Number(event.target.value);
+            if (page) {
+                goToPage(page);
+            }
+            event.target.value = '';
+        }
+
+        function updatePaginationStats() {
+            const start = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            const pageSizeWrapper = document.getElementById('pageSizeWrapper');
+            let statsEl = pageSizeWrapper.querySelector('.pagination-stats');
+            if (!statsEl) {
+                statsEl = document.createElement('span');
+                statsEl.className = 'pagination-stats';
+                pageSizeWrapper.appendChild(statsEl);
+            }
+            statsEl.textContent = `${start}-${end} / 共 ${totalItems} 条`;
+        }
+
+        function renderPermissionList(containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = permissions.map(permission => {
+                const code = Number(permission.code);
+                const required = code === COMPANY_ADMIN_CODE;
+                return `
+                    <label class="permission-item ${required ? 'is-required' : ''}">
+                        <input type="checkbox" value="${code}" ${required ? 'checked disabled' : ''}>
+                        <span>
+                            <span class="permission-code">${code}</span>
+                            <span class="permission-name">${escapeHtml(permission.name)}</span>
+                            <span class="permission-desc">${escapeHtml(permission.description || '')}</span>
+                        </span>
+                    </label>
+                `;
+            }).join('');
+        }
+
+        function selectedPermissions(containerId) {
+            const values = Array.from(document.querySelectorAll(`#${containerId} input[type="checkbox"]:checked`))
+                .map(input => Number(input.value));
+            if (!values.includes(COMPANY_ADMIN_CODE)) {
+                values.push(COMPANY_ADMIN_CODE);
+            }
+            return values;
+        }
+
+        function renderModuleList(selectedCodes = []) {
+            const container = document.getElementById('companyModuleList');
+            if (!container) return;
+            const selected = new Set(selectedCodes.map(code => String(code)));
+            container.innerHTML = systemModules.map(module => `
+                <label class="permission-item">
+                    <input type="checkbox" value="${escapeHtml(module.code)}" ${selected.has(String(module.code)) ? 'checked' : ''}>
+                    <span>
+                        <span class="permission-code">${escapeHtml(module.category || '模块')}</span>
+                        <span class="permission-name">${escapeHtml(module.name)}</span>
+                        <span class="permission-desc">${escapeHtml(module.description || module.code)}</span>
+                    </span>
+                </label>
+            `).join('');
+        }
+
+        function selectedModules() {
+            return Array.from(document.querySelectorAll('#companyModuleList input[type="checkbox"]:checked'))
+                .map(input => input.value);
+        }
+
+        function renderModuleChips(codes) {
+            if (!codes.length) {
+                return '<span style="color: var(--text-tertiary);">-</span>';
+            }
+            const moduleMap = new Map(systemModules.map(module => [module.code, module]));
+            return `
+                <div class="admin-list">
+                    ${codes.slice(0, 6).map(code => {
+                        const module = moduleMap.get(code);
+                        return `
+                            <span class="module-chip" title="${escapeHtml(module ? module.description : code)}">
+                                ${module && module.icon ? `<i class="${escapeHtml(module.icon)}"></i>` : ''}
+                                ${escapeHtml(module ? module.name : code)}
+                            </span>
+                        `;
+                    }).join('')}
+                    ${codes.length > 6 ? `<span class="module-chip">+${codes.length - 6}</span>` : ''}
+                </div>
+            `;
+        }
+
+        function openCreateCompanyModal() {
+            editingCompanyId = null;
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyId').value = '';
+            document.getElementById('companyModalTitle').textContent = '新建公司';
+            document.getElementById('companySaveButton').textContent = '保存';
+            document.getElementById('companySettings').value = '{}';
+            document.getElementById('companyOwnerSection').style.display = 'block';
+            document.getElementById('ownerUsername').required = true;
+            document.getElementById('ownerFirstName').required = true;
+            renderPermissionList('companyPermissionList');
+            renderModuleList();
+            document.getElementById('companyModalOverlay').style.display = 'flex';
+        }
+
+        function openEditCompanyModal(companyId) {
+            const company = companiesById.get(Number(companyId));
+            if (!company) {
+                notify('未找到公司数据，请刷新后重试', 'warning');
+                return;
+            }
+
+            editingCompanyId = Number(company.id);
+            document.getElementById('companyForm').reset();
+            document.getElementById('companyId').value = company.id;
+            document.getElementById('companyModalTitle').textContent = `编辑公司 - ${company.name}`;
+            document.getElementById('companySaveButton').textContent = '保存修改';
+            document.getElementById('companyName').value = company.name || '';
+            document.getElementById('companyCode').value = company.code || '';
+            document.getElementById('companyStatus').value = String(company.status || 1);
+            document.getElementById('companySettings').value = JSON.stringify(company.settings || {}, null, 2);
+            document.getElementById('companyOwnerSection').style.display = 'none';
+            document.getElementById('ownerUsername').required = false;
+            document.getElementById('ownerFirstName').required = false;
+            renderModuleList(company.enabled_module_codes || []);
+            document.getElementById('companyModalOverlay').style.display = 'flex';
+        }
+
+        function closeCompanyModal() {
+            document.getElementById('companyModalOverlay').style.display = 'none';
+        }
+
+        function openOwnerModal(companyId) {
+            const company = companiesById.get(Number(companyId));
+            document.getElementById('ownerForm').reset();
+            document.getElementById('ownerCompanyId').value = companyId;
+            document.getElementById('ownerModalTitle').textContent = `创建主账号 - ${company ? company.name : companyId}`;
+            renderPermissionList('ownerPermissionList');
+            document.getElementById('ownerModalOverlay').style.display = 'flex';
+        }
+
+        function closeOwnerModal() {
+            document.getElementById('ownerModalOverlay').style.display = 'none';
+        }
+
+        async function saveCompany() {
+            if (editingCompanyId) {
+                await updateCompany();
+            } else {
+                await createCompany();
+            }
+        }
+
+        async function createCompany() {
+            const name = document.getElementById('companyName').value.trim();
+            const ownerUsername = document.getElementById('ownerUsername').value.trim();
+            const ownerFirstName = document.getElementById('ownerFirstName').value.trim();
+
+            if (!name) {
+                notify('公司名称不能为空', 'warning');
+                return;
+            }
+            if (!ownerUsername || !ownerFirstName) {
+                notify('公司主账号用户名和姓名不能为空', 'warning');
+                return;
+            }
+
+            try {
+                const payload = {
+                    name,
+                    code: document.getElementById('companyCode').value.trim(),
+                    status: document.getElementById('companyStatus').value,
+                    settings: document.getElementById('companySettings').value.trim() || '{}',
+                    owner_username: ownerUsername,
+                    owner_first_name: ownerFirstName,
+                    owner_password: document.getElementById('ownerPassword').value,
+                    owner_phone: document.getElementById('ownerPhone').value.trim(),
+                    modules: selectedModules(),
+                    permissions: selectedPermissions('companyPermissionList')
+                };
+                const result = await requestJson('/api/system-admin/companies/create/', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                notify(result.message || '公司创建成功', 'success');
+                closeCompanyModal();
+                reloadCompanies();
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        async function updateCompany() {
+            const name = document.getElementById('companyName').value.trim();
+            if (!name) {
+                notify('公司名称不能为空', 'warning');
+                return;
+            }
+
+            try {
+                const result = await requestJson(`/api/system-admin/companies/${editingCompanyId}/update/`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        name,
+                        code: document.getElementById('companyCode').value.trim(),
+                        status: document.getElementById('companyStatus').value,
+                        settings: document.getElementById('companySettings').value.trim() || '{}',
+                        modules: selectedModules()
+                    })
+                });
+                notify(result.message || '公司更新成功', 'success');
+                closeCompanyModal();
+                loadCompanies();
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        async function createOwner() {
+            const companyId = document.getElementById('ownerCompanyId').value;
+            const username = document.getElementById('newOwnerUsername').value.trim();
+            const firstName = document.getElementById('newOwnerFirstName').value.trim();
+
+            if (!username || !firstName) {
+                notify('用户名和姓名不能为空', 'warning');
+                return;
+            }
+
+            try {
+                const result = await requestJson(`/api/system-admin/companies/${companyId}/owners/create/`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username,
+                        first_name: firstName,
+                        password: document.getElementById('newOwnerPassword').value,
+                        phone: document.getElementById('newOwnerPhone').value.trim(),
+                        permissions: selectedPermissions('ownerPermissionList')
+                    })
+                });
+                notify(result.message || '主账号创建成功', 'success');
+                closeOwnerModal();
+                loadCompanies();
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        async function toggleCompanyStatus(companyId, status) {
+            const actionText = status === 1 ? '启用' : '停用';
+            if (!confirm(`确认${actionText}该公司？`)) return;
+
+            try {
+                const result = await requestJson(`/api/system-admin/companies/${companyId}/update/`, {
+                    method: 'POST',
+                    body: JSON.stringify({status})
+                });
+                notify(result.message || '公司状态已更新', 'success');
+                loadCompanies();
+            } catch (error) {
+                notify(error.message, 'error');
+            }
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeCompanyModal();
+                closeOwnerModal();
+            }
+        });
+
+        document.addEventListener('click', function (event) {
+            const wrapper = document.getElementById('pageSizeWrapper');
+            if (wrapper && !wrapper.contains(event.target)) {
+                document.getElementById('pageSizeDropdown').classList.remove('open');
+            }
+        });
+    </script>
+{% endblock %}

@@ -123,7 +123,7 @@ def _extract_operator_name(listing):
     return username
 
 
-def _build_ops_group_map(user_ids):
+def _build_ops_group_map(user_ids, user=None):
     normalized_ids = []
     for user_id in user_ids or []:
         try:
@@ -136,11 +136,26 @@ def _build_ops_group_map(user_ids):
     if not normalized_ids:
         return {}
 
-    rows = OperationalAccount.objects.filter(user_id__in=normalized_ids).values_list('user_id', 'ops_group')
+    rows = OperationalAccount.objects.filter(user_id__in=normalized_ids)
+    if getattr(user, 'company', None):
+        rows = rows.filter(user__company=user.company)
+    rows = rows.values_list('user_id', 'ops_group')
     return {
         user_id: (ops_group or '').strip()
         for user_id, ops_group in rows
     }
+
+
+def _get_company_listing_queryset(user):
+    queryset = AmazonListingV2.objects.select_related(
+        'lingxing_shop',
+        'lingxing_shop__amazon_shop',
+        'lingxing_shop__amazon_shop__ops',
+        'lingxing_shop__amazon_shop__ops__operational_account',
+    )
+    if getattr(user, 'company', None):
+        queryset = queryset.filter(lingxing_shop__amazon_shop__company=user.company)
+    return queryset
 
 
 def _extract_ops_group_name(listing, ops_group_map=None):
@@ -309,8 +324,9 @@ def _build_listing_risk_data(listing, status_code_map=None):
     }
 
 
-def _build_list_cache_key(payload):
+def _build_list_cache_key(payload, user=None):
     normalized_payload = {
+        'company_id': getattr(user, 'company_id', None),
         'shop_name': (payload.get('shop_name') or '').strip(),
         'shop_names': sorted(_normalize_text_list(payload.get('shop_names'))),
         'ops_groups': sorted(_normalize_text_list(payload.get('ops_groups'))),
@@ -330,8 +346,9 @@ def _build_list_cache_key(payload):
     return 'amazon_listing_mgmt:list:lite:' + json.dumps(normalized_payload, ensure_ascii=True, sort_keys=True)
 
 
-def _build_stats_cache_key(payload):
+def _build_stats_cache_key(payload, user=None):
     normalized_payload = {
+        'company_id': getattr(user, 'company_id', None),
         'shop_name': (payload.get('shop_name') or '').strip(),
         'shop_names': sorted(_normalize_text_list(payload.get('shop_names'))),
         'ops_groups': sorted(_normalize_text_list(payload.get('ops_groups'))),
@@ -386,7 +403,7 @@ def _compute_risk_totals(queryset):
     }
 
 
-def _build_filtered_listing_queryset(payload):
+def _build_filtered_listing_queryset(payload, user=None):
     shop_name_filter = (payload.get('shop_name') or '').strip()
     shop_name_filters = _normalize_text_list(payload.get('shop_names'))
     ops_group_filters = _normalize_text_list(payload.get('ops_groups'))
@@ -401,12 +418,7 @@ def _build_filtered_listing_queryset(payload):
     active_status_filters = set(_normalize_text_list(payload.get('active_statuses'), lower=True))
     listing_date_range = (payload.get('listing_date_range') or 'all').strip().lower()
 
-    queryset = AmazonListingV2.objects.select_related(
-        'lingxing_shop',
-        'lingxing_shop__amazon_shop',
-        'lingxing_shop__amazon_shop__ops',
-        'lingxing_shop__amazon_shop__ops__operational_account',
-    ).filter(
+    queryset = _get_company_listing_queryset(user).filter(
         lingxing_shop__name__icontains='US',
     ).exclude(
         title__isnull=True,
@@ -495,12 +507,12 @@ def views_amazon_listing_management(request):
 @login_required
 @require_http_methods(['GET'])
 def get_amazon_listing_management_filter_options_api(request):
-    cache_key = 'amazon_listing_mgmt:filter_options:v2'
+    cache_key = f'amazon_listing_mgmt:filter_options:v2:company:{getattr(request.user, "company_id", "none")}'
     cached_data = cache.get(cache_key)
     if cached_data is not None:
         return JsonResponse({'success': True, 'data': cached_data})
 
-    base_queryset = AmazonListingV2.objects.filter(
+    base_queryset = _get_company_listing_queryset(request.user).filter(
         lingxing_shop__name__icontains='US',
     ).exclude(
         title__isnull=True,
@@ -531,7 +543,7 @@ def get_amazon_listing_management_filter_options_api(request):
         key=lambda item: item.lower()
     )
     operator_ids = [item.get('lingxing_shop__amazon_shop__ops_id') for item in raw_operators]
-    ops_group_map = _build_ops_group_map(operator_ids)
+    ops_group_map = _build_ops_group_map(operator_ids, user=request.user)
     operators_map = {}
     for item in raw_operators:
         operator_id = item.get('lingxing_shop__amazon_shop__ops_id')
@@ -596,7 +608,7 @@ def get_amazon_listing_management_list_api(request):
         return JsonResponse({'success': False, 'message': 'Invalid JSON body'}, status=400)
 
     req_started = time.perf_counter()
-    cache_key = _build_list_cache_key(payload)
+    cache_key = _build_list_cache_key(payload, user=request.user)
     cached_response = cache.get(cache_key)
     if cached_response is not None:
         cached_response['data']['server_timing_ms'] = {
@@ -607,7 +619,7 @@ def get_amazon_listing_management_list_api(request):
 
     page = max(1, _safe_int(payload.get('page'), 1))
     page_size = min(max(1, _safe_int(payload.get('page_size'), 20)), 100)
-    queryset = _build_filtered_listing_queryset(payload)
+    queryset = _build_filtered_listing_queryset(payload, user=request.user)
     stats_data = _aggregate_risk_totals(queryset)
 
     paginator = Paginator(queryset, page_size)
@@ -622,7 +634,7 @@ def get_amazon_listing_management_list_api(request):
         getattr(getattr(getattr(item, 'lingxing_shop', None), 'amazon_shop', None), 'ops_id', None)
         for item in page_obj
     ]
-    ops_group_map = _build_ops_group_map(listing_operator_ids)
+    ops_group_map = _build_ops_group_map(listing_operator_ids, user=request.user)
     rows = []
     for listing in page_obj:
         risk_level = (listing.risk_level or '').strip().lower()
@@ -674,10 +686,10 @@ def get_amazon_listing_management_risk_stats_api(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'Invalid JSON body'}, status=400)
 
-    stats_cache_key = _build_stats_cache_key(payload)
+    stats_cache_key = _build_stats_cache_key(payload, user=request.user)
     stats_data = cache.get(stats_cache_key)
     if stats_data is None:
-        queryset = _build_filtered_listing_queryset(payload)
+        queryset = _build_filtered_listing_queryset(payload, user=request.user)
         stats_data = _aggregate_risk_totals(queryset)
         cache.set(stats_cache_key, stats_data, LIST_API_CACHE_TTL_SECONDS)
 
@@ -718,7 +730,7 @@ def get_amazon_listing_batch_risk_check_api(request):
         return JsonResponse({'success': True, 'data': {}})
 
     listings = list(
-        AmazonListingV2.objects.prefetch_related('tro_words', 'trademarks').filter(id__in=normalized_ids)
+        _get_company_listing_queryset(request.user).prefetch_related('tro_words', 'trademarks').filter(id__in=normalized_ids)
     )
     listing_map = {item.id: item for item in listings}
     status_words = _collect_status_words_from_listings(listings)
@@ -743,11 +755,7 @@ def get_amazon_listing_batch_risk_check_api(request):
 @login_required
 @require_http_methods(['GET'])
 def get_amazon_listing_word_sources_api(request, listing_id):
-    listing = AmazonListingV2.objects.select_related(
-        'lingxing_shop',
-        'lingxing_shop__amazon_shop',
-        'lingxing_shop__amazon_shop__ops',
-    ).prefetch_related(
+    listing = _get_company_listing_queryset(request.user).prefetch_related(
         'tro_words',
         'trademarks',
     ).filter(id=listing_id).first()
