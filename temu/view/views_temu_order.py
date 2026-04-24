@@ -17,6 +17,14 @@ import os
 from api.lingxing_p.lingxing_temu import check_temu_order_to_divi, temu_order_to_divi_and_lingxing, refresh_temu_order_by_sn, shipment_order, get_wms_orders_by_order_numbers, refresh_temu_order_by_sn
 
 
+def get_company_temu_orders_queryset(user):
+    """仅返回当前用户公司可见的 Temu 订单。"""
+    return TemuOrder.objects.select_related('lingxing_shop', 'temu_shop').filter(
+        Q(temu_shop__company=user.company) |
+        Q(lingxing_shop__temu_shop__company=user.company)
+    ).distinct()
+
+
 @login_required
 def temu_order_management_page(request):
     """
@@ -29,6 +37,7 @@ def temu_order_management_page(request):
     return render(request, 'temu_order_management.html', context)
 
 
+@login_required
 @require_http_methods(["POST"])
 def get_temu_orders_list_api(request):
     """
@@ -56,7 +65,7 @@ def get_temu_orders_list_api(request):
         divi_order_status = data.get('divi_order_status', '')
         
         # 基础查询
-        queryset = TemuOrder.objects.select_related('lingxing_shop', 'temu_shop').all()
+        queryset = get_company_temu_orders_queryset(request.user)
         
         # 日期筛选
         if date_range == 'custom' and start_date and end_date:
@@ -136,7 +145,7 @@ def get_temu_orders_list_api(request):
             group_list = group.split(',')
             # 获取该分组下的所有用户ID
             user_ids = []
-            for user in User.objects.all():
+            for user in User.objects.filter(company=request.user.company):
                 user_group = user.get_ops_group()
                 if user_group in group_list:
                     user_ids.append(user.id)
@@ -240,6 +249,7 @@ def get_temu_orders_list_api(request):
         }, status=500)
 
 
+@login_required
 @require_http_methods(["POST"])
 def update_temu_divi_export_status_api(request):
     """
@@ -252,6 +262,7 @@ def update_temu_divi_export_status_api(request):
     })
 
 
+@login_required
 @require_http_methods(["POST"])
 def export_temu_orders_excel(request):
     """
@@ -264,6 +275,7 @@ def export_temu_orders_excel(request):
     }, status=501)
 
 
+@login_required
 @require_http_methods(["POST"])
 def download_temu_label_api(request):
     """
@@ -283,6 +295,16 @@ def download_temu_label_api(request):
         
         # 构建文件路径（使用双反斜杠）
         base_path = r'\\192.168.110.54\overlord_555\自动化\Temu面单'
+        order_exists = get_company_temu_orders_queryset(request.user).filter(
+            reference_no=platform_order_no,
+            tracking_number=tracking_number,
+        ).exists()
+        if not order_exists:
+            return JsonResponse({
+                'success': False,
+                'message': '未找到当前公司对应订单或无权下载该面单'
+            }, status=403)
+
         filename = f'{platform_order_no}#{tracking_number}.pdf'
         file_path = os.path.join(base_path, filename)
         
@@ -311,6 +333,7 @@ def download_temu_label_api(request):
         }, status=500)
 
 
+@login_required
 @require_http_methods(["POST"])
 def refresh_temu_divi_status_api(request):
     """
@@ -327,9 +350,23 @@ def refresh_temu_divi_status_api(request):
                 'message': '未提供订单ID列表'
             }, status=400)
         
+        visible_order_ids = set(
+            get_company_temu_orders_queryset(request.user)
+            .filter(global_order_no__in=order_ids)
+            .values_list('global_order_no', flat=True)
+        )
+
         results = []
         for sn_no in order_ids:
             try:
+                if sn_no not in visible_order_ids:
+                    results.append({
+                        'order_id': sn_no,
+                        'found_in_divi': False,
+                        'status': 'forbidden',
+                        'error': '无权操作该订单'
+                    })
+                    continue
                 # 先刷新订单数据
                 refresh_success = async_to_sync(refresh_temu_order_by_sn)(sn_no)
                 if not refresh_success:
@@ -346,7 +383,7 @@ def refresh_temu_divi_status_api(request):
                 
                 # 查询订单最新状态
                 try:
-                    order = TemuOrder.objects.get(global_order_no=sn_no)
+                    order = get_company_temu_orders_queryset(request.user).get(global_order_no=sn_no)
                     # 如果状态为5（待发货），执行发货和下载面单
                     if order.status == 5:
                         try:
@@ -389,6 +426,7 @@ def refresh_temu_divi_status_api(request):
         }, status=500)
 
 
+@login_required
 @require_http_methods(["POST"])
 def temu_order_to_divi_and_lingxing_api(request):
     """
@@ -406,6 +444,12 @@ def temu_order_to_divi_and_lingxing_api(request):
             }, status=400)
         
         # 调用异步函数执行导单和发货
+        if not get_company_temu_orders_queryset(request.user).filter(global_order_no=sn_no).exists():
+            return JsonResponse({
+                'success': False,
+                'message': '无权操作该订单'
+            }, status=403)
+
         async_to_sync(temu_order_to_divi_and_lingxing)(sn_no)
         
         return JsonResponse({
