@@ -1,0 +1,92 @@
+function saveSettingsToStorage(settings) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function renderPathInputs() {
+    const container = document.getElementById('pathInputsContainer');
+    const settings = getSettings();
+    const paths = settings.paths || [];
+    container.innerHTML = '';
+    paths.forEach((path, index) => {
+        const row = document.createElement('div');
+        row.className = 'path-input-row';
+        row.innerHTML = `
+            <input type="text" class="path-input" data-index="${index}" value="${escapeHtml(path)}" placeholder="例如：\\\\ZT-NAS\\公共区-不可编辑\\靓仔测试">
+            <button class="remove-path-btn" onclick="removePathInput(${index})" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        container.appendChild(row);
+    });
+    const addBtn = document.getElementById('addPathBtn');
+    const hint = document.getElementById('pathCountHint');
+    const count = paths.length;
+    addBtn.disabled = count >= MAX_PATHS;
+    hint.textContent = `已添加 ${count}/${MAX_PATHS} 个路径`;
+    hint.style.color = count >= MAX_PATHS ? 'var(--danger-color, #ef4444)' : 'var(--text-tertiary)';
+}
+
+function addPathInput() {
+    const settings = getSettings();
+    if (settings.paths.length >= MAX_PATHS) {
+        showNotification(`最多只能添加 ${MAX_PATHS} 个路径`, 'warning');
+        return;
+    }
+    settings.paths.push('');
+    saveSettingsToStorage(settings);
+    renderPathInputs();
+    const inputs = document.querySelectorAll('.path-input');
+    if (inputs.length > 0) inputs[inputs.length - 1].focus();
+}
+
+function removePathInput(index) {
+    const settings = getSettings();
+    settings.paths.splice(index, 1);
+    saveSettingsToStorage(settings);
+    renderPathInputs();
+}
+
+function openSettingsModal() {
+    renderPathInputs();
+    document.getElementById('settingsModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeSettingsModal() {
+    document.getElementById('settingsModal').classList.remove('visible');
+    document.body.style.overflow = '';
+}
+
+function saveSettings() {
+    const inputs = document.querySelectorAll('.path-input');
+    const paths = [];
+    let hasError = false;
+    inputs.forEach(input => {
+        const value = input.value.trim();
+        if (!value || !NAS_PATH_REGEX.test(value)) {
+            input.classList.add('invalid');
+            hasError = true;
+            return;
+        }
+        input.classList.remove('invalid');
+        paths.push(value);
+    });
+    if (hasError) {
+        showNotification('请检查路径格式，必须是 \\\\ZT-NAS 开头的 NAS 路径', 'warning');
+        return;
+    }
+    if (paths.length === 0) {
+        showNotification('请至少添加一个保存路径', 'warning');
+        return;
+    }
+    saveSettingsToStorage({ paths });
+    showNotification(`已保存 ${paths.length} 个路径`, 'success');
+    closeSettingsModal();
+}
+
+.paths || [];
+}
+

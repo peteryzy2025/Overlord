@@ -304,105 +304,139 @@ def amazon_data_crawler_page(request):
     })
 
 
+# 可选：从环境变量读取代理配置
+# 格式: http://host:port 或 http://user:pass@host:port
+PROXY_URL = os.environ.get('AMAZON_PROXY', '')
+
+
 async def fetch_single_page_async(keyword, page_num):
-    """获取单页数据（用于逐页搜索API）"""
-    base_headers = headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Referer": "https://www.amazon.com/",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Fetch-User": "?1",
-    "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Microsoft Edge\";v=\"146\"",
-    "sec-ch-ua-full-version-list": "\"Chromium\";v=\"146.0.7680.166\", \"Not-A.Brand\";v=\"24.0.0.0\", \"Microsoft Edge\";v=\"146.0.3856.84\"",
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": "\"Windows\"",
-    "sec-ch-ua-platform-version": "\"15.0.0\"",
-    "sec-ch-viewport-width": "1912",
-    "sec-ch-dpr": "1",
-    "sec-ch-device-memory": "8",
-    "device-memory": "8",
-    "viewport-width": "1912",
-    "dpr": "1",
-    "ect": "4g",
-    "rtt": "150",
-    "downlink": "8.7",
-    "Connection": "keep-alive",
-    "Cache-Control": "max-age=0",
-}
+    """获取单页数据（用于逐页搜索API），带重试和超时机制"""
+    base_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Referer": "https://www.amazon.com/",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "sec-ch-ua": "\"Chromium\";v=\"146\", \"Not-A.Brand\";v=\"24\", \"Microsoft Edge\";v=\"146\"",
+        "sec-ch-ua-full-version-list": "\"Chromium\";v=\"146.0.7680.166\", \"Not-A.Brand\";v=\"24.0.0.0\", \"Microsoft Edge\";v=\"146.0.3856.84\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": "\"Windows\"",
+        "sec-ch-ua-platform-version": "\"15.0.0\"",
+        "sec-ch-viewport-width": "1912",
+        "sec-ch-dpr": "1",
+        "sec-ch-device-memory": "8",
+        "device-memory": "8",
+        "viewport-width": "1912",
+        "dpr": "1",
+        "ect": "4g",
+        "rtt": "150",
+        "downlink": "8.7",
+        "Connection": "keep-alive",
+        "Cache-Control": "max-age=0",
+    }
 
     search_url = f"https://www.amazon.com/s?k={keyword.replace(' ', '+')}&page={page_num}"
     print(f"[Amazon爬虫-单页] 正在请求: {search_url}", flush=True)
-    
-    try:
-        # 先访问首页建立 Cookie 会话，再搜索
-        async with aiohttp.ClientSession() as session:
-            # 1) 预热：访问首页
-            home_url = "https://www.amazon.com/"
-            print(f"[Amazon爬虫-单页] 预热: {home_url}", flush=True)
-            async with session.get(home_url, headers={**base_headers, "Host": "www.amazon.com"}, ssl=ssl_context) as home_resp:
-                home_html = await home_resp.text()
-                print(f"[Amazon爬虫-单页] 首页状态码: {home_resp.status}, 长度: {len(home_html)}", flush=True)
-            
-            await asyncio.sleep(random.uniform(0.8, 1.5))
-            
-            # 2) 搜索请求，带上 Referer
-            search_headers = {
-                **base_headers,
-                "Host": "www.amazon.com",
-                "Referer": home_url,
-                "Sec-Fetch-Site": "same-origin",
-            }
-            
-            async with session.get(search_url, headers=search_headers, ssl=ssl_context) as response:
-                html_content = await response.text()
-                print(f"[Amazon爬虫-单页] 响应状态码: {response.status}, 内容长度: {len(html_content)}", flush=True)
-                
-                if response.status != 200:
-                    print(f"[Amazon爬虫-单页] 非200状态码拦截, status={response.status}", flush=True)
-                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
-                    return None, f"访问被拦截 (Status: {response.status})"
-                
-                if "dogs of amazon" in html_content.lower():
-                    print(f"[Amazon爬虫-单页] 检测到拦截页面(dogs of amazon)", flush=True)
-                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
-                    return None, f"访问被拦截 (Status: {response.status})"
-                
-                # 再检查是否返回了 robot/check 页面（常见反爬特征）
-                lower_html = html_content.lower()
-                if any(x in lower_html for x in [
-                    "automated access",
-                    "api-services-support",
-                    "sorry, we just need to make sure you're not a robot",
-                    "enter the characters you see below"
-                ]):
-                    print(f"[Amazon爬虫-单页] 检测到反机器人验证页面", flush=True)
-                    print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
-                    return None, f"访问被拦截 (Status: {response.status})"
-                
-                tree = html.fromstring(html_content)
-                item_divs = tree.xpath('//div[@role="listitem" and @data-asin]')
-                print(f"[Amazon爬虫-单页] 解析到 {len(item_divs)} 个商品", flush=True)
-                
-                results = []
-                for item_div in item_divs:
-                    product = parse_product_from_item(item_div)
-                    if product['thumb_url']:
-                        results.append(product)
-                
-                # 排序
-                sorted_results = sort_products(results)
-                for idx, product in enumerate(sorted_results):
-                    product['id'] = idx
-                
-                return sorted_results, f"找到 {len(sorted_results)} 个商品"
-    except Exception as e:
-        print(f"[Amazon爬虫-单页] fetch_single_page_async异常: {type(e).__name__}: {e}", flush=True)
-        raise
+
+    max_retries = 3
+    # 调大超时：total=60, connect=20, sock_connect=20, sock_read=40
+    timeout = aiohttp.ClientTimeout(total=60, connect=20, sock_connect=20, sock_read=40)
+
+    for attempt in range(1, max_retries + 1):
+        # 每次重试都创建新的 Connector 和 Session（避免 Session is closed）
+        connector = aiohttp.TCPConnector(
+            limit=10,
+            limit_per_host=5,
+            enable_cleanup_closed=True,
+            force_close=True,  # 每次请求后强制关闭连接，避免复用问题
+            ttl_dns_cache=300,
+            use_dns_cache=True,
+        )
+
+        try:
+            async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+                # 直接搜索，不再预热首页（减少一次请求，降低超时概率）
+                search_headers = {
+                    **base_headers,
+                    "Host": "www.amazon.com",
+                    "Sec-Fetch-Site": "none",
+                    "Sec-Fetch-User": "?1",
+                }
+
+                request_kwargs = {
+                    "headers": search_headers,
+                    "ssl": ssl_context,
+                }
+                if PROXY_URL:
+                    request_kwargs["proxy"] = PROXY_URL
+                    print(f"[Amazon爬虫-单页] 使用代理: {PROXY_URL}", flush=True)
+
+                print(f"[Amazon爬虫-单页] 请求搜索页 (尝试 {attempt}/{max_retries})", flush=True)
+                async with session.get(search_url, **request_kwargs) as response:
+                    html_content = await response.text()
+                    print(f"[Amazon爬虫-单页] 响应状态码: {response.status}, 内容长度: {len(html_content)}", flush=True)
+
+                    if response.status != 200:
+                        print(f"[Amazon爬虫-单页] 非200状态码拦截, status={response.status}", flush=True)
+                        print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                        return None, f"访问被拦截 (Status: {response.status})"
+
+                    if "dogs of amazon" in html_content.lower():
+                        print(f"[Amazon爬虫-单页] 检测到拦截页面(dogs of amazon)", flush=True)
+                        print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                        return None, f"访问被拦截 (Status: {response.status})"
+
+                    # 再检查是否返回了 robot/check 页面（常见反爬特征）
+                    lower_html = html_content.lower()
+                    if any(x in lower_html for x in [
+                        "automated access",
+                        "api-services-support",
+                        "sorry, we just need to make sure you're not a robot",
+                        "enter the characters you see below"
+                    ]):
+                        print(f"[Amazon爬虫-单页] 检测到反机器人验证页面", flush=True)
+                        print(f"[Amazon爬虫-单页] HTML片段: {html_content[:800]}", flush=True)
+                        return None, f"访问被拦截 (Status: {response.status})"
+
+                    tree = html.fromstring(html_content)
+                    item_divs = tree.xpath('//div[@role="listitem" and @data-asin]')
+                    print(f"[Amazon爬虫-单页] 解析到 {len(item_divs)} 个商品", flush=True)
+
+                    results = []
+                    for item_div in item_divs:
+                        product = parse_product_from_item(item_div)
+                        if product['thumb_url']:
+                            results.append(product)
+
+                    # 排序
+                    sorted_results = sort_products(results)
+                    for idx, product in enumerate(sorted_results):
+                        product['id'] = idx
+
+                    return sorted_results, f"找到 {len(sorted_results)} 个商品"
+
+        except (aiohttp.ClientConnectorError, aiohttp.ServerTimeoutError, asyncio.TimeoutError,
+                aiohttp.ClientOSError, aiohttp.ClientHttpProxyError) as e:
+            print(f"[Amazon爬虫-单页] 网络异常 (尝试 {attempt}/{max_retries}): {type(e).__name__}: {e}", flush=True)
+            if attempt < max_retries:
+                wait_time = 3 ** attempt  # 指数退避: 3, 9, 27秒
+                print(f"[Amazon爬虫-单页] {wait_time}秒后重试...", flush=True)
+                await asyncio.sleep(wait_time)
+            else:
+                print(f"[Amazon爬虫-单页] 重试 {max_retries} 次后仍然失败", flush=True)
+                return None, f"网络连接超时，请稍后重试 ({type(e).__name__})"
+        except Exception as e:
+            print(f"[Amazon爬虫-单页] fetch_single_page_async异常: {type(e).__name__}: {e}", flush=True)
+            raise
+        finally:
+            # 确保 connector 被关闭
+            if connector:
+                await connector.close()
 
 
 @login_required
@@ -508,9 +542,8 @@ def api_amazon_batch_download(request):
                 'message': '保存路径必须是 \\ZT-NAS 开头的 NAS 路径'
             })
 
-        # 构建保存目录：save_path\YYYY-MM-DD\
-        date_folder = datetime.now().strftime('%Y-%m-%d')
-        target_dir = os.path.join(save_path, date_folder)
+        # 直接使用用户指定的路径，不再自动添加日期子文件夹
+        target_dir = save_path
         os.makedirs(target_dir, exist_ok=True)
 
         # 下载headers

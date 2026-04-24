@@ -623,13 +623,15 @@
         { key: 'collection_card_number', label: '收款卡号', group: '收款信息' },
         { key: 'payment_password', label: '支付密码', group: '收款信息' },
                 { key: 'id_number', label: '身份证号', group: '法人信息' },
-                { key: 'id_card_address', label: '身份证地址', group: '法人信息' },
-                { key: 'company_address', label: '公司地址', group: '法人信息' },
-                { key: 'legal_person_phone', label: '法人手机', group: '法人信息' },
+        { key: 'id_card_address', label: '身份证地址', group: '法人信息' },
+        { key: 'company_address', label: '公司地址', group: '法人信息' },
+        { key: 'legal_person_phone', label: '法人手机', group: '法人信息' },
         { key: 'company_name', label: '公司名称', group: '法人信息', tableVisible: true },
+        { key: 'license_registered_capital', label: '执照注册资本', group: '法人信息' },
         { key: 'license_number', label: '执照号', group: '法人信息' },
         { key: 'business_license_date', label: '执照日期', group: '法人信息' },
         { key: 'birth_date', label: '出生日期', group: '法人信息' },
+        { key: 'lingxing_ad_authorization_date', label: '领星广告授权日期', group: '法人信息' },
         { key: 'id_expiry_date', label: '身份证到期', group: '法人信息' },
         { key: 'remark', label: '备注', group: '其他', tableVisible: true },
         { key: 'additional_remark', label: '附加备注', group: '其他', tableVisible: true }
@@ -1241,6 +1243,10 @@
                     <input type="text" id="modal-company_name" value="${data.company_name || ''}">
                 </div>
                 <div class="form-group">
+                    <label>执照注册资本</label>
+                    <input type="text" id="modal-license_registered_capital" value="${data.license_registered_capital || ''}">
+                </div>
+                <div class="form-group">
                     <label>执照号</label>
                     <input type="text" id="modal-license_number" value="${data.license_number || ''}">
                 </div>
@@ -1251,6 +1257,10 @@
                 <div class="form-group">
                     <label>出生日期</label>
                     <input type="date" id="modal-birth_date" value="${data.birth_date || ''}">
+                </div>
+                <div class="form-group">
+                    <label>领星广告授权日期</label>
+                    <input type="date" id="modal-lingxing_ad_authorization_date" value="${data.lingxing_ad_authorization_date || ''}">
                 </div>
                 <div class="form-group">
                     <label>身份证到期</label>
@@ -1320,9 +1330,11 @@
             id_number: v('modal-id_number'),
             legal_person_phone: v('modal-legal_person_phone'),
             company_name: v('modal-company_name'),
+            license_registered_capital: v('modal-license_registered_capital'),
             license_number: v('modal-license_number'),
             business_license_date: v('modal-business_license_date'),
             birth_date: v('modal-birth_date'),
+            lingxing_ad_authorization_date: v('modal-lingxing_ad_authorization_date'),
             id_expiry_date: v('modal-id_expiry_date'),
             id_card_address: v('modal-id_card_address'),
             company_address: v('modal-company_address'),

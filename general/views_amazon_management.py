@@ -388,10 +388,13 @@ def get_amazon_shops_api(request):
                         'id_number': shop.id_number or '-',
                         'legal_person_phone': shop.legal_person_phone or '-',
                         'company_name': shop.company_name or '-',
+                        'license_registered_capital': shop.license_registered_capital or '-',
                         'license_number': shop.license_number or '-',
                         'business_license_date': shop.business_license_date.strftime(
                             '%Y-%m-%d') if shop.business_license_date else '-',
                         'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
+                        'lingxing_ad_authorization_date': shop.lingxing_ad_authorization_date.strftime(
+                            '%Y-%m-%d') if shop.lingxing_ad_authorization_date else '-',
                         'id_expiry_date': shop.id_expiry_date or '-',
                         'id_card_address': shop.id_card_address or '-',
                         'company_address': shop.company_address or '-',
@@ -571,10 +574,13 @@ def get_amazon_shops_api(request):
                 'id_number': shop.id_number or '-',
                 'legal_person_phone': shop.legal_person_phone or '-',
                 'company_name': shop.company_name or '-',
+                'license_registered_capital': shop.license_registered_capital or '-',
                 'license_number': shop.license_number or '-',
                 'business_license_date': shop.business_license_date.strftime(
                     '%Y-%m-%d') if shop.business_license_date else '-',
                 'birth_date': shop.birth_date.strftime('%Y-%m-%d') if shop.birth_date else '-',
+                'lingxing_ad_authorization_date': shop.lingxing_ad_authorization_date.strftime(
+                    '%Y-%m-%d') if shop.lingxing_ad_authorization_date else '-',
                 'id_expiry_date': shop.id_expiry_date or '-',
                 'id_card_address': shop.id_card_address or '-',
                 'company_address': shop.company_address or '-',
@@ -860,9 +866,11 @@ def create_amazon_shop_api(request):
                 id_number=data.get('id_number', '') or '',
                 legal_person_phone=data.get('legal_person_phone', '') or '',
                 company_name=data.get('company_name', '') or '',
+                license_registered_capital=data.get('license_registered_capital', '') or '',
                 license_number=data.get('license_number', '') or '',
                 business_license_date=data.get('business_license_date') or None,
                 birth_date=data.get('birth_date') or None,
+                lingxing_ad_authorization_date=data.get('lingxing_ad_authorization_date') or None,
                 id_expiry_date=data.get('id_expiry_date', '') or '',
                 id_card_address=data.get('id_card_address', '') or '',
                 company_address=data.get('company_address', '') or '',
@@ -978,9 +986,11 @@ def update_amazon_shop_api(request, shop_id):
             shop.id_number = data.get('id_number', '') or ''
             shop.legal_person_phone = data.get('legal_person_phone', '') or ''
             shop.company_name = data.get('company_name', '') or ''
+            shop.license_registered_capital = data.get('license_registered_capital', '') or ''
             shop.license_number = data.get('license_number', '') or ''
             shop.business_license_date = data.get('business_license_date') or None
             shop.birth_date = data.get('birth_date') or None
+            shop.lingxing_ad_authorization_date = data.get('lingxing_ad_authorization_date') or None
             shop.id_expiry_date = data.get('id_expiry_date', '') or ''
             shop.id_card_address = data.get('id_card_address', '') or ''
             shop.company_address = data.get('company_address', '') or ''

@@ -440,6 +440,7 @@
     };
 
     let deleteTargetId = null;
+    const deletedTaskIds = new Set();
     let statusSelect = null;
     let creatorSelect = null;
     let dateRangeController = null;
@@ -624,7 +625,8 @@
                 page_size: taskData.pagination.page_size,
                 date_range: taskData.filters.date_range,
                 start_date: taskData.filters.start_date,
-                end_date: taskData.filters.end_date
+                end_date: taskData.filters.end_date,
+                _: Date.now()
             });
 
             if (taskData.filters.status.length > 0) {
@@ -643,8 +645,15 @@
             const result = await response.json();
 
             if (result.success) {
-                taskData.list = result.data.tasks;
+                const fetchedTasks = result.data.tasks || [];
+                taskData.list = fetchedTasks.filter(task => !deletedTaskIds.has(Number(task.id)));
                 taskData.pagination = result.data.pagination;
+
+                const hiddenDeletedCount = fetchedTasks.length - taskData.list.length;
+                if (hiddenDeletedCount > 0) {
+                    taskData.pagination.total = Math.max(0, Number(taskData.pagination.total || 0) - hiddenDeletedCount);
+                    taskData.pagination.total_pages = Math.ceil(taskData.pagination.total / taskData.pagination.page_size);
+                }
 
                 renderTasks();
                 renderPagination();
@@ -695,7 +704,7 @@
             `).join('') + `<span style="color: var(--text-tertiary);">共 ${task.subtasks.length} 个子任务</span>`;
 
             return `
-                    <tr>
+                    <tr data-task-id="${task.id}">
                         <td class="w-checkbox">
                             <input type="checkbox" class="row-checkbox" data-task-id="${task.id}" onchange="updateSelectAllTaskState()">
                         </td>
@@ -1111,51 +1120,51 @@
     }
 
     async function confirmDelete() {
-            if (!deleteTargetId) return;
-            
-            const deletedId = deleteTargetId; // 保存要删除的ID
-            showLoading(true);
-            
-            try {
-                const response = await fetch(`/api/tasks/${deletedId}/delete/`, {
-                    method: 'DELETE',
-                    headers: {
-                        'X-CSRFToken': getCsrfToken()
-                    }
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification('任务已删除', 'success');
-                    // 立即从本地列表中移除，确保用户立即看到删除效果
-                    taskData.list = taskData.list.filter(task => task.id !== deletedId);
-                    // 重新渲染表格
-                    renderTasks();
-                    // 重新渲染分页
-                    renderPagination();
-                    // 等待一段时间后刷新数据，确保后端数据已更新
-                    setTimeout(async () => {
-                        await loadTasks();
-                        await loadStats();
-                        // 再次确保已删除的任务不在列表中（防止后端缓存导致数据回显）
-                        const stillExists = taskData.list.some(task => task.id === deletedId);
-                        if (stillExists) {
-                            taskData.list = taskData.list.filter(task => task.id !== deletedId);
-                            renderTasks();
-                            renderPagination();
-                        }
-                    }, 500);
-                } else {
-                    throw new Error(result.message || '删除失败');
+        if (!deleteTargetId) return;
+
+        const deletedId = Number(deleteTargetId);
+        showLoading(true);
+
+        try {
+            const response = await fetch(`/api/tasks/${deletedId}/delete/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
                 }
-                
-            } catch (error) {
-                showNotification('删除失败: ' + error.message, 'error');
-            } finally {
-                closeDeleteModal();
-                showLoading(false);
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || '删除失败');
             }
+
+            showNotification(result.message || '任务已删除', 'success');
+
+            deletedTaskIds.add(deletedId);
+            document.querySelector(`#taskTableBody tr[data-task-id="${deletedId}"]`)?.remove();
+            taskData.list = taskData.list.filter(task => Number(task.id) !== deletedId);
+            taskData.pagination.total = Math.max(0, Number(taskData.pagination.total || 0) - 1);
+            taskData.pagination.total_pages = Math.ceil(taskData.pagination.total / taskData.pagination.page_size);
+
+            if (taskData.list.length === 0 && taskData.pagination.page > 1) {
+                taskData.pagination.page -= 1;
+            }
+
+            renderTasks();
+            renderPagination();
+            resetTaskSelectionState();
+
+            document.getElementById('paginationContainer').style.display =
+                taskData.pagination.total > 0 ? 'flex' : 'none';
+
+            await Promise.all([loadTasks(), loadStats()]);
+        } catch (error) {
+            showNotification('删除失败: ' + error.message, 'error');
+        } finally {
+            closeDeleteModal();
+            showLoading(false);
         }
+    }
 </script>
 {% endblock %}

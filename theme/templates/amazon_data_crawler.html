@@ -462,8 +462,9 @@
 .settings-modal-content {
     background-color: var(--bg-primary);
     border-radius: 16px;
-    max-width: 480px;
+    max-width: 560px;
     width: 100%;
+    max-height: 80vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -476,6 +477,7 @@
     align-items: center;
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .settings-modal-title {
@@ -502,6 +504,8 @@
 
 .settings-modal-body {
     padding: 1.5rem;
+    overflow-y: auto;
+    flex: 1;
 }
 
 .settings-form-group {
@@ -546,6 +550,225 @@
     display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+/* 多路径输入 */
+.path-inputs-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.path-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.path-input-row input {
+    flex: 1;
+    padding: 0.65rem 0.875rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.path-input-row input:focus {
+    border-color: var(--accent-color);
+}
+
+.path-input-row input.invalid {
+    border-color: var(--danger-color, #ef4444);
+}
+
+.path-input-row .remove-path-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.path-input-row .remove-path-btn:hover {
+    background: var(--danger-color, #ef4444);
+    color: white;
+}
+
+.add-path-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.875rem;
+    border-radius: 6px;
+    border: 1px dashed var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 0.25rem;
+}
+
+.add-path-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.add-path-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.path-count-hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 0.25rem;
+}
+
+/* 下载路径选择模态框 */
+.download-modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2100;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.download-modal-overlay.visible {
+    display: flex;
+}
+
+.download-modal-content {
+    background-color: var(--bg-primary);
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.download-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.download-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.download-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.download-modal-close:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.download-modal-body {
+    padding: 1.5rem;
+}
+
+.path-select-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.path-select-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.path-select-item:hover {
+    border-color: var(--accent-color);
+    background: var(--bg-primary);
+}
+
+.path-select-item.selected {
+    border-color: var(--accent-color);
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.path-select-item input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.path-select-item .path-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    word-break: break-all;
+    flex: 1;
+}
+
+.path-select-empty {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-tertiary);
+    font-size: 0.9rem;
+}
+
+.download-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+/* 下载进度条 */
+.download-progress-container {
+    display: none;
+    margin-top: 0.75rem;
+}
+
+.download-progress-container.visible {
+    display: block;
 }
 
 /* 设置图标 */
@@ -835,9 +1058,16 @@
         <div class="virtual-scroll-container" id="virtualContainer">
             <div class="virtual-scroll-content" id="virtualContent">
                 <div class="images-grid" id="imagesGrid"></div>
+
+        <!-- 下载进度条 -->
+        <div class="download-progress-container" id="downloadProgressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="downloadProgressFill"></div>
             </div>
+            <div class="progress-text" id="downloadProgressText">准备下载...</div>
         </div>
     </div>
+</div>>
 </div>
 
 <!-- 设置模态框 -->
@@ -857,11 +1087,21 @@
         </div>
         <div class="settings-modal-body">
             <div class="settings-form-group">
-                <label for="savePathInput">
+                <label>
                     保存文件路径 <span class="required">*</span>
+                    <span class="path-count-hint" id="pathCountHint">最多 50 个路径</span>
                 </label>
-                <input type="text" id="savePathInput" placeholder="例如：\\\\ZT-NAS\\公共区-不可编辑\\靓仔测试">
-                <span class="hint">必须是 \\ZT-NAS 开头的 NAS 路径，下载时会自动按日期分文件夹（如 \\ZT-NAS\xxx\2026-04-20\）</span>
+                <div class="path-inputs-container" id="pathInputsContainer">
+                    <!-- 动态生成路径输入行 -->
+                </div>
+                <button class="add-path-btn" id="addPathBtn" onclick="addPathInput()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    添加路径
+                </button>
+                <span class="hint">必须是 \\ZT-NAS 开头的 NAS 路径（不区分大小写）</span>
             </div>
         </div>
         <div class="settings-modal-footer">
@@ -871,7 +1111,35 @@
     </div>
 </div>
 
-<!-- 图片预览模态框 -->
+<!-- 下载路径选择模态框 -->
+<div class="download-modal-overlay" id="downloadModal" onclick="if(event.target === this) return;">
+    <div class="download-modal-content" onclick="event.stopPropagation()">
+        <div class="download-modal-header">
+            <h3 class="download-modal-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                选择下载路径
+            </h3>
+            <button class="download-modal-close" onclick="closeDownloadModal()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="download-modal-body">
+            <div class="path-select-list" id="pathSelectList">
+                <!-- 动态生成路径选项 -->
+            </div>
+        </div>
+        <div class="download-modal-footer">
+            <button class="btn btn-secondary" onclick="closeDownloadModal()">取消</button>
+            <button class="btn btn-save-modal" onclick="confirmDownload()">开始下载</button>
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览模态框 --><!-- 图片预览模态框 -->
 <div class="image-modal-overlay" id="imageModal" onclick="closeModal(event)">
     <div class="image-modal-content" onclick="event.stopPropagation()">
         <div class="image-modal-header">
@@ -908,18 +1176,107 @@ let isLoading = false;
 // 设置管理
 const SETTINGS_KEY = 'amazon_crawler_settings';
 
+const MAX_PATHS = 50;
+const NAS_PATH_REGEX = /^\\\\ZT-NAS/i;
+
 function getSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    return raw ? JSON.parse(raw) : { savePath: '' };
+    if (!raw) return { paths: [] };
+    try {
+        const parsed = JSON.parse(raw);
+        if (parsed.savePath && !parsed.paths) {
+            return { paths: [parsed.savePath] };
+        }
+        return { paths: parsed.paths || [] };
+    } catch {
+        return { paths: [] };
+    }
 }
 
 function saveSettingsToStorage(settings) {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
 
-function openSettingsModal() {
+function saveSettings() {
+    const inputs = document.querySelectorAll('.path-input');
+    const paths = [];
+    let hasError = false;
+    inputs.forEach(input => {
+        const value = input.value.trim();
+        if (!value || !NAS_PATH_REGEX.test(value)) {
+            input.classList.add('invalid');
+            hasError = true;
+            return;
+        }
+        input.classList.remove('invalid');
+        paths.push(value);
+    });
+    if (hasError) {
+        showNotification('请检查路径格式，必须是 \\\\ZT-NAS 开头的 NAS 路径', 'warning');
+        return;
+    }
+    if (paths.length === 0) {
+        showNotification('请至少添加一个保存路径', 'warning');
+        return;
+    }
+    saveSettingsToStorage({ paths });
+    showNotification(`已保存 ${paths.length} 个路径`, 'success');
+    closeSettingsModal();
+}
+
+function getSavePaths() {
+    return getSettings().paths || [];
+}
+
+function renderPathInputs() {
+    const container = document.getElementById('pathInputsContainer');
     const settings = getSettings();
-    document.getElementById('savePathInput').value = settings.savePath || '';
+    const paths = settings.paths || [];
+    container.innerHTML = '';
+    paths.forEach((path, index) => {
+        const row = document.createElement('div');
+        row.className = 'path-input-row';
+        row.innerHTML = `
+            <input type="text" class="path-input" data-index="${index}" value="${escapeHtml(path)}" placeholder="例如：\\\\ZT-NAS\\公共区-不可编辑\\靓仔测试">
+            <button class="remove-path-btn" onclick="removePathInput(${index})" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        container.appendChild(row);
+    });
+    const addBtn = document.getElementById('addPathBtn');
+    const hint = document.getElementById('pathCountHint');
+    const count = paths.length;
+    addBtn.disabled = count >= MAX_PATHS;
+    hint.textContent = `已添加 ${count}/${MAX_PATHS} 个路径`;
+    hint.style.color = count >= MAX_PATHS ? 'var(--danger-color, #ef4444)' : 'var(--text-tertiary)';
+}
+
+function addPathInput() {
+    const settings = getSettings();
+    if (settings.paths.length >= MAX_PATHS) {
+        showNotification(`最多只能添加 ${MAX_PATHS} 个路径`, 'warning');
+        return;
+    }
+    settings.paths.push('');
+    saveSettingsToStorage(settings);
+    renderPathInputs();
+    const inputs = document.querySelectorAll('.path-input');
+    if (inputs.length > 0) inputs[inputs.length - 1].focus();
+}
+
+function removePathInput(index) {
+    const settings = getSettings();
+    settings.paths.splice(index, 1);
+    saveSettingsToStorage(settings);
+    renderPathInputs();
+}
+
+function openSettingsModal() {
+    renderPathInputs();
     document.getElementById('settingsModal').classList.add('visible');
     document.body.style.overflow = 'hidden';
 }
@@ -929,29 +1286,6 @@ function closeSettingsModal() {
     document.body.style.overflow = '';
 }
 
-function saveSettings() {
-    const savePath = document.getElementById('savePathInput').value.trim();
-    if (!savePath) {
-        showNotification('保存文件路径为必填项', 'warning');
-        document.getElementById('savePathInput').focus();
-        return;
-    }
-    // 校验必须是 \\ZT-NAS 开头的 NAS 路径（不区分大小写）
-    if (!savePath.match(/^\\\\ZT-NAS/i)) {
-        showNotification('保存路径必须是 \\ZT-NAS 开头的 NAS 路径', 'warning');
-        document.getElementById('savePathInput').focus();
-        return;
-    }
-    saveSettingsToStorage({ savePath });
-    showNotification('设置已保存', 'success');
-    closeSettingsModal();
-}
-
-function getSavePath() {
-    return getSettings().savePath || '';
-}
-
-// 更新下载按钮显示状态
 function updateDownloadButton() {
     const btn = document.getElementById('downloadBtn');
     if (selectedImages.size > 0) {
@@ -961,34 +1295,70 @@ function updateDownloadButton() {
     }
 }
 
-// 下载选中图片
-async function downloadSelectedImages() {
-    const savePath = getSavePath();
-    if (!savePath) {
-        showNotification('请先设置保存文件路径', 'warning');
-        openSettingsModal();
+let selectedDownloadPath = '';
+
+function openDownloadModal() {
+    const paths = getSavePaths();
+    const list = document.getElementById('pathSelectList');
+    selectedDownloadPath = '';
+    if (paths.length === 0) {
+        list.innerHTML = `
+            <div class="path-select-empty">
+                <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                暂无保存路径，请先前往设置添加
+            </div>
+        `;
+    } else {
+        list.innerHTML = paths.map((path, index) => `
+            <div class="path-select-item" data-path="${escapeHtml(path)}" onclick="selectDownloadPath(this, '${escapeHtml(path)}')">
+                <input type="radio" name="downloadPath" value="${escapeHtml(path)}" onchange="selectDownloadPath(this.parentElement, '${escapeHtml(path)}')">
+                <span class="path-label">${escapeHtml(path)}</span>
+            </div>
+        `).join('');
+    }
+    document.getElementById('downloadModal').classList.add('visible');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDownloadModal() {
+    document.getElementById('downloadModal').classList.remove('visible');
+    document.body.style.overflow = '';
+    selectedDownloadPath = '';
+}
+
+function selectDownloadPath(element, path) {
+    selectedDownloadPath = path;
+    document.querySelectorAll('.path-select-item').forEach(item => item.classList.remove('selected'));
+    element.classList.add('selected');
+    element.querySelector('input[type="radio"]').checked = true;
+}
+
+function confirmDownload() {
+    if (!selectedDownloadPath) {
+        showNotification('请选择一个下载路径', 'warning');
         return;
     }
+    closeDownloadModal();
+    executeDownload(selectedDownloadPath);
+}
+
+async function executeDownload(savePath) {
     if (selectedImages.size === 0) {
         showNotification('请先勾选要下载的图片', 'warning');
         return;
     }
-
     const btn = document.getElementById('downloadBtn');
+    const progressContainer = document.getElementById('downloadProgressContainer');
+    const progressFill = document.getElementById('downloadProgressFill');
+    const progressText = document.getElementById('downloadProgressText');
     btn.disabled = true;
-    btn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-        </svg>
-        下载中...
-    `;
+    progressContainer.classList.add('visible');
+    progressFill.style.width = '0%';
+    progressText.textContent = '准备下载...';
 
     const selectedProducts = [];
     selectedImages.forEach(index => {
-        if (allImages[index]) {
-            selectedProducts.push(allImages[index]);
-        }
+        if (allImages[index]) selectedProducts.push(allImages[index]);
     });
 
     try {
@@ -1004,30 +1374,41 @@ async function downloadSelectedImages() {
                 keyword: currentKeyword
             })
         });
-
         const data = await response.json();
-
         if (data.success) {
-            showNotification(`下载完成：成功 ${data.success_count || selectedProducts.length} 张，保存到 ${data.save_dir || savePath}`, 'success');
+            progressFill.style.width = '100%';
+            progressText.textContent = `下载完成：成功 ${data.success_count} 张，失败 ${data.failed_count} 张`;
+            showNotification(`下载完成：成功 ${data.success_count} 张，保存到 ${data.save_dir}`, 'success');
         } else {
             throw new Error(data.message || '下载失败');
         }
     } catch (error) {
-        console.warn('后端下载接口调用失败:', error);
+        progressText.textContent = '下载失败: ' + error.message;
+        progressText.style.color = 'var(--danger-color)';
         showNotification('下载失败：' + (error.message || '请检查网络连接'), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-            </svg>
-            下载选中图片
-        `;
+        setTimeout(() => {
+            progressContainer.classList.remove('visible');
+            progressText.style.color = '';
+            progressFill.style.width = '0%';
+        }, 3000);
     }
 }
 
+async function downloadSelectedImages() {
+    const paths = getSavePaths();
+    if (paths.length === 0) {
+        showNotification('请先设置保存文件路径', 'warning');
+        openSettingsModal();
+        return;
+    }
+    if (selectedImages.size === 0) {
+        showNotification('请先勾选要下载的图片', 'warning');
+        return;
+    }
+    openDownloadModal();
+}
 // 添加旋转动画
 const style = document.createElement('style');
 style.textContent = `
@@ -1125,47 +1506,71 @@ async function startSearch() {
 
     try {
         // 逐页搜索，显示进度
+        let failedPages = [];
         for (let currentPage = 1; currentPage <= pageCount; currentPage++) {
             progressText.textContent = `正在搜索第 ${currentPage}/${pageCount} 页...`;
             progressFill.style.width = `${(currentPage - 1) / pageCount * 100}%`;
             
-            const response = await fetch('/api/amazon-search-page/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({ keyword, page: currentPage })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                if (data.images.length === 0) {
-                    // 该页没有数据，结束搜索
-                    break;
-                }
-                // 合并结果，去重
-                data.images.forEach(img => {
-                    if (!allImages.some(existing => existing.thumb_url === img.thumb_url)) {
-                        img.id = allImages.length;
-                        allImages.push(img);
-                    }
+            try {
+                const response = await fetch('/api/amazon-search-page/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ keyword, page: currentPage })
                 });
-            } else {
-                throw new Error(data.message);
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.images.length === 0) {
+                        // 该页没有数据，结束搜索
+                        break;
+                    }
+                    // 合并结果，去重
+                    data.images.forEach(img => {
+                        if (!allImages.some(existing => existing.thumb_url === img.thumb_url)) {
+                            img.id = allImages.length;
+                            allImages.push(img);
+                        }
+                    });
+                } else {
+                    // 单页失败记录但不中断
+                    console.warn(`第 ${currentPage} 页失败: ${data.message}`);
+                    failedPages.push({ page: currentPage, reason: data.message });
+                }
+            } catch (fetchError) {
+                console.warn(`第 ${currentPage} 页请求异常: ${fetchError.message}`);
+                failedPages.push({ page: currentPage, reason: fetchError.message });
+            }
+            
+            // 页间延迟：第1页后多等一会儿，让TCP连接稳定
+            const delayMs = currentPage === 1 ? 2000 : 1500;
+            if (currentPage < pageCount) {
+                await new Promise(r => setTimeout(r, delayMs + Math.random() * 1000));
             }
         }
         
         progressFill.style.width = '100%';
-        progressText.textContent = `找到 ${allImages.length} 张图片`;
+        
+        let resultMsg = `找到 ${allImages.length} 张图片`;
+        if (failedPages.length > 0) {
+            resultMsg += `，${failedPages.length} 页失败`;
+            showNotification(`${failedPages.length} 页搜索失败（网络超时），已跳过`, 'warning');
+        }
+        progressText.textContent = resultMsg;
         
         // 保存到历史记录
         addToHistory(keyword, pageCount);
         
-        // 显示结果
-        renderImages();
-        document.getElementById('resultsContainer').classList.add('visible');
+        // 显示结果（只要有数据就显示）
+        if (allImages.length > 0) {
+            renderImages();
+            document.getElementById('resultsContainer').classList.add('visible');
+        } else if (failedPages.length > 0) {
+            throw new Error('所有页面均搜索失败，请检查网络连接后重试');
+        }
         
     } catch (error) {
         progressText.textContent = '搜索失败: ' + error.message;

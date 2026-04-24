@@ -4,7 +4,7 @@ from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from datetime import timedelta
+from datetime import date, timedelta
 
 
 class PermissionConfig(models.Model):
@@ -17,6 +17,7 @@ class PermissionConfig(models.Model):
     description = models.TextField('权限描述', blank=True)
     category = models.CharField('权限分类', max_length=50, blank=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
 
     class Meta:
         db_table = 'user_permission_configs'
@@ -569,6 +570,8 @@ class AmazonShop(models.Model):
         related_name='authorized_shops',
         verbose_name='授权管理人员',
     )
+    license_registered_capital = models.CharField(max_length=255, blank=True, null=True, db_comment='执照注册资本')
+    lingxing_ad_authorization_date = models.DateField(blank=True, null=True, db_comment='领星广告授权日期')
 
     class Meta:
         db_table = 'amazon_shop'
@@ -589,6 +592,35 @@ class AmazonShop(models.Model):
             raise ValueError('不能跨公司迁移项目')
         self.project = new_project
         self.save(update_fields=['project'])
+
+    def get_id_number_age(self):
+        """根据身份证号计算年龄，身份证号无效时返回 None。"""
+        id_number = (self.id_number or '').strip().upper()
+        if not id_number:
+            return None
+
+        birth_str = ''
+        if len(id_number) == 18 and id_number[:-1].isdigit() and id_number[-1] in '0123456789X':
+            birth_str = id_number[6:14]
+        elif len(id_number) == 15 and id_number.isdigit():
+            birth_str = f"19{id_number[6:12]}"
+        else:
+            return None
+
+        try:
+            birth_day = date(
+                int(birth_str[0:4]),
+                int(birth_str[4:6]),
+                int(birth_str[6:8]),
+            )
+        except ValueError:
+            return None
+
+        today = timezone.localdate()
+        age = today.year - birth_day.year
+        if (today.month, today.day) < (birth_day.month, birth_day.day):
+            age -= 1
+        return age
 
 
 class TemuShop(models.Model):
@@ -1048,5 +1080,3 @@ class ShopChannelRisk(models.Model):
 
     def __str__(self):
         return f"{self.channel_name}"
-
-
