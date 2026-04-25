@@ -78,7 +78,6 @@ class AmazonThemeClusterNovelty(models.Model):
     new_asin_7d = models.IntegerField(default=0, verbose_name="7天内新上架数",null=True,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    asin_change = models.IntegerField(default=0, verbose_name="今日新增主题数", null=True, blank=True)
 
     class Meta:
         db_table = 'theme_novelty_cluster'
@@ -579,6 +578,7 @@ class AmazonThemeCluster(models.Model):
     asin_count = models.IntegerField(default=0,verbose_name='聚类主题下ASIN数')
     burst_score = models.FloatField(default=0.0, verbose_name="爆发指数",null=True,blank=True) #launch_date <= 7d ASIN数 / 该Cluster下的ASIN总数
     new_asin_7d = models.IntegerField(default=0, verbose_name="7天内新上架数",null=True,blank=True)
+    asin_change = models.IntegerField(default=0, verbose_name="今日新增主题数", null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
