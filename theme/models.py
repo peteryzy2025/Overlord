@@ -1067,46 +1067,184 @@ class ThemeNoveltySummary(models.Model):
         return f'{self.summary_subject_title}'
 
 
-class DailyRecommendedTheme(models.Model):
+class DailyRecommendedThemeV2(models.Model):
     """
-    每日推荐主题
+    推荐主题快照
     """
-    id = models.AutoField(primary_key=True)
-    theme = models.CharField(
-        max_length=255,
-        verbose_name="推荐主题",
-        help_text="当天的推荐主题名称"
-    )
-    date = models.DateField(verbose_name="日期")
+    class PeriodType(models.TextChoices):
+        DAY = "day", "Day"
+        WEEK = "week", "Week"
+        MONTH = "month", "Month"
 
-    # 自动时间戳（建议保留，便于追踪）
+    class Source(models.TextChoices):
+        NOVELTY = "novelty", "新奇特"
+        NEW_RELEASE = "new_release", "新品榜"
+        ABA = "aba", "ABA"
+
+    class ReasonType(models.TextChoices):
+        NOVELTY_SCORE = "novelty_score", "新奇特分值"
+        NEW_RELEASE_NEW_ASIN = "new_release_new_asin", "新品榜新增ASIN"
+        NEW_RELEASE_RANK_UP = "new_release_rank_up", "新品榜排名上升"
+        ABA_BURST = "aba_burst", "ABA爆发"
+        ABA_SURGE = "aba_surge", "ABA飙升"
+        ABA_CONTINUOUS_GROWTH = "aba_continuous_growth", "ABA持续增长"
+
+    class SourceObjectType(models.TextChoices):
+        NOVELTY_CLUSTER = "novelty_cluster", "新奇特聚合主题"
+        NEW_RELEASE_CLUSTER = "new_release_cluster", "新品榜聚合主题"
+        ABA_SEARCH_TERM = "aba_search_term", "ABA搜索词"
+
+    id = models.AutoField(primary_key=True)
+    period_type = models.CharField(
+        max_length=20,
+        choices=PeriodType.choices,
+        db_index=True,
+        verbose_name="时间维度",
+    )
+    snapshot_date = models.DateField(verbose_name="榜单归属日期", db_index=True)
+    window_start = models.DateField(verbose_name="统计窗口开始日期", db_index=True)
+    window_end = models.DateField(verbose_name="统计窗口结束日期", db_index=True)
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        db_index=True,
+        verbose_name="来源",
+    )
+    reason_type = models.CharField(
+        max_length=50,
+        choices=ReasonType.choices,
+        db_index=True,
+        verbose_name="推荐原因",
+    )
+    theme = models.CharField(
+        max_length=525,
+        verbose_name="推荐主题",
+        help_text="新奇特/新品榜存display_title，ABA存搜索词term",
+    )
+    source_object_type = models.CharField(
+        max_length=50,
+        choices=SourceObjectType.choices,
+        db_index=True,
+        verbose_name="来源对象类型",
+    )
+    source_object_id = models.IntegerField(
+        db_index=True,
+        verbose_name="来源对象ID",
+        help_text="cluster id 或 aba_db.search_terms.id",
+    )
+    source_metric_id = models.IntegerField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="来源指标ID",
+        help_text="ABA可存aba_db.search_term_metrics.id",
+    )
+    source_date = models.DateField(
+        db_index=True,
+        verbose_name="来源数据日期",
+        help_text="ABA存report_week，其他来源存命中日期",
+    )
+    asin_count = models.IntegerField(default=0, verbose_name="命中ASIN数量")
+    metric_value = models.FloatField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="主指标值",
+        help_text="排名上升百分比、最高分值、前三转化份额等",
+    )
+    metrics = models.JSONField(default=dict, blank=True, verbose_name="指标明细")
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
 
     class Meta:
-        db_table = 'theme_daily_recommended_theme'
-        verbose_name = '每日推荐主题'
-        verbose_name_plural = '每日推荐主题'
-        ordering = ['-date', '-created_at']
+        db_table = 'theme_daily_recommended_theme_v2'
+        verbose_name = '推荐主题'
+        verbose_name_plural = '推荐主题'
+        ordering = ['-snapshot_date', '-metric_value', '-created_at']
 
-        # 核心约束：同一天内主题不能重复
         constraints = [
             models.UniqueConstraint(
-                fields=['date', 'theme'],
-                name='unique_daily_theme'
+                fields=[
+                    'snapshot_date',
+                    'period_type',
+                    'source',
+                    'reason_type',
+                    'theme',
+                    'source_object_type',
+                    'source_object_id',
+                    'source_date',
+                ],
+                name='uniq_recommended_theme_snapshot'
             )
+        ]
+        indexes = [
+            models.Index(
+                fields=['snapshot_date', 'period_type', 'source'],
+                name="idx_rec_theme_snap_src",
+            ),
+            models.Index(
+                fields=['source', 'reason_type', 'metric_value'],
+                name="idx_rec_theme_src_metric",
+            ),
+            models.Index(
+                fields=['source_object_type', 'source_object_id'],
+                name="idx_rec_theme_src_obj",
+            ),
         ]
 
     def __str__(self):
-        return f"{self.date}: {self.theme}"
+        return f"{self.snapshot_date} [{self.period_type}/{self.source}]: {self.theme}"
 
     @classmethod
     def get_themes_by_date(cls, target_date):
-        """获取某天的所有推荐主题"""
-        return cls.objects.filter(date=target_date)
+        """获取某天的所有推荐主题快照"""
+        return cls.objects.filter(snapshot_date=target_date)
 
-    @classmethod
-    def add_theme(cls, date, theme_name):
-        """安全添加主题（重复则返回已存在记录）"""
-        return cls.objects.get_or_create(date=date, theme=theme_name)
+
+class RecommendedThemeAsin(models.Model):
+    """
+    推荐主题命中ASIN明细，仅用于新奇特和新品榜。
+    """
+    id = models.AutoField(primary_key=True)
+    recommended_theme = models.ForeignKey(
+        DailyRecommendedThemeV2,
+        on_delete=models.CASCADE,
+        related_name="asins",
+        verbose_name="推荐主题",
+    )
+    asin = models.CharField(max_length=20, db_index=True, verbose_name="ASIN")
+    title = models.CharField(max_length=500, blank=True, verbose_name="产品标题")
+    launch_date = models.DateField(null=True, blank=True, db_index=True, verbose_name="上架日期")
+    rank = models.IntegerField(null=True, blank=True, verbose_name="排名")
+    score = models.IntegerField(null=True, blank=True, db_index=True, verbose_name="分值")
+    source_position = models.IntegerField(default=0, verbose_name="来源排序位")
+    metrics = models.JSONField(default=dict, blank=True, verbose_name="ASIN指标明细")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+
+    class Meta:
+        db_table = "theme_recommended_theme_asin"
+        verbose_name = "推荐主题ASIN"
+        verbose_name_plural = "推荐主题ASIN"
+        ordering = ["recommended_theme", "source_position", "asin"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recommended_theme", "asin"],
+                name="uniq_recommended_theme_asin",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["recommended_theme", "source_position"],
+                name="idx_rec_asin_theme_pos",
+            ),
+            models.Index(
+                fields=["asin", "launch_date"],
+                name="idx_rec_asin_launch",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.recommended_theme_id}: {self.asin}"
 
