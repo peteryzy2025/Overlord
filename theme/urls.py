@@ -7,6 +7,7 @@ from theme.view import (
     views_dw_data,
     views_new_release,
     views_novelty_aggregation,
+    views_recommended_theme,
 )
 from theme.view import (
     views,
@@ -27,6 +28,11 @@ urlpatterns = [
         "theme/new-release/",
         views_new_release.new_release_page,
         name="theme_new_release_page",
+    ),
+    path(
+        "theme/recommended/",
+        views_recommended_theme.recommended_theme_page,
+        name="theme_recommended_page",
     ),
     path(
         "vocabulary/tro-table/", views_vocabulary.tro_table_page, name="tro_table_page"
@@ -108,6 +114,16 @@ urlpatterns = [
         "api/theme-cluster-aggregation/asins/",
         views_new_release.api_cluster_aggregation_asins,
         name="api_cluster_aggregation_asins",
+    ),
+    path(
+        "api/theme-recommended/",
+        views_recommended_theme.api_recommended_theme_list,
+        name="api_recommended_theme_list",
+    ),
+    path(
+        "api/theme-recommended/asins/",
+        views_recommended_theme.api_recommended_theme_asins,
+        name="api_recommended_theme_asins",
     ),
     path(
         "api/theme-novelty-aggregation/",
