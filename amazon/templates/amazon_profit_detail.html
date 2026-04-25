@@ -111,6 +111,10 @@
                     <div id="groupFilter" class="searchable-select single" data-placeholder="全部分组"></div>
                 </div>
                 {% endif %}
+                <div class="filter-group">
+                    <label class="filter-label">履约方式</label>
+                    <div id="fulfillmentFilter" class="searchable-select single" data-placeholder="全部方式"></div>
+                </div>
                 <div class="filter-group longsearch">
                     <label class="filter-label">搜索</label>
                     <input type="text" class="form-control" id="keywordSearch" placeholder="MSKU / ASIN / 品名">
@@ -216,6 +220,7 @@
         let shopSelect = null;
         let operatorSelect = null;
         let groupSelect = null;
+        let fulfillmentSelect = null;
         let dateRangeController = null;
         let currentSortField = 'amount';
         let currentSortOrder = 'desc';
@@ -330,6 +335,17 @@
                 multiple: true,
                 placeholder: '全部分组'
             });
+
+            fulfillmentSelect = new SearchableSelect('#fulfillmentFilter', {
+                options: [
+                    {value: 'all', label: '全部方式'},
+                    {value: 'fba', label: 'FBA'},
+                    {value: 'fbm', label: 'FBM'}
+                ],
+                multiple: false,
+                placeholder: '全部方式'
+            });
+            fulfillmentSelect.setValue('all');
         }
 
         // ==================== 加载筛选选项 ====================
@@ -381,6 +397,7 @@
             const shopIds = shopSelect ? shopSelect.getValue() : [];
             const operatorIds = operatorSelect ? operatorSelect.getValue() : [];
             const groups = groupSelect ? groupSelect.getValue() : [];
+            const fulfillmentType = fulfillmentSelect ? fulfillmentSelect.getValue() : 'all';
 
             const body = {
                 page: currentPage,
@@ -388,6 +405,7 @@
                 start_date: dateRange.start_date,
                 end_date: dateRange.end_date,
                 keyword: keyword,
+                fulfillment_type: fulfillmentType || 'all',
             };
 
             if (shopIds.length > 0) {
@@ -648,6 +666,7 @@
             if (shopSelect) shopSelect.setValue([]);
             if (operatorSelect) operatorSelect.setValue([]);
             if (groupSelect) groupSelect.setValue([]);
+            if (fulfillmentSelect) fulfillmentSelect.setValue('all');
 
             currentPage = 1;
             loadData();

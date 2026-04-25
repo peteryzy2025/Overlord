@@ -182,6 +182,13 @@ def get_amazon_profit_detail_api(request):
                 Q(price_list__asin__icontains=keyword)
             )
 
+        # 履约方式筛选：MSKU 包含 -FBA 视为 FBA，否则视为 FBM
+        fulfillment_type = str(data.get('fulfillment_type', 'all') or 'all').strip().lower()
+        if fulfillment_type == 'fba':
+            q_filter &= Q(seller_sku__icontains='-fba')
+        elif fulfillment_type == 'fbm':
+            q_filter &= ~Q(seller_sku__icontains='-fba')
+
         # ========== 查询数据 ==========
         # 过滤掉空/无效 MSKU 的记录
         profits_qs = AmazonMSKUDailyProfit.objects.filter(q_filter).exclude(
