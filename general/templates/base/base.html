@@ -937,7 +937,7 @@
                     </div>
                 </div>
             </div>
-            {% if 'logistics' in company_module_codes or 555 in user_permissions %}
+            {% if 'logistics' in company_module_codes or request.user.id == 555 %}
             <div class="nav-item-wrapper">
                 <a class="nav-link {% if active_nav == 'tracking-management' or active_nav == 'external-procurement-management' %}active{% endif %}"
                    href="{% if 'logistics' in company_module_codes %}{% url 'track:tracking-management' %}{% else %}{% url 'track:external-procurement-management' %}{% endif %}">
@@ -955,17 +955,15 @@
                             </div>
                         </a>
                         {% endif %}
-                        {% if 555 in user_permissions %}
+                        {% if request.user.id == 555 %}
                         <a href="{% url 'track:external-procurement-management' %}" class="nav-dropdown-card">
-                        {% else %}
-                        <a href="javascript:void(0)" class="nav-dropdown-card disabled" style="opacity: 0.5; cursor: not-allowed;" onclick="return false;">
-                        {% endif %}
                             <div class="nav-card-icon"><i class="fas fa-box-open"></i></div>
                             <div class="nav-card-content">
                                 <h4>外采产品管理</h4>
                                 <p>外部采购产品信息维护</p>
                             </div>
                         </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
