@@ -5,7 +5,6 @@ import os
 import tempfile
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
@@ -16,6 +15,7 @@ from openpyxl.utils.exceptions import InvalidFileException
 import json
 from track.models import Tracking, Courier, TrackingDetail, Factory
 from api.track.track_api import register_tracking, get_tracking_updates, parse_datetime
+from general.module_utils import module_access_required
 
 
 def has_perm_code(user, code):
@@ -30,7 +30,7 @@ def has_perm_code(user, code):
 
 
 # 主页视图
-@login_required
+@module_access_required('logistics', '物流板块')
 def tracking_management(request):
     """物流追踪管理主页"""
     # 权限检查：只有权限码 555、6、8 的用户可以访问
@@ -117,7 +117,7 @@ def parse_multi_filter_values(raw):
     return result
 
 
-@login_required
+@module_access_required('logistics', '物流板块')
 def get_factories(request):
     """获取工厂列表"""
     try:
@@ -135,7 +135,7 @@ def get_factories(request):
 
 
 # 获取物流商列表
-@login_required
+@module_access_required('logistics', '物流板块')
 def get_couriers(request):
     """获取物流商列表（用于筛选）"""
     try:
@@ -149,9 +149,7 @@ def get_couriers(request):
         }, status=500)
 
 
-@login_required
-@require_http_methods(["POST"])
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def tracking_list(request):
     """
@@ -355,7 +353,7 @@ def tracking_list(request):
 
 
 # 轨迹详情API（保持不变）
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["GET"])
 def tracking_details(request):
     """获取单票轨迹详情"""
@@ -402,7 +400,7 @@ def tracking_details(request):
 
 
 # 统计看板API
-@login_required
+@module_access_required('logistics', '物流板块')
 def tracking_stats(request):
     """获取统计看板数据（支持筛选条件）"""
     try:
@@ -546,7 +544,7 @@ def tracking_stats(request):
 
 # 在 view_tracking_management.py 文件中，找到 export_tracking_excel 函数
 
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def export_tracking_excel(request):
     """导出运单数据到Excel（修复筛选逻辑不一致问题）"""
@@ -725,7 +723,7 @@ def export_tracking_excel(request):
         }, status=500)
 
 
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def import_tracking_excel(request):
     """从Excel导入物流单号（支持工厂关联 + 后台异步更新轨迹）"""
@@ -1072,7 +1070,7 @@ def async_update_tracking_batch(track_nos):
     print(f"[后台任务] 所有批次处理完成！")
 
 
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def refresh_tracking(request):
     """批量刷新运单轨迹（真实API调用）"""
@@ -1111,7 +1109,7 @@ def refresh_tracking(request):
         }, status=500)
 
 
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def toggle_cancel_status(request):
     """批量切换运单取消状态（支持单个和批量）"""
@@ -1199,7 +1197,7 @@ def toggle_cancel_status(request):
         }, status=500)
 
 
-@login_required
+@module_access_required('logistics', '物流板块')
 @require_http_methods(["POST"])
 def update_tracking_remark(request):
     """更新运单备注"""

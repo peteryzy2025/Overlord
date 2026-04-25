@@ -20,23 +20,25 @@ from general.module_utils import module_access_required
 # 1. 页面渲染视图
 # ============================================
 
+SYSTEM_SUPER_ADMIN_ID = 555
+
+
+def is_system_super_admin(user):
+    """平台总管理员：只能是 user.id == 555。"""
+    return bool(user and user.is_authenticated and user.id == SYSTEM_SUPER_ADMIN_ID)
+
+
 def is_admin(user):
-    """判断用户是否为全局管理员（拥有code=555的权限）"""
-    if not user.is_authenticated:
-        return False
-    # 超级管理员默认是管理员
-    if user.is_superuser:
-        return True
-    try:
-        return user.permission_configs.filter(code=555).exists()
-    except Exception:
-        return False
+    """兼容旧命名：系统级数据权限只认 user.id == 555。"""
+    return is_system_super_admin(user)
 
 
 def is_tro_admin(user):
     """判断用户是否为侵权词库页面管理员（拥有code=555或code=556的权限）"""
     if not user.is_authenticated:
         return False
+    if is_system_super_admin(user):
+        return True
     # 超级管理员默认是管理员
     if user.is_superuser:
         return True
@@ -44,6 +46,77 @@ def is_tro_admin(user):
         return user.permission_configs.filter(code__in=[555, 556]).exists()
     except Exception:
         return False
+
+
+def system_tro_record_q():
+    """系统级词库：无店铺，且无创建人或由平台总管理员创建。"""
+    return Q(shop__isnull=True) & (
+        Q(creator__isnull=True) | Q(creator_id=SYSTEM_SUPER_ADMIN_ID)
+    )
+
+
+def is_system_tro_record(record):
+    return not record.shop_id and (
+        record.creator_id is None or record.creator_id == SYSTEM_SUPER_ADMIN_ID
+    )
+
+
+def get_tro_queryset_for_user(user):
+    """按用户返回可见词库。系统级词库只对 user.id == 555 可见。"""
+    queryset = TroTable.objects.select_related('shop', 'creator', 'creator__company')
+    if is_system_super_admin(user):
+        return queryset
+
+    return queryset.exclude(system_tro_record_q()).filter(
+        Q(shop__company=getattr(user, 'company', None)) |
+        Q(shop__isnull=True, creator__company=getattr(user, 'company', None))
+    ).distinct()
+
+
+def can_view_tro_record(user, record):
+    if is_system_tro_record(record):
+        return is_system_super_admin(user)
+
+    company_id = getattr(user, 'company_id', None)
+    if not company_id:
+        return False
+
+    if record.shop_id:
+        return record.shop and record.shop.company_id == company_id
+
+    if record.creator_id:
+        return record.creator and record.creator.company_id == company_id
+
+    return False
+
+
+def can_edit_tro_record(user, record):
+    if not can_view_tro_record(user, record):
+        return False
+    if is_system_tro_record(record):
+        return is_system_super_admin(user)
+    return record.creator_id == user.id or is_tro_admin(user)
+
+
+def can_delete_tro_record(user, record):
+    if not can_view_tro_record(user, record):
+        return False
+    if is_system_tro_record(record):
+        return is_system_super_admin(user)
+    return is_tro_admin(user)
+
+
+def inaccessible_duplicate_response(user, record):
+    if is_system_tro_record(record):
+        message = '该侵权词已存在于系统级词库，仅平台总管理员可替换。'
+    else:
+        message = '该侵权词已存在于其他数据范围，无法重复创建。'
+    return JsonResponse({
+        'success': False,
+        'code': 'duplicate_out_of_scope',
+        'need_confirm': False,
+        'message': message,
+    }, status=403)
 
 
 @module_access_required('infringement', '侵权板块')
@@ -106,11 +179,8 @@ def api_tro_table_list(request):
     try:
         data = json.loads(request.body)
 
-        # 基础查询集
-        queryset = TroTable.objects.filter(
-            Q(shop__company=request.user.company) |
-            Q(shop__isnull=True, creator__company=request.user.company)
-        ).distinct()
+        # 基础查询集：公司用户只看公司词库，系统级词库仅 user.id == 555 可见
+        queryset = get_tro_queryset_for_user(request.user)
 
         # 筛选条件
         theme_name = data.get('theme_name', '').strip()
@@ -175,6 +245,13 @@ def api_tro_table_list(request):
             # 获取国际类信息
             intl_classes = list(item.international_classes.values('code', 'name'))
             
+            is_system_record = is_system_tro_record(item)
+            creator_name = '-'
+            if is_system_record and not item.creator_id:
+                creator_name = '系统'
+            elif item.creator:
+                creator_name = item.creator.first_name or item.creator.username
+
             data_list.append({
                 'id': item.id,
                 'theme_name': item.theme_name,
@@ -184,9 +261,10 @@ def api_tro_table_list(request):
                 'category': item.category,
                 'international_classes': intl_classes,
                 'shop_id': item.shop_id,
-                'shop_name': item.shop.shop_name if item.shop else '-',
-                'creator_name': item.creator.first_name if item.creator else (item.creator.username if item.creator else '-'),
+                'shop_name': '系统词库' if is_system_record else (item.shop.shop_name if item.shop else '-'),
+                'creator_name': creator_name,
                 'creator_id': item.creator.id if item.creator else None,
+                'is_system_record': is_system_record,
                 'create_time': item.create_time.strftime('%Y-%m-%d %H:%M:%S') if item.create_time else '',
                 'update_time': item.update_time.strftime('%Y-%m-%d %H:%M:%S') if item.update_time else '',
             })
@@ -247,7 +325,14 @@ def api_create_tro_record(request):
             if not AmazonShop.objects.filter(id=shop_id, company=request.user.company).exists():
                 return JsonResponse({'success': False, 'message': '无权选择该店铺'}, status=403)
 
-        existing_record = TroTable.objects.filter(theme_name__iexact=theme_name).first()
+        existing_record = (
+            TroTable.objects.select_related('shop', 'creator', 'creator__company')
+            .filter(theme_name__iexact=theme_name)
+            .first()
+        )
+        if existing_record and not can_view_tro_record(request.user, existing_record):
+            return inaccessible_duplicate_response(request.user, existing_record)
+
         if existing_record and not force_replace:
             existing_name_type_desc = NAME_TYPE_MAPPING.get(existing_record.name_type, str(existing_record.name_type))
             return JsonResponse({
@@ -266,6 +351,11 @@ def api_create_tro_record(request):
         replaced = False
         try:
             if existing_record and force_replace:
+                if not can_edit_tro_record(request.user, existing_record):
+                    return JsonResponse({
+                        'success': False,
+                        'message': '无权限替换此记录',
+                    }, status=403)
                 # 按用户确认结果覆盖现有记录（theme_name 唯一）
                 existing_record.theme_name = theme_name
                 existing_record.replacement_word = replacement_word
@@ -285,8 +375,14 @@ def api_create_tro_record(request):
                     shop_id=shop_id
                 )
         except IntegrityError:
-            duplicate = TroTable.objects.filter(theme_name__iexact=theme_name).first()
+            duplicate = (
+                TroTable.objects.select_related('shop', 'creator', 'creator__company')
+                .filter(theme_name__iexact=theme_name)
+                .first()
+            )
             if duplicate:
+                if not can_view_tro_record(request.user, duplicate):
+                    return inaccessible_duplicate_response(request.user, duplicate)
                 duplicate_name_type_desc = NAME_TYPE_MAPPING.get(duplicate.name_type, str(duplicate.name_type))
                 return JsonResponse({
                     'success': False,
@@ -351,24 +447,30 @@ def api_update_tro_record(request):
             return JsonResponse({'success': False, 'message': 'ID不能为空'}, status=400)
 
         try:
-            record = TroTable.objects.get(id=record_id)
-            if request.user.company_id:
-                if record.shop and record.shop.company_id != request.user.company_id:
-                    return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
-                if not record.shop and record.creator and record.creator.company_id != request.user.company_id:
-                    return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
+            record = TroTable.objects.select_related('shop', 'creator', 'creator__company').get(id=record_id)
         except TroTable.DoesNotExist:
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
 
         # 权限检查：只有创建人或管理员可编辑
-        is_creator = record.creator_id == request.user.id if record.creator else False
-        is_admin_user = is_tro_admin(request.user)
-
-        if not (is_creator or is_admin_user):
+        if not can_edit_tro_record(request.user, record):
             return JsonResponse({'success': False, 'message': '无权限编辑此记录'}, status=403)
 
         if not theme_name:
             return JsonResponse({'success': False, 'message': '侵权词不能为空'}, status=400)
+
+        duplicate = (
+            TroTable.objects.select_related('shop', 'creator', 'creator__company')
+            .filter(theme_name__iexact=theme_name)
+            .exclude(id=record.id)
+            .first()
+        )
+        if duplicate:
+            if not can_view_tro_record(request.user, duplicate):
+                return inaccessible_duplicate_response(request.user, duplicate)
+            return JsonResponse({
+                'success': False,
+                'message': f'{duplicate.theme_name}已存在，无法重复保存。',
+            }, status=409)
 
         if not name_type:
             return JsonResponse({'success': False, 'message': '请选择类型码'}, status=400)
@@ -440,18 +542,11 @@ def api_delete_tro_record(request):
         if not record_id:
             return JsonResponse({'success': False, 'message': 'ID不能为空'}, status=400)
 
-        # 权限检查：只有管理员可删除
-        if not is_tro_admin(request.user):
-            return JsonResponse({'success': False, 'message': '只有管理员可以删除记录'}, status=403)
-
         try:
-            record = TroTable.objects.get(id=record_id)
+            record = TroTable.objects.select_related('shop', 'creator', 'creator__company').get(id=record_id)
             theme_name = record.theme_name  # 先保存名称用于日志
-            if request.user.company_id:
-                if record.shop and record.shop.company_id != request.user.company_id:
-                    return JsonResponse({'success': False, 'message': '无权限删除此记录'}, status=403)
-                if not record.shop and record.creator and record.creator.company_id != request.user.company_id:
-                    return JsonResponse({'success': False, 'message': '无权限删除此记录'}, status=403)
+            if not can_delete_tro_record(request.user, record):
+                return JsonResponse({'success': False, 'message': '无权限删除此记录'}, status=403)
             record.delete()
         except TroTable.DoesNotExist:
             return JsonResponse({'success': False, 'message': '记录不存在'}, status=404)
@@ -676,10 +771,9 @@ def api_import_tro_records(request):
         # 获取当前用户
         user_name = request.user.first_name or request.user.username
 
-        # 获取数据库中已有的侵权词及其类型（用于去重和更新）
-        existing_records = TroTable.objects.values('theme_name', 'name_type')
-        # 构建字典：{theme_name: name_type}
-        existing_map = {item['theme_name']: item['name_type'] for item in existing_records}
+        # 获取数据库中已有侵权词；导入时也不能覆盖不可见的系统级词库
+        existing_records = TroTable.objects.select_related('shop', 'creator', 'creator__company')
+        existing_map = {item.theme_name: item for item in existing_records}
 
         # 统计变量
         success_count = 0      # 新增成功
@@ -712,32 +806,44 @@ def api_import_tro_records(request):
 
                 # 检查是否已存在
                 if theme_name in existing_map:
-                    old_name_type = existing_map[theme_name]
+                    existing_record = existing_map[theme_name]
+                    if not can_view_tro_record(request.user, existing_record):
+                        error_count += 1
+                        if is_system_tro_record(existing_record):
+                            errors.append(f'第 {idx + 2} 行: 已存在于系统级词库，仅平台总管理员可替换')
+                        else:
+                            errors.append(f'第 {idx + 2} 行: 已存在于其他数据范围，无法导入')
+                        continue
+
+                    old_name_type = existing_record.name_type
                     # 如果类型码一致，跳过
                     if old_name_type == name_type:
                         skip_count += 1
                         skipped_items.append(theme_name)
                         continue
-                    else:
-                        # 如果类型码不一致，更新
-                        # update() 方法不会自动更新 auto_now=True 的字段，需要手动指定 update_time
-                        TroTable.objects.filter(theme_name=theme_name).update(
-                            name_type=name_type,
-                            update_time=timezone.now()
-                        )
-                        update_count += 1
-                        existing_map[theme_name] = name_type # 更新内存中的映射，防止后续重复处理
+
+                    if not can_edit_tro_record(request.user, existing_record):
+                        error_count += 1
+                        errors.append(f'第 {idx + 2} 行: 无权限更新已有记录')
                         continue
+
+                    existing_record.name_type = name_type
+                    existing_record.update_time = timezone.now()
+                    existing_record.save(update_fields=['name_type', 'update_time'])
+                    update_count += 1
+                    continue
             
                 # 创建新记录
-                TroTable.objects.create(
+                record = TroTable.objects.create(
                     theme_name=theme_name,
                     name_type=name_type,
                     creator=request.user
                 )
                 success_count += 1
                 # 添加到已存在集合，避免同一批次内重复
-                existing_map[theme_name] = name_type
+                existing_map[theme_name] = TroTable.objects.select_related(
+                    'shop', 'creator', 'creator__company'
+                ).get(id=record.id)
 
             except Exception as e:
                 error_count += 1
