@@ -1,0 +1,656 @@
+{% extends 'base/base_theme.html' %}
+{% load static %}
+
+{% block title %}推荐主题 - Divi智管{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/amazon_css.css' %}?v=20260425-recommended-theme-layout">
+    <style>
+        .recommended-theme-cell {
+            min-width: 260px;
+            max-width: 420px;
+            color: var(--text-primary);
+            font-weight: 600;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .recommended-source-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            padding: 0.28rem 0.6rem;
+            border-radius: 999px;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--accent-color);
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .recommended-page-size {
+            min-height: 38px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .recommended-page-size:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .pagination-new {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            flex: 1 1 auto;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn-new {
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+        }
+
+        .pagination-btn-new:hover:not(:disabled),
+        .pagination-btn-new.active {
+            background-color: var(--accent-color);
+            color: #fff;
+            border-color: var(--accent-color);
+        }
+
+        .pagination-btn-new:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-jump-input {
+            width: 4.5rem;
+            height: 2.25rem;
+            padding: 0.35rem 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            text-align: center;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.45);
+            padding: 2rem;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .asin-modal {
+            width: min(1040px, 96vw);
+            max-height: 86vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+        }
+
+        .asin-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .asin-modal-title {
+            margin: 0;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+        }
+
+        .asin-modal-body {
+            overflow: auto;
+            padding: 1rem 1.25rem 1.25rem;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+        }
+
+        @media (max-width: 1200px) {
+            .products-header-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .pagination-new {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <p>数据加载中...</p>
+        </div>
+    </div>
+
+    <div class="performance-main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">{{ page_title|default:"推荐主题" }}</h1>
+                <p class="page-subtitle">NewRelease 推荐主题快照</p>
+            </div>
+            <div class="page-header-actions">
+                <button class="btn" type="button" onclick="refreshData(event)">
+                    <i class="fas fa-sync-alt"></i> 刷新数据
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-nav">
+            <div class="tab-nav-item active" data-period="day" onclick="switchPeriod('day')">日主题推荐</div>
+            <div class="tab-nav-item" data-period="week" onclick="switchPeriod('week')">周主题推荐</div>
+            <div class="tab-nav-item" data-period="month" onclick="switchPeriod('month')">月主题推荐</div>
+        </div>
+
+        <div class="tab-pane active" id="recommended-theme-tab">
+            <div class="control-panel">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label class="filter-label">榜单日期</label>
+                        <input type="date" class="form-control" id="snapshotDate"
+                               min="{{ date_range.min_snapshot_date|date:'Y-m-d' }}"
+                               max="{{ date_range.max_snapshot_date|date:'Y-m-d' }}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">品类</label>
+                        <select class="form-control" id="categoryFilter">
+                            <option value="">全部品类</option>
+                            {% for category in category_options %}
+                                <option value="{{ category }}">{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 1; min-width: 220px;">
+                        <label class="filter-label">主题搜索</label>
+                        <input type="text" class="form-control" id="themeSearch" placeholder="输入推荐主题"
+                               onkeydown="if(event.key==='Enter'){applyFilters();}">
+                    </div>
+                    <div class="filter-group">
+                        <label class="filter-label">每页显示</label>
+                        <select class="recommended-page-size" id="pageSizeSelect" onchange="changePageSize(this.value)">
+                            <option value="20">20条</option>
+                            <option value="50">50条</option>
+                            <option value="100">100条</option>
+                            <option value="200">200条</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="filter-actions-row">
+                    <div class="filter-actions">
+                        <button class="btn gs-btn-search gs-btn-iconized gs-btn-icon-only" type="button" onclick="applyFilters()" title="应用筛选" aria-label="应用筛选"></button>
+                        <button class="btn btn-secondary gs-btn-reset gs-btn-iconized gs-btn-icon-only" type="button" onclick="resetFilters()" title="重置" aria-label="重置"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <div class="products-header-row">
+                    <div class="products-header-left">
+                        <h3 class="section-title" style="margin-bottom: 0;">推荐主题列表</h3>
+                    </div>
+                    <div class="pagination-stats" id="summaryText">0 条</div>
+                </div>
+
+                <div class="table-container" id="recommendedThemeTableContainer">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="sortable" data-field="theme" onclick="handleSort('theme')">推荐主题</th>
+                            <th>Source</th>
+                            <th class="sortable" data-field="category" onclick="handleSort('category')">品类</th>
+                            <th class="sortable" data-field="snapshot_date" onclick="handleSort('snapshot_date')">榜单日期</th>
+                            <th>统计窗口</th>
+                            <th class="sortable" data-field="source_date" onclick="handleSort('source_date')">来源日期</th>
+                            <th class="sortable" data-field="asin_count" onclick="handleSort('asin_count')">命中 ASIN 数</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="recommendedThemeBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <i class="fas fa-spinner fa-spin"></i>
+                                <p>数据加载中...</p>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-container" id="paginationControls" style="display: none;">
+                    <div class="pagination-info" id="paginationInfo">0-0 / 共 0 条</div>
+                    <div class="pagination-new" id="paginationButtons"></div>
+                    <div class="pagination-jump">
+                        <span>跳至</span>
+                        <input type="number" id="pageJumpInput" class="page-jump-input" min="1" placeholder="页码" onkeydown="handlePageJump(event)">
+                        <span>页</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="asinModal" onclick="closeAsinModal(event)">
+        <div class="asin-modal" onclick="event.stopPropagation()">
+            <div class="asin-modal-header">
+                <h3 class="asin-modal-title" id="asinModalTitle">命中 ASIN</h3>
+                <button class="icon-btn" type="button" onclick="closeAsinModal()" title="关闭" aria-label="关闭">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="asin-modal-body">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>ASIN</th>
+                            <th>标题</th>
+                            <th>品类</th>
+                            <th>上架日期</th>
+                            <th>排名</th>
+                            <th>分值</th>
+                            <th>来源位次</th>
+                        </tr>
+                        </thead>
+                        <tbody id="asinTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/general_style_1.js' %}?v=20260425-recommended-theme-layout"></script>
+    <script>
+        const MAIN_COLSPAN = 8;
+        const ASIN_COLSPAN = 7;
+        let currentPeriod = 'day';
+        let currentPage = 1;
+        let pageSize = 20;
+        let totalItems = 0;
+        let totalPages = 1;
+        let sortField = '';
+        let sortOrder = 'desc';
+
+        document.addEventListener('DOMContentLoaded', function () {
+            loadRecommendedThemes();
+        });
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, function (char) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[char];
+            });
+        }
+
+        function formatNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '-';
+            }
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed.toLocaleString() : escapeHtml(value);
+        }
+
+        function setLoading(visible) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (!overlay) {
+                return;
+            }
+            overlay.classList.toggle('hidden', !visible);
+        }
+
+        function refreshData(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            loadRecommendedThemes();
+        }
+
+        function switchPeriod(period) {
+            currentPeriod = period;
+            currentPage = 1;
+            document.querySelectorAll('.tab-nav-item[data-period]').forEach(function (tab) {
+                tab.classList.toggle('active', tab.dataset.period === period);
+            });
+            loadRecommendedThemes();
+        }
+
+        function getPayload() {
+            return {
+                period_type: currentPeriod,
+                snapshot_date: document.getElementById('snapshotDate').value,
+                category: document.getElementById('categoryFilter').value,
+                theme_search: document.getElementById('themeSearch').value.trim(),
+                page: currentPage,
+                page_size: pageSize,
+                sort_field: sortField,
+                sort_order: sortOrder
+            };
+        }
+
+        async function loadRecommendedThemes() {
+            const tbody = document.getElementById('recommendedThemeBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${MAIN_COLSPAN}" class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>数据加载中...</p>
+                    </td>
+                </tr>`;
+            setLoading(true);
+
+            try {
+                const response = await fetch("{% url 'theme:api_recommended_theme_list' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(getPayload())
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message || '数据加载失败');
+                }
+
+                const data = result.data || {};
+                totalItems = data.total || 0;
+                totalPages = data.total_pages || 1;
+                currentPage = data.current_page || 1;
+                renderRecommendedThemes(data.themes || []);
+                renderPagination();
+                updateSummary(data.stats || {});
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${MAIN_COLSPAN}" class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>${escapeHtml(error.message)}</p>
+                        </td>
+                    </tr>`;
+                document.getElementById('paginationControls').style.display = 'none';
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function renderRecommendedThemes(rows) {
+            const tbody = document.getElementById('recommendedThemeBody');
+            if (!rows.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${MAIN_COLSPAN}" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>暂无推荐主题快照数据</p>
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(function (item) {
+                const windowText = `${escapeHtml(item.window_start)} 至 ${escapeHtml(item.window_end)}`;
+                const sourceText = item.source_label || item.source || '-';
+                return `
+                    <tr>
+                        <td><div class="recommended-theme-cell">${escapeHtml(item.theme)}</div></td>
+                        <td><span class="recommended-source-badge">${escapeHtml(sourceText)}</span></td>
+                        <td>${escapeHtml(item.category || '-')}</td>
+                        <td>${escapeHtml(item.snapshot_date || '-')}</td>
+                        <td>${windowText}</td>
+                        <td>${escapeHtml(item.source_date || '-')}</td>
+                        <td>${formatNumber(item.asin_count)}</td>
+                        <td>
+                            <button class="btn btn-sm" type="button" onclick="openAsinModal(${Number(item.id)}, decodeURIComponent('${encodeURIComponent(item.theme || '')}'))">
+                                <i class="fas fa-list"></i>
+                                查看 ASIN
+                            </button>
+                        </td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function updateSummary(stats) {
+            document.getElementById('summaryText').textContent = `当前 ${totalItems} 条 / 全部 ${stats.total || 0} 条`;
+        }
+
+        function renderPagination() {
+            const controls = document.getElementById('paginationControls');
+            const info = document.getElementById('paginationInfo');
+            const buttons = document.getElementById('paginationButtons');
+
+            if (totalItems <= 0) {
+                controls.style.display = 'none';
+                return;
+            }
+
+            controls.style.display = 'flex';
+            const start = (currentPage - 1) * pageSize + 1;
+            const end = Math.min(currentPage * pageSize, totalItems);
+            info.textContent = `${start}-${end} / 共 ${totalItems} 条`;
+
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage < maxVisible - 1) {
+                startPage = Math.max(1, endPage - maxVisible + 1);
+            }
+
+            let html = `
+                <button class="pagination-btn-new" type="button" onclick="goToPage(${currentPage - 1})" ${currentPage <= 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left"></i>
+                </button>`;
+
+            if (startPage > 1) {
+                html += `<button class="pagination-btn-new" type="button" onclick="goToPage(1)">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+
+            for (let page = startPage; page <= endPage; page++) {
+                html += `<button class="pagination-btn-new ${page === currentPage ? 'active' : ''}" type="button" onclick="goToPage(${page})">${page}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    html += `<span class="pagination-ellipsis">...</span>`;
+                }
+                html += `<button class="pagination-btn-new" type="button" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+            }
+
+            html += `
+                <button class="pagination-btn-new" type="button" onclick="goToPage(${currentPage + 1})" ${currentPage >= totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right"></i>
+                </button>`;
+
+            buttons.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            if (page < 1 || page > totalPages || page === currentPage) {
+                return;
+            }
+            currentPage = page;
+            loadRecommendedThemes();
+        }
+
+        function handlePageJump(event) {
+            if (event.key !== 'Enter') {
+                return;
+            }
+            const page = parseInt(event.target.value, 10);
+            if (page >= 1 && page <= totalPages) {
+                goToPage(page);
+            }
+            event.target.value = '';
+        }
+
+        function changePageSize(value) {
+            pageSize = parseInt(value, 10) || 20;
+            currentPage = 1;
+            loadRecommendedThemes();
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            loadRecommendedThemes();
+        }
+
+        function resetFilters() {
+            document.getElementById('snapshotDate').value = '';
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('themeSearch').value = '';
+            sortField = '';
+            sortOrder = 'desc';
+            currentPage = 1;
+            loadRecommendedThemes();
+        }
+
+        function handleSort(field) {
+            if (sortField === field) {
+                sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortField = field;
+                sortOrder = 'desc';
+            }
+            currentPage = 1;
+            loadRecommendedThemes();
+        }
+
+        async function openAsinModal(recommendedThemeId, themeTitle) {
+            const modal = document.getElementById('asinModal');
+            const title = document.getElementById('asinModalTitle');
+            const tbody = document.getElementById('asinTableBody');
+            title.textContent = `命中 ASIN: ${themeTitle}`;
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${ASIN_COLSPAN}" class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>数据加载中...</p>
+                    </td>
+                </tr>`;
+            modal.classList.add('open');
+
+            try {
+                const response = await fetch("{% url 'theme:api_recommended_theme_asins' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ recommended_theme_id: recommendedThemeId })
+                });
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.message || 'ASIN 数据加载失败');
+                }
+                renderAsins((result.data || {}).asins || []);
+            } catch (error) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${ASIN_COLSPAN}" class="empty-state">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <p>${escapeHtml(error.message)}</p>
+                        </td>
+                    </tr>`;
+            }
+        }
+
+        function renderAsins(rows) {
+            const tbody = document.getElementById('asinTableBody');
+            if (!rows.length) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${ASIN_COLSPAN}" class="empty-state">
+                            <i class="fas fa-info-circle"></i>
+                            <p>暂无 ASIN 明细</p>
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rows.map(function (item) {
+                return `
+                    <tr>
+                        <td>${escapeHtml(item.asin)}</td>
+                        <td>${escapeHtml(item.title || '-')}</td>
+                        <td>${escapeHtml(item.category || '-')}</td>
+                        <td>${escapeHtml(item.launch_date || '-')}</td>
+                        <td>${formatNumber(item.rank)}</td>
+                        <td>${formatNumber(item.score)}</td>
+                        <td>${formatNumber(item.source_position)}</td>
+                    </tr>`;
+            }).join('');
+        }
+
+        function closeAsinModal(event) {
+            if (event && event.target.id !== 'asinModal') {
+                return;
+            }
+            document.getElementById('asinModal').classList.remove('open');
+        }
+    </script>
+{% endblock %}
