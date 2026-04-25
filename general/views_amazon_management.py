@@ -451,6 +451,7 @@ def get_amazon_shops_api(request):
         shop_date_end = request.GET.get('shop_date_end', '').strip()
         qu_dao = request.GET.get('qu_dao', '').strip()
         backup_email_or_phone = request.GET.get('backup_email_or_phone', '').strip()
+        registered_phone = request.GET.get('registered_phone', '').strip()
         additional_remark = request.GET.get('additional_remark', '').strip()
         company_name = request.GET.get('company_name', '').strip()
         ling_xing_if = request.GET.get('ling_xing_if', '').strip()
@@ -499,6 +500,8 @@ def get_amazon_shops_api(request):
             query = query.filter(qu_dao__icontains=qu_dao)
         if backup_email_or_phone:
             query = query.filter(backup_email_or_phone__icontains=backup_email_or_phone)
+        if registered_phone:
+            query = query.filter(registered_phone__icontains=registered_phone)
         if additional_remark:
             query = query.filter(additional_remark__icontains=additional_remark)
         if company_name:
@@ -965,6 +968,7 @@ def update_amazon_shop_api(request, shop_id):
             shop.email_account = data.get('email_account', '') or ''
             shop.email_password = data.get('email_password', '') or ''
             shop.shop_password = data.get('shop_password', '') or ''
+            shop.registered_phone = data.get('registered_phone', '') or ''
             shop.backup_email_or_phone = data.get('backup_email_or_phone', '') or ''
             shop.voucher_163 = data.get('voucher_163', '') or ''
             shop.email_163_account = data.get('email_163_account', '') or ''
