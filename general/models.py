@@ -623,7 +623,7 @@ class AmazonShop(models.Model):
     email_account = models.CharField(max_length=150, blank=True, null=True, db_comment='邮箱账号（店铺账号）')
     email_password = models.CharField(max_length=100, blank=True, null=True, db_comment='邮箱密码')
     shop_password = models.CharField(max_length=100, blank=True, null=True, db_comment='店铺密码')
-    registered_phone = models.CharField(max_length=20, blank=True, null=True, db_comment='注册手机号')
+    registered_phone = models.CharField(max_length=20, blank=True, null=True, db_comment='邮箱绑定号码')
     backup_email_or_phone = models.CharField(max_length=100, blank=True, null=True, db_comment='备用邮箱或手机号')
     credit_card_channel = models.CharField(max_length=100, blank=True, null=True, db_comment='信用卡渠道')
     credit_card_number = models.CharField(max_length=40, blank=True, null=True, db_comment='信用卡')

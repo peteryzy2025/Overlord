@@ -279,6 +279,10 @@
                     <input type="text" class="form-control" id="backupContactFilter" placeholder="搜索备用联系方式">
                 </div>
                 <div class="filter-group">
+                    <label class="filter-label">邮箱绑定号码</label>
+                    <input type="text" class="form-control" id="registeredPhoneFilter" placeholder="搜索邮箱绑定号码">
+                </div>
+                <div class="filter-group">
                     <label class="filter-label">附加备注</label>
                     <input type="text" class="form-control" id="additionalRemarkFilter" placeholder="搜索附加备注">
                 </div>
@@ -363,7 +367,7 @@
                         <th>邮箱账号</th>
                         <th>店铺密码</th>
                         <th>邮箱密码</th>
-                        <th>注册手机号</th>
+                        <th>邮箱绑定号码</th>
                         <th>备用邮箱/手机</th>
                         <th>163凭证</th>
                         <th>163大师号</th>
@@ -604,7 +608,7 @@
         { key: 'email_account', label: '邮箱账号', group: '账号信息', tableVisible: true },
         { key: 'email_password', label: '邮箱密码', group: '账号信息' },
         { key: 'shop_password', label: '店铺密码', group: '账号信息' },
-        { key: 'registered_phone', label: '注册手机号', group: '账号信息' },
+        { key: 'registered_phone', label: '邮箱绑定号码', group: '账号信息' },
         { key: 'backup_email_or_phone', label: '备用邮箱/手机', group: '账号信息', tableVisible: true },
         { key: 'voucher_163', label: '163凭证', group: '账号信息' },
         { key: 'email_163_account', label: '163大师号', group: '账号信息' },
@@ -845,6 +849,7 @@
                 shop_date_end: document.getElementById('shopDateEndFilter').value,
                 qu_dao: document.getElementById('quDaoFilter').value,
                 backup_email_or_phone: document.getElementById('backupContactFilter').value,
+                registered_phone: document.getElementById('registeredPhoneFilter').value,
                 additional_remark: document.getElementById('additionalRemarkFilter').value,
                 company_name: document.getElementById('companyNameFilter').value,
                 ling_xing_if: lingXingSelect.getValue(),
@@ -1156,7 +1161,7 @@
                     <input type="text" id="modal-shop_password" value="${data.shop_password || ''}">
                 </div>
                 <div class="form-group">
-                    <label>注册手机号</label>
+                    <label>邮箱绑定号码</label>
                     <input type="text" id="modal-registered_phone" value="${data.registered_phone || ''}">
                 </div>
                 <div class="form-group">
@@ -1947,6 +1952,7 @@
         document.getElementById('amazonShopSearch').value = '';
         document.getElementById('quDaoFilter').value = '';
         document.getElementById('backupContactFilter').value = '';
+        document.getElementById('registeredPhoneFilter').value = '';
         document.getElementById('additionalRemarkFilter').value = '';
         document.getElementById('companyNameFilter').value = '';
         document.getElementById('collectionAccountFilter').value = '';
