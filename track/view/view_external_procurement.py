@@ -2,31 +2,33 @@
 import json
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from django.db.models import Q
 from track.models import ExternalProcurementProduct
+from general.module_utils import permission_denied_response
 
 
-@login_required
+SYSTEM_SUPER_ADMIN_ID = 555
+
+
+def system_super_admin_required(view_func):
+    """外采产品管理只允许 user.id == 555 访问。"""
+    def wrapped_view(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return permission_denied_response(request, '未登录或会话已过期', status=401)
+        if request.user.id != SYSTEM_SUPER_ADMIN_ID:
+            return permission_denied_response(request, '仅平台总管理员可访问外采产品管理。', status=403)
+        return view_func(request, *args, **kwargs)
+
+    return wrapped_view
+
+
+@system_super_admin_required
 def external_procurement_management(request):
     """外采产品管理主页"""
-    # 权限检查：只有permission包含555或557的用户可以访问
-    # 兼容老权限字段和新权限系统
-    user_permission = request.user.permission or ''
-    permission_list = [p.strip() for p in user_permission.split(',') if p.strip()]
-    
-    # 同时检查新权限系统（permission_configs）
-    permission_codes = [str(pc.code) for pc in request.user.permission_configs.all()]
-    all_permissions = list(set(permission_list + permission_codes))
-
-    if not any(p in all_permissions for p in ['555', '557']):
-        from django.shortcuts import redirect
-        return redirect('general:main')
-
     # 准备权限信息给前端
-    user_permissions_json = json.dumps(permission_list)
+    user_permissions_json = json.dumps(['system_super_admin'])
 
     return render(request, 'external_procurement_product_management.html', {
         'user_permissions_json': user_permissions_json,
@@ -36,7 +38,7 @@ def external_procurement_management(request):
     })
 
 
-@login_required
+@system_super_admin_required
 def external_procurement_products_api(request):
     """外采产品列表 API（支持分页、筛选）"""
     if request.method == 'GET':
@@ -140,7 +142,7 @@ def external_procurement_products_api(request):
     return JsonResponse({'success': False, 'message': '不支持的请求方法'}, status=405)
 
 
-@login_required
+@system_super_admin_required
 def external_procurement_product_detail_api(request, product_id):
     """外采产品详情 API（获取、更新）"""
     try:
@@ -204,7 +206,7 @@ def external_procurement_product_detail_api(request, product_id):
     return JsonResponse({'success': False, 'message': '不支持的请求方法'}, status=405)
 
 
-@login_required
+@system_super_admin_required
 @require_http_methods(["POST"])
 def batch_update_products(request):
     """批量更新产品（上架/下架）"""
@@ -233,7 +235,7 @@ def batch_update_products(request):
         }, status=500)
 
 
-@login_required
+@system_super_admin_required
 @require_http_methods(["POST"])
 def batch_delete_products(request):
     """批量删除产品"""

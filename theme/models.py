@@ -78,6 +78,7 @@ class AmazonThemeClusterNovelty(models.Model):
     new_asin_7d = models.IntegerField(default=0, verbose_name="7天内新上架数",null=True,blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    asin_change = models.IntegerField(default=0, verbose_name="今日新增主题数", null=True, blank=True)
 
     class Meta:
         db_table = 'theme_novelty_cluster'
@@ -1121,6 +1122,13 @@ class DailyRecommendedThemeV2(models.Model):
         verbose_name="推荐主题",
         help_text="新奇特/新品榜存display_title，ABA存搜索词term",
     )
+    category = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="品类",
+    )
     source_object_type = models.CharField(
         max_length=50,
         choices=SourceObjectType.choices,
@@ -1170,6 +1178,7 @@ class DailyRecommendedThemeV2(models.Model):
                     'period_type',
                     'source',
                     'reason_type',
+                    'category',
                     'theme',
                     'source_object_type',
                     'source_object_id',
@@ -1180,8 +1189,8 @@ class DailyRecommendedThemeV2(models.Model):
         ]
         indexes = [
             models.Index(
-                fields=['snapshot_date', 'period_type', 'source'],
-                name="idx_rec_theme_snap_src",
+                fields=['snapshot_date', 'period_type', 'category', 'source'],
+                name="idx_rec_theme_snap_cat",
             ),
             models.Index(
                 fields=['source', 'reason_type', 'metric_value'],
@@ -1215,6 +1224,13 @@ class RecommendedThemeAsin(models.Model):
     )
     asin = models.CharField(max_length=20, db_index=True, verbose_name="ASIN")
     title = models.CharField(max_length=500, blank=True, verbose_name="产品标题")
+    category = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="品类",
+    )
     launch_date = models.DateField(null=True, blank=True, db_index=True, verbose_name="上架日期")
     rank = models.IntegerField(null=True, blank=True, verbose_name="排名")
     score = models.IntegerField(null=True, blank=True, db_index=True, verbose_name="分值")

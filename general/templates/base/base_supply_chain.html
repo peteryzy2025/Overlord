@@ -2,6 +2,7 @@
 
 {% block sidebar %}
     <ul class="sidebar-menu">
+        {% if 'logistics' in company_module_codes %}
         <li class="sidebar-item">
             <a href="{% url 'track:tracking-management' %}"
                class="sidebar-link {% if active_page == 'tracking-management' %}active{% endif %}">
@@ -9,6 +10,8 @@
                 <span>物流管理</span>
             </a>
         </li>
+        {% endif %}
+        {% if request.user.id == 555 %}
         <li class="sidebar-item">
             <a href="{% url 'track:external-procurement-management' %}"
                class="sidebar-link {% if active_page == 'external-procurement-management' %}active{% endif %}">
@@ -16,5 +19,6 @@
                 <span>外采产品管理</span>
             </a>
         </li>
+        {% endif %}
     </ul>
 {% endblock %}
