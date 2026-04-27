@@ -41,7 +41,7 @@ def trend_page(request):
 
 @require_POST
 @csrf_exempt
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def trend_search(request):
     query = request.POST.get('trendQueryInput', '').strip()
     mode = int(request.POST.get('searchMode', 1))
@@ -585,7 +585,7 @@ def should_skip_word(word):
     return False
 
 
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def words_split_api(request):
     theme = (request.POST.get('theme') or request.GET.get('theme') or '').strip()
     if not theme:

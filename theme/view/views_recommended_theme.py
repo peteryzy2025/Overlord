@@ -9,7 +9,11 @@ from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from theme.models import DailyRecommendedThemeV2, RecommendedThemeAsin
+from theme.models import (
+    AmazonNewReleaseRank,
+    DailyRecommendedThemeV2,
+    RecommendedThemeAsin,
+)
 from theme.view.permissions import theme_access_required
 
 
@@ -70,6 +74,15 @@ def _has_table_column(model, column_name):
     except Exception:
         return False
     return column_name in columns
+
+
+def _new_release_asin_count_for_snapshot(cluster_id, snapshot_date):
+    if not cluster_id or not snapshot_date:
+        return 0
+    return AmazonNewReleaseRank.objects.filter(
+        fingerprint__cluster_id=cluster_id,
+        created_at__date=snapshot_date,
+    ).count()
 
 
 @theme_access_required
@@ -202,6 +215,15 @@ def api_recommended_theme_list(request):
         source_label_map = dict(DailyRecommendedThemeV2.Source.choices)
         theme_rows = []
         for item in current_page.object_list.values(*value_fields):
+            asin_count = item["asin_count"]
+            if (
+                item["source"] == NEW_RELEASE_SOURCE
+                and item["period_type"] == DailyRecommendedThemeV2.PeriodType.DAY
+            ):
+                asin_count = _new_release_asin_count_for_snapshot(
+                    item["source_object_id"],
+                    item["snapshot_date"],
+                )
             theme_rows.append(
                 {
                     "id": item["id"],
@@ -221,7 +243,7 @@ def api_recommended_theme_list(request):
                     "category": item.get("category") or "",
                     "source_object_id": item["source_object_id"],
                     "source_date": _date_to_str(item["source_date"]),
-                    "asin_count": item["asin_count"],
+                    "asin_count": asin_count,
                     "metric_value": item["metric_value"],
                     "metrics": _json_value(item["metrics"]),
                 }
@@ -280,50 +302,61 @@ def api_recommended_theme_asins(request):
                 status=400,
             )
 
-        parent_exists = DailyRecommendedThemeV2.objects.filter(
+        parent = DailyRecommendedThemeV2.objects.filter(
             id=recommended_theme_id,
             source=NEW_RELEASE_SOURCE,
-        ).exists()
-        if not parent_exists:
+        ).first()
+        if not parent:
             return JsonResponse(
                 {"success": False, "message": "推荐主题不存在或来源不支持"},
                 status=404,
             )
 
-        has_asin_category = _has_table_column(RecommendedThemeAsin, "category")
-        value_fields = [
-            "asin",
-            "title",
-            "launch_date",
-            "rank",
-            "score",
-            "source_position",
-            "metrics",
-        ]
-        if has_asin_category:
-            value_fields.append("category")
-
-        asins_qs = (
-            RecommendedThemeAsin.objects.filter(
-                recommended_theme_id=recommended_theme_id
+        if parent.period_type == DailyRecommendedThemeV2.PeriodType.DAY:
+            product_rows = list(
+                AmazonNewReleaseRank.objects.filter(
+                    fingerprint__cluster_id=parent.source_object_id,
+                    created_at__date=parent.snapshot_date,
+                )
+                .values("asin", "title", "category", "launch_date", "created_at")
+                .order_by("-created_at", "asin")
             )
-            .order_by("source_position", "asin")
-            .values(*value_fields)
-        )
-
-        asin_rows = [
-            {
-                "asin": item["asin"] or "",
-                "title": item["title"] or "",
-                "category": item.get("category") or "",
-                "launch_date": _date_to_str(item["launch_date"]),
-                "rank": item["rank"],
-                "score": item["score"],
-                "source_position": item["source_position"],
-                "metrics": _json_value(item["metrics"]),
-            }
-            for item in asins_qs
-        ]
+            asin_rows = [
+                {
+                    "asin": item["asin"] or "",
+                    "title": item["title"] or "",
+                    "category": item["category"] or "",
+                    "launch_date": _date_to_str(item["launch_date"]),
+                    "rank": None,
+                    "score": None,
+                    "source_position": index,
+                    "metrics": {
+                        "created_at": item["created_at"].isoformat()
+                        if item.get("created_at")
+                        else None
+                    },
+                }
+                for index, item in enumerate(product_rows, start=1)
+            ]
+        else:
+            stored_asins = list(
+                RecommendedThemeAsin.objects.filter(
+                    recommended_theme=parent,
+                ).order_by("source_position")
+            )
+            asin_rows = [
+                {
+                    "asin": sa.asin or "",
+                    "title": sa.title or "",
+                    "category": sa.category or "",
+                    "launch_date": _date_to_str(sa.launch_date),
+                    "rank": sa.rank,
+                    "score": sa.score,
+                    "source_position": sa.source_position,
+                    "metrics": sa.metrics or {},
+                }
+                for sa in stored_asins
+            ]
 
         return JsonResponse(
             {
@@ -334,6 +367,7 @@ def api_recommended_theme_asins(request):
                 },
             }
         )
+
     except json.JSONDecodeError:
         return JsonResponse(
             {"success": False, "message": "无效的JSON数据格式"}, status=400

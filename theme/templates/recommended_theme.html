@@ -191,7 +191,6 @@
         <div class="page-header">
             <div>
                 <h1 class="page-title">{{ page_title|default:"推荐主题" }}</h1>
-                <p class="page-subtitle">NewRelease 推荐主题快照</p>
             </div>
             <div class="page-header-actions">
                 <button class="btn" type="button" onclick="refreshData(event)">
@@ -337,6 +336,11 @@
         let sortOrder = 'desc';
 
         document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('recommendedThemeBody').addEventListener('click', function (e) {
+                var btn = e.target.closest('.btn-view-asin');
+                if (!btn) return;
+                openAsinModal(Number(btn.dataset.id), btn.dataset.theme);
+            });
             loadRecommendedThemes();
         });
 
@@ -466,7 +470,7 @@
                         <td>${escapeHtml(item.source_date || '-')}</td>
                         <td>${formatNumber(item.asin_count)}</td>
                         <td>
-                            <button class="btn btn-sm" type="button" onclick="openAsinModal(${Number(item.id)}, decodeURIComponent('${encodeURIComponent(item.theme || '')}'))">
+                            <button class="btn btn-sm btn-view-asin" type="button" data-id="${Number(item.id)}" data-theme="${escapeHtml(item.theme || '')}">
                                 <i class="fas fa-list"></i>
                                 查看 ASIN
                             </button>

@@ -132,7 +132,7 @@ def tro_table_page(request):
     })
 
 
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def trademark_info_page(request):
     """
     美标网词库页面
@@ -171,7 +171,7 @@ CATEGORY_MAPPING = {
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_tro_table_list(request):
     """
     获取侵权词库列表
@@ -289,7 +289,7 @@ def api_tro_table_list(request):
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_create_tro_record(request):
     """
     创建新的侵权词记录
@@ -432,7 +432,7 @@ def api_create_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_update_tro_record(request):
     """
     编辑侵权词记录
@@ -530,7 +530,7 @@ def api_update_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_delete_tro_record(request):
     """
     删除侵权词记录
@@ -576,7 +576,7 @@ def api_delete_tro_record(request):
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_trademark_info_list(request):
     """
     获取美标网词库列表
@@ -674,7 +674,7 @@ def api_trademark_info_list(request):
         }, status=500)
 
 #====================更新：下载批量上传模板（2026.2.4）==========================
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def download_templates(request):
     file_path = os.path.join(settings.BASE_DIR, 'theme/static/media/templates/侵权词上传.xlsx')
     if os.path.exists(file_path):
@@ -686,7 +686,7 @@ def download_templates(request):
 
 
 #====================更新：批量导入侵权词（2026.2.4）==========================
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_nice_classification_list(request):
     """
     获取尼斯分类（国际类）列表
@@ -712,7 +712,7 @@ def api_nice_classification_list(request):
         }, status=500)
 
 
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_shop_list(request):
     """
     获取店铺列表
@@ -739,7 +739,7 @@ def api_shop_list(request):
 
 @csrf_exempt
 @require_POST
-@module_access_required('infringement', '侵权板块')
+# @module_access_required('infringement', '侵权板块')
 def api_import_tro_records(request):
     """
     批量导入侵权词记录
