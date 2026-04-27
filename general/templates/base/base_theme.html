@@ -24,6 +24,13 @@
                 <span>亚马逊最新成交主题</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:theme_recommended_page' %}"
+               class="sidebar-link {% if active_page == 'theme_recommended_page' %}active{% endif %}">
+                <i class="fas fa-chart-line sidebar-icon"></i>
+                <span>推荐主题</span>
+            </a>
+        </li>
 
         <li class="sidebar-item">
             <a href="{% url 'aba:aba_noise_words' %}"

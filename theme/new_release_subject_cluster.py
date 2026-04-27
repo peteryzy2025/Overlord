@@ -1313,7 +1313,45 @@ class AmazonThemeClusteringPipeline:
         logger.info("[Stage 4] 数据聚合与落盘 — 开始")
         logger.info("[Stage 4] 待处理连通分量: %d", len(components))
 
-        seven_days_ago = timezone.now().date() - timedelta(days=7)
+        run_timestamp = timezone.now()
+        run_date = run_timestamp.date()
+        seven_days_ago = run_date - timedelta(days=7)
+
+        def _date_from_datetime(value):
+            if value is None:
+                return None
+            if timezone.is_aware(value):
+                return timezone.localtime(value).date()
+            return value.date()
+
+        previous_cluster_state = {
+            row["display_title"]: {
+                "asin_count": row["asin_count"] or 0,
+                "asin_change": row["asin_change"] or 0,
+                "updated_at": row["updated_at"],
+            }
+            for row in AmazonThemeCluster.objects.values(
+                "display_title",
+                "asin_count",
+                "asin_change",
+                "updated_at",
+            )
+        }
+        logger.info(
+            "[Stage 4] 已缓存旧 Cluster 计数快照: %d 条",
+            len(previous_cluster_state),
+        )
+
+        def _calculate_asin_change(display_title: str, new_asin_count: int) -> int:
+            previous = previous_cluster_state.get(display_title)
+            if not previous:
+                return new_asin_count
+
+            previous_updated_date = _date_from_datetime(previous.get("updated_at"))
+            if previous_updated_date == run_date:
+                return previous["asin_change"]
+
+            return new_asin_count - previous["asin_count"]
 
         with transaction.atomic():
             ThemeFingerprint.objects.all().update(cluster=None)
@@ -1393,6 +1431,11 @@ class AmazonThemeClusteringPipeline:
             cluster.asin_count = asin_count
             cluster.new_asin_7d = new_asin_7d
             cluster.burst_score = round(burst_score, 4)
+            cluster.asin_change = _calculate_asin_change(
+                cluster.display_title,
+                asin_count,
+            )
+            cluster.updated_at = run_timestamp
             return cluster
 
         clusters_to_update: list[AmazonThemeCluster] = []
@@ -1409,6 +1452,11 @@ class AmazonThemeClusteringPipeline:
                         clusters_to_update[-1].asin_count = 0
                         clusters_to_update[-1].new_asin_7d = 0
                         clusters_to_update[-1].burst_score = 0.0
+                        clusters_to_update[-1].asin_change = _calculate_asin_change(
+                            clusters_to_update[-1].display_title,
+                            0,
+                        )
+                        clusters_to_update[-1].updated_at = run_timestamp
         else:
             for cluster in created_clusters:
                 clusters_to_update.append(_compute_stats(cluster))
@@ -1416,7 +1464,13 @@ class AmazonThemeClusteringPipeline:
         if clusters_to_update:
             AmazonThemeCluster.objects.bulk_update(
                 clusters_to_update,
-                ["asin_count", "new_asin_7d", "burst_score"],
+                [
+                    "asin_count",
+                    "new_asin_7d",
+                    "burst_score",
+                    "asin_change",
+                    "updated_at",
+                ],
                 batch_size=BATCH_SIZE,
             )
             logger.info(
