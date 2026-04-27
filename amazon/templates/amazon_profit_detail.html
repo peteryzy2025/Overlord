@@ -8,6 +8,44 @@
         .table-container table {
             min-width: 2200px;
         }
+        #dataTable th,
+        #dataTable td {
+            white-space: nowrap;
+        }
+        #dataTable td {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #dataTable .cell-number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        #dataTable .cell-json {
+            max-width: 260px;
+        }
+        #dataTable .cell-msku {
+            max-width: none;
+            overflow: visible;
+            text-overflow: clip;
+            white-space: nowrap;
+        }
+        #dataTable .cell-image {
+            width: 64px;
+            min-width: 64px;
+            max-width: 64px;
+            text-align: center;
+            overflow: visible;
+        }
+        .profit-thumb {
+            width: 44px;
+            height: 44px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color, #E5E7EB);
+            background: #F8FAFC;
+            object-fit: cover;
+            vertical-align: middle;
+        }
         .net-profit-positive {
             color: #10B981;
             font-weight: 600;
@@ -34,25 +72,110 @@
         th.sortable.sort-desc .sort-icon {
             color: var(--accent-color, #3B82F6);
         }
-        .summary-stats {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
+        .page-header {
+            gap: 1.25rem;
+            align-items: flex-start;
         }
-        .summary-stat-item {
+        .page-title {
+            white-space: nowrap;
+        }
+        .summary-stats {
+            display: grid;
+            grid-template-columns: minmax(150px, 0.72fr) repeat(4, minmax(210px, 1fr));
+            gap: 0.75rem;
+            align-items: stretch;
+            width: min(1360px, 100%);
+        }
+        .summary-stat-card {
+            position: relative;
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            min-height: 68px;
+            padding: 0.65rem 0.85rem;
+            border: 1px solid var(--border-color, #E5E7EB);
+            border-radius: 8px;
+            background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+            overflow: hidden;
+        }
+        .summary-stat-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--accent-color, #3B82F6);
+        }
+        .summary-stat-card.is-ad::before {
+            background: #F59E0B;
+        }
+        .summary-stat-card.is-platform::before {
+            background: #8B5CF6;
+        }
+        .summary-stat-card.is-cost::before {
+            background: #64748B;
+        }
+        .summary-stat-card.is-profit::before {
+            background: #10B981;
+        }
+        .summary-stat-heading {
+            display: flex;
             align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .summary-stat-pair {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(78px, 0.62fr);
+            gap: 0.75rem;
+            align-items: end;
+        }
+        .summary-stat-block {
+            min-width: 0;
+        }
+        .summary-stat-block + .summary-stat-block {
+            border-left: 1px solid var(--border-color, #E5E7EB);
+            padding-left: 0.75rem;
         }
         .summary-stat-value {
-            font-size: 1.25rem;
+            font-size: 1.15rem;
+            line-height: 1.2;
             font-weight: 700;
             color: var(--text-primary);
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
         }
         .summary-stat-label {
-            font-size: 0.75rem;
+            display: block;
+            font-size: 0.72rem;
             color: var(--text-secondary);
             margin-top: 0.25rem;
+            white-space: nowrap;
+        }
+        .summary-stat-unit {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0;
+            color: var(--text-tertiary, #9CA3AF);
+        }
+        @media (max-width: 1500px) {
+            .summary-stats {
+                grid-template-columns: repeat(2, minmax(220px, 1fr));
+                margin-top: 0.25rem;
+            }
+        }
+        @media (max-width: 768px) {
+            .summary-stats {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
     </style>
 {% endblock %}
@@ -63,21 +186,77 @@
         <div class="page-header">
             <h1 class="page-title"><i class="fas fa-chart-line" style="color: var(--accent-color); margin-right: 0.5rem;"></i>利润明细</h1>
             <div class="header-stats summary-stats" id="summaryStats" style="display: none;">
-                <div class="summary-stat-item">
+                <div class="summary-stat-card is-sales">
+                    <div class="summary-stat-heading">
+                        <span>销售额</span>
+                        <span class="summary-stat-unit">USD</span>
+                    </div>
                     <span class="summary-stat-value" id="statSales">0.00</span>
                     <span class="summary-stat-label">总销售额</span>
                 </div>
-                <div class="summary-stat-item">
-                    <span class="summary-stat-value" id="statAdCost">0.00</span>
-                    <span class="summary-stat-label">总广告成本</span>
+                <div class="summary-stat-card is-ad">
+                    <div class="summary-stat-heading">
+                        <span>广告</span>
+                        <span class="summary-stat-unit">USD / %</span>
+                    </div>
+                    <div class="summary-stat-pair">
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statAdCost">0.00</span>
+                            <span class="summary-stat-label">广告成本</span>
+                        </div>
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statAdRatio">0.0%</span>
+                            <span class="summary-stat-label">广告占比</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="summary-stat-item">
-                    <span class="summary-stat-value" id="statCost">0.00</span>
-                    <span class="summary-stat-label">总成本</span>
+                <div class="summary-stat-card is-cost">
+                    <div class="summary-stat-heading">
+                        <span>成本</span>
+                        <span class="summary-stat-unit">USD / %</span>
+                    </div>
+                    <div class="summary-stat-pair">
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statCost">0.00</span>
+                            <span class="summary-stat-label">总成本</span>
+                        </div>
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statCostRatio">0.0%</span>
+                            <span class="summary-stat-label">成本占比</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="summary-stat-item">
-                    <span class="summary-stat-value" id="statNetProfit">0.00</span>
-                    <span class="summary-stat-label">总净利润</span>
+                <div class="summary-stat-card is-platform">
+                    <div class="summary-stat-heading">
+                        <span>平台费</span>
+                        <span class="summary-stat-unit">USD / %</span>
+                    </div>
+                    <div class="summary-stat-pair">
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statPlatformFee">0.00</span>
+                            <span class="summary-stat-label">佣金</span>
+                        </div>
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statPlatformFeeRatio">0.0%</span>
+                            <span class="summary-stat-label">佣金占比</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="summary-stat-card is-profit">
+                    <div class="summary-stat-heading">
+                        <span>利润</span>
+                        <span class="summary-stat-unit">USD / %</span>
+                    </div>
+                    <div class="summary-stat-pair">
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statNetProfit">0.00</span>
+                            <span class="summary-stat-label">总净利润</span>
+                        </div>
+                        <div class="summary-stat-block">
+                            <span class="summary-stat-value" id="statProfitRatio">0.0%</span>
+                            <span class="summary-stat-label">利润率</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -138,33 +317,8 @@
             <div class="table-container table-bordered">
                 <table class="table" id="dataTable">
                     <thead>
-                        <tr>
+                        <tr id="dataTableHeaderRow">
                             <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                            <th class="sortable" data-field="seller_sku" onclick="toggleSort('seller_sku')">MSKU <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="asin" onclick="toggleSort('asin')">ASIN <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="shop_name" onclick="toggleSort('shop_name')">店铺 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ad_cost_ratio" onclick="toggleSort('ad_cost_ratio')">广告占比 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="cost_ratio" onclick="toggleSort('cost_ratio')">成本占比 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="logistics_ratio" onclick="toggleSort('logistics_ratio')">运费占比 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="profit_ratio" onclick="toggleSort('profit_ratio')">利润率 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="volume" onclick="toggleSort('volume')">销量 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="afn_volume" onclick="toggleSort('afn_volume')">FBA销量 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="mfn_volume" onclick="toggleSort('mfn_volume')">FBM销量 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ad_volume" onclick="toggleSort('ad_volume')">广告销量 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="amount" onclick="toggleSort('amount')">销售额 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="afn_amount" onclick="toggleSort('afn_amount')">FBA销售额 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="mfn_amount" onclick="toggleSort('mfn_amount')">FBM销售额 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ad_sales_amount" onclick="toggleSort('ad_sales_amount')">广告销售额 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="spend" onclick="toggleSort('spend')">总花费 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ads_sp_cost" onclick="toggleSort('ads_sp_cost')">SP花费 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ads_sb_cost" onclick="toggleSort('ads_sb_cost')">SB花费 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ads_sbv_cost" onclick="toggleSort('ads_sbv_cost')">SBV花费 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="ads_sd_cost" onclick="toggleSort('ads_sd_cost')">SD花费 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="purchase_costs" onclick="toggleSort('purchase_costs')">采购成本 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="logistics_costs" onclick="toggleSort('logistics_costs')">头程成本 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="other_costs" onclick="toggleSort('other_costs')">其他成本 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="total_costs" onclick="toggleSort('total_costs')">合计成本 <span class="sort-icon"></span></th>
-                            <th class="sortable" data-field="net_profit" onclick="toggleSort('net_profit')">净利润 <span class="sort-icon"></span></th>
                         </tr>
                     </thead>
                     <tbody id="dataTableBody">
@@ -208,6 +362,7 @@
 {% block extra_js %}
     <script src="{% static 'js/searchable-select.js' %}"></script>
     <script src="{% static 'js/general_style_1.js' %}?v=20260321-filter-grid"></script>
+    {{ profit_columns|json_script:"profit-columns-data" }}
     <script>
         // ==================== 全局变量 ====================
         let currentPage = 1;
@@ -216,6 +371,7 @@
         let totalPages = 1;
         let allData = [];
         let currentSummary = {};
+        const PROFIT_COLUMNS = JSON.parse(document.getElementById('profit-columns-data').textContent);
 
         let shopSelect = null;
         let operatorSelect = null;
@@ -232,6 +388,7 @@
             initDateRangeFilter();
             initSearchableSelects();
             loadFilterOptions();
+            renderTableHeader();
             updateSortIcons();
             loadData();
             console.log('[利润明细] 页面初始化完成');
@@ -402,6 +559,7 @@
             const body = {
                 page: currentPage,
                 page_size: pageSize,
+                date_range: dateRange.date_range,
                 start_date: dateRange.start_date,
                 end_date: dateRange.end_date,
                 keyword: keyword,
@@ -456,46 +614,75 @@
         }
 
         // ==================== 渲染表格 ====================
+        function renderTableHeader() {
+            const headerRow = document.getElementById('dataTableHeaderRow');
+            headerRow.innerHTML = `
+                <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                ${PROFIT_COLUMNS.map(column => {
+                    const sortableClass = column.sortable ? 'sortable' : '';
+                    const clickHandler = column.sortable ? `onclick="toggleSort('${column.key}')"` : '';
+                    return `<th class="${sortableClass}" data-field="${escapeHtml(column.key)}" ${clickHandler}>${escapeHtml(column.label)} <span class="sort-icon"></span></th>`;
+                }).join('')}
+            `;
+
+            const table = document.getElementById('dataTable');
+            table.style.minWidth = `${Math.max(2200, PROFIT_COLUMNS.length * 132 + 60)}px`;
+        }
+
+        function normalizeCellValue(value) {
+            if (value === null || value === undefined || value === '') return '-';
+            if (typeof value === 'boolean') return value ? '是' : '否';
+            if (Array.isArray(value) || typeof value === 'object') {
+                return JSON.stringify(value);
+            }
+            return String(value);
+        }
+
+        function getCellClass(column, value) {
+            const classes = [];
+            if (['number', 'percent'].includes(column.value_type)) {
+                classes.push('cell-number');
+            }
+            if (column.value_type === 'json') {
+                classes.push('cell-json');
+            }
+            if (column.key === 'seller_sku') {
+                classes.push('cell-msku');
+            }
+
+            const numericValue = parseFloat(value);
+            if (!Number.isNaN(numericValue) && ['net_profit', 'gross_profit', 'avg_gross_profit', 'profit_ratio'].includes(column.key)) {
+                classes.push(numericValue >= 0 ? 'net-profit-positive' : 'net-profit-negative');
+            }
+            return classes.join(' ');
+        }
+
+        function renderCell(column, item) {
+            const rawValue = item[column.key];
+            if (column.value_type === 'image') {
+                if (!rawValue) return '<td class="cell-image">-</td>';
+                const imageUrl = escapeHtml(rawValue);
+                return `<td class="cell-image" title="${imageUrl}"><img class="profit-thumb" src="${imageUrl}" alt=""></td>`;
+            }
+
+            const normalized = normalizeCellValue(rawValue);
+            const displayValue = column.value_type === 'percent' && normalized !== '-' ? `${normalized}%` : normalized;
+            const title = escapeHtml(displayValue);
+            return `<td class="${getCellClass(column, rawValue)}" title="${title}">${escapeHtml(displayValue)}</td>`;
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('dataTableBody');
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="25" style="text-align: center; padding: 3rem;">暂无数据</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="${PROFIT_COLUMNS.length + 1}" style="text-align: center; padding: 3rem;">暂无数据</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = data.map(item => {
-                const netProfit = parseFloat(item.net_profit);
-                const profitClass = netProfit >= 0 ? 'net-profit-positive' : 'net-profit-negative';
-                const profitRatioClass = parseFloat(item.profit_ratio) >= 0 ? 'net-profit-positive' : 'net-profit-negative';
-
                 return `
                     <tr data-id="${item.id}">
                         <td class="w-checkbox"><input type="checkbox" class="row-checkbox" value="${item.id}" onclick="updateSelectAllState()"></td>
-                        <td title="${escapeHtml(item.item_name)}">${escapeHtml(item.seller_sku)}</td>
-                        <td>${escapeHtml(item.asin)}</td>
-                        <td>${escapeHtml(item.shop_name)}</td>
-                        <td>${item.ad_cost_ratio}%</td>
-                        <td>${item.cost_ratio}%</td>
-                        <td>${item.logistics_ratio}%</td>
-                        <td class="${profitRatioClass}">${item.profit_ratio}%</td>
-                        <td>${item.volume}</td>
-                        <td>${item.afn_volume}</td>
-                        <td>${item.mfn_volume}</td>
-                        <td>${item.ad_volume}</td>
-                        <td>${item.amount}</td>
-                        <td>${item.afn_amount}</td>
-                        <td>${item.mfn_amount}</td>
-                        <td>${item.ad_sales_amount}</td>
-                        <td>${item.spend}</td>
-                        <td>${item.ads_sp_cost}</td>
-                        <td>${item.ads_sb_cost}</td>
-                        <td>${item.ads_sbv_cost}</td>
-                        <td>${item.ads_sd_cost}</td>
-                        <td>${item.purchase_costs}</td>
-                        <td>${item.logistics_costs}</td>
-                        <td>${item.other_costs}</td>
-                        <td>${item.total_costs}</td>
-                        <td class="${profitClass}">${item.net_profit}</td>
+                        ${PROFIT_COLUMNS.map(column => renderCell(column, item)).join('')}
                     </tr>
                 `;
             }).join('');
@@ -503,10 +690,29 @@
 
         // ==================== HTML 转义 ====================
         function escapeHtml(text) {
-            if (!text) return '';
+            if (text === null || text === undefined) return '';
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function formatCurrency(value) {
+            const number = parseFloat(value || 0);
+            if (Number.isNaN(number)) return '$0.00';
+            const sign = number < 0 ? '-' : '';
+            return `${sign}$${Math.abs(number).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
+
+        function formatPercent(value) {
+            const number = parseFloat(value || 0);
+            if (Number.isNaN(number)) return '0.0%';
+            return `${number.toLocaleString('en-US', {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1
+            })}%`;
         }
 
         // ==================== 更新汇总统计 ====================
@@ -517,15 +723,24 @@
                 return;
             }
 
-            statsEl.style.display = 'flex';
-            document.getElementById('statSales').textContent = currentSummary.total_sales || '0.00';
-            document.getElementById('statAdCost').textContent = currentSummary.total_ad_cost || '0.00';
-            document.getElementById('statCost').textContent = currentSummary.total_cost || '0.00';
+            statsEl.style.display = 'grid';
+            document.getElementById('statSales').textContent = formatCurrency(currentSummary.total_sales);
+            document.getElementById('statAdCost').textContent = formatCurrency(currentSummary.total_ad_cost);
+            document.getElementById('statPlatformFee').textContent = formatCurrency(currentSummary.total_platform_fee);
+            document.getElementById('statCost').textContent = formatCurrency(currentSummary.total_cost);
+            document.getElementById('statAdRatio').textContent = formatPercent(currentSummary.ad_cost_ratio);
+            document.getElementById('statPlatformFeeRatio').textContent = formatPercent(currentSummary.platform_fee_ratio);
+            document.getElementById('statCostRatio').textContent = formatPercent(currentSummary.cost_ratio);
 
             const netProfit = parseFloat(currentSummary.total_net_profit || 0);
             const netProfitEl = document.getElementById('statNetProfit');
-            netProfitEl.textContent = currentSummary.total_net_profit || '0.00';
+            netProfitEl.textContent = formatCurrency(currentSummary.total_net_profit);
             netProfitEl.style.color = netProfit >= 0 ? '#10B981' : '#EF4444';
+
+            const profitRatio = parseFloat(currentSummary.profit_ratio || 0);
+            const profitRatioEl = document.getElementById('statProfitRatio');
+            profitRatioEl.textContent = formatPercent(currentSummary.profit_ratio);
+            profitRatioEl.style.color = profitRatio >= 0 ? '#10B981' : '#EF4444';
         }
 
         // ==================== 分页渲染 ====================

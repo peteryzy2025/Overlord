@@ -5,7 +5,7 @@ Amazon MSKU 利润明细页面
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
@@ -29,6 +29,234 @@ from amazon.models import (
 from general.models import AmazonShop
 
 
+NUMERIC_FIELD_TYPES = {
+    'DecimalField',
+    'IntegerField',
+    'BigIntegerField',
+    'SmallIntegerField',
+    'PositiveIntegerField',
+    'PositiveSmallIntegerField',
+    'FloatField',
+}
+
+COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio', 'net_profit'}
+PYTHON_SORT_FIELDS = COMPUTED_FIELDS | {'asin', 'shop_name'}
+PERCENT_COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio'}
+NON_SUM_NUMERIC_NAMES = {
+    'id',
+    'sid',
+    'avg_volume',
+    'return_rate',
+    'refund_amount_rate',
+    'avg_net_amount',
+    'avg_purchase_costs',
+    'avg_logistics_costs',
+    'avg_other_costs',
+    'gross_margin',
+    'avg_gross_profit',
+    'net_gross_margin',
+    'selling_fee_rate',
+    'fulfillment_fee_rate',
+    'spend_rate',
+    'total_stock_fee_rate',
+}
+EXCLUDED_PROFIT_COLUMN_KEYS = {
+    'id',
+    'lxshop_id',
+    'sid',
+    'currency_code',
+    'currency_icon',
+    'small_image_url',
+    'principal_names',
+    'is_parent',
+    'categories',
+    'brands',
+    'gross_profit',
+    'created_at',
+    'updated_at',
+}
+
+
+def get_profit_field_key(field):
+    return field.attname if getattr(field, 'many_to_one', False) else field.name
+
+
+def infer_profit_column_type(key, field_type=None):
+    if key in PERCENT_COMPUTED_FIELDS:
+        return 'percent'
+    if field_type == 'BooleanField':
+        return 'boolean'
+    if field_type == 'JSONField':
+        return 'json'
+    if field_type in {'DateField', 'DateTimeField'}:
+        return 'datetime'
+    if field_type in NUMERIC_FIELD_TYPES:
+        return 'number'
+    return 'text'
+
+
+def get_profit_table_columns():
+    columns = []
+    inserted_after_sku = False
+
+    for field in AmazonMSKUDailyProfit._meta.fields:
+        key = get_profit_field_key(field)
+        field_type = field.get_internal_type()
+        if key in EXCLUDED_PROFIT_COLUMN_KEYS:
+            continue
+
+        columns.append({
+            'key': key,
+            'label': '数据日期' if key == 'sync_date' else field.db_comment or field.verbose_name or key,
+            'sortable': True,
+            'value_type': infer_profit_column_type(key, field_type),
+        })
+
+        if field.name == 'seller_sku' and not inserted_after_sku:
+            columns.extend([
+                {'key': 'small_image_url', 'label': '图片', 'sortable': False, 'value_type': 'image'},
+                {'key': 'shop_name', 'label': '店铺', 'sortable': True, 'value_type': 'text'},
+                {'key': 'asin', 'label': 'ASIN', 'sortable': True, 'value_type': 'text'},
+            ])
+            inserted_after_sku = True
+
+    columns.extend([
+        {'key': 'ad_cost_ratio', 'label': '广告费用占比', 'sortable': True, 'value_type': 'percent'},
+        {'key': 'logistics_ratio', 'label': '运费占比', 'sortable': True, 'value_type': 'percent'},
+        {'key': 'profit_ratio', 'label': '利润占比', 'sortable': True, 'value_type': 'percent'},
+        {'key': 'gross_profit', 'label': '利润', 'sortable': True, 'value_type': 'number'},
+    ])
+
+    return columns
+
+
+PROFIT_TABLE_COLUMNS = get_profit_table_columns()
+DB_SORT_FIELD_MAP = {
+    get_profit_field_key(field): get_profit_field_key(field)
+    for field in AmazonMSKUDailyProfit._meta.fields
+}
+AGGREGATE_SUM_FIELDS = [
+    field.name
+    for field in AmazonMSKUDailyProfit._meta.fields
+    if field.get_internal_type() in NUMERIC_FIELD_TYPES
+    and field.name not in NON_SUM_NUMERIC_NAMES
+]
+
+
+def serialize_profit_value(value):
+    if value is None:
+        return ''
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    return value
+
+
+def decimal_or_zero(value):
+    if value in (None, ''):
+        return Decimal('0')
+    if isinstance(value, Decimal):
+        return value
+    try:
+        return Decimal(str(value))
+    except Exception:
+        return Decimal('0')
+
+
+def calculate_profit_metrics(amount, spend, total_costs, logistics_costs, net_amount=None, shipping_cost=None, profit=None):
+    amount = decimal_or_zero(amount)
+    net_amount = decimal_or_zero(net_amount)
+    spend = decimal_or_zero(spend)
+    total_costs = decimal_or_zero(total_costs)
+    logistics_costs = decimal_or_zero(logistics_costs)
+    shipping_cost = decimal_or_zero(shipping_cost)
+
+    if profit not in (None, ''):
+        net_profit = decimal_or_zero(profit)
+    else:
+        net_profit = amount + spend + total_costs
+
+    amount_abs = abs(amount) if amount else Decimal('0')
+    profit_base_value = net_amount if net_amount else (amount + shipping_cost)
+    profit_base = abs(profit_base_value) if profit_base_value else amount_abs
+    ad_cost_ratio = (abs(spend) / amount_abs * 100) if amount_abs else Decimal('0')
+    cost_ratio = (abs(total_costs) / amount_abs * 100) if amount_abs else Decimal('0')
+    logistics_ratio = (abs(logistics_costs) / amount_abs * 100) if amount_abs else Decimal('0')
+    # gross_profit includes shipping and discounts, so use net sales as the margin base.
+    profit_ratio = (net_profit / profit_base * 100) if profit_base else Decimal('0')
+    return net_profit, ad_cost_ratio, cost_ratio, logistics_ratio, profit_ratio
+
+
+def apply_profit_metrics(
+    row,
+    amount=None,
+    spend=None,
+    total_costs=None,
+    logistics_costs=None,
+    net_amount=None,
+    shipping_cost=None,
+    formatted=True,
+):
+    net_profit, ad_cost_ratio, cost_ratio, logistics_ratio, profit_ratio = calculate_profit_metrics(
+        amount if amount is not None else row.get('amount'),
+        spend if spend is not None else row.get('spend'),
+        total_costs if total_costs is not None else row.get('total_costs'),
+        logistics_costs if logistics_costs is not None else row.get('logistics_costs'),
+        net_amount if net_amount is not None else row.get('net_amount'),
+        shipping_cost if shipping_cost is not None else row.get('shipping_cost'),
+        row.get('gross_profit'),
+    )
+
+    if formatted:
+        row['net_profit'] = str(net_profit)
+        row['gross_profit'] = str(net_profit)
+        row['ad_cost_ratio'] = f"{ad_cost_ratio:.1f}"
+        row['cost_ratio'] = f"{cost_ratio:.1f}"
+        row['logistics_ratio'] = f"{logistics_ratio:.1f}"
+        row['profit_ratio'] = f"{profit_ratio:.1f}"
+    else:
+        row['net_profit'] = net_profit
+        row['gross_profit'] = net_profit
+        row['ad_cost_ratio'] = ad_cost_ratio
+        row['cost_ratio'] = cost_ratio
+        row['logistics_ratio'] = logistics_ratio
+        row['profit_ratio'] = profit_ratio
+    return row
+
+
+def get_profit_asin(profit):
+    price = profit.price_list.first()
+    return price.asin if price else ''
+
+
+def build_profit_row(profit, shop_info=None, asin=None, formatted=True):
+    row = {}
+    for field in AmazonMSKUDailyProfit._meta.fields:
+        key = get_profit_field_key(field)
+        row[key] = serialize_profit_value(getattr(profit, key))
+
+    row['shop_name'] = (shop_info or {}).get('shop_name', f'店铺{profit.sid}')
+    row['asin'] = asin if asin is not None else get_profit_asin(profit)
+    apply_profit_metrics(row, formatted=formatted)
+    return row
+
+
+def sort_profit_rows(rows, sort_field, sort_order):
+    reverse = sort_order == 'desc'
+
+    def sort_value(row):
+        value = row.get(sort_field)
+        if value in (None, ''):
+            return (2, '')
+        try:
+            return (0, Decimal(str(value)))
+        except Exception:
+            return (1, str(value).lower())
+
+    rows.sort(key=sort_value, reverse=reverse)
+
+
 @login_required
 def amazon_profit_detail_page(request):
     """利润明细页面"""
@@ -40,6 +268,7 @@ def amazon_profit_detail_page(request):
         'active_page': 'amazon_profit',
         'is_admin': is_admin,
         'user_permissions': user_permissions,
+        'profit_columns': PROFIT_TABLE_COLUMNS,
     })
 
 
@@ -70,37 +299,25 @@ def get_amazon_profit_detail_api(request):
         # 排序参数
         sort_field = data.get('sort_field', 'amount')  # 默认按销售额
         sort_order = data.get('sort_order', 'desc')    # 默认降序
-        # 数据库可排序字段映射（order_by 可用）
-        DB_SORT_FIELD_MAP = {
-            'seller_sku': 'seller_sku',
-            'asin': 'asin',
-            'shop_name': 'sid',
-            'volume': 'volume',
-            'afn_volume': 'afn_volume',
-            'mfn_volume': 'mfn_volume',
-            'ad_volume': 'ad_volume',
-            'amount': 'amount',
-            'afn_amount': 'afn_amount',
-            'mfn_amount': 'mfn_amount',
-            'ad_sales_amount': 'ad_sales_amount',
-            'spend': 'spend',
-            'ads_sp_cost': 'ads_sp_cost',
-            'ads_sb_cost': 'ads_sb_cost',
-            'ads_sbv_cost': 'ads_sbv_cost',
-            'ads_sd_cost': 'ads_sd_cost',
-            'purchase_costs': 'purchase_costs',
-            'logistics_costs': 'logistics_costs',
-            'other_costs': 'other_costs',
-            'total_costs': 'total_costs',
-            'net_profit': 'net_profit',
-        }
-
-        # 计算字段（Python 端排序，非数据库列）
-        COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio'}
+        if sort_field not in DB_SORT_FIELD_MAP and sort_field not in PYTHON_SORT_FIELDS:
+            sort_field = 'amount'
 
         # 日期筛选
         start_date_str = data.get('start_date', '')
         end_date_str = data.get('end_date', '')
+        date_range = str(data.get('date_range', '') or '').strip()
+
+        if not start_date_str or not end_date_str:
+            today = datetime.now().date()
+            if date_range == 'today':
+                start_date_str = today.strftime('%Y-%m-%d')
+                end_date_str = today.strftime('%Y-%m-%d')
+            elif date_range == 'last7days':
+                start_date_str = (today - timedelta(days=6)).strftime('%Y-%m-%d')
+                end_date_str = today.strftime('%Y-%m-%d')
+            elif date_range == 'last30days':
+                start_date_str = (today - timedelta(days=29)).strftime('%Y-%m-%d')
+                end_date_str = today.strftime('%Y-%m-%d')
 
         # 如果没有传日期，默认昨天
         if not start_date_str or not end_date_str:
@@ -134,8 +351,13 @@ def get_amazon_profit_detail_api(request):
                     'summary': {
                         'total_sales': '0.00',
                         'total_ad_cost': '0.00',
+                        'total_platform_fee': '0.00',
                         'total_cost': '0.00',
                         'total_net_profit': '0.00',
+                        'ad_cost_ratio': '0.0',
+                        'platform_fee_ratio': '0.0',
+                        'cost_ratio': '0.0',
+                        'profit_ratio': '0.0',
                     }
                 }
             })
@@ -196,51 +418,59 @@ def get_amazon_profit_detail_api(request):
         ).exclude(seller_sku='').exclude(seller_sku='-')
 
         # ========== 汇总统计（全部数据） ==========
-        all_profits = profits_qs.values_list('amount', 'spend', 'total_costs')
+        all_profits = profits_qs.values_list(
+            'amount',
+            'net_amount',
+            'shipping_cost',
+            'spend',
+            'selling_fee',
+            'total_costs',
+            'gross_profit',
+        )
         total_sales = Decimal('0')
+        total_profit_base = Decimal('0')
         total_ad_cost = Decimal('0')
+        total_platform_fee = Decimal('0')
         total_cost = Decimal('0')
         total_net_profit = Decimal('0')
 
-        for amount, spend, costs in all_profits:
+        for amount, net_amount, shipping_cost, spend, selling_fee, costs, profit in all_profits:
             amt = amount or Decimal('0')
+            net_amt = net_amount or Decimal('0')
+            ship = shipping_cost or Decimal('0')
             spd = spend or Decimal('0')
+            fee = selling_fee or Decimal('0')
             cst = costs or Decimal('0')
+            prf = profit if profit is not None else (amt + spd + cst)
             total_sales += amt
+            total_profit_base += (net_amt if net_amt else (amt + ship))
             total_ad_cost += spd
+            total_platform_fee += fee
             total_cost += cst
-            # 净利润 = 销售额 + 广告花费(负数) + 合计成本(负数)
-            total_net_profit += (amt + spd + cst)
+            total_net_profit += prf
+
+        total_sales_abs = abs(total_sales) if total_sales else Decimal('0')
+        total_profit_base_abs = abs(total_profit_base) if total_profit_base else total_sales_abs
+        summary_ad_cost_ratio = (abs(total_ad_cost) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
+        summary_platform_fee_ratio = (abs(total_platform_fee) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
+        summary_cost_ratio = (abs(total_cost) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
+        summary_profit_ratio = (total_net_profit / total_profit_base_abs * 100) if total_profit_base_abs else Decimal('0')
 
         # ========== 单天 or 多天聚合 ==========
         if is_multi_day:
-            # 多天聚合：按 sid + seller_sku 分组，汇总数值
-            aggregated = profits_qs.values('sid', 'seller_sku').annotate(
-                volume_sum=Sum('volume'),
-                afn_volume_sum=Sum('afn_volume'),
-                mfn_volume_sum=Sum('mfn_volume'),
-                ad_volume_sum=Sum('ad_volume'),
-                amount_sum=Sum('amount'),
-                afn_amount_sum=Sum('afn_amount'),
-                mfn_amount_sum=Sum('mfn_amount'),
-                ad_sales_amount_sum=Sum('ad_sales_amount'),
-                spend_sum=Sum('spend'),
-                ads_sp_cost_sum=Sum('ads_sp_cost'),
-                ads_sb_cost_sum=Sum('ads_sb_cost'),
-                ads_sbv_cost_sum=Sum('ads_sbv_cost'),
-                ads_sd_cost_sum=Sum('ads_sd_cost'),
-                purchase_costs_sum=Sum('purchase_costs'),
-                logistics_costs_sum=Sum('logistics_costs'),
-                other_costs_sum=Sum('other_costs'),
-                total_costs_sum=Sum('total_costs'),
-            ).order_by('seller_sku', 'sid')
+            aggregations = {f'{field_name}_sum': Sum(field_name) for field_name in AGGREGATE_SUM_FIELDS}
+            aggregated = profits_qs.values('sid', 'seller_sku').annotate(**aggregations).order_by('seller_sku', 'sid')
 
-            # 获取 ASIN 和品名（取该 MSKU 最新的那条）
-            sku_meta = {}
-            for p in profits_qs.values('sid', 'seller_sku', 'item_name').distinct():
-                key = (p['sid'], p['seller_sku'])
-                if key not in sku_meta:
-                    sku_meta[key] = {'item_name': p['item_name'] or ''}
+            latest_rows = {}
+            for profit in profits_qs.order_by('sid', 'seller_sku', '-sync_date', '-id'):
+                key = (profit.sid, profit.seller_sku)
+                if key not in latest_rows:
+                    latest_rows[key] = build_profit_row(
+                        profit,
+                        sid_to_shop.get(profit.sid, {}),
+                        asin='',
+                        formatted=True,
+                    )
 
             # 获取 ASIN
             from amazon.models import AmazonMSKUDailyProfitPriceList
@@ -262,57 +492,22 @@ def get_amazon_profit_detail_api(request):
                 key = (sid, seller_sku)
                 shop_info = sid_to_shop.get(sid, {})
 
-                amount = item['amount_sum'] or Decimal('0')
-                spend = item['spend_sum'] or Decimal('0')
-                total_costs = item['total_costs_sum'] or Decimal('0')
-                net_profit = amount + spend + total_costs
-
-                amount_abs = abs(amount) if amount else Decimal('0')
-                spend_abs = abs(spend) if spend else Decimal('0')
-                ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
-                cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                logistics_cost = item['logistics_costs_sum'] or Decimal('0')
-                logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
-                logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
-
-                profit_list.append({
+                row = dict(latest_rows.get(key, {}))
+                row.update({
                     'id': f"{sid}_{seller_sku}",
                     'sync_date': f"{start_date_str} ~ {end_date_str}",
                     'shop_name': shop_info.get('shop_name', f'店铺{sid}'),
                     'sid': sid,
                     'seller_sku': seller_sku,
                     'asin': asin_map.get(key, ''),
-                    'item_name': sku_meta.get(key, {}).get('item_name', ''),
-                    'ad_cost_ratio': ad_cost_ratio,
-                    'cost_ratio': cost_ratio,
-                    'logistics_ratio': logistics_ratio,
-                    'profit_ratio': profit_ratio,
-                    'volume': item['volume_sum'] or 0,
-                    'afn_volume': item['afn_volume_sum'] or 0,
-                    'mfn_volume': item['mfn_volume_sum'] or 0,
-                    'ad_volume': item['ad_volume_sum'] or 0,
-                    'amount': str(amount) if amount else '0.00',
-                    'afn_amount': str(item['afn_amount_sum']) if item['afn_amount_sum'] else '0.00',
-                    'mfn_amount': str(item['mfn_amount_sum']) if item['mfn_amount_sum'] else '0.00',
-                    'ad_sales_amount': str(item['ad_sales_amount_sum']) if item['ad_sales_amount_sum'] else '0.00',
-                    'spend': str(spend) if spend else '0.00',
-                    'ads_sp_cost': str(item['ads_sp_cost_sum']) if item['ads_sp_cost_sum'] else '0.00',
-                    'ads_sb_cost': str(item['ads_sb_cost_sum']) if item['ads_sb_cost_sum'] else '0.00',
-                    'ads_sbv_cost': str(item['ads_sbv_cost_sum']) if item['ads_sbv_cost_sum'] else '0.00',
-                    'ads_sd_cost': str(item['ads_sd_cost_sum']) if item['ads_sd_cost_sum'] else '0.00',
-                    'purchase_costs': str(item['purchase_costs_sum']) if item['purchase_costs_sum'] else '0.00',
-                    'logistics_costs': str(item['logistics_costs_sum']) if item['logistics_costs_sum'] else '0.00',
-                    'other_costs': str(item['other_costs_sum']) if item['other_costs_sum'] else '0.00',
-                    'total_costs': str(total_costs) if total_costs else '0.00',
-                    'net_profit': str(net_profit),
                 })
+                for field_name in AGGREGATE_SUM_FIELDS:
+                    row[field_name] = serialize_profit_value(item.get(f'{field_name}_sum') or Decimal('0'))
 
-            # 聚合后手动分页前，支持计算字段排序
-            if sort_field in COMPUTED_FIELDS:
-                reverse = sort_order == 'desc'
-                profit_list.sort(key=lambda x: x[sort_field], reverse=reverse)
+                apply_profit_metrics(row, formatted=True)
+                profit_list.append(row)
+
+            sort_profit_rows(profit_list, sort_field, sort_order)
 
             total = len(profit_list)
             total_pages = (total + page_size - 1) // page_size
@@ -320,108 +515,33 @@ def get_amazon_profit_detail_api(request):
             end_idx = start_idx + page_size
             profit_list = profit_list[start_idx:end_idx]
 
-            # 格式化占比字段（分页后统一格式化）
-            for item in profit_list:
-                item['ad_cost_ratio'] = f"{item['ad_cost_ratio']:.1f}"
-                item['cost_ratio'] = f"{item['cost_ratio']:.1f}"
-                item['logistics_ratio'] = f"{item['logistics_ratio']:.1f}"
-                item['profit_ratio'] = f"{item['profit_ratio']:.1f}"
-
         else:
-            # 单天：直接分页显示
-            # 判断是否为计算字段排序
-            is_computed_sort = sort_field in COMPUTED_FIELDS
+            is_python_sort = sort_field in PYTHON_SORT_FIELDS
 
-            if is_computed_sort:
-                # 计算字段：先按销售额排序取全部数据，再在 Python 端排序分页
+            if is_python_sort:
                 profits_qs = profits_qs.order_by('seller_sku', 'sid')
                 all_profits = list(profits_qs)
 
-                # 构建完整列表并计算占比
                 profit_list_all = []
                 for profit in all_profits:
                     shop_info = sid_to_shop.get(profit.sid, {})
+                    profit_list_all.append(build_profit_row(profit, shop_info, formatted=True))
 
-                    # 获取 ASIN
-                    asin = ''
-                    price_list = profit.price_list.first()
-                    if price_list:
-                        asin = price_list.asin or ''
+                sort_profit_rows(profit_list_all, sort_field, sort_order)
 
-                    # 计算净利润和占比
-                    amount = profit.amount or Decimal('0')
-                    spend = profit.spend or Decimal('0')
-                    total_costs = profit.total_costs or Decimal('0')
-                    net_profit = amount + spend + total_costs
-
-                    amount_abs = abs(amount) if amount else Decimal('0')
-                    spend_abs = abs(spend) if spend else Decimal('0')
-                    ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
-                    cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    logistics_cost = profit.logistics_costs or Decimal('0')
-                    logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
-                    logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
-
-                    profit_list_all.append({
-                        'id': profit.id,
-                        'sync_date': profit.sync_date.strftime('%Y-%m-%d'),
-                        'shop_name': shop_info.get('shop_name', f'店铺{profit.sid}'),
-                        'sid': profit.sid,
-                        'seller_sku': profit.seller_sku,
-                        'asin': asin,
-                        'item_name': profit.item_name or '',
-                        'ad_cost_ratio': ad_cost_ratio,
-                        'cost_ratio': cost_ratio,
-                        'logistics_ratio': logistics_ratio,
-                        'profit_ratio': profit_ratio,
-                        'volume': profit.volume or 0,
-                        'afn_volume': profit.afn_volume or 0,
-                        'mfn_volume': profit.mfn_volume or 0,
-                        'ad_volume': profit.ad_volume or 0,
-                        'amount': str(amount) if amount else '0.00',
-                        'afn_amount': str(profit.afn_amount) if profit.afn_amount else '0.00',
-                        'mfn_amount': str(profit.mfn_amount) if profit.mfn_amount else '0.00',
-                        'ad_sales_amount': str(profit.ad_sales_amount) if profit.ad_sales_amount else '0.00',
-                        'spend': str(spend) if spend else '0.00',
-                        'ads_sp_cost': str(profit.ads_sp_cost) if profit.ads_sp_cost else '0.00',
-                        'ads_sb_cost': str(profit.ads_sb_cost) if profit.ads_sb_cost else '0.00',
-                        'ads_sbv_cost': str(profit.ads_sbv_cost) if profit.ads_sbv_cost else '0.00',
-                        'ads_sd_cost': str(profit.ads_sd_cost) if profit.ads_sd_cost else '0.00',
-                        'purchase_costs': str(profit.purchase_costs) if profit.purchase_costs else '0.00',
-                        'logistics_costs': str(profit.logistics_costs) if profit.logistics_costs else '0.00',
-                        'other_costs': str(profit.other_costs) if profit.other_costs else '0.00',
-                        'total_costs': str(total_costs) if total_costs else '0.00',
-                        'net_profit': str(net_profit),
-                    })
-
-                # Python 端排序（Decimal 精度安全）
-                reverse = sort_order == 'desc'
-                profit_list_all.sort(key=lambda x: x[sort_field], reverse=reverse)
-
-                # 手动分页
                 total = len(profit_list_all)
                 total_pages = (total + page_size - 1) // page_size
                 start_idx = (page - 1) * page_size
                 end_idx = start_idx + page_size
                 profit_list = profit_list_all[start_idx:end_idx]
 
-                # 格式化占比字段
-                for item in profit_list:
-                    item['ad_cost_ratio'] = f"{item['ad_cost_ratio']:.1f}"
-                    item['cost_ratio'] = f"{item['cost_ratio']:.1f}"
-                    item['logistics_ratio'] = f"{item['logistics_ratio']:.1f}"
-                    item['profit_ratio'] = f"{item['profit_ratio']:.1f}"
-
             else:
-                # 数据库字段：直接用 order_by 排序分页
                 db_sort_field = DB_SORT_FIELD_MAP.get(sort_field, 'amount')
                 order_prefix = '-' if sort_order == 'desc' else ''
-                if db_sort_field in ['seller_sku', 'sid']:
-                    profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}")
-                else:
-                    profits_qs = profits_qs.order_by(f"{order_prefix}{db_sort_field}", 'seller_sku')
+                order_fields = [f"{order_prefix}{db_sort_field}"]
+                if db_sort_field != 'seller_sku':
+                    order_fields.append('seller_sku')
+                profits_qs = profits_qs.order_by(*order_fields)
                 paginator = Paginator(profits_qs, page_size)
                 total = paginator.count
 
@@ -436,65 +556,7 @@ def get_amazon_profit_detail_api(request):
                 profit_list = []
                 for profit in page_obj:
                     shop_info = sid_to_shop.get(profit.sid, {})
-
-                    # 获取 ASIN（从 price_list 子表取第一个）
-                    asin = ''
-                    price_list = profit.price_list.first()
-                    if price_list:
-                        asin = price_list.asin or ''
-
-                    # 计算净利润 = 销售额 + 广告花费(负数) + 合计成本(负数)
-                    amount = profit.amount or Decimal('0')
-                    spend = profit.spend or Decimal('0')
-                    total_costs = profit.total_costs or Decimal('0')
-                    net_profit = amount + spend + total_costs
-
-                    # 计算占比（销售额为分母，注意销售额可能为0或负数）
-                    amount_abs = abs(amount) if amount else Decimal('0')
-                    # spend 在数据库中为负数（表示支出），取绝对值计算占比
-                    spend_abs = abs(spend) if spend else Decimal('0')
-                    ad_cost_ratio = (spend_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    # 成本占比 = |合计成本| / 销售额
-                    total_costs_abs = abs(total_costs) if total_costs else Decimal('0')
-                    cost_ratio = (total_costs_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    # 运费占比 = |头程成本| / 销售额
-                    logistics_cost = profit.logistics_costs or Decimal('0')
-                    logistics_cost_abs = abs(logistics_cost) if logistics_cost else Decimal('0')
-                    logistics_ratio = (logistics_cost_abs / amount_abs * 100) if amount_abs else Decimal('0')
-                    # 利润率 = 净利润 / |销售额| * 100
-                    profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
-
-                    profit_list.append({
-                        'id': profit.id,
-                        'sync_date': profit.sync_date.strftime('%Y-%m-%d'),
-                        'shop_name': shop_info.get('shop_name', f'店铺{profit.sid}'),
-                        'sid': profit.sid,
-                        'seller_sku': profit.seller_sku,
-                        'asin': asin,
-                        'item_name': profit.item_name or '',
-                        'ad_cost_ratio': f"{ad_cost_ratio:.1f}",
-                        'cost_ratio': f"{cost_ratio:.1f}",
-                        'logistics_ratio': f"{logistics_ratio:.1f}",
-                        'profit_ratio': f"{profit_ratio:.1f}",
-                        'volume': profit.volume or 0,
-                        'afn_volume': profit.afn_volume or 0,
-                        'mfn_volume': profit.mfn_volume or 0,
-                        'ad_volume': profit.ad_volume or 0,
-                        'amount': str(amount) if amount else '0.00',
-                        'afn_amount': str(profit.afn_amount) if profit.afn_amount else '0.00',
-                        'mfn_amount': str(profit.mfn_amount) if profit.mfn_amount else '0.00',
-                        'ad_sales_amount': str(profit.ad_sales_amount) if profit.ad_sales_amount else '0.00',
-                        'spend': str(spend) if spend else '0.00',
-                        'ads_sp_cost': str(profit.ads_sp_cost) if profit.ads_sp_cost else '0.00',
-                        'ads_sb_cost': str(profit.ads_sb_cost) if profit.ads_sb_cost else '0.00',
-                        'ads_sbv_cost': str(profit.ads_sbv_cost) if profit.ads_sbv_cost else '0.00',
-                        'ads_sd_cost': str(profit.ads_sd_cost) if profit.ads_sd_cost else '0.00',
-                        'purchase_costs': str(profit.purchase_costs) if profit.purchase_costs else '0.00',
-                        'logistics_costs': str(profit.logistics_costs) if profit.logistics_costs else '0.00',
-                        'other_costs': str(profit.other_costs) if profit.other_costs else '0.00',
-                        'total_costs': str(total_costs) if total_costs else '0.00',
-                        'net_profit': str(net_profit),
-                    })
+                    profit_list.append(build_profit_row(profit, shop_info, formatted=True))
 
         return JsonResponse({
             'success': True,
@@ -507,8 +569,13 @@ def get_amazon_profit_detail_api(request):
                 'summary': {
                     'total_sales': str(total_sales.quantize(Decimal('0.00'))),
                     'total_ad_cost': str(total_ad_cost.quantize(Decimal('0.00'))),
+                    'total_platform_fee': str(total_platform_fee.quantize(Decimal('0.00'))),
                     'total_cost': str(total_cost.quantize(Decimal('0.00'))),
                     'total_net_profit': str(total_net_profit.quantize(Decimal('0.00'))),
+                    'ad_cost_ratio': str(summary_ad_cost_ratio.quantize(Decimal('0.1'))),
+                    'platform_fee_ratio': str(summary_platform_fee_ratio.quantize(Decimal('0.1'))),
+                    'cost_ratio': str(summary_cost_ratio.quantize(Decimal('0.1'))),
+                    'profit_ratio': str(summary_profit_ratio.quantize(Decimal('0.1'))),
                 }
             }
         })
