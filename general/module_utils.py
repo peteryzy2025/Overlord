@@ -102,6 +102,7 @@ def is_api_request(request):
     """判断请求是否期望 JSON 响应。"""
     return (
         request.path.startswith('/api/')
+        or '/api/' in request.path
         or request.headers.get('x-requested-with') == 'XMLHttpRequest'
         or 'application/json' in request.headers.get('accept', '')
     )

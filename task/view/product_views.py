@@ -5,16 +5,32 @@ from django.http import JsonResponse, HttpResponse
 from django.db import transaction
 from django.db.models import Q
 from django.core.paginator import Paginator
+from functools import wraps
 import json
 import openpyxl
 
 from general.models import User
+from general.module_utils import permission_denied_response
 from task.models import ProductRequirement
 from task.utils import parse_permissions
 from api.wc.crawler_wc import get_ykartwood_product
 
 
+OWNER_USER_ID = 555
+
+
+def user_555_required(view_func):
+    @wraps(view_func)
+    def wrapped_view(request, *args, **kwargs):
+        if getattr(request.user, 'id', None) == OWNER_USER_ID:
+            return view_func(request, *args, **kwargs)
+        return permission_denied_response(request, '该功能仅 user.id=555 可访问。', status=403)
+
+    return wrapped_view
+
+
 @login_required
+@user_555_required
 def product_create_page(request):
     """
     产品需求创建页面
@@ -23,6 +39,7 @@ def product_create_page(request):
 
 
 @login_required
+@user_555_required
 def product_list_page(request):
     """
     产品需求列表页面
@@ -31,6 +48,7 @@ def product_list_page(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["GET"])
 def get_status_choices_api(request):
     """返回产品需求的最新状态选项"""
@@ -44,6 +62,7 @@ def get_status_choices_api(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 @transaction.atomic
 def create_product_requirement_api(request):
@@ -78,6 +97,7 @@ def create_product_requirement_api(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["GET"])
 def export_product_requirement_excel_api(request, pk):
     """
@@ -227,6 +247,7 @@ def export_product_requirement_excel_api(request, pk):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 def complete_product_design_api(request, pk):
     """
@@ -256,6 +277,7 @@ def complete_product_design_api(request, pk):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["GET"])
 def get_product_requirements_api(request):
     """
@@ -329,6 +351,7 @@ def get_product_requirements_api(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 def recrawl_product_requirement_api(request):
     """
@@ -407,6 +430,7 @@ def recrawl_product_requirement_api(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 def reject_product_requirements_api(request):
     """
@@ -437,6 +461,7 @@ def reject_product_requirements_api(request):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["GET"])
 def get_product_requirement_detail_api(request, pk):
     """
@@ -534,6 +559,7 @@ def get_product_requirement_detail_api(request, pk):
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 def update_product_requirement_api(request, pk):
     """
@@ -591,6 +617,7 @@ def update_product_requirement_api(request, pk):
 
 
 @login_required
+@user_555_required
 @require_http_methods(["POST"])
 def claim_product_requirement_api(request, pk):
     """

@@ -920,20 +920,22 @@
                                 <p>自动化审批流程与管理</p>
                             </div>
                         </a>
-                        <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-card">
-                            <div class="nav-card-icon"><i class="fas fa-lightbulb"></i></div>
-                            <div class="nav-card-content">
-                                <h4>产品需求</h4>
-                                <p>新品开发需求提交与管理</p>
-                            </div>
-                        </a>
-                        <a href="{% url 'data_req:list' %}" class="nav-dropdown-card">
-                            <div class="nav-card-icon"><i class="fas fa-chart-bar"></i></div>
-                            <div class="nav-card-content">
-                                <h4>数据部需求进度</h4>
-                                <p>数据需求工单跟踪</p>
-                            </div>
-                        </a>
+                        {% if request.user.id == 555 %}
+                            <a href="{% url 'task:product_list_page' %}" class="nav-dropdown-card">
+                                <div class="nav-card-icon"><i class="fas fa-lightbulb"></i></div>
+                                <div class="nav-card-content">
+                                    <h4>产品需求</h4>
+                                    <p>新品开发需求提交与管理</p>
+                                </div>
+                            </a>
+                            <a href="{% url 'data_req:list' %}" class="nav-dropdown-card">
+                                <div class="nav-card-icon"><i class="fas fa-chart-bar"></i></div>
+                                <div class="nav-card-content">
+                                    <h4>数据部需求进度</h4>
+                                    <p>数据需求工单跟踪</p>
+                                </div>
+                            </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

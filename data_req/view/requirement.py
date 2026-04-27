@@ -8,11 +8,22 @@ from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
 from django.utils import timezone
+from general.module_utils import permission_denied_response
 from general.models import User
 from data_req.models import DataRequirement, RequirementTimeline
 
 
-class RequirementListView(LoginRequiredMixin, ListView):
+OWNER_USER_ID = 555
+
+
+class User555OnlyMixin(LoginRequiredMixin):
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated and getattr(request.user, 'id', None) != OWNER_USER_ID:
+            return permission_denied_response(request, '该功能仅 user.id=555 可访问。', status=403)
+        return super().dispatch(request, *args, **kwargs)
+
+
+class RequirementListView(User555OnlyMixin, ListView):
     """需求列表页面"""
     model = DataRequirement
     template_name = 'data_req/requirement_list.html'
@@ -173,7 +184,7 @@ class RequirementListView(LoginRequiredMixin, ListView):
         return context
 
 
-class RequirementDetailView(LoginRequiredMixin, DetailView):
+class RequirementDetailView(User555OnlyMixin, DetailView):
     model = DataRequirement
     template_name = 'data_req/requirement_detail.html'
     context_object_name = 'requirement'
@@ -193,7 +204,7 @@ class RequirementDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
-class RequirementCreateAPI(LoginRequiredMixin, View):
+class RequirementCreateAPI(User555OnlyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -234,7 +245,7 @@ class RequirementCreateAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementUpdateAPI(LoginRequiredMixin, View):
+class RequirementUpdateAPI(User555OnlyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -295,7 +306,7 @@ class RequirementUpdateAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementDeleteAPI(LoginRequiredMixin, View):
+class RequirementDeleteAPI(User555OnlyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -309,7 +320,7 @@ class RequirementDeleteAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementDetailAPI(LoginRequiredMixin, View):
+class RequirementDetailAPI(User555OnlyMixin, View):
     def get(self, request):
         try:
             req_id = request.GET.get('id')
@@ -332,7 +343,7 @@ class RequirementDetailAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementStatsAPI(LoginRequiredMixin, View):
+class RequirementStatsAPI(User555OnlyMixin, View):
     def get(self, request):
         try:
             stats = {
@@ -349,7 +360,7 @@ class RequirementStatsAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementStatusAPI(LoginRequiredMixin, View):
+class RequirementStatusAPI(User555OnlyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
@@ -436,7 +447,7 @@ class RequirementStatusAPI(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class RequirementListAPI(LoginRequiredMixin, View):
+class RequirementListAPI(User555OnlyMixin, View):
     def post(self, request):
         try:
             data = json.loads(request.body)
