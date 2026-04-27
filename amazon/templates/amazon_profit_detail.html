@@ -21,6 +21,30 @@
             text-align: right;
             font-variant-numeric: tabular-nums;
         }
+        #dataTable .cell-amount-percent {
+            min-width: 132px;
+            max-width: 156px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        #dataTable th.amount-percent-header {
+            text-align: center;
+        }
+        .amount-percent-cell {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 0.55rem;
+            min-width: 0;
+        }
+        .amount-percent-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .amount-percent-ratio {
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+        }
         #dataTable .cell-json {
             max-width: 260px;
         }
@@ -620,8 +644,9 @@
                 <th class="w-checkbox"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                 ${PROFIT_COLUMNS.map(column => {
                     const sortableClass = column.sortable ? 'sortable' : '';
+                    const amountPercentClass = column.value_type === 'amount_percent' ? 'amount-percent-header' : '';
                     const clickHandler = column.sortable ? `onclick="toggleSort('${column.key}')"` : '';
-                    return `<th class="${sortableClass}" data-field="${escapeHtml(column.key)}" ${clickHandler}>${escapeHtml(column.label)} <span class="sort-icon"></span></th>`;
+                    return `<th class="${sortableClass} ${amountPercentClass}" data-field="${escapeHtml(column.key)}" ${clickHandler}>${escapeHtml(column.label)} <span class="sort-icon"></span></th>`;
                 }).join('')}
             `;
 
@@ -640,8 +665,11 @@
 
         function getCellClass(column, value) {
             const classes = [];
-            if (['number', 'percent'].includes(column.value_type)) {
+            if (['number', 'percent', 'amount_percent'].includes(column.value_type)) {
                 classes.push('cell-number');
+            }
+            if (column.value_type === 'amount_percent') {
+                classes.push('cell-amount-percent');
             }
             if (column.value_type === 'json') {
                 classes.push('cell-json');
@@ -663,6 +691,21 @@
                 if (!rawValue) return '<td class="cell-image">-</td>';
                 const imageUrl = escapeHtml(rawValue);
                 return `<td class="cell-image" title="${imageUrl}"><img class="profit-thumb" src="${imageUrl}" alt=""></td>`;
+            }
+            if (column.value_type === 'amount_percent') {
+                const amountValue = normalizeCellValue(rawValue);
+                const ratioValue = normalizeCellValue(item[column.ratio_key]);
+                const displayAmount = escapeHtml(amountValue);
+                const displayRatio = ratioValue === '-' ? '-' : `${escapeHtml(ratioValue)}%`;
+                const title = escapeHtml(`${amountValue} / ${ratioValue === '-' ? '-' : `${ratioValue}%`}`);
+                return `
+                    <td class="${getCellClass(column, rawValue)}" title="${title}">
+                        <div class="amount-percent-cell">
+                            <span class="amount-percent-value">${displayAmount}</span>
+                            <span class="amount-percent-ratio">${displayRatio}</span>
+                        </div>
+                    </td>
+                `;
             }
 
             const normalized = normalizeCellValue(rawValue);

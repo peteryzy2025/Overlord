@@ -33,6 +33,6 @@ def theme_access_required(view_func):
         if can_access_theme_admin_pages(request.user):
             return view_func(request, *args, **kwargs)
 
-        return permission_denied_response(request, '无权访问该 Theme 页面', status=403)
+        return permission_denied_response(request, '当前用户没有主题板块权限，请询问公司管理员。', status=403)
 
     return wrapped_view

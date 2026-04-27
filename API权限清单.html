@@ -1,0 +1,1795 @@
+<!DOCTYPE html><html><head>
+      <title>API权限清单</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      
+      <link rel="stylesheet" href="file:///c:\Users\PC\.vscode\extensions\shd101wyy.markdown-preview-enhanced-0.8.24\crossnote\dependencies\katex\katex.min.css">
+      
+      
+      
+      
+      
+      
+      
+      <style>
+      code[class*=language-],pre[class*=language-]{color:#333;background:0 0;font-family:Consolas,"Liberation Mono",Menlo,Courier,monospace;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.4;-moz-tab-size:8;-o-tab-size:8;tab-size:8;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}pre[class*=language-]{padding:.8em;overflow:auto;border-radius:3px;background:#f5f5f5}:not(pre)>code[class*=language-]{padding:.1em;border-radius:.3em;white-space:normal;background:#f5f5f5}.token.blockquote,.token.comment{color:#969896}.token.cdata{color:#183691}.token.doctype,.token.macro.property,.token.punctuation,.token.variable{color:#333}.token.builtin,.token.important,.token.keyword,.token.operator,.token.rule{color:#a71d5d}.token.attr-value,.token.regex,.token.string,.token.url{color:#183691}.token.atrule,.token.boolean,.token.code,.token.command,.token.constant,.token.entity,.token.number,.token.property,.token.symbol{color:#0086b3}.token.prolog,.token.selector,.token.tag{color:#63a35c}.token.attr-name,.token.class,.token.class-name,.token.function,.token.id,.token.namespace,.token.pseudo-class,.token.pseudo-element,.token.url-reference .token.variable{color:#795da3}.token.entity{cursor:help}.token.title,.token.title .token.punctuation{font-weight:700;color:#1d3e81}.token.list{color:#ed6a43}.token.inserted{background-color:#eaffea;color:#55a532}.token.deleted{background-color:#ffecec;color:#bd2c00}.token.bold{font-weight:700}.token.italic{font-style:italic}.language-json .token.property{color:#183691}.language-markup .token.tag .token.punctuation{color:#333}.language-css .token.function,code.language-css{color:#0086b3}.language-yaml .token.atrule{color:#63a35c}code.language-yaml{color:#183691}.language-ruby .token.function{color:#333}.language-markdown .token.url{color:#795da3}.language-makefile .token.symbol{color:#795da3}.language-makefile .token.variable{color:#183691}.language-makefile .token.builtin{color:#0086b3}.language-bash .token.keyword{color:#0086b3}pre[data-line]{position:relative;padding:1em 0 1em 3em}pre[data-line] .line-highlight-wrapper{position:absolute;top:0;left:0;background-color:transparent;display:block;width:100%}pre[data-line] .line-highlight{position:absolute;left:0;right:0;padding:inherit 0;margin-top:1em;background:hsla(24,20%,50%,.08);background:linear-gradient(to right,hsla(24,20%,50%,.1) 70%,hsla(24,20%,50%,0));pointer-events:none;line-height:inherit;white-space:pre}pre[data-line] .line-highlight:before,pre[data-line] .line-highlight[data-end]:after{content:attr(data-start);position:absolute;top:.4em;left:.6em;min-width:1em;padding:0 .5em;background-color:hsla(24,20%,50%,.4);color:#f4f1ef;font:bold 65%/1.5 sans-serif;text-align:center;vertical-align:.3em;border-radius:999px;text-shadow:none;box-shadow:0 1px #fff}pre[data-line] .line-highlight[data-end]:after{content:attr(data-end);top:auto;bottom:.4em}html body{font-family:'Helvetica Neue',Helvetica,'Segoe UI',Arial,freesans,sans-serif;font-size:16px;line-height:1.6;color:#333;background-color:#fff;overflow:initial;box-sizing:border-box;word-wrap:break-word}html body>:first-child{margin-top:0}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{line-height:1.2;margin-top:1em;margin-bottom:16px;color:#000}html body h1{font-size:2.25em;font-weight:300;padding-bottom:.3em}html body h2{font-size:1.75em;font-weight:400;padding-bottom:.3em}html body h3{font-size:1.5em;font-weight:500}html body h4{font-size:1.25em;font-weight:600}html body h5{font-size:1.1em;font-weight:600}html body h6{font-size:1em;font-weight:600}html body h1,html body h2,html body h3,html body h4,html body h5{font-weight:600}html body h5{font-size:1em}html body h6{color:#5c5c5c}html body strong{color:#000}html body del{color:#5c5c5c}html body a:not([href]){color:inherit;text-decoration:none}html body a{color:#08c;text-decoration:none}html body a:hover{color:#00a3f5;text-decoration:none}html body img{max-width:100%}html body>p{margin-top:0;margin-bottom:16px;word-wrap:break-word}html body>ol,html body>ul{margin-bottom:16px}html body ol,html body ul{padding-left:2em}html body ol.no-list,html body ul.no-list{padding:0;list-style-type:none}html body ol ol,html body ol ul,html body ul ol,html body ul ul{margin-top:0;margin-bottom:0}html body li{margin-bottom:0}html body li.task-list-item{list-style:none}html body li>p{margin-top:0;margin-bottom:0}html body .task-list-item-checkbox{margin:0 .2em .25em -1.8em;vertical-align:middle}html body .task-list-item-checkbox:hover{cursor:pointer}html body blockquote{margin:16px 0;font-size:inherit;padding:0 15px;color:#5c5c5c;background-color:#f0f0f0;border-left:4px solid #d6d6d6}html body blockquote>:first-child{margin-top:0}html body blockquote>:last-child{margin-bottom:0}html body hr{height:4px;margin:32px 0;background-color:#d6d6d6;border:0 none}html body table{margin:10px 0 15px 0;border-collapse:collapse;border-spacing:0;display:block;width:100%;overflow:auto;word-break:normal;word-break:keep-all}html body table th{font-weight:700;color:#000}html body table td,html body table th{border:1px solid #d6d6d6;padding:6px 13px}html body dl{padding:0}html body dl dt{padding:0;margin-top:16px;font-size:1em;font-style:italic;font-weight:700}html body dl dd{padding:0 16px;margin-bottom:16px}html body code{font-family:Menlo,Monaco,Consolas,'Courier New',monospace;font-size:.85em;color:#000;background-color:#f0f0f0;border-radius:3px;padding:.2em 0}html body code::after,html body code::before{letter-spacing:-.2em;content:'\00a0'}html body pre>code{padding:0;margin:0;word-break:normal;white-space:pre;background:0 0;border:0}html body .highlight{margin-bottom:16px}html body .highlight pre,html body pre{padding:1em;overflow:auto;line-height:1.45;border:#d6d6d6;border-radius:3px}html body .highlight pre{margin-bottom:0;word-break:normal}html body pre code,html body pre tt{display:inline;max-width:initial;padding:0;margin:0;overflow:initial;line-height:inherit;word-wrap:normal;background-color:transparent;border:0}html body pre code:after,html body pre code:before,html body pre tt:after,html body pre tt:before{content:normal}html body blockquote,html body dl,html body ol,html body p,html body pre,html body ul{margin-top:0;margin-bottom:16px}html body kbd{color:#000;border:1px solid #d6d6d6;border-bottom:2px solid #c7c7c7;padding:2px 4px;background-color:#f0f0f0;border-radius:3px}@media print{html body{background-color:#fff}html body h1,html body h2,html body h3,html body h4,html body h5,html body h6{color:#000;page-break-after:avoid}html body blockquote{color:#5c5c5c}html body pre{page-break-inside:avoid}html body table{display:table}html body img{display:block;max-width:100%;max-height:100%}html body code,html body pre{word-wrap:break-word;white-space:pre}}.markdown-preview{width:100%;height:100%;box-sizing:border-box}.markdown-preview ul{list-style:disc}.markdown-preview ul ul{list-style:circle}.markdown-preview ul ul ul{list-style:square}.markdown-preview ol{list-style:decimal}.markdown-preview ol ol,.markdown-preview ul ol{list-style-type:lower-roman}.markdown-preview ol ol ol,.markdown-preview ol ul ol,.markdown-preview ul ol ol,.markdown-preview ul ul ol{list-style-type:lower-alpha}.markdown-preview .newpage,.markdown-preview .pagebreak{page-break-before:always}.markdown-preview pre.line-numbers{position:relative;padding-left:3.8em;counter-reset:linenumber}.markdown-preview pre.line-numbers>code{position:relative}.markdown-preview pre.line-numbers .line-numbers-rows{position:absolute;pointer-events:none;top:1em;font-size:100%;left:0;width:3em;letter-spacing:-1px;border-right:1px solid #999;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.markdown-preview pre.line-numbers .line-numbers-rows>span{pointer-events:none;display:block;counter-increment:linenumber}.markdown-preview pre.line-numbers .line-numbers-rows>span:before{content:counter(linenumber);color:#999;display:block;padding-right:.8em;text-align:right}.markdown-preview .mathjax-exps .MathJax_Display{text-align:center!important}.markdown-preview:not([data-for=preview]) .code-chunk .code-chunk-btn-group{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .status{display:none}.markdown-preview:not([data-for=preview]) .code-chunk .output-div{margin-bottom:16px}.markdown-preview .md-toc{padding:0}.markdown-preview .md-toc .md-toc-details{margin:0;padding:0;border:none}.markdown-preview .md-toc summary.md-toc-link-wrapper{cursor:pointer;list-style-position:outside}.markdown-preview .md-toc summary.md-toc-link-wrapper::marker{font-size:.85em}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link div,.markdown-preview .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}.markdown-preview .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='0']{margin-left:12px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='1']{margin-left:28px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='2']{margin-left:44px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='3']{margin-left:60px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='4']{margin-left:76px}.markdown-preview .md-toc .md-toc-link-wrapper[data-level='5']{margin-left:80px}.scrollbar-style::-webkit-scrollbar{width:8px}.scrollbar-style::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}.scrollbar-style::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode]){position:relative;width:100%;height:100%;top:0;left:0;margin:0;padding:0;overflow:auto}html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{position:relative;top:0;min-height:100vh}@media screen and (min-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em calc(50% - 457px + 2em)}}@media screen and (max-width:914px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode]) .markdown-preview{font-size:14px!important;padding:1em}}@media print{html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{display:none}}html body[for=html-export]:not([data-presentation-mode]) #sidebar-toc-btn{position:fixed;bottom:8px;left:8px;font-size:28px;cursor:pointer;color:inherit;z-index:99;width:32px;text-align:center;opacity:.4}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] #sidebar-toc-btn{opacity:1}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc{position:fixed;top:0;left:0;width:300px;height:100%;padding:32px 0 48px 0;font-size:14px;box-shadow:0 0 4px rgba(150,150,150,.33);box-sizing:border-box;overflow:auto;background-color:inherit}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar{width:8px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-track{border-radius:10px;background-color:transparent}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc::-webkit-scrollbar-thumb{border-radius:5px;background-color:rgba(150,150,150,.66);border:4px solid rgba(150,150,150,.66);background-clip:content-box}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc a{text-decoration:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc{padding:0 16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-details{margin:0;padding:0;border:none}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link{display:inline;padding:.25rem 0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link div,html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper .md-toc-link p{display:inline}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper.highlighted .md-toc-link{font-weight:800}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='0']{padding-left:0}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='1']{padding-left:16px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='2']{padding-left:32px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='3']{padding-left:48px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='4']{padding-left:64px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .md-sidebar-toc .md-toc .md-toc-link-wrapper[data-level='5']{padding-left:80px}html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{left:300px;width:calc(100% - 300px);padding:2em calc(50% - 457px - 300px / 2);margin:0;box-sizing:border-box}@media screen and (max-width:1274px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{padding:2em}}@media screen and (max-width:450px){html body[for=html-export]:not([data-presentation-mode])[html-show-sidebar-toc] .markdown-preview{width:100%}}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .markdown-preview{left:50%;transform:translateX(-50%)}html body[for=html-export]:not([data-presentation-mode]):not([html-show-sidebar-toc]) .md-sidebar-toc{display:none}
+/* Please visit the URL below for more information: */
+/*   https://shd101wyy.github.io/markdown-preview-enhanced/#/customize-css */
+
+      </style>
+      <script type="text/javascript">
+  document.addEventListener("DOMContentLoaded", function () {
+    // your code here
+  });
+</script>
+    </head>
+    <body for="html-export">
+      <div class="crossnote markdown-preview  ">
+      
+<h1 id="api权限清单">API权限清单 </h1>
+<p>生成说明：本清单基于 Django URL resolver、全局 LoginRequiredMiddleware、view 装饰器和源码关键词整理。用途描述按 URL/函数名归类，权限标注用于快速审计，最终仍以对应 view 代码为准。</p>
+<ul>
+<li>API-like 路由总数：257</li>
+<li>全局规则：除白名单/外部/RPA特例外，LoginRequiredMiddleware 默认要求登录。</li>
+<li>公司模块规则：logistics/theme/infringement 模块同时检查公司模块授权和用户权限码。公司已开模块但用户无权限时，返回“当前用户没有对应板块权限，请询问公司管理员。”</li>
+</ul>
+<h2 id="全局白名单外部规则">全局白名单/外部规则 </h2>
+<table>
+<thead>
+<tr>
+<th>路径</th>
+<th>限制</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/inventory/api/import/</code></td>
+<td>免登录白名单：库存导入接口</td>
+</tr>
+<tr>
+<td><code>/api/trend/search/</code></td>
+<td>免登录白名单：侵权词查询接口；view 仍会执行模块权限检查</td>
+</tr>
+<tr>
+<td><code>/api/market-categories/</code></td>
+<td>免登录白名单：迪唯分类数据；view 仍会执行主题模块权限检查</td>
+</tr>
+<tr>
+<td><code>/api/niche-markets/</code></td>
+<td>免登录白名单：迪唯市场数据；view 仍会执行主题模块权限检查</td>
+</tr>
+<tr>
+<td><code>/api/batch-upsert-sku/</code></td>
+<td>免登录白名单：Temu SKU 批量新增/更新</td>
+</tr>
+<tr>
+<td><code>/api/get-temu-shop-password/</code></td>
+<td>免登录白名单：Temu 店铺密码查询</td>
+</tr>
+<tr>
+<td><code>/amazon/api/*</code></td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）</td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/*</code></td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+</tr>
+<tr>
+<td><code>/api/external/approval/*</code></td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+</tr>
+<tr>
+<td><code>/api/external/amazon-shops/*</code></td>
+<td>外部接口白名单：中间件放行</td>
+</tr>
+<tr>
+<td><code>/api/external/amazon-products*</code></td>
+<td>外部接口白名单：中间件放行，view 内应校验 X-RPA-Secret</td>
+</tr>
+<tr>
+<td><code>/api/external/divi-account/*</code></td>
+<td>外部接口白名单：中间件放行</td>
+</tr>
+<tr>
+<td><code>/api/rpa/*</code></td>
+<td>RPA接口：中间件要求 X-RPA-Secret，否则 401</td>
+</tr>
+</tbody>
+</table>
+<h2 id="aba主题12">ABA主题（12） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/available-weeks/</code></td>
+<td>get available weeks</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_available_weeks_api</code></td>
+</tr>
+<tr>
+<td><code>/api/custom-denoising/progress/</code></td>
+<td>get custom denoising progress</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_custom_denoising_progress_api</code></td>
+</tr>
+<tr>
+<td><code>/api/custom-denoising/start/</code></td>
+<td>start custom denoising</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.start_custom_denoising_api</code></td>
+</tr>
+<tr>
+<td><code>/api/data/</code></td>
+<td>get aba data</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_aba_data_api</code></td>
+</tr>
+<tr>
+<td><code>/api/data/total/progress/</code></td>
+<td>get aba total count progress</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_aba_total_count_progress_api</code></td>
+</tr>
+<tr>
+<td><code>/api/data/total/start/</code></td>
+<td>start aba total count</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.start_aba_total_count_api</code></td>
+</tr>
+<tr>
+<td><code>/api/new-words/</code></td>
+<td>get aba new words</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_aba_new_words_api</code></td>
+</tr>
+<tr>
+<td><code>/api/noise-words/</code></td>
+<td>get aba noise words</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_aba_noise_words_api</code></td>
+</tr>
+<tr>
+<td><code>/api/noise-words/add/progress/</code></td>
+<td>get add noise words progress</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.get_add_noise_words_progress_api</code></td>
+</tr>
+<tr>
+<td><code>/api/noise-words/add/start/</code></td>
+<td>start add noise words</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.start_add_noise_words_api</code></td>
+</tr>
+<tr>
+<td><code>/api/noise-words/delete/</code></td>
+<td>delete aba noise word</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.delete_aba_noise_word_api</code></td>
+</tr>
+<tr>
+<td><code>/api/update-denoising/</code></td>
+<td>update search term denoising</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块/ABA（公司已授权主题模块，且用户需有权限码 8/555）</td>
+<td><code>aba.view.views.update_search_term_denoising_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="amazon58">Amazon（58） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/amazon/api/shop-check/init/</code></td>
+<td>init daily shop check</td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）</td>
+<td><code>amazon.api.shop_check.init_daily_shop_check</code></td>
+</tr>
+<tr>
+<td><code>/amazon/api/shop-check/list/</code></td>
+<td>get daily check list</td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）</td>
+<td><code>amazon.api.shop_check.get_daily_check_list</code></td>
+</tr>
+<tr>
+<td><code>/amazon/api/shop-check/update/</code></td>
+<td>update daily check</td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）</td>
+<td><code>amazon.api.shop_check.update_daily_check</code></td>
+</tr>
+<tr>
+<td><code>/amazon/api/shop-info/</code></td>
+<td>get shop info by name</td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）；运营/店铺数据范围限制</td>
+<td><code>amazon.api.shop_info.get_shop_info_by_name</code></td>
+</tr>
+<tr>
+<td><code>/amazon/api/upload-record/save/</code></td>
+<td>save upload record</td>
+<td>免登录白名单：LoginRequiredMiddleware 放行 /amazon/api/*（按需求用于巡店等外部调用）</td>
+<td><code>amazon.api.shop_check.save_upload_record</code></td>
+</tr>
+<tr>
+<td><code>/api/add_divi_amazon_order/</code></td>
+<td>add divi amazon order</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_order.add_divi_amazon_order</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-daily-check/</code></td>
+<td>get amazon daily check list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_daily_check.get_amazon_daily_check_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-daily-check/operators/</code></td>
+<td>get daily check operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_daily_check.get_daily_check_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-daily-check/reset-today/</code></td>
+<td>reset today daily check</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_daily_check.reset_today_daily_check_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-listing-management/&lt;int:listing_id&gt;/word-sources/</code></td>
+<td>get amazon listing word sources</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_listing_management.get_amazon_listing_word_sources_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-listing-management/batch-risk-check/</code></td>
+<td>get amazon listing batch risk check</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_listing_management.get_amazon_listing_batch_risk_check_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-listing-management/filter-options/</code></td>
+<td>get amazon listing management filter options</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_listing_management.get_amazon_listing_management_filter_options_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-listing-management/list/</code></td>
+<td>get amazon listing management list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_listing_management.get_amazon_listing_management_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-listing-management/risk-stats/</code></td>
+<td>get amazon listing management risk stats</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_listing_management.get_amazon_listing_management_risk_stats_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-orders-list/</code></td>
+<td>Amazon 订单管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_order.get_amazon_orders_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-performance-notifications/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_performance.get_amazon_performance_notifications_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-performance-notifications/&lt;int:notification_id&gt;/mark-processed/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_performance.mark_notification_processed_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-performance-notifications/notify-operators/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_performance.notify_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-performance-notifications/notify-operators/preview/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_performance.notify_operators_preview_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-profit-detail/</code></td>
+<td>Amazon 利润明细查询/筛选</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_profit.get_amazon_profit_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-profit-filter-options/</code></td>
+<td>Amazon 利润明细查询/筛选</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_profit.get_amazon_profit_filter_options_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-risk-keywords/</code></td>
+<td>RiskKeywordListAPI</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_risk_keywords.RiskKeywordListAPI</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-risk-keywords/create/</code></td>
+<td>RiskKeywordCreateAPI</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_risk_keywords.RiskKeywordCreateAPI</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-risk-keywords/delete/</code></td>
+<td>RiskKeywordDeleteAPI</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>amazon.view.views_risk_keywords.RiskKeywordDeleteAPI</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-risk-keywords/options/</code></td>
+<td>RiskKeywordOptionsAPI</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_risk_keywords.RiskKeywordOptionsAPI</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-risk-keywords/update/</code></td>
+<td>RiskKeywordUpdateAPI</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>amazon.view.views_risk_keywords.RiskKeywordUpdateAPI</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shop-emails/</code></td>
+<td>get amazon shop emails</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.get_amazon_shop_emails_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shop-emails/&lt;int:email_id&gt;/</code></td>
+<td>get email detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.get_email_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shop-emails/&lt;int:email_id&gt;/mark-processed/</code></td>
+<td>mark email processed</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.mark_email_processed_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shop-emails/notify/</code></td>
+<td>notify operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.notify_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shop-emails/notify/preview/</code></td>
+<td>notify operators preview</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.notify_operators_preview_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_amazon_management.get_amazon_shops_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/&lt;int:shop_id&gt;/authorized-users/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_amazon_management.update_authorized_users_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/&lt;int:shop_id&gt;/update/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.views_amazon_management.update_amazon_shop_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/bulk-update-authorized-users/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_amazon_management.bulk_update_authorized_users_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/bulk-update-operator/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_amazon_management.bulk_update_operator_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/bulk-update-project/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_amazon_management.bulk_update_project_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-shops/create/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制</td>
+<td><code>general.views_amazon_management.create_amazon_shop_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/operator-pie-chart/</code></td>
+<td>get operator pie chart</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.amazon_views.get_operator_pie_chart_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/operator-sales-pie-chart/</code></td>
+<td>get operator sales pie chart</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.amazon_views.get_operator_sales_pie_chart_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/operators/</code></td>
+<td>get operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.amazon_views_jc.get_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/ops-groups/</code></td>
+<td>get ops groups</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>amazon.amazon_views_jc.get_ops_groups_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/performance/operators/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_performance.get_performance_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/shop-emails/operators/</code></td>
+<td>get shop emails operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_shop_emails.get_shop_emails_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/upload-record/</code></td>
+<td>get upload record by filename</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>amazon.api.shop_check.get_upload_record_by_filename</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon/upload-records/</code></td>
+<td>get amazon upload records</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_upload_records.get_amazon_upload_records_api</code></td>
+</tr>
+<tr>
+<td><code>/api/export-amazon-orders-excel/</code></td>
+<td>Amazon 订单管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_order.export_amazon_orders_excel</code></td>
+</tr>
+<tr>
+<td><code>/api/external/amazon-shops/</code></td>
+<td>Amazon 店铺管理</td>
+<td>外部接口白名单：中间件放行</td>
+<td><code>general.views_amazon_management.external_amazon_shops_api</code></td>
+</tr>
+<tr>
+<td><code>/api/filter-amazon-data/</code></td>
+<td>filter amazon data</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.amazon_views.filter_amazon_data_api</code></td>
+</tr>
+<tr>
+<td><code>/api/mark-real-shipment/</code></td>
+<td>api mark real shipment</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_order.api_mark_real_shipment</code></td>
+</tr>
+<tr>
+<td><code>/api/ranking-data/</code></td>
+<td>get ranking data</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>amazon.views_ranking.get_ranking_data_api</code></td>
+</tr>
+<tr>
+<td><code>/api/rpa/amazon-emails/sync/</code></td>
+<td>RPA/影刀回调接口</td>
+<td>RPA接口：中间件要求 X-RPA-Secret，否则 401；接口密钥校验：X-RPA-Secret</td>
+<td><code>amazon.view.views_rpa_sync.sync_email_api</code></td>
+</tr>
+<tr>
+<td><code>/api/rpa/amazon-performance/sync/</code></td>
+<td>绩效目标/通知</td>
+<td>RPA接口：中间件要求 X-RPA-Secret，否则 401；接口密钥校验：X-RPA-Secret</td>
+<td><code>amazon.view.views_rpa_sync.sync_performance_api</code></td>
+</tr>
+<tr>
+<td><code>/api/ship-order/</code></td>
+<td>api ship order</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>amazon.view.views_amazon_order.api_ship_order</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/amazon-shops/</code></td>
+<td>Amazon 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_upload_views.get_amazon_shops_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/amazon-upload/pending-files/</code></td>
+<td>get pending files</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_detail_views.get_pending_files_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/amazon-upload/update-status/</code></td>
+<td>update upload status</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_detail_views.update_upload_status_api</code></td>
+</tr>
+<tr>
+<td><code>/api/update-divi-export-status/</code></td>
+<td>update divi export status</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>amazon.view.views_amazon_order.update_divi_export_status_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="divi11">Divi（11） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/divi/export-templates/</code></td>
+<td>get divi export templates</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.task_api_views.get_divi_export_templates_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/export-templates/by-shop/</code></td>
+<td>get divi export templates by shop</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.task_api_views.get_divi_export_templates_by_shop_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/image-classifies/</code></td>
+<td>get divi image classifies</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_divi_image_classifies_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/products/</code></td>
+<td>get divi products</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_divi_products_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/products/&lt;int:product_id&gt;/detail/</code></td>
+<td>get divi product detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_divi_product_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/sync-image-classify/</code></td>
+<td>sync image classify</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>divi.views.sync_image_classify_api</code></td>
+</tr>
+<tr>
+<td><code>/api/divi/sync-templates/</code></td>
+<td>sync templates</td>
+<td>全局登录中间件：默认需要登录；公司数据范围限制</td>
+<td><code>divi.views.sync_templates_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/divi-account/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行</td>
+<td><code>general.api.divi_account_api.divi_account_query_api</code></td>
+</tr>
+<tr>
+<td><code>/api/refresh-temu-divi-status/</code></td>
+<td>refresh temu divi status</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>temu.view.views_temu_order.refresh_temu_divi_status_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-order-to-divi-and-lingxing/</code></td>
+<td>temu order to divi and lingxing</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>temu.view.views_temu_order.temu_order_to_divi_and_lingxing_api</code></td>
+</tr>
+<tr>
+<td><code>/api/update-temu-divi-export-status/</code></td>
+<td>update temu divi export status</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>temu.view.views_temu_order.update_temu_divi_export_status_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="temu12">Temu（12） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/batch-upsert-sku/</code></td>
+<td>batch upsert sku</td>
+<td>免登录白名单：Temu SKU 批量新增/更新</td>
+<td><code>temu.view.api.sku_api.batch_upsert_sku_api</code></td>
+</tr>
+<tr>
+<td><code>/api/download-temu-label/</code></td>
+<td>download temu label</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>temu.view.views_temu_order.download_temu_label_api</code></td>
+</tr>
+<tr>
+<td><code>/api/export-temu-orders-excel/</code></td>
+<td>Temu 订单管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>temu.view.views_temu_order.export_temu_orders_excel</code></td>
+</tr>
+<tr>
+<td><code>/api/get-temu-shop-password/</code></td>
+<td>get temu shop password</td>
+<td>免登录白名单：Temu 店铺密码查询</td>
+<td><code>temu.view.api.sku_api.get_temu_shop_password_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-customers/</code></td>
+<td>get customers</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_temu_management.get_customers_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-orders-list/</code></td>
+<td>Temu 订单管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>temu.view.views_temu_order.get_temu_orders_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_temu_management.get_temu_shops_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/&lt;int:shop_id&gt;/update-dimensions/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.views_temu_management.update_temu_shop_dimensions_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/&lt;int:shop_id&gt;/update/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.views_temu_management.update_temu_shop_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/bulk-update-operator/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_temu_management.bulk_update_operator_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/bulk-update-project/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_temu_management.bulk_update_project_api</code></td>
+</tr>
+<tr>
+<td><code>/api/temu-shops/create/</code></td>
+<td>Temu 店铺管理</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_temu_management.create_temu_shop_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="主题侵权40">主题/侵权（40） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/amazon-batch-download/</code></td>
+<td>api amazon batch download</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>theme.view.views_crawler.api_amazon_batch_download</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_amazon_products</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/&lt;str:asin&gt;/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_product_detail</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/&lt;str:asin&gt;/delete/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_delete_product</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/&lt;str:asin&gt;/update/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_update_product</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/batch-risk-check/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_batch_risk_check</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/bulk-update-type/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_bulk_update_product_type</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/create/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_create_product</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/report/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_report_product</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/statistics/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_product_statistics</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/suggestions/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_product_suggestions</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-products/unreport/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views.api_unreport_product</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-search-page/</code></td>
+<td>api amazon search page</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>theme.view.views_crawler.api_amazon_search_page</code></td>
+</tr>
+<tr>
+<td><code>/api/amazon-search/</code></td>
+<td>api amazon search</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>theme.view.views_crawler.api_amazon_search</code></td>
+</tr>
+<tr>
+<td><code>/api/external/amazon-products/</code></td>
+<td>主题产品库/亚马逊产品数据</td>
+<td>外部接口白名单：中间件放行，view 内应校验 X-RPA-Secret；接口密钥校验：X-RPA-Secret</td>
+<td><code>theme.view.views.external_api_amazon_products</code></td>
+</tr>
+<tr>
+<td><code>/api/health-check/</code></td>
+<td>api health check</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>theme.view.views.api_health_check</code></td>
+</tr>
+<tr>
+<td><code>/api/market-categories/</code></td>
+<td>迪唯产业大数据分类</td>
+<td>免登录白名单：迪唯分类数据；view 仍会执行主题模块权限检查；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_dw_data.api_market_categories</code></td>
+</tr>
+<tr>
+<td><code>/api/nice-classification/</code></td>
+<td>尼斯分类列表</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_vocabulary.api_nice_classification_list</code></td>
+</tr>
+<tr>
+<td><code>/api/niche-markets/</code></td>
+<td>迪唯产业大数据市场列表</td>
+<td>免登录白名单：迪唯市场数据；view 仍会执行主题模块权限检查；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_dw_data.api_niche_markets</code></td>
+</tr>
+<tr>
+<td><code>/api/shops/</code></td>
+<td>api shop list</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）；公司数据范围限制</td>
+<td><code>theme.view.views_vocabulary.api_shop_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-aggregation/</code></td>
+<td>亚马逊最热主题/聚合主题</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_new_release.api_theme_aggregation_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-aggregation/asins/</code></td>
+<td>亚马逊最热主题/聚合主题</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_new_release.api_theme_aggregation_asins</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-cluster-aggregation/</code></td>
+<td>api cluster aggregation list</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_new_release.api_cluster_aggregation_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-cluster-aggregation/asins/</code></td>
+<td>api cluster aggregation asins</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_new_release.api_cluster_aggregation_asins</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-new-release/</code></td>
+<td>亚马逊最新主题</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_new_release.api_new_release_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-novelty-aggregation/</code></td>
+<td>最新成交主题/新品聚合</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_novelty_aggregation.api_novelty_aggregation_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-novelty-aggregation/asins/</code></td>
+<td>最新成交主题/新品聚合</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_novelty_aggregation.api_novelty_aggregation_asins</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-novelty-cluster-aggregation/</code></td>
+<td>最新成交主题/新品聚合</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_novelty_aggregation.api_novelty_cluster_aggregation_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-novelty-cluster-aggregation/asins/</code></td>
+<td>最新成交主题/新品聚合</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_novelty_aggregation.api_novelty_cluster_aggregation_asins</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-recommended/</code></td>
+<td>推荐主题</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_recommended_theme.api_recommended_theme_list</code></td>
+</tr>
+<tr>
+<td><code>/api/theme-recommended/asins/</code></td>
+<td>推荐主题</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：主题板块（公司已授权，且用户需有主题权限码 8/555）</td>
+<td><code>theme.view.views_recommended_theme.api_recommended_theme_asins</code></td>
+</tr>
+<tr>
+<td><code>/api/trademark-info/</code></td>
+<td>美标网商标词库查询</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_vocabulary.api_trademark_info_list</code></td>
+</tr>
+<tr>
+<td><code>/api/trend/search/</code></td>
+<td>侵权风险查询</td>
+<td>免登录白名单：侵权词查询接口；view 仍会执行模块权限检查；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_trend.trend_search</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_vocabulary.api_tro_table_list</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/create/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）；公司数据范围限制</td>
+<td><code>theme.view.views_vocabulary.api_create_tro_record</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/delete/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）；公司数据范围限制</td>
+<td><code>theme.view.views_vocabulary.api_delete_tro_record</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/download-template/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_vocabulary.download_templates</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/import/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）；公司数据范围限制</td>
+<td><code>theme.view.views_vocabulary.api_import_tro_records</code></td>
+</tr>
+<tr>
+<td><code>/api/tro-table/update/</code></td>
+<td>侵权词库增删改查/导入导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）；公司数据范围限制</td>
+<td><code>theme.view.views_vocabulary.api_update_tro_record</code></td>
+</tr>
+<tr>
+<td><code>/api/vocabulary/words-split/</code></td>
+<td>词语分词</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：侵权板块（公司已授权，且用户需有侵权权限码 556/555）</td>
+<td><code>theme.view.views_trend.words_split_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="任务审批56">任务/审批（56） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/external/approval/update-exec-status/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.approval_views.external_update_exec_status_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/detail/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.task_api_views.external_get_task_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/subtasks/detail/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.task_api_views.external_get_subtask_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/subtasks/update-detail/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.task_api_views.external_update_subtask_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/subtasks/update-status/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.task_api_views.external_update_subtask_status_api</code></td>
+</tr>
+<tr>
+<td><code>/api/external/tasks/update-status/</code></td>
+<td>外部系统调用接口</td>
+<td>外部接口白名单：中间件放行，通常由接口自身业务校验/回调来源控制</td>
+<td><code>task.view.task_api_views.external_update_task_status_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/&lt;int:pk&gt;/</code></td>
+<td>get product requirement detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.get_product_requirement_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/&lt;int:pk&gt;/claim/</code></td>
+<td>claim product requirement</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.claim_product_requirement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/&lt;int:pk&gt;/complete/</code></td>
+<td>complete product design</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.complete_product_design_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/&lt;int:pk&gt;/export/</code></td>
+<td>export product requirement excel</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.export_product_requirement_excel_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/&lt;int:pk&gt;/update/</code></td>
+<td>update product requirement</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.update_product_requirement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/create/</code></td>
+<td>create product requirement</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.create_product_requirement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/list/</code></td>
+<td>get product requirements</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.get_product_requirements_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/recrawl/</code></td>
+<td>recrawl product requirement</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.recrawl_product_requirement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/reject/</code></td>
+<td>reject product requirements</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.reject_product_requirements_api</code></td>
+</tr>
+<tr>
+<td><code>/api/products/status-choices/</code></td>
+<td>get status choices</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.product_views.get_status_choices_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/&lt;int:approval_id&gt;/delete/</code></td>
+<td>approval delete</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_delete_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/&lt;int:approval_id&gt;/detail/</code></td>
+<td>approval detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/asins/</code></td>
+<td>approval asins</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.approval_views.approval_asins_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/create/</code></td>
+<td>create ad approval</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.create_ad_approval_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/drafts/</code></td>
+<td>approval draft list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_draft_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/drafts/&lt;int:approval_id&gt;/</code></td>
+<td>approval draft detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_draft_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/meta/</code></td>
+<td>approval meta</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.approval_views.approval_meta_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/ad/stores/</code></td>
+<td>approval stores</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.approval_views.approval_stores_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/flow-config/</code></td>
+<td>approval flow config list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_flow_config_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/flow-config/delete/</code></td>
+<td>approval flow config delete</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_flow_config_delete_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/flow-config/save/</code></td>
+<td>approval flow config save</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_flow_config_save_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/leader/action/</code></td>
+<td>approval leader action</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_leader_action_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/leader/list/</code></td>
+<td>approval leader list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_leader_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/list/action/</code></td>
+<td>approval list action</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_list_action_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/list/data/</code></td>
+<td>approval list data</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_list_data_api</code></td>
+</tr>
+<tr>
+<td><code>/api/task/approvals/list/stats/</code></td>
+<td>approval list stats</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.approval_views.approval_list_stats_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/&lt;int:task_id&gt;/delete/</code></td>
+<td>delete task</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.delete_task_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/&lt;int:task_id&gt;/detail/</code></td>
+<td>get task detail</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_detail_views.get_task_detail_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/&lt;int:task_id&gt;/resend-webhook/</code></td>
+<td>resend task webhook</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.resend_task_webhook_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/available-owners/</code></td>
+<td>get available owners</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_available_owners_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/create/</code></td>
+<td>create task</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.create_task_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/creators/</code></td>
+<td>get task creators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_task_creators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/diwei-accounts/</code></td>
+<td>get diwei accounts</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>task.view.task_api_views.get_diwei_accounts_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/drafts/</code></td>
+<td>get drafts</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_drafts_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/drafts/&lt;int:task_id&gt;/delete/</code></td>
+<td>delete draft</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.delete_draft_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/drafts/latest/</code></td>
+<td>get latest draft</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_latest_draft_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/gallery-paths/suggest/</code></td>
+<td>suggest gallery paths</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.suggest_gallery_paths_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/generate-copy-no/</code></td>
+<td>generate copy task no</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.generate_copy_task_no_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/generate-no/</code></td>
+<td>generate task no</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.generate_task_no_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/list/</code></td>
+<td>get tasks list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_tasks_list_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/save-draft/</code></td>
+<td>save draft</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.save_draft_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/shops/</code></td>
+<td>get available shops</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>task.view.task_api_views.get_available_shops_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/stats/</code></td>
+<td>get task stats</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_task_stats_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/templates/</code></td>
+<td>get task templates</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_task_templates_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/templates/&lt;int:template_id&gt;/delete/</code></td>
+<td>delete template</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.delete_template_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/templates/&lt;int:template_id&gt;/load/</code></td>
+<td>load template</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.load_template_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/templates/save/</code></td>
+<td>save template</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.save_template_api</code></td>
+</tr>
+<tr>
+<td><code>/api/tasks/upload-temp/</code></td>
+<td>upload temp file</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_upload_views.upload_temp_file_api</code></td>
+</tr>
+<tr>
+<td><code>/api/user/export-shop-products/</code></td>
+<td>get user export shop products</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.get_user_export_shop_products_api</code></td>
+</tr>
+<tr>
+<td><code>/api/user/export-shop-products/save/</code></td>
+<td>save user export shop products</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>task.view.task_api_views.save_user_export_shop_products_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="供应链物流14">供应链/物流（14） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/couriers/</code></td>
+<td>物流商列表</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.get_couriers</code></td>
+</tr>
+<tr>
+<td><code>/api/export-tracking-excel/</code></td>
+<td>物流运单 Excel 导出</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）；运营/店铺数据范围限制</td>
+<td><code>track.view.view_tracking_management.export_tracking_excel</code></td>
+</tr>
+<tr>
+<td><code>/api/external-procurement-products/</code></td>
+<td>外部系统调用接口</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>track.view.view_external_procurement.wrapped_view</code></td>
+</tr>
+<tr>
+<td><code>/api/external-procurement-products/&lt;int:product_id&gt;/</code></td>
+<td>外部系统调用接口</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>track.view.view_external_procurement.wrapped_view</code></td>
+</tr>
+<tr>
+<td><code>/api/external-procurement-products/batch-delete/</code></td>
+<td>外部系统调用接口</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>track.view.view_external_procurement.wrapped_view</code></td>
+</tr>
+<tr>
+<td><code>/api/external-procurement-products/batch-update/</code></td>
+<td>外部系统调用接口</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>track.view.view_external_procurement.wrapped_view</code></td>
+</tr>
+<tr>
+<td><code>/api/factories/</code></td>
+<td>工厂列表</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.get_factories</code></td>
+</tr>
+<tr>
+<td><code>/api/import-tracking-excel/</code></td>
+<td>物流运单 Excel 导入</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.import_tracking_excel</code></td>
+</tr>
+<tr>
+<td><code>/api/refresh-tracking/</code></td>
+<td>刷新物流轨迹</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.refresh_tracking</code></td>
+</tr>
+<tr>
+<td><code>/api/toggle-cancel-status/</code></td>
+<td>toggle cancel status</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.toggle_cancel_status</code></td>
+</tr>
+<tr>
+<td><code>/api/tracking-details/</code></td>
+<td>物流轨迹详情</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.tracking_details</code></td>
+</tr>
+<tr>
+<td><code>/api/tracking-list/</code></td>
+<td>物流运单列表查询/筛选</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）；运营/店铺数据范围限制</td>
+<td><code>track.view.view_tracking_management.tracking_list</code></td>
+</tr>
+<tr>
+<td><code>/api/tracking-stats/</code></td>
+<td>物流统计</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）；用户权限码判断；运营/店铺数据范围限制</td>
+<td><code>track.view.view_tracking_management.tracking_stats</code></td>
+</tr>
+<tr>
+<td><code>/api/update-tracking-remark/</code></td>
+<td>update tracking remark</td>
+<td>全局登录中间件：默认需要登录；公司模块+用户权限：物流板块（公司已授权，且用户需有物流相关权限码 5/6/557/555）</td>
+<td><code>track.view.view_tracking_management.update_tracking_remark</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="库存3">库存（3） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/inventory/api/factories/</code></td>
+<td>工厂列表</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>inventory.views.get_factories_api</code></td>
+</tr>
+<tr>
+<td><code>/inventory/api/import/</code></td>
+<td>库存列表/导入</td>
+<td>免登录白名单：库存导入接口</td>
+<td><code>inventory.views.import_inventory_excel</code></td>
+</tr>
+<tr>
+<td><code>/inventory/api/list/</code></td>
+<td>库存列表/导入</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>inventory.views.get_inventory_list_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="数据需求7">数据需求（7） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/data_req/api/create/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>data_req.view.requirement.RequirementCreateAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/delete/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>data_req.view.requirement.RequirementDeleteAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/detail/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>data_req.view.requirement.RequirementDetailAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/list/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>data_req.view.requirement.RequirementListAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/stats/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>data_req.view.requirement.RequirementStatsAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/status/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；运营/店铺数据范围限制</td>
+<td><code>data_req.view.requirement.RequirementStatusAPI</code></td>
+</tr>
+<tr>
+<td><code>/data_req/api/update/</code></td>
+<td>数据需求</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；运营/店铺数据范围限制</td>
+<td><code>data_req.view.requirement.RequirementUpdateAPI</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="通用管理42">通用/管理（42） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/announcement/mark-as-read/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>general.views.mark_announcement_as_read</code></td>
+</tr>
+<tr>
+<td><code>/api/announcements/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.views_announcement_management.get_announcements_api</code></td>
+</tr>
+<tr>
+<td><code>/api/announcements/&lt;int:announcement_id&gt;/delete/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.views_announcement_management.delete_announcement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/announcements/&lt;int:announcement_id&gt;/read-records/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.views_announcement_management.get_announcement_read_records_api</code></td>
+</tr>
+<tr>
+<td><code>/api/announcements/&lt;int:announcement_id&gt;/update/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.views_announcement_management.update_announcement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/announcements/create/</code></td>
+<td>公告管理/阅读记录</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.views_announcement_management.create_announcement_api</code></td>
+</tr>
+<tr>
+<td><code>/api/company/projects/</code></td>
+<td>get company projects</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_company_projects_api</code></td>
+</tr>
+<tr>
+<td><code>/api/company/users/</code></td>
+<td>get company users</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_company_users_api</code></td>
+</tr>
+<tr>
+<td><code>/api/customers/</code></td>
+<td>get customers</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_amazon_management.get_customers_api</code></td>
+</tr>
+<tr>
+<td><code>/api/operation-log/types/</code></td>
+<td>操作日志</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.view.view_operation_log.get_operation_types_api</code></td>
+</tr>
+<tr>
+<td><code>/api/operation-logs/</code></td>
+<td>操作日志</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.view.view_operation_log.get_operation_logs_api</code></td>
+</tr>
+<tr>
+<td><code>/api/operators/</code></td>
+<td>get all operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_amazon_management.get_all_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/ops-groups/</code></td>
+<td>get all ops groups</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_amazon_management.get_all_ops_groups_api</code></td>
+</tr>
+<tr>
+<td><code>/api/ops-groups/list</code></td>
+<td>get ops groups</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.view.views_general.get_ops_groups_api</code></td>
+</tr>
+<tr>
+<td><code>/api/ops/list</code></td>
+<td>get ops list</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.view.views_general.get_ops_list</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/group_targets/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.get_group_targets_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/group_targets/&lt;int:target_id&gt;/update/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.update_group_target_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/group_targets/create/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.create_group_target_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/operators_by_group/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>general.views_performance.get_operators_by_group_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/ops_groups/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.get_ops_groups_for_filter_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/personal_targets/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.get_personal_targets_api</code></td>
+</tr>
+<tr>
+<td><code>/api/performance/personal_targets/batch/</code></td>
+<td>绩效目标/通知</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_performance.batch_create_personal_targets_api</code></td>
+</tr>
+<tr>
+<td><code>/api/permissions/</code></td>
+<td>get permission configs</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断</td>
+<td><code>general.view.views_user_management.get_permission_configs_api</code></td>
+</tr>
+<tr>
+<td><code>/api/profile/avatar/</code></td>
+<td>个人资料</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_profile.upload_avatar_api</code></td>
+</tr>
+<tr>
+<td><code>/api/profile/basic-info/</code></td>
+<td>个人资料</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_profile.update_basic_info_api</code></td>
+</tr>
+<tr>
+<td><code>/api/profile/password/</code></td>
+<td>个人资料</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.views_profile.change_password_api</code></td>
+</tr>
+<tr>
+<td><code>/api/roles/</code></td>
+<td>get roles</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_roles_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/companies/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555；用户权限码判断</td>
+<td><code>general.view.views_system_admin.system_companies_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/companies/&lt;int:company_id&gt;/owners/create/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555；公司数据范围限制</td>
+<td><code>general.view.views_system_admin.system_company_owner_create_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/companies/&lt;int:company_id&gt;/update/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555；公司数据范围限制</td>
+<td><code>general.view.views_system_admin.system_company_update_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/companies/create/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555</td>
+<td><code>general.view.views_system_admin.system_company_create_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/modules/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555</td>
+<td><code>general.view.views_system_admin.system_modules_api</code></td>
+</tr>
+<tr>
+<td><code>/api/system-admin/permissions/</code></td>
+<td>平台总后台：公司、模块、权限与主账号管理</td>
+<td>全局登录中间件：默认需要登录；平台总后台限制：仅 <a href="http://user.id">user.id</a> == 555</td>
+<td><code>general.view.views_system_admin.system_permissions_api</code></td>
+</tr>
+<tr>
+<td><code>/api/update-theme/</code></td>
+<td>update theme</td>
+<td>全局登录中间件：默认需要登录</td>
+<td><code>general.views.update_theme</code></td>
+</tr>
+<tr>
+<td><code>/api/users/</code></td>
+<td>get users</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_users_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/&lt;int:user_id&gt;/update/</code></td>
+<td>update user</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制</td>
+<td><code>general.view.views_user_management.update_user_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/all/</code></td>
+<td>get all users</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin</td>
+<td><code>general.view.view_operation_log.get_all_users_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/bulk-department/</code></td>
+<td>bulk update department</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.bulk_update_department_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/bulk-permissions/</code></td>
+<td>bulk update permissions</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制</td>
+<td><code>general.view.views_user_management.bulk_update_permissions_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/create/</code></td>
+<td>create user</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；用户权限码判断；公司数据范围限制</td>
+<td><code>general.view.views_user_management.create_user_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/departments/</code></td>
+<td>get departments</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_departments_api</code></td>
+</tr>
+<tr>
+<td><code>/api/users/ops-groups/</code></td>
+<td>get ops groups</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>general.view.views_user_management.get_ops_groups_api</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="通用api2">通用API（2） </h2>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>用途</th>
+<th>权限/限制</th>
+<th>View</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/api/general/operators/</code></td>
+<td>get operators</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制；运营/店铺数据范围限制</td>
+<td><code>api.general.group_and_ops.get_operators_api</code></td>
+</tr>
+<tr>
+<td><code>/api/general/ops-groups/</code></td>
+<td>get ops groups</td>
+<td>全局登录中间件：默认需要登录；显式 login_required/LoginRequiredMixin；公司数据范围限制</td>
+<td><code>api.general.group_and_ops.get_ops_groups_api</code></td>
+</tr>
+</tbody>
+</table>
+
+      </div>
+      
+      
+    
+    
+    
+    
+    
+    
+  
+    </body></html>

@@ -349,3 +349,17 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
+    def mode(t:int):
+        if t==1:
+            tips = "生图。。。"
+            path_file = ""
+        elif t==2:
+            tips = "抠图。。。"
+            path_file = ""
+        else:
+            tips = ""
+
+        print(tips)
