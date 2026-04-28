@@ -121,8 +121,40 @@ def permission_denied_response(request, message='无权访问该模块', status=
     }, status=status)
 
 
+def company_module_access_required(module_code, module_name=None):
+    """仅按公司模块授权保护页面与 API，不限制用户个人权限。
+
+    只要用户所属公司已开通该模块，任何已登录员工均可访问。
+    """
+    display_name = module_name or module_code
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapped_view(request, *args, **kwargs):
+            if not getattr(request.user, 'is_authenticated', False):
+                if is_api_request(request):
+                    return JsonResponse({
+                        'success': False,
+                        'message': '未登录或会话已过期',
+                    }, status=401)
+                return redirect('general:login')
+
+            if user_company_has_module(request.user, module_code):
+                return view_func(request, *args, **kwargs)
+
+            return permission_denied_response(
+                request,
+                f'当前公司未开通{display_name}，请联系平台管理员授权。',
+                status=403,
+            )
+
+        return wrapped_view
+
+    return decorator
+
+
 def module_access_required(module_code, module_name=None):
-    """按公司模块授权保护页面与 API。"""
+    """按公司模块授权 + 用户个人权限双重校验，保护页面与 API。"""
     display_name = module_name or module_code
 
     def decorator(view_func):

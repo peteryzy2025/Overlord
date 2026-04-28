@@ -25,6 +25,9 @@ from task.approval_models import (
     ExecStatus,
     AmazonAdApproval,
     AmazonAdShopConfig,
+    FbaShipmentApproval,
+    FbaShipmentShopConfig,
+    FbaShipmentItem,
     Approval,
     RecordResult,
     StepStatus,
@@ -129,6 +132,53 @@ def get_exec_status_summary(approval):
     return None, None
 
 
+SUPPORTED_APPROVAL_TYPES = {ApprovalType.AMAZON_AD, ApprovalType.FBA_SHIPMENT}
+
+
+def get_approval_type_label(approval_type):
+    return dict(ApprovalType.choices).get(approval_type, approval_type)
+
+
+def parse_positive_integer(value):
+    if isinstance(value, bool):
+        raise ValueError
+    if isinstance(value, int):
+        number = value
+    elif isinstance(value, str) and value.strip().isdigit():
+        number = int(value.strip())
+    else:
+        raise ValueError
+    if number < 1:
+        raise ValueError
+    return number
+
+
+def get_listing_shop_name(listing, fallback_shop=None):
+    if listing.lingxing_shop and listing.lingxing_shop.name:
+        return listing.lingxing_shop.name
+    if fallback_shop and fallback_shop.name:
+        return fallback_shop.name
+    return f"sid_{listing.sid}"
+
+
+def get_approval_business_detail(approval):
+    if approval.approval_type == ApprovalType.FBA_SHIPMENT:
+        try:
+            return approval.fba_shipment_detail
+        except FbaShipmentApproval.DoesNotExist:
+            return None
+
+    try:
+        return approval.ad_detail
+    except AmazonAdApproval.DoesNotExist:
+        return None
+
+
+def get_approval_remark(approval):
+    detail = get_approval_business_detail(approval)
+    return detail.remark if detail else ''
+
+
 def create_approval_steps(approval, applicant):
     """
     根据 ApprovalFlowConfig 配置动态创建审批步骤。
@@ -186,27 +236,61 @@ def clone_rejected_approval(original_approval):
     )
     cloned_approval.save()
 
-    original_detail = getattr(original_approval, 'ad_detail', None)
-    cloned_detail = AmazonAdApproval.objects.create(
-        company=original_approval.company,
-        approval=cloned_approval,
-        remark=original_detail.remark if original_detail else '',
-    )
-
-    if original_detail:
-        original_configs = original_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related('asins')
-        for config in original_configs:
-            cloned_config = AmazonAdShopConfig.objects.create(
-                company=original_approval.company,
-                amazon_ad=cloned_detail,
-                lingxing_shop=config.lingxing_shop,
-                negative_keyword_lib=config.negative_keyword_lib,
-                exec_status=ExecStatus.PENDING,
-                exec_result={},
-                webhook_task_id='',
-                sequence=config.sequence,
+    if original_approval.approval_type == ApprovalType.FBA_SHIPMENT:
+        original_detail = get_approval_business_detail(original_approval)
+        cloned_detail = FbaShipmentApproval.objects.create(
+            company=original_approval.company,
+            approval=cloned_approval,
+            remark=original_detail.remark if original_detail else '',
+        )
+        if original_detail:
+            item_prefetch = Prefetch(
+                'items',
+                queryset=FbaShipmentItem.objects.select_related('listing').order_by('sequence', 'id'),
             )
-            cloned_config.asins.set(config.asins.all())
+            original_configs = original_detail.shop_configs.select_related('lingxing_shop').prefetch_related(item_prefetch)
+            for config in original_configs:
+                cloned_config = FbaShipmentShopConfig.objects.create(
+                    company=original_approval.company,
+                    fba_shipment=cloned_detail,
+                    lingxing_shop=config.lingxing_shop,
+                    exec_status=ExecStatus.WAITING,
+                    exec_result={},
+                    webhook_task_id='',
+                    sequence=config.sequence,
+                )
+                FbaShipmentItem.objects.bulk_create([
+                    FbaShipmentItem(
+                        company=original_approval.company,
+                        shop_config=cloned_config,
+                        listing=item.listing,
+                        quantity=item.quantity,
+                        sequence=item.sequence,
+                    )
+                    for item in config.items.all()
+                ])
+    else:
+        original_detail = get_approval_business_detail(original_approval)
+        cloned_detail = AmazonAdApproval.objects.create(
+            company=original_approval.company,
+            approval=cloned_approval,
+            remark=original_detail.remark if original_detail else '',
+        )
+
+        if original_detail:
+            original_configs = original_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related('asins')
+            for config in original_configs:
+                cloned_config = AmazonAdShopConfig.objects.create(
+                    company=original_approval.company,
+                    amazon_ad=cloned_detail,
+                    lingxing_shop=config.lingxing_shop,
+                    negative_keyword_lib=config.negative_keyword_lib,
+                    exec_status=ExecStatus.WAITING,
+                    exec_result={},
+                    webhook_task_id='',
+                    sequence=config.sequence,
+                )
+                cloned_config.asins.set(config.asins.all())
 
     create_approval_steps(cloned_approval, original_approval.applicant)
     return cloned_approval
@@ -302,31 +386,32 @@ def approval_draft_list_api(request):
         .filter(
             company=request.user.company,
             applicant=request.user,
-            approval_type=ApprovalType.AMAZON_AD,
+            approval_type__in=SUPPORTED_APPROVAL_TYPES,
             status=ApprovalStatus.DRAFT,
             original_approval__isnull=False,
         )
-        .select_related('original_approval', 'ad_detail')
+        .select_related('original_approval', 'ad_detail', 'fba_shipment_detail')
         .order_by('-updated_at', '-id')
     )
 
     data = []
     for draft in drafts:
-        if hasattr(draft, 'ad_detail'):
-            shop_configs = draft.ad_detail
-        else:
-            shop_configs = None
-        config_count = shop_configs.shop_configs.count() if shop_configs else 0
+        detail = get_approval_business_detail(draft)
+        config_count = detail.shop_configs.count() if detail else 0
         asin_count = 0
-        if shop_configs:
-            asin_count = sum(config.asins.count() for config in shop_configs.shop_configs.prefetch_related('asins'))
+        if detail and draft.approval_type == ApprovalType.FBA_SHIPMENT:
+            asin_count = sum(config.items.count() for config in detail.shop_configs.prefetch_related('items'))
+        elif detail:
+            asin_count = sum(config.asins.count() for config in detail.shop_configs.prefetch_related('asins'))
 
         data.append({
             'approval_id': draft.id,
             'approval_no': draft.approval_no,
+            'approval_type': draft.approval_type,
+            'approval_type_label': get_approval_type_label(draft.approval_type),
             'original_approval_id': draft.original_approval_id,
             'original_approval_no': draft.original_approval.approval_no if draft.original_approval else '',
-            'remark': shop_configs.remark if shop_configs else '',
+            'remark': detail.remark if detail else '',
             'updated_at': draft.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
             'config_count': config_count,
             'asin_count': asin_count,
@@ -347,10 +432,10 @@ def approval_draft_detail_api(request, approval_id):
             id=approval_id,
             company=request.user.company,
             applicant=request.user,
-            approval_type=ApprovalType.AMAZON_AD,
+            approval_type__in=SUPPORTED_APPROVAL_TYPES,
             status=ApprovalStatus.DRAFT,
         )
-        .select_related('applicant', 'original_approval', 'ad_detail')
+        .select_related('applicant', 'original_approval', 'ad_detail', 'fba_shipment_detail')
         .first()
     )
     if not draft:
@@ -358,26 +443,46 @@ def approval_draft_detail_api(request, approval_id):
 
     leader, supervisor = get_approval_chain(draft.applicant)
     shop_configs = []
-    ad_detail = draft.ad_detail if hasattr(draft, 'ad_detail') else None
-    if ad_detail:
-        configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related('asins__lingxing_shop').order_by('sequence', 'id')
+    detail = get_approval_business_detail(draft)
+    if draft.approval_type == ApprovalType.FBA_SHIPMENT and detail:
+        item_prefetch = Prefetch(
+            'items',
+            queryset=FbaShipmentItem.objects.select_related('listing__lingxing_shop').order_by('sequence', 'id'),
+        )
+        configs = detail.shop_configs.select_related('lingxing_shop').prefetch_related(item_prefetch).order_by('sequence', 'id')
         for config in configs:
             selected_listings = []
-            for listing in config.asins.all():
-                shop_name = ''
-                if listing.lingxing_shop and listing.lingxing_shop.name:
-                    shop_name = listing.lingxing_shop.name
-                elif config.lingxing_shop and config.lingxing_shop.name:
-                    shop_name = config.lingxing_shop.name
-                else:
-                    shop_name = f"sid_{listing.sid}"
+            for item in config.items.all():
+                listing = item.listing
                 selected_listings.append({
                     'id': listing.id,
                     'sid': listing.sid,
                     'asin': listing.asin or '',
-                    'shop_name': shop_name,
+                    'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
                     'fulfillment_channel_type': listing.fulfillment_channel_type or '',
                     'fnsku': listing.fnsku or '',
+                    'img_url': listing.small_image_url or '',
+                    'quantity': item.quantity,
+                })
+
+            shop_configs.append({
+                'sid': str(config.lingxing_shop.sid),
+                'selected_listings': selected_listings,
+            })
+    elif detail:
+        ad_detail = detail
+        configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related('asins__lingxing_shop').order_by('sequence', 'id')
+        for config in configs:
+            selected_listings = []
+            for listing in config.asins.all():
+                selected_listings.append({
+                    'id': listing.id,
+                    'sid': listing.sid,
+                    'asin': listing.asin or '',
+                    'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
+                    'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+                    'fnsku': listing.fnsku or '',
+                    'img_url': listing.small_image_url or '',
                 })
 
             shop_configs.append({
@@ -394,7 +499,7 @@ def approval_draft_detail_api(request, approval_id):
                 'id': draft.id,
                 'approval_no': draft.approval_no,
                 'approval_type': draft.approval_type,
-                'approval_type_label': dict(ApprovalType.choices).get(draft.approval_type, draft.approval_type),
+                'approval_type_label': get_approval_type_label(draft.approval_type),
                 'total_steps': draft.total_steps,
                 'current_step_sequence': draft.current_step_sequence,
                 'original_approval_id': draft.original_approval_id,
@@ -407,7 +512,7 @@ def approval_draft_detail_api(request, approval_id):
             'leader_name': leader.first_name or leader.username if leader else '',
             'supervisor_name': supervisor.first_name or supervisor.username if supervisor else '',
             'chain_ready': bool(leader or supervisor),
-            'remark': ad_detail.remark if ad_detail else '',
+            'remark': detail.remark if detail else '',
             'shop_configs': shop_configs,
         }
     })
@@ -586,6 +691,131 @@ def approval_leader_list_api(request):
             'has_prev': page_obj.has_previous(),
         }
     })
+
+
+def get_config_sid_or_response(request, config, index):
+    sid = config.get('sid')
+    if sid in (None, ''):
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组未选择店铺'}, status=400)
+
+    try:
+        sid_int = int(sid)
+    except (TypeError, ValueError):
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组店铺参数无效'}, status=400)
+
+    if not user_has_shop_access(request.user, sid_int):
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组店铺无访问权限'}, status=403)
+
+    return sid_int, None
+
+
+def get_validated_listings_or_response(request, listing_ids, sid_int, index):
+    if not isinstance(listing_ids, list) or not listing_ids:
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN'}, status=400)
+
+    try:
+        listing_ids_int = [parse_positive_integer(item) for item in listing_ids]
+    except ValueError:
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组 ASIN 参数无效'}, status=400)
+
+    if len(listing_ids_int) != len(set(listing_ids_int)):
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组包含重复 ASIN'}, status=400)
+
+    listings = list(
+        AmazonListingV2.objects.filter(
+            id__in=listing_ids_int,
+        ).select_related('lingxing_shop')
+    )
+    listing_map = {listing.id: listing for listing in listings}
+
+    if len(listings) != len(set(listing_ids_int)):
+        return None, JsonResponse({'success': False, 'message': f'第 {index} 组包含无效 ASIN 记录'}, status=400)
+
+    for listing in listings:
+        if not user_has_shop_access(request.user, listing.sid):
+            return None, JsonResponse({'success': False, 'message': f'第 {index} 组包含无权限 ASIN 记录'}, status=403)
+        if int(listing.sid) != sid_int:
+            return None, JsonResponse({
+                'success': False,
+                'message': f'配置组 #{index} 只能选择店铺 sid={sid_int} 下的 ASIN，如需其他店铺请新增配置组'
+            }, status=400)
+
+    return [listing_map[item_id] for item_id in listing_ids_int], None
+
+
+def normalize_ad_shop_configs_or_response(request, shop_configs):
+    normalized_configs = []
+    for index, config in enumerate(shop_configs, start=1):
+        sid_int, response = get_config_sid_or_response(request, config, index)
+        if response:
+            return None, response
+
+        listing_ids = config.get('listing_ids') or config.get('asin_ids') or []
+        listings, response = get_validated_listings_or_response(request, listing_ids, sid_int, index)
+        if response:
+            return None, response
+
+        negative_keyword_lib_id = config.get('negative_keyword_lib_id')
+        if not negative_keyword_lib_id:
+            return None, JsonResponse({'success': False, 'message': f'第 {index} 组未选择否定词库'}, status=400)
+
+        negative_keyword_lib = NegativeKeywordLibrary.objects.filter(
+            id=negative_keyword_lib_id,
+            company=request.user.company,
+            is_active=True,
+        ).first()
+        if not negative_keyword_lib:
+            return None, JsonResponse({'success': False, 'message': f'第 {index} 组否定词库不存在或已停用'}, status=400)
+
+        normalized_configs.append({
+            'sid': sid_int,
+            'listings': listings,
+            'negative_keyword_lib': negative_keyword_lib,
+        })
+
+    return normalized_configs, None
+
+
+def normalize_fba_shop_configs_or_response(request, shop_configs):
+    normalized_configs = []
+    for index, config in enumerate(shop_configs, start=1):
+        sid_int, response = get_config_sid_or_response(request, config, index)
+        if response:
+            return None, response
+
+        items_payload = config.get('items') or []
+        if not isinstance(items_payload, list) or not items_payload:
+            return None, JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN 并填写数量'}, status=400)
+
+        listing_ids = []
+        quantity_map = {}
+        for item_index, item in enumerate(items_payload, start=1):
+            if not isinstance(item, dict):
+                return None, JsonResponse({'success': False, 'message': f'第 {index} 组第 {item_index} 条 ASIN 明细无效'}, status=400)
+            try:
+                listing_id = parse_positive_integer(item.get('listing_id') or item.get('id'))
+                quantity = parse_positive_integer(item.get('quantity'))
+            except ValueError:
+                return None, JsonResponse({'success': False, 'message': f'第 {index} 组第 {item_index} 条 ASIN 数量必须为正整数'}, status=400)
+            listing_ids.append(listing_id)
+            quantity_map[listing_id] = quantity
+
+        listings, response = get_validated_listings_or_response(request, listing_ids, sid_int, index)
+        if response:
+            return None, response
+
+        normalized_configs.append({
+            'sid': sid_int,
+            'items': [
+                {
+                    'listing': listing,
+                    'quantity': quantity_map[listing.id],
+                }
+                for listing in listings
+            ],
+        })
+
+    return normalized_configs, None
 
 
 @login_required(login_url='/login/')

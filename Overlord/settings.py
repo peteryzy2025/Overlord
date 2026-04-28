@@ -40,14 +40,14 @@ SESSION_COOKIE_SAMESITE = 'Lax'  # 宽松模式，兼容内外网
 CSRF_TRUSTED_ORIGINS = [
     'https://ztzf.cpolar.cn',
     'https://divi.cpolar.cn',
+    'http://192.168.1.5:5555',
     'http://192.168.110.54:5555',
-    'http://192.168.110.55:5555',
     'http://192.168.110.196:8000',
     'http://localhost',
 ]
 
 ALLOWED_HOSTS = [
-    '192.168.110.55',
+    '192.168.1.5',
     '192.168.110.54',
     'localhost',
     '127.0.0.1',
@@ -126,10 +126,10 @@ WSGI_APPLICATION = 'Overlord.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        # "HOST": "2.tcp.cpolar.cn",
-        "HOST": "192.168.110.54",
-        "PORT": "5432",
-        # "PORT": "12763",
+        "HOST": "2.tcp.cpolar.cn",
+        # "HOST": "192.168.110.54",
+        # "PORT": "5432",
+        "PORT": "12763",
         "NAME": os.getenv('DB_NAME', 'overlord_db'),  # ✅ 数据库名
         "USER": os.getenv('DB_USER', 'track'),  # ✅ 用户名
         "PASSWORD": os.getenv('DB_PASSWORD'),  # ✅ 密码从环境变量读
@@ -138,8 +138,10 @@ DATABASES = {
     },
     "aba_db": {
         "ENGINE": "django.db.backends.postgresql",
-        "HOST": "192.168.110.54",
-        "PORT": "5432",
+        "HOST": "2.tcp.cpolar.cn",
+        # "HOST": "192.168.110.54",
+        "PORT": "12763",
+        # "PORT": "5432",
         "NAME": "aba_db",
         "USER": os.getenv('DB_USER', 'track'),
         "PASSWORD": os.getenv('DB_PASSWORD'),

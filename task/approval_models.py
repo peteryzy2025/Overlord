@@ -1,6 +1,7 @@
 # task/approval_models.py
 
 from django.db import models
+from django.core.validators import MinValueValidator
 from django.utils import timezone
 
 
@@ -25,6 +26,7 @@ class ApprovalStatus(models.TextChoices):
 class ApprovalType(models.TextChoices):
     """审批类型"""
     AMAZON_AD = 'amazon_ad', 'Amazon开广告'
+    FBA_SHIPMENT = 'fba_shipment', 'FBA发仓审批'
 
 
 class ExecStatus(models.TextChoices):
@@ -189,6 +191,7 @@ class Approval(models.Model):
     def get_total_steps_for_type(approval_type):
         total_steps_map = {
             ApprovalType.AMAZON_AD: 2,
+            ApprovalType.FBA_SHIPMENT: 2,
         }
         return total_steps_map.get(approval_type, 0)
 
@@ -469,6 +472,175 @@ class AmazonAdShopConfig(models.Model):
 
     def __str__(self):
         return f"{self.lingxing_shop.name} - {self.asins.count()}个ASIN"
+
+
+class FbaShipmentApproval(models.Model):
+    """
+    FBA发仓审批详情
+    与审批主表一对一关联
+    """
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.CASCADE,
+        verbose_name='所属公司',
+        db_comment='数据隔离边界'
+    )
+
+    approval = models.OneToOneField(
+        Approval,
+        on_delete=models.CASCADE,
+        related_name='fba_shipment_detail',
+        verbose_name='关联审批单',
+        db_comment='对应的审批主表'
+    )
+
+    remark = models.TextField('备注', blank=True)
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'approval_fba_shipment'
+        verbose_name = 'FBA发仓审批详情'
+        verbose_name_plural = 'FBA发仓审批详情列表'
+
+    def __str__(self):
+        return f"FBA发仓审批 - {self.approval.approval_no}"
+
+
+class FbaShipmentShopConfig(models.Model):
+    """
+    FBA发仓店铺配置
+    一个审批单可以包含多组店铺与ASIN发仓数量配置
+    """
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.CASCADE,
+        verbose_name='所属公司',
+        db_comment='数据隔离边界'
+    )
+
+    fba_shipment = models.ForeignKey(
+        FbaShipmentApproval,
+        on_delete=models.CASCADE,
+        related_name='shop_configs',
+        verbose_name='所属审批',
+        db_comment='关联的FBA发仓审批'
+    )
+
+    lingxing_shop = models.ForeignKey(
+        'amazon.LingXingAmazonShop',
+        on_delete=models.CASCADE,
+        verbose_name='领星店铺',
+        db_comment='FBA发仓的店铺'
+    )
+
+    exec_status = models.CharField(
+        '执行状态',
+        max_length=20,
+        choices=ExecStatus.choices,
+        default=ExecStatus.WAITING,
+        db_comment='RPA执行状态'
+    )
+
+    exec_result = models.JSONField(
+        '执行结果',
+        default=dict,
+        blank=True,
+        db_comment='RPA返回结果'
+    )
+
+    webhook_task_id = models.CharField(
+        'RPA任务ID',
+        max_length=100,
+        blank=True,
+        db_comment='用于匹配Webhook回调'
+    )
+
+    sequence = models.IntegerField(
+        '执行顺序',
+        default=0,
+        db_comment='组间执行顺序'
+    )
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'approval_fba_shipment_shop_config'
+        verbose_name = 'FBA发仓店铺配置'
+        verbose_name_plural = 'FBA发仓店铺配置列表'
+        ordering = ['sequence', 'created_at']
+        indexes = [
+            models.Index(fields=['company', 'fba_shipment'], name='idx_fbashop_company_ship'),
+            models.Index(fields=['company', 'exec_status'], name='idx_fbashop_company_exec'),
+            models.Index(fields=['lingxing_shop'], name='idx_fbashop_shop'),
+            models.Index(fields=['webhook_task_id'], name='idx_fbashop_webhook'),
+        ]
+
+    def __str__(self):
+        return f"{self.lingxing_shop.name} - {self.items.count()}个ASIN"
+
+
+class FbaShipmentItem(models.Model):
+    """
+    FBA发仓ASIN数量明细
+    """
+    company = models.ForeignKey(
+        'general.Company',
+        on_delete=models.CASCADE,
+        verbose_name='所属公司',
+        db_comment='数据隔离边界'
+    )
+
+    shop_config = models.ForeignKey(
+        FbaShipmentShopConfig,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name='所属配置组',
+        db_comment='关联的FBA发仓店铺配置'
+    )
+
+    listing = models.ForeignKey(
+        'amazon.AmazonListingV2',
+        on_delete=models.CASCADE,
+        related_name='fba_shipment_items',
+        verbose_name='ASIN记录',
+        db_comment='需要发仓的ASIN记录'
+    )
+
+    quantity = models.PositiveIntegerField(
+        '发仓数量',
+        validators=[MinValueValidator(1)],
+        db_comment='每个ASIN的发仓数量，必须为正整数'
+    )
+
+    sequence = models.IntegerField(
+        '排序',
+        default=0,
+        db_comment='ASIN在配置组内的展示顺序'
+    )
+
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'approval_fba_shipment_item'
+        verbose_name = 'FBA发仓ASIN明细'
+        verbose_name_plural = 'FBA发仓ASIN明细列表'
+        ordering = ['sequence', 'created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['shop_config', 'listing'], name='uniq_fbaitem_config_listing'),
+            models.CheckConstraint(check=models.Q(quantity__gte=1), name='chk_fbaitem_qty_positive'),
+        ]
+        indexes = [
+            models.Index(fields=['company', 'shop_config'], name='idx_fbaitem_company_config'),
+            models.Index(fields=['shop_config'], name='idx_fbaitem_shop_config'),
+            models.Index(fields=['listing'], name='idx_fbaitem_listing'),
+        ]
+
+    def __str__(self):
+        return f"{self.listing.asin} x {self.quantity}"
 
 
 class ApprovalFlowConfig(models.Model):

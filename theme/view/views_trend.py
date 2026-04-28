@@ -10,7 +10,7 @@ from collections import defaultdict
 from nltk.tokenize import TweetTokenizer
 # from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 from theme.models import *
-from general.module_utils import module_access_required
+from general.module_utils import company_module_access_required
 from general.models import UserOperationLog
 
 # 中风险状态码集合（美标网）- 只有这些状态码才视为中风险
@@ -26,7 +26,7 @@ LOW_RISK_NAME_TYPES = {1, 9}
 SPECIAL_INTL_CLASSES = {'006', '015', '016', '018', '024', '025', '027', '035'}
 
 
-@module_access_required('infringement', '侵权板块')
+@company_module_access_required('infringement', '侵权板块')
 def trend_page(request):
     nice_classifications = list(
         NiceClassification.objects.all().order_by('code').values('code', 'name')
