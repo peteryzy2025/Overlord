@@ -144,7 +144,7 @@ def query_reimport_orders(start_datetime, project_id=None, project_name=None):
                 filtered_order_ids.append(order.id)
     
     return AmazonOrders.objects.filter(id__in=filtered_order_ids).select_related(
-        'lingxing_shop', 'amazon_shop'
+        'lingxing_shop', 'amazon_shop', 'amazon_shop__project'
     ).order_by('purchase_date_local')
 
 
@@ -204,8 +204,23 @@ def reimport_orders(queryset, total):
                 error += 1
                 continue
 
+            project = order.amazon_shop.project if order.amazon_shop else None
+            if not project:
+                print("× 订单店铺未绑定项目，跳过导单")
+                error += 1
+                continue
+            if not project.lingxing_app_id or not project.lingxing_app_secret:
+                print(f"× 项目 {project.name}(ID:{project.id}) 未配置领星 API 凭证，跳过导单")
+                error += 1
+                continue
+
             # 执行补导
-            result = import_order_from_lingxing_to_divi(order_id=order_id, print_if=True)
+            result = import_order_from_lingxing_to_divi(
+                order_id=order_id,
+                print_if=True,
+                app_id=project.lingxing_app_id,
+                app_secret=project.lingxing_app_secret,
+            )
             if result and getattr(result, 'code', 200) == 200:
                 print(result)
                 print("✓ 补导成功")
@@ -248,7 +263,7 @@ def get_brand_info(brand_id):
         }
 
 
-def extract_unique_brand_ids(start_datetime):
+def extract_unique_brand_ids(start_datetime, project_id=None, project_name=None):
     """
     提取需要同步的订单中出现的所有唯一 brand_id（只包含项目已配置DIVI凭证的）
     通过 SID → BrandID 映射，并自动去重，同时过滤掉未配置凭证的项目
@@ -258,10 +273,18 @@ def extract_unique_brand_ids(start_datetime):
     """
     # 1. 先获取所有待同步订单的店铺 SID（去重）
     # ⭐ 注意：这里已经通过 query_sync_orders 过滤了店铺状态
+    filters = {
+        'fulfillment_channel': 'MFN',
+        'purchase_date_local__gte': start_datetime,
+        'amazon_shop__shop_status': 'status-active',
+    }
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     orders_with_sid = AmazonOrders.objects.filter(
-        fulfillment_channel='MFN',
-        purchase_date_local__gte=start_datetime,
-        amazon_shop__shop_status='status-active',  # ⭐ 确保只查询正常店铺
+        **filters
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).exclude(
@@ -410,10 +433,17 @@ def divi_process_orders(target_date_str, force_reimport, project_id=None, projec
         reimport_total = reimport_queryset.count()
 
         # ⭐ 打印过滤后的数量
+        all_filters = {
+            'fulfillment_channel': 'MFN',
+            'purchase_date_local__gte': start_datetime,
+            'is_exported_to_divi': False,
+        }
+        if project_id:
+            all_filters['amazon_shop__project_id'] = project_id
+        elif project_name:
+            all_filters['amazon_shop__project__name__icontains'] = project_name
         all_queryset = AmazonOrders.objects.filter(
-            fulfillment_channel='MFN',
-            purchase_date_local__gte=start_datetime,
-            is_exported_to_divi=False,
+            **all_filters
         ).exclude(order_status__in=EXCLUDE_AMAZON_STATUS)
         total_without_status_filter = all_queryset.count()
 
@@ -426,7 +456,11 @@ def divi_process_orders(target_date_str, force_reimport, project_id=None, projec
 
     # 步骤2：所有模式都执行的批量字段同步操作（已过滤店铺状态）
     print("\n【批量同步阶段】正在提取需要同步的品牌...")
-    brand_ids, brand_info = extract_unique_brand_ids(start_datetime)
+    brand_ids, brand_info = extract_unique_brand_ids(
+        start_datetime,
+        project_id=project_id,
+        project_name=project_name,
+    )
     
     # 按项目分组统计
     project_groups = {}

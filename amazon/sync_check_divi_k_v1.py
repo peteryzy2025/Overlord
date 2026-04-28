@@ -175,8 +175,12 @@ def detect_and_fix_orphaned_orders(brand_order_map, start_datetime):
                 print(f"   ⏭️  DRY_RUN模式，跳过修复")
                 continue
 
+            orphaned_order_pks = [
+                order.pk for order in local_orders
+                if order.amazon_order_id in orphaned_ids
+            ]
             orphaned_orders = AmazonOrders.objects.filter(
-                amazon_order_id__in=orphaned_ids,
+                pk__in=orphaned_order_pks,
                 is_exported_to_divi=True
             )
 

@@ -90,11 +90,17 @@ async def get_lingxing_zifa_order(sid:str, days: int = 3, app_id: str = None, ap
     return resp.data
 
 
-async def get_amazon_order_detail(amazon_order_ids: List[str]) -> List[Dict]:
+async def get_amazon_order_detail(
+    amazon_order_ids: List[str],
+    app_id: str = None,
+    app_secret: str = None,
+) -> List[Dict]:
     """
     批量获取亚马逊订单详情（支持超过200个订单号，内部自动分批）
 
     :param amazon_order_ids: 订单号列表，如 ["111-4997053-2861834", "113-7088145-9667414"]
+    :param app_id: 领星AppID（可选）
+    :param app_secret: 领星AppSecret（可选）
     :return: 合并后的订单详情列表
     :raises: 任一分批请求失败会抛出异常
     """
@@ -114,7 +120,9 @@ async def get_amazon_order_detail(amazon_order_ids: List[str]) -> List[Dict]:
         try:
             resp = await get_api_resp(
                 req_body=req_body,
-                api_path="/erp/sc/data/mws/orderDetail"
+                api_path="/erp/sc/data/mws/orderDetail",
+                app_id=app_id,
+                app_secret=app_secret
             )
             result_count = len(resp.data) if resp.data else 0
             print(f"[get_amazon_order_detail] 查询 {total_orders} 个订单，获取到 {result_count} 条详情")
@@ -139,7 +147,9 @@ async def get_amazon_order_detail(amazon_order_ids: List[str]) -> List[Dict]:
         try:
             resp = await get_api_resp(
                 req_body=req_body,
-                api_path="/erp/sc/data/mws/orderDetail"
+                api_path="/erp/sc/data/mws/orderDetail",
+                app_id=app_id,
+                app_secret=app_secret
             )
             batch_result = resp.data or []
             print(f"[get_amazon_order_detail] 第 {idx} 批查询成功，获取到 {len(batch_result)} 条详情")

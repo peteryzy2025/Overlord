@@ -190,6 +190,8 @@ def _get_divi_credentials(brand_id: int = None) -> Tuple[str, str]:
             shop = AmazonShop.objects.filter(divi_shop_id=brand_id).select_related('project').first()
             if shop and shop.project:
                 project = shop.project
+                print(f"🔍 [DIVI凭证] brand_id={brand_id} -> 店铺={shop.shop_name} -> 项目={project.name}(ID={project.id})")
+                print(f"🔍 [DIVI凭证] divi_partner_code={project.divi_partner_code[:8] if project.divi_partner_code else 'None'}... divi_secret={'有' if project.divi_secret else '无'}")
                 # 检查项目是否配置了 DIVI 凭证
                 if project.divi_partner_code and project.divi_secret:
                     return project.divi_partner_code, project.divi_secret
@@ -199,6 +201,7 @@ def _get_divi_credentials(brand_id: int = None) -> Tuple[str, str]:
                         f"请先填写 divi_partner_code 和 divi_secret"
                     )
             else:
+                print(f"⚠️ [DIVI凭证] 未找到 brand_id={brand_id} 对应的店铺或项目")
                 raise ValueError(f"未找到 brand_id={brand_id} 对应的店铺或项目")
         except ValueError:
             raise
@@ -206,6 +209,7 @@ def _get_divi_credentials(brand_id: int = None) -> Tuple[str, str]:
             raise ValueError(f"获取项目 DIVI 凭证失败: {str(e)}")
     
     # 如果没有 brand_id，使用默认配置（向后兼容）
+    print(f"⚠️ [DIVI凭证] 未提供 brand_id，使用默认凭证")
     return PARTNER_CODE, SECRET
 
 
@@ -266,6 +270,7 @@ def query_divi_order(
         brand_id=brand_id,
     )
     resp_json = resp.json()
+    print(f"🔍 [DIVI查询] 响应: {resp_json}")
 
     # 兼容几种结构：data 是 list / data.list / data.rows
     orders: List[Dict[str, Any]] = []
@@ -279,6 +284,7 @@ def query_divi_order(
             orders = data["rows"]
 
     exists = len(orders) > 0
+    print(f"🔍 [DIVI查询] 解析到 {len(orders)} 条订单")
     return exists, orders, resp_json
 
 
@@ -439,18 +445,28 @@ def divi_add_order(
 def import_order_from_lingxing_to_divi(
         order_id: str,
         print_if: bool = False,
+        app_id: str = None,
+        app_secret: str = None,
 ) -> ResponseResult:
     """
     导入订单（去领星获取数据并在 Divi 创建订单）
     同步版本：内部用 asyncio.run 调用领星的 get_api_resp
     增强版：自动处理签名错误，重试时简化商品标题
     """
+    print(f"\n{'=' * 60}")
+    print(f"🚀 import_order_from_lingxing_to_divi 开始")
+    print(f"📋 订单号: {order_id}")
+    print(f"📋 传入的领星凭证: app_id={app_id}, app_secret={'***' if app_secret else None}")
+    
     # 1) 从领星获取订单详情（这里是 async 调用，外面同步，所以用 asyncio.run）
     req_body = {"order_id": order_id}
+    print(f"🔍 使用传入凭证调用领星API...")
     y_resp = asyncio.run(
         get_api_resp(
             req_body=req_body,
             api_path="/erp/sc/data/mws/orderDetail",
+            app_id=app_id,
+            app_secret=app_secret,
         )
     )
     if y_resp and y_resp.data and len(y_resp.data) > 0:
@@ -535,10 +551,25 @@ def import_order_from_lingxing_to_divi(
 
     # 2) 通过 sid 找 brandId（这里已经是同步代码，可以安全用 ORM）
     sid = order.get("sid")
+    print(f"📋 领星返回的 sid: {sid}")
     if not sid:
         raise ValueError(f"订单 {order_id} 缺少 sid，无法匹配店铺")
 
     brand_id = get_divi_brand_id_from_sid(sid)
+    print(f"🔍 通过 sid={sid} 查找 brand_id: {brand_id}")
+    
+    # 获取项目的DIVI凭证用于调试
+    try:
+        from general.models import Project
+        from amazon.models import LingXingAmazonShop
+        lx_shop = LingXingAmazonShop.objects.select_related("amazon_shop__project").get(sid=sid)
+        if lx_shop.amazon_shop and lx_shop.amazon_shop.project:
+            project = lx_shop.amazon_shop.project
+            print(f"📋 项目信息: ID={project.id}, 名称={project.name}")
+            print(f"📋 DIVI凭证: partner_code={project.divi_partner_code}, secret={'***' if project.divi_secret else None}")
+    except Exception as e:
+        print(f"⚠️ 获取项目信息失败: {e}")
+    
     if not brand_id:
         raise ValueError(f"sid={sid} 未配置 divi_shop_id（brandId）")
 
@@ -562,6 +593,7 @@ def import_order_from_lingxing_to_divi(
     currency = order.get("currency", "USD")
 
     # 6) Divi 下单（纯同步）- 添加重试机制
+    print(f"🎯 准备调用DIVI下单接口，brand_id={brand_id}")
     try:
         result = divi_add_order(
             brand_id=brand_id,
@@ -572,6 +604,7 @@ def import_order_from_lingxing_to_divi(
             timeout=10,
             print_if=print_if,
         )
+        print(f"📦 DIVI下单结果: {result}")
     except Exception as e:
         # 检查是否为签名错误
         error_str = str(e)

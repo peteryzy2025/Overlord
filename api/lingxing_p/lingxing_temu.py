@@ -245,8 +245,13 @@ async def check_temu_order_to_divi(global_order_no: str, pdf: bool = False, stat
         order.save(update_fields=['divi_if_order'])
     await save_order_not_found()
     return False
-async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[str, str] = None) -> Dict[
-    str, List[Dict[str, Any]]]:
+async def get_lx_temu_orders(
+    store_ids: List[str],
+    day: int = 3,
+    shop_map: Dict[str, str] = None,
+    app_id: str = None,
+    app_secret: str = None,
+) -> Dict[str, List[Dict[str, Any]]]:
     """
     按 store_id（一次只传一个给 API）拉取领星/Temu 订单（带分页），时间范围由 day 决定：
       start_time = (today - day days) 00:00:00 (UTC)
@@ -256,6 +261,8 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[
         store_ids: list of store_id strings (可以传多个，本函数会为每个店铺单独请求)
         day: 向前的天数窗口（例如 day=3 则从 3 天前 00:00:00 到 今天 23:59:59）
         shop_map: {store_id: shop_name, ...} 店铺名称映射，用于日志显示
+        app_id: 领星AppID（可选）
+        app_secret: 领星AppSecret（可选）
 
     Returns:
         dict: { store_id: [order_dict, ...], ... }
@@ -296,7 +303,12 @@ async def get_lx_temu_orders(store_ids: List[str], day: int = 3, shop_map: Dict[
             }
 
             try:
-                resp = await get_api_resp(req_body, api_path="/pb/mp/order/v2/list")
+                resp = await get_api_resp(
+                    req_body,
+                    api_path="/pb/mp/order/v2/list",
+                    app_id=app_id,
+                    app_secret=app_secret,
+                )
             except Exception as e:
                 # 捕获网络/解析异常，记录并跳出当前店铺的循环（或你可以改为重试）
                 print(f"[get_lingxing_orders] Exception fetching store {store_id}({shop_name}), offset {offset}: {e}")
@@ -1059,11 +1071,16 @@ def rule_review(global_order_no_list: str):
     return response
 
 
-async def shipment_order(order_number_list):
+async def shipment_order(order_number_list, app_id: str = None, app_secret: str = None):
     req_body = {
         "order_number_list": order_number_list,
     }
-    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/selfShipmentOrder/deliveryGoods")
+    resp = await get_api_resp(
+        req_body=req_body,
+        api_path="/basicOpen/selfShipmentOrder/deliveryGoods",
+        app_id=app_id,
+        app_secret=app_secret,
+    )
     print(f"发货返回：{resp}")
     
     # 检测 IP 白名单错误
@@ -1078,7 +1095,7 @@ async def shipment_order(order_number_list):
             raise Exception(f"当前IP【{current_ip}】不在白名单中，请稍等几分钟")
 
 
-async def get_wms_orders_by_order_numbers(order_numbers: str):
+async def get_wms_orders_by_order_numbers(order_numbers: str, app_id: str = None, app_secret: str = None):
     """
     查询销售出库单详情-支持查询ERP中【仓库】>【销售出库单】数据，即自发货订单销售出库单
     :param order_numbers: 系统单号
@@ -1088,7 +1105,12 @@ async def get_wms_orders_by_order_numbers(order_numbers: str):
         "isPrintCenter": 1,  # 是否需要拣货信息，枚举值：1-是, 0-否
         "orderNumbers": order_numbers,
     }
-    resp = await get_api_resp(req_body=req_body, api_path="/basicOpen/wmsOrder/getWmsOrdersByOrderNumbers")
+    resp = await get_api_resp(
+        req_body=req_body,
+        api_path="/basicOpen/wmsOrder/getWmsOrdersByOrderNumbers",
+        app_id=app_id,
+        app_secret=app_secret,
+    )
     order_list = resp.data.get("orderList", [])
     if not order_list:
         print(f"订单 {order_numbers} 暂无面单信息")

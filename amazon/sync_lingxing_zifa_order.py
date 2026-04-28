@@ -40,6 +40,33 @@ def parse_args():
 
 
 @sync_to_async
+def get_lingxing_credentials_for_sid(sid):
+    shop = (
+        LingXingAmazonShop.objects
+        .select_related('amazon_shop__project')
+        .filter(sid=sid)
+        .first()
+    )
+    if not shop:
+        return None, f"未找到 sid={sid} 的领星店铺"
+    if not shop.amazon_shop:
+        return None, f"sid={sid} 未绑定本地 AmazonShop"
+
+    project = shop.amazon_shop.project
+    if not project:
+        return None, f"sid={sid} 对应店铺未绑定项目"
+    if not project.lingxing_app_id or not project.lingxing_app_secret:
+        return None, f"项目 {project.name}(ID:{project.id}) 未配置领星 API 凭证"
+
+    return {
+        'project_id': project.id,
+        'project_name': project.name,
+        'app_id': project.lingxing_app_id,
+        'app_secret': project.lingxing_app_secret,
+    }, None
+
+
+@sync_to_async
 def get_orders_missing_order_no(days_back=DAYS_BACK, project_id=None, project_name=None):
     """
     查询最近N天内 order_no 为空的自发货订单（包括 NULL 和空字符串）
@@ -106,8 +133,21 @@ async def fetch_zifa_orders_for_sid(sid, days=API_DAYS):
     返回: API响应数据列表
     """
     try:
-        print(f"【API调用】获取 sid={sid} 的自发货订单（最近{days}天）...")
-        resp_data = await get_lingxing_zifa_order(sid=sid, days=days)
+        credentials, error = await get_lingxing_credentials_for_sid(sid)
+        if error:
+            print(f"【跳过】{error}")
+            return []
+
+        print(
+            f"【API调用】项目 {credentials['project_name']}(ID:{credentials['project_id']}) "
+            f"获取 sid={sid} 的自发货订单（最近{days}天）..."
+        )
+        resp_data = await get_lingxing_zifa_order(
+            sid=sid,
+            days=days,
+            app_id=credentials['app_id'],
+            app_secret=credentials['app_secret'],
+        )
         return resp_data or []
     except Exception as e:
         print(f"【API错误】sid={sid} 获取失败: {e}")
