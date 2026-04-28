@@ -5,6 +5,7 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 import datetime
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
@@ -21,6 +22,13 @@ from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 from api.lingxing_p.lingxing_temu import get_lx_temu_orders, check_temu_order_to_divi, shipment_order, get_wms_orders_by_order_numbers
 from asgiref.sync import async_to_sync
 import asyncio
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步Temu订单数据")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 
 def _to_decimal(value, default=Decimal('0.00')):
@@ -256,18 +264,32 @@ def sync_temu_orders(data_dict):
                 print(f"  ✗ 订单 {sn_no} 下载面单失败: {e}")
         print("待发货订单处理完成")
 
-def temu_orders():
+def temu_orders(project_id=None, project_name=None):
     """主入口函数"""
     print("=" * 50)
     print("开始同步 Temu 订单数据...")
+    
+    if project_id:
+        print(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"按项目名称过滤：'{project_name}'")
 
-    # 1. 获取所有店铺
-    shops = list(LingXingTemuShop.objects.all())
+    # 1. 获取店铺
+    qs = LingXingTemuShop.objects.all()
+    
+    # 按项目过滤（通过关联的 temu_shop -> project）
+    if project_id:
+        qs = qs.filter(temu_shop__project_id=project_id)
+    elif project_name:
+        qs = qs.filter(temu_shop__project__name__icontains=project_name)
+    
+    shops = list(qs)
     store_ids = [shop.store_id for shop in shops]
     shop_map = {shop.store_id: (shop.store_name or shop.store_id) for shop in shops}
 
     if not store_ids:
-        print("未找到任何 Temu 店铺配置，同步终止")
+        filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+        print(f"未找到任何{filter_desc}Temu店铺配置，同步终止")
         return
 
     print(f"共找到 {len(store_ids)} 个店铺")
@@ -291,4 +313,5 @@ def temu_orders():
 
 
 if __name__ == "__main__":
-    temu_orders()
+    args = parse_args()
+    temu_orders(project_id=args.project_id, project_name=args.project_name)

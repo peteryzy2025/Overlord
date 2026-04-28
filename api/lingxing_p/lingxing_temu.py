@@ -49,7 +49,7 @@ def _timestamp_to_datetime(ts):
         return None
 
 
-async def get_lx_temu_shops():
+async def get_lx_temu_shops(app_id: str = None, app_secret: str = None):
     req_body = {
         "offset": 0,
         "length": 200,
@@ -58,9 +58,14 @@ async def get_lx_temu_shops():
         "status": 1
     }
 
-    resp = await get_api_resp(req_body, api_path="/pb/mp/shop/v2/getSellerList")
+    resp = await get_api_resp(
+        req_body,
+        api_path="/pb/mp/shop/v2/getSellerList",
+        app_id=app_id,
+        app_secret=app_secret
+    )
     print(resp)
-    return resp.data.get("list")
+    return (resp.data or {}).get("list") or []
 
 async def get_temu_order_for_divi(global_order_no: str):
     """

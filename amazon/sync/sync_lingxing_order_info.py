@@ -12,22 +12,29 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from asgiref.sync import sync_to_async
 from django.db import transaction
 
-from api.Y.y_tiem import Timer
-
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
+from api.Y.y_tiem import Timer
 from amazon.models import AmazonOrders, AmazonOrderFullDetail, AmazonOrderItemFullDetail, LingXingAmazonShop
 from api.lingxing_p.lingxing_jc1 import get_amazon_order_detail
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步亚马逊订单详情")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 
 # ========== 时间转换工具 ==========
@@ -58,7 +65,7 @@ def _to_decimal(value, default=0):
 
 # ========== 步骤1：筛选待同步订单 ==========
 @sync_to_async
-def find_Unshipped_orders_without_detail(days_back=14):
+def find_Unshipped_orders_without_detail(days_back=14, project_id=None, project_name=None):
     """
     查询最近N天内、状态为Unshipped、且无详情记录的订单
     返回: [(amazon_order_id, sid), ...] 元组列表
@@ -66,14 +73,24 @@ def find_Unshipped_orders_without_detail(days_back=14):
     start_date = datetime.now() - timedelta(days=days_back)
     start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
+    filters = {
+        'order_status': 'Unshipped',
+        'purchase_date_local__gte': start_date,
+        'full_detail__isnull': True,
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     # 筛选条件：Unshipped+ 14天内 + 无详情记录
     order_list = list(AmazonOrders.objects.filter(
-        order_status='Unshipped',
-        purchase_date_local__gte=start_date,
-        full_detail__isnull=True
+        **filters
     ).values_list('amazon_order_id', 'lingxing_shop__sid').distinct())
 
-    print(f"【查询】找到 {len(order_list)} 条待同步详情的Unshipped订单（最近{days_back}天）")
+    filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+    print(f"【查询】{filter_desc}找到 {len(order_list)} 条待同步详情的Unshipped订单（最近{days_back}天）")
     if order_list:
         print(f"【样本】前3条订单: {order_list[:3]}")
 
@@ -272,7 +289,7 @@ def save_order_full_details(details: list, candidate_set: set):
 
 
 # ========== 主流程控制器 ==========
-async def lx_order_info_main():
+async def lx_order_info_main(project_id=None, project_name=None):
     """
     主流程：同步Unshipped订单详情
     """
@@ -280,11 +297,17 @@ async def lx_order_info_main():
     print("🚀 亚马逊订单详情同步脚本启动")
     print(f"📅 目标范围：最近14天内、状态为Unshipped、且无详情记录的订单")
     print(f"🔍 API接口：get_amazon_order_detail（自动分批，每批≤190）")
+    if project_id:
+        print(f"📌 按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"📌 按项目名称过滤：'{project_name}'")
     print("=" * 96)
 
     # 步骤1：筛选订单（返回元组列表）
     print("\n【步骤1】筛选待同步的Unshipped订单...")
-    order_tuples = await find_Unshipped_orders_without_detail()
+    order_tuples = await find_Unshipped_orders_without_detail(
+        project_id=project_id, project_name=project_name
+    )
 
     if not order_tuples:
         print("✅ 没有符合条件的订单，任务结束")
@@ -361,8 +384,10 @@ async def lx_order_info_main():
 
 # ========== 入口 ==========
 if __name__ == "__main__":
+    args = parse_args()
+    
     t = Timer()
     t.start()
-    asyncio.run(lx_order_info_main())
+    asyncio.run(lx_order_info_main(project_id=args.project_id, project_name=args.project_name))
     t.stop()
     print("\n⏱️  运行时长：", t)

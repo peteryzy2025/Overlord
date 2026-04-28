@@ -5,24 +5,31 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
 
-from api.Y.y_tiem import Timer
-
 # ====== Django 初始化部分（照抄你原来的） ======
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
+from api.Y.y_tiem import Timer
 from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from general.models import AmazonShop  # 目前没直接用到，先保留
+from general.models import AmazonShop, Project
 from api.lingxing_p.lingxing_jc1 import get_lingxing_orders
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步亚马逊订单数据")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 
 def _to_decimal(value, default=None):
@@ -220,8 +227,14 @@ def sync_amazon_orders(data_list):
     )
 
 
-def lx_order_main():
+def lx_order_main(project_id=None, project_name=None):
     print("开始同步亚马逊订单数据...")
+    
+    # 如果指定了项目过滤条件，先打印出来
+    if project_id:
+        print(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"按项目名称过滤：'{project_name}'")
 
     # 1. 从 LingXingAmazonShop 表中获取需要同步的店铺 sid
     #    这里示例按国家="美国"筛选，你可以按需要改条件
@@ -231,30 +244,37 @@ def lx_order_main():
         .filter(country="美国")
         .select_related("amazon_shop__project")
     )
+    
+    # 按项目过滤
+    if project_id:
+        shops = shops.filter(amazon_shop__project_id=project_id)
+    elif project_name:
+        shops = shops.filter(amazon_shop__project__name__icontains=project_name)
 
     if not shops.exists():
-        print("没有找到任何国家为美国的领星店铺，结束。")
+        filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+        print(f"没有找到任何{filter_desc}国家为美国的领星店铺，结束。")
         return
 
     # 按项目分组店铺（不同项目可能有不同的领星 API 凭证）
     project_shops = {}
     for shop in shops:
         project = shop.amazon_shop.project if shop.amazon_shop else None
-        project_id = project.id if project else None
+        pid = project.id if project else None
         
-        if project_id not in project_shops:
-            project_shops[project_id] = {
+        if pid not in project_shops:
+            project_shops[pid] = {
                 "project": project,
                 "sids": [],
             }
-        project_shops[project_id]["sids"].append(shop.sid)
+        project_shops[pid]["sids"].append(shop.sid)
 
     print(f"共找到 {shops.count()} 个美国店铺，分布在 {len(project_shops)} 个项目")
 
     all_orders = []
 
     # 2. 按项目分组拉取订单数据
-    for project_id, data in project_shops.items():
+    for pid, data in project_shops.items():
         project = data["project"]
         sids = data["sids"]
         
@@ -295,8 +315,10 @@ def lx_order_main():
 
 
 if __name__ == "__main__":
+    args = parse_args()
+    
     t = Timer()
     t.start()
-    lx_order_main()
+    lx_order_main(project_id=args.project_id, project_name=args.project_name)
     t.stop()
     print("运行时长：", t)

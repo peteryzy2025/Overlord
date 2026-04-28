@@ -4,14 +4,16 @@ from api.lingxing.Y_OpenApi import get_api_resp
 from datetime import datetime, timedelta
 
 
-async def get_lingxing_shop():
+async def get_lingxing_shop(app_id: str = None, app_secret: str = None):
     """
     获取领星店铺列表
     """
     resp = await get_api_resp(
         req_body={},
         api_path="/erp/sc/data/seller/lists",
-        method="POST"
+        method="POST",
+        app_id=app_id,
+        app_secret=app_secret
     )
     print(f"接口返回的店铺数据量：{len(resp.data) if resp.data else 0}")
     return resp.data

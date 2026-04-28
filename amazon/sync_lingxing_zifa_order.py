@@ -10,20 +10,20 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 from datetime import datetime, timedelta
 from asgiref.sync import sync_to_async
 from django.db import transaction
 from django.db.models import Q  # 正确导入路径
 
-from api.Y.y_tiem import Timer
-
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
+from api.Y.y_tiem import Timer
 from amazon.models import AmazonOrders, LingXingAmazonShop
 from api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order
 
@@ -32,8 +32,15 @@ DAYS_BACK = 10  # 查询最近5天 order_no 为空的订单
 API_DAYS = 10  # 调用API查询最近3天的自发货订单
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步领星自发货订单号")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
+
+
 @sync_to_async
-def get_orders_missing_order_no(days_back=DAYS_BACK):
+def get_orders_missing_order_no(days_back=DAYS_BACK, project_id=None, project_name=None):
     """
     查询最近N天内 order_no 为空的自发货订单（包括 NULL 和空字符串）
     返回: 字典列表 [{'lingxing_shop__sid': 123, 'amazon_order_id': 'xxx'}, ...]
@@ -41,18 +48,31 @@ def get_orders_missing_order_no(days_back=DAYS_BACK):
     start_date = datetime.now() - timedelta(days=days_back)
     start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
+    # 构建基础过滤条件
+    filters = {
+        'purchase_date_local__gte': start_date,
+        'fulfillment_channel': 'MFN',
+    }
+    
+    # 按项目过滤
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     # 关键修改：同时查询 NULL 和空字符串
-    orders_list = list(AmazonOrders.objects.filter(
-        # 核心：使用 Q 对象组合 OR 条件
+    qs = AmazonOrders.objects.filter(
         Q(order_no__isnull=True) | Q(order_no=''),  # NULL 或 空字符串
-        purchase_date_local__gte=start_date,  # 最近N天
-        fulfillment_channel='MFN'  # 仅自发货订单
+        **filters
     ).values(
         'lingxing_shop__sid',
         'amazon_order_id'
-    ).distinct())
+    ).distinct()
 
-    print(f"【查询】找到 {len(orders_list)} 条 order_no 为空的订单（最近{days_back}天）")
+    orders_list = list(qs)
+
+    filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+    print(f"【查询】{filter_desc}找到 {len(orders_list)} 条 order_no 为空的订单（最近{days_back}天）")
     if len(orders_list) > 0:
         # 打印前3条调试验证
         print(f"【样本】前3条样本数据: {orders_list[:3]}")
@@ -223,17 +243,23 @@ async def process_sid_orders(sid, amazon_order_ids):
     return success_count, fail_count
 
 
-async def lx_zf_main():
+async def lx_zf_main(project_id=None, project_name=None):
     """主流程控制器"""
     print("\n" + "=" * 96)
     print("🚀 领星自发货订单号同步脚本启动")
     print(f"📅 目标范围：最近 {DAYS_BACK} 天内 order_no 为空的 MFN 订单")
     print(f"🔍 API查询：最近 {API_DAYS} 天的自发货数据")
+    if project_id:
+        print(f"📌 按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"📌 按项目名称过滤：'{project_name}'")
     print("=" * 96)
 
     # 步骤1: 查询需要更新的订单
     print("\n【步骤1】查询本地数据库...")
-    orders_to_update = await get_orders_missing_order_no()
+    orders_to_update = await get_orders_missing_order_no(
+        project_id=project_id, project_name=project_name
+    )
 
     if not orders_to_update:
         print("✅ 没有需要更新的订单，任务结束")
@@ -279,10 +305,11 @@ async def lx_zf_main():
 
 
 if __name__ == '__main__':
+    args = parse_args()
+    
     # 运行异步主函数
     t = Timer()
     t.start()
-    # main()
-    asyncio.run(lx_zf_main())
+    asyncio.run(lx_zf_main(project_id=args.project_id, project_name=args.project_name))
     t.stop()
     print("运行时长：", t)

@@ -14,19 +14,19 @@
 import os
 import sys
 import time
+import argparse
 
 import django
 from datetime import datetime
 
-from api.Y.y_tiem import Timer
-
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
+from api.Y.y_tiem import Timer
 from amazon.models import AmazonOrders, LingXingAmazonShop
 from general.models import AmazonShop, Project
 
@@ -36,6 +36,13 @@ from api.divi.divi_order_service import (
     import_order_from_lingxing_to_divi,
 )
 from amazon.amazon_divi_views import update_divi_order_fields
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="DIVI导单+状态同步")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 # 要排除的亚马逊订单状态
 EXCLUDE_AMAZON_STATUS = {'PendingAvailability', 'Pending', 'Canceled'}
@@ -81,14 +88,25 @@ def check_project_divi_config(brand_id):
 # ==================================
 
 
-def query_reimport_orders(start_datetime):
+def query_reimport_orders(start_datetime, project_id=None, project_name=None):
     """查询需要补导的订单：本地标记为未导出 + 店铺状态正常 + 项目已配置DIVI凭证"""
+    # 构建基础过滤条件
+    filters = {
+        'fulfillment_channel': 'MFN',
+        'purchase_date_local__gte': start_datetime,
+        'is_exported_to_divi': False,  # 核心条件：只找漏单
+        'amazon_shop__shop_status': 'status-active',  # ⭐ 只查询正常状态的店铺
+    }
+    
+    # 按项目过滤
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+    
     # 先获取所有符合条件的订单（未导出、店铺状态正常）
     orders = AmazonOrders.objects.filter(
-        fulfillment_channel='MFN',
-        purchase_date_local__gte=start_datetime,
-        is_exported_to_divi=False,  # 核心条件：只找漏单
-        amazon_shop__shop_status='status-active',  # ⭐ 只查询正常状态的店铺
+        **filters
     ).exclude(
         divi_order_status__in={0, 5}
     ).exclude(
@@ -130,17 +148,26 @@ def query_reimport_orders(start_datetime):
     ).order_by('purchase_date_local')
 
 
-def query_sync_orders(start_datetime):
+def query_sync_orders(start_datetime, project_id=None, project_name=None):
     """查询需要同步的订单：店铺状态必须为正常"""
+    filters = {
+        'fulfillment_channel': 'MFN',
+        'purchase_date_local__gte': start_datetime,
+        'amazon_shop__shop_status': 'status-active',
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+    
     return AmazonOrders.objects.filter(
-        fulfillment_channel='MFN',
-        purchase_date_local__gte=start_datetime,
-        amazon_shop__shop_status='status-active',  # ⭐ 新增：只查询正常状态的店铺
+        **filters
     ).exclude(
         order_status__in=EXCLUDE_AMAZON_STATUS
     ).select_related(
         'lingxing_shop',
-        'amazon_shop'  # ⭐ 新增：优化查询
+        'amazon_shop'
     ).order_by('purchase_date_local')
 
 
@@ -362,7 +389,7 @@ def sync_brand_orders(brand_ids, brand_info=None):
 
     return total_success, total_error
 
-def divi_process_orders(target_date_str, force_reimport):
+def divi_process_orders(target_date_str, force_reimport, project_id=None, project_name=None):
     """主流程：根据模式执行补导 + 批量同步"""
     start_datetime = datetime.strptime(f"{target_date_str} 00:00:00", "%Y-%m-%d %H:%M:%S")
 
@@ -370,12 +397,16 @@ def divi_process_orders(target_date_str, force_reimport):
     print(f"精准补导 + 字段同步脚本启动 (v2.1 - 增加店铺状态过滤)")
     print(f"目标日期：{target_date_str} 及之后 | MFN订单 | 仅处理店铺状态=正常的订单")
     print(f"补导模式：{'开启' if force_reimport else '关闭'}")
+    if project_id:
+        print(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"按项目名称过滤：'{project_name}'")
     print(f"{'=' * 96}\n")
 
     # 步骤1：补导模式才执行的补漏单操作（查询时已过滤店铺状态）
     reimport_success = reimport_errors = 0
     if force_reimport:
-        reimport_queryset = query_reimport_orders(start_datetime)
+        reimport_queryset = query_reimport_orders(start_datetime, project_id=project_id, project_name=project_name)
         reimport_total = reimport_queryset.count()
 
         # ⭐ 打印过滤后的数量
@@ -434,8 +465,10 @@ def divi_process_orders(target_date_str, force_reimport):
     print("✅ 完美结束！去页面看看吧～")
 
 if __name__ == '__main__':
+    args = parse_args()
+    
     t = Timer()
     t.start()
-    divi_process_orders(TARGET_DATE, ENABLE_REIMPORT)
+    divi_process_orders(TARGET_DATE, ENABLE_REIMPORT, project_id=args.project_id, project_name=args.project_name)
     t.stop()
     print("运行时长：", t)
