@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import threading
 import requests as _requests
 
@@ -159,6 +160,37 @@ def get_listing_shop_name(listing, fallback_shop=None):
     if fallback_shop and fallback_shop.name:
         return fallback_shop.name
     return f"sid_{listing.sid}"
+
+
+def serialize_approval_listing(listing):
+    return {
+        'id': listing.id,
+        'asin': listing.asin or '',
+        'title': listing.title or '',
+        'img_url': listing.small_image_url or '',
+        'local_sku': listing.local_sku or '',
+        'seller_sku': listing.seller_sku or '',
+        'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+        'fnsku': listing.fnsku or '',
+        'marketplace': listing.marketplace or '',
+        'shop_name': get_listing_shop_name(listing),
+        'sid': listing.sid,
+    }
+
+
+def is_fba_listing(listing):
+    return str(listing.fulfillment_channel_type or '').upper() in {'FBA', 'AFN'}
+
+
+def choose_preferred_listing(listings):
+    return sorted(
+        listings,
+        key=lambda item: (
+            0 if is_fba_listing(item) else 1,
+            str(item.fulfillment_channel_type or ''),
+            item.id,
+        )
+    )[0]
 
 
 def get_approval_business_detail(approval):
@@ -340,7 +372,7 @@ def approval_meta_api(request):
             },
             'approval_no': approval.approval_no,
             'approval_type': approval.approval_type,
-            'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            'approval_type_label': get_approval_type_label(approval.approval_type),
             'approval_type_choices': approval_type_choices,
             'total_steps': approval.total_steps,
             'current_step_sequence': approval.current_step_sequence,
@@ -541,12 +573,12 @@ def approval_asins_api(request):
         page = 1
 
     try:
-        page_size = int(request.GET.get('page_size', 20))
+        page_size = int(request.GET.get('page_size', 100))
     except ValueError:
-        page_size = 20
+        page_size = 100
 
-    if page_size not in {20, 50, 100}:
-        page_size = 20
+    if page_size not in {100, 200, 500}:
+        page_size = 100
 
     if not user_has_shop_access(request.user, sid_int):
         return JsonResponse({'success': False, 'message': '无权访问该店铺'}, status=403)
@@ -564,19 +596,7 @@ def approval_asins_api(request):
 
     data = []
     for listing in page_obj.object_list:
-        data.append({
-            'id': listing.id,
-            'asin': listing.asin,
-            'title': listing.title or '',
-            'img_url':listing.small_image_url or '',
-            'local_sku': listing.local_sku or '',
-            'seller_sku': listing.seller_sku or '',
-            'fulfillment_channel_type': listing.fulfillment_channel_type or '',
-            'fnsku': listing.fnsku or '',
-            'marketplace': listing.marketplace or '',
-            'shop_name': listing.lingxing_shop.name if listing.lingxing_shop and listing.lingxing_shop.name else f"sid_{listing.sid}",
-            'sid': listing.sid,
-        })
+        data.append(serialize_approval_listing(listing))
 
     return JsonResponse({
         'success': True,
@@ -615,7 +635,6 @@ def approval_leader_list_api(request):
         Approval.objects
         .filter(
             company=request.user.company,
-            approval_type=ApprovalType.AMAZON_AD,
             status=ApprovalStatus.PENDING,
             current_step_sequence=0,
             steps__sequence=1,
@@ -623,7 +642,7 @@ def approval_leader_list_api(request):
             steps__approver=request.user,
             applicant__manager=request.user,
         )
-        .select_related('applicant')
+        .select_related('applicant', 'ad_detail', 'fba_shipment_detail')
         .order_by('-created_at', '-id')
         .distinct()
     )
@@ -642,8 +661,30 @@ def approval_leader_list_api(request):
         current_status_label = get_current_status_label(approval)
 
         detail_rows = []
-        ad_detail = getattr(approval, 'ad_detail', None)
-        if ad_detail:
+        detail = get_approval_business_detail(approval)
+        if approval.approval_type == ApprovalType.FBA_SHIPMENT and detail:
+            item_prefetch = Prefetch(
+                'items',
+                queryset=FbaShipmentItem.objects.select_related('listing__lingxing_shop').order_by('sequence', 'id'),
+            )
+            configs = (
+                detail.shop_configs
+                .select_related('lingxing_shop')
+                .prefetch_related(item_prefetch)
+                .order_by('sequence', 'id')
+            )
+            for config in configs:
+                for item in config.items.all():
+                    listing = item.listing
+                    detail_rows.append({
+                        'row_key': f'{approval.id}-{config.id}-{listing.id}',
+                        'config_id': config.id,
+                        'asin': listing.asin or '',
+                        'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
+                        'quantity': item.quantity,
+                    })
+        elif detail:
+            ad_detail = detail
             configs = (
                 ad_detail.shop_configs
                 .select_related('lingxing_shop')
@@ -652,24 +693,18 @@ def approval_leader_list_api(request):
             )
             for config in configs:
                 for listing in config.asins.all():
-                    shop_name = ''
-                    if listing.lingxing_shop and listing.lingxing_shop.name:
-                        shop_name = listing.lingxing_shop.name
-                    elif config.lingxing_shop and config.lingxing_shop.name:
-                        shop_name = config.lingxing_shop.name
-                    else:
-                        shop_name = f"sid_{listing.sid}"
-
                     detail_rows.append({
                         'row_key': f'{approval.id}-{config.id}-{listing.id}',
                         'config_id': config.id,
                         'asin': listing.asin or '',
-                        'shop_name': shop_name,
+                        'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
                     })
 
         data.append({
             'approval_id': approval.id,
             'approval_no': approval.approval_no,
+            'approval_type': approval.approval_type,
+            'approval_type_label': get_approval_type_label(approval.approval_type),
             'applicant_name': applicant_name,
             'current_step_sequence': approval.current_step_sequence,
             'current_status_label': current_status_label,
@@ -689,6 +724,108 @@ def approval_leader_list_api(request):
             'total_pages': paginator.num_pages,
             'has_next': page_obj.has_next(),
             'has_prev': page_obj.has_previous(),
+        }
+    })
+
+
+def parse_asin_input(value):
+    if isinstance(value, list):
+        raw_items = []
+        for item in value:
+            raw_items.extend(re.split(r'[\s,，;；]+', str(item or '')))
+    else:
+        raw_items = re.split(r'[\s,，;；]+', str(value or ''))
+
+    seen = set()
+    asins = []
+    for item in raw_items:
+        asin = item.strip().upper()
+        if not asin or asin in seen:
+            continue
+        seen.add(asin)
+        asins.append(asin)
+    return asins
+
+
+@login_required(login_url='/login/')
+@require_http_methods(["POST"])
+def approval_resolve_asins_api(request):
+    if not has_approval_access(request.user):
+        return JsonResponse({'success': False, 'message': '仅 Amazon 运营或 555 权限用户可访问'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': '请求体不是有效 JSON'}, status=400)
+
+    asins = parse_asin_input(payload.get('asins') if 'asins' in payload else payload.get('text'))
+    if not asins:
+        return JsonResponse({'success': False, 'message': '请至少输入一个 ASIN'}, status=400)
+
+    visible_shops = list(get_visible_lingxing_shops(request.user).filter(name__contains='US'))
+    visible_sid_set = {int(shop.sid) for shop in visible_shops}
+    shop_map = {str(shop.sid): shop for shop in visible_shops}
+    if not visible_sid_set:
+        return JsonResponse({'success': False, 'message': '当前没有可用的 US 店铺'}, status=400)
+
+    listings = list(
+        AmazonListingV2.objects
+        .filter(asin__in=asins, sid__in=visible_sid_set, lingxing_shop_id__in=visible_sid_set)
+        .select_related('lingxing_shop')
+        .order_by('asin', 'sid', 'fulfillment_channel_type', 'id')
+    )
+
+    by_asin = {}
+    for listing in listings:
+        by_asin.setdefault((listing.asin or '').upper(), []).append(listing)
+
+    groups = {}
+    warnings = {
+        'unmatched': [],
+        'multi_store': [],
+    }
+
+    for asin in asins:
+        asin_listings = by_asin.get(asin, [])
+        if not asin_listings:
+            warnings['unmatched'].append(asin)
+            continue
+
+        sid_groups = {}
+        for listing in asin_listings:
+            sid_groups.setdefault(str(listing.sid), []).append(listing)
+
+        if len(sid_groups) > 1:
+            warnings['multi_store'].append({
+                'asin': asin,
+                'shops': [
+                    {
+                        'sid': sid,
+                        'shop_name': shop_map.get(sid).name if shop_map.get(sid) else f"sid_{sid}",
+                    }
+                    for sid in sorted(sid_groups.keys())
+                ],
+            })
+            continue
+
+        sid, store_listings = next(iter(sid_groups.items()))
+        selected_listing = choose_preferred_listing(store_listings)
+        if sid not in groups:
+            shop = shop_map.get(sid)
+            groups[sid] = {
+                'sid': sid,
+                'shop_name': shop.name if shop else get_listing_shop_name(selected_listing),
+                'listings': [],
+            }
+        groups[sid]['listings'].append(serialize_approval_listing(selected_listing))
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'groups': list(groups.values()),
+            'warnings': warnings,
+            'input_count': len(asins),
+            'matched_count': sum(len(group['listings']) for group in groups.values()),
         }
     })
 
@@ -747,12 +884,12 @@ def normalize_ad_shop_configs_or_response(request, shop_configs):
     normalized_configs = []
     for index, config in enumerate(shop_configs, start=1):
         sid_int, response = get_config_sid_or_response(request, config, index)
-        if response:
+        if response is not None:
             return None, response
 
         listing_ids = config.get('listing_ids') or config.get('asin_ids') or []
         listings, response = get_validated_listings_or_response(request, listing_ids, sid_int, index)
-        if response:
+        if response is not None:
             return None, response
 
         negative_keyword_lib_id = config.get('negative_keyword_lib_id')
@@ -780,7 +917,7 @@ def normalize_fba_shop_configs_or_response(request, shop_configs):
     normalized_configs = []
     for index, config in enumerate(shop_configs, start=1):
         sid_int, response = get_config_sid_or_response(request, config, index)
-        if response:
+        if response is not None:
             return None, response
 
         items_payload = config.get('items') or []
@@ -801,7 +938,7 @@ def normalize_fba_shop_configs_or_response(request, shop_configs):
             quantity_map[listing_id] = quantity
 
         listings, response = get_validated_listings_or_response(request, listing_ids, sid_int, index)
-        if response:
+        if response is not None:
             return None, response
 
         normalized_configs.append({
@@ -833,65 +970,20 @@ def create_ad_approval_api(request):
     approval_type = payload.get('approval_type') or ApprovalType.AMAZON_AD
     preview_approval_no = (payload.get('approval_no') or '').strip()
     approval_id = payload.get('approval_id')
-    if approval_type != ApprovalType.AMAZON_AD:
-        return JsonResponse({'success': False, 'message': '当前仅支持创建广告审批'}, status=400)
+    if approval_type not in SUPPORTED_APPROVAL_TYPES:
+        return JsonResponse({'success': False, 'message': '当前不支持该审批类型'}, status=400)
 
     try:
         shop_configs = payload.get('shop_configs') or []
         if not isinstance(shop_configs, list) or not shop_configs:
             return JsonResponse({'success': False, 'message': '至少需要一组店铺与 ASIN 配置'}, status=400)
 
-        normalized_configs = []
-        for index, config in enumerate(shop_configs, start=1):
-            sid = config.get('sid')
-            listing_ids = config.get('listing_ids') or config.get('asin_ids') or []
-            negative_keyword_lib_id = config.get('negative_keyword_lib_id')
-
-            if sid in (None, ''):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组未选择店铺'}, status=400)
-
-            try:
-                sid_int = int(sid)
-            except (TypeError, ValueError):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组店铺参数无效'}, status=400)
-
-            if not user_has_shop_access(request.user, sid_int):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组店铺无访问权限'}, status=403)
-
-            if not isinstance(listing_ids, list) or not listing_ids:
-                return JsonResponse({'success': False, 'message': f'第 {index} 组至少选择一个 ASIN'}, status=400)
-
-            if not negative_keyword_lib_id:
-                return JsonResponse({'success': False, 'message': f'第 {index} 组未选择否定词库'}, status=400)
-
-            try:
-                listing_ids_int = [int(item) for item in listing_ids]
-            except (TypeError, ValueError):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组 ASIN 参数无效'}, status=400)
-
-            listings = list(
-                AmazonListingV2.objects.filter(
-                    id__in=listing_ids_int,
-                ).select_related('lingxing_shop')
-            )
-
-            if len(listings) != len(set(listing_ids_int)):
-                return JsonResponse({'success': False, 'message': f'第 {index} 组包含无效 ASIN 记录'}, status=400)
-
-            for listing in listings:
-                if not user_has_shop_access(request.user, listing.sid):
-                    return JsonResponse({'success': False, 'message': f'第 {index} 组包含无权限 ASIN 记录'}, status=403)
-                if int(listing.sid) != sid_int:
-                    return JsonResponse({
-                        'success': False,
-                        'message': f'配置组 #{index} 只能选择店铺 sid={sid_int} 下的 ASIN，如需其他店铺请新增配置组'
-                    }, status=400)
-
-            normalized_configs.append({
-                'sid': sid_int,
-                'listings': listings,
-                'negative_keyword_lib_id': negative_keyword_lib_id,
-            })
+        if approval_type == ApprovalType.FBA_SHIPMENT:
+            normalized_configs, response = normalize_fba_shop_configs_or_response(request, shop_configs)
+        else:
+            normalized_configs, response = normalize_ad_shop_configs_or_response(request, shop_configs)
+        if response is not None:
+            return response
 
         if approval_id in (None, ''):
             approval = Approval.build_draft(
@@ -901,11 +993,6 @@ def create_ad_approval_api(request):
             if preview_approval_no:
                 approval.approval_no = preview_approval_no
             approval.save()
-            ad_approval = AmazonAdApproval.objects.create(
-                company=request.user.company,
-                approval=approval,
-                remark=(payload.get('remark') or '').strip(),
-            )
         else:
             try:
                 approval_id = int(approval_id)
@@ -919,14 +1006,30 @@ def create_ad_approval_api(request):
                     id=approval_id,
                     company=request.user.company,
                     applicant=request.user,
-                    approval_type=ApprovalType.AMAZON_AD,
-            status__in=[ApprovalStatus.DRAFT, ApprovalStatus.REJECTED],
+                    approval_type=approval_type,
+                    status__in=[ApprovalStatus.DRAFT, ApprovalStatus.REJECTED],
                 )
                 .first()
             )
             if not approval:
                 return JsonResponse({'success': False, 'message': '草稿不存在或已不可编辑'}, status=404)
+            approval.steps.all().delete()
 
+        remark = (payload.get('remark') or '').strip()
+        ad_approval = None
+        fba_approval = None
+        if approval_type == ApprovalType.FBA_SHIPMENT:
+            fba_approval, _ = FbaShipmentApproval.objects.get_or_create(
+                approval=approval,
+                defaults={
+                    'company': request.user.company,
+                    'remark': '',
+                }
+            )
+            fba_approval.remark = remark
+            fba_approval.save()
+            fba_approval.shop_configs.all().delete()
+        else:
             ad_approval, _ = AmazonAdApproval.objects.get_or_create(
                 approval=approval,
                 defaults={
@@ -934,9 +1037,8 @@ def create_ad_approval_api(request):
                     'remark': '',
                 }
             )
-            ad_approval.remark = (payload.get('remark') or '').strip()
+            ad_approval.remark = remark
             ad_approval.save()
-            approval.steps.all().delete()
             ad_approval.shop_configs.all().delete()
 
         step_1, step_2, skipped = create_approval_steps(approval, request.user)
@@ -949,21 +1051,34 @@ def create_ad_approval_api(request):
                     'message': f'店铺 sid={config["sid"]} 不存在或已被删除，请刷新页面后重新选择'
                 }, status=404)
 
-            lib_id = config.get('negative_keyword_lib_id')
-            negative_keyword_lib = (
-                NegativeKeywordLibrary.objects.filter(id=lib_id, company=request.user.company, is_active=True).first()
-                if lib_id else None
-            )
+            if approval_type == ApprovalType.FBA_SHIPMENT:
+                shop_config = FbaShipmentShopConfig.objects.create(
+                    company=request.user.company,
+                    fba_shipment=fba_approval,
+                    lingxing_shop=lingxing_shop,
+                    sequence=sequence,
+                )
+                FbaShipmentItem.objects.bulk_create([
+                    FbaShipmentItem(
+                        company=request.user.company,
+                        shop_config=shop_config,
+                        listing=item['listing'],
+                        quantity=item['quantity'],
+                        sequence=item_index,
+                    )
+                    for item_index, item in enumerate(config['items'], start=1)
+                ])
+            else:
+                shop_config = AmazonAdShopConfig.objects.create(
+                    company=request.user.company,
+                    amazon_ad=ad_approval,
+                    lingxing_shop=lingxing_shop,
+                    sequence=sequence,
+                    negative_keyword_lib=config['negative_keyword_lib'],
+                )
+                shop_config.asins.set(config['listings'])
 
-            shop_config = AmazonAdShopConfig.objects.create(
-                company=request.user.company,
-                amazon_ad=ad_approval,
-                lingxing_shop=lingxing_shop,
-                sequence=sequence,
-                negative_keyword_lib=negative_keyword_lib,
-            )
-            shop_config.asins.set(config['listings'])
-
+        approval_type_label = get_approval_type_label(approval_type)
         if skipped:
             approval.status = ApprovalStatus.WAITING
             approval.current_step_sequence = approval.total_steps
@@ -975,7 +1090,7 @@ def create_ad_approval_api(request):
                 approval.original_approval.delete()
             return JsonResponse({
                 'success': True,
-                'message': '广告审批已提交（该员工已配置免审批，直接进入执行队列）',
+                'message': f'{approval_type_label}已提交（该员工已配置免审批，直接进入执行队列）',
                 'data': {
                     'approval_id': approval.id,
                     'approval_no': approval.approval_no,
@@ -995,7 +1110,7 @@ def create_ad_approval_api(request):
 
         return JsonResponse({
             'success': True,
-            'message': '广告审批提交成功',
+            'message': f'{approval_type_label}提交成功',
             'data': {
                 'approval_id': approval.id,
                 'approval_no': approval.approval_no,
@@ -1004,7 +1119,7 @@ def create_ad_approval_api(request):
             }
         })
     except Exception as exc:
-        return JsonResponse({'success': False, 'message': f'广告审批提交失败: {exc}'}, status=500)
+        return JsonResponse({'success': False, 'message': f'{get_approval_type_label(approval_type)}提交失败: {exc}'}, status=500)
 
 
 @login_required(login_url='/login/')
@@ -1041,7 +1156,6 @@ def approval_leader_action_api(request):
         .filter(
             id=approval_id,
             company=request.user.company,
-            approval_type=ApprovalType.AMAZON_AD,
             status=ApprovalStatus.PENDING,
             current_step_sequence=0,
             applicant__manager=request.user,
@@ -1128,38 +1242,62 @@ def approval_leader_action_api(request):
 
 def _send_approval_webhook(approval):
     try:
-        ad_detail = (
+        approval = (
             Approval.objects
-            .select_related('ad_detail', 'applicant')
+            .select_related('ad_detail', 'fba_shipment_detail', 'applicant')
             .filter(pk=approval.pk)
             .first()
         )
-        ad_detail = getattr(ad_detail, 'ad_detail', None) if ad_detail else None
-        if not ad_detail:
+        detail = get_approval_business_detail(approval) if approval else None
+        if not detail:
             return
 
-        configs = (
-            AmazonAdShopConfig.objects
-            .filter(amazon_ad=ad_detail)
-            .select_related('lingxing_shop','negative_keyword_lib')
-            .prefetch_related('asins')
-            .order_by('sequence')
-        )
-
         subtask_list = []
-        for config in configs:
-            asin_list = list(config.asins.values_list('asin', flat=True))
-            subtask_list.append({
-                '子任务序号': config.sequence,
-                '店铺名称': config.lingxing_shop.name if config.lingxing_shop else '',
-                'ASIN列表': asin_list,
-                '否定词库': config.negative_keyword_lib.keywords if config.negative_keyword_lib else '',
-            })
+        if approval.approval_type == ApprovalType.FBA_SHIPMENT:
+            item_prefetch = Prefetch(
+                'items',
+                queryset=FbaShipmentItem.objects.select_related('listing').order_by('sequence', 'id'),
+            )
+            configs = (
+                FbaShipmentShopConfig.objects
+                .filter(fba_shipment=detail)
+                .select_related('lingxing_shop')
+                .prefetch_related(item_prefetch)
+                .order_by('sequence')
+            )
+            for config in configs:
+                subtask_list.append({
+                    '子任务序号': config.sequence,
+                    '店铺名称': config.lingxing_shop.name if config.lingxing_shop else '',
+                    'ASIN列表': [
+                        {
+                            'ASIN': item.listing.asin,
+                            '数量': item.quantity,
+                        }
+                        for item in config.items.all()
+                    ],
+                })
+        else:
+            configs = (
+                AmazonAdShopConfig.objects
+                .filter(amazon_ad=detail)
+                .select_related('lingxing_shop','negative_keyword_lib')
+                .prefetch_related('asins')
+                .order_by('sequence')
+            )
+            for config in configs:
+                asin_list = list(config.asins.values_list('asin', flat=True))
+                subtask_list.append({
+                    '子任务序号': config.sequence,
+                    '店铺名称': config.lingxing_shop.name if config.lingxing_shop else '',
+                    'ASIN列表': asin_list,
+                    '否定词库': config.negative_keyword_lib.keywords if config.negative_keyword_lib else '',
+                })
 
         payload = {
             '审批单号': approval.approval_no,
             '企业微信通知url': approval.applicant.wx_url or '',
-            '任务类型': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            '任务类型': get_approval_type_label(approval.approval_type),
             '子任务列表': subtask_list,
         }
 
@@ -1308,7 +1446,7 @@ def approval_list_data_api(request):
     tab = request.GET.get('tab', 'all')
     search = (request.GET.get('search') or '').strip()
 
-    base_qs = Approval.objects.filter(company=request.user.company).select_related('applicant', 'ad_detail')
+    base_qs = Approval.objects.filter(company=request.user.company).select_related('applicant', 'ad_detail', 'fba_shipment_detail')
 
     if tab == 'pending':
         base_qs = base_qs.filter(status=ApprovalStatus.PENDING)
@@ -1337,9 +1475,9 @@ def approval_list_data_api(request):
         exec_status_label, exec_status_code = get_exec_status_summary(approval)
 
         shop_names_set = set()
-        ad_detail = getattr(approval, 'ad_detail', None)
-        if ad_detail:
-            configs = ad_detail.shop_configs.select_related('lingxing_shop').all()
+        detail = get_approval_business_detail(approval)
+        if detail:
+            configs = detail.shop_configs.select_related('lingxing_shop').all()
             for config in configs:
                 if config.lingxing_shop and config.lingxing_shop.name:
                     shop_names_set.add(config.lingxing_shop.name)
@@ -1389,7 +1527,7 @@ def approval_list_data_api(request):
             'approval_id': approval.id,
             'approval_no': approval.approval_no,
             'approval_type': approval.approval_type,
-            'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            'approval_type_label': get_approval_type_label(approval.approval_type),
             'applicant_id': approval.applicant_id,
             'applicant_name': applicant_name,
             'status': approval.status,
@@ -1428,7 +1566,7 @@ def approval_detail_api(request, approval_id):
     approval = (
         Approval.objects
         .filter(id=approval_id, company=request.user.company)
-        .select_related('applicant', 'ad_detail')
+        .select_related('applicant', 'ad_detail', 'fba_shipment_detail')
         .prefetch_related('steps__records__approver')
         .first()
     )
@@ -1445,9 +1583,34 @@ def approval_detail_api(request, approval_id):
 
     detail_rows = []
     negative_keyword_lib_names = []
-    ad_detail = getattr(approval, 'ad_detail', None)
+    detail = get_approval_business_detail(approval)
     rpa_progress = []
-    if ad_detail:
+    if approval.approval_type == ApprovalType.FBA_SHIPMENT and detail:
+        item_prefetch = Prefetch(
+            'items',
+            queryset=FbaShipmentItem.objects.select_related('listing__lingxing_shop').order_by('sequence', 'id'),
+        )
+        configs = detail.shop_configs.select_related('lingxing_shop').prefetch_related(item_prefetch).order_by('sequence', 'id')
+        for config in configs:
+            shop_name = config.lingxing_shop.name if config.lingxing_shop else f"sid_未知"
+            rpa_progress.append({
+                'sequence': config.sequence,
+                'shop_name': shop_name,
+                'exec_status': config.exec_status,
+                'exec_status_label': dict(ExecStatus.choices).get(config.exec_status, config.exec_status),
+            })
+            for item in config.items.all():
+                listing = item.listing
+                detail_rows.append({
+                    'row_key': f'{approval.id}-{config.id}-{listing.id}',
+                    'config_id': config.id,
+                    'asin': listing.asin or '',
+                    'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
+                    'fulfillment_channel_type': listing.fulfillment_channel_type or '',
+                    'quantity': item.quantity,
+                })
+    elif detail:
+        ad_detail = detail
         configs = ad_detail.shop_configs.select_related('lingxing_shop', 'negative_keyword_lib').prefetch_related(asin_prefetch).order_by('sequence', 'id')
         for config in configs:
             if config.negative_keyword_lib and config.negative_keyword_lib.name not in negative_keyword_lib_names:
@@ -1461,19 +1624,11 @@ def approval_detail_api(request, approval_id):
                 'exec_status_label': dict(ExecStatus.choices).get(config.exec_status, config.exec_status),
             })
             for listing in config.asins.all():
-                shop_name = ''
-                if listing.lingxing_shop and listing.lingxing_shop.name:
-                    shop_name = listing.lingxing_shop.name
-                elif config.lingxing_shop and config.lingxing_shop.name:
-                    shop_name = config.lingxing_shop.name
-                else:
-                    shop_name = f"sid_{listing.sid}"
-
                 detail_rows.append({
                     'row_key': f'{approval.id}-{config.id}-{listing.id}',
                     'config_id': config.id,
                     'asin': listing.asin or '',
-                    'shop_name': shop_name,
+                    'shop_name': get_listing_shop_name(listing, config.lingxing_shop),
                     'fulfillment_channel_type': listing.fulfillment_channel_type or '',
                 })
 
@@ -1508,12 +1663,13 @@ def approval_detail_api(request, approval_id):
         'data': {
             'approval_id': approval.id,
             'approval_no': approval.approval_no,
-            'approval_type_label': dict(ApprovalType.choices).get(approval.approval_type, approval.approval_type),
+            'approval_type': approval.approval_type,
+            'approval_type_label': get_approval_type_label(approval.approval_type),
             'applicant_name': approval.applicant.first_name or approval.applicant.username,
             'status': approval.status,
             'status_label': status_label,
             'exec_status': exec_status_code,
-            'remark': ad_detail.remark if ad_detail else '',
+            'remark': detail.remark if detail else '',
             'negative_keyword_lib_names': negative_keyword_lib_names,
             'detail_rows': detail_rows,
             'records': records,
@@ -1656,24 +1812,29 @@ def external_update_exec_status_api(request):
                 }, status=400)
 
         with transaction.atomic():
-            approval = Approval.objects.select_related('ad_detail').filter(approval_no=approval_no).first()
+            approval = Approval.objects.select_related('ad_detail', 'fba_shipment_detail').filter(approval_no=approval_no).first()
             if not approval:
                 return JsonResponse({
                     'success': False,
                     'message': '审批单不存在'
                 }, status=404)
 
-            ad_detail = getattr(approval, 'ad_detail', None)
-            if not ad_detail:
+            detail = get_approval_business_detail(approval)
+            if not detail:
                 return JsonResponse({
                     'success': False,
-                    'message': '该审批单无关联的开广告配置'
+                    'message': '该审批单无关联的业务配置'
                 }, status=404)
 
+            if approval.approval_type == ApprovalType.FBA_SHIPMENT:
+                config_model = FbaShipmentShopConfig
+                config_filter = {'fba_shipment': detail}
+            else:
+                config_model = AmazonAdShopConfig
+                config_filter = {'amazon_ad': detail}
+
             if sequence is not None:
-                config = AmazonAdShopConfig.objects.filter(
-                    amazon_ad=ad_detail, sequence=sequence
-                ).first()
+                config = config_model.objects.filter(sequence=sequence, **config_filter).first()
                 if not config:
                     return JsonResponse({
                         'success': False,
@@ -1683,12 +1844,10 @@ def external_update_exec_status_api(request):
                 config.save(update_fields=['exec_status', 'updated_at'])
                 updated_count = 1
             else:
-                updated_count = AmazonAdShopConfig.objects.filter(
-                    amazon_ad=ad_detail
-                ).update(exec_status=exec_status)
+                updated_count = config_model.objects.filter(**config_filter).update(exec_status=exec_status)
 
             # 同步更新 Approval.status
-            all_configs = AmazonAdShopConfig.objects.filter(amazon_ad=ad_detail)
+            all_configs = config_model.objects.filter(**config_filter)
             exec_statuses = list(all_configs.values_list('exec_status', flat=True))
             
             new_approval_status = None

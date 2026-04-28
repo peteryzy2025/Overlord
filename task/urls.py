@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/task/approvals/ad/drafts/', approval_views.approval_draft_list_api, name='approval_draft_list_api'),
     path('api/task/approvals/ad/drafts/<int:approval_id>/', approval_views.approval_draft_detail_api, name='approval_draft_detail_api'),
     path('api/task/approvals/ad/asins/', approval_views.approval_asins_api, name='approval_asins_api'),
+    path('api/task/approvals/ad/asins/resolve/', approval_views.approval_resolve_asins_api, name='approval_resolve_asins_api'),
     path('api/task/approvals/ad/create/', approval_views.create_ad_approval_api, name='create_ad_approval_api'),
     path('api/task/approvals/leader/list/', approval_views.approval_leader_list_api, name='approval_leader_list_api'),
     path('api/task/approvals/leader/action/', approval_views.approval_leader_action_api, name='approval_leader_action_api'),
