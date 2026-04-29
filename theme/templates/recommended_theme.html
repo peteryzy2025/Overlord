@@ -13,6 +13,14 @@
             font-weight: 600;
             line-height: 1.4;
             word-break: break-word;
+            cursor: pointer;
+            transition: color 0.15s;
+        }
+        .recommended-theme-cell:hover {
+            color: var(--accent-color, #4f8cff);
+        }
+        .recommended-theme-cell.copied {
+            color: #22c55e;
         }
 
         .recommended-source-badge {
@@ -223,6 +231,10 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label class="filter-label">Source</label>
+                        <div id="sourceFilter" class="searchable-select multiple" data-placeholder="全部来源"></div>
+                    </div>
                     <div class="filter-group" style="flex: 1; min-width: 220px;">
                         <label class="filter-label">主题搜索</label>
                         <input type="text" class="form-control" id="themeSearch" placeholder="输入推荐主题"
@@ -323,19 +335,27 @@
 {% endblock %}
 
 {% block extra_js %}
+    <script src="{% static 'js/searchable-select.js' %}"></script>
     <script src="{% static 'js/general_style_1.js' %}?v=20260425-recommended-theme-layout"></script>
     <script>
         const MAIN_COLSPAN = 8;
         const ASIN_COLSPAN = 7;
+        const sourceOptions = [
+            {% for value,label in source_options %}
+                { value: '{{ value|escapejs }}', label: '{{ label|escapejs }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
         let currentPeriod = 'day';
         let currentPage = 1;
         let pageSize = 20;
         let totalItems = 0;
         let totalPages = 1;
-        let sortField = '';
+        let sortField = 'asin_count';
         let sortOrder = 'desc';
+        let sourceFilterSelect = null;
 
         document.addEventListener('DOMContentLoaded', function () {
+            initSourceFilter();
             document.getElementById('recommendedThemeBody').addEventListener('click', function (e) {
                 var btn = e.target.closest('.btn-view-asin');
                 if (!btn) return;
@@ -343,6 +363,15 @@
             });
             loadRecommendedThemes();
         });
+
+        function initSourceFilter() {
+            if (typeof window.SearchableSelect !== 'function') return;
+            sourceFilterSelect = new window.SearchableSelect('#sourceFilter', {
+                options: sourceOptions,
+                multiple: true,
+                placeholder: '全部来源'
+            });
+        }
 
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, function (char) {
@@ -388,11 +417,18 @@
             loadRecommendedThemes();
         }
 
+        function getSelectedSources() {
+            if (!sourceFilterSelect) return [];
+            const values = sourceFilterSelect.getValue();
+            return Array.isArray(values) ? values : [];
+        }
+
         function getPayload() {
             return {
                 period_type: currentPeriod,
                 snapshot_date: document.getElementById('snapshotDate').value,
                 category: document.getElementById('categoryFilter').value,
+                source: getSelectedSources(),
                 theme_search: document.getElementById('themeSearch').value.trim(),
                 page: currentPage,
                 page_size: pageSize,
@@ -462,7 +498,7 @@
                 const sourceText = item.source_label || item.source || '-';
                 return `
                     <tr>
-                        <td><div class="recommended-theme-cell">${escapeHtml(item.theme)}</div></td>
+                        <td><div class="recommended-theme-cell" onclick="copyThemeToClipboard(this)" title="点击复制">${escapeHtml(item.theme)}</div></td>
                         <td><span class="recommended-source-badge">${escapeHtml(sourceText)}</span></td>
                         <td>${escapeHtml(item.category || '-')}</td>
                         <td>${escapeHtml(item.snapshot_date || '-')}</td>
@@ -569,8 +605,11 @@
         function resetFilters() {
             document.getElementById('snapshotDate').value = '';
             document.getElementById('categoryFilter').value = '';
+            if (sourceFilterSelect) {
+                sourceFilterSelect.setValue([]);
+            }
             document.getElementById('themeSearch').value = '';
-            sortField = '';
+            sortField = 'asin_count';
             sortOrder = 'desc';
             currentPage = 1;
             loadRecommendedThemes();
@@ -655,6 +694,19 @@
                 return;
             }
             document.getElementById('asinModal').classList.remove('open');
+        }
+
+        function copyThemeToClipboard(el) {
+            const text = el.textContent.trim();
+            navigator.clipboard.writeText(text).then(function () {
+                el.classList.add('copied');
+                const orig = el.textContent;
+                el.textContent = '已复制!';
+                setTimeout(function () {
+                    el.textContent = orig;
+                    el.classList.remove('copied');
+                }, 800);
+            });
         }
     </script>
 {% endblock %}

@@ -229,79 +229,6 @@ class DatabaseManager:
         )
         return len(data)
 
-    def sync_summary_subjects(self):
-        """
-        将 theme_amazon_new_release_rank 中的 subject_translation
-        归类到 theme_summary 表，相似度阈值 0.2
-        """
-        try:
-            # 获取所有待处理的"孤儿"翻译
-            self.cursor.execute("""
-                SELECT subject_translation, COUNT(*) as cnt
-                FROM theme_amazon_new_release_rank
-                WHERE summary_subject_id IS NULL
-                GROUP BY subject_translation
-            """)
-            orphans = self.cursor.fetchall()
-
-            if not orphans:
-                logger.info("没有发现新的待分类主题")
-                return 0
-
-            updated_count = 0
-            for row in orphans:
-                text = row[0]
-
-                # 尝试在现有 theme_summary 中寻找匹配（相似度 > 0.2）
-                self.cursor.execute(
-                    """
-                    SELECT id FROM theme_summary
-                    WHERE similarity(summary_subject_title, %s) > 0.2
-                    ORDER BY similarity(summary_subject_title, %s) DESC
-                    LIMIT 1
-                """,
-                    (text, text),
-                )
-                match = self.cursor.fetchone()
-
-                if match:
-                    target_id = match[0]
-                    logger.debug(f"匹配成功: '{text}' -> ID {target_id}")
-                else:
-                    # 新建聚类中心
-                    self.cursor.execute(
-                        """
-                        INSERT INTO theme_summary (summary_subject_title, report, created_time)
-                        VALUES (%s, FALSE, NOW()) RETURNING id
-                    """,
-                        (text,),
-                    )
-                    result = self.cursor.fetchone()
-                    target_id = result[0]
-                    logger.info(f"新建主题: '{text}' (ID {target_id})")
-
-                # 回填关联 ID
-                self.cursor.execute(
-                    """
-                    UPDATE theme_amazon_new_release_rank
-                    SET summary_subject_id = %s
-                    WHERE subject_translation = %s AND summary_subject_id IS NULL
-                """,
-                    (target_id, text),
-                )
-                updated_count += self.cursor.rowcount
-
-            self.commit()
-            logger.info(
-                f"主题归类完成，共处理 {len(orphans)} 个主题，更新 {updated_count} 条记录"
-            )
-            return updated_count
-
-        except Exception as e:
-            self.rollback()
-            logger.error(f"主题归类失败: {e}")
-            raise
-
 
 class ContentProcessor:
     def __init__(self):
@@ -1281,10 +1208,6 @@ def main():
                 page, url, keyword, page_num, co, db_manager, processor
             )
             crawl_dates.update(current_dates)
-
-        # 主题归类：将 subject_translation 归类到 theme_summary 表
-        logger.info("开始主题归类...")
-        db_manager.sync_summary_subjects()
 
         analyze_themes_for_dates(
             db_manager, crawl_dates or {datetime.now().strftime("%Y-%m-%d")}
