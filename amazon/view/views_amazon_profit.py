@@ -39,9 +39,9 @@ NUMERIC_FIELD_TYPES = {
     'FloatField',
 }
 
-COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio', 'net_profit'}
+COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'platform_fee_ratio', 'logistics_ratio', 'profit_ratio', 'net_profit', 'gross_profit'}
 PYTHON_SORT_FIELDS = COMPUTED_FIELDS | {'asin', 'shop_name'}
-PERCENT_COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'logistics_ratio', 'profit_ratio'}
+PERCENT_COMPUTED_FIELDS = {'ad_cost_ratio', 'cost_ratio', 'platform_fee_ratio', 'logistics_ratio', 'profit_ratio'}
 NON_SUM_NUMERIC_NAMES = {
     'id',
     'sid',
@@ -75,6 +75,13 @@ EXCLUDED_PROFIT_COLUMN_KEYS = {
     'created_at',
     'updated_at',
 }
+PINNED_AFTER_DATE_COLUMNS = [
+    {'key': 'spend', 'label': '广告总花费', 'sortable': True, 'value_type': 'amount_percent', 'ratio_key': 'ad_cost_ratio'},
+    {'key': 'total_costs', 'label': '合计成本', 'sortable': True, 'value_type': 'amount_percent', 'ratio_key': 'cost_ratio'},
+    {'key': 'selling_fee', 'label': '平台费', 'sortable': True, 'value_type': 'amount_percent', 'ratio_key': 'platform_fee_ratio'},
+    {'key': 'gross_profit', 'label': '利润', 'sortable': True, 'value_type': 'amount_percent', 'ratio_key': 'profit_ratio'},
+]
+PINNED_AFTER_DATE_KEYS = {column['key'] for column in PINNED_AFTER_DATE_COLUMNS}
 
 
 def get_profit_field_key(field):
@@ -102,7 +109,7 @@ def get_profit_table_columns():
     for field in AmazonMSKUDailyProfit._meta.fields:
         key = get_profit_field_key(field)
         field_type = field.get_internal_type()
-        if key in EXCLUDED_PROFIT_COLUMN_KEYS:
+        if key in EXCLUDED_PROFIT_COLUMN_KEYS or key in PINNED_AFTER_DATE_KEYS:
             continue
 
         columns.append({
@@ -111,6 +118,9 @@ def get_profit_table_columns():
             'sortable': True,
             'value_type': infer_profit_column_type(key, field_type),
         })
+
+        if key == 'sync_date':
+            columns.extend(PINNED_AFTER_DATE_COLUMNS)
 
         if field.name == 'seller_sku' and not inserted_after_sku:
             columns.extend([
@@ -121,10 +131,8 @@ def get_profit_table_columns():
             inserted_after_sku = True
 
     columns.extend([
-        {'key': 'ad_cost_ratio', 'label': '广告费用占比', 'sortable': True, 'value_type': 'percent'},
         {'key': 'logistics_ratio', 'label': '运费占比', 'sortable': True, 'value_type': 'percent'},
-        {'key': 'profit_ratio', 'label': '利润占比', 'sortable': True, 'value_type': 'percent'},
-        {'key': 'gross_profit', 'label': '利润', 'sortable': True, 'value_type': 'number'},
+        {'key': 'gross_profit', 'label': '利润', 'sortable': True, 'value_type': 'amount_percent', 'ratio_key': 'profit_ratio'},
     ])
 
     return columns
@@ -164,28 +172,22 @@ def decimal_or_zero(value):
         return Decimal('0')
 
 
-def calculate_profit_metrics(amount, spend, total_costs, logistics_costs, net_amount=None, shipping_cost=None, profit=None):
+def calculate_profit_metrics(amount, spend, total_costs, logistics_costs, selling_fee=None):
     amount = decimal_or_zero(amount)
-    net_amount = decimal_or_zero(net_amount)
     spend = decimal_or_zero(spend)
     total_costs = decimal_or_zero(total_costs)
     logistics_costs = decimal_or_zero(logistics_costs)
-    shipping_cost = decimal_or_zero(shipping_cost)
+    selling_fee = decimal_or_zero(selling_fee)
 
-    if profit not in (None, ''):
-        net_profit = decimal_or_zero(profit)
-    else:
-        net_profit = amount + spend + total_costs
+    net_profit = amount + spend + total_costs + selling_fee
 
     amount_abs = abs(amount) if amount else Decimal('0')
-    profit_base_value = net_amount if net_amount else (amount + shipping_cost)
-    profit_base = abs(profit_base_value) if profit_base_value else amount_abs
     ad_cost_ratio = (abs(spend) / amount_abs * 100) if amount_abs else Decimal('0')
     cost_ratio = (abs(total_costs) / amount_abs * 100) if amount_abs else Decimal('0')
+    platform_fee_ratio = (abs(selling_fee) / amount_abs * 100) if amount_abs else Decimal('0')
     logistics_ratio = (abs(logistics_costs) / amount_abs * 100) if amount_abs else Decimal('0')
-    # gross_profit includes shipping and discounts, so use net sales as the margin base.
-    profit_ratio = (net_profit / profit_base * 100) if profit_base else Decimal('0')
-    return net_profit, ad_cost_ratio, cost_ratio, logistics_ratio, profit_ratio
+    profit_ratio = (net_profit / amount_abs * 100) if amount_abs else Decimal('0')
+    return net_profit, ad_cost_ratio, cost_ratio, platform_fee_ratio, logistics_ratio, profit_ratio
 
 
 def apply_profit_metrics(
@@ -194,18 +196,15 @@ def apply_profit_metrics(
     spend=None,
     total_costs=None,
     logistics_costs=None,
-    net_amount=None,
-    shipping_cost=None,
+    selling_fee=None,
     formatted=True,
 ):
-    net_profit, ad_cost_ratio, cost_ratio, logistics_ratio, profit_ratio = calculate_profit_metrics(
-        amount if amount is not None else row.get('amount'),
-        spend if spend is not None else row.get('spend'),
-        total_costs if total_costs is not None else row.get('total_costs'),
-        logistics_costs if logistics_costs is not None else row.get('logistics_costs'),
-        net_amount if net_amount is not None else row.get('net_amount'),
-        shipping_cost if shipping_cost is not None else row.get('shipping_cost'),
-        row.get('gross_profit'),
+    net_profit, ad_cost_ratio, cost_ratio, platform_fee_ratio, logistics_ratio, profit_ratio = calculate_profit_metrics(
+        amount=amount if amount is not None else row.get('amount'),
+        spend=spend if spend is not None else row.get('spend'),
+        total_costs=total_costs if total_costs is not None else row.get('total_costs'),
+        logistics_costs=logistics_costs if logistics_costs is not None else row.get('logistics_costs'),
+        selling_fee=selling_fee if selling_fee is not None else row.get('selling_fee'),
     )
 
     if formatted:
@@ -213,6 +212,7 @@ def apply_profit_metrics(
         row['gross_profit'] = str(net_profit)
         row['ad_cost_ratio'] = f"{ad_cost_ratio:.1f}"
         row['cost_ratio'] = f"{cost_ratio:.1f}"
+        row['platform_fee_ratio'] = f"{platform_fee_ratio:.1f}"
         row['logistics_ratio'] = f"{logistics_ratio:.1f}"
         row['profit_ratio'] = f"{profit_ratio:.1f}"
     else:
@@ -220,6 +220,7 @@ def apply_profit_metrics(
         row['gross_profit'] = net_profit
         row['ad_cost_ratio'] = ad_cost_ratio
         row['cost_ratio'] = cost_ratio
+        row['platform_fee_ratio'] = platform_fee_ratio
         row['logistics_ratio'] = logistics_ratio
         row['profit_ratio'] = profit_ratio
     return row
@@ -420,41 +421,33 @@ def get_amazon_profit_detail_api(request):
         # ========== 汇总统计（全部数据） ==========
         all_profits = profits_qs.values_list(
             'amount',
-            'net_amount',
-            'shipping_cost',
             'spend',
             'selling_fee',
             'total_costs',
-            'gross_profit',
         )
         total_sales = Decimal('0')
-        total_profit_base = Decimal('0')
         total_ad_cost = Decimal('0')
         total_platform_fee = Decimal('0')
         total_cost = Decimal('0')
         total_net_profit = Decimal('0')
 
-        for amount, net_amount, shipping_cost, spend, selling_fee, costs, profit in all_profits:
+        for amount, spend, selling_fee, costs in all_profits:
             amt = amount or Decimal('0')
-            net_amt = net_amount or Decimal('0')
-            ship = shipping_cost or Decimal('0')
             spd = spend or Decimal('0')
             fee = selling_fee or Decimal('0')
             cst = costs or Decimal('0')
-            prf = profit if profit is not None else (amt + spd + cst)
+            prf = amt + spd + cst + fee
             total_sales += amt
-            total_profit_base += (net_amt if net_amt else (amt + ship))
             total_ad_cost += spd
             total_platform_fee += fee
             total_cost += cst
             total_net_profit += prf
 
         total_sales_abs = abs(total_sales) if total_sales else Decimal('0')
-        total_profit_base_abs = abs(total_profit_base) if total_profit_base else total_sales_abs
         summary_ad_cost_ratio = (abs(total_ad_cost) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
         summary_platform_fee_ratio = (abs(total_platform_fee) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
         summary_cost_ratio = (abs(total_cost) / total_sales_abs * 100) if total_sales_abs else Decimal('0')
-        summary_profit_ratio = (total_net_profit / total_profit_base_abs * 100) if total_profit_base_abs else Decimal('0')
+        summary_profit_ratio = (total_net_profit / total_sales_abs * 100) if total_sales_abs else Decimal('0')
 
         # ========== 单天 or 多天聚合 ==========
         if is_multi_day:

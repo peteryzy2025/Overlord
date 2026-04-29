@@ -398,7 +398,7 @@
     function renderTable() {
         const tbody = document.getElementById('approvalTableBody');
         if (!leaderApprovalState.rows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有待你审批的广告审批</p></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>当前没有待你审批的审批单</p></td></tr>';
             return;
         }
 
@@ -430,7 +430,7 @@
                         <td><span class="detail-label"><i class="fas fa-level-up-alt fa-rotate-90"></i> 详细</span></td>
                         <td></td>
                         <td></td>
-                        <td>${escapeHtml(detail.asin)}</td>
+                        <td>${escapeHtml(detail.quantity ? `${detail.asin} x ${detail.quantity}` : detail.asin)}</td>
                         <td>${escapeHtml(detail.shop_name)}</td>
                         <td>
                             <div class="approval-actions">

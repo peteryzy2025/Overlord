@@ -5,6 +5,7 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 import datetime
 from decimal import Decimal, InvalidOperation
 from django.db import transaction
@@ -21,6 +22,13 @@ from temu.models import LingXingTemuShop, TemuOrder, TemuOrderItem
 from api.lingxing_p.lingxing_temu import get_lx_temu_orders, check_temu_order_to_divi, shipment_order, get_wms_orders_by_order_numbers
 from asgiref.sync import async_to_sync
 import asyncio
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步Temu订单数据")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 
 def _to_decimal(value, default=Decimal('0.00')):
@@ -47,6 +55,31 @@ def _timestamp_to_datetime(ts):
         return None
 
 
+def get_temu_order_lingxing_credentials(global_order_no):
+    order = (
+        TemuOrder.objects
+        .select_related('temu_shop__project', 'lingxing_shop__temu_shop__project')
+        .filter(global_order_no=global_order_no)
+        .first()
+    )
+    if not order:
+        return None, f"未找到 Temu 订单 {global_order_no}"
+
+    temu_shop = order.temu_shop or (order.lingxing_shop.temu_shop if order.lingxing_shop else None)
+    project = temu_shop.project if temu_shop else None
+    if not project:
+        return None, f"订单 {global_order_no} 未绑定项目"
+    if not project.lingxing_app_id or not project.lingxing_app_secret:
+        return None, f"项目 {project.name}(ID:{project.id}) 未配置领星 API 凭证"
+
+    return {
+        'project_id': project.id,
+        'project_name': project.name,
+        'app_id': project.lingxing_app_id,
+        'app_secret': project.lingxing_app_secret,
+    }, None
+
+
 def sync_temu_orders(data_dict):
     """
     将拉取的 Temu 订单数据批量写入数据库
@@ -56,7 +89,7 @@ def sync_temu_orders(data_dict):
     """
     # 预加载所有店铺配置
     store_ids = list(data_dict.keys())
-    shop_qs = LingXingTemuShop.objects.filter(store_id__in=store_ids)
+    shop_qs = LingXingTemuShop.objects.filter(store_id__in=store_ids).select_related('temu_shop')
     shop_map = {shop.store_id: shop for shop in shop_qs}
 
     print(f"预加载店铺数量: {len(shop_map)}")
@@ -110,6 +143,7 @@ def sync_temu_orders(data_dict):
                     
                     defaults = {
                         'lingxing_shop': lingxing_shop,
+                        'temu_shop': lingxing_shop.temu_shop,
                         'reference_no': platform_order_no or raw_order.get('reference_no'),
                         'order_from_name': raw_order.get('order_from_name'),
                         'delivery_type': raw_order.get('delivery_type'),
@@ -242,53 +276,136 @@ def sync_temu_orders(data_dict):
     if orders_to_ship:
         print(f"\n开始处理 {len(orders_to_ship)} 个待发货订单...")
         for sn_no in orders_to_ship:
+            credentials, credential_error = get_temu_order_lingxing_credentials(sn_no)
+            if credential_error:
+                print(f"  ✗ 订单 {sn_no} 缺少项目领星凭证: {credential_error}")
+                continue
+
             try:
                 # 先执行发货
-                async_to_sync(shipment_order)(sn_no)
+                async_to_sync(shipment_order)(
+                    sn_no,
+                    app_id=credentials['app_id'],
+                    app_secret=credentials['app_secret'],
+                )
             except Exception as e:
                 print(f"  ✗ 订单 {sn_no} 发货失败: {e}")
                 continue
             
             try:
                 # 再下载面单
-                async_to_sync(get_wms_orders_by_order_numbers)(sn_no)
+                async_to_sync(get_wms_orders_by_order_numbers)(
+                    sn_no,
+                    app_id=credentials['app_id'],
+                    app_secret=credentials['app_secret'],
+                )
             except Exception as e:
                 print(f"  ✗ 订单 {sn_no} 下载面单失败: {e}")
         print("待发货订单处理完成")
 
-def temu_orders():
+def temu_orders(project_id=None, project_name=None):
     """主入口函数"""
     print("=" * 50)
     print("开始同步 Temu 订单数据...")
+    
+    if project_id:
+        print(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"按项目名称过滤：'{project_name}'")
 
-    # 1. 获取所有店铺
-    shops = list(LingXingTemuShop.objects.all())
-    store_ids = [shop.store_id for shop in shops]
-    shop_map = {shop.store_id: (shop.store_name or shop.store_id) for shop in shops}
+    # 1. 获取店铺
+    qs = LingXingTemuShop.objects.select_related('temu_shop__project').filter(
+        temu_shop__project__is_active=True
+    )
+    
+    # 按项目过滤（通过关联的 temu_shop -> project）
+    if project_id:
+        qs = qs.filter(temu_shop__project_id=project_id)
+    elif project_name:
+        qs = qs.filter(temu_shop__project__name__icontains=project_name)
+    
+    shops = list(qs)
 
-    if not store_ids:
-        print("未找到任何 Temu 店铺配置，同步终止")
+    if not shops:
+        filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+        print(f"未找到任何{filter_desc}Temu店铺配置，同步终止")
         return
 
-    print(f"共找到 {len(store_ids)} 个店铺")
+    credential_shops = {}
+    skipped_shops = []
+    for shop in shops:
+        project = shop.temu_shop.project if shop.temu_shop else None
+        if not project:
+            skipped_shops.append((shop.store_id, shop.store_name, '未绑定项目'))
+            continue
+        if not project.lingxing_app_id or not project.lingxing_app_secret:
+            skipped_shops.append((shop.store_id, shop.store_name, f"项目 {project.name} 未配置领星 API 凭证"))
+            continue
+
+        key = (project.lingxing_app_id.strip(), project.lingxing_app_secret.strip())
+        if key not in credential_shops:
+            credential_shops[key] = {
+                'app_id': key[0],
+                'app_secret': key[1],
+                'project_names': set(),
+                'store_ids': [],
+                'shop_map': {},
+            }
+        credential_shops[key]['project_names'].add(project.name)
+        credential_shops[key]['store_ids'].append(shop.store_id)
+        credential_shops[key]['shop_map'][shop.store_id] = shop.store_name or shop.store_id
+
+    if skipped_shops:
+        print(f"跳过 {len(skipped_shops)} 个未绑定项目或缺少领星凭证的 Temu 店铺")
+        for store_id, store_name, reason in skipped_shops[:10]:
+            print(f"  - {store_name or store_id}({store_id}): {reason}")
+        if len(skipped_shops) > 10:
+            print(f"  ... 还有 {len(skipped_shops) - 10} 个未显示")
+
+    if not credential_shops:
+        print("没有可用项目凭证的 Temu 店铺，同步终止")
+        return
+
+    print(f"共找到 {len(shops)} 个店铺，合并为 {len(credential_shops)} 套领星凭证")
 
     # 2. 拉取订单数据（默认3天）
-    try:
-        orders_data = asyncio.run(get_lx_temu_orders(store_ids, day=14, shop_map=shop_map))
-    except Exception as e:
-        print(f"调用领星 API 失败: {e}")
+    has_data = False
+    for data in credential_shops.values():
+        store_ids = data['store_ids']
+        shop_map = data['shop_map']
+        project_names = '、'.join(sorted(data['project_names']))
+        print(f"\n领星凭证组 [{project_names}] 开始同步 {len(store_ids)} 个 Temu 店铺")
+        try:
+            orders_data = asyncio.run(
+                get_lx_temu_orders(
+                    store_ids,
+                    day=14,
+                    shop_map=shop_map,
+                    app_id=data['app_id'],
+                    app_secret=data['app_secret'],
+                )
+            )
+        except Exception as e:
+            print(f"领星凭证组 [{project_names}] 调用领星 API 失败: {e}")
+            continue
+
+        if not orders_data:
+            print(f"领星凭证组 [{project_names}] API 返回空数据")
+            continue
+
+        has_data = True
+        print(f"领星凭证组 [{project_names}] API 返回数据包含 {len(orders_data)} 个店铺的订单")
+
+        # 3. 写入数据库
+        sync_temu_orders(orders_data)
+
+    if not has_data:
+        print("所有项目均未返回 Temu 订单数据")
         return
 
-    if not orders_data:
-        print("API 返回空数据")
-        return
-
-    print(f"API 返回数据包含 {len(orders_data)} 个店铺的订单")
-
-    # 3. 写入数据库
-    sync_temu_orders(orders_data)
     print("Temu 订单同步任务全部完成")
 
 
 if __name__ == "__main__":
-    temu_orders()
+    args = parse_args()
+    temu_orders(project_id=args.project_id, project_name=args.project_name)

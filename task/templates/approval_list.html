@@ -1031,12 +1031,13 @@
         try {
             const result = await fetchJson('/api/task/approvals/' + approvalId + '/detail/');
             const d = result.data;
+            const isFbaShipment = d.approval_type === 'fba_shipment';
             let html = `
                 <div class="detail-info-grid">
                     <div class="detail-info-item"><div class="detail-info-label">审批单号</div><div class="detail-info-value">${escapeHtml(d.approval_no)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">审批类型</div><div class="detail-info-value">${escapeHtml(d.approval_type_label)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">申请者</div><div class="detail-info-value">${escapeHtml(d.applicant_name)}</div></div>
-                    <div class="detail-info-item"><div class="detail-info-label">否定词库</div><div class="detail-info-value">${(d.negative_keyword_lib_names && d.negative_keyword_lib_names.length) ? escapeHtml(d.negative_keyword_lib_names.join('、')) : '--'}</div></div>
+                    ${!isFbaShipment ? `<div class="detail-info-item"><div class="detail-info-label">否定词库</div><div class="detail-info-value">${(d.negative_keyword_lib_names && d.negative_keyword_lib_names.length) ? escapeHtml(d.negative_keyword_lib_names.join('、')) : '--'}</div></div>` : ''}
                     <div class="detail-info-item"><div class="detail-info-label">当前状态</div><div class="detail-info-value"><div class="status-stack"><span class="status-badge ${getDetailStatusBadgeClass(d)}">${escapeHtml(d.status_label)}</span>${getDetailSubStatusHtml(d)}</div></div></div>
                     <div class="detail-info-item"><div class="detail-info-label">创建时间</div><div class="detail-info-value">${escapeHtml(d.created_at)}</div></div>
                     <div class="detail-info-item"><div class="detail-info-label">提交时间</div><div class="detail-info-value">${d.submitted_at ? escapeHtml(d.submitted_at) : '--'}</div></div>
@@ -1045,9 +1046,9 @@
                 html += `<div style="margin-bottom:1rem;"><div class="detail-info-label">备注</div><div style="margin-top:0.25rem;color:var(--text-primary);">${escapeHtml(d.remark)}</div></div>`;
             }
             if (d.detail_rows && d.detail_rows.length > 0) {
-                html += `<table class="detail-table"><thead><tr><th>ASIN</th><th>店铺名称</th><th>发货渠道</th></tr></thead><tbody>`;
+                html += `<table class="detail-table"><thead><tr><th>ASIN</th><th>店铺名称</th><th>发货渠道</th>${isFbaShipment ? '<th>发仓数量</th>' : ''}</tr></thead><tbody>`;
                 for (const r of d.detail_rows) {
-                    html += `<tr><td>${escapeHtml(r.asin)}</td><td>${escapeHtml(r.shop_name)}</td><td>${escapeHtml(r.fulfillment_channel_type)}</td></tr>`;
+                    html += `<tr><td>${escapeHtml(r.asin)}</td><td>${escapeHtml(r.shop_name)}</td><td>${escapeHtml(r.fulfillment_channel_type)}</td>${isFbaShipment ? `<td>${escapeHtml(r.quantity || '')}</td>` : ''}</tr>`;
                 }
                 html += '</tbody></table>';
             } else {

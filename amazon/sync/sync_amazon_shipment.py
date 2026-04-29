@@ -15,6 +15,7 @@
 import os
 import sys
 import django
+import argparse
 from datetime import datetime, timedelta
 from django.utils import timezone
 import logging
@@ -22,7 +23,7 @@ import logging
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
@@ -30,6 +31,13 @@ from amazon.models import AmazonOrders
 from api.lingxing_p.lingxing_fh import lingxing_ship_order
 from api.Y.y_tiem import Timer
 from general.models import User, UserOperationLog  # 导入日志模型
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="自动发货脚本")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 # ========== 日志配置 ==========
 logging.basicConfig(
@@ -79,7 +87,7 @@ def is_red_deadline(order):
     return hours_remaining <= RED_DEADLINE_HOURS
 
 
-def query_red_deadline_orders(start_date_str=None, max_batch_size=None):
+def query_red_deadline_orders(start_date_str=None, max_batch_size=None, project_id=None, project_name=None):
     """
     查询即将超时待发货的订单（红色预警）
     """
@@ -88,12 +96,21 @@ def query_red_deadline_orders(start_date_str=None, max_batch_size=None):
     else:
         start_datetime = timezone.make_aware(datetime.min)
 
+    filters = {
+        'fulfillment_channel': FULFILLMENT_CHANNEL_MFN,
+        'order_status': AMAZON_STATUS_UNSHIPPED,
+        'purchase_date_local__gte': start_datetime,
+        'amazon_shop__isnull': False,
+        'divi_tracking_number__isnull': False,
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     base_query = AmazonOrders.objects.filter(
-        fulfillment_channel=FULFILLMENT_CHANNEL_MFN,
-        order_status=AMAZON_STATUS_UNSHIPPED,
-        purchase_date_local__gte=start_datetime,
-        amazon_shop__isnull=False,
-        divi_tracking_number__isnull=False,
+        **filters
     ).exclude(
         amazon_shop__shop_status__in=['status-inactive', 'status-cancelled', 'status-warning']
     ).exclude(
@@ -112,7 +129,7 @@ def query_red_deadline_orders(start_date_str=None, max_batch_size=None):
     return red_orders
 
 
-def query_normal_ship_orders(start_date_str=None, max_batch_size=None):
+def query_normal_ship_orders(start_date_str=None, max_batch_size=None, project_id=None, project_name=None):
     """
     查询正常可发货订单（divi_order_status == 5）
     """
@@ -121,12 +138,21 @@ def query_normal_ship_orders(start_date_str=None, max_batch_size=None):
     else:
         start_datetime = timezone.make_aware(datetime.min)
 
+    filters = {
+        'divi_order_status': DIVI_STATUS_SHIPPED,
+        'fulfillment_channel': FULFILLMENT_CHANNEL_MFN,
+        'order_status': AMAZON_STATUS_UNSHIPPED,
+        'purchase_date_local__gte': start_datetime,
+        'amazon_shop__isnull': False,
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     orders = AmazonOrders.objects.filter(
-        divi_order_status=DIVI_STATUS_SHIPPED,
-        fulfillment_channel=FULFILLMENT_CHANNEL_MFN,
-        order_status=AMAZON_STATUS_UNSHIPPED,
-        purchase_date_local__gte=start_datetime,
-        amazon_shop__isnull=False,
+        **filters
     ).exclude(
         amazon_shop__shop_status__in=['status-inactive', 'status-cancelled', 'status-warning']
     ).select_related(
@@ -139,7 +165,7 @@ def query_normal_ship_orders(start_date_str=None, max_batch_size=None):
     return orders
 
 
-def process_auto_ship():
+def process_auto_ship(project_id=None, project_name=None):
     """
     主流程：按优先级自动发货
 
@@ -164,13 +190,19 @@ def process_auto_ship():
     logger.info(f"优先级2: divi_order_status={DIVI_STATUS_SHIPPED}")
     logger.info(f"日期范围: {START_DATE} 及之后")
     logger.info(f"批次限制: 每优先级最多 {MAX_BATCH_SIZE} 单")
+    if project_id:
+        logger.info(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        logger.info(f"按项目名称过滤：'{project_name}'")
     logger.info("=" * 80)
 
     # ========== 优先级1：即将超时订单 ==========
     logger.info("\n【优先级1】查询即将超时订单...")
     red_deadline_orders = query_red_deadline_orders(
         start_date_str=START_DATE,
-        max_batch_size=MAX_BATCH_SIZE
+        max_batch_size=MAX_BATCH_SIZE,
+        project_id=project_id,
+        project_name=project_name
     )
 
     red_total = len(red_deadline_orders)
@@ -246,7 +278,9 @@ def process_auto_ship():
     logger.info("\n【优先级2】查询正常发货订单...")
     normal_orders = query_normal_ship_orders(
         start_date_str=START_DATE,
-        max_batch_size=MAX_BATCH_SIZE
+        max_batch_size=MAX_BATCH_SIZE,
+        project_id=project_id,
+        project_name=project_name
     )
 
     normal_total = len(normal_orders)
@@ -304,13 +338,15 @@ def process_auto_ship():
     return red_success, red_error, normal_success, normal_error
 
 
-def amazon_shipment():
+def amazon_shipment(project_id=None, project_name=None):
     """主函数入口"""
     timer = Timer()
     timer.start()
 
     try:
-        red_success, red_error, normal_success, normal_error = process_auto_ship()
+        red_success, red_error, normal_success, normal_error = process_auto_ship(
+            project_id=project_id, project_name=project_name
+        )
 
         # 打印最终统计
         logger.info("=" * 80)
@@ -334,4 +370,5 @@ def amazon_shipment():
 
 
 if __name__ == '__main__':
-    amazon_shipment()
+    args = parse_args()
+    amazon_shipment(project_id=args.project_id, project_name=args.project_name)

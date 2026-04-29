@@ -3,7 +3,7 @@
 import json
 from django.utils.safestring import mark_safe
 
-from general.module_utils import get_user_company_module_codes
+from general.module_utils import get_user_accessible_company_module_codes, get_user_company_module_codes
 
 
 def announcements_processor(request):
@@ -25,10 +25,13 @@ def user_permissions_processor(request):
     """
     user_permissions = []
     company_module_codes = []
+    accessible_company_module_codes = []
     if request.user.is_authenticated:
         user_permissions = list(request.user.permission_configs.values_list('code', flat=True))
         company_module_codes = sorted(get_user_company_module_codes(request.user))
+        accessible_company_module_codes = sorted(get_user_accessible_company_module_codes(request.user))
     return {
         'user_permissions': user_permissions,
         'company_module_codes': company_module_codes,
+        'accessible_company_module_codes': accessible_company_module_codes,
     }

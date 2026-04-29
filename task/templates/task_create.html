@@ -1392,19 +1392,7 @@
             // 获取Amazon店铺列表
             let shopOptions = [];
             if (availableShops.amazon && availableShops.amazon.length > 0) {
-                const currentUserId = String("{{ request.user.id }}");
-                const ownerId = String(taskData.ownerId || currentUserId);
-                
-                shopOptions = availableShops.amazon
-                    .filter(shop => {
-                        const shopOpsId = String(shop.ops_id);
-                        return shopOpsId === ownerId || shopOpsId === currentUserId;
-                    })
-                    .map(shop => formatShopOption(shop));
-
-                if (shopOptions.length === 0) {
-                    shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
-                }
+                shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
             }
 
             const shopSelect = new SearchableSelect(`#amazon-exempt-shop-select-${subtask.id}`, {
@@ -2512,21 +2500,8 @@
             const selectEl = document.querySelector(`#export-shops-select-${subtaskId}-${rowIndex}`);
             if (!selectEl || selectEl.dataset.initialized) return;
 
-            // 获取当前用户的Amazon店铺
-            const currentUserId = String("{{ request.user.id }}");
-            const ownerId = String(taskData.ownerId || currentUserId);
-            
-            let shopOptions = availableShops.amazon
-                .filter(shop => {
-                    const shopOpsId = String(shop.ops_id);
-                    return shopOpsId === ownerId || shopOpsId === currentUserId;
-                })
-                .map(shop => formatShopOption(shop));
-
-            // 如果没有过滤出来的店铺，显示所有Amazon店铺
-            if (shopOptions.length === 0) {
-                shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
-            }
+            // 店铺列表已由后端按当前用户权限过滤
+            let shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
 
             const shopSelect = new SearchableSelect(`#export-shops-select-${subtaskId}-${rowIndex}`, {
                 options: shopOptions,
@@ -3032,9 +3007,6 @@
 
         // ===== 获取 Pro 版本店铺选项 =====
         function getProShopOptions(platform) {
-            const currentUserId = String("{{ request.user.id }}");
-            const ownerId = String(taskData.ownerId || currentUserId);
-            
             let sourceShops = [];
             if (platform === 'amazon') {
                 sourceShops = availableShops.amazon || [];
@@ -3045,21 +3017,10 @@
             }
             
             let shopOptions = sourceShops
-                .filter(shop => {
-                    const shopOpsId = String(shop.ops_id);
-                    return shopOpsId === ownerId || shopOpsId === currentUserId;
-                })
                 .map(shop => platform === 'amazon' 
                     ? formatShopOption(shop) 
                     : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
                 );
-
-            if (shopOptions.length === 0) {
-                shopOptions = sourceShops.map(shop => platform === 'amazon' 
-                    ? formatShopOption(shop) 
-                    : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
-                );
-            }
 
             return shopOptions;
         }
@@ -6464,4 +6425,3 @@
 
     </script>
 {% endblock %}
-

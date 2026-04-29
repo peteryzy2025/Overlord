@@ -180,7 +180,7 @@
             <tr>
                 <td>${escapeHtml(row.approval_no)}</td>
                 <td>${escapeHtml(row.original_approval_no || '-')}</td>
-                <td><span class="draft-meta">${row.config_count || 0} 组配置 / ${row.asin_count || 0} 条 ASIN</span></td>
+                <td><span class="draft-meta">${escapeHtml(row.approval_type_label || '')} ${row.config_count || 0} 组配置 / ${row.asin_count || 0} 条 ASIN</span></td>
                 <td><div class="remark-text" title="${escapeHtml(row.remark || '')}">${escapeHtml(row.remark || '-')}</div></td>
                 <td>${escapeHtml(row.updated_at || '-')}</td>
                 <td>

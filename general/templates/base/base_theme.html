@@ -2,6 +2,7 @@
 
 {% block sidebar %}
     <ul class="sidebar-menu">
+        {% if 'theme' in company_module_codes %}
         <li class="sidebar-item">
             <a href="{% url 'theme:theme_product_list' %}"
                class="sidebar-link {% if active_page == 'theme_product_list' %}active{% endif %}">
@@ -16,7 +17,6 @@
                 <span>亚马逊最热主题</span>
             </a>
         </li>
-
         <li class="sidebar-item">
             <a href="{% url 'theme:theme_new_release_page' %}"
                class="sidebar-link {% if active_page == 'theme_new_release_page' %}active{% endif %}">
@@ -25,20 +25,22 @@
             </a>
         </li>
         <li class="sidebar-item">
-            <a href="{% url 'theme:theme_recommended_page' %}"
-               class="sidebar-link {% if active_page == 'theme_recommended_page' %}active{% endif %}">
-                <i class="fas fa-chart-line sidebar-icon"></i>
-                <span>推荐主题</span>
-            </a>
-        </li>
-
-        <li class="sidebar-item">
             <a href="{% url 'aba:aba_noise_words' %}"
                class="sidebar-link {% if active_page == 'aba_noise_words' %}active{% endif %}">
                 <i class="fas fa-filter sidebar-icon"></i>
                 <span>ABA去噪词表</span>
             </a>
         </li>
+        <li class="sidebar-item">
+            <a href="{% url 'theme:dw_data_page' %}"
+               class="sidebar-link {% if active_page == 'dw_data' %}active{% endif %}">
+                <i class="fas fa-industry sidebar-icon"></i>
+                <span>迪唯产业大数据</span>
+            </a>
+        </li>
+        {% endif %}
+
+        {% if 'infringement' in company_module_codes %}
         <li class="sidebar-item">
             <a href="{% url 'theme:trend_page' %}"
                class="sidebar-link {% if active_page == 'trend_page' %}active{% endif %}">
@@ -60,13 +62,8 @@
                 <span>美标网词库</span>
             </a>
         </li>
-        <li class="sidebar-item">
-            <a href="{% url 'theme:dw_data_page' %}"
-               class="sidebar-link {% if active_page == 'dw_data' %}active{% endif %}">
-                <i class="fas fa-industry sidebar-icon"></i>
-                <span>迪唯产业大数据</span>
-            </a>
-        </li>
+        {% endif %}
+
         {% if user.id == 555 %}
         <li class="sidebar-item">
             <a href="{% url 'theme:amazon_data_crawler' %}"

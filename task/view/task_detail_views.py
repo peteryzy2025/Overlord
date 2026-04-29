@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from task.models import Task, SubTask, AmazonUploadFile
 from general.models import User
-from task.utils import parse_permissions
+from task.utils import get_operation_permissions, parse_permissions
 
 
 @login_required
@@ -22,11 +22,17 @@ def task_detail_page(request, task_id):
     # 权限检查
     task = get_object_or_404(Task, id=task_id)
     current_user = request.user
-    permissions = parse_permissions(getattr(current_user, 'permission', ''))
+    permissions = get_operation_permissions(current_user)
+    same_company = (
+        getattr(task.created_by, 'company_id', None) == getattr(current_user, 'company_id', None) or
+        getattr(task.owner, 'company_id', None) == getattr(current_user, 'company_id', None)
+    )
 
     # 检查是否有权限查看此任务
     has_permission = False
-    if 'ops_all' in permissions:
+    if not same_company:
+        has_permission = False
+    elif 'ops_all' in permissions:
         has_permission = True
     elif task.created_by == current_user or task.owner == current_user:
         has_permission = True
@@ -67,11 +73,17 @@ def get_task_detail_api(request, task_id):
             id=task_id
         )
         current_user = request.user
-        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        permissions = get_operation_permissions(current_user)
+        same_company = (
+            getattr(task.created_by, 'company_id', None) == getattr(current_user, 'company_id', None) or
+            getattr(task.owner, 'company_id', None) == getattr(current_user, 'company_id', None)
+        )
 
         # 权限检查（同上）
         has_permission = False
-        if 'ops_all' in permissions:
+        if not same_company:
+            has_permission = False
+        elif 'ops_all' in permissions:
             has_permission = True
         elif task.created_by == current_user or task.owner == current_user:
             has_permission = True

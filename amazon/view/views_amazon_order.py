@@ -21,7 +21,7 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 # 项目内模型
 from amazon.models import LingXingAmazonShop, AmazonOrders, AmazonOrderItem
-from general.models import UserOperationLog
+from general.models import UserOperationLog, Project
 
 # 项目内工具函数 / 视图函数
 from amazon.amazon_views import (
@@ -275,11 +275,6 @@ def get_amazon_orders_list_api(request):
             deadline_status = 'normal'
             deadline_text = ''
             hours_remaining = None
-            print(f"\n{'=' * 60}")
-            print(f"调试订单: {order.amazon_order_id}")
-            print(f"原始 latest_ship_date: {order.latest_ship_date} (类型: {type(order.latest_ship_date)})")
-            print(f"订单状态: {order.order_status}")
-            print(f"是否在排除列表: {order.order_status in EXCLUDE_STATUS}")
 
             if (order.latest_ship_date and order.order_status not in EXCLUDE_STATUS):
                 beijing_deadline = order.latest_ship_date + timedelta(hours=16)
@@ -348,6 +343,18 @@ def get_amazon_orders_list_api(request):
         return JsonResponse({'success': False, 'message': f'服务器错误: {str(e)}'}, status=500)
 
 
+def get_lingxing_creds_by_sid(sid):
+    """根据 sid 获取对应项目的领星 API 凭证"""
+    try:
+        shop = LingXingAmazonShop.objects.select_related('amazon_shop__project').get(sid=sid)
+        project = shop.amazon_shop.project if shop.amazon_shop else None
+        if project and project.lingxing_app_id and project.lingxing_app_secret:
+            return project.lingxing_app_id, project.lingxing_app_secret
+    except LingXingAmazonShop.DoesNotExist:
+        pass
+    return None, None
+
+
 @require_GET
 @login_required
 def add_divi_amazon_order(request):
@@ -385,37 +392,54 @@ def add_divi_amazon_order(request):
 
     # 提前定义 local_order，用于后续日志记录
     local_order = None
+    # 领星 API 凭证
+    app_id = None
+    app_secret = None
 
     try:
         # ========== 1) 获取 sid（同步视图内，用 asyncio.run 调用 async API）==========
         if sid_param:
             sid = int(sid_param)
             print(f"✅ 使用传入的sid: {sid}")
+            # 获取该 sid 对应项目的领星凭证
+            app_id, app_secret = get_lingxing_creds_by_sid(sid)
         else:
             print(f"🔍 未传入sid，准备调用领星API查询...")
-            lx_resp = asyncio.run(
-                get_api_resp(
-                    req_body={"order_id": amazon_order_id},
-                    api_path="/erp/sc/data/mws/orderDetail",
-                )
-            )
-            print(f"📡 领星API响应状态: {'成功' if lx_resp.data else '失败'}")
-            if not lx_resp.data:
-                print(f"❌ 领星未找到订单 {amazon_order_id}")
-                # ✅ 修改2：记录失败日志（店铺未知）
-                try:
-                    UserOperationLog.objects.create(
-                        user=request.user,
-                        operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
-                        operation_record=f"店铺[未知]订单[{amazon_order_id}]导单失败: 领星未找到该订单",
+            # 先尝试从本地订单获取 sid 和凭证
+            local_order = AmazonOrders.objects.filter(amazon_order_id=amazon_order_id).first()
+            if local_order and local_order.lingxing_shop:
+                sid = local_order.lingxing_shop.sid
+                app_id, app_secret = get_lingxing_creds_by_sid(sid)
+                print(f"✅ 从本地订单获取到sid: {sid}")
+            else:
+                # 本地找不到，用默认凭证调领星API查（可能不准确，但尽量兼容）
+                lx_resp = asyncio.run(
+                    get_api_resp(
+                        req_body={"order_id": amazon_order_id},
+                        api_path="/erp/sc/data/mws/orderDetail",
                     )
-                except Exception as log_error:
-                    print(f"❌ 日志记录失败: {log_error}")
-                return JsonResponse(
-                    {"status": "error", "message": f"领星未找到订单 {amazon_order_id}"}
                 )
-            sid = lx_resp.data[0]["sid"]
-            print(f"✅ 从领星获取到sid: {sid}")
+                print(f"📡 领星API响应状态: {'成功' if lx_resp.data else '失败'}")
+                if not lx_resp.data:
+                    print(f"❌ 领星未找到订单 {amazon_order_id}")
+                    # ✅ 修改2：记录失败日志（店铺未知）
+                    try:
+                        UserOperationLog.objects.create(
+                            user=request.user,
+                            operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
+                            operation_record=f"店铺[未知]订单[{amazon_order_id}]导单失败: 领星未找到该订单",
+                        )
+                    except Exception as log_error:
+                        print(f"❌ 日志记录失败: {log_error}")
+                    return JsonResponse(
+                        {"status": "error", "message": f"领星未找到订单 {amazon_order_id}"}
+                    )
+                sid = lx_resp.data[0]["sid"]
+                print(f"✅ 从领星获取到sid: {sid}")
+                app_id, app_secret = get_lingxing_creds_by_sid(sid)
+
+        if not app_id or not app_secret:
+            print(f"⚠️ 警告: sid={sid} 未配置领星API凭证，将使用默认凭证")
 
         # ========== 2) sid → brandId（同步 ORM）==========
         print(f"🔍 正在查询 sid {sid} 对应的 divi_shop_id...")
@@ -494,24 +518,28 @@ def add_divi_amazon_order(request):
 
         # ========== 4) 不存在 -> 从领星导入到 Divi ==========
         print(f"🎯 订单不存在于DIVI，准备执行导入...")
+        print(f"📋 视图层使用的sid={sid}, brand_id={brand_id}")
         divi_result = import_order_from_lingxing_to_divi(
             order_id=amazon_order_id,
             print_if=True,
+            app_id=app_id,
+            app_secret=app_secret,
         )
         print(f"📦 DIVI导入完成，结果: {divi_result}")
 
         # ========== 5) 导单成功后查询确认并更新本地状态 ==========
         print(f"🔍 导入后重新查询DIVI确认...")
-        max_retries = 3
+        max_retries = 5
         retry_count = 0
         exists = False
         divi_order_data = None
 
         while retry_count < max_retries and not exists:
             if retry_count > 0:
-                print(f"   ⏳ 第{retry_count}次查询未找到，等待1秒后重试...")
+                wait_time = retry_count * 2  # 递增等待: 2, 4, 6, 8, 10秒
+                print(f"   ⏳ 第{retry_count}次查询未找到，等待{wait_time}秒后重试...")
                 import time
-                time.sleep(1)  # 等待1秒
+                time.sleep(wait_time)
 
             print(f"   🔍 第{retry_count + 1}次查询DIVI系统...")
             exists, orders, _ = query_divi_order(
@@ -521,7 +549,7 @@ def add_divi_amazon_order(request):
             )
             if exists and orders:
                 divi_order_data = orders[0]
-            print(f"   📊 查询结果: exists={exists}")
+            print(f"   📊 查询结果: exists={exists}, 订单数={len(orders) if orders else 0}")
             retry_count += 1
 
         if exists and local_order and divi_order_data:
@@ -556,34 +584,24 @@ def add_divi_amazon_order(request):
                 "local_updated": True
             })
         else:
-            print(f"⚠️ 导入后未查询到订单或本地订单不存在")
+            print(f"❌ 导入后未查询到订单，判定为导入失败")
 
-        # 转成可序列化格式
-        if hasattr(divi_result, "dict"):
-            divi_response = divi_result.dict()
-        else:
-            divi_response = str(divi_result)
+            # ✅ 记录失败日志
+            shop_name = local_order.lingxing_shop.name if local_order and local_order.lingxing_shop else '未知'
+            try:
+                UserOperationLog.objects.create(
+                    user=request.user,
+                    operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
+                    operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单到DIVI: 失败（DIVI导入成功但查询未找到）",
+                )
+            except Exception as log_error:
+                print(f"❌ 日志记录失败: {log_error}")
 
-        print(f"🎉 导单流程完成，返回成功响应")
-        print(f"{'=' * 60}\n")
-
-        # ✅ 修改6：记录成功日志（导入但本地未更新）
-        shop_name = local_order.lingxing_shop.name if local_order and local_order.lingxing_shop else '未知'
-        try:
-            UserOperationLog.objects.create(
-                user=request.user,
-                operation_type=UserOperationLog.OperationType.ORDER_IMPORT,
-                operation_record=f"店铺[{shop_name}]订单[{amazon_order_id}]导单到DIVI: 成功（DIVI响应）",
-            )
-        except Exception as log_error:
-            print(f"❌ 日志记录失败: {log_error}")
-
-        return JsonResponse({
-            "status": "imported",
-            "brand_id": brand_id,
-            "divi_response": divi_response,
-            "local_updated": exists and local_order is not None
-        })
+            return JsonResponse({
+                "status": "error",
+                "message": "DIVI导入成功但查询未找到该订单，可能存在同步延迟或数据异常",
+                "brand_id": brand_id,
+            }, status=500)
 
     except Exception as e:
         print(f"\n{'=' * 60}")
@@ -609,9 +627,8 @@ def add_divi_amazon_order(request):
 @login_required
 def update_divi_export_status_api(request):
     """
-    并发优化版：批量更新订单的DIVI导出状态（线程池版，避免asyncio线程问题）
+    批量更新选中订单的DIVI导出状态（按 order_ids）
     核心优化：ThreadPoolExecutor 并发查询 DIVI + bulk_update 批量写库
-    性能：100 条订单 ≈ 4~6 秒，兼容 Django runserver 多线程环境
     """
     if request.method != 'POST':
         print("❌ 错误: 只支持POST请求")
@@ -620,171 +637,33 @@ def update_divi_export_status_api(request):
     try:
         data = json.loads(request.body)
         user = request.user
-        permissions = get_user_operation_permissions(user)
-
+        
+        # 获取传入的订单ID列表
+        order_ids = data.get('order_ids', [])
+        if not order_ids:
+            return JsonResponse({'success': False, 'message': '未选择任何订单'}, status=400)
+        
         print(f"\n{'=' * 60}")
-        print(f"🔄 批量更新DIVI状态API - 用户: {user.username} (权限: {permissions})")
-        print(f"📋 接收参数: {json.dumps(data, ensure_ascii=False, indent=2)}")
+        print(f"🔄 批量更新DIVI状态API - 用户: {user.username}")
+        print(f"📋 选中订单数: {len(order_ids)}")
+        print(f"{'=' * 60}")
 
-        # ============= 权限控制核心逻辑（使用统一函数） =============
-        filter_type, filter_value = determine_filter_type_and_value(request, data, permissions)
-        print(f"🔐 权限校验结果: filter_type={filter_type}, filter_value={filter_value}")
+        # 查询选中的订单
+        orders = AmazonOrders.objects.filter(
+            amazon_order_id__in=order_ids
+        ).select_related('lingxing_shop__amazon_shop')
+        
+        print(f"✅ 从数据库找到 {orders.count()} 条订单")
 
-        # 解析日期参数
-        date_range_option = data.get('date_range', 'yesterday')
-        start_date_str = data.get('start_date', '')
-        end_date_str = data.get('end_date', '')
-
-        # 订单号筛选
-        order_id_filter = data.get('order_id', '').strip()
-        shop_name_filter = data.get('shop_name', '').strip()
-        shop_status_filter = data.get('shop_status', '').strip()
-
-        # ========== 新增筛选项解析 ==========
-        order_status_filter = data.get('order_status', '').strip()
-        fulfillment_channel_filter = data.get('fulfillment_channel', '').strip()
-        divi_export_filter = data.get('divi_export', '').strip()
-        divi_order_status_filter = data.get('divi_order_status', '').strip()
-        divi_tracking_filter = data.get('divi_tracking', '').strip()
-        masked_single_filter = data.get('masked_single', '').strip()
-
-        current_start, current_end = None, None
-        if start_date_str and end_date_str:
-            try:
-                current_start = datetime.strptime(start_date_str.split(' ')[0], '%Y-%m-%d').date()
-                current_end = datetime.strptime(end_date_str.split(' ')[0], '%Y-%m-%d').date()
-                print(f"📅 使用自定义日期: {current_start} 至 {current_end}")
-            except:
-                print(f"⚠️ 日期解析失败，将使用快捷选项")
-                pass
-
-        if not current_start or not current_end:
-            current_start, current_end = get_date_range_from_option(date_range_option)
-            print(f"📅 使用快捷日期({date_range_option}): {current_start} 至 {current_end}")
-
-        # 分页参数
-        page = int(data.get('page', 1))
-        page_size = int(data.get('page_size', 20))
-        page_size = min(page_size, 100)
-        print(f"📄 分页参数: page={page}, page_size={page_size}")
-
-        # 无权限或没店铺直接返回空
-        if filter_type == 'none':
-            print("⚠️ 权限不足，返回空数据")
-            return JsonResponse({
-                'success': True,
-                'data': {
-                    'orders': [],
-                    'total': 0,
-                    'page': page,
-                    'page_size': page_size,
-                    'total_pages': 0
-                }
-            })
-
-        # 获取店铺
-        print(f"🔍 查询符合条件的店铺...")
-        shop_ids = get_shop_ids_by_filter(filter_type, filter_value)
-        shop_ids_list = list(shop_ids)
-        print(f"✅ 找到 {len(shop_ids_list)} 个AmazonShop")
-
-        if not shop_ids_list:
-            print("⚠️ 未找到任何店铺，返回空数据")
-            return JsonResponse({
-                'success': True,
-                'data': {
-                    'orders': [],
-                    'total': 0,
-                    'page': page,
-                    'page_size': page_size,
-                    'total_pages': 0
-                }
-            })
-
-        # 获取LingXing店铺
-        print(f"🔍 查询绑定的LingXing店铺...")
-        lingxing_shops = LingXingAmazonShop.objects.filter(amazon_shop_id__in=shop_ids_list)
-        lingxing_shop_ids = list(lingxing_shops.values_list('sid', flat=True))
-        print(f"✅ 找到 {len(lingxing_shop_ids)} 个LingXing店铺")
-
-        if not lingxing_shop_ids:
-            print("⚠️ 未找到LingXing店铺，返回空数据")
-            return JsonResponse({
-                'success': True,
-                'data': {
-                    'orders': [],
-                    'total': 0,
-                    'page': page,
-                    'page_size': page_size,
-                    'total_pages': 0
-                }
-            })
-
-        # 构建订单查询条件
-        print(f"🔍 构建订单查询条件...")
-        order_filter = Q(lingxing_shop_id__in=lingxing_shop_ids)
-        # 只有在非不限日期范围时才添加日期筛选
-        if current_start is not None and current_end is not None:
-            order_filter &= Q(purchase_date_local__date__gte=current_start)
-            order_filter &= Q(purchase_date_local__date__lte=current_end)
-
-        # ========== 应用所有筛选项 ==========
-        if order_status_filter:
-            order_filter &= Q(order_status=order_status_filter)
-        if fulfillment_channel_filter:
-            order_filter &= Q(fulfillment_channel=fulfillment_channel_filter)
-        if divi_export_filter:
-            divi_export_bool = divi_export_filter.lower() == 'true'
-            order_filter &= Q(is_exported_to_divi=divi_export_bool)
-        if divi_order_status_filter:
-            order_filter &= Q(divi_order_status=int(divi_order_status_filter))
-        if divi_tracking_filter:
-            if divi_tracking_filter == 'has':
-                order_filter &= Q(divi_tracking_number__isnull=False) & ~Q(divi_tracking_number='')
-            elif divi_tracking_filter == 'none':
-                order_filter &= (Q(divi_tracking_number__isnull=True) | Q(divi_tracking_number=''))
-        if shop_status_filter:
-            order_filter &= Q(amazon_shop__shop_status=shop_status_filter)
-        if masked_single_filter:
-            if masked_single_filter == 'true':
-                order_filter &= Q(masked_single=True)
-            elif masked_single_filter == 'false':
-                order_filter &= Q(masked_single=False)
-        if order_id_filter:
-            order_filter &= Q(amazon_order_id__icontains=order_id_filter)
-        if shop_name_filter:
-            order_filter &= Q(lingxing_shop__name__icontains=shop_name_filter)
-
-        orders_queryset = AmazonOrders.objects.filter(order_filter) \
-            .select_related('lingxing_shop__amazon_shop', 'amazon_shop__ops__operational_account') \
-            .order_by('-purchase_date_local', 'id')
-
-        total = orders_queryset.count()
-        print(f"📊 符合筛选条件的订单总数: {total}")
-
-        # 分页处理
-        paginator = Paginator(orders_queryset, page_size)
-        try:
-            orders_page = paginator.page(page)
-        except PageNotAnInteger:
-            orders_page = paginator.page(1)
-        except EmptyPage:
-            orders_page = paginator.page(paginator.num_pages)
-
-        print(f"📄 当前页: {orders_page.number}/{paginator.num_pages}, 本页订单数: {len(orders_page)}")
-
-        # ========== 线程池并发更新核心开始 ==========
-        print(f"\n{'=' * 40}")
-        print(f"🚀 开始线程池并发更新 DIVI 状态（本页 {len(orders_page)} 条）")
-        print(f"{'=' * 40}")
-
-        # 准备有效订单列表
+        # 准备有效订单列表（按 divi_shop_id 分组）
         valid_orders = []
-        for order in orders_page:
+        for order in orders:
             if not order.lingxing_shop or not order.lingxing_shop.amazon_shop:
+                print(f"   ⚠️ 订单 {order.amazon_order_id} 未关联店铺，跳过")
                 continue
             divi_shop_id = order.lingxing_shop.amazon_shop.divi_shop_id
             if not divi_shop_id:
+                print(f"   ⚠️ 订单 {order.amazon_order_id} 的店铺未配置 divi_shop_id，跳过")
                 continue
             valid_orders.append({
                 'order': order,
@@ -792,7 +671,11 @@ def update_divi_export_status_api(request):
                 'divi_shop_id': divi_shop_id
             })
 
+        print(f"🚀 开始查询DIVI状态（有效订单 {len(valid_orders)} 条）")
+
         updated_count = 0
+        objects_to_update = []
+        
         if valid_orders:
             from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -811,8 +694,7 @@ def update_divi_export_status_api(request):
                     print(f"   ❌ 查询异常 {item['amazon_order_id']}: {str(e)}")
                     return item['order'], item['amazon_order_id'], False, None
 
-            # 使用线程池并发查询（最大并发50，防止打爆DIVI接口）
-            objects_to_update = []
+            # 使用线程池并发查询
             with ThreadPoolExecutor(max_workers=30) as executor:
                 future_to_order = {executor.submit(query_divi_single, item): item for item in valid_orders}
                 for future in as_completed(future_to_order):
@@ -844,72 +726,19 @@ def update_divi_export_status_api(request):
                         ],
                         batch_size=100
                     )
-                print(f"✅ 批量写入数据库完成，共更新 {updated_count} 条状态")
+                print(f"✅ 批量写入数据库完成，状态变化 {updated_count} 条")
         else:
-            print("⚠️ 本页无有效订单可更新")
+            print("⚠️ 无有效订单可更新")
 
-        print(f"{'=' * 40}")
-        print(f"线程池并发更新完成！本页更新 {updated_count} 条")
-        print(f"{'=' * 40}\n")
-
-        # ========== 返回更新后的当前页数据 ==========
-        print(f"🔍 重新组装返回数据...")
-        orders_data = []
-        for order in orders_page:
-            operator_name = ''
-            group_name = ''
-            if order.amazon_shop and order.amazon_shop.ops:
-                operator_name = order.amazon_shop.ops.first_name or order.amazon_shop.ops.username
-                if hasattr(order.amazon_shop.ops, 'operational_account') and order.amazon_shop.ops.operational_account:
-                    group_name = order.amazon_shop.ops.operational_account.ops_group or ''
-
-            shop_name = order.lingxing_shop.name if order.lingxing_shop else '未知店铺'
-
-            orders_data.append({
-                'amazon_order_id': order.amazon_order_id,
-                'shop_name': shop_name,
-                'operator_name': operator_name,
-                'group': group_name,
-                'order_status': order.order_status or '',
-                'quantity': 0,  # 临时占位
-                'order_total_amount': str(order.order_total_amount or '0.00'),
-                'purchase_date_local': order.purchase_date_local.strftime(
-                    '%Y-%m-%d %H:%M:%S') if order.purchase_date_local else '',
-                'is_exported_to_divi': order.is_exported_to_divi,
-                'fulfillment_channel': order.fulfillment_channel or ''
-            })
-
-        # 批量获取商品数量
-        order_ids = [order.id for order in orders_page]
-        if order_ids:
-            quantity_map = dict(
-                AmazonOrderItem.objects.filter(order_id__in=order_ids)
-                .values('order_id')
-                .annotate(total_quantity=Sum('quantity_ordered'))
-                .values_list('order_id', 'total_quantity')
-            )
-        else:
-            quantity_map = {}
-
-        for order_data in orders_data:
-            corresponding_order = next((o for o in orders_page if o.amazon_order_id == order_data['amazon_order_id']),
-                                       None)
-            if corresponding_order:
-                order_data['quantity'] = quantity_map.get(corresponding_order.id, 0)
-
-        print(f"✅ 返回数据准备完成，共 {len(orders_data)} 条")
         print(f"{'=' * 60}\n")
 
         return JsonResponse({
             'success': True,
-            'message': f'批量更新完成，共更新 {updated_count} 条订单状态',
+            'message': f'批量更新完成，共处理 {len(objects_to_update)} 条订单状态',
             'updated_count': updated_count,
             'data': {
-                'orders': orders_data,
-                'total': total,
-                'page': orders_page.number,
-                'page_size': page_size,
-                'total_pages': paginator.num_pages
+                'updated_count': updated_count,
+                'total_processed': len(valid_orders)
             }
         })
 

@@ -10,13 +10,14 @@ DIVI孤儿订单检测与修复脚本 (v1.0)
 import os
 import sys
 import django
+import argparse
 from datetime import datetime, timedelta
 from django.db.models import Q
 
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
@@ -32,24 +33,40 @@ DRY_RUN = False  # 设为True则只检测不修复（测试模式）
 # 所有数据必须实时从数据库获取，确保数据一致性
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="DIVI孤儿订单检测与修复")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
+
+
 def get_brand_id(sid):
     """获取 SID 对应的 BrandID（实时查询，无缓存）"""
     return get_divi_brand_id_from_sid(sid)
 
 
-def extract_orphaned_orders_candidates(start_datetime):
+def extract_orphaned_orders_candidates(start_datetime, project_id=None, project_name=None):
     """
     提取需要检测的候选订单：已标记导出 + 店铺状态正常 + 近7天
     返回：按brand_id分组的订单字典
     """
     print(f"\n🔍 正在提取候选订单（近7天、已标记导出、店铺正常）...")
 
+    filters = {
+        'fulfillment_channel': 'MFN',
+        'purchase_date_local__gte': start_datetime,
+        'is_exported_to_divi': True,
+        'amazon_shop__shop_status': 'status-active',
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     # 1. 查询所有符合条件的订单
     candidate_orders = AmazonOrders.objects.filter(
-        fulfillment_channel='MFN',
-        purchase_date_local__gte=start_datetime,
-        is_exported_to_divi=True,  # ⭐ 核心：只查已导出的
-        amazon_shop__shop_status='status-active',  # 只查正常店铺
+        **filters
     ).exclude(
         order_status__in={'PendingAvailability', 'Pending', 'Canceled'}
     ).select_related(
@@ -158,8 +175,12 @@ def detect_and_fix_orphaned_orders(brand_order_map, start_datetime):
                 print(f"   ⏭️  DRY_RUN模式，跳过修复")
                 continue
 
+            orphaned_order_pks = [
+                order.pk for order in local_orders
+                if order.amazon_order_id in orphaned_ids
+            ]
             orphaned_orders = AmazonOrders.objects.filter(
-                amazon_order_id__in=orphaned_ids,
+                pk__in=orphaned_order_pks,
                 is_exported_to_divi=True
             )
 
@@ -197,7 +218,7 @@ def detect_and_fix_orphaned_orders(brand_order_map, start_datetime):
     return total_checked, total_orphaned, total_fixed, total_failed, orphaned_details
 
 
-def amazon_order_divi_guer():
+def amazon_order_divi_guer(project_id=None, project_name=None):
     """主入口"""
     t = Timer()
     t.start()
@@ -211,11 +232,17 @@ def amazon_order_divi_guer():
     print(f"DIVI孤儿订单检测与修复脚本启动")
     print(f"扫描时间范围: {start_date.strftime('%Y-%m-%d')} 至 {end_date.strftime('%Y-%m-%d')}")
     print(f"DRY_RUN模式: {'是（只检测不修复）' if DRY_RUN else '否（执行修复）'}")
+    if project_id:
+        print(f"按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"按项目名称过滤：'{project_name}'")
     print(f"{'=' * 80}\n")
 
     try:
         # 步骤1：提取候选订单
-        brand_order_map, total_candidates = extract_orphaned_orders_candidates(start_datetime)
+        brand_order_map, total_candidates = extract_orphaned_orders_candidates(
+            start_datetime, project_id=project_id, project_name=project_name
+        )
 
         if total_candidates == 0:
             print("✅ 没有符合条件的候选订单，脚本结束")
@@ -261,4 +288,5 @@ def amazon_order_divi_guer():
 
 
 if __name__ == '__main__':
-    amazon_order_divi_guer()
+    args = parse_args()
+    amazon_order_divi_guer(project_id=args.project_id, project_name=args.project_name)

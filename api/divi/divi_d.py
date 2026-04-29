@@ -2,7 +2,7 @@ import time
 import json
 import hashlib
 import base64
-from urllib.parse import quote_plus
+import urllib.parse
 import requests
 from typing import Any, Dict
 
@@ -33,26 +33,22 @@ def post_partner_list_partner_user_order(
         secret = "655d0d4e9534f0e37381"
     base_url = "http://www.dividiy.com/partner/use/service"
 
-    data_json_original = json.dumps(req_body, ensure_ascii=False, separators=(',', ':'))
-    sorted_items = sorted(req_body.items(), key=lambda kv: kv[0])
-    sorted_dict = {k: v for k, v in sorted_items}
-    sorted_data_json = json.dumps(sorted_dict, ensure_ascii=False, separators=(',', ':'))
-    # 3) timestamp（毫秒）
+    # 1) JSON 序列化（排序 + 去空格，保证签名一致）
+    data_json_str = json.dumps(req_body, separators=(',', ':'), sort_keys=True)
+    # 2) timestamp（毫秒）
     timestamp = int(time.time() * 1000)
-    # 4) 待签名字符串： sorted_data_json + timestamp + secret
-    to_verify = f"{sorted_data_json}{timestamp}{secret}"
-    # 5) URL 编码
-    to_verify_encoded = quote_plus(to_verify, encoding='utf-8')
-    # 6) MD5（utf-8），然后 Base64 编码
-    md5_obj = hashlib.md5()
-    md5_obj.update(to_verify_encoded.encode('utf-8'))
-    md5_bytes = md5_obj.digest()
-    digest_base64 = base64.b64encode(md5_bytes).decode('utf-8')
-    # 7) 构造最终 payload
+    # 3) 待签名字符串： data_json_str + timestamp + secret
+    raw_text = data_json_str + str(timestamp) + secret
+    # 4) URL 编码（Java URLEncoder 行为，空格转为 +）
+    encoded_text = urllib.parse.quote_plus(raw_text)
+    # 5) MD5 + Base64
+    md5_hash = hashlib.md5(encoded_text.encode('utf-8')).digest()
+    digest_base64 = base64.b64encode(md5_hash).decode('utf-8')
+    # 6) 构造最终 payload
     payload = {
         "partnerCode": partner_code,
         "timestamp": timestamp,
-        "data": data_json_original,
+        "data": data_json_str,
         "digest": digest_base64
     }
     url = base_url.rstrip('/') + api_path  # 拼接完整 URL

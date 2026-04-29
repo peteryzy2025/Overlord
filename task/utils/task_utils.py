@@ -17,6 +17,30 @@ def parse_permissions(permission_str):
     return [p.strip() for p in permission_str.split(',') if p.strip()]
 
 
+def get_operation_permissions(user):
+    """
+    Return task operation permissions from both legacy and PermissionConfig data.
+    """
+    permissions = set(parse_permissions(getattr(user, 'permission', '')))
+
+    try:
+        codes = set(user.permission_configs.values_list('code', flat=True))
+    except Exception:
+        codes = set()
+
+    if 555 in codes or 553 in codes:
+        permissions.add('ops_all')
+
+    account = getattr(user, 'operational_account', None)
+    if 'ops_all' not in permissions and account and account.role == 'leader' and account.ops_group:
+        permissions.add('ops_group')
+
+    if not permissions:
+        permissions.add('ops')
+
+    return list(permissions)
+
+
 def generate_task_no(user):
     """
     生成任务单号：名字拼音缩写 + 日期时间
@@ -54,38 +78,76 @@ def generate_task_no(user):
 
 def get_visible_shops(user, shop_type='amazon'):
     """
-    获取用户可见的店铺列表（权限逻辑参考邮件视图）
+    Company-scoped shop visibility for task creation and validation.
     """
-    permissions = parse_permissions(getattr(user, 'permission', ''))
+    permissions = get_operation_permissions(user)
+    company_id = getattr(user, 'company_id', None)
 
-    # 基础查询
-    base_filter = Q()
+    if not company_id:
+        return AmazonShop.objects.none() if shop_type == 'amazon' else TemuShop.objects.none()
+
+    if shop_type == 'amazon':
+        queryset = AmazonShop.objects.filter(
+            company_id=company_id,
+            ops__isnull=False
+        ).select_related('ops')
+    else:
+        queryset = TemuShop.objects.filter(
+            company_id=company_id,
+            ops_id__isnull=False
+        )
 
     if 'ops_all' in permissions:
-        # 管理员：所有店铺
-        if shop_type == 'amazon':
-            return AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
-        else:
-            return TemuShop.objects.filter(ops_id__isnull=False).select_related('ops_id')
+        return queryset
 
-    elif 'ops_group' in permissions and hasattr(user, 'operational_account'):
-        # 组长：组内所有店铺
+    if 'ops_group' in permissions and hasattr(user, 'operational_account'):
         group_name = user.operational_account.ops_group
         if group_name:
+            group_user_ids = User.objects.filter(
+                company_id=company_id,
+                operational_account__ops_group=group_name
+            ).values_list('id', flat=True)
             if shop_type == 'amazon':
-                return AmazonShop.objects.filter(
-                    ops__operational_account__ops_group=group_name
-                ).select_related('ops')
-            else:
-                return TemuShop.objects.filter(
-                    ops_id__operational_account__ops_group=group_name
-                ).select_related('ops_id')
+                return queryset.filter(
+                    Q(ops_id__in=group_user_ids) |
+                    Q(authorized_users=user)
+                ).distinct()
+            return queryset.filter(ops_id__in=group_user_ids)
 
-    # 普通用户：只能看自己的店铺
     if shop_type == 'amazon':
-        return AmazonShop.objects.filter(ops=user).select_related('ops')
-    else:
-        return TemuShop.objects.filter(ops_id=user.id).select_related('ops_id')
+        return queryset.filter(
+            Q(ops=user) |
+            Q(authorized_users=user)
+        ).distinct()
+    return queryset.filter(ops_id=user.id)
+
+
+def _normalize_shop_name_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+    value = str(value).strip()
+    return [value] if value else []
+
+
+def _get_visible_shop_names(user, shop_type='amazon'):
+    return set(
+        str(name).strip()
+        for name in get_visible_shops(user, shop_type)
+        .exclude(shop_name__isnull=True)
+        .exclude(shop_name='')
+        .values_list('shop_name', flat=True)
+        if str(name).strip()
+    )
+
+
+def _invalid_shop_names(user, shop_type, names):
+    visible_names = _get_visible_shop_names(user, shop_type)
+    return sorted({
+        name for name in _normalize_shop_name_list(names)
+        if name not in visible_names
+    })
 
 
 def validate_subtask_params(subtask_type, params, user):
@@ -252,6 +314,14 @@ def validate_subtask_params(subtask_type, params, user):
             if not diwei_account:
                 return {'valid': False, 'message': '迪唯账号不能为空'}
 
+            selected_shops = []
+            for row in params.get('export_rows', []):
+                selected_shops.extend(_normalize_shop_name_list(row.get('shops', [])))
+                selected_shops.extend(_normalize_shop_name_list(row.get('\u5e97\u94fa\u5217\u8868', [])))
+            invalid_shops = _invalid_shop_names(user, 'amazon', selected_shops)
+            if invalid_shops:
+                return {'valid': False, 'message': f'No permission for shop: {", ".join(invalid_shops[:5])}'}
+
             return {'valid': True, 'message': ''}
 
         elif subtask_type == 'divi_export_pro':
@@ -267,6 +337,8 @@ def validate_subtask_params(subtask_type, params, user):
 
             # 验证汇出行
             export_rows = params.get('export_rows', [])
+            visible_shop_names = _get_visible_shop_names(user, platform)
+
             if not export_rows or len(export_rows) == 0:
                 return {'valid': False, 'message': '请至少添加一个产品'}
 
@@ -287,6 +359,14 @@ def validate_subtask_params(subtask_type, params, user):
                     return {'valid': False, 'message': f'第 {i + 1} 行的汇出店铺不能为空'}
                 
                 # 如果开启设计日期筛选，验证日期
+                selected_names = (
+                    _normalize_shop_name_list(publish_shops) +
+                    _normalize_shop_name_list(export_shop)
+                )
+                invalid_shops = sorted({name for name in selected_names if name not in visible_shop_names})
+                if invalid_shops:
+                    return {'valid': False, 'message': f'No permission for shop: {", ".join(invalid_shops[:5])}'}
+
                 if row.get('design_date_filter'):
                     if not row.get('design_start_date'):
                         return {'valid': False, 'message': f'第 {i + 1} 行开启了设计日期筛选，设计开始日期不能为空'}
@@ -307,6 +387,10 @@ def validate_subtask_params(subtask_type, params, user):
                 return {'valid': False, 'message': 'Amazon店铺不能为空'}
 
             # 验证豁免产品列表
+            invalid_shops = _invalid_shop_names(user, 'amazon', [amazon_shop])
+            if invalid_shops:
+                return {'valid': False, 'message': f'No permission for shop: {", ".join(invalid_shops[:5])}'}
+
             exempt_rows = params.get('exempt_rows', [])
             if not exempt_rows or len(exempt_rows) == 0:
                 return {'valid': False, 'message': '请至少添加一个豁免产品'}

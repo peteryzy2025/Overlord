@@ -1015,3 +1015,6 @@ def update_amazon_shop_api(request, shop_id):
         print(f"更新Amazon店铺错误: {str(e)}")
         traceback.print_exc()
         return JsonResponse({'success': False, 'error': f'服务器错误: {str(e)}'}, status=500)
+
+
+

@@ -10,6 +10,7 @@
 db.sqlite3
 *.log
 *.json
+settings.py
 
 # 缓存配置文件
 MarsCodeWorkspaceAppSettings.xml

@@ -12,22 +12,29 @@ import os
 import sys
 import django
 import asyncio
+import argparse
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from asgiref.sync import sync_to_async
 from django.db import transaction
 
-from api.Y.y_tiem import Timer
-
 # ========== Django环境初始化 ==========
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
-sys.path.append(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
+from api.Y.y_tiem import Timer
 from amazon.models import AmazonOrders, AmazonOrderFullDetail, AmazonOrderItemFullDetail, LingXingAmazonShop
 from api.lingxing_p.lingxing_jc1 import get_amazon_order_detail
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="同步亚马逊订单详情")
+    parser.add_argument("--project-id", type=int, help="指定项目 ID 同步")
+    parser.add_argument("--project-name", type=str, help="指定项目名称同步（支持模糊匹配）")
+    return parser.parse_args()
 
 
 # ========== 时间转换工具 ==========
@@ -58,7 +65,7 @@ def _to_decimal(value, default=0):
 
 # ========== 步骤1：筛选待同步订单 ==========
 @sync_to_async
-def find_Unshipped_orders_without_detail(days_back=14):
+def find_Unshipped_orders_without_detail(days_back=14, project_id=None, project_name=None):
     """
     查询最近N天内、状态为Unshipped、且无详情记录的订单
     返回: [(amazon_order_id, sid), ...] 元组列表
@@ -66,18 +73,78 @@ def find_Unshipped_orders_without_detail(days_back=14):
     start_date = datetime.now() - timedelta(days=days_back)
     start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
+    filters = {
+        'order_status': 'Unshipped',
+        'purchase_date_local__gte': start_date,
+        'full_detail__isnull': True,
+        'amazon_shop__project__is_active': True,
+    }
+    
+    if project_id:
+        filters['amazon_shop__project_id'] = project_id
+    elif project_name:
+        filters['amazon_shop__project__name__icontains'] = project_name
+
     # 筛选条件：Unshipped+ 14天内 + 无详情记录
     order_list = list(AmazonOrders.objects.filter(
-        order_status='Unshipped',
-        purchase_date_local__gte=start_date,
-        full_detail__isnull=True
+        **filters
     ).values_list('amazon_order_id', 'lingxing_shop__sid').distinct())
 
-    print(f"【查询】找到 {len(order_list)} 条待同步详情的Unshipped订单（最近{days_back}天）")
+    filter_desc = f"项目条件={project_id or project_name} " if (project_id or project_name) else ""
+    print(f"【查询】{filter_desc}找到 {len(order_list)} 条待同步详情的Unshipped订单（最近{days_back}天）")
     if order_list:
         print(f"【样本】前3条订单: {order_list[:3]}")
 
     return order_list
+
+
+@sync_to_async
+def group_order_tuples_by_credentials(order_tuples):
+    sid_set = {sid for _, sid in order_tuples if sid}
+    shops = (
+        LingXingAmazonShop.objects
+        .filter(sid__in=sid_set)
+        .select_related('amazon_shop__project')
+    )
+    sid_info = {}
+    for shop in shops:
+        project = shop.amazon_shop.project if shop.amazon_shop else None
+        sid_info[shop.sid] = {
+            'project_id': project.id if project else None,
+            'project_name': project.name if project else None,
+            'app_id': project.lingxing_app_id if project else None,
+            'app_secret': project.lingxing_app_secret if project else None,
+        }
+
+    groups = {}
+    skipped = []
+    for order_id, sid in order_tuples:
+        info = sid_info.get(sid)
+        if not info or not info['project_id']:
+            skipped.append((order_id, sid, '店铺未绑定项目'))
+            continue
+        if not info['app_id'] or not info['app_secret']:
+            skipped.append((order_id, sid, f"项目 {info['project_name']} 未配置领星 API 凭证"))
+            continue
+
+        key = (str(info['app_id']).strip(), str(info['app_secret']).strip())
+        if key not in groups:
+            groups[key] = {
+                'app_id': key[0],
+                'app_secret': key[1],
+                'project_names': set(),
+                'tuples': [],
+            }
+        groups[key]['project_names'].add(info['project_name'])
+        groups[key]['tuples'].append((order_id, sid))
+
+    result = []
+    for group in groups.values():
+        group['project_name'] = '、'.join(sorted(group['project_names']))
+        del group['project_names']
+        result.append(group)
+
+    return result, skipped
 
 
 # ========== 步骤2：保存订单详情（严格过滤+重复检测） ==========
@@ -272,7 +339,7 @@ def save_order_full_details(details: list, candidate_set: set):
 
 
 # ========== 主流程控制器 ==========
-async def lx_order_info_main():
+async def lx_order_info_main(project_id=None, project_name=None):
     """
     主流程：同步Unshipped订单详情
     """
@@ -280,40 +347,86 @@ async def lx_order_info_main():
     print("🚀 亚马逊订单详情同步脚本启动")
     print(f"📅 目标范围：最近14天内、状态为Unshipped、且无详情记录的订单")
     print(f"🔍 API接口：get_amazon_order_detail（自动分批，每批≤190）")
+    if project_id:
+        print(f"📌 按项目 ID 过滤：{project_id}")
+    elif project_name:
+        print(f"📌 按项目名称过滤：'{project_name}'")
     print("=" * 96)
 
     # 步骤1：筛选订单（返回元组列表）
     print("\n【步骤1】筛选待同步的Unshipped订单...")
-    order_tuples = await find_Unshipped_orders_without_detail()
+    order_tuples = await find_Unshipped_orders_without_detail(
+        project_id=project_id, project_name=project_name
+    )
 
     if not order_tuples:
         print("✅ 没有符合条件的订单，任务结束")
         return
 
-    # 分离订单号和创建候选集合
-    order_ids = [oid for oid, _ in order_tuples]  # API调用只需要订单号
-    candidate_set = set(order_tuples)  # 候选集合用于过滤
     total_to_sync = len(order_tuples)
 
     print(f"📝 共找到 {total_to_sync} 条订单需要同步详情")
 
-    # 步骤2：调用API获取详情
-    print("\n【步骤2】调用领星API获取订单详情...")
-    try:
-        details = await get_amazon_order_detail(order_ids)
-    except Exception as e:
-        print(f"❌ API获取失败: {str(e)}，中止任务")
+    # 步骤2：按项目分组并调用API获取详情
+    print("\n【步骤2】按项目分组，调用领星API获取订单详情...")
+    project_groups, skipped = await group_order_tuples_by_credentials(order_tuples)
+    if skipped:
+        print(f"⚠️ 跳过 {len(skipped)} 条无法获取项目凭证的订单")
+        for order_id, sid, reason in skipped[:10]:
+            print(f"   - {order_id} / sid={sid}: {reason}")
+        if len(skipped) > 10:
+            print(f"   ... 还有 {len(skipped) - 10} 条未显示")
+
+    if not project_groups:
+        print("❌ 没有可用项目凭证，任务结束")
         return
 
-    if not details:
+    total_details = 0
+    success = 0
+    skipped_save = 0
+    failed = 0
+    duplicates = {}
+    for group in project_groups:
+        group_tuples = group['tuples']
+        order_ids = list(dict.fromkeys(oid for oid, _ in group_tuples))
+        print(
+            f"项目 [{group['project_name']}] 开始获取 {len(order_ids)} 个订单详情 "
+            f"(候选记录 {len(group_tuples)} 条)"
+        )
+        try:
+            details = await get_amazon_order_detail(
+                order_ids,
+                app_id=group['app_id'],
+                app_secret=group['app_secret'],
+            )
+        except Exception as e:
+            print(f"❌ 项目 [{group['project_name']}] API获取失败: {str(e)}，跳过该项目")
+            failed += len(group_tuples)
+            continue
+
+        if not details:
+            print(f"⚠️ 项目 [{group['project_name']}] API未返回任何详情数据")
+            continue
+
+        total_details += len(details)
+        print(f"✅ 项目 [{group['project_name']}] 成功获取 {len(details)} 条订单详情")
+
+        group_success, group_skipped, group_failed, group_duplicates = await save_order_full_details(
+            details,
+            set(group_tuples),
+        )
+        success += group_success
+        skipped_save += group_skipped
+        failed += group_failed
+        for order_id, sid_list in group_duplicates.items():
+            duplicates.setdefault(order_id, []).extend(sid_list)
+
+    if total_details == 0:
         print("⚠️ API未返回任何详情数据")
         return
 
-    print(f"✅ 成功获取 {len(details)} 条订单详情")
-
-    # 步骤3：保存详情（传入候选集合）
-    print("\n【步骤3】保存详情到数据库（存在则跳过）...")
-    success, skipped, failed, duplicates = await save_order_full_details(details, candidate_set)
+    # 步骤3：保存详情（已在各项目内保存）
+    print("\n【步骤3】保存详情到数据库完成（存在则跳过）")
 
     # 步骤4：打印重复报告
     if duplicates:
@@ -339,15 +452,17 @@ async def lx_order_info_main():
         print("=" * 96)
 
     # 最终统计报告
-    attempted = success + failed
+    detail_attempted = success + skipped_save + failed
+    not_in_candidate = max(total_details - detail_attempted, 0)
     print("\n" + "=" * 96)
     print("📊 任务完成！最终统计报告")
     print("=" * 96)
     print(f"📈 候选订单数: {total_to_sync}")
-    print(f"🎯 API返回详情数: {len(details)}")
+    print(f"🎯 API返回详情数: {total_details}")
     print(f"✅ 成功写入: {success} 条")
-    print(f"⏭️  跳过（已存在）: {skipped} 条")
-    print(f"⏭️  跳过（不在候选）: {len(details) - attempted} 条")
+    print(f"⏭️  跳过（已存在）: {skipped_save} 条")
+    print(f"⏭️  跳过（无项目凭证）: {len(skipped)} 条")
+    print(f"⏭️  跳过（不在候选）: {not_in_candidate} 条")
     print(f"❌ 失败: {failed} 条")
     print(f"✅ 最终成功率: {(success / total_to_sync * 100):.1f}%" if total_to_sync > 0 else "0%")
     print("=" * 96)
@@ -361,8 +476,10 @@ async def lx_order_info_main():
 
 # ========== 入口 ==========
 if __name__ == "__main__":
+    args = parse_args()
+    
     t = Timer()
     t.start()
-    asyncio.run(lx_order_info_main())
+    asyncio.run(lx_order_info_main(project_id=args.project_id, project_name=args.project_name))
     t.stop()
     print("\n⏱️  运行时长：", t)

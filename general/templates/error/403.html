@@ -253,7 +253,11 @@
             <img src="{% static 'img/y/logo.png' %}" alt="Divi" class="brand-logo">
             <div class="status-pill">
                 <span class="status-dot"></span>
-                公司模块未授权
+                {% if '当前用户没有' in message or '您没有权限' in message %}
+                    用户权限不足
+                {% else %}
+                    公司模块未授权
+                {% endif %}
             </div>
         </header>
 
@@ -261,7 +265,13 @@
             <section class="error-panel" aria-labelledby="errorTitle">
                 <div class="error-content">
                     <p class="eyebrow">403 ACCESS DENIED</p>
-                    <h1 id="errorTitle">当前公司暂无访问权限</h1>
+                    <h1 id="errorTitle">
+                        {% if '当前用户没有' in message or '您没有权限' in message %}
+                            当前用户暂无访问权限
+                        {% else %}
+                            当前公司暂无访问权限
+                        {% endif %}
+                    </h1>
                     <p class="message">{{ message|default:'当前账号或公司暂无该页面权限，请联系管理员处理。' }}</p>
 
                     <div class="actions">
@@ -283,7 +293,13 @@
                         </div>
                         <div class="meta-item">
                             <p class="meta-label">处理方式</p>
-                            <p class="meta-value">由平台总后台为该公司开通对应模块。</p>
+                            <p class="meta-value">
+                                {% if '当前用户没有' in message or '您没有权限' in message %}
+                                    请联系公司管理员为当前账号分配对应权限。
+                                {% else %}
+                                    由平台总后台为该公司开通对应模块。
+                                {% endif %}
+                            </p>
                         </div>
                     </div>
                 </aside>

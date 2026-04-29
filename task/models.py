@@ -929,4 +929,7 @@ from .approval_models import (
     ApprovalRecord,
     AmazonAdApproval,
     AmazonAdShopConfig,
+    FbaShipmentApproval,
+    FbaShipmentShopConfig,
+    FbaShipmentItem,
 )
