@@ -64,7 +64,7 @@ async def get_lx_temu_shops(app_id: str = None, app_secret: str = None):
         app_id=app_id,
         app_secret=app_secret
     )
-    print(resp)
+    # print(resp)
     return (resp.data or {}).get("list") or []
 
 async def get_temu_order_for_divi(global_order_no: str):
@@ -387,7 +387,7 @@ async def get_lx_temu_orders_list(platform_order_nos: List[str]) -> Dict[str, Li
                 order_list = _data.get("list") or []
     except Exception:
         order_list = []
-    print(resp)
+    # print(resp)
     
     # 检测 IP 白名单错误
     if resp is not None:
@@ -471,7 +471,7 @@ async def temu_address_decrypt(decrypt_sn_list: List[str]):
         "decryptSnList": decrypt_sn_list,
     }
     resp = await get_api_resp(req_body, api_path="/basicOpen/temu/temuAddressDecrypt")
-    print(resp)
+    # print(resp)
     if resp.message == "操作成功":
         return True
     else:
@@ -690,7 +690,7 @@ async def ck():
         "type": 3
     }
     resp = await get_api_resp(req_body=req_body, api_path="/erp/sc/data/local_inventory/warehouse")
-    print(resp)
+    # print(resp)
 
 
 async def step3_add_warehousing_temu(items_with_qty_price: list, wid: str, app_id: str = None,

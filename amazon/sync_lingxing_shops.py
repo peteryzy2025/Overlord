@@ -174,12 +174,18 @@ def sync_lingxing_shops(data_list):
         "amazon_shop",
     ]
 
+    missing_bind_shops = []  # 记录未匹配的店铺
     for row in rows:
         amazon_shop = amazon_shop_map.get(row.get("account_name"))
         if amazon_shop:
             amazon_shop_ids_to_mark.add(amazon_shop.id)
         else:
             missing_bind_count += 1
+            missing_bind_shops.append({
+                "sid": row["sid"],
+                "account_name": row.get("account_name"),
+                "name": row.get("name"),
+            })
 
         obj = existing_map.get(row["sid"])
         if obj:
@@ -229,6 +235,12 @@ def sync_lingxing_shops(data_list):
         f"已绑定/保持绑定 {bind_count}，未匹配本地店铺 {missing_bind_count}，"
         f"标记 ling_xing_if {marked_count}，跳过无效记录 {skipped_no_sid}"
     )
+    if missing_bind_shops:
+        print("⚠️ 以下领星店铺未匹配到本地 AmazonShop：")
+        for shop in missing_bind_shops[:20]:
+            print(f"   - sid={shop['sid']}, account_name={shop['account_name']}, name={shop['name']}")
+        if len(missing_bind_shops) > 20:
+            print(f"   ... 还有 {len(missing_bind_shops) - 20} 条未显示")
 
 
 def sync_lingxing_temu_shops(data_list):
@@ -286,10 +298,16 @@ def sync_lingxing_temu_shops(data_list):
         "temu_shop",
     ]
 
+    missing_bind_shops_temu = []  # 记录未匹配的Temu店铺
     for row in rows:
         temu_shop = temu_shop_map.get(row.get("shop_name_to_match"))
         if not temu_shop:
             missing_bind_count += 1
+            missing_bind_shops_temu.append({
+                "store_id": row["store_id"],
+                "store_name": row.get("store_name"),
+                "shop_name_to_match": row.get("shop_name_to_match"),
+            })
 
         obj = existing_map.get(row["store_id"])
         if obj:
@@ -332,6 +350,12 @@ def sync_lingxing_temu_shops(data_list):
         f"已绑定/保持绑定 {bind_count}，未匹配本地店铺 {missing_bind_count}，"
         f"跳过无效记录 {skipped_no_store_id}"
     )
+    if missing_bind_shops_temu:
+        print("⚠️ 以下领星Temu店铺未匹配到本地 TemuShop：")
+        for shop in missing_bind_shops_temu[:20]:
+            print(f"   - store_id={shop['store_id']}, store_name={shop['store_name']}, 匹配名={shop['shop_name_to_match']}")
+        if len(missing_bind_shops_temu) > 20:
+            print(f"   ... 还有 {len(missing_bind_shops_temu) - 20} 条未显示")
 
 
 def lx_shop_main(project_id=None, project_name=None):
