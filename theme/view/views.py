@@ -178,23 +178,12 @@ def _api_amazon_products_impl(request):
 
         # ASIN去重逻辑
         if deduplicate:
-            from django.db.models import Max
-
-            # 获取每个ASIN的最新crawl_date记录
-            latest_records = ThemeDailyData.objects.values("product__asin").annotate(
-                latest_crawl_date=Max("crawl_date"), latest_crawled_at=Max("crawled_at")
+            latest_record_id = (
+                ThemeDailyData.objects.filter(product_id=OuterRef("product_id"))
+                .order_by("-crawl_date", "-crawled_at", "-id")
+                .values("id")[:1]
             )
-
-            # 构建去重条件
-            dedup_conditions = Q()
-            for record in latest_records:
-                dedup_conditions |= (
-                    Q(product__asin=record["product__asin"])
-                    & Q(crawl_date=record["latest_crawl_date"])
-                    & Q(crawled_at=record["latest_crawled_at"])
-                )
-
-            queryset = queryset.filter(dedup_conditions)
+            queryset = queryset.filter(id=Subquery(latest_record_id))
 
         # 3. 应用筛选条件
 
@@ -311,36 +300,6 @@ def _api_amazon_products_impl(request):
 
         queryset = queryset.order_by(real_sort_field)
 
-        # 4.5. 构建主题数据查找字典 (通过ASIN关联)
-        # 收集所有ASIN
-        all_asins = set(q.product.asin for q in queryset)
-
-        # 预取主题数据
-        theme_novelties = AmazonThemeNovelty.objects.filter(
-            asin__in=all_asins
-        ).prefetch_related(
-            Prefetch(
-                "ai_records",
-                ThemeRecord.objects.order_by("-record_time", "-record_date")[:1],
-                to_attr="latest_record",
-            ),
-            Prefetch(
-                "rank_history",
-                ThemeDailyData.objects.order_by("-crawled_at", "-crawl_date")[:1],
-                to_attr="latest_data",
-            ),
-        )
-
-        # 构建查找字典 {asin: {theme_record: ..., daily_data: ...}}
-        theme_lookup = {}
-        for novelty in theme_novelties:
-            theme_record = novelty.latest_record[0] if novelty.latest_record else None
-            daily_data = novelty.latest_data[0] if novelty.latest_data else None
-            theme_lookup[novelty.asin] = {
-                "theme_record": theme_record,
-                "daily_data": daily_data,
-            }
-
         # 5. 分页处理
         page = data.get("page", 1)
         page_size = data.get("page_size", 20)
@@ -371,12 +330,40 @@ def _api_amazon_products_impl(request):
 
         # 6. 序列化数据
         history_list = []
+        current_page_items = list(current_page.object_list)
+
+        # 只为当前页预取主题数据，避免分页前遍历全部匹配记录。
+        page_asins = [item.product.asin for item in current_page_items]
+        theme_lookup = {}
+        if page_asins:
+            theme_novelties = AmazonThemeNovelty.objects.filter(
+                asin__in=page_asins
+            ).prefetch_related(
+                Prefetch(
+                    "ai_records",
+                    ThemeRecord.objects.order_by("-record_time", "-record_date")[:1],
+                    to_attr="latest_record",
+                ),
+                Prefetch(
+                    "rank_history",
+                    ThemeDailyData.objects.order_by("-crawled_at", "-crawl_date")[:1],
+                    to_attr="latest_data",
+                ),
+            )
+
+            for novelty in theme_novelties:
+                theme_record = novelty.latest_record[0] if novelty.latest_record else None
+                daily_data = novelty.latest_data[0] if novelty.latest_data else None
+                theme_lookup[novelty.asin] = {
+                    "theme_record": theme_record,
+                    "daily_data": daily_data,
+                }
 
         # 获取当前用户（如果已登录）
         current_user = getattr(request, "user", None)
 
         # 批量获取举报状态 - 优化性能
-        all_asins = [h.product.asin for h in current_page]
+        all_asins = page_asins
         reports_queryset = ThemeReport.objects.filter(
             product__asin__in=all_asins, is_active=True
         ).select_related("reporter")
@@ -414,7 +401,7 @@ def _api_amazon_products_impl(request):
                 }
             )
 
-        for history in current_page:
+        for history in current_page_items:
             product = history.product
 
             # 格式化日期字段

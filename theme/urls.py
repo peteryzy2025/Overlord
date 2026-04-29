@@ -96,16 +96,6 @@ urlpatterns = [
         name="api_new_release_list",
     ),
     path(
-        "api/theme-aggregation/",
-        views_new_release.api_theme_aggregation_list,
-        name="api_theme_aggregation_list",
-    ),
-    path(
-        "api/theme-aggregation/asins/",
-        views_new_release.api_theme_aggregation_asins,
-        name="api_theme_aggregation_asins",
-    ),
-    path(
         "api/theme-cluster-aggregation/",
         views_new_release.api_cluster_aggregation_list,
         name="api_cluster_aggregation_list",

@@ -88,71 +88,7 @@ class DatabaseManager:
         return len(data)
 
     def sync_summary_subjects(self):
-        try:
-            self.cursor.execute(
-                """
-                SELECT subject_translation, COUNT(*) as cnt
-                FROM theme_amazon_new_release_rank
-                WHERE summary_subject_id IS NULL
-                GROUP BY subject_translation
-            """
-            )
-            orphans = self.cursor.fetchall()
-
-            if not orphans:
-                logger.info("没有发现新的待分类主题")
-                return 0
-
-            updated_count = 0
-            for row in orphans:
-                text = row[0]
-
-                self.cursor.execute(
-                    """
-                    SELECT id FROM theme_summary
-                    WHERE similarity(summary_subject_title, %s) > 0.2
-                    ORDER BY similarity(summary_subject_title, %s) DESC
-                    LIMIT 1
-                """,
-                    (text, text),
-                )
-                match = self.cursor.fetchone()
-
-                if match:
-                    target_id = match[0]
-                    logger.debug(f"匹配成功: '{text}' -> ID {target_id}")
-                else:
-                    self.cursor.execute(
-                        """
-                        INSERT INTO theme_summary (summary_subject_title, report, created_time)
-                        VALUES (%s, FALSE, NOW()) RETURNING id
-                    """,
-                        (text,),
-                    )
-                    result = self.cursor.fetchone()
-                    target_id = result[0]
-                    logger.info(f"新建主题: '{text}' (ID {target_id})")
-
-                self.cursor.execute(
-                    """
-                    UPDATE theme_amazon_new_release_rank
-                    SET summary_subject_id = %s
-                    WHERE subject_translation = %s AND summary_subject_id IS NULL
-                """,
-                    (target_id, text),
-                )
-                updated_count += self.cursor.rowcount
-
-            self.commit()
-            logger.info(
-                f"主题归类完成，共处理 {len(orphans)} 个主题，更新 {updated_count} 条记录"
-            )
-            return updated_count
-
-        except Exception as e:
-            self.rollback()
-            logger.error(f"主题归类失败: {e}")
-            raise
+        pass
 
 
 class ThemeAnalyzer:
@@ -398,9 +334,6 @@ def analyze_themes_for_dates(db_manager, crawl_dates):
 def main():
     db_manager = DatabaseManager()
     try:
-        logger.info("开始主题归类...")
-        db_manager.sync_summary_subjects()
-
         today_str = datetime.now().strftime("%Y-%m-%d")
         analyze_themes_for_dates(db_manager, {today_str})
     finally:

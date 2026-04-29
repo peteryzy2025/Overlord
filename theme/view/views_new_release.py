@@ -1,7 +1,5 @@
-from django.contrib.auth.decorators import login_required
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.db.models import (
-    Avg,
     Count,
     F,
     Max,
@@ -9,11 +7,7 @@ from django.db.models import (
     OuterRef,
     Q,
     Subquery,
-    Value,
-    FloatField,
 )
-from django.db.models.functions import Coalesce
-from django.db.models.expressions import RawSQL
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -26,7 +20,6 @@ from theme.models import (
     AmazonNewReleaseRank,
     AmazonThemeCluster,
     ThemeNewDailyData,
-    ThemeSummary,
 )
 from theme.view.permissions import theme_access_required
 
@@ -67,20 +60,6 @@ def new_release_page(request):
         .distinct()
         .order_by("category")
     )
-    # ===============以下是针对ThemeSummary==========================================
-    total_themes = ThemeSummary.objects.count()  # 聚合主题总条数
-    recent_themes_7d = (  # 7天聚合主题数
-        ThemeSummary.objects.filter(
-            summary_subject__updated_at__gte=timezone.now() - timedelta(days=7)
-        )
-        .distinct()
-        .count()
-    )
-    recent_themes_month = (  # 本月迄今为止聚合主题数
-        ThemeSummary.objects.filter(summary_subject__updated_at__gte=first_day_of_month)
-        .distinct()
-        .count()
-    )
     # ===============以下是针对 AmazonThemeCluster (三层架构) ==================
     total_clusters = AmazonThemeCluster.objects.count()
     recent_clusters_7d = AmazonThemeCluster.objects.filter(
@@ -99,12 +78,7 @@ def new_release_page(request):
             "recent_subjects_7d": recent_subjects_7d,
             "recent_products": recent_products,
         },
-        "aggregation_stats": {  # 主题聚合顶部卡 (旧 ThemeSummary)
-            "total_themes": total_themes,
-            "recent_themes_7d": recent_themes_7d,
-            "recent_themes_month": recent_themes_month,
-        },
-        "cluster_stats": {  # 主题聚合顶部卡 (新三层架构)
+        "cluster_stats": {  # 主题聚合顶部卡 (三层架构)
             "total_themes": total_clusters,
             "recent_themes_7d": recent_clusters_7d,
             "recent_themes_month": recent_clusters_month,
@@ -319,379 +293,6 @@ def api_new_release_list(request):
         )
 
 
-@theme_access_required
-@csrf_exempt
-@require_POST
-def api_theme_aggregation_list(request):
-    try:
-        data = json.loads(request.body or "{}")
-
-        start_date_str = str(data.get("start_date", "")).strip()
-        end_date_str = str(data.get("end_date", "")).strip()
-
-        date_filter = Q()
-        if start_date_str:
-            try:
-                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-                date_filter &= Q(summary_subject__updated_at__date__gte=start_date)
-            except ValueError:
-                pass
-        if end_date_str:
-            try:
-                end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
-                date_filter &= Q(summary_subject__updated_at__date__lte=end_date)
-            except ValueError:
-                pass
-
-        # 新主题快速筛选
-        new_theme_days = data.get("new_theme_days")
-        new_theme_filter = Q()
-        if new_theme_days:
-            try:
-                days = int(new_theme_days)
-                if days > 0:
-                    cutoff = timezone.now() - timedelta(days=days)
-                    new_theme_filter = Q(created_time__gte=cutoff)
-            except (ValueError, TypeError):
-                pass
-
-        qs = (
-            ThemeSummary.objects.annotate(
-                appear_count=Count("summary_subject", filter=date_filter, distinct=True)
-            )
-            .filter(appear_count__gt=0)
-            .filter(new_theme_filter)
-        )
-
-        subject_search = str(data.get("subject_search", "")).strip()
-        if subject_search:
-            qs = qs.filter(
-                Q(summary_subject__subject__icontains=subject_search)
-                | Q(summary_subject__subject_translation__icontains=subject_search)
-            ).distinct()
-
-        today_date = timezone.now().date()
-        today_str = today_date.isoformat()
-        avg_days_sq = (
-            AmazonNewReleaseRank.objects.filter(
-                summary_subject_id=OuterRef("pk"), launch_date__isnull=False
-            )
-            .annotate(
-                days_since_launch=RawSQL("(%s::date - launch_date)", (today_str,))
-            )
-            .values("summary_subject_id")
-            .annotate(avg_d=Avg("days_since_launch"))
-            .values("avg_d")[:1]
-        )
-        qs = qs.annotate(
-            avg_launch_days_annotated=Coalesce(
-                Subquery(avg_days_sq, output_field=FloatField()),
-                Value(-1.0, output_field=FloatField()),
-            )
-        )
-
-        sort_field = str(data.get("sort_field", "appear_count")).strip()
-        sort_order = str(data.get("sort_order", "desc")).strip().lower()
-
-        if sort_field == "summary_subject_title":
-            order_field = "summary_subject_title"
-            if sort_order == "desc":
-                order_field = f"-{order_field}"
-        elif sort_field == "avg_launch_days":
-            order_field = "avg_launch_days_annotated"
-            if sort_order == "desc":
-                order_field = f"-{order_field}"
-        else:
-            order_field = "-appear_count" if sort_order == "desc" else "appear_count"
-
-        qs = qs.order_by(order_field)
-
-        page = int(data.get("page", 1) or 1)
-        page_size = int(data.get("page_size", 20) or 20)
-        if page_size not in (20, 50, 100, 200):
-            page_size = 20
-
-        paginator = Paginator(qs, page_size)
-        try:
-            current_page = paginator.page(page)
-        except PageNotAnInteger:
-            current_page = paginator.page(1)
-        except EmptyPage:
-            current_page = paginator.page(paginator.num_pages)
-
-        theme_ids = [item.id for item in current_page.object_list]
-
-        asin_theme_map = {}
-        theme_fulfillment_counts = {
-            tid: {"FBA": 0, "FBM": 0, "AMZ": 0, "unknown": 0, "total": 0}
-            for tid in theme_ids
-        }
-        theme_category_counts = {tid: {} for tid in theme_ids}
-        for rank in AmazonNewReleaseRank.objects.filter(
-            summary_subject_id__in=theme_ids
-        ).values(
-            "asin", "summary_subject_id", "fulfillment", "launch_date", "category"
-        ):
-            asin_theme_map[rank["asin"]] = rank["summary_subject_id"]
-            f = (rank["fulfillment"] or "").strip()
-            tid = rank["summary_subject_id"]
-            if tid in theme_fulfillment_counts:
-                if f in ("FBA", "FBM", "AMZ"):
-                    theme_fulfillment_counts[tid][f] += 1
-                else:
-                    theme_fulfillment_counts[tid]["unknown"] += 1
-                theme_fulfillment_counts[tid]["total"] += 1
-            category = (rank.get("category") or "").strip()
-            # 标准化品类名称：去除多余空格，统一换行符
-            if category:
-                # 去除多余空格（包括连续的多个空格）
-                category = " ".join(category.split())
-                if category:
-                    theme_category_counts[tid][category] = (
-                        theme_category_counts[tid].get(category, 0) + 1
-                    )
-
-        theme_trend_lookup = {}
-        if asin_theme_map:
-            trend_data = (
-                ThemeNewDailyData.objects.filter(
-                    product__asin__in=list(asin_theme_map.keys())
-                )
-                .values("product__asin", "crawl_date", "rank")
-                .order_by("product__asin", "crawl_date")
-            )
-
-            theme_date_ranks = {}
-            for row in trend_data:
-                theme_id = asin_theme_map.get(row["product__asin"])
-                if theme_id is None or row["crawl_date"] is None or row["rank"] is None:
-                    continue
-                date_str = row["crawl_date"].strftime("%Y-%m-%d")
-                theme_date_ranks.setdefault(theme_id, {}).setdefault(
-                    date_str, []
-                ).append(row["rank"])
-
-            for tid, date_ranks in theme_date_ranks.items():
-                trend_list = []
-                for d in sorted(date_ranks.keys()):
-                    ranks = date_ranks[d]
-                    avg_rank = round(sum(ranks) / len(ranks), 1)
-                    trend_list.append({"date": d, "rank": avg_rank})
-                theme_trend_lookup[tid] = trend_list[-7:]
-
-        theme_rows = []
-        for item in current_page.object_list:
-            counts = theme_fulfillment_counts.get(item.id, {})
-            total = counts.get("total", 0)
-            stats = {
-                "FBA": {
-                    "count": counts.get("FBA", 0),
-                    "pct": round(counts.get("FBA", 0) / total * 100, 1) if total else 0,
-                },
-                "FBM": {
-                    "count": counts.get("FBM", 0),
-                    "pct": round(counts.get("FBM", 0) / total * 100, 1) if total else 0,
-                },
-                "AMZ": {
-                    "count": counts.get("AMZ", 0),
-                    "pct": round(counts.get("AMZ", 0) / total * 100, 1) if total else 0,
-                },
-                "unknown": {
-                    "count": counts.get("unknown", 0),
-                    "pct": round(counts.get("unknown", 0) / total * 100, 1)
-                    if total
-                    else 0,
-                },
-            }
-            if total > 0:
-                # 修正四舍五入误差，确保百分比之和等于 100
-                diff = round(100 - sum(stats[k]["pct"] for k in stats), 1)
-                largest = max(stats, key=lambda k: stats[k]["pct"])
-                stats[largest]["pct"] = round(stats[largest]["pct"] + diff, 1)
-            avg_days_val = item.avg_launch_days_annotated
-            avg_days = (
-                round(avg_days_val, 1) if avg_days_val and avg_days_val >= 0 else "-"
-            )
-            # =======================计算品类占比=========================================
-            category_counts = theme_category_counts.get(item.id, {})
-            category_total = sum(category_counts.values())
-            category_stats = {}
-            if category_total > 0:
-                for cat, count in category_counts.items():
-                    category_stats[cat] = {
-                        "count": count,
-                        "pct": round(count / category_total * 100, 1),
-                    }
-                # 修正四舍五入误差
-                diff = round(100 - sum(s["pct"] for s in category_stats.values()), 1)
-                if diff != 0 and category_stats:
-                    largest = max(
-                        category_stats, key=lambda k: category_stats[k]["pct"]
-                    )
-                    category_stats[largest]["pct"] = round(
-                        category_stats[largest]["pct"] + diff, 1
-                    )
-            # =============================================================================
-            theme_rows.append(
-                {
-                    "id": item.id,
-                    "summary_subject_title": item.summary_subject_title,
-                    "appear_count": item.appear_count,
-                    "rank_trend_7d": theme_trend_lookup.get(item.id, []),
-                    "fulfillment_stats": stats,
-                    "avg_launch_days": avg_days,
-                    "category_stats": category_stats,
-                }
-            )
-
-        now = timezone.now()
-        seven_days_ago_dt = now - timedelta(days=7)
-        first_day_of_month = now.replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
-
-        stats = {
-            "total_themes": ThemeSummary.objects.count(),
-            "recent_themes_7d": ThemeSummary.objects.filter(
-                summary_subject__updated_at__gte=seven_days_ago_dt
-            )
-            .distinct()
-            .count(),
-            "recent_themes_month": ThemeSummary.objects.filter(
-                summary_subject__updated_at__gte=first_day_of_month
-            )
-            .distinct()
-            .count(),
-        }
-
-        return JsonResponse(
-            {
-                "success": True,
-                "data": {
-                    "themes": theme_rows,
-                    "total": paginator.count,
-                    "total_pages": paginator.num_pages,
-                    "current_page": current_page.number,
-                    "page_size": page_size,
-                    "has_next": current_page.has_next(),
-                    "has_previous": current_page.has_previous(),
-                    "next_page": current_page.next_page_number()
-                    if current_page.has_next()
-                    else None,
-                    "previous_page": current_page.previous_page_number()
-                    if current_page.has_previous()
-                    else None,
-                    "stats": stats,
-                },
-            }
-        )
-    except json.JSONDecodeError:
-        return JsonResponse(
-            {"success": False, "message": "无效的JSON数据格式"}, status=400
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {"success": False, "message": f"服务器内部错误: {exc}"}, status=500
-        )
-
-
-@theme_access_required
-@csrf_exempt
-@require_POST
-def api_theme_aggregation_asins(request):
-    """返回指定聚合主题下的所有 ASIN 详细信息"""
-    try:
-        data = json.loads(request.body or "{}")
-        theme_id = data.get("theme_id")
-
-        if not theme_id:
-            return JsonResponse(
-                {"success": False, "message": "缺少 theme_id 参数"}, status=400
-            )
-
-        asins_qs = (
-            AmazonNewReleaseRank.objects.filter(summary_subject_id=theme_id)
-            .values(
-                "asin",
-                "title",
-                "title_translation",
-                "subject",
-                "subject_translation",
-                "category",
-                "image_url",
-                "launch_date",
-                "fulfillment",
-            )
-            .order_by("-launch_date")
-        )
-
-        # 获取所有ASIN列表
-        asin_list_raw = list(asins_qs)
-        asin_values = [row["asin"] for row in asin_list_raw if row["asin"]]
-
-        # 批量查询所有ASIN的历史排名数据
-        rank_trend_lookup = {}
-        if asin_values:
-            trend_data = (
-                ThemeNewDailyData.objects.filter(product__asin__in=asin_values)
-                .values("product__asin", "crawl_date", "rank")
-                .order_by("product__asin", "crawl_date")
-            )
-            for row in trend_data:
-                asin = row["product__asin"]
-                if asin not in rank_trend_lookup:
-                    rank_trend_lookup[asin] = []
-                rank_trend_lookup[asin].append(
-                    {
-                        "date": row["crawl_date"].strftime("%Y-%m-%d")
-                        if row["crawl_date"]
-                        else None,
-                        "rank": row["rank"],
-                    }
-                )
-            # 只保留最近7条数据
-            for asin in rank_trend_lookup:
-                rank_trend_lookup[asin] = rank_trend_lookup[asin][-7:]
-
-        asin_list = []
-        for row in asin_list_raw:
-            asin = row["asin"] or ""
-            asin_list.append(
-                {
-                    "asin": asin,
-                    "title": row["title"] or "",
-                    "title_translation": row["title_translation"] or "",
-                    "subject": row["subject"] or "",
-                    "subject_translation": row["subject_translation"] or "",
-                    "category": row["category"] or "",
-                    "image_url": row["image_url"] or "",
-                    "launch_date": row["launch_date"].strftime("%Y-%m-%d")
-                    if row["launch_date"]
-                    else "",
-                    "fulfillment": row["fulfillment"] or "",
-                    "rank_trend_7d": rank_trend_lookup.get(asin, []),
-                }
-            )
-
-        return JsonResponse(
-            {
-                "success": True,
-                "data": {
-                    "asins": asin_list,
-                    "total": len(asin_list),
-                },
-            }
-        )
-    except json.JSONDecodeError:
-        return JsonResponse(
-            {"success": False, "message": "无效的JSON数据格式"}, status=400
-        )
-    except Exception as exc:
-        return JsonResponse(
-            {"success": False, "message": f"服务器内部错误: {exc}"}, status=500
-        )
-
-
 # =====================================================================
 # 基于三层架构 (Cluster → Fingerprint → ASIN) 的主题聚合 API
 # =====================================================================
@@ -703,7 +304,6 @@ def api_theme_aggregation_asins(request):
 def api_cluster_aggregation_list(request):
     """
     基于 AmazonThemeCluster 的主题聚合列表 API。
-    替代旧的 api_theme_aggregation_list (基于 ThemeSummary)。
     """
     try:
         data = json.loads(request.body or "{}")

@@ -22,3 +22,6 @@ MarsCodeWorkspaceAppSettings.xml
 
 # Worktrees directory
 .worktrees/
+
+#settings untrack
+Overlord/settings.py
