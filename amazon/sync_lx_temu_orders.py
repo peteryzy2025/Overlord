@@ -314,7 +314,9 @@ def temu_orders(project_id=None, project_name=None):
         print(f"按项目名称过滤：'{project_name}'")
 
     # 1. 获取店铺
-    qs = LingXingTemuShop.objects.select_related('temu_shop__project')
+    qs = LingXingTemuShop.objects.select_related('temu_shop__project').filter(
+        temu_shop__project__is_active=True
+    )
     
     # 按项目过滤（通过关联的 temu_shop -> project）
     if project_id:
@@ -329,7 +331,7 @@ def temu_orders(project_id=None, project_name=None):
         print(f"未找到任何{filter_desc}Temu店铺配置，同步终止")
         return
 
-    project_shops = {}
+    credential_shops = {}
     skipped_shops = []
     for shop in shops:
         project = shop.temu_shop.project if shop.temu_shop else None
@@ -340,14 +342,18 @@ def temu_orders(project_id=None, project_name=None):
             skipped_shops.append((shop.store_id, shop.store_name, f"项目 {project.name} 未配置领星 API 凭证"))
             continue
 
-        if project.id not in project_shops:
-            project_shops[project.id] = {
-                'project': project,
+        key = (project.lingxing_app_id.strip(), project.lingxing_app_secret.strip())
+        if key not in credential_shops:
+            credential_shops[key] = {
+                'app_id': key[0],
+                'app_secret': key[1],
+                'project_names': set(),
                 'store_ids': [],
                 'shop_map': {},
             }
-        project_shops[project.id]['store_ids'].append(shop.store_id)
-        project_shops[project.id]['shop_map'][shop.store_id] = shop.store_name or shop.store_id
+        credential_shops[key]['project_names'].add(project.name)
+        credential_shops[key]['store_ids'].append(shop.store_id)
+        credential_shops[key]['shop_map'][shop.store_id] = shop.store_name or shop.store_id
 
     if skipped_shops:
         print(f"跳过 {len(skipped_shops)} 个未绑定项目或缺少领星凭证的 Temu 店铺")
@@ -356,39 +362,39 @@ def temu_orders(project_id=None, project_name=None):
         if len(skipped_shops) > 10:
             print(f"  ... 还有 {len(skipped_shops) - 10} 个未显示")
 
-    if not project_shops:
+    if not credential_shops:
         print("没有可用项目凭证的 Temu 店铺，同步终止")
         return
 
-    print(f"共找到 {len(shops)} 个店铺，分布在 {len(project_shops)} 个可同步项目")
+    print(f"共找到 {len(shops)} 个店铺，合并为 {len(credential_shops)} 套领星凭证")
 
     # 2. 拉取订单数据（默认3天）
     has_data = False
-    for data in project_shops.values():
-        project = data['project']
+    for data in credential_shops.values():
         store_ids = data['store_ids']
         shop_map = data['shop_map']
-        print(f"\n项目 [{project.name}] 开始同步 {len(store_ids)} 个 Temu 店铺")
+        project_names = '、'.join(sorted(data['project_names']))
+        print(f"\n领星凭证组 [{project_names}] 开始同步 {len(store_ids)} 个 Temu 店铺")
         try:
             orders_data = asyncio.run(
                 get_lx_temu_orders(
                     store_ids,
                     day=14,
                     shop_map=shop_map,
-                    app_id=project.lingxing_app_id,
-                    app_secret=project.lingxing_app_secret,
+                    app_id=data['app_id'],
+                    app_secret=data['app_secret'],
                 )
             )
         except Exception as e:
-            print(f"项目 [{project.name}] 调用领星 API 失败: {e}")
+            print(f"领星凭证组 [{project_names}] 调用领星 API 失败: {e}")
             continue
 
         if not orders_data:
-            print(f"项目 [{project.name}] API 返回空数据")
+            print(f"领星凭证组 [{project_names}] API 返回空数据")
             continue
 
         has_data = True
-        print(f"项目 [{project.name}] API 返回数据包含 {len(orders_data)} 个店铺的订单")
+        print(f"领星凭证组 [{project_names}] API 返回数据包含 {len(orders_data)} 个店铺的订单")
 
         # 3. 写入数据库
         sync_temu_orders(orders_data)

@@ -77,6 +77,7 @@ def find_Unshipped_orders_without_detail(days_back=14, project_id=None, project_
         'order_status': 'Unshipped',
         'purchase_date_local__gte': start_date,
         'full_detail__isnull': True,
+        'amazon_shop__project__is_active': True,
     }
     
     if project_id:
@@ -98,7 +99,7 @@ def find_Unshipped_orders_without_detail(days_back=14, project_id=None, project_
 
 
 @sync_to_async
-def group_order_tuples_by_project(order_tuples):
+def group_order_tuples_by_credentials(order_tuples):
     sid_set = {sid for _, sid in order_tuples if sid}
     shops = (
         LingXingAmazonShop.objects
@@ -126,18 +127,24 @@ def group_order_tuples_by_project(order_tuples):
             skipped.append((order_id, sid, f"项目 {info['project_name']} 未配置领星 API 凭证"))
             continue
 
-        project_id = info['project_id']
-        if project_id not in groups:
-            groups[project_id] = {
-                'project_id': project_id,
-                'project_name': info['project_name'],
-                'app_id': info['app_id'],
-                'app_secret': info['app_secret'],
+        key = (str(info['app_id']).strip(), str(info['app_secret']).strip())
+        if key not in groups:
+            groups[key] = {
+                'app_id': key[0],
+                'app_secret': key[1],
+                'project_names': set(),
                 'tuples': [],
             }
-        groups[project_id]['tuples'].append((order_id, sid))
+        groups[key]['project_names'].add(info['project_name'])
+        groups[key]['tuples'].append((order_id, sid))
 
-    return list(groups.values()), skipped
+    result = []
+    for group in groups.values():
+        group['project_name'] = '、'.join(sorted(group['project_names']))
+        del group['project_names']
+        result.append(group)
+
+    return result, skipped
 
 
 # ========== 步骤2：保存订单详情（严格过滤+重复检测） ==========
@@ -362,7 +369,7 @@ async def lx_order_info_main(project_id=None, project_name=None):
 
     # 步骤2：按项目分组并调用API获取详情
     print("\n【步骤2】按项目分组，调用领星API获取订单详情...")
-    project_groups, skipped = await group_order_tuples_by_project(order_tuples)
+    project_groups, skipped = await group_order_tuples_by_credentials(order_tuples)
     if skipped:
         print(f"⚠️ 跳过 {len(skipped)} 条无法获取项目凭证的订单")
         for order_id, sid, reason in skipped[:10]:

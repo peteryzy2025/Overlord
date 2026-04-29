@@ -241,7 +241,7 @@ def lx_order_main(project_id=None, project_name=None):
     #    同时关联查询 amazon_shop -> project 获取领星 API 配置
     shops = (
         LingXingAmazonShop.objects
-        .filter(country="美国")
+        .filter(country="美国", amazon_shop__project__is_active=True)
         .select_related("amazon_shop__project")
     )
     
@@ -256,53 +256,61 @@ def lx_order_main(project_id=None, project_name=None):
         print(f"没有找到任何{filter_desc}国家为美国的领星店铺，结束。")
         return
 
-    # 按项目分组店铺（不同项目可能有不同的领星 API 凭证）
-    project_shops = {}
+    # 按领星凭证分组店铺（多个项目共用同一套凭证时合并请求）
+    credential_shops = {}
+    skipped_shops = []
     for shop in shops:
         project = shop.amazon_shop.project if shop.amazon_shop else None
-        pid = project.id if project else None
-        
-        if pid not in project_shops:
-            project_shops[pid] = {
-                "project": project,
+        if not project:
+            skipped_shops.append((shop.sid, shop.name, "未绑定项目"))
+            continue
+        if not project.lingxing_app_id or not project.lingxing_app_secret:
+            skipped_shops.append((shop.sid, shop.name, f"项目 {project.name} 未配置领星 API 凭证"))
+            continue
+
+        key = (project.lingxing_app_id.strip(), project.lingxing_app_secret.strip())
+        if key not in credential_shops:
+            credential_shops[key] = {
+                "app_id": key[0],
+                "app_secret": key[1],
+                "project_names": set(),
                 "sids": [],
             }
-        project_shops[pid]["sids"].append(shop.sid)
+        credential_shops[key]["project_names"].add(project.name)
+        credential_shops[key]["sids"].append(shop.sid)
 
-    print(f"共找到 {shops.count()} 个美国店铺，分布在 {len(project_shops)} 个项目")
+    if skipped_shops:
+        print(f"跳过 {len(skipped_shops)} 个未绑定项目或缺少领星凭证的店铺")
+        for sid, shop_name, reason in skipped_shops[:10]:
+            print(f"  - {shop_name or sid}(sid={sid}): {reason}")
+        if len(skipped_shops) > 10:
+            print(f"  ... 还有 {len(skipped_shops) - 10} 个未显示")
+
+    print(f"共找到 {shops.count()} 个美国店铺，合并为 {len(credential_shops)} 套领星凭证")
 
     all_orders = []
 
-    # 2. 按项目分组拉取订单数据
-    for pid, data in project_shops.items():
-        project = data["project"]
-        sids = data["sids"]
-        
-        if not project:
-            print(f"警告：部分店铺未绑定项目，跳过 {len(sids)} 个店铺")
-            continue
-        
-        if not project.lingxing_app_id or not project.lingxing_app_secret:
-            print(f"警告：项目 {project.name} 未配置领星 API 凭证，跳过 {len(sids)} 个店铺")
-            continue
-        
-        print(f"项目 [{project.name}] 开始同步 {len(sids)} 个店铺...")
+    # 2. 按领星凭证分组拉取订单数据
+    for data in credential_shops.values():
+        sids = sorted(set(data["sids"]))
+        project_names = "、".join(sorted(data["project_names"]))
+        print(f"领星凭证组 [{project_names}] 开始同步 {len(sids)} 个店铺...")
         
         # 用异步接口从领星批量拉取订单（内部会自动按 20 个 sid 分组请求）
         resp_data = asyncio.run(
             get_lingxing_orders(
                 sids, 
                 days=30,
-                app_id=project.lingxing_app_id,
-                app_secret=project.lingxing_app_secret
+                app_id=data["app_id"],
+                app_secret=data["app_secret"]
             )
         )
         
         if resp_data:
             all_orders.extend(resp_data)
-            print(f"项目 [{project.name}] 获取到 {len(resp_data)} 条订单")
+            print(f"领星凭证组 [{project_names}] 获取到 {len(resp_data)} 条订单")
         else:
-            print(f"项目 [{project.name}] 未返回订单数据")
+            print(f"领星凭证组 [{project_names}] 未返回订单数据")
 
     if not all_orders:
         print("接口没有返回任何订单数据，结束。")
