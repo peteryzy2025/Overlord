@@ -1976,8 +1976,8 @@ def get_diwei_accounts_api(request):
             diwei_account=''
         )
         
-        # 权限过滤
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        # 权限过滤：兼容旧 permission 字段和新 PermissionConfig 权限码
+        permissions = get_operation_permissions(request.user)
         if 'ops_all' not in permissions:
             if 'ops_group' in permissions and hasattr(request.user, 'operational_account'):
                 # 组长：可以看到组内成员的（包括自己）
