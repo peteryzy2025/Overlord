@@ -114,13 +114,20 @@ def sync_with_lingxing_credentials(sync_name, fetch_func, sync_func, project_id=
 
 def sync_lingxing_shops(data_list):
     """把领星数据写入并绑定 AmazonShop"""
+    rows = []
+    skipped_no_sid = 0
     for item in data_list or []:
         sid = item.get("sid")
         if not sid:
-            print("跳过：没有 sid:", item)
+            skipped_no_sid += 1
             continue
-
-        defaults = {
+        try:
+            sid = int(sid)
+        except (TypeError, ValueError):
+            skipped_no_sid += 1
+            continue
+        rows.append({
+            "sid": sid,
             "mid": item.get("mid"),
             "name": item.get("name"),
             "seller_id": item.get("seller_id"),
@@ -131,74 +138,200 @@ def sync_lingxing_shops(data_list):
             "marketplace_id": item.get("marketplace_id"),
             "status": item.get("status"),
             "has_ads_setting": item.get("has_ads_setting"),
-        }
+        })
 
-        obj, created = LingXingAmazonShop.objects.update_or_create(
-            sid=sid,
-            defaults=defaults
-        )
+    if not rows:
+        print(f"Amazon店铺无可同步数据，跳过无效记录 {skipped_no_sid} 条")
+        return
 
-        print(f"{'新增' if created else '更新'}：LingXingAmazonShop: {obj}")
+    sid_set = {row["sid"] for row in rows}
+    account_names = {row["account_name"] for row in rows if row.get("account_name")}
+    existing_map = {
+        shop.sid: shop
+        for shop in LingXingAmazonShop.objects.filter(sid__in=sid_set)
+    }
+    amazon_shop_map = {
+        shop.shop_name: shop
+        for shop in AmazonShop.objects.filter(shop_name__in=account_names)
+    }
 
-        account_name = item.get("account_name")
-        amazon_shop = AmazonShop.objects.filter(shop_name=account_name).first()
+    create_objs = []
+    update_objs = []
+    bind_count = 0
+    missing_bind_count = 0
+    amazon_shop_ids_to_mark = set()
+    fields = [
+        "mid",
+        "name",
+        "seller_id",
+        "account_name",
+        "seller_account_id",
+        "region",
+        "country",
+        "marketplace_id",
+        "status",
+        "has_ads_setting",
+        "amazon_shop",
+    ]
 
-        if not amazon_shop:
-            print(f"  -> 未找到本地 AmazonShop.shop_name='{account_name}'，跳过绑定")
-            continue
+    for row in rows:
+        amazon_shop = amazon_shop_map.get(row.get("account_name"))
+        if amazon_shop:
+            amazon_shop_ids_to_mark.add(amazon_shop.id)
+        else:
+            missing_bind_count += 1
 
-        if obj.amazon_shop_id != amazon_shop.id:
-            obj.amazon_shop = amazon_shop
-            obj.save(update_fields=["amazon_shop"])
-            print(f"  -> 已绑定 AmazonShop(id={amazon_shop.id})")
+        obj = existing_map.get(row["sid"])
+        if obj:
+            changed = False
+            previous_amazon_shop_id = obj.amazon_shop_id
+            for field in fields:
+                next_value = amazon_shop if field == "amazon_shop" else row.get(field)
+                if getattr(obj, field) != next_value:
+                    setattr(obj, field, next_value)
+                    changed = True
+            if changed:
+                update_objs.append(obj)
+                if amazon_shop and previous_amazon_shop_id != amazon_shop.id:
+                    bind_count += 1
+        else:
+            create_objs.append(LingXingAmazonShop(
+                sid=row["sid"],
+                mid=row.get("mid"),
+                name=row.get("name"),
+                seller_id=row.get("seller_id"),
+                account_name=row.get("account_name"),
+                seller_account_id=row.get("seller_account_id"),
+                region=row.get("region"),
+                country=row.get("country"),
+                marketplace_id=row.get("marketplace_id"),
+                status=row.get("status"),
+                has_ads_setting=row.get("has_ads_setting"),
+                amazon_shop=amazon_shop,
+            ))
+            if amazon_shop:
+                bind_count += 1
 
-        if amazon_shop.ling_xing_if != 1:
-            amazon_shop.ling_xing_if = 1
-            amazon_shop.save(update_fields=["ling_xing_if"])
-            print(f"  -> AmazonShop(id={amazon_shop.id}) 标记已绑定 ling_xing_if=1")
+    with transaction.atomic():
+        if create_objs:
+            LingXingAmazonShop.objects.bulk_create(create_objs, batch_size=1000)
+        if update_objs:
+            LingXingAmazonShop.objects.bulk_update(update_objs, fields, batch_size=1000)
+        marked_count = 0
+        if amazon_shop_ids_to_mark:
+            marked_count = AmazonShop.objects.filter(
+                id__in=amazon_shop_ids_to_mark
+            ).exclude(ling_xing_if=1).update(ling_xing_if=1)
+
+    print(
+        "Amazon店铺同步完成："
+        f"新增 {len(create_objs)}，更新 {len(update_objs)}，"
+        f"已绑定/保持绑定 {bind_count}，未匹配本地店铺 {missing_bind_count}，"
+        f"标记 ling_xing_if {marked_count}，跳过无效记录 {skipped_no_sid}"
+    )
 
 
 def sync_lingxing_temu_shops(data_list):
     """把领星Temu数据写入并绑定 TemuShop"""
+    rows = []
+    skipped_no_store_id = 0
     for item in data_list or []:
         store_id = item.get("store_id")
         if not store_id:
-            print("跳过：没有 store_id:", item)
+            skipped_no_store_id += 1
             continue
-
-        defaults = {
+        store_name = item.get("store_name", "")
+        shop_name_to_match = store_name.split('-')[1].strip() if store_name and '-' in store_name else store_name.strip()
+        rows.append({
+            "store_id": str(store_id),
             "sid": item.get("sid"),
-            "store_name": item.get("store_name"),
+            "store_name": store_name,
             "platform_code": item.get("platform_code"),
             "platform_name": item.get("platform_name"),
             "currency": item.get("currency"),
             "is_sync": item.get("is_sync"),
             "status": item.get("status"),
             "country_code": item.get("country_code"),
-        }
+            "shop_name_to_match": shop_name_to_match,
+        })
 
-        obj, created = LingXingTemuShop.objects.update_or_create(
-            store_id=store_id,
-            defaults=defaults
-        )
+    if not rows:
+        print(f"Temu店铺无可同步数据，跳过无效记录 {skipped_no_store_id} 条")
+        return
 
-        print(f"{'新增' if created else '更新'}：LingXingTemuShop: {obj}")
+    store_ids = {row["store_id"] for row in rows}
+    shop_names = {row["shop_name_to_match"] for row in rows if row.get("shop_name_to_match")}
+    existing_map = {
+        shop.store_id: shop
+        for shop in LingXingTemuShop.objects.filter(store_id__in=store_ids)
+    }
+    temu_shop_map = {
+        shop.shop_name: shop
+        for shop in TemuShop.objects.filter(shop_name__in=shop_names)
+    }
 
-        # 提取店铺名称（格式：项目-店铺名-产品名），并去除前后空格
-        store_name = item.get("store_name", "")
-        shop_name_to_match = store_name.split('-')[
-            1].strip() if store_name and '-' in store_name else store_name.strip()
+    create_objs = []
+    update_objs = []
+    bind_count = 0
+    missing_bind_count = 0
+    fields = [
+        "sid",
+        "store_name",
+        "platform_code",
+        "platform_name",
+        "currency",
+        "is_sync",
+        "status",
+        "country_code",
+        "temu_shop",
+    ]
 
-        temu_shop = TemuShop.objects.filter(shop_name=shop_name_to_match).first()
-
+    for row in rows:
+        temu_shop = temu_shop_map.get(row.get("shop_name_to_match"))
         if not temu_shop:
-            print(f"  -> 未找到本地 TemuShop.shop_name='{shop_name_to_match}'（原始：{store_name}），跳过绑定")
-            continue
+            missing_bind_count += 1
 
-        if obj.temu_shop_id != temu_shop.id:
-            obj.temu_shop = temu_shop
-            obj.save(update_fields=["temu_shop"])
-            print(f"  -> 已绑定 TemuShop(id={temu_shop.id})")
+        obj = existing_map.get(row["store_id"])
+        if obj:
+            changed = False
+            previous_temu_shop_id = obj.temu_shop_id
+            for field in fields:
+                next_value = temu_shop if field == "temu_shop" else row.get(field)
+                if getattr(obj, field) != next_value:
+                    setattr(obj, field, next_value)
+                    changed = True
+            if changed:
+                update_objs.append(obj)
+                if temu_shop and previous_temu_shop_id != temu_shop.id:
+                    bind_count += 1
+        else:
+            create_objs.append(LingXingTemuShop(
+                store_id=row["store_id"],
+                sid=row.get("sid"),
+                store_name=row.get("store_name"),
+                platform_code=row.get("platform_code"),
+                platform_name=row.get("platform_name"),
+                currency=row.get("currency"),
+                is_sync=row.get("is_sync"),
+                status=row.get("status"),
+                country_code=row.get("country_code"),
+                temu_shop=temu_shop,
+            ))
+            if temu_shop:
+                bind_count += 1
+
+    with transaction.atomic():
+        if create_objs:
+            LingXingTemuShop.objects.bulk_create(create_objs, batch_size=1000)
+        if update_objs:
+            LingXingTemuShop.objects.bulk_update(update_objs, fields, batch_size=1000)
+
+    print(
+        "Temu店铺同步完成："
+        f"新增 {len(create_objs)}，更新 {len(update_objs)}，"
+        f"已绑定/保持绑定 {bind_count}，未匹配本地店铺 {missing_bind_count}，"
+        f"跳过无效记录 {skipped_no_store_id}"
+    )
 
 
 def lx_shop_main(project_id=None, project_name=None):

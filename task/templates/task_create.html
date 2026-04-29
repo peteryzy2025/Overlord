@@ -1402,9 +1402,6 @@
                     })
                     .map(shop => formatShopOption(shop));
 
-                if (shopOptions.length === 0) {
-                    shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
-                }
             }
 
             const shopSelect = new SearchableSelect(`#amazon-exempt-shop-select-${subtask.id}`, {
@@ -2523,11 +2520,6 @@
                 })
                 .map(shop => formatShopOption(shop));
 
-            // 如果没有过滤出来的店铺，显示所有Amazon店铺
-            if (shopOptions.length === 0) {
-                shopOptions = availableShops.amazon.map(shop => formatShopOption(shop));
-            }
-
             const shopSelect = new SearchableSelect(`#export-shops-select-${subtaskId}-${rowIndex}`, {
                 options: shopOptions,
                 multiple: true,
@@ -3053,13 +3045,6 @@
                     ? formatShopOption(shop) 
                     : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
                 );
-
-            if (shopOptions.length === 0) {
-                shopOptions = sourceShops.map(shop => platform === 'amazon' 
-                    ? formatShopOption(shop) 
-                    : { value: shop.raw_name || shop.shop_name || shop.name, label: shop.raw_name || shop.shop_name || shop.name, htmlLabel: shop.raw_name || shop.shop_name || shop.name }
-                );
-            }
 
             return shopOptions;
         }
@@ -6464,4 +6449,3 @@
 
     </script>
 {% endblock %}
-

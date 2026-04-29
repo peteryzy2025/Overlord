@@ -18,6 +18,7 @@ from general.models import User, AmazonShop, TemuShop
 from task.models import Task, TaskStatus, TaskType, SubTask, TaskTemplate, ProductRequirement
 from task.utils import (
     generate_task_no,
+    get_operation_permissions,
     get_visible_shops,
     parse_permissions,
     validate_subtask_params
@@ -537,11 +538,19 @@ def get_tasks_list_api(request):
 
         # 基础查询：只能看到自己创建的，或自己负责的，或者有权限看到的
         current_user = request.user
-        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        permissions = get_operation_permissions(current_user)
+        company_id = getattr(current_user, 'company_id', None)
         
         queryset = Task.objects.exclude(task_type=TaskType.PRODUCT_REQUIREMENT).select_related(
             'created_by', 'owner'
         ).prefetch_related('subtasks', 'subtasks__amazon_upload_files')
+        if not company_id:
+            queryset = queryset.none()
+        else:
+            queryset = queryset.filter(
+                Q(created_by__company_id=company_id) |
+                Q(owner__company_id=company_id)
+            )
 
         if 'ops_all' not in permissions:
             if 'ops_group' in permissions and hasattr(current_user, 'operational_account'):
@@ -646,12 +655,21 @@ def delete_task_api(request, task_id):
     """
     try:
         # 只能删除自己创建的，或者管理员可以删除
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        permissions = get_operation_permissions(request.user)
+        company_id = getattr(request.user, 'company_id', None)
+
+        if not company_id:
+            return JsonResponse({'success': False, 'message': 'No company assigned'}, status=403)
         
+        base_queryset = Task.objects.filter(
+            Q(created_by__company_id=company_id) |
+            Q(owner__company_id=company_id)
+        )
+
         if 'ops_all' in permissions:
-            task = Task.objects.get(id=task_id)
+            task = base_queryset.get(id=task_id)
         else:
-            task = Task.objects.get(id=task_id, created_by=request.user)
+            task = base_queryset.get(id=task_id, created_by=request.user)
             
         task.delete()
 
@@ -678,9 +696,17 @@ def get_task_stats_api(request):
     """
     try:
         current_user = request.user
-        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        permissions = get_operation_permissions(current_user)
+        company_id = getattr(current_user, 'company_id', None)
         
         queryset = Task.objects.exclude(task_type=TaskType.PRODUCT_REQUIREMENT)
+        if not company_id:
+            queryset = queryset.none()
+        else:
+            queryset = queryset.filter(
+                Q(created_by__company_id=company_id) |
+                Q(owner__company_id=company_id)
+            )
 
         # 权限过滤
         if 'ops_all' not in permissions:
@@ -735,79 +761,50 @@ def get_task_creators_api(request):
 @require_http_methods(["GET"])
 def get_available_shops_api(request):
     """
-    获取可见店铺列表（带权限控制）
-    GET /api/tasks/shops/?type=amazon|temu
+    Return shops visible to the current user, strictly scoped to their company.
     """
     try:
         shop_type = request.GET.get('type', 'amazon')
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        company_id = getattr(request.user, 'company_id', None)
+        if not company_id:
+            return JsonResponse({'success': True, 'data': []})
 
-        # 基础查询
-        if shop_type == 'amazon':
-            # Amazon：ops是外键，可以用select_related
-            queryset = AmazonShop.objects.filter(ops__isnull=False).select_related('ops')
-        elif shop_type == 'temu':
-            # Temu：ops_id是IntegerField，不能用select_related！
-            queryset = TemuShop.objects.filter(ops_id__isnull=False)
-        else:
+        queryset = get_visible_shops(request.user, shop_type)
+        if shop_type not in ('amazon', 'temu'):
             return JsonResponse({'success': False, 'message': '无效的店铺类型'}, status=400)
 
-        # 权限过滤（完全复制邮件视图逻辑，Amazon增加辅助人员可见）
-        if 'ops_all' not in permissions:
-            if 'ops_group' in permissions and hasattr(request.user, 'operational_account'):
-                group_name = request.user.operational_account.ops_group
-                if group_name:
-                    if shop_type == 'amazon':
-                        queryset = queryset.filter(
-                            Q(ops__operational_account__ops_group=group_name) |
-                            Q(authorized_users=request.user)
-                        ).distinct()
-                    else:
-                        # Temu：ops_id不是外键，需要用子查询
-                        queryset = queryset.filter(
-                            ops_id__in=User.objects.filter(
-                                operational_account__ops_group=group_name
-                            ).values_list('id', flat=True)
-                        )
-            else:
-                if shop_type == 'amazon':
-                    queryset = queryset.filter(
-                        Q(ops=request.user) |
-                        Q(authorized_users=request.user)
-                    ).distinct()
-                else:
-                    queryset = queryset.filter(ops_id=request.user.id)
-
-        # 组装数据
         shops_data = []
         for shop in queryset:
             if shop_type == 'amazon':
                 shops_data.append({
                     'id': shop.id,
                     'raw_name': shop.shop_name,
-                    'shop_status': shop.shop_status or '',  # 店铺状态
-                    'ops_name': shop.ops.first_name if shop.ops else '无运营'  # 运营人员
+                    'shop_status': shop.shop_status or '',
+                    'ops_id': shop.ops_id,
+                    'company_id': shop.company_id,
+                    'ops_name': shop.ops.first_name if shop.ops else 'No operator',
                 })
-            else:  # temu
+            else:
                 shops_data.append({
                     'id': shop.id,
-                    'raw_name': shop.shop_name
+                    'raw_name': shop.shop_name,
+                    'ops_id': shop.ops_id,
+                    'company_id': shop.company_id,
+                    'shop_status': '',
                 })
 
-        # 排序：正常状态的排在前面，然后按店铺名排序
-        def sort_key(x):
-            status = x.get('shop_status', '')
-            is_normal = 0 if status == 'status-active' else 1
-            return (is_normal, x['raw_name'])
-        
+        def sort_key(item):
+            is_normal = 0 if item.get('shop_status') == 'status-active' else 1
+            return (is_normal, item.get('raw_name') or '')
+
         shops_data.sort(key=sort_key)
-
         return JsonResponse({'success': True, 'data': shops_data})
-
     except Exception as e:
         import traceback
         traceback.print_exc()
         return JsonResponse({'success': False, 'message': f'获取店铺列表失败: {str(e)}'}, status=500)
+
+
 @login_required
 @require_http_methods(["GET"])
 def get_available_owners_api(request):
@@ -816,8 +813,12 @@ def get_available_owners_api(request):
     GET /api/tasks/available-owners/
     """
     try:
-        permissions = parse_permissions(getattr(request.user, 'permission', ''))
+        permissions = get_operation_permissions(request.user)
         current_user = request.user
+        company_id = getattr(current_user, 'company_id', None)
+
+        if not company_id:
+            return JsonResponse({'success': True, 'data': []})
 
         owners = []
 
@@ -830,6 +831,7 @@ def get_available_owners_api(request):
         # 如果是管理员，可以选所有人
         if 'ops_all' in permissions:
             all_users = User.objects.filter(
+                company_id=company_id,
                 status=1,
                 operational_account__isnull=False
             ).select_related('operational_account')
@@ -846,6 +848,7 @@ def get_available_owners_api(request):
             group_name = current_user.operational_account.ops_group
             if group_name:
                 group_users = User.objects.filter(
+                    company_id=company_id,
                     status=1,
                     operational_account__ops_group=group_name
                 ).select_related('operational_account')
@@ -982,14 +985,18 @@ def create_task_api(request):
             owner_id = int(data.get('owner_id', current_user.id))
         except (ValueError, TypeError):
             owner_id = current_user.id
+
+        company_id = getattr(current_user, 'company_id', None)
+        if not company_id:
+            return JsonResponse({'success': False, 'message': 'No company assigned'}, status=403)
         
         try:
-            owner = User.objects.get(id=owner_id)
+            owner = User.objects.get(id=owner_id, company_id=company_id)
         except User.DoesNotExist:
             return JsonResponse({'success': False, 'message': '指定的所有者不存在'})
 
         # 权限验证：只能为自己或权限范围内的用户创建
-        permissions = parse_permissions(getattr(current_user, 'permission', ''))
+        permissions = get_operation_permissions(current_user)
         if owner_id != current_user.id:
             if 'ops_all' not in permissions:
                 if 'ops_group' in permissions:
@@ -2264,6 +2271,9 @@ def get_user_export_shop_products_api(request):
         
         prefs = UserExportShopProductPreference.objects.filter(
             user=request.user
+        )
+        prefs = prefs.filter(
+            shop_id__in=get_visible_shops(request.user, 'amazon').values_list('id', flat=True)
         ).select_related('shop', 'product', 'template').order_by('diwei_account', 'shop__shop_name', 'product__name')
         
         # 按 (diwei_account, shop_id, product_id) 聚合 template_ids
@@ -2310,11 +2320,23 @@ def save_user_export_shop_products_api(request):
         preferences = body.get('preferences', [])
         
         # 预查店铺名
-        shop_ids = [item.get('shop_id') for item in preferences if item.get('shop_id')]
+        shop_ids = []
+        for item in preferences:
+            if item.get('shop_id'):
+                try:
+                    shop_ids.append(int(item.get('shop_id')))
+                except (TypeError, ValueError):
+                    return JsonResponse({'success': False, 'message': 'Invalid shop id'}, status=400)
         shop_name_map = {}
         if shop_ids:
-            for s in AmazonShop.objects.filter(id__in=shop_ids).values('id', 'shop_name'):
-                shop_name_map[s['id']] = s['shop_name'] or f"店铺-{s['id']}"
+            for s in get_visible_shops(request.user, 'amazon').filter(id__in=shop_ids).values('id', 'shop_name'):
+                shop_name_map[s['id']] = s['shop_name'] or f"Shop-{s['id']}"
+            invalid_shop_ids = sorted(set(shop_ids) - set(shop_name_map.keys()))
+            if invalid_shop_ids:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'No permission for shop id: {", ".join(map(str, invalid_shop_ids[:5]))}'
+                }, status=403)
         
         with transaction.atomic():
             UserExportShopProductPreference.objects.filter(user=request.user).delete()
@@ -2328,6 +2350,8 @@ def save_user_export_shop_products_api(request):
                 shop_name = item.get('shop_name') or shop_name_map.get(shop_id, f"店铺-{shop_id}")
                 if not shop_id or not product_id:
                     continue
+                shop_id = int(shop_id)
+                shop_name = item.get('shop_name') or shop_name_map.get(shop_id, f"Shop-{shop_id}")
                 if template_ids and len(template_ids) > 0:
                     for tid in template_ids:
                         objs.append(UserExportShopProductPreference(
