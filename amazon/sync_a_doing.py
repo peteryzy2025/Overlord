@@ -62,6 +62,7 @@ NIGHT_END_HOUR = 7    # 夜间休眠结束时间
 SHIPMENT_INTERVAL = 10  # 发货模块执行间隔（轮数）
 STATS_REPORT_INTERVAL = 10  # 统计报告输出间隔（轮数）
 DIVI_DAYS_BACK = 30  # divi_process_orders 查询天数
+SHOP_SYNC_INTERVAL = 60  # 店铺基础数据同步间隔（轮数），默认约每小时一次
 
 
 # ========== 模块配置 ==========
@@ -74,7 +75,8 @@ class ModuleConfig:
         args: Tuple = (),
         is_async: bool = False,
         enabled: bool = True,
-        project_scoped: bool = True
+        project_scoped: bool = True,
+        run_interval: int = 1
     ):
         self.name = name
         self.func = func
@@ -82,14 +84,15 @@ class ModuleConfig:
         self.is_async = is_async
         self.enabled = enabled
         self.project_scoped = project_scoped
+        self.run_interval = max(int(run_interval or 1), 1)
 
 
 # 模块列表（按执行顺序）
 MODULES: List[ModuleConfig] = [
     ModuleConfig('divi_guer', amazon_order_divi_guer),
     # 店铺同步在模块内部按启用项目的领星凭证去重循环；同步前还没有本地 sid 可分组。
-    ModuleConfig('lx_shop', lx_shop_main, project_scoped=False),
-    ModuleConfig('lx_shop2', lx_shop_main2, project_scoped=False),
+    ModuleConfig('lx_shop', lx_shop_main, project_scoped=False, run_interval=SHOP_SYNC_INTERVAL),
+    ModuleConfig('lx_shop2', lx_shop_main2, project_scoped=False, run_interval=SHOP_SYNC_INTERVAL),
     ModuleConfig('lx_order', lx_order_main, project_scoped=False),
     ModuleConfig('lx_zf', lx_zf_main, is_async=True),
     ModuleConfig('lx_order_info', lx_order_info_main, is_async=True, project_scoped=False),
@@ -255,6 +258,12 @@ def run_module_with_project_scope(module: ModuleConfig, projects, fallback_proje
     return success
 
 
+def should_run_module(module: ModuleConfig, round_no: int) -> bool:
+    if module.run_interval <= 1:
+        return True
+    return round_no == 1 or (round_no - 1) % module.run_interval == 0
+
+
 def run_divi_process_orders(projects) -> bool:
     """
     执行 divi_process_orders，动态计算日期
@@ -360,6 +369,7 @@ def main_loop(project_id=None, project_name=None):
     5. 每轮间隔60秒
     """
     num = 0  # 轮数计数器（1~10循环），用于控制发货频率。每执行10轮后归零
+    total_round = 0  # 总轮数计数器，不归零，用于低频模块调度
     
     # ========== 启动日志：输出当前配置信息 ==========
     logger.info("=" * 80)
@@ -367,6 +377,7 @@ def main_loop(project_id=None, project_name=None):
     logger.info(f"日志文件: {LOG_FILE}")
     logger.info(f"模块数量: {len(MODULES)}")
     logger.info(f"发货频率: 每 {SHIPMENT_INTERVAL} 轮")
+    logger.info(f"店铺同步: 第 1 轮执行，之后每 {SHOP_SYNC_INTERVAL} 轮")
     logger.info(f"统计报告: 每 {STATS_REPORT_INTERVAL} 轮")
     logger.info(f"DIVI查询: 前 {DIVI_DAYS_BACK} 天")
     if project_id:
@@ -388,9 +399,10 @@ def main_loop(project_id=None, project_name=None):
 
         # ========== 步骤2：轮数计数器递增 ==========
         num += 1  # 当前轮数 +1（范围：1~10）
+        total_round += 1
         stats_manager.cycle_count += 1  # 统计周期计数器 +1
         
-        logger.info(f"\n{'=' * 40} 第 {num} 轮执行开始 {'=' * 40}")
+        logger.info(f"\n{'=' * 40} 第 {num} 轮执行开始（总第 {total_round} 轮） {'=' * 40}")
         projects = get_active_projects(project_id=project_id, project_name=project_name)
         logger.info(f"本轮启用项目数: {len(projects)}")
         if projects:
@@ -418,6 +430,9 @@ def main_loop(project_id=None, project_name=None):
         # 6. lx_order_info - 更新订单发货时限（获取最晚发货时间）【异步执行】
         # 7. temu_orders - 同步Temu平台订单
         for module in MODULES:
+            if not should_run_module(module, total_round):
+                logger.info(f"[{module.name}] 低频模块，本轮跳过；每 {module.run_interval} 轮执行一次")
+                continue
             run_module_with_project_scope(module, projects, fallback_project_kwargs=fallback_kwargs)  # 每个模块独立try-except，失败不影响下一个
 
         # ========== 步骤5：执行DIVI导单和状态同步 ==========
