@@ -11,7 +11,7 @@ Django Management Command: run_theme_clustering
     python manage.py run_theme_clustering --reset
 
     # 自定义参数
-    python manage.py run_theme_clustering --pmi-threshold=4.0 --jaccard-threshold=0.5
+    python manage.py run_theme_clustering --pmi-threshold=4.0 --jaccard-threshold=0.55
 """
 
 from django.core.management.base import BaseCommand
@@ -44,8 +44,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--jaccard-threshold",
             type=float,
-            default=0.5,
-            help="Jaccard 相似度阈值 (默认: 0.5)",
+            default=0.55,
+            help="Jaccard 相似度阈值 (默认: 0.55)",
         )
         parser.add_argument(
             "--core-tag-count",
