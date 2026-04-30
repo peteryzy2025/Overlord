@@ -216,6 +216,16 @@ def get_ai_model_label(value: str) -> str:
     return option["label"] if option else value
 
 
+def get_listing_user_display_name(user) -> str:
+    if not user:
+        return ""
+    return (
+        getattr(user, "first_name", "")
+        or getattr(user, "username", "")
+        or str(getattr(user, "id", ""))
+    )
+
+
 class QwenAmazonListingOptimizer:
     DEFAULT_PROMPT = """
 你是拥有20年美国 Amazon POD 产品运营经验的资深卖家，也是一名深耕美国市场的 Amazon SEO 专家。你擅长识别标题背后的文化主题，并为美亚买家编写自然、合规、可转化的 listing。
@@ -830,10 +840,16 @@ def generate_optimized_excel(job: ListingOptimizationJob) -> str:
     return relative_output_path
 
 
-def serialize_job(job: ListingOptimizationJob, include_rows: bool = False) -> Dict[str, Any]:
+def serialize_job(
+    job: ListingOptimizationJob,
+    include_rows: bool = False,
+    include_owner: bool = False,
+) -> Dict[str, Any]:
     data = {
         "id": job.id,
         "original_filename": job.original_filename,
+        "created_by_id": job.created_by_id,
+        "created_by_name": get_listing_user_display_name(getattr(job, "created_by", None)) if include_owner else "",
         "prompt_profile": job.prompt_profile,
         "prompt_profile_label": get_prompt_profile_label(job.prompt_profile),
         "ai_model": job.ai_model,

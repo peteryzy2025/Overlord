@@ -788,7 +788,10 @@
             <button type="button" class="history-file-card ${job.id === currentJobId ? 'active' : ''}" onclick="loadJob(${job.id})">
                 <span class="history-file-name">
                     <i class="fas fa-file-excel"></i>
-                    <span>${escapeHtml(job.original_filename)}</span>
+                    <span>
+                        ${job.created_by_name ? `<span style="color: var(--accent-color);">${escapeHtml(job.created_by_name)}</span> · ` : ''}
+                        ${escapeHtml(job.original_filename)}
+                    </span>
                 </span>
                 <span class="history-file-meta">
                     <span>${statusBadge(job.status, job.status_display)}</span>
@@ -831,6 +834,7 @@
         const canRetryFailed = Number(job.failed_rows || 0) > 0 && !['pending', 'processing'].includes(job.status);
         const detailEl = document.getElementById('jobDetail');
         const rowsHtml = (job.rows || []).map(row => renderOrReuseRow(row)).join('');
+        const ownerLine = job.created_by_name ? `${escapeHtml(job.created_by_name)} · ` : '';
         document.getElementById('resultHint').textContent = `${job.optimized_rows || 0}/${job.total_rows || 0} 已完成，${job.failed_rows || 0} 行失败`;
 
         detailEl.innerHTML = `
@@ -839,7 +843,7 @@
                     <div class="summary-label">文件</div>
                     <div class="summary-value">
                         ${escapeHtml(job.original_filename)}
-                        <div class="summary-subvalue">${escapeHtml(job.prompt_profile_label || job.prompt_profile || '')} · ${escapeHtml(job.ai_model_label || job.ai_model || '')}</div>
+                        <div class="summary-subvalue">${ownerLine}${escapeHtml(job.prompt_profile_label || job.prompt_profile || '')} · ${escapeHtml(job.ai_model_label || job.ai_model || '')}</div>
                     </div>
                 </div>
                 <div class="summary-box">

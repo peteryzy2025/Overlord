@@ -25,6 +25,39 @@ from task.services.listing_optimizer_service import (
 )
 
 
+LISTING_OPTIMIZER_VIEW_ALL_CODE = 555
+
+
+def _can_view_all_listing_jobs(user) -> bool:
+    try:
+        return user.permission_configs.filter(code=LISTING_OPTIMIZER_VIEW_ALL_CODE).exists()
+    except Exception:
+        return False
+
+
+def _listing_job_queryset(user):
+    queryset = ListingOptimizationJob.objects.select_related("created_by")
+    if _can_view_all_listing_jobs(user):
+        return queryset
+    return queryset.filter(created_by=user)
+
+
+def _get_accessible_listing_job(user, job_id, *, prefetch_rows=False):
+    queryset = _listing_job_queryset(user)
+    if prefetch_rows:
+        queryset = queryset.prefetch_related("rows")
+    return get_object_or_404(queryset, id=job_id)
+
+
+def _get_accessible_listing_row(user, row_id):
+    return get_object_or_404(
+        ListingOptimizationRow.objects.select_related("job", "job__created_by").filter(
+            job_id__in=_listing_job_queryset(user).values("id")
+        ),
+        id=row_id,
+    )
+
+
 @login_required(login_url="/login/")
 def listing_optimizer_page(request):
     return render(request, "listing_optimizer.html", {
@@ -37,10 +70,11 @@ def listing_optimizer_page(request):
 @login_required
 @require_http_methods(["GET"])
 def listing_optimizer_jobs_api(request):
-    jobs = ListingOptimizationJob.objects.filter(created_by=request.user).order_by("-created_at")[:30]
+    can_view_all = _can_view_all_listing_jobs(request.user)
+    jobs = _listing_job_queryset(request.user).order_by("-created_at")[:30]
     return JsonResponse({
         "success": True,
-        "data": [serialize_job(job) for job in jobs],
+        "data": [serialize_job(job, include_owner=can_view_all) for job in jobs],
     })
 
 
@@ -62,7 +96,7 @@ def listing_optimizer_upload_api(request):
         return JsonResponse({
             "success": True,
             "message": "文件已上传，正在后台逐行优化。",
-            "data": serialize_job(job, include_rows=True),
+            "data": serialize_job(job, include_rows=True, include_owner=_can_view_all_listing_jobs(request.user)),
             "output_keys": OUTPUT_KEYS,
         })
     except ListingValidationError as exc:
@@ -74,15 +108,11 @@ def listing_optimizer_upload_api(request):
 @login_required
 @require_http_methods(["GET"])
 def listing_optimizer_job_detail_api(request, job_id):
-    job = get_object_or_404(
-        ListingOptimizationJob.objects.prefetch_related("rows"),
-        id=job_id,
-        created_by=request.user,
-    )
+    job = _get_accessible_listing_job(request.user, job_id, prefetch_rows=True)
     ensure_listing_job_running(job)
     return JsonResponse({
         "success": True,
-        "data": serialize_job(job, include_rows=True),
+        "data": serialize_job(job, include_rows=True, include_owner=_can_view_all_listing_jobs(request.user)),
         "output_keys": OUTPUT_KEYS,
     })
 
@@ -90,20 +120,20 @@ def listing_optimizer_job_detail_api(request, job_id):
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_pause_api(request, job_id):
-    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    job = _get_accessible_listing_job(request.user, job_id)
     pause_listing_optimization_job(job)
     job.refresh_from_db()
     return JsonResponse({
         "success": True,
         "message": "已暂停。当前正在请求中的行可能会完成，但不会继续优化下一行。",
-        "data": serialize_job(job),
+        "data": serialize_job(job, include_owner=_can_view_all_listing_jobs(request.user)),
     })
 
 
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_resume_api(request, job_id):
-    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    job = _get_accessible_listing_job(request.user, job_id)
     if job.status != ListingOptimizationJob.STATUS_PAUSED:
         return JsonResponse({
             "success": False,
@@ -117,14 +147,14 @@ def listing_optimizer_resume_api(request, job_id):
     return JsonResponse({
         "success": True,
         "message": "已继续优化，将从未完成的行接着处理。",
-        "data": serialize_job(job),
+        "data": serialize_job(job, include_owner=_can_view_all_listing_jobs(request.user)),
     })
 
 
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_retry_failed_api(request, job_id):
-    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    job = _get_accessible_listing_job(request.user, job_id)
     try:
         job, retry_count, should_start = retry_failed_listing_rows(job)
         if retry_count == 0:
@@ -143,7 +173,7 @@ def listing_optimizer_retry_failed_api(request, job_id):
         return JsonResponse({
             "success": True,
             "message": message,
-            "data": serialize_job(job, include_rows=True),
+            "data": serialize_job(job, include_rows=True, include_owner=_can_view_all_listing_jobs(request.user)),
         })
     except ListingValidationError as exc:
         return JsonResponse({"success": False, "message": str(exc)}, status=400)
@@ -154,11 +184,7 @@ def listing_optimizer_retry_failed_api(request, job_id):
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_row_retry_api(request, row_id):
-    row = get_object_or_404(
-        ListingOptimizationRow.objects.select_related("job"),
-        id=row_id,
-        job__created_by=request.user,
-    )
+    row = _get_accessible_listing_row(request.user, row_id)
     try:
         job, retry_count, should_start = retry_failed_listing_rows(row.job, row_ids=[row.id])
         if retry_count == 0:
@@ -177,7 +203,7 @@ def listing_optimizer_row_retry_api(request, row_id):
         return JsonResponse({
             "success": True,
             "message": message,
-            "data": serialize_job(job, include_rows=True),
+            "data": serialize_job(job, include_rows=True, include_owner=_can_view_all_listing_jobs(request.user)),
         })
     except ListingValidationError as exc:
         return JsonResponse({"success": False, "message": str(exc)}, status=400)
@@ -188,11 +214,7 @@ def listing_optimizer_row_retry_api(request, row_id):
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_row_save_api(request, row_id):
-    row = get_object_or_404(
-        ListingOptimizationRow.objects.select_related("job"),
-        id=row_id,
-        job__created_by=request.user,
-    )
+    row = _get_accessible_listing_row(request.user, row_id)
     try:
         body = _json_body(request)
         optimized_data = body.get("optimized_data", {})
@@ -216,7 +238,7 @@ def listing_optimizer_row_save_api(request, row_id):
 @login_required
 @require_http_methods(["POST"])
 def listing_optimizer_generate_api(request, job_id):
-    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    job = _get_accessible_listing_job(request.user, job_id)
     try:
         body = _json_body(request)
         rows_payload = body.get("rows", [])
@@ -228,7 +250,7 @@ def listing_optimizer_generate_api(request, job_id):
         return JsonResponse({
             "success": True,
             "message": "文件已生成。",
-            "data": serialize_job(job),
+            "data": serialize_job(job, include_owner=_can_view_all_listing_jobs(request.user)),
         })
     except Exception as exc:
         return JsonResponse({"success": False, "message": f"生成文件失败: {str(exc)}"}, status=500)
@@ -237,7 +259,7 @@ def listing_optimizer_generate_api(request, job_id):
 @login_required
 @require_http_methods(["GET"])
 def listing_optimizer_download_api(request, job_id):
-    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    job = _get_accessible_listing_job(request.user, job_id)
     if not job.output_file_path:
         raise Http404("文件尚未生成")
 
