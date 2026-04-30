@@ -129,7 +129,7 @@ AI_MODEL_OPTIONS = [
     },
     {
         "value": "deepseek-v4-pro",
-        "label": "deepseek-v4-pro",
+        "label": "Deepseek-v4-pro",
         "enabled": True,
         "provider": "deepseek",
         "api_key_setting": "DEEPSEEK_API_KEY",
@@ -219,29 +219,30 @@ def get_ai_model_label(value: str) -> str:
 class QwenAmazonListingOptimizer:
     DEFAULT_PROMPT = """
 你是拥有20年美国 Amazon POD 产品运营经验的资深卖家，也是一名深耕美国市场的 Amazon SEO 专家。你擅长识别标题背后的文化主题，并为美亚买家编写自然、合规、可转化的 listing。
-你熟悉美国搜索习惯，并以 A10 相关性、COSMO/Rufus 语义理解、GEO 生成式检索友好表达为目标：用清晰的“产品词 + 主题词 + 属性/工艺 + 场景 + 人群”线性结构组织文案。
+你熟悉美国搜索习惯，并以 A10 相关性、COSMO/Rufus 语义理解、GEO 生成式检索友好表达为目标：用清晰的“主题词 + 产品词 + 图案/工艺 + 场景 + 人群”线性结构组织文案。
 
 任务：
-基于输入的主题、产品属性、图片 URL 和现有文案，先在内部识别文化主题、产品类型、工艺表达和潜在侵权风险，再重写 Amazon listing。输出必须包含英文标题、五点描述、产品描述、后台搜索关键词、优化后英文内容的中文意思、输入原文的中文翻译，以及主图 URL。
+基于输入的标题、产品属性、图片 URL 和现有文案，先在内部识别“主题”和产品类型，再围绕主题重写 Amazon listing。主题指产品图案、文字、梗、节日、纪念事件、身份标签、情绪表达或文化场景；产品本身只是承载主题的载体。输出必须包含英文标题、五点描述、产品描述、后台搜索关键词、优化后英文内容的中文意思、输入原文的中文翻译，以及主图 URL。
 
 硬性规则：
 1. 只输出一个 JSON 对象，不要 Markdown，不要解释，不要多余字段。
 2. JSON 的 key 必须严格等于用户提供的输出字段清单；顺序也尽量保持一致。
 3. 除主图 URL 外，每个英文 listing 字段后面都必须增加两个中文字段：一个“中文”字段和一个“原文中文”字段，例如 "Key Product Features 1（五点1）中文"、"Key Product Features 1（五点1）原文中文"。
 4. “中文”字段必须是优化后英文内容的自然中文翻译或中文意思；“原文中文”字段必须是输入原文字段的自然中文翻译。不要写优化说明，不要逐条解释你为什么这样写。
-5. 标题使用地道美式英语，目标长度约 120 个字符，但绝不能超过 125 个字符；前半段放文化主题、核心产品词、工艺/版型和应用场景，避免堆砌和重复。
-6. 五点描述共 5 条，每条只写一段英文；围绕文化主题自然埋入核心关键词，侧重情感共鸣、图案/印花质感、佩戴/使用体验、场景和礼品价值。
-7. 产品描述写成单段流畅英文自然段，增加更多使用场景和礼品价值，只描述输入中能确认或能合理推断的产品属性，不要虚构认证、销量或无法确认的卖点。
-8. 后台搜索关键词不超过 250 个字符；全部小写；用空格分隔；填写标题未覆盖的高频同义词和相关搜索词；不重复；不要标点、品牌名、ASIN、竞品词或侵权词。
-9. “Search Terms（后台关键词）中文”和“Search Terms（后台关键词）原文中文”按正常中文意思翻译即可，可以是自然短语，不需要遵守后台关键词的空格格式。
-10. 侵权与合规过滤：不要使用商标、品牌、球队、电影、明星、角色、歌词、组织名称等受保护内容；不要写 official、licensed、authentic、best、#1、guaranteed、medical claims 等高风险表达。
-11. 不要虚构认证、销量、库存、物流、环保认证或“latest 2026 release”等无法从输入确认的事实。
-12. 绝对禁止出现 "3D" 或任何 3D 变体；不要写颜色描述词；不要写具体面料成分或比例，例如 "100% Cotton"。
-13. 如果输入涉及 "AMERICA 250" 等疑似侵权或高风险表达，自动转换为中性、合规、可搜索的文化表达，例如 "250th Anniversary"；其他高风险主题也按同样原则改写为通用文化/纪念/节日表达。
-14. 产品类型必须跟随输入和图片 URL 所能确认的信息。只有当产品确实是印花鸭舌帽/棒球帽/帽子时，才可以自然使用 "printed baseball cap"、"graphic printed cap"、"dad hat" 等表达；不要把所有产品都强制写成 Printing Baseball Cap。
-15. 如果输入标题中出现 shirt 等词，但产品图片或字段显示实际产品是帽子/其他 POD 产品，应把 shirt 只当作图案主题或原始噪音处理，不要把产品类型误写成 shirt。
-16. 主图 URL 必须原样返回，并且不要为主图 URL 添加中文字段或原文中文字段。
-17. 输入字典中如果有额外字段，可以作为上下文参考，但不要把额外字段返回。
+5. listing 优化必须“主题优先，产品承接”。不要把产品属性当成主题，不要用泛泛的产品词替代主题；产品材质、版型、尺寸、舒适度只作为辅助卖点，不能覆盖或稀释主题。
+6. 标题使用地道美式英语，目标长度约 120 个字符，但绝不能超过 125 个字符。标题前半段必须突出主题或合规主题改写，并自然连接产品类型、图案/工艺、使用场景或人群。推荐结构：“合规主题词 + 产品类型 + graphic/printed/design/style + 人群/场景”。禁止生成主题缺失的泛产品标题，例如只写 “Vintage Washed Cotton Dad Hat for Men & Women” 这类文案。
+7. 五点描述共 5 条，每条只写一段英文，并必须围绕主题埋词和扩展：主题含义/情绪共鸣、图案视觉/印花质感、文化或使用场景、礼品人群、产品承载属性。每条都应让买家理解这个图案主题为什么值得购买，而不是只描述产品本身。
+8. 产品描述写成单段流畅英文自然段，以主题故事、文化语境、情绪价值、场景和礼品价值为主，再自然带出产品类型和可确认的产品属性。不要写成泛泛的产品材质介绍，不要虚构认证、销量或无法确认的卖点。
+9. 后台搜索关键词不超过 250 个字符；全部小写；用空格分隔；优先补充标题未覆盖的主题同义词、文化场景词、人群词和礼品词；不重复；不要标点、品牌名、ASIN、竞品词或侵权词。
+10. “Search Terms（后台关键词）中文”和“Search Terms（后台关键词）原文中文”按正常中文意思翻译即可，可以是自然短语，不需要遵守后台关键词的空格格式。
+11. 侵权与合规过滤：不要使用商标、品牌、球队、电影、明星、角色、歌词、组织名称等受保护内容；不要写 official、licensed、authentic、best、#1、guaranteed、medical claims 等高风险表达。
+12. 如果输入主题存在侵权或高风险表达，应改写为中性、合规、可搜索的主题表达，但不能直接删除主题或把它弱化成通用产品词。例如 "AMERICA 250" 可改写为 "250th Anniversary"；其他高风险主题也按同样原则改写为通用文化/纪念/节日表达。
+13. 不要虚构认证、销量、库存、物流、环保认证或“latest 2026 release”等无法从输入确认的事实。
+14. 绝对禁止出现 "3D" 或任何 3D 变体；不要写颜色描述词；不要写具体面料成分或比例，例如 "100% Cotton"。
+15. 产品类型必须跟随输入和图片 URL 所能确认的信息。只有当产品确实是印花鸭舌帽/棒球帽/帽子时，才可以自然使用 "printed baseball cap"、"graphic printed cap"、"dad hat" 等表达；不要把所有产品都强制写成 Printing Baseball Cap。
+16. 如果输入标题中出现 shirt 等词，但产品图片或字段显示实际产品是帽子/其他 POD 产品，应把 shirt 只当作图案主题或原始噪音处理，不要把产品类型误写成 shirt。
+17. 主图 URL 必须原样返回，并且不要为主图 URL 添加中文字段或原文中文字段。
+18. 输入字典中如果有额外字段，可以作为上下文参考，但不要把额外字段返回。
 """
 
     def __init__(
@@ -285,7 +286,8 @@ class QwenAmazonListingOptimizer:
         last_error: Optional[DashScopeError] = None
         for candidate_model in self._candidate_models():
             for include_response_format in (True, False):
-                for include_thinking_flag in (True, False):
+                thinking_flags = (True, False) if self.provider == "dashscope" else (False,)
+                for include_thinking_flag in thinking_flags:
                     payload = self._build_payload(
                         source_listing,
                         candidate_model,
@@ -293,12 +295,19 @@ class QwenAmazonListingOptimizer:
                         include_thinking_flag,
                     )
                     try:
-                        content = self._chat_completion(payload)
-                        parsed = self._extract_json_object(content)
-                        return normalize_optimizer_result(parsed, source_listing)
+                        content, raw_response = self._chat_completion(payload)
+                        parsed = self._extract_json_object(content, raw_response)
+                        try:
+                            return normalize_optimizer_result(parsed, source_listing)
+                        except DashScopeError as exc:
+                            raise DashScopeError(
+                                append_ai_raw_response(str(exc), raw_response),
+                                exc.status,
+                                exc.body,
+                            ) from exc
                     except DashScopeError as exc:
                         last_error = exc
-                        if self._should_retry(exc):
+                        if self._should_retry(exc) or (include_response_format and self._should_retry_without_json_mode(exc)):
                             continue
                         raise
 
@@ -337,7 +346,7 @@ class QwenAmazonListingOptimizer:
             payload["enable_thinking"] = False
         return payload
 
-    def _chat_completion(self, payload: Dict[str, Any]) -> str:
+    def _chat_completion(self, payload: Dict[str, Any]) -> Tuple[str, str]:
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         request = urllib.request.Request(
             self.endpoint,
@@ -354,18 +363,22 @@ class QwenAmazonListingOptimizer:
                 raw = response.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            raise DashScopeError(f"DashScope API HTTP {exc.code}: {body}", exc.code, body) from exc
+            raise DashScopeError(f"AI API HTTP {exc.code}: {body}", exc.code, body) from exc
         except urllib.error.URLError as exc:
-            raise DashScopeError(f"DashScope API request failed: {exc.reason}") from exc
+            raise DashScopeError(f"AI API request failed: {exc.reason}") from exc
 
         try:
             result = json.loads(raw)
-            return result["choices"][0]["message"]["content"]
+            message = result["choices"][0].get("message", {})
+            content = message.get("content", "")
+            if content is None:
+                content = ""
+            return str(content), raw
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise DashScopeError(f"无法解析 AI 接口返回内容: {raw[:500]}") from exc
+            raise DashScopeError(f"无法解析 AI 接口返回内容:\n{clip_debug_text(raw)}") from exc
 
     @staticmethod
-    def _extract_json_object(content: str) -> Dict[str, Any]:
+    def _extract_json_object(content: str, raw_response: str = "") -> Dict[str, Any]:
         text = content.strip()
         if text.startswith("```"):
             text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
@@ -376,11 +389,12 @@ class QwenAmazonListingOptimizer:
         except json.JSONDecodeError:
             match = re.search(r"\{.*\}", text, flags=re.DOTALL)
             if not match:
-                raise DashScopeError(f"模型没有返回 JSON 对象: {content[:500]}")
+                detail = clip_debug_text(content) if content.strip() else "message.content 为空"
+                raise DashScopeError(append_ai_raw_response(f"模型没有返回 JSON 对象:\n{detail}", raw_response))
             parsed = json.loads(match.group(0))
 
         if not isinstance(parsed, dict):
-            raise DashScopeError("模型返回的 JSON 不是对象。")
+            raise DashScopeError(append_ai_raw_response("模型返回的 JSON 不是对象。", raw_response))
         return parsed
 
     @staticmethod
@@ -398,6 +412,17 @@ class QwenAmazonListingOptimizer:
             "response_format",
         )
         text = f"{error} {error.body}".lower()
+        return any(marker in text for marker in retry_markers)
+
+    @staticmethod
+    def _should_retry_without_json_mode(error: DashScopeError) -> bool:
+        text = str(error)
+        retry_markers = (
+            "模型没有返回 JSON 对象",
+            "message.content 为空",
+            "response_format",
+            "json_object",
+        )
         return any(marker in text for marker in retry_markers)
 
 
@@ -438,6 +463,21 @@ def normalize_optimizer_result(result: Dict[str, Any], original: Dict[str, str])
 
 def clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def clip_debug_text(value: Any, limit: int = 4000) -> str:
+    text = str(value or "").strip()
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}\n...（已截断，仅显示前 {limit} 字符）"
+
+
+def append_ai_raw_response(message: str, raw_response: str = "") -> str:
+    if not raw_response:
+        return message
+    if "AI 原始返回:" in message:
+        return message
+    return f"{message}\n\nAI 原始返回:\n{clip_debug_text(raw_response)}"
 
 
 def clean_listing_output_text(value: Any) -> str:
@@ -677,7 +717,7 @@ def _run_listing_optimization_job(job_id: int) -> None:
                 row.save(update_fields=["optimized_data", "status", "error_message", "updated_at"])
             except Exception as exc:
                 row.status = ListingOptimizationRow.STATUS_FAILED
-                row.error_message = str(exc)[:2000]
+                row.error_message = str(exc)[:6000]
                 row.save(update_fields=["status", "error_message", "updated_at"])
             _refresh_job_progress(job_id)
 
@@ -689,7 +729,7 @@ def _run_listing_optimization_job(job_id: int) -> None:
     except Exception as exc:
         ListingOptimizationJob.objects.filter(id=job_id).update(
             status=ListingOptimizationJob.STATUS_FAILED,
-            error_message=str(exc)[:2000],
+            error_message=str(exc)[:6000],
             completed_at=timezone.now(),
         )
     finally:

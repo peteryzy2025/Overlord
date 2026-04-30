@@ -6,6 +6,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260430-listing">
 <link rel="stylesheet" href="{% static 'css/task_create.css' %}?v=20260430-listing">
+<script src="{% static 'js/searchable-select.js' %}"></script>
 <style>
     .listing-upload-dropzone {
         width: 100%;
@@ -83,6 +84,35 @@
 
     .listing-config-select option:disabled {
         color: var(--text-tertiary);
+    }
+
+    .listing-upload-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 0.85rem;
+        flex-wrap: wrap;
+    }
+
+    .listing-selected-file {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 36px;
+        color: var(--text-tertiary);
+        font-size: 0.86rem;
+    }
+
+    .listing-selected-file.has-file {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .listing-submit-btn {
+        height: 38px;
+        padding: 0 1rem;
+        font-size: 0.86rem;
     }
 
     .listing-history-grid {
@@ -413,6 +443,16 @@
         .listing-config-grid {
             grid-template-columns: 1fr;
         }
+
+        .listing-upload-actions {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .listing-submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .listing-title-stack {
@@ -443,6 +483,13 @@
         padding: 0 0.75rem;
         font-size: 0.8rem;
     }
+
+    .listing-error-preview {
+        color: var(--danger-color);
+        white-space: pre-wrap;
+        max-height: 260px;
+        overflow: auto;
+    }
 </style>
 {% endblock %}
 
@@ -465,51 +512,36 @@
         <h2 class="card-title">
             <i class="fas fa-file-upload"></i> 上传与优化
         </h2>
-        <div class="subtask-item">
-            <div class="subtask-header">
-                <div class="subtask-info">
-                    <span class="drag-handle"><i class="fas fa-bars"></i></span>
-                    <span class="subtask-number">#1</span>
-                    <span class="subtask-type">Amazon Listing 优化</span>
+        <div class="subtask-edit-form">
+            <div class="listing-config-grid">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">数据模型</label>
+                    <div id="promptProfileSelect" class="searchable-select single" data-placeholder="请选择数据模型"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">AI模型</label>
+                    <div id="aiModelSelect" class="searchable-select single" data-placeholder="请选择AI模型"></div>
                 </div>
             </div>
-            <div class="subtask-edit-form">
-                <div class="listing-config-grid">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">提示词</label>
-                        <select class="listing-config-select" id="promptProfileSelect">
-                            {% for option in optimizer_config.prompt_profiles %}
-                                <option value="{{ option.value }}" {% if option.value == optimizer_config.defaults.prompt_profile %}selected{% endif %} {% if not option.enabled %}disabled{% endif %}>
-                                    {{ option.label }}{% if not option.enabled %}（暂未开放）{% endif %}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">AI模型</label>
-                        <select class="listing-config-select" id="aiModelSelect">
-                            {% for option in optimizer_config.ai_models %}
-                                <option value="{{ option.value }}" {% if option.value == optimizer_config.defaults.ai_model %}selected{% endif %} {% if not option.enabled %}disabled{% endif %}>
-                                    {{ option.label }}{% if not option.enabled %}（暂未开放）{% endif %}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
+            {{ optimizer_config|json_script:"optimizerConfig" }}
+            <div class="form-group">
+                <label class="form-label">上传文件 (Excel) <span style="color: var(--danger-color);">*</span></label>
+                <div class="listing-upload-dropzone" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <div class="listing-upload-copy" id="uploadCopy">拖拽 xlsx 文件到此处或点击选择文件</div>
+                    <input type="file" id="listingFileInput" accept=".xlsx,.xlsm" style="display: none;">
+                    <button type="button" class="btn btn-secondary listing-upload-btn" onclick="document.getElementById('listingFileInput').click()">
+                        <i class="fas fa-plus" style="font-size: 0.75rem;"></i> 选择文件
+                    </button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">上传文件 (Excel) <span style="color: var(--danger-color);">*</span></label>
-                    <div class="listing-upload-dropzone" id="uploadArea">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <div class="listing-upload-copy">拖拽 xlsx 文件到此处或点击上传</div>
-                        <input type="file" id="listingFileInput" accept=".xlsx,.xlsm" style="display: none;">
-                        <button type="button" class="btn btn-secondary listing-upload-btn" onclick="document.getElementById('listingFileInput').click()">
-                            <i class="fas fa-plus"></i> 选择文件
-                        </button>
+                <div class="listing-upload-actions">
+                    <div class="listing-selected-file" id="selectedFileState">
+                        <i class="fas fa-file-excel"></i>
+                        <span>未选择文件</span>
                     </div>
-                    <small style="color: var(--text-tertiary); margin-top: 0.75rem;">
-                        <i class="fas fa-info-circle"></i>
-                        文件按 listing01.py 的模板读取：第 3 行是表头，从第 4 行开始优化。
-                    </small>
+                    <button type="button" class="btn btn-primary listing-submit-btn" id="submitListingFileBtn" onclick="submitSelectedListingFile()" disabled>
+                        <i class="fas fa-paper-plane"></i> 提交优化
+                    </button>
                 </div>
             </div>
         </div>
@@ -566,14 +598,45 @@
     let currentJobId = null;
     let currentJob = null;
     let pollTimer = null;
+    let selectedListingFile = null;
+    let uploadingListingFile = false;
     const dirtyRows = new Set();
     const saveTimers = new Map();
     const expandedRows = new Set();
 
     document.addEventListener('DOMContentLoaded', () => {
+        initSearchableSelects();
         bindUploadArea();
         loadJobs();
     });
+
+    function initSearchableSelects() {
+        const config = JSON.parse(document.getElementById('optimizerConfig')?.textContent || '{}');
+
+        const promptOptions = (config.prompt_profiles || []).map(opt => ({
+            value: opt.value,
+            label: opt.label + (opt.enabled ? '' : '（暂未开放）'),
+            disabled: !opt.enabled
+        }));
+        const promptSelect = new SearchableSelect('#promptProfileSelect', {
+            options: promptOptions,
+            multiple: false,
+            placeholder: '请选择数据模型'
+        });
+        promptSelect.setValue(config.defaults?.prompt_profile || '');
+
+        const modelOptions = (config.ai_models || []).map(opt => ({
+            value: opt.value,
+            label: opt.label + (opt.enabled ? '' : '（暂未开放）'),
+            disabled: !opt.enabled
+        }));
+        const modelSelect = new SearchableSelect('#aiModelSelect', {
+            options: modelOptions,
+            multiple: false,
+            placeholder: '请选择AI模型'
+        });
+        modelSelect.setValue(config.defaults?.ai_model || '');
+    }
 
     function getCsrfToken() {
         const input = document.querySelector('[name=csrfmiddlewaretoken]');
@@ -588,7 +651,7 @@
 
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
-                uploadListingFile(fileInput.files[0]);
+                setSelectedListingFile(fileInput.files[0]);
                 fileInput.value = '';
             }
         });
@@ -608,7 +671,7 @@
 
         uploadArea.addEventListener('drop', event => {
             const files = event.dataTransfer.files;
-            if (files.length > 0) uploadListingFile(files[0]);
+            if (files.length > 0) setSelectedListingFile(files[0]);
         }, false);
     }
 
@@ -617,17 +680,62 @@
         event.stopPropagation();
     }
 
-    async function uploadListingFile(file) {
+    function setSelectedListingFile(file) {
         if (!file.name.toLowerCase().match(/\.(xlsx|xlsm)$/)) {
             notify('仅支持 .xlsx 或 .xlsm 文件', 'error');
             return;
         }
 
+        selectedListingFile = file;
+        const stateEl = document.getElementById('selectedFileState');
+        const uploadCopy = document.getElementById('uploadCopy');
+        const submitBtn = document.getElementById('submitListingFileBtn');
+        if (stateEl) {
+            stateEl.classList.add('has-file');
+            stateEl.innerHTML = `<i class="fas fa-file-excel"></i><span>已选择：${escapeHtml(file.name)}</span>`;
+        }
+        if (uploadCopy) uploadCopy.textContent = '文件已选择，可调整数据模型和 AI 模型后提交';
+        if (submitBtn) submitBtn.disabled = false;
+    }
+
+    async function submitSelectedListingFile() {
+        if (!selectedListingFile) {
+            notify('请先选择 Excel 文件', 'error');
+            return;
+        }
+        if (uploadingListingFile) return;
+        await uploadListingFile(selectedListingFile);
+    }
+
+    function setUploadSubmitting(isSubmitting) {
+        uploadingListingFile = isSubmitting;
+        const submitBtn = document.getElementById('submitListingFileBtn');
+        if (!submitBtn) return;
+        submitBtn.disabled = isSubmitting || !selectedListingFile;
+        submitBtn.innerHTML = isSubmitting
+            ? '<i class="fas fa-spinner fa-spin"></i> 提交中...'
+            : '<i class="fas fa-paper-plane"></i> 提交优化';
+    }
+
+    function resetSelectedListingFile() {
+        selectedListingFile = null;
+        const stateEl = document.getElementById('selectedFileState');
+        const uploadCopy = document.getElementById('uploadCopy');
+        if (stateEl) {
+            stateEl.classList.remove('has-file');
+            stateEl.innerHTML = '<i class="fas fa-file-excel"></i><span>未选择文件</span>';
+        }
+        if (uploadCopy) uploadCopy.textContent = '拖拽 xlsx 文件到此处或点击选择文件';
+        setUploadSubmitting(false);
+    }
+
+    async function uploadListingFile(file) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('prompt_profile', document.getElementById('promptProfileSelect')?.value || 'amazon_grammar_tyrant');
-        formData.append('ai_model', document.getElementById('aiModelSelect')?.value || 'qwen-flash');
+        formData.append('prompt_profile', SearchableSelect.getInstance('#promptProfileSelect')?.getValue() || 'amazon_grammar_tyrant');
+        formData.append('ai_model', SearchableSelect.getInstance('#aiModelSelect')?.getValue() || 'qwen-flash');
         setJobDetailLoading(`正在上传 ${escapeHtml(file.name)}...`);
+        setUploadSubmitting(true);
 
         try {
             const response = await fetch('/api/tasks/listing-optimizer/upload/', {
@@ -641,10 +749,12 @@
             renderJobDetail(result.data);
             await loadJobs(false);
             startPolling();
+            resetSelectedListingFile();
             notify('文件已上传，后台正在逐行优化', 'success');
         } catch (error) {
             setJobDetailError(error.message);
             notify(error.message, 'error');
+            setUploadSubmitting(false);
         }
     }
 
@@ -837,7 +947,7 @@
                             <span>主图 URL：${escapeHtml(imageUrl)}</span>
                         ` : '主图：无'}
                     </div>
-                    ${row.error_message ? `<div class="original-preview" style="color: var(--danger-color);">${escapeHtml(row.error_message)}</div>` : ''}
+                    ${row.error_message ? `<div class="original-preview listing-error-preview">${escapeHtml(row.error_message)}</div>` : ''}
                     <div class="listing-row-footer">
                         <span class="save-state" id="save-state-${row.id}">最后更新：${escapeHtml(row.updated_at || '')}</span>
                         <button type="button" class="btn btn-secondary" onclick="saveRow(${row.id})">
