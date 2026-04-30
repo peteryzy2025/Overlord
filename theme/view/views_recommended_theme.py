@@ -230,15 +230,19 @@ def api_recommended_theme_list(request):
             qs = qs.filter(source__in=source_values)
 
         snapshot_date = _parse_date(data.get("snapshot_date"))
+        snapshot_date_start = _parse_date(data.get("snapshot_date_start"))
+        snapshot_date_end = _parse_date(data.get("snapshot_date_end"))
         if snapshot_date:
             qs = qs.filter(snapshot_date=snapshot_date)
-        else:
-            snapshot_date_start = _parse_date(data.get("snapshot_date_start"))
-            snapshot_date_end = _parse_date(data.get("snapshot_date_end"))
+        elif snapshot_date_start or snapshot_date_end:
             if snapshot_date_start:
                 qs = qs.filter(snapshot_date__gte=snapshot_date_start)
             if snapshot_date_end:
                 qs = qs.filter(snapshot_date__lte=snapshot_date_end)
+        else:
+            latest = qs.aggregate(latest=Max("snapshot_date"))["latest"]
+            if latest:
+                qs = qs.filter(snapshot_date=latest)
 
         category_values = _split_filter_values(data.get("category"))
         if category_values and has_theme_category:

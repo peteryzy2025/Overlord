@@ -428,6 +428,28 @@ class AmazonThemeClusteringPipeline:
             "fire",
             "based",
             "goated",
+            # ---------- 主题桥接泛词 (保留在 fingerprint, 不作为聚类核心证据) ----------
+            "meme",
+            "memes",
+            "family",
+            "families",
+            "vacation",
+            "vacations",
+            "trip",
+            "trips",
+            "squad",
+            "crew",
+            "group",
+            "matching",
+            "summer",
+            "welcome",
+            "hello",
+            "teacher",
+            "teachers",
+            "state",
+            "city",
+            "county",
+            "town",
             # ---------- 英文数字词 (不进入 core_tags) ----------
             "one",
             "two",
@@ -727,7 +749,7 @@ class AmazonThemeClusteringPipeline:
         self,
         pmi_threshold: float = 3.0,
         min_freq: int = 5,
-        jaccard_threshold: float = 0.5,
+        jaccard_threshold: float = 0.55,
         core_tag_count: int = 5,
         min_intersection: int = 3,
         idf_threshold: float = 1.0,
@@ -780,7 +802,7 @@ class AmazonThemeClusteringPipeline:
         self._stage1_ngram_tokenization()
         self._stage2_tfidf_weighting()
         components = self._stage3_graph_clustering()
-        self._stage4_persistence(components)
+        self._stage4_persistence(components, reset=reset)
 
         logger.info("========== Pipeline 完成 ==========")
 
@@ -1066,22 +1088,50 @@ class AmazonThemeClusteringPipeline:
 
         return text
 
-    @staticmethod
-    def _tokenize_and_filter(text: str) -> list[str]:
+    @classmethod
+    def _has_semantic_anchor(cls, token: str) -> bool:
+        parts = token.split("_") if "_" in token else [token]
+        return any(
+            part not in STOP_WORDS
+            and part not in cls.BLACKLIST_TAGS
+            and len(part) > 1
+            and not part.isdigit()
+            for part in parts
+        )
+
+    @classmethod
+    def _is_semantic_match_token(cls, token: str) -> bool:
+        if "_" in token:
+            return cls._has_semantic_anchor(token)
+        return (
+            token not in STOP_WORDS
+            and token not in cls.BLACKLIST_TAGS
+            and len(token) > 1
+            and not token.isdigit()
+        )
+
+    @classmethod
+    def _tokenize_and_filter(cls, text: str) -> list[str]:
         tokens = text.split()
 
         flat: list[str] = []
         for tok in tokens:
             if "_" in tok:
-                flat.extend(tok.split("_"))
+                parts = [part for part in tok.split("_") if part]
+                phrase = "_".join(parts)
+                if phrase and cls._has_semantic_anchor(phrase):
+                    flat.append(phrase)
+                flat.extend(parts)
             else:
                 flat.append(tok)
 
-        filtered = [
-            tok
-            for tok in flat
-            if tok not in STOP_WORDS and len(tok) > 1 and not tok.isdigit()
-        ]
+        filtered = []
+        for tok in flat:
+            if "_" in tok:
+                if cls._has_semantic_anchor(tok):
+                    filtered.append(tok)
+            elif tok not in STOP_WORDS and len(tok) > 1 and not tok.isdigit():
+                filtered.append(tok)
 
         if not filtered:
             for tok in flat:
@@ -1134,7 +1184,9 @@ class AmazonThemeClusteringPipeline:
                 if t in self.BLACKLIST_TAGS:
                     return -1e9
                 if "_" in t:
-                    return 1000.0 + self._token_idf.get(t, 0.0)
+                    if self._has_semantic_anchor(t):
+                        return 1000.0 + self._token_idf.get(t, 0.0)
+                    return -1e9
                 if t.isdigit():
                     return 0.0
                 return self._token_idf.get(t, 0.0)
@@ -1278,29 +1330,34 @@ class AmazonThemeClusteringPipeline:
         if not intersection:
             return False, 0.0
 
+        semantic_intersection = {
+            t for t in intersection if self._is_semantic_match_token(t)
+        }
+
         union = set_i | set_j
         jaccard = len(intersection) / len(union)
         if jaccard < self.jaccard_threshold:
             return False, 0.0
 
-        if len(intersection) < self.min_intersection:
+        if len(semantic_intersection) < self.min_intersection:
             return False, 0.0
 
         core_i = fp_core_sets.get(i, frozenset())
         core_j = fp_core_sets.get(j, frozenset())
         strong_core = (core_i | core_j) - self.BLACKLIST_TAGS
-        if not (intersection & strong_core):
+        if not (semantic_intersection & strong_core):
             return False, 0.0
 
         idf_check = any(
-            self._token_idf.get(t, 0.0) >= self.idf_threshold for t in intersection
+            self._token_idf.get(t, 0.0) >= self.idf_threshold
+            for t in semantic_intersection
         )
         if not idf_check:
             return False, 0.0
 
         top2_i = set(self._fp_core_tags.get(i, [])[:2]) - self.BLACKLIST_TAGS
         top2_j = set(self._fp_core_tags.get(j, [])[:2]) - self.BLACKLIST_TAGS
-        if not (intersection & (top2_i | top2_j)):
+        if not (semantic_intersection & (top2_i | top2_j)):
             return False, 0.0
 
         return True, jaccard
@@ -1309,9 +1366,10 @@ class AmazonThemeClusteringPipeline:
     #  Stage 4 — 数据聚合与 DB 落盘
     # ==================================================================
 
-    def _stage4_persistence(self, components: list[set[int]]):
+    def _stage4_persistence(self, components: list[set[int]], reset: bool = False):
         logger.info("[Stage 4] 数据聚合与落盘 — 开始")
         logger.info("[Stage 4] 待处理连通分量: %d", len(components))
+        logger.info("[Stage 4] 模式: %s", "全量重建" if reset else "增量")
 
         run_timestamp = timezone.now()
         run_date = run_timestamp.date()
@@ -1323,6 +1381,15 @@ class AmazonThemeClusteringPipeline:
             if timezone.is_aware(value):
                 return timezone.localtime(value).date()
             return value.date()
+
+        existing_cluster_map: dict[str, AmazonThemeCluster] = {
+            c.display_title: c
+            for c in AmazonThemeCluster.objects.all()
+        }
+        logger.info(
+            "[Stage 4] 已缓存旧 Cluster 对象快照: %d 条",
+            len(existing_cluster_map),
+        )
 
         previous_cluster_state = {
             row["display_title"]: {
@@ -1337,10 +1404,6 @@ class AmazonThemeClusteringPipeline:
                 "updated_at",
             )
         }
-        logger.info(
-            "[Stage 4] 已缓存旧 Cluster 计数快照: %d 条",
-            len(previous_cluster_state),
-        )
 
         def _calculate_asin_change(display_title: str, new_asin_count: int) -> int:
             previous = previous_cluster_state.get(display_title)
@@ -1353,75 +1416,128 @@ class AmazonThemeClusteringPipeline:
 
             return new_asin_count - previous["asin_count"]
 
-        with transaction.atomic():
-            ThemeFingerprint.objects.all().update(cluster=None)
-            AmazonThemeCluster.objects.all().delete()
-            logger.info("[Stage 4] 已清除旧 Cluster 数据, 开始重建")
+        # ---------- 遍历 components, 区分新建 / 更新 ----------
+        clusters_to_create: list[AmazonThemeCluster] = []
+        clusters_to_update_basic: list[AmazonThemeCluster] = []
+        cluster_create_data: list[dict] = []
+        cluster_update_data: list[dict] = []
 
-            clusters_to_create: list[AmazonThemeCluster] = []
-            cluster_data: list[dict] = []
+        for component in components:
+            if len(component) == 0:
+                continue
 
-            for component in components:
-                if len(component) == 0:
-                    continue
+            fp_ids = list(component)
 
-                fp_ids = list(component)
+            token_counter: Counter = Counter()
+            for fid in fp_ids:
+                token_counter.update(self._fp_token_sets.get(fid, frozenset()))
 
-                token_counter: Counter = Counter()
-                for fid in fp_ids:
-                    token_counter.update(self._fp_token_sets.get(fid, frozenset()))
+            top_tags = [
+                word
+                for word, _ in token_counter.most_common()
+                if self._is_semantic_match_token(word)
+            ][:10]
 
-                top_tags = [word for word, _ in token_counter.most_common(10)]
+            best_fp_id = max(
+                fp_ids,
+                key=lambda fid: (
+                    self._fp_instances[fid].asin_count
+                    if fid in self._fp_instances
+                    else 0
+                ),
+            )
+            display_title = self._fp_instances[best_fp_id].representative_title
 
-                best_fp_id = max(
-                    fp_ids,
-                    key=lambda fid: (
-                        self._fp_instances[fid].asin_count
-                        if fid in self._fp_instances
-                        else 0
-                    ),
+            if len(top_tags) <= 1:
+                title_tags = [
+                    w
+                    for w in display_title.lower().split()
+                    if w not in STOP_WORDS
+                    and w not in self.BLACKLIST_TAGS
+                    and len(w) > 1
+                    and w.isalpha()
+                ]
+                top_tags = title_tags[:10]
+
+            existing = existing_cluster_map.get(display_title) if not reset else None
+            if existing:
+                existing.core_tags = top_tags
+                existing.fingerprint_count = len(component)
+                clusters_to_update_basic.append(existing)
+                cluster_update_data.append(
+                    {
+                        "cluster": existing,
+                        "fp_ids": fp_ids,
+                    }
                 )
-                display_title = self._fp_instances[best_fp_id].representative_title
-
-                if len(top_tags) <= 1:
-                    title_tags = [
-                        w
-                        for w in display_title.lower().split()
-                        if w not in STOP_WORDS and len(w) > 1 and w.isalpha()
-                    ]
-                    top_tags = title_tags[:10]
-
+            else:
                 cluster = AmazonThemeCluster(
                     display_title=display_title,
                     core_tags=top_tags,
                     fingerprint_count=len(component),
                 )
                 clusters_to_create.append(cluster)
-                cluster_data.append(
+                cluster_create_data.append(
                     {
                         "cluster": cluster,
                         "fp_ids": fp_ids,
                     }
                 )
 
-            created_clusters = AmazonThemeCluster.objects.bulk_create(
-                clusters_to_create,
-                batch_size=BATCH_SIZE,
-            )
-            logger.info(
-                "[Stage 4] 创建 AmazonThemeCluster: %d 条", len(created_clusters)
-            )
+        logger.info(
+            "[Stage 4] 新建 Cluster: %d, 更新 Cluster: %d",
+            len(clusters_to_create),
+            len(clusters_to_update_basic),
+        )
 
-            for data, cluster in zip(cluster_data, created_clusters):
+        # ---------- 事务: 写入 DB ----------
+        with transaction.atomic():
+            ThemeFingerprint.objects.all().update(cluster=None)
+
+            if reset:
+                AmazonThemeCluster.objects.all().delete()
+                logger.info("[Stage 4] 全量模式: 已清除旧 Cluster 数据")
+
+            created_clusters = []
+            if clusters_to_create:
+                created_clusters = AmazonThemeCluster.objects.bulk_create(
+                    clusters_to_create,
+                    batch_size=BATCH_SIZE,
+                )
+                logger.info(
+                    "[Stage 4] 创建 AmazonThemeCluster: %d 条",
+                    len(created_clusters),
+                )
+
+            if clusters_to_update_basic:
+                AmazonThemeCluster.objects.bulk_update(
+                    clusters_to_update_basic,
+                    ["core_tags", "fingerprint_count"],
+                    batch_size=BATCH_SIZE,
+                )
+                logger.info(
+                    "[Stage 4] 更新已有 Cluster 基础字段: %d 条",
+                    len(clusters_to_update_basic),
+                )
+
+            for data, cluster in zip(cluster_create_data, created_clusters):
                 batch_ids = data["fp_ids"]
                 ThemeFingerprint.objects.filter(id__in=batch_ids).update(
                     cluster=cluster
+                )
+
+            for data in cluster_update_data:
+                batch_ids = data["fp_ids"]
+                ThemeFingerprint.objects.filter(id__in=batch_ids).update(
+                    cluster=data["cluster"]
                 )
 
             logger.info("[Stage 4] Fingerprint → Cluster 关联完成")
 
         # --- 事务已提交，现在并行统计 ---
         logger.info("[Stage 4] 开始统计 asin_count / burst_score")
+
+        all_clusters_for_stats = created_clusters + clusters_to_update_basic
 
         def _compute_stats(cluster: AmazonThemeCluster):
             asin_qs = AmazonNewReleaseRank.objects.filter(fingerprint__cluster=cluster)
@@ -1435,35 +1551,53 @@ class AmazonThemeClusteringPipeline:
                 cluster.display_title,
                 asin_count,
             )
+
+            if not reset:
+                old = existing_cluster_map.get(cluster.display_title)
+                if old and (
+                    cluster.asin_count == old.asin_count
+                    and cluster.new_asin_7d == old.new_asin_7d
+                    and cluster.burst_score == old.burst_score
+                ):
+                    cluster.updated_at = old.updated_at
+                    return cluster
+
             cluster.updated_at = run_timestamp
             return cluster
 
-        clusters_to_update: list[AmazonThemeCluster] = []
-        n_workers = min(self._n_workers, max(1, len(created_clusters) // 4))
-        if n_workers > 1 and len(created_clusters) > 20:
+        def _fallback_stats(cluster: AmazonThemeCluster):
+            cluster.asin_count = 0
+            cluster.new_asin_7d = 0
+            cluster.burst_score = 0.0
+            cluster.asin_change = _calculate_asin_change(
+                cluster.display_title,
+                0,
+            )
+            cluster.updated_at = run_timestamp
+
+        clusters_to_update_stats: list[AmazonThemeCluster] = []
+        n_workers = min(self._n_workers, max(1, len(all_clusters_for_stats) // 4))
+        if n_workers > 1 and len(all_clusters_for_stats) > 20:
             with ThreadPoolExecutor(max_workers=n_workers) as pool:
-                futures = {pool.submit(_compute_stats, c): c for c in created_clusters}
+                futures = {
+                    pool.submit(_compute_stats, c): c
+                    for c in all_clusters_for_stats
+                }
                 for future in as_completed(futures):
                     try:
-                        clusters_to_update.append(future.result())
+                        clusters_to_update_stats.append(future.result())
                     except Exception as exc:
                         logger.warning("[Stage 4] 统计失败: %s", exc)
-                        clusters_to_update.append(futures[future])
-                        clusters_to_update[-1].asin_count = 0
-                        clusters_to_update[-1].new_asin_7d = 0
-                        clusters_to_update[-1].burst_score = 0.0
-                        clusters_to_update[-1].asin_change = _calculate_asin_change(
-                            clusters_to_update[-1].display_title,
-                            0,
-                        )
-                        clusters_to_update[-1].updated_at = run_timestamp
+                        c = futures[future]
+                        _fallback_stats(c)
+                        clusters_to_update_stats.append(c)
         else:
-            for cluster in created_clusters:
-                clusters_to_update.append(_compute_stats(cluster))
+            for cluster in all_clusters_for_stats:
+                clusters_to_update_stats.append(_compute_stats(cluster))
 
-        if clusters_to_update:
+        if clusters_to_update_stats:
             AmazonThemeCluster.objects.bulk_update(
-                clusters_to_update,
+                clusters_to_update_stats,
                 [
                     "asin_count",
                     "new_asin_7d",
@@ -1475,7 +1609,7 @@ class AmazonThemeClusteringPipeline:
             )
             logger.info(
                 "[Stage 4] 统计字段更新完成: %d 条 Cluster",
-                len(clusters_to_update),
+                len(clusters_to_update_stats),
             )
 
     # ==================================================================

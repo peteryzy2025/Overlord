@@ -173,6 +173,33 @@
             border-color: var(--accent-color);
         }
 
+        .agg-asin-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 92px;
+            padding: 0.45rem 0.8rem;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border: 1px solid #bfdbfe;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
+            color: #1e3a8a;
+            text-decoration: none;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            transition: all 0.2s ease;
+        }
+
+        .agg-asin-link:hover {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-color: #93c5fd;
+            box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+            color: #1d4ed8;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+
         @media (max-width: 1200px) {
             .products-header-row {
                 flex-direction: column;
@@ -275,14 +302,13 @@
                             <th class="sortable" data-field="category" onclick="handleSort('category')">品类</th>
                             <th class="sortable" data-field="snapshot_date" onclick="handleSort('snapshot_date')">榜单日期</th>
                             <th>统计窗口</th>
-                            <th class="sortable" data-field="source_date" onclick="handleSort('source_date')">来源日期</th>
                             <th class="sortable" data-field="asin_count" onclick="handleSort('asin_count')">命中 ASIN 数</th>
                             <th>操作</th>
                         </tr>
                         </thead>
                         <tbody id="recommendedThemeBody">
                         <tr>
-                            <td colspan="8" class="empty-state">
+                            <td colspan="7" class="empty-state">
                                 <i class="fas fa-spinner fa-spin"></i>
                                 <p>数据加载中...</p>
                             </td>
@@ -338,7 +364,7 @@
     <script src="{% static 'js/searchable-select.js' %}"></script>
     <script src="{% static 'js/general_style_1.js' %}?v=20260425-recommended-theme-layout"></script>
     <script>
-        const MAIN_COLSPAN = 8;
+        const MAIN_COLSPAN = 7;
         const ASIN_COLSPAN = 7;
         const sourceOptions = [
             {% for value,label in source_options %}
@@ -503,7 +529,6 @@
                         <td>${escapeHtml(item.category || '-')}</td>
                         <td>${escapeHtml(item.snapshot_date || '-')}</td>
                         <td>${windowText}</td>
-                        <td>${escapeHtml(item.source_date || '-')}</td>
                         <td>${formatNumber(item.asin_count)}</td>
                         <td>
                             <button class="btn btn-sm btn-view-asin" type="button" data-id="${Number(item.id)}" data-theme="${escapeHtml(item.theme || '')}">
@@ -678,7 +703,7 @@
             tbody.innerHTML = rows.map(function (item) {
                 return `
                     <tr>
-                        <td>${escapeHtml(item.asin)}</td>
+                        <td><a href="https://www.amazon.com/dp/${encodeURIComponent(item.asin)}" target="_blank" class="agg-asin-link">${escapeHtml(item.asin)}</a></td>
                         <td>${escapeHtml(item.title || '-')}</td>
                         <td>${escapeHtml(item.category || '-')}</td>
                         <td>${escapeHtml(item.launch_date || '-')}</td>
