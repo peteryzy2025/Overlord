@@ -914,6 +914,104 @@ class UserExportShopProductPreference(models.Model):
         unique_together = ('user', 'diwei_account', 'shop', 'product', 'template')
 
 
+class ListingOptimizationJob(models.Model):
+    """Amazon listing optimization file job."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSING = 'processing'
+    STATUS_PAUSED = 'paused'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '待处理'),
+        (STATUS_PROCESSING, '优化中'),
+        (STATUS_PAUSED, '已暂停'),
+        (STATUS_COMPLETED, '已完成'),
+        (STATUS_FAILED, '有失败'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键ID')
+    created_by = models.ForeignKey(
+        'general.User',
+        on_delete=models.CASCADE,
+        related_name='listing_optimization_jobs',
+        verbose_name='创建人',
+    )
+    original_filename = models.CharField('原始文件名', max_length=255)
+    original_file_path = models.CharField('原始文件路径', max_length=500)
+    output_file_path = models.CharField('输出文件路径', max_length=500, blank=True, default='')
+    prompt_profile = models.CharField('提示词方案', max_length=80, default='amazon_grammar_tyrant')
+    ai_model = models.CharField('AI模型', max_length=120, default='qwen-flash')
+    status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    total_rows = models.IntegerField('总行数', default=0)
+    optimized_rows = models.IntegerField('已优化行数', default=0)
+    failed_rows = models.IntegerField('失败行数', default=0)
+    error_message = models.TextField('错误信息', blank=True, default='')
+    started_at = models.DateTimeField('开始时间', null=True, blank=True)
+    completed_at = models.DateTimeField('完成时间', null=True, blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'task_listing_optimization_jobs'
+        verbose_name = 'Listing优化任务'
+        verbose_name_plural = 'Listing优化任务'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['created_by', 'created_at'], name='idx_listing_job_user_created'),
+            models.Index(fields=['status', 'created_at'], name='idx_listing_job_status_created'),
+        ]
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.get_status_display()})"
+
+
+class ListingOptimizationRow(models.Model):
+    """One Excel row in a listing optimization job."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSING = 'processing'
+    STATUS_COMPLETED = 'completed'
+    STATUS_FAILED = 'failed'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, '待优化'),
+        (STATUS_PROCESSING, '优化中'),
+        (STATUS_COMPLETED, '已完成'),
+        (STATUS_FAILED, '失败'),
+    ]
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键ID')
+    job = models.ForeignKey(
+        ListingOptimizationJob,
+        on_delete=models.CASCADE,
+        related_name='rows',
+        verbose_name='所属任务',
+    )
+    row_number = models.IntegerField('Excel行号')
+    status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    source_data = models.JSONField('原始数据', default=dict)
+    optimized_data = models.JSONField('优化后数据', default=dict, blank=True)
+    error_message = models.TextField('错误信息', blank=True, default='')
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'task_listing_optimization_rows'
+        verbose_name = 'Listing优化行'
+        verbose_name_plural = 'Listing优化行'
+        ordering = ['row_number']
+        unique_together = ('job', 'row_number')
+        indexes = [
+            models.Index(fields=['job', 'status'], name='idx_listing_row_job_status'),
+            models.Index(fields=['job', 'row_number'], name='idx_listing_row_job_number'),
+        ]
+
+    def __str__(self):
+        return f"{self.job_id} row {self.row_number} ({self.get_status_display()})"
+
+
 # ========== 导入审批模型 ==========
 # 将审批系统模型导入到 task.models 命名空间，以便 Django ORM 正确识别
 from .approval_models import (

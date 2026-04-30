@@ -25,6 +25,13 @@
             </a>
         </li>
         <li class="sidebar-item">
+            <a href="{% url 'task:listing_optimizer_page' %}"
+               class="sidebar-link {% if active_page == 'listing_optimizer_page' %}active{% endif %}">
+                <i class="fas fa-magic sidebar-icon"></i>
+                <span>智管listing优化</span>
+            </a>
+        </li>
+        <li class="sidebar-item">
             <a href="{% url 'task:approval_create_page' %}"
                class="sidebar-link {% if active_page == 'approval_create_page' %}active{% endif %}">
                 <i class="fas fa-ad sidebar-icon"></i>

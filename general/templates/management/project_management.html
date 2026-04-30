@@ -1,0 +1,901 @@
+{% extends 'base/base_management.html' %}
+{% load static %}
+
+{% block title %}项目管理 - Overlord{% endblock %}
+
+{% block extra_css %}
+<style>
+    .content {
+        width: 100%;
+        min-width: 0;
+        align-items: stretch;
+    }
+
+    .project-page {
+        padding: 1.25rem;
+        min-height: calc(100vh - 64px);
+        background: var(--bg-secondary);
+        width: 100%;
+        max-width: none;
+        box-sizing: border-box;
+        flex: 1;
+    }
+
+    .project-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+
+    .project-title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .project-subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .project-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .btn-project {
+        border: 1px solid var(--border-color);
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        border-radius: 8px;
+        padding: 0.625rem 0.875rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-project:hover {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+
+    .btn-project.primary {
+        background: var(--accent-color);
+        border-color: var(--accent-color);
+        color: white;
+    }
+
+    .btn-project.danger {
+        color: #dc2626;
+    }
+
+    .project-shell {
+        display: grid;
+        grid-template-columns: 360px minmax(0, 1fr);
+        gap: 1rem;
+        align-items: start;
+        width: 100%;
+    }
+
+    .project-panel {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: var(--shadow-light);
+        min-width: 0;
+    }
+
+    .panel-head {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .panel-title {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .project-search {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 0.625rem 0.75rem;
+    }
+
+    .project-list {
+        max-height: calc(100vh - 240px);
+        overflow: auto;
+    }
+
+    .project-item-row {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .project-item-row:hover,
+    .project-item-row.active {
+        background: rgba(59, 130, 246, 0.08);
+    }
+
+    .project-item-title {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .project-item-meta {
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 999px;
+        padding: 0.125rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .status-pill.on {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-pill.off {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .editor-body {
+        padding: 1rem;
+        display: grid;
+        gap: 1rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.875rem;
+    }
+
+    .form-grid.two {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-field {
+        display: grid;
+        gap: 0.35rem;
+    }
+
+    .form-field.full {
+        grid-column: 1 / -1;
+    }
+
+    .form-field.wide {
+        grid-column: span 2;
+    }
+
+    .form-label {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .form-input,
+    .form-textarea,
+    .form-select {
+        width: 100%;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 0.625rem 0.75rem;
+        min-height: 40px;
+        box-sizing: border-box;
+    }
+
+    .form-textarea {
+        min-height: 76px;
+        resize: vertical;
+    }
+
+    .toggle-line {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 40px;
+        color: var(--text-primary);
+    }
+
+    .section-split {
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+    }
+
+    .logistics-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .logistics-table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+    }
+
+    .logistics-table {
+        width: 100%;
+        min-width: 980px;
+        border-collapse: collapse;
+    }
+
+    .logistics-table th,
+    .logistics-table td {
+        padding: 0.625rem;
+        border-bottom: 1px solid var(--border-color);
+        text-align: left;
+        vertical-align: middle;
+    }
+
+    .logistics-table th {
+        background: var(--bg-secondary);
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+        font-weight: 700;
+    }
+
+    .logistics-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .empty-state {
+        color: var(--text-secondary);
+        text-align: center;
+        padding: 2rem 1rem;
+    }
+
+    .notification {
+        position: fixed;
+        top: 84px;
+        right: 20px;
+        z-index: 1200;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        box-shadow: var(--shadow-medium);
+        color: white;
+        background: #2563eb;
+        min-width: 240px;
+        max-width: 420px;
+    }
+
+    .notification.error {
+        background: #dc2626;
+    }
+
+    .notification.success {
+        background: #16a34a;
+    }
+
+    .notification.warning {
+        background: #d97706;
+    }
+
+    .project-modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.42);
+        z-index: 1300;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .project-modal-overlay.show {
+        display: flex;
+    }
+
+    .project-modal {
+        width: min(520px, 100%);
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        box-shadow: var(--shadow-heavy);
+        overflow: hidden;
+    }
+
+    .project-modal-head,
+    .project-modal-foot {
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .project-modal-foot {
+        border-top: 1px solid var(--border-color);
+        border-bottom: 0;
+        justify-content: flex-end;
+    }
+
+    .project-modal-body {
+        padding: 1rem;
+        display: grid;
+        gap: 0.875rem;
+    }
+
+    @media (max-width: 1100px) {
+        .project-shell,
+        .form-grid,
+        .form-grid.two {
+            grid-template-columns: 1fr;
+        }
+
+        .form-field.wide {
+            grid-column: auto;
+        }
+
+        .project-list {
+            max-height: 340px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="project-page">
+    <div class="project-header">
+        <div>
+            <h1 class="project-title">项目管理</h1>
+            <p class="project-subtitle">维护项目基础信息、领星凭证，以及自动发货使用的项目级物流编码</p>
+        </div>
+        <div class="project-actions">
+            <button class="btn-project" onclick="loadProjects()">
+                <i class="fas fa-sync-alt"></i>刷新
+            </button>
+            <button class="btn-project primary" onclick="startCreateProject()">
+                <i class="fas fa-plus"></i>新建项目
+            </button>
+        </div>
+    </div>
+
+    <div class="project-shell">
+        <section class="project-panel">
+            <div class="panel-head">
+                <h2 class="panel-title">项目列表</h2>
+                <span id="projectCount" class="status-pill off">0</span>
+            </div>
+            <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                <input id="projectSearch" class="project-search" type="search" placeholder="搜索项目名称或代码" oninput="renderProjectList()">
+            </div>
+            <div id="projectList" class="project-list">
+                <div class="empty-state">正在加载项目...</div>
+            </div>
+        </section>
+
+        <section class="project-panel">
+            <div class="panel-head">
+                <h2 class="panel-title" id="editorTitle">项目详情</h2>
+                <div class="project-actions">
+                    <button class="btn-project" onclick="resetEditor()">
+                        <i class="fas fa-undo"></i>重置
+                    </button>
+                    <button class="btn-project primary" onclick="saveCurrentProject()">
+                        <i class="fas fa-save"></i>保存
+                    </button>
+                </div>
+            </div>
+            <div class="editor-body" id="editorBody">
+                <input type="hidden" id="projectId">
+
+                <div class="form-grid">
+                    <label class="form-field wide">
+                        <span class="form-label">项目名称 *</span>
+                        <input id="projectName" class="form-input" type="text" placeholder="如：承诺希航001">
+                    </label>
+                    <label class="form-field">
+                        <span class="form-label">项目代码 *</span>
+                        <input id="projectCode" class="form-input" type="text" placeholder="公司内唯一">
+                    </label>
+                    <label class="form-field">
+                        <span class="form-label">排序</span>
+                        <input id="projectSortOrder" class="form-input" type="number" step="1" value="0">
+                    </label>
+                    <label class="form-field full">
+                        <span class="form-label">项目描述</span>
+                        <textarea id="projectDescription" class="form-textarea" placeholder="备注项目用途、领星账号归属等"></textarea>
+                    </label>
+                    <label class="form-field">
+                        <span class="form-label">项目状态</span>
+                        <span class="toggle-line">
+                            <input id="projectIsActive" type="checkbox" checked>
+                            <span>启用项目</span>
+                        </span>
+                    </label>
+                    <label class="form-field">
+                        <span class="form-label">领星同步</span>
+                        <span class="toggle-line">
+                            <input id="projectLingxingSync" type="checkbox">
+                            <span>启用领星自动同步</span>
+                        </span>
+                    </label>
+                    <label class="form-field">
+                        <span class="form-label">Divi同步</span>
+                        <span class="toggle-line">
+                            <input id="projectDiviSync" type="checkbox">
+                            <span>启用Divi自动同步</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="section-split">
+                    <div class="form-grid two">
+                        <label class="form-field">
+                            <span class="form-label">领星 AppID</span>
+                            <input id="projectLingxingAppId" class="form-input" type="text" autocomplete="off">
+                        </label>
+                        <label class="form-field">
+                            <span class="form-label">领星 AppSecret</span>
+                            <input id="projectLingxingAppSecret" class="form-input" type="text" autocomplete="off">
+                        </label>
+                        <label class="form-field">
+                            <span class="form-label">Divi 合作方编码</span>
+                            <input id="projectDiviPartnerCode" class="form-input" type="text" autocomplete="off">
+                        </label>
+                        <label class="form-field">
+                            <span class="form-label">Divi 密钥</span>
+                            <input id="projectDiviSecret" class="form-input" type="text" autocomplete="off">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-split">
+                    <div class="logistics-toolbar">
+                        <div>
+                            <h3 class="panel-title">领星物流编码</h3>
+                            <div class="project-subtitle">同一个物流识别键在不同项目可以配置不同的领星 logistics_type_id</div>
+                        </div>
+                        <div class="project-actions">
+                            <button class="btn-project" onclick="openCopyLogisticsModal()">
+                                <i class="fas fa-copy"></i>复制到项目
+                            </button>
+                            <button class="btn-project" onclick="addLogisticsRow()">
+                                <i class="fas fa-plus"></i>添加物流编码
+                            </button>
+                        </div>
+                    </div>
+                    <div class="logistics-table-wrap">
+                        <table class="logistics-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 210px;">物流识别键</th>
+                                    <th style="width: 180px;">物流名称</th>
+                                    <th style="width: 170px;">领星物流编码 *</th>
+                                    <th style="width: 90px;">启用</th>
+                                    <th>备注</th>
+                                    <th style="width: 70px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logisticsTableBody">
+                                <tr><td colspan="6" class="empty-state">请选择或新建项目</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="project-modal-overlay" id="copyLogisticsModal" onclick="if(event.target === this) closeCopyLogisticsModal()">
+    <div class="project-modal">
+        <div class="project-modal-head">
+            <h3 class="panel-title">复制物流编码</h3>
+            <button class="btn-project" onclick="closeCopyLogisticsModal()" title="关闭">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="project-modal-body">
+            <div class="project-subtitle" id="copyLogisticsSummary"></div>
+            <label class="form-field">
+                <span class="form-label">目标项目</span>
+                <select id="copyTargetProject" class="form-select"></select>
+            </label>
+            <label class="toggle-line">
+                <input id="copyOverwriteExisting" type="checkbox" checked>
+                <span>覆盖目标项目里已有的同名物流识别键</span>
+            </label>
+        </div>
+        <div class="project-modal-foot">
+            <button class="btn-project" onclick="closeCopyLogisticsModal()">取消</button>
+            <button class="btn-project primary" onclick="submitCopyLogistics()">
+                <i class="fas fa-copy"></i>确认复制
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const logisticsChoices = {{ logistics_choices_json|safe }};
+    let projects = [];
+    let selectedProjectId = null;
+    let isCreating = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProjects();
+    });
+
+    function getCsrfToken() {
+        return document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '';
+    }
+
+    function showNotification(message, type = 'success') {
+        document.querySelectorAll('.notification').forEach(el => el.remove());
+        const el = document.createElement('div');
+        el.className = `notification ${type}`;
+        el.textContent = message;
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+
+    async function apiFetch(url, options = {}) {
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken(),
+                ...(options.headers || {}),
+            },
+        });
+        const result = await response.json();
+        if (!result.success) {
+            throw new Error(result.error || result.message || '请求失败');
+        }
+        return result;
+    }
+
+    async function loadProjects() {
+        try {
+            const result = await apiFetch('/api/projects/');
+            projects = result.data || [];
+            document.getElementById('projectCount').textContent = `${projects.length} 个`;
+            renderProjectList();
+
+            if (selectedProjectId) {
+                const stillExists = projects.some(p => String(p.id) === String(selectedProjectId));
+                if (stillExists) selectProject(selectedProjectId);
+                else resetEditor();
+            } else if (projects.length > 0 && !isCreating) {
+                selectProject(projects[0].id);
+            } else if (!isCreating) {
+                resetEditor();
+            }
+        } catch (error) {
+            document.getElementById('projectList').innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+            showNotification(error.message, 'error');
+        }
+    }
+
+    function renderProjectList() {
+        const keyword = document.getElementById('projectSearch').value.trim().toLowerCase();
+        const filtered = projects.filter(project => {
+            const text = `${project.name || ''} ${project.code || ''}`.toLowerCase();
+            return !keyword || text.includes(keyword);
+        });
+
+        const listEl = document.getElementById('projectList');
+        if (!filtered.length) {
+            listEl.innerHTML = '<div class="empty-state">暂无项目</div>';
+            return;
+        }
+
+        listEl.innerHTML = filtered.map(project => `
+            <div class="project-item-row ${String(project.id) === String(selectedProjectId) ? 'active' : ''}"
+                 onclick="selectProject(${project.id})">
+                <div class="project-item-title">
+                    <span>${escapeHtml(project.name)}</span>
+                    <span class="status-pill ${project.is_active ? 'on' : 'off'}">${project.is_active ? '启用' : '停用'}</span>
+                </div>
+                <div class="project-item-meta">
+                    <span>${escapeHtml(project.code)}</span>
+                    <span>物流配置 ${project.logistics_codes?.length || 0}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function selectProject(projectId) {
+        const project = projects.find(p => String(p.id) === String(projectId));
+        if (!project) return;
+        selectedProjectId = project.id;
+        isCreating = false;
+        fillEditor(project);
+        renderProjectList();
+    }
+
+    function startCreateProject() {
+        selectedProjectId = null;
+        isCreating = true;
+        fillEditor({
+            id: '',
+            name: '',
+            code: '',
+            description: '',
+            sort_order: 0,
+            is_active: true,
+            lingxing_app_id: '',
+            lingxing_app_secret: '',
+            divi_partner_code: '',
+            divi_secret: '',
+            lingxing_sync_enabled: false,
+            divi_sync_enabled: false,
+            logistics_codes: [],
+        });
+        renderProjectList();
+    }
+
+    function resetEditor() {
+        if (isCreating) {
+            startCreateProject();
+            return;
+        }
+        if (selectedProjectId) {
+            selectProject(selectedProjectId);
+            return;
+        }
+        document.getElementById('editorTitle').textContent = '项目详情';
+        fillEditor({
+            id: '',
+            name: '',
+            code: '',
+            description: '',
+            sort_order: 0,
+            is_active: true,
+            lingxing_app_id: '',
+            lingxing_app_secret: '',
+            divi_partner_code: '',
+            divi_secret: '',
+            lingxing_sync_enabled: false,
+            divi_sync_enabled: false,
+            logistics_codes: [],
+        });
+    }
+
+    function fillEditor(project) {
+        document.getElementById('editorTitle').textContent = project.id ? `项目详情：${project.name}` : '新建项目';
+        document.getElementById('projectId').value = project.id || '';
+        document.getElementById('projectName').value = project.name || '';
+        document.getElementById('projectCode').value = project.code || '';
+        document.getElementById('projectDescription').value = project.description || '';
+        document.getElementById('projectSortOrder').value = project.sort_order ?? 0;
+        document.getElementById('projectIsActive').checked = project.is_active !== false;
+        document.getElementById('projectLingxingSync').checked = !!project.lingxing_sync_enabled;
+        document.getElementById('projectDiviSync').checked = !!project.divi_sync_enabled;
+        document.getElementById('projectLingxingAppId').value = project.lingxing_app_id || '';
+        document.getElementById('projectLingxingAppSecret').value = project.lingxing_app_secret || '';
+        document.getElementById('projectDiviPartnerCode').value = project.divi_partner_code || '';
+        document.getElementById('projectDiviSecret').value = project.divi_secret || '';
+        renderLogisticsRows(project.logistics_codes || []);
+    }
+
+    function collectProjectPayload() {
+        return {
+            name: document.getElementById('projectName').value.trim(),
+            code: document.getElementById('projectCode').value.trim(),
+            description: document.getElementById('projectDescription').value.trim(),
+            sort_order: Number(document.getElementById('projectSortOrder').value || 0),
+            is_active: document.getElementById('projectIsActive').checked,
+            lingxing_sync_enabled: document.getElementById('projectLingxingSync').checked,
+            divi_sync_enabled: document.getElementById('projectDiviSync').checked,
+            lingxing_app_id: document.getElementById('projectLingxingAppId').value.trim(),
+            lingxing_app_secret: document.getElementById('projectLingxingAppSecret').value.trim(),
+            divi_partner_code: document.getElementById('projectDiviPartnerCode').value.trim(),
+            divi_secret: document.getElementById('projectDiviSecret').value.trim(),
+        };
+    }
+
+    async function saveCurrentProject() {
+        try {
+            const projectId = document.getElementById('projectId').value;
+            const payload = collectProjectPayload();
+            if (!payload.name) throw new Error('项目名称不能为空');
+            if (!payload.code) throw new Error('项目代码不能为空');
+
+            const projectResult = projectId
+                ? await apiFetch(`/api/projects/${projectId}/update/`, { method: 'POST', body: JSON.stringify(payload) })
+                : await apiFetch('/api/projects/create/', { method: 'POST', body: JSON.stringify(payload) });
+
+            const savedProjectId = projectResult.data.id;
+            const logisticsPayload = { logistics_codes: collectLogisticsRows() };
+            const logisticsResult = await apiFetch(`/api/projects/${savedProjectId}/logistics-codes/`, {
+                method: 'POST',
+                body: JSON.stringify(logisticsPayload),
+            });
+
+            selectedProjectId = logisticsResult.data.id;
+            isCreating = false;
+            showNotification('项目配置已保存', 'success');
+            await loadProjects();
+            selectProject(selectedProjectId);
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    }
+
+    function openCopyLogisticsModal() {
+        const projectId = document.getElementById('projectId').value;
+        const currentProject = projects.find(p => String(p.id) === String(projectId));
+        const rows = collectLogisticsRows();
+
+        if (!projectId || !currentProject || isCreating) {
+            showNotification('请先选择一个已保存的项目', 'warning');
+            return;
+        }
+        if (!rows.length) {
+            showNotification('当前项目没有可复制的物流编码', 'warning');
+            return;
+        }
+
+        const targetOptions = projects
+            .filter(project => String(project.id) !== String(projectId))
+            .map(project => `<option value="${project.id}">${escapeHtml(project.name)} (${escapeHtml(project.code)})</option>`)
+            .join('');
+
+        const targetSelect = document.getElementById('copyTargetProject');
+        targetSelect.innerHTML = targetOptions || '<option value="">暂无可选目标项目</option>';
+        document.getElementById('copyLogisticsSummary').textContent =
+            `从 ${currentProject.name} 复制 ${rows.length} 条物流编码到目标项目`;
+        document.getElementById('copyOverwriteExisting').checked = true;
+        document.getElementById('copyLogisticsModal').classList.add('show');
+    }
+
+    function closeCopyLogisticsModal() {
+        document.getElementById('copyLogisticsModal').classList.remove('show');
+    }
+
+    async function submitCopyLogistics() {
+        try {
+            const sourceProjectId = document.getElementById('projectId').value;
+            const targetProjectId = document.getElementById('copyTargetProject').value;
+            if (!sourceProjectId) throw new Error('请先选择源项目');
+            if (!targetProjectId) throw new Error('请选择目标项目');
+
+            const result = await apiFetch(`/api/projects/${sourceProjectId}/logistics-codes/copy/`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    target_project_id: targetProjectId,
+                    overwrite: document.getElementById('copyOverwriteExisting').checked,
+                    logistics_codes: collectLogisticsRows(),
+                }),
+            });
+
+            const targetProject = result.data?.target_project;
+            if (targetProject) {
+                const index = projects.findIndex(project => String(project.id) === String(targetProject.id));
+                if (index >= 0) {
+                    projects[index] = targetProject;
+                }
+            }
+            renderProjectList();
+            closeCopyLogisticsModal();
+            showNotification(result.message || '物流编码复制成功', 'success');
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    }
+
+    function renderLogisticsRows(rows) {
+        const body = document.getElementById('logisticsTableBody');
+        if (!rows.length) {
+            body.innerHTML = '<tr><td colspan="6" class="empty-state">暂无物流编码配置</td></tr>';
+            return;
+        }
+        body.innerHTML = rows.map(row => logisticsRowHtml(row)).join('');
+    }
+
+    function addLogisticsRow() {
+        const body = document.getElementById('logisticsTableBody');
+        if (body.querySelector('.empty-state')) {
+            body.innerHTML = '';
+        }
+        body.insertAdjacentHTML('beforeend', logisticsRowHtml({
+            logistics_key: '',
+            logistics_name: '',
+            logistics_type_id: '',
+            enabled: true,
+            remark: '',
+        }));
+    }
+
+    function logisticsRowHtml(row) {
+        const options = ['<option value="">请选择</option>', ...logisticsChoices.map(choice => {
+            const selected = choice.value === row.logistics_key ? 'selected' : '';
+            return `<option value="${escapeHtml(choice.value)}" ${selected}>${escapeHtml(choice.label)} (${escapeHtml(choice.value)})</option>`;
+        })].join('');
+
+        return `
+            <tr class="logistics-row">
+                <td><select class="form-select logistics-key">${options}</select></td>
+                <td><input class="form-input logistics-name" type="text" value="${escapeAttr(row.logistics_name || '')}" placeholder="可选"></td>
+                <td><input class="form-input logistics-type-id" type="text" value="${escapeAttr(row.logistics_type_id || '')}" placeholder="如 500518-21735"></td>
+                <td style="text-align:center;"><input class="logistics-enabled" type="checkbox" ${row.enabled !== false ? 'checked' : ''}></td>
+                <td><input class="form-input logistics-remark" type="text" value="${escapeAttr(row.remark || '')}" placeholder="备注"></td>
+                <td>
+                    <button class="btn-project danger" onclick="removeLogisticsRow(this)" title="删除">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    function removeLogisticsRow(button) {
+        button.closest('tr')?.remove();
+        const body = document.getElementById('logisticsTableBody');
+        if (!body.querySelector('.logistics-row')) {
+            body.innerHTML = '<tr><td colspan="6" class="empty-state">暂无物流编码配置</td></tr>';
+        }
+    }
+
+    function collectLogisticsRows() {
+        return Array.from(document.querySelectorAll('#logisticsTableBody .logistics-row')).map(row => ({
+            logistics_key: row.querySelector('.logistics-key').value,
+            logistics_name: row.querySelector('.logistics-name').value.trim(),
+            logistics_type_id: row.querySelector('.logistics-type-id').value.trim(),
+            enabled: row.querySelector('.logistics-enabled').checked,
+            remark: row.querySelector('.logistics-remark').value.trim(),
+        })).filter(row => row.logistics_key || row.logistics_type_id);
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, char => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;',
+        }[char]));
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value).replace(/`/g, '&#96;');
+    }
+</script>
+{% endblock %}

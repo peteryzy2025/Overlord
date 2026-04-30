@@ -264,8 +264,8 @@ def lx_order_main(project_id=None, project_name=None):
         print(f"没有找到任何{filter_desc}国家为美国的领星店铺，结束。")
         return
 
-    # 按领星凭证分组店铺（多个项目共用同一套凭证时合并请求）
-    credential_shops = {}
+    # 按项目分组店铺。即使多个项目共用同一套领星凭证，也按项目分别请求，保持项目边界清晰。
+    project_shops = {}
     skipped_shops = []
     for shop in shops:
         project = shop.amazon_shop.project if shop.amazon_shop else None
@@ -276,16 +276,16 @@ def lx_order_main(project_id=None, project_name=None):
             skipped_shops.append((shop.sid, shop.name, f"项目 {project.name} 未配置领星 API 凭证"))
             continue
 
-        key = (project.lingxing_app_id.strip(), project.lingxing_app_secret.strip())
-        if key not in credential_shops:
-            credential_shops[key] = {
-                "app_id": key[0],
-                "app_secret": key[1],
-                "project_names": set(),
+        key = project.id
+        if key not in project_shops:
+            project_shops[key] = {
+                "project_id": project.id,
+                "project_name": project.name,
+                "app_id": project.lingxing_app_id.strip(),
+                "app_secret": project.lingxing_app_secret.strip(),
                 "sids": [],
             }
-        credential_shops[key]["project_names"].add(project.name)
-        credential_shops[key]["sids"].append(shop.sid)
+        project_shops[key]["sids"].append(shop.sid)
 
     if skipped_shops:
         print(f"跳过 {len(skipped_shops)} 个未绑定项目或缺少领星凭证的店铺")
@@ -294,16 +294,17 @@ def lx_order_main(project_id=None, project_name=None):
         if len(skipped_shops) > 10:
             print(f"  ... 还有 {len(skipped_shops) - 10} 个未显示")
 
-    print(f"共找到 {shops.count()} 个美国店铺，合并为 {len(credential_shops)} 套领星凭证")
+    print(f"共找到 {shops.count()} 个美国店铺，按 {len(project_shops)} 个项目分别同步")
 
     total_fetched = 0
     has_written = False
 
-    # 2. 按领星凭证分组拉取订单数据
-    for data in credential_shops.values():
+    # 2. 按项目分组拉取订单数据
+    for data in project_shops.values():
         sids = sorted(set(data["sids"]))
-        project_names = "、".join(sorted(data["project_names"]))
-        print(f"领星凭证组 [{project_names}] 开始同步 {len(sids)} 个店铺...")
+        project_name = data["project_name"]
+        project_id_for_log = data["project_id"]
+        print(f"项目 [{project_name}](ID:{project_id_for_log}) 开始同步 {len(sids)} 个店铺...")
         
         # 用异步接口从领星批量拉取订单（内部会自动按 20 个 sid 分组请求）
         resp_data = asyncio.run(
@@ -317,13 +318,13 @@ def lx_order_main(project_id=None, project_name=None):
         
         if resp_data:
             total_fetched += len(resp_data)
-            print(f"领星凭证组 [{project_names}] 获取到 {len(resp_data)} 条订单")
-            print(f"领星凭证组 [{project_names}] 开始写入数据库...")
+            print(f"项目 [{project_name}](ID:{project_id_for_log}) 获取到 {len(resp_data)} 条订单")
+            print(f"项目 [{project_name}](ID:{project_id_for_log}) 开始写入数据库...")
             sync_amazon_orders(resp_data)
             has_written = True
-            print(f"领星凭证组 [{project_names}] 写入完成")
+            print(f"项目 [{project_name}](ID:{project_id_for_log}) 写入完成")
         else:
-            print(f"领星凭证组 [{project_names}] 未返回订单数据")
+            print(f"项目 [{project_name}](ID:{project_id_for_log}) 未返回订单数据")
 
     if not has_written:
         print("接口没有返回任何订单数据，结束。")

@@ -1,0 +1,1216 @@
+{% extends 'base/base_task.html' %}
+{% load static %}
+
+{% block title %}智管listing优化 - Divi智管{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/general_style_1.css' %}?v=20260430-listing">
+<link rel="stylesheet" href="{% static 'css/task_create.css' %}?v=20260430-listing">
+<script src="{% static 'js/searchable-select.js' %}"></script>
+<style>
+    .listing-upload-dropzone {
+        width: 100%;
+        min-height: 146px;
+        border: 2px dashed #d8e3f3;
+        border-radius: 8px;
+        background: var(--bg-primary);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        text-align: center;
+        transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .listing-upload-dropzone.dragging {
+        border-color: var(--accent-color);
+        background: rgba(59, 130, 246, 0.05);
+    }
+
+    .listing-upload-dropzone i {
+        font-size: 2rem;
+        color: var(--text-secondary);
+    }
+
+    /* 上传区按钮 - 覆盖 general_style_1.css，保持和 task_create.css 一致 */
+    .listing-upload-dropzone .btn-secondary {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .listing-upload-dropzone .btn-secondary:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .listing-upload-copy {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .listing-upload-dropzone .listing-upload-btn {
+        height: 38px;
+        padding: 0 0.9rem;
+        font-size: 0.86rem;
+    }
+
+    .listing-config-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .listing-config-select {
+        width: 100%;
+        height: 40px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 0 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .listing-config-select option:disabled {
+        color: var(--text-tertiary);
+    }
+
+    .listing-upload-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-top: 0.85rem;
+        flex-wrap: wrap;
+    }
+
+    .listing-selected-file {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        min-height: 36px;
+        color: var(--text-tertiary);
+        font-size: 0.86rem;
+    }
+
+    .listing-selected-file.has-file {
+        color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    .listing-submit-btn {
+        height: 38px;
+        padding: 0 1rem;
+        font-size: 0.86rem;
+    }
+
+    .listing-history-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 0.75rem;
+    }
+
+    .history-file-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        padding: 0.85rem 1rem;
+        min-height: 112px;
+        cursor: pointer;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 0.75rem;
+        color: var(--text-primary);
+        transition: all 0.2s ease;
+    }
+
+    .history-file-card:hover,
+    .history-file-card.active {
+        border-color: var(--accent-color);
+        background: rgba(59, 130, 246, 0.04);
+        box-shadow: var(--shadow-light);
+    }
+
+    .history-file-name {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        line-height: 1.35;
+        word-break: break-word;
+    }
+
+    .history-file-name i {
+        color: var(--accent-color);
+        margin-top: 0.12rem;
+    }
+
+    .history-file-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        color: var(--text-tertiary);
+        font-size: 0.78rem;
+    }
+
+    .listing-summary-grid {
+        display: grid;
+        grid-template-columns: 2fr repeat(3, minmax(120px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .summary-box {
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 0.85rem 1rem;
+        min-width: 0;
+    }
+
+    .summary-label {
+        color: var(--text-tertiary);
+        font-size: 0.78rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .summary-value {
+        color: var(--text-primary);
+        font-weight: 650;
+        font-size: 1rem;
+        word-break: break-word;
+    }
+
+    .summary-subvalue {
+        margin-top: 0.35rem;
+        color: var(--text-tertiary);
+        font-size: 0.78rem;
+        font-weight: 400;
+    }
+
+    .listing-progress-track {
+        height: 8px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: var(--bg-tertiary);
+        margin-bottom: 1rem;
+    }
+
+    .listing-progress-bar {
+        width: 0;
+        height: 100%;
+        background: var(--accent-color);
+        transition: width 0.25s ease;
+    }
+
+    .listing-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+
+    .listing-toolbar-note {
+        color: var(--text-tertiary);
+        font-size: 0.875rem;
+    }
+
+    .listing-row .subtask-edit-form {
+        padding: 1rem 1.25rem 1.25rem;
+    }
+
+    .listing-row.is-collapsed .subtask-edit-form {
+        display: none !important;
+    }
+
+    .listing-row .subtask-header {
+        cursor: pointer;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+
+    .listing-row-title {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 980px;
+    }
+
+    .listing-row-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        object-fit: cover;
+        background: var(--bg-primary);
+        flex: 0 0 auto;
+    }
+
+    .listing-field-block {
+        margin-bottom: 1rem;
+    }
+
+    .listing-field-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.82rem;
+    }
+
+    .listing-field-label strong {
+        color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .field-mode-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 0.55rem;
+        border-radius: 4px;
+        background: rgba(59, 130, 246, 0.08);
+        color: var(--accent-color);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .listing-textarea {
+        height: auto;
+        min-height: 42px;
+        line-height: 1.45;
+        resize: vertical;
+        font-size: 0.88rem;
+        background: var(--bg-secondary);
+    }
+
+    .original-preview {
+        margin-top: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        padding: 0.55rem 0.7rem;
+        color: var(--text-tertiary);
+        font-size: 0.78rem;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
+    .listing-image-preview {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .listing-image-preview img {
+        width: 96px;
+        height: 96px;
+        object-fit: cover;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+    }
+
+    .translated-preview {
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+    }
+
+    .source-translation-preview {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .optimized-translation-box {
+        display: grid;
+        gap: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        padding: 0.55rem 0.7rem;
+    }
+
+    .optimized-translation-box .listing-textarea {
+        border: none;
+        padding: 0;
+        min-height: 42px;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .optimized-translation-box .listing-textarea:focus {
+        border: none;
+        box-shadow: none;
+    }
+
+    .optimized-translation-box .translation-line {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .source-translation-preview .source-line + .source-line {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 0.45rem;
+    }
+
+    .source-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        margin-right: 0.25rem;
+    }
+
+    .listing-row-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        color: var(--text-tertiary);
+        font-size: 0.82rem;
+        border-top: 1px solid var(--border-color);
+        padding-top: 1rem;
+        margin-top: 0.25rem;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+
+    .status-pending { background: rgba(148, 163, 184, 0.16); color: #64748b; }
+    .status-processing { background: rgba(245, 158, 11, 0.16); color: #d97706; }
+    .status-completed { background: rgba(34, 197, 94, 0.16); color: #16a34a; }
+    .status-failed { background: rgba(239, 68, 68, 0.16); color: #dc2626; }
+    .status-paused { background: rgba(107, 114, 128, 0.16); color: #64748b; }
+
+    .listing-empty-state {
+        border: 1px dashed var(--border-color);
+        border-radius: 8px;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        color: var(--text-tertiary);
+        background: var(--bg-primary);
+    }
+
+    .listing-empty-state i {
+        font-size: 2rem;
+        color: var(--text-tertiary);
+    }
+
+    @media (max-width: 1100px) {
+        .listing-summary-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .listing-row-title {
+            max-width: 560px;
+        }
+
+        .listing-row-title-cn {
+            max-width: 560px;
+        }
+
+        .listing-config-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .listing-upload-actions {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .listing-submit-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    .listing-title-stack {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .listing-row-title-cn {
+        color: #e53e3e;
+        font-size: 0.86rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 980px;
+    }
+
+    .listing-row-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 0 0 auto;
+    }
+
+    .listing-row-actions .btn {
+        height: 32px;
+        padding: 0 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .listing-error-preview {
+        color: var(--danger-color);
+        white-space: pre-wrap;
+        max-height: 260px;
+        overflow: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="task-create-container">
+    {% csrf_token %}
+
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="fas fa-magic"></i> 智管listing优化
+        </h1>
+        <div class="header-actions">
+            <button class="btn btn-secondary" onclick="loadJobs()">
+                <i class="fas fa-sync-alt"></i> 刷新
+            </button>
+        </div>
+    </div>
+
+    <div class="task-card">
+        <h2 class="card-title">
+            <i class="fas fa-file-upload"></i> 上传与优化
+        </h2>
+        <div class="subtask-edit-form">
+            <div class="listing-config-grid">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">数据模型</label>
+                    <div id="promptProfileSelect" class="searchable-select single" data-placeholder="请选择数据模型"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label">AI模型</label>
+                    <div id="aiModelSelect" class="searchable-select single" data-placeholder="请选择AI模型"></div>
+                </div>
+            </div>
+            {{ optimizer_config|json_script:"optimizerConfig" }}
+            <div class="form-group">
+                <label class="form-label">上传文件 (Excel) <span style="color: var(--danger-color);">*</span></label>
+                <div class="listing-upload-dropzone" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <div class="listing-upload-copy" id="uploadCopy">拖拽 xlsx 文件到此处或点击选择文件</div>
+                    <input type="file" id="listingFileInput" accept=".xlsx,.xlsm" style="display: none;">
+                    <button type="button" class="btn btn-secondary listing-upload-btn" onclick="document.getElementById('listingFileInput').click()">
+                        <i class="fas fa-plus" style="font-size: 0.75rem;"></i> 选择文件
+                    </button>
+                </div>
+                <div class="listing-upload-actions">
+                    <div class="listing-selected-file" id="selectedFileState">
+                        <i class="fas fa-file-excel"></i>
+                        <span>未选择文件</span>
+                    </div>
+                    <button type="button" class="btn btn-primary listing-submit-btn" id="submitListingFileBtn" onclick="submitSelectedListingFile()" disabled>
+                        <i class="fas fa-paper-plane"></i> 提交优化
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="task-card">
+        <div class="subtasks-section">
+            <div class="subtasks-toolbar">
+                <h2 class="card-title" style="margin-bottom: 0;">
+                    <i class="fas fa-history"></i> 历史文件
+                </h2>
+                <span class="subtasks-count">点击文件可继续查看进度</span>
+            </div>
+            <div class="listing-history-grid" id="jobList">
+                <div class="listing-empty-state">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <div>加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="task-card">
+        <div class="subtasks-section">
+            <div class="subtasks-toolbar">
+                <h2 class="card-title" style="margin-bottom: 0;">
+                    <i class="fas fa-list-check"></i> 优化结果
+                </h2>
+                <span class="subtasks-count" id="resultHint">上传文件后会在这里显示每一行</span>
+            </div>
+            <section id="jobDetail">
+                <div class="listing-empty-state">
+                    <i class="fas fa-file-excel"></i>
+                    <div>请选择或上传一个文件</div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+<script>
+    const FIELD_GROUPS = [
+        {key: 'Product Name（标题）', zh: 'Product Name（标题）中文', originalZh: 'Product Name（标题）原文中文', label: '标题', rows: 2},
+        {key: 'Product Description（描述）', zh: 'Product Description（描述）中文', originalZh: 'Product Description（描述）原文中文', label: '产品描述', rows: 5},
+        {key: 'Key Product Features 1（五点1）', zh: 'Key Product Features 1（五点1）中文', originalZh: 'Key Product Features 1（五点1）原文中文', label: '五点1', rows: 2},
+        {key: 'Key Product Features 2（五点2）', zh: 'Key Product Features 2（五点2）中文', originalZh: 'Key Product Features 2（五点2）原文中文', label: '五点2', rows: 2},
+        {key: 'Key Product Features 3（五点3）', zh: 'Key Product Features 3（五点3）中文', originalZh: 'Key Product Features 3（五点3）原文中文', label: '五点3', rows: 2},
+        {key: 'Key Product Features 4（五点4）', zh: 'Key Product Features 4（五点4）中文', originalZh: 'Key Product Features 4（五点4）原文中文', label: '五点4', rows: 2},
+        {key: 'Key Product Features 5（五点5）', zh: 'Key Product Features 5（五点5）中文', originalZh: 'Key Product Features 5（五点5）原文中文', label: '五点5', rows: 2},
+        {key: 'Search Terms（后台关键词）', zh: 'Search Terms（后台关键词）中文', originalZh: 'Search Terms（后台关键词）原文中文', label: '后台关键词', rows: 2}
+    ];
+    const MAIN_IMAGE_KEY = 'Main Image URL（主图）';
+
+    let currentJobId = null;
+    let currentJob = null;
+    let pollTimer = null;
+    let selectedListingFile = null;
+    let uploadingListingFile = false;
+    const dirtyRows = new Set();
+    const saveTimers = new Map();
+    const expandedRows = new Set();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initSearchableSelects();
+        bindUploadArea();
+        loadJobs();
+    });
+
+    function initSearchableSelects() {
+        const config = JSON.parse(document.getElementById('optimizerConfig')?.textContent || '{}');
+
+        const promptOptions = (config.prompt_profiles || []).map(opt => ({
+            value: opt.value,
+            label: opt.label + (opt.enabled ? '' : '（暂未开放）'),
+            disabled: !opt.enabled
+        }));
+        const promptSelect = new SearchableSelect('#promptProfileSelect', {
+            options: promptOptions,
+            multiple: false,
+            placeholder: '请选择数据模型'
+        });
+        promptSelect.setValue(config.defaults?.prompt_profile || '');
+
+        const modelOptions = (config.ai_models || []).map(opt => ({
+            value: opt.value,
+            label: opt.label + (opt.enabled ? '' : '（暂未开放）'),
+            disabled: !opt.enabled
+        }));
+        const modelSelect = new SearchableSelect('#aiModelSelect', {
+            options: modelOptions,
+            multiple: false,
+            placeholder: '请选择AI模型'
+        });
+        modelSelect.setValue(config.defaults?.ai_model || '');
+    }
+
+    function getCsrfToken() {
+        const input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input) return input.value;
+        const match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+
+    function bindUploadArea() {
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('listingFileInput');
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                setSelectedListingFile(fileInput.files[0]);
+                fileInput.value = '';
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragging'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragging'), false);
+        });
+
+        uploadArea.addEventListener('drop', event => {
+            const files = event.dataTransfer.files;
+            if (files.length > 0) setSelectedListingFile(files[0]);
+        }, false);
+    }
+
+    function preventDefaults(event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    function setSelectedListingFile(file) {
+        if (!file.name.toLowerCase().match(/\.(xlsx|xlsm)$/)) {
+            notify('仅支持 .xlsx 或 .xlsm 文件', 'error');
+            return;
+        }
+
+        selectedListingFile = file;
+        const stateEl = document.getElementById('selectedFileState');
+        const uploadCopy = document.getElementById('uploadCopy');
+        const submitBtn = document.getElementById('submitListingFileBtn');
+        if (stateEl) {
+            stateEl.classList.add('has-file');
+            stateEl.innerHTML = `<i class="fas fa-file-excel"></i><span>已选择：${escapeHtml(file.name)}</span>`;
+        }
+        if (uploadCopy) uploadCopy.textContent = '文件已选择，可调整数据模型和 AI 模型后提交';
+        if (submitBtn) submitBtn.disabled = false;
+    }
+
+    async function submitSelectedListingFile() {
+        if (!selectedListingFile) {
+            notify('请先选择 Excel 文件', 'error');
+            return;
+        }
+        if (uploadingListingFile) return;
+        await uploadListingFile(selectedListingFile);
+    }
+
+    function setUploadSubmitting(isSubmitting) {
+        uploadingListingFile = isSubmitting;
+        const submitBtn = document.getElementById('submitListingFileBtn');
+        if (!submitBtn) return;
+        submitBtn.disabled = isSubmitting || !selectedListingFile;
+        submitBtn.innerHTML = isSubmitting
+            ? '<i class="fas fa-spinner fa-spin"></i> 提交中...'
+            : '<i class="fas fa-paper-plane"></i> 提交优化';
+    }
+
+    function resetSelectedListingFile() {
+        selectedListingFile = null;
+        const stateEl = document.getElementById('selectedFileState');
+        const uploadCopy = document.getElementById('uploadCopy');
+        if (stateEl) {
+            stateEl.classList.remove('has-file');
+            stateEl.innerHTML = '<i class="fas fa-file-excel"></i><span>未选择文件</span>';
+        }
+        if (uploadCopy) uploadCopy.textContent = '拖拽 xlsx 文件到此处或点击选择文件';
+        setUploadSubmitting(false);
+    }
+
+    async function uploadListingFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('prompt_profile', SearchableSelect.getInstance('#promptProfileSelect')?.getValue() || 'amazon_grammar_tyrant');
+        formData.append('ai_model', SearchableSelect.getInstance('#aiModelSelect')?.getValue() || 'qwen-flash');
+        setJobDetailLoading(`正在上传 ${escapeHtml(file.name)}...`);
+        setUploadSubmitting(true);
+
+        try {
+            const response = await fetch('/api/tasks/listing-optimizer/upload/', {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()},
+                body: formData
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '上传失败');
+            currentJobId = result.data.id;
+            renderJobDetail(result.data);
+            await loadJobs(false);
+            startPolling();
+            resetSelectedListingFile();
+            notify('文件已上传，后台正在逐行优化', 'success');
+        } catch (error) {
+            setJobDetailError(error.message);
+            notify(error.message, 'error');
+            setUploadSubmitting(false);
+        }
+    }
+
+    async function loadJobs(openLatest = true) {
+        const listEl = document.getElementById('jobList');
+        try {
+            const response = await fetch('/api/tasks/listing-optimizer/jobs/');
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '加载失败');
+            renderJobList(result.data || []);
+            if (openLatest && !currentJobId && result.data && result.data.length > 0) {
+                loadJob(result.data[0].id);
+            }
+        } catch (error) {
+            listEl.innerHTML = `<div class="listing-empty-state"><i class="fas fa-exclamation-circle"></i><div>${escapeHtml(error.message)}</div></div>`;
+        }
+    }
+
+    function renderJobList(jobs) {
+        const listEl = document.getElementById('jobList');
+        if (!jobs.length) {
+            listEl.innerHTML = `
+                <div class="listing-empty-state">
+                    <i class="fas fa-folder-open"></i>
+                    <div>暂无历史文件</div>
+                </div>
+            `;
+            return;
+        }
+        listEl.innerHTML = jobs.map(job => `
+            <button type="button" class="history-file-card ${job.id === currentJobId ? 'active' : ''}" onclick="loadJob(${job.id})">
+                <span class="history-file-name">
+                    <i class="fas fa-file-excel"></i>
+                    <span>
+                        ${job.created_by_name ? `<span style="color: var(--accent-color);">${escapeHtml(job.created_by_name)}</span> · ` : ''}
+                        ${escapeHtml(job.original_filename)}
+                    </span>
+                </span>
+                <span class="history-file-meta">
+                    <span>${statusBadge(job.status, job.status_display)}</span>
+                    <span>${job.optimized_rows}/${job.total_rows}</span>
+                </span>
+                <span class="history-file-meta">
+                    <span>${escapeHtml(job.created_at)}</span>
+                    <span>${escapeHtml(job.ai_model_label || job.ai_model || '')}${job.failed_rows ? ` · 失败 ${job.failed_rows}` : ''}</span>
+                </span>
+            </button>
+        `).join('');
+    }
+
+    async function loadJob(jobId) {
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${jobId}/`);
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '加载任务失败');
+            currentJobId = result.data.id;
+            renderJobDetail(result.data);
+            loadJobs(false);
+            if (['pending', 'processing'].includes(result.data.status)) {
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    function renderJobDetail(job) {
+        currentJob = job;
+        const completed = Number(job.optimized_rows || 0) + Number(job.failed_rows || 0);
+        const total = Number(job.total_rows || 0);
+        const progress = total ? Math.round((completed / total) * 100) : 0;
+        const canGenerate = total > 0 && !['pending', 'processing'].includes(job.status);
+        const canPause = ['pending', 'processing'].includes(job.status);
+        const canResume = job.status === 'paused';
+        const canRetryFailed = Number(job.failed_rows || 0) > 0 && !['pending', 'processing'].includes(job.status);
+        const detailEl = document.getElementById('jobDetail');
+        const rowsHtml = (job.rows || []).map(row => renderOrReuseRow(row)).join('');
+        const ownerLine = job.created_by_name ? `${escapeHtml(job.created_by_name)} · ` : '';
+        document.getElementById('resultHint').textContent = `${job.optimized_rows || 0}/${job.total_rows || 0} 已完成，${job.failed_rows || 0} 行失败`;
+
+        detailEl.innerHTML = `
+            <div class="listing-summary-grid">
+                <div class="summary-box">
+                    <div class="summary-label">文件</div>
+                    <div class="summary-value">
+                        ${escapeHtml(job.original_filename)}
+                        <div class="summary-subvalue">${ownerLine}${escapeHtml(job.prompt_profile_label || job.prompt_profile || '')} · ${escapeHtml(job.ai_model_label || job.ai_model || '')}</div>
+                    </div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-label">状态</div>
+                    <div class="summary-value">${statusBadge(job.status, job.status_display)}</div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-label">进度</div>
+                    <div class="summary-value">${completed}/${total}</div>
+                </div>
+                <div class="summary-box">
+                    <div class="summary-label">失败</div>
+                    <div class="summary-value">${job.failed_rows || 0}</div>
+                </div>
+            </div>
+            <div class="listing-progress-track">
+                <div class="listing-progress-bar" style="width: ${progress}%"></div>
+            </div>
+            <div class="listing-toolbar">
+                <span class="listing-toolbar-note">${job.error_message ? escapeHtml(job.error_message) : `最后更新：${escapeHtml(job.updated_at || '')}`}</span>
+                <div class="header-actions">
+                    ${job.download_url ? `
+                        <button type="button" class="btn btn-secondary" onclick="downloadCurrentJob()">
+                            <i class="fas fa-download"></i> 下载文件
+                        </button>
+                    ` : ''}
+                    ${canPause ? `
+                        <button type="button" class="btn btn-secondary" onclick="pauseCurrentJob()">
+                            <i class="fas fa-pause"></i> 暂停优化
+                        </button>
+                    ` : ''}
+                    ${canResume ? `
+                        <button type="button" class="btn btn-secondary" onclick="resumeCurrentJob()">
+                            <i class="fas fa-play"></i> 继续优化
+                        </button>
+                    ` : ''}
+                    ${canRetryFailed ? `
+                        <button type="button" class="btn btn-secondary" onclick="retryFailedRows()">
+                            <i class="fas fa-rotate-right"></i> 重试失败行
+                        </button>
+                    ` : ''}
+                    <button type="button" class="btn btn-primary" onclick="generateCurrentJob()" ${canGenerate ? '' : 'disabled'}>
+                        <i class="fas fa-file-export"></i> 确定并生成文件
+                    </button>
+                </div>
+            </div>
+            <div class="subtasks-container" id="rowsContainer">
+                ${rowsHtml || `
+                    <div class="listing-empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <div>没有可展示的行</div>
+                    </div>
+                `}
+            </div>
+        `;
+    }
+
+    function renderOrReuseRow(row) {
+        const existing = document.querySelector(`.listing-row[data-row-id="${row.id}"]`);
+        const activeRow = document.activeElement?.closest?.('.listing-row');
+        if (existing && (dirtyRows.has(String(row.id)) || activeRow?.dataset.rowId === String(row.id))) {
+            updateRowStatus(existing, row);
+            return existing.outerHTML;
+        }
+        return renderRow(row);
+    }
+
+    function renderRow(row) {
+        const source = row.source_data || {};
+        const optimized = row.optimized_data || {};
+        const title = optimized['Product Name（标题）'] || source['Product Name（标题）'] || `Excel 行 ${row.row_number}`;
+        const titleCn = optimized['Product Name（标题）中文'] || '';
+        const imageUrl = source[MAIN_IMAGE_KEY] || optimized[MAIN_IMAGE_KEY] || '';
+        const expandedClass = expandedRows.has(String(row.id)) ? 'is-expanded' : 'is-collapsed';
+        const displayNumber = row.display_number || Math.max((Number(row.row_number) || 4) - 3, 1);
+        const thumbHtml = imageUrl ? `<img class="listing-row-thumb" src="${escapeAttr(imageUrl)}" alt="主图" loading="lazy" onerror="this.style.display='none'">` : '';
+        const canRetryRow = row.status === 'failed' && currentJob && !['pending', 'processing'].includes(currentJob.status);
+
+        return `
+            <article class="subtask-item listing-row ${expandedClass}" data-row-id="${row.id}">
+                <div class="subtask-header" onclick="toggleRow(${row.id}, event)">
+                    <div class="subtask-info" style="min-width: 0;">
+                        <span class="drag-handle"><i class="fas fa-bars"></i></span>
+                        <span class="subtask-number">#${displayNumber}</span>
+                        ${thumbHtml}
+                        <span class="subtask-type">${statusBadge(row.status, row.status_display)}</span>
+                        <span class="listing-title-stack">
+                            <span class="listing-row-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
+                            ${titleCn ? `<span class="listing-row-title-cn" title="${escapeAttr(titleCn)}">${escapeHtml(titleCn)}</span>` : ''}
+                        </span>
+                    </div>
+                    <div class="listing-row-actions">
+                        ${canRetryRow ? `
+                            <button type="button" class="btn btn-secondary" onclick="retryRow(${row.id}, event)">
+                                <i class="fas fa-rotate-right"></i> 重试本行
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                <div class="subtask-edit-form">
+                    ${FIELD_GROUPS.map(field => renderFieldGroup(field, source, optimized, row.id)).join('')}
+                    <div class="original-preview listing-image-preview">
+                        ${imageUrl ? `
+                            <img src="${escapeAttr(imageUrl)}" alt="主图" loading="lazy">
+                            <span>主图 URL：${escapeHtml(imageUrl)}</span>
+                        ` : '主图：无'}
+                    </div>
+                    ${row.error_message ? `<div class="original-preview listing-error-preview">${escapeHtml(row.error_message)}</div>` : ''}
+                    <div class="listing-row-footer">
+                        <span class="save-state" id="save-state-${row.id}">最后更新：${escapeHtml(row.updated_at || '')}</span>
+                        <button type="button" class="btn btn-secondary" onclick="saveRow(${row.id})">
+                            <i class="fas fa-save"></i> 保存本行
+                        </button>
+                    </div>
+                </div>
+            </article>
+        `;
+    }
+
+    function renderFieldGroup(field, source, optimized, rowId) {
+        const englishValue = optimized[field.key] || source[field.key] || '';
+        const chineseValue = optimized[field.zh] || '等待 AI 返回中文意思';
+        const originalValue = source[field.key] || '';
+        const originalChineseValue = optimized[field.originalZh] || '暂无原文翻译';
+        return `
+            <div class="listing-field-block">
+                <div class="listing-field-label">
+                    <strong>${escapeHtml(field.label)}</strong>
+                    <span class="field-mode-tag">优化后英文</span>
+                </div>
+                <div class="optimized-translation-box">
+                    <textarea class="form-control listing-textarea" rows="${field.rows}" data-field="${escapeAttr(field.key)}" oninput="scheduleSaveRow(${rowId})">${escapeHtml(englishValue)}</textarea>
+                    <div class="translation-line"><span class="source-label">中文意思：</span>${escapeHtml(chineseValue)}</div>
+                </div>
+                <div class="original-preview source-translation-preview">
+                    <div class="source-line"><span class="source-label">原文：</span>${escapeHtml(originalValue)}</div>
+                    <div class="source-line"><span class="source-label">原文翻译：</span>${escapeHtml(originalChineseValue)}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    function toggleRow(rowId, event) {
+        if (event.target.closest('button, a, textarea, input')) return;
+        const key = String(rowId);
+        const rowEl = document.querySelector(`.listing-row[data-row-id="${rowId}"]`);
+        if (!rowEl) return;
+        if (expandedRows.has(key)) {
+            expandedRows.delete(key);
+            rowEl.classList.remove('is-expanded');
+            rowEl.classList.add('is-collapsed');
+        } else {
+            expandedRows.add(key);
+            rowEl.classList.remove('is-collapsed');
+            rowEl.classList.add('is-expanded');
+        }
+    }
+
+    function updateRowStatus(rowEl, row) {
+        const typeEl = rowEl.querySelector('.subtask-type');
+        if (typeEl) typeEl.innerHTML = statusBadge(row.status, row.status_display);
+    }
+
+    function scheduleSaveRow(rowId) {
+        const key = String(rowId);
+        dirtyRows.add(key);
+        const state = document.getElementById(`save-state-${rowId}`);
+        if (state) state.textContent = '未保存的修改';
+        clearTimeout(saveTimers.get(key));
+        saveTimers.set(key, setTimeout(() => saveRow(rowId), 1000));
+    }
+
+    async function saveRow(rowId) {
+        const rowEl = document.querySelector(`.listing-row[data-row-id="${rowId}"]`);
+        if (!rowEl) return;
+        const optimizedData = collectRowData(rowEl);
+        const state = document.getElementById(`save-state-${rowId}`);
+        if (state) state.textContent = '保存中...';
+
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/rows/${rowId}/save/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({optimized_data: optimizedData})
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '保存失败');
+            dirtyRows.delete(String(rowId));
+            if (state) state.textContent = `已保存：${result.data.row.updated_at || ''}`;
+        } catch (error) {
+            if (state) state.textContent = `保存失败：${error.message}`;
+        }
+    }
+
+    function collectRowData(rowEl) {
+        const data = {};
+        rowEl.querySelectorAll('[data-field]').forEach(input => {
+            data[input.getAttribute('data-field')] = input.value;
+        });
+        return data;
+    }
+
+    async function generateCurrentJob() {
+        if (!currentJobId) return;
+        const rows = Array.from(document.querySelectorAll('.listing-row')).map(rowEl => ({
+            id: Number(rowEl.dataset.rowId),
+            optimized_data: collectRowData(rowEl)
+        }));
+
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/generate/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({rows})
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '生成失败');
+            currentJob = result.data;
+            await loadJob(currentJobId);
+            notify('文件已生成，可以下载', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    function downloadCurrentJob() {
+        if (currentJob?.download_url) {
+            window.location.href = currentJob.download_url;
+        }
+    }
+
+    async function pauseCurrentJob() {
+        if (!currentJobId) return;
+        if (!confirm('确定暂停这个文件的后续优化吗？当前正在请求中的一行可能会完成，但不会继续优化下一行。')) return;
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/pause/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '暂停失败');
+            stopPolling();
+            await loadJob(currentJobId);
+            notify(result.message || '已暂停优化', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function resumeCurrentJob() {
+        if (!currentJobId) return;
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/resume/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '继续优化失败');
+            await loadJob(currentJobId);
+            startPolling();
+            notify(result.message || '已继续优化', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function retryFailedRows() {
+        if (!currentJobId) return;
+        if (!confirm('确定重新优化所有失败行吗？已完成的行不会重跑。')) return;
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/retry-failed/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '重试失败行失败');
+            await loadJob(currentJobId);
+            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            notify(result.message || '已提交失败行重试', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function retryRow(rowId, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/rows/${rowId}/retry/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '重试本行失败');
+            currentJobId = result.data.id;
+            await loadJob(currentJobId);
+            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            notify(result.message || '已提交本行重试', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    function startPolling() {
+        stopPolling();
+        pollTimer = setInterval(() => {
+            if (document.activeElement?.classList?.contains('listing-textarea')) return;
+            if (currentJobId) loadJob(currentJobId);
+        }, 3000);
+    }
+
+    function stopPolling() {
+        if (pollTimer) clearInterval(pollTimer);
+        pollTimer = null;
+    }
+
+    function setJobDetailLoading(message) {
+        document.getElementById('jobDetail').innerHTML = `
+            <div class="listing-empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <div>${message}</div>
+            </div>
+        `;
+    }
+
+    function setJobDetailError(message) {
+        document.getElementById('jobDetail').innerHTML = `
+            <div class="listing-empty-state" style="color: var(--danger-color);">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>${escapeHtml(message)}</div>
+            </div>
+        `;
+    }
+
+    function statusBadge(status, label) {
+        const text = label || status || '';
+        const icon = status === 'processing' ? 'fa-spinner fa-spin' : status === 'completed' ? 'fa-check-circle' : status === 'failed' ? 'fa-circle-exclamation' : status === 'paused' ? 'fa-pause-circle' : 'fa-clock';
+        return `<span class="status-badge status-${escapeAttr(status || 'pending')}"><i class="fas ${icon}"></i>${escapeHtml(text)}</span>`;
+    }
+
+    function notify(message, type = 'info') {
+        if (typeof showNotification === 'function') {
+            showNotification(message, type);
+        } else {
+            console.log(`[${type}] ${message}`);
+        }
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function escapeAttr(value) {
+        return escapeHtml(value);
+    }
+</script>
+{% endblock %}

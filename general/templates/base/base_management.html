@@ -57,6 +57,15 @@
                 <span>Amazon店铺管理</span>
             </a>
         </li>
+        {% if 5555 in user_permissions %}
+        <li class="sidebar-item">
+            <a href="{% url 'general:project_management' %}"
+               class="sidebar-link {% if active_page == 'project_management' %}active{% endif %}">
+                <i class="fas fa-layer-group sidebar-icon"></i>
+                <span>项目管理</span>
+            </a>
+        </li>
+        {% endif %}
         <li class="sidebar-item">
             <a href="{% url 'general:temu_management' %}"
                class="sidebar-link {% if active_page == 'temu_management' %}active{% endif %}">

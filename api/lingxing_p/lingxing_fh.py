@@ -14,7 +14,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "Overlord.settings")
 django.setup()
 
 from amazon.models import AmazonOrders
-from general.models import Project
+from general.models import Project, ProjectLingxingLogisticsCode
 from api.lingxing.Y_OpenApi import get_api_resp
 from api.lingxing_p.lingxing_jc1 import get_lingxing_zifa_order  # 新增导入
 
@@ -28,7 +28,7 @@ class LingxingAPIException(Exception):
     pass
 
 
-async def _get_lingxing_credentials(order) -> tuple[str, str]:
+async def _get_lingxing_credentials(order) -> tuple[Project, str, str]:
     """
     根据订单获取对应项目的领星API凭证
     
@@ -36,7 +36,7 @@ async def _get_lingxing_credentials(order) -> tuple[str, str]:
         order: AmazonOrders 订单对象
         
     Returns:
-        (app_id, app_secret) 元组
+        (project, app_id, app_secret) 元组
         
     Raises:
         ValueError: 如果项目未配置领星凭证
@@ -55,7 +55,7 @@ async def _get_lingxing_credentials(order) -> tuple[str, str]:
     # 检查项目是否配置了领星凭证
     if project:
         if project.lingxing_app_id and project.lingxing_app_secret:
-            return project.lingxing_app_id, project.lingxing_app_secret
+            return project, project.lingxing_app_id, project.lingxing_app_secret
         else:
             raise ValueError(
                 f"项目 '{project.name}' (ID: {project.id}) 未配置领星API凭证，"
@@ -65,16 +65,18 @@ async def _get_lingxing_credentials(order) -> tuple[str, str]:
         raise ValueError("订单未关联项目，无法获取领星API凭证")
 
 
-def get_divi_logistics_code(divi_logistics_method: str,
-                            tracking_no: Optional[str] = None) -> str:
+def identify_divi_logistics_key(divi_logistics_method: str, tracking_no: Optional[str] = None) -> str:
     """
-    根据物流方式 + （可选）单号，返回对应的分销物流编码。
+    根据物流方式 + （可选）单号识别系统物流键。
+
+    物流键只表达渠道类型，真正的领星 logistics_type_id 由项目配置决定。
     """
     if not divi_logistics_method:
         return ""
 
     method = divi_logistics_method.strip().upper()
     tracking = (tracking_no or "").strip().upper()
+    keys = ProjectLingxingLogisticsCode.LogisticsKey
 
     # 1. F-USPS 特殊处理（放在最前面）
     if method == "F-USPS":
@@ -82,67 +84,64 @@ def get_divi_logistics_code(divi_logistics_method: str,
             print("F-USPS 未提供单号，无法识别承运商")
             return ""
         if tracking.startswith("SF"):
-            # UniUni
-            return "500518-21734"
+            return keys.SF_CD
         # 单号前缀判断：UniUni
         if tracking.startswith("UU"):
-            # UniUni
-            return "500518-21736"
+            return keys.UNIUNI
 
         # 单号前缀判断：GOFO
         if tracking.startswith("YT") :
-            # GOFO
-            return "500518-21672"
+            return keys.GOFO
         if tracking.startswith("GFU"):
-            return "500518-22837"
+            return keys.GOFO_US_WEST
 
         # 按长度区分不同承运商（根据你举的几个例子来写）：
         length = len(tracking)
         if length == 22:
             # 例：9214490374017154170799
             # USPS
-            return "500518-21735"
+            return keys.USPS
 
         if length == 12:
             # 例：395511858923
             # FEDEX
-            return "500518-22808"
+            return keys.FEDEX
 
         if length == 30:
             # 例：420383059261290304442265416750
             # DHL
-            return "500518-22809"
+            return keys.DHL
         if "LS" in tracking:
-            return "500518-21735"
+            return keys.USPS
 
         print(f"F-USPS 单号未能识别承运商: {tracking_no}")
         return ""
 
     # 2. 完全匹配的渠道名 新增记得改大写！！！
     exact_map = {
-        "威速易美国小货专线": "500518-22812",
-        "云途全球专线挂号（标快普货）": "500518-22810",
-        "京东普货标准专线-IE-01": "500518-22811",
-        "GOFO PARCEL PICKUP": "500518-21672",
-        "美西GOFO EXPRESS SERVICE": "500518-22837",
-        "ES-FEDEX GROUND（美西）": "500518-23409",
-        "ES-FEDEX HD（美西）": "500518-23410",
-        "ES-USPS GA（美西）": "500518-23411",
-        "ES-USPS PM（美西）": "500518-23412",
-        "SWIFTX EXPRESS(美西)": "500518-23413",
-        "顺丰国际电商专递-CD": "500518-21734",
-        "顺丰国际电商专递-标准": "500518-30771",
+        "威速易美国小货专线": keys.WEISUYI_US_SMALL,
+        "云途全球专线挂号（标快普货）": keys.YUNTU_GLOBAL_REGISTERED,
+        "京东普货标准专线-IE-01": keys.JD_IE_STANDARD,
+        "GOFO PARCEL PICKUP": keys.GOFO,
+        "美西GOFO EXPRESS SERVICE": keys.GOFO_US_WEST,
+        "ES-FEDEX GROUND（美西）": keys.ES_FEDEX_GROUND_US_WEST,
+        "ES-FEDEX HD（美西）": keys.ES_FEDEX_HD_US_WEST,
+        "ES-USPS GA（美西）": keys.ES_USPS_GA_US_WEST,
+        "ES-USPS PM（美西）": keys.ES_USPS_PM_US_WEST,
+        "SWIFTX EXPRESS(美西)": keys.SWIFTX_US_WEST,
+        "顺丰国际电商专递-CD": keys.SF_CD,
+        "顺丰国际电商专递-标准": keys.SF_STANDARD,
         #新增记得改大写！！！
     }
     if method in exact_map:
         return exact_map[method]
 
     contain_map = {
-        "USPS": "500518-21735",
-        "FEDEX": "500518-22808",
+        "USPS": keys.USPS,
+        "FEDEX": keys.FEDEX,
         # "GOFO": "500518-21672",
-        "DHL": "500518-22809",
-        "UNIUNI": "500518-21736",
+        "DHL": keys.DHL,
+        "UNIUNI": keys.UNIUNI,
     }
     for key, code in contain_map.items():
         if key in method:
@@ -150,6 +149,33 @@ def get_divi_logistics_code(divi_logistics_method: str,
 
     print(f"未匹配到物流方式: 【{divi_logistics_method}】")
     return ""
+
+
+@sync_to_async
+def get_divi_logistics_code(project: Project, divi_logistics_method: str,
+                            tracking_no: Optional[str] = None) -> str:
+    """
+    按项目解析领星物流编码。
+
+    自动发货不使用全局默认编码；项目未配置时返回空，让上层跳过发货。
+    """
+    logistics_key = identify_divi_logistics_key(divi_logistics_method, tracking_no)
+    if not logistics_key:
+        return ""
+
+    config = ProjectLingxingLogisticsCode.objects.filter(
+        project=project,
+        logistics_key=logistics_key,
+        enabled=True,
+    ).first()
+    if not config:
+        print(
+            f"项目【{project.name}】未配置领星物流编码: "
+            f"logistics_key={logistics_key}, DIVI物流={divi_logistics_method}, 单号={tracking_no or ''}"
+        )
+        return ""
+
+    return config.logistics_type_id.strip()
 
 # ==================== 新增：订单号同步函数 ====================
 async def sync_order_no_if_empty(order, sid: int, amazon_order_id: str, app_id: str = None, app_secret: str = None) -> tuple[bool, str]:
@@ -323,7 +349,7 @@ async def step5_delivery_goods(order_no: str, execute: bool = True, app_id: str 
 # ==================== 查询订单 ====================
 @sync_to_async
 def get_full_order(sid: int, amazon_order_id: str):
-    return AmazonOrders.objects.select_related('lingxing_shop').prefetch_related('items').get(
+    return AmazonOrders.objects.select_related('lingxing_shop', 'amazon_shop__project').prefetch_related('items').get(
         lingxing_shop__sid=sid,
         amazon_order_id=amazon_order_id
     )
@@ -340,8 +366,8 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
 
         # 获取项目的领星API凭证（尽早获取，用于后续所有API调用）
         try:
-            app_id, app_secret = await _get_lingxing_credentials(order)
-            print(f"\n【项目配置】使用项目领星API凭证")
+            project, app_id, app_secret = await _get_lingxing_credentials(order)
+            print(f"\n【项目配置】使用项目【{project.name}】领星API凭证")
         except ValueError as e:
             print(f"\n【致命错误】{str(e)}，终止处理")
             raise
@@ -365,9 +391,9 @@ async def process_order(sid: int, amazon_order_id: str, mode: str = "preview"):
         waybill_no = order.divi_tracking_number or ""
         if waybill_no == "" or waybill_no is None:
             raise Exception("没有跟踪号，请手动处理")
-        logistics_type_id = get_divi_logistics_code(order.divi_logistics_method or "", waybill_no)
+        logistics_type_id = await get_divi_logistics_code(project, order.divi_logistics_method or "", waybill_no)
         if logistics_type_id is None or logistics_type_id == "":
-            raise Exception(f"物流方式 {order.divi_logistics_method} 不支持，请手动处理")
+            raise Exception(f"项目【{project.name}】未配置或不支持物流方式 {order.divi_logistics_method}，请手动处理")
         freight = str(order.divi_shipping_amount or "0")
 
         print(f"领星订单号: {order_no}")

@@ -18,6 +18,8 @@ from .models import (
     Announcement,
     UserAnnouncementRead,
     Company,
+    Project,
+    ProjectLingxingLogisticsCode,
     SystemModule,
     CompanyModuleGrant,
 )
@@ -277,6 +279,56 @@ class UserAnnouncementReadAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """禁止手动添加已读记录（应该由用户操作自动生成）"""
         return False
+
+
+class ProjectLingxingLogisticsCodeInline(admin.TabularInline):
+    model = ProjectLingxingLogisticsCode
+    extra = 0
+    fields = ('logistics_key', 'logistics_name', 'logistics_type_id', 'enabled', 'remark')
+    show_change_link = True
+
+
+@admin.register(Project)
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = (
+        'name', 'code', 'company', 'is_active', 'lingxing_sync_enabled',
+        'divi_sync_enabled', 'sort_order', 'updated_at'
+    )
+    list_filter = ('company', 'is_active', 'lingxing_sync_enabled', 'divi_sync_enabled')
+    search_fields = ('name', 'code', 'company__name')
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('company', 'sort_order', '-created_at')
+    inlines = (ProjectLingxingLogisticsCodeInline,)
+    raw_id_fields = ('company', 'manager')
+    fieldsets = (
+        ('基本信息', {
+            'fields': ('company', 'name', 'code', 'description', 'manager')
+        }),
+        ('同步配置', {
+            'fields': (
+                'lingxing_app_id', 'lingxing_app_secret',
+                'divi_partner_code', 'divi_secret',
+                'lingxing_sync_enabled', 'divi_sync_enabled',
+            )
+        }),
+        ('状态与排序', {
+            'fields': ('is_active', 'sort_order')
+        }),
+        ('系统信息', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+@admin.register(ProjectLingxingLogisticsCode)
+class ProjectLingxingLogisticsCodeAdmin(admin.ModelAdmin):
+    list_display = ('project', 'logistics_key', 'logistics_name', 'logistics_type_id', 'enabled', 'updated_at')
+    list_filter = ('enabled', 'logistics_key', 'project__company', 'project')
+    search_fields = ('project__name', 'project__code', 'logistics_key', 'logistics_name', 'logistics_type_id')
+    readonly_fields = ('created_at', 'updated_at')
+    raw_id_fields = ('project',)
+    ordering = ('project', 'logistics_key')
 
 
 @admin.register(SystemModule)

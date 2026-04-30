@@ -1,7 +1,7 @@
 # Task/urls.py
 
 from django.urls import path
-from task.view import approval_views, task_api_views, task_page_views, product_views, task_upload_views,task_detail_views
+from task.view import approval_views, task_api_views, task_page_views, product_views, task_upload_views, task_detail_views, listing_optimizer_views
 app_name = 'task'  # 命名空间
 urlpatterns = [
     # 页面路由
@@ -12,6 +12,7 @@ urlpatterns = [
     path('task/product/create/', product_views.product_create_page, name='product_create_page'),
     path('task/product/list/', product_views.product_list_page, name='product_list_page'),
     path('task/list/', task_page_views.task_list_page, name='task_list_page'),
+    path('task/listing-optimizer/', listing_optimizer_views.listing_optimizer_page, name='listing_optimizer_page'),
 
     # API路由
     # 产品需求相关
@@ -95,6 +96,18 @@ urlpatterns = [
 
     # 临时文件上传（预校验店名）
     path('api/tasks/upload-temp/', task_upload_views.upload_temp_file_api, name='upload_temp_file'),
+
+    # Listing 优化
+    path('api/tasks/listing-optimizer/jobs/', listing_optimizer_views.listing_optimizer_jobs_api, name='listing_optimizer_jobs'),
+    path('api/tasks/listing-optimizer/upload/', listing_optimizer_views.listing_optimizer_upload_api, name='listing_optimizer_upload'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/', listing_optimizer_views.listing_optimizer_job_detail_api, name='listing_optimizer_job_detail'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/pause/', listing_optimizer_views.listing_optimizer_pause_api, name='listing_optimizer_pause'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/resume/', listing_optimizer_views.listing_optimizer_resume_api, name='listing_optimizer_resume'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/retry-failed/', listing_optimizer_views.listing_optimizer_retry_failed_api, name='listing_optimizer_retry_failed'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/generate/', listing_optimizer_views.listing_optimizer_generate_api, name='listing_optimizer_generate'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/download/', listing_optimizer_views.listing_optimizer_download_api, name='listing_optimizer_download'),
+    path('api/tasks/listing-optimizer/rows/<int:row_id>/save/', listing_optimizer_views.listing_optimizer_row_save_api, name='listing_optimizer_row_save'),
+    path('api/tasks/listing-optimizer/rows/<int:row_id>/retry/', listing_optimizer_views.listing_optimizer_row_retry_api, name='listing_optimizer_row_retry'),
 
     # ===== 任务详情页（新增）=====
     # 页面路由
