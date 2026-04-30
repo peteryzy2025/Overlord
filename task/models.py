@@ -941,6 +941,8 @@ class ListingOptimizationJob(models.Model):
     original_filename = models.CharField('原始文件名', max_length=255)
     original_file_path = models.CharField('原始文件路径', max_length=500)
     output_file_path = models.CharField('输出文件路径', max_length=500, blank=True, default='')
+    prompt_profile = models.CharField('提示词方案', max_length=80, default='amazon_grammar_tyrant')
+    ai_model = models.CharField('AI模型', max_length=120, default='qwen-flash')
     status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     total_rows = models.IntegerField('总行数', default=0)
     optimized_rows = models.IntegerField('已优化行数', default=0)

@@ -44,7 +44,7 @@ REQUIRED_LISTING_KEYS = [*TRANSLATABLE_KEYS, MAIN_IMAGE_KEY]
 
 OUTPUT_KEYS: List[str] = []
 for _field_key in TRANSLATABLE_KEYS:
-    OUTPUT_KEYS.extend([_field_key, f"{_field_key}中文"])
+    OUTPUT_KEYS.extend([_field_key, f"{_field_key}中文", f"{_field_key}原文中文"])
 OUTPUT_KEYS.append(MAIN_IMAGE_KEY)
 del _field_key
 
@@ -63,6 +63,80 @@ EXCEL_COLUMN_MAP = {
 HEADER_ROW = 3
 DATA_START_ROW = 4
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+DEFAULT_PROMPT_PROFILE = "amazon_grammar_tyrant"
+DEFAULT_AI_MODEL = "qwen-flash"
+
+PROMPT_PROFILE_OPTIONS = [
+    {
+        "value": DEFAULT_PROMPT_PROFILE,
+        "label": "亚马逊语法暴君",
+        "enabled": True,
+    },
+    {
+        "value": "conversion_demon",
+        "label": "转化率魔神",
+        "enabled": False,
+    },
+    {
+        "value": "traffic_topology_emperor",
+        "label": "流量拓扑皇帝",
+        "enabled": False,
+    },
+    {
+        "value": "a10_judge",
+        "label": "A10裁决者",
+        "enabled": False,
+    },
+]
+
+AI_MODEL_OPTIONS = [
+    {
+        "value": "qwen-flash",
+        "label": "qwen-flash",
+        "enabled": True,
+        "provider": "dashscope",
+        "api_key_setting": "DASHSCOPE_API_KEY",
+        "endpoint_setting": "DASHSCOPE_ENDPOINT",
+        "default_endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    },
+    {
+        "value": "qwen3.5-flash",
+        "label": "qwen3.5-flash",
+        "enabled": True,
+        "provider": "dashscope",
+        "api_key_setting": "DASHSCOPE_API_KEY",
+        "endpoint_setting": "DASHSCOPE_ENDPOINT",
+        "default_endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    },
+    {
+        "value": "qwen3.6-flash",
+        "label": "qwen3.6-flash",
+        "enabled": True,
+        "provider": "dashscope",
+        "api_key_setting": "DASHSCOPE_API_KEY",
+        "endpoint_setting": "DASHSCOPE_ENDPOINT",
+        "default_endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+    },
+    {
+        "value": "deepseek-v4-flash",
+        "label": "DeepSeek-V4-Flash",
+        "enabled": True,
+        "provider": "deepseek",
+        "api_key_setting": "DEEPSEEK_API_KEY",
+        "endpoint_setting": "DEEPSEEK_ENDPOINT",
+        "default_endpoint": "https://api.deepseek.com/chat/completions",
+        "aliases": ["DeepSeek-V4-Flash"],
+    },
+    {
+        "value": "deepseek-v4-pro",
+        "label": "deepseek-v4-pro",
+        "enabled": True,
+        "provider": "deepseek",
+        "api_key_setting": "DEEPSEEK_API_KEY",
+        "endpoint_setting": "DEEPSEEK_ENDPOINT",
+        "default_endpoint": "https://api.deepseek.com/chat/completions",
+    },
+]
 
 _active_jobs = set()
 _worker_lock = threading.Lock()
@@ -79,48 +153,132 @@ class DashScopeError(RuntimeError):
         self.body = body
 
 
+def get_listing_optimizer_config() -> Dict[str, Any]:
+    return {
+        "prompt_profiles": PROMPT_PROFILE_OPTIONS,
+        "ai_models": [
+            {
+                "value": item["value"],
+                "label": item["label"],
+                "enabled": item["enabled"],
+            }
+            for item in AI_MODEL_OPTIONS
+        ],
+        "defaults": {
+            "prompt_profile": DEFAULT_PROMPT_PROFILE,
+            "ai_model": DEFAULT_AI_MODEL,
+        },
+    }
+
+
+def validate_prompt_profile(value: Optional[str]) -> str:
+    profile = (value or DEFAULT_PROMPT_PROFILE).strip()
+    options = {item["value"]: item for item in PROMPT_PROFILE_OPTIONS}
+    selected = options.get(profile)
+    if not selected:
+        raise ListingValidationError("请选择有效的提示词。")
+    if not selected.get("enabled"):
+        raise ListingValidationError("该提示词暂未开放选择。")
+    return profile
+
+
+def validate_ai_model(value: Optional[str]) -> str:
+    model = (value or DEFAULT_AI_MODEL).strip()
+    selected = get_ai_model_option(model)
+    if not selected:
+        raise ListingValidationError("请选择有效的 AI 模型。")
+    if not selected.get("enabled"):
+        raise ListingValidationError("该 AI 模型暂未开放选择。")
+    return selected["value"]
+
+
+def get_ai_model_option(value: Optional[str]) -> Optional[Dict[str, Any]]:
+    model = (value or "").strip()
+    if not model:
+        model = DEFAULT_AI_MODEL
+    model_lower = model.lower()
+    for item in AI_MODEL_OPTIONS:
+        aliases = [item["value"], item["label"], *item.get("aliases", [])]
+        if any(model_lower == str(alias).lower() for alias in aliases):
+            return item
+    return None
+
+
+def get_prompt_profile_label(value: str) -> str:
+    for item in PROMPT_PROFILE_OPTIONS:
+        if item["value"] == value:
+            return item["label"]
+    return value or DEFAULT_PROMPT_PROFILE
+
+
+def get_ai_model_label(value: str) -> str:
+    option = get_ai_model_option(value)
+    return option["label"] if option else value
+
+
 class QwenAmazonListingOptimizer:
     DEFAULT_PROMPT = """
-你是拥有20年美国 Amazon POD 产品运营经验的资深卖家，擅长为美亚买家编写自然、合规、可转化的 listing。
-你熟悉美国搜索习惯，并以 A10 相关性、COSMO/Rufus 语义理解、GEO 生成式检索友好表达为目标：用清晰的“产品词 + 主题词 + 属性 + 场景 + 人群”线性结构组织文案。
+你是拥有20年美国 Amazon POD 产品运营经验的资深卖家，也是一名深耕美国市场的 Amazon SEO 专家。你擅长识别标题背后的文化主题，并为美亚买家编写自然、合规、可转化的 listing。
+你熟悉美国搜索习惯，并以 A10 相关性、COSMO/Rufus 语义理解、GEO 生成式检索友好表达为目标：用清晰的“产品词 + 主题词 + 属性/工艺 + 场景 + 人群”线性结构组织文案。
 
 任务：
-基于输入的主题、产品属性、图片 URL 和现有文案，重写 Amazon listing。输出必须包含英文标题、五点描述、产品描述、后台搜索关键词、这些英文内容的中文意思，以及主图 URL。
+基于输入的主题、产品属性、图片 URL 和现有文案，先在内部识别文化主题、产品类型、工艺表达和潜在侵权风险，再重写 Amazon listing。输出必须包含英文标题、五点描述、产品描述、后台搜索关键词、优化后英文内容的中文意思、输入原文的中文翻译，以及主图 URL。
 
 硬性规则：
 1. 只输出一个 JSON 对象，不要 Markdown，不要解释，不要多余字段。
 2. JSON 的 key 必须严格等于用户提供的输出字段清单；顺序也尽量保持一致。
-3. 除主图 URL 外，每个英文 listing 字段后面都必须增加对应的“中文”字段，例如 "Key Product Features 1（五点1）中文"。
-4. “中文”字段必须是对应英文内容的自然中文翻译或中文意思，不要写优化说明，不要逐条解释你为什么这样写。
-5. 标题使用地道美式英语，不超过 125 个字符；前半段放核心产品词与主题词，避免堆砌和重复。
-6. 五点描述共 5 条，每条只写一段英文；围绕主题自然埋词，并分别覆盖材质/舒适度、版型/尺寸、图案风格、穿搭场景、送礼/日常使用。
-7. 产品描述写成流畅英文自然段，突出 POD 图案、复古水洗棉、低帽冠、可调节范围、男女通用和使用场景。
-8. 后台搜索关键词不超过 250 个字符；全部小写；用空格分隔；不重复；不要标点、品牌名、ASIN、竞品词或侵权词。
-9. “Search Terms（后台关键词）中文”按正常中文意思翻译即可，可以是自然短语，不需要遵守后台关键词的空格格式。
+3. 除主图 URL 外，每个英文 listing 字段后面都必须增加两个中文字段：一个“中文”字段和一个“原文中文”字段，例如 "Key Product Features 1（五点1）中文"、"Key Product Features 1（五点1）原文中文"。
+4. “中文”字段必须是优化后英文内容的自然中文翻译或中文意思；“原文中文”字段必须是输入原文字段的自然中文翻译。不要写优化说明，不要逐条解释你为什么这样写。
+5. 标题使用地道美式英语，目标长度约 120 个字符，但绝不能超过 125 个字符；前半段放文化主题、核心产品词、工艺/版型和应用场景，避免堆砌和重复。
+6. 五点描述共 5 条，每条只写一段英文；围绕文化主题自然埋入核心关键词，侧重情感共鸣、图案/印花质感、佩戴/使用体验、场景和礼品价值。
+7. 产品描述写成单段流畅英文自然段，增加更多使用场景和礼品价值，只描述输入中能确认或能合理推断的产品属性，不要虚构认证、销量或无法确认的卖点。
+8. 后台搜索关键词不超过 250 个字符；全部小写；用空格分隔；填写标题未覆盖的高频同义词和相关搜索词；不重复；不要标点、品牌名、ASIN、竞品词或侵权词。
+9. “Search Terms（后台关键词）中文”和“Search Terms（后台关键词）原文中文”按正常中文意思翻译即可，可以是自然短语，不需要遵守后台关键词的空格格式。
 10. 侵权与合规过滤：不要使用商标、品牌、球队、电影、明星、角色、歌词、组织名称等受保护内容；不要写 official、licensed、authentic、best、#1、guaranteed、medical claims 等高风险表达。
 11. 不要虚构认证、销量、库存、物流、环保认证或“latest 2026 release”等无法从输入确认的事实。
-12. 产品是复古水洗棉、低帽冠、可调节、男女通用的 dad hat/baseball cap；不要把产品误写成 shirt。
-13. 主图 URL 必须原样返回，并且不要为主图 URL 添加中文字段。
-14. 输入字典中如果有额外字段，可以作为上下文参考，但不要把额外字段返回。
+12. 绝对禁止出现 "3D" 或任何 3D 变体；不要写颜色描述词；不要写具体面料成分或比例，例如 "100% Cotton"。
+13. 如果输入涉及 "AMERICA 250" 等疑似侵权或高风险表达，自动转换为中性、合规、可搜索的文化表达，例如 "250th Anniversary"；其他高风险主题也按同样原则改写为通用文化/纪念/节日表达。
+14. 产品类型必须跟随输入和图片 URL 所能确认的信息。只有当产品确实是印花鸭舌帽/棒球帽/帽子时，才可以自然使用 "printed baseball cap"、"graphic printed cap"、"dad hat" 等表达；不要把所有产品都强制写成 Printing Baseball Cap。
+15. 如果输入标题中出现 shirt 等词，但产品图片或字段显示实际产品是帽子/其他 POD 产品，应把 shirt 只当作图案主题或原始噪音处理，不要把产品类型误写成 shirt。
+16. 主图 URL 必须原样返回，并且不要为主图 URL 添加中文字段或原文中文字段。
+17. 输入字典中如果有额外字段，可以作为上下文参考，但不要把额外字段返回。
 """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
         model: Optional[str] = None,
+        prompt_profile: Optional[str] = None,
         endpoint: Optional[str] = None,
         timeout: int = 90,
     ) -> None:
-        self.api_key = api_key or getattr(settings, "DASHSCOPE_API_KEY", "") or os.getenv("DASHSCOPE_API_KEY", "")
-        self.model = model or getattr(settings, "DASHSCOPE_MODEL", "") or "qwen-turbo-latest"
+        env_model = getattr(settings, "DASHSCOPE_MODEL", "") or os.getenv("DASHSCOPE_MODEL", "")
+        try:
+            self.model = validate_ai_model(model or env_model or DEFAULT_AI_MODEL)
+        except ListingValidationError:
+            if model:
+                raise
+            self.model = DEFAULT_AI_MODEL
+        self.model_option = get_ai_model_option(self.model) or get_ai_model_option(DEFAULT_AI_MODEL)
+        self.provider = self.model_option.get("provider", "dashscope")
+        api_key_setting = self.model_option.get("api_key_setting", "DASHSCOPE_API_KEY")
+        endpoint_setting = self.model_option.get("endpoint_setting", "DASHSCOPE_ENDPOINT")
+        default_endpoint = self.model_option.get(
+            "default_endpoint",
+            "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+        )
+        self.api_key = api_key or getattr(settings, api_key_setting, "") or os.getenv(api_key_setting, "")
+        self.prompt_profile = validate_prompt_profile(prompt_profile)
+        self.system_prompt = self.DEFAULT_PROMPT
         self.endpoint = (
             endpoint
-            or getattr(settings, "DASHSCOPE_ENDPOINT", "")
-            or "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
+            or getattr(settings, endpoint_setting, "")
+            or os.getenv(endpoint_setting, "")
+            or default_endpoint
         )
         self.timeout = timeout
         if not self.api_key:
-            raise DashScopeError("缺少 DashScope API key，请在 .env 中配置 DASHSCOPE_API_KEY。")
+            raise DashScopeError(f"缺少 {self.provider} API key，请在 .env 中配置 {api_key_setting}。")
 
     def optimize(self, listing: Dict[str, Any]) -> Dict[str, str]:
         source_listing = validate_listing_dict(listing)
@@ -149,12 +307,7 @@ class QwenAmazonListingOptimizer:
         raise DashScopeError("千问接口调用失败，但未返回具体错误。")
 
     def _candidate_models(self) -> Iterable[str]:
-        fallbacks = (self.model, "qwen-turbo-latest", "qwen-flash", "qwen-plus")
-        seen = set()
-        for model_name in fallbacks:
-            if model_name and model_name not in seen:
-                seen.add(model_name)
-                yield model_name
+        yield self.model
 
     def _build_payload(
         self,
@@ -172,7 +325,7 @@ class QwenAmazonListingOptimizer:
         payload: Dict[str, Any] = {
             "model": model,
             "messages": [
-                {"role": "system", "content": self.DEFAULT_PROMPT},
+                {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             "temperature": 0.35,
@@ -180,7 +333,7 @@ class QwenAmazonListingOptimizer:
         }
         if include_response_format:
             payload["response_format"] = {"type": "json_object"}
-        if include_thinking_flag:
+        if include_thinking_flag and self.provider == "dashscope":
             payload["enable_thinking"] = False
         return payload
 
@@ -209,7 +362,7 @@ class QwenAmazonListingOptimizer:
             result = json.loads(raw)
             return result["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise DashScopeError(f"无法解析 DashScope 返回内容: {raw[:500]}") from exc
+            raise DashScopeError(f"无法解析 AI 接口返回内容: {raw[:500]}") from exc
 
     @staticmethod
     def _extract_json_object(content: str) -> Dict[str, Any]:
@@ -276,7 +429,7 @@ def normalize_optimizer_result(result: Dict[str, Any], original: Dict[str, str])
         if key == MAIN_IMAGE_KEY:
             normalized[key] = clean_text(original[MAIN_IMAGE_KEY])
         else:
-            normalized[key] = clean_text(result[key])
+            normalized[key] = clean_listing_output_text(result[key])
 
     normalized[TITLE_KEY] = clip_at_word(normalized[TITLE_KEY], 125)
     normalized[SEARCH_TERMS_KEY] = clip_at_word(clean_search_terms(normalized[SEARCH_TERMS_KEY]), 250)
@@ -285,6 +438,18 @@ def normalize_optimizer_result(result: Dict[str, Any], original: Dict[str, str])
 
 def clean_text(value: Any) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip()
+
+
+def clean_listing_output_text(value: Any) -> str:
+    text = clean_text(value)
+    text = re.sub(r"\b3\s*[- ]?d\b", "graphic", text, flags=re.IGNORECASE)
+    text = re.sub(
+        r"\b100\s*%\s*(?:premium\s*)?(?:washed\s*)?cotton\b",
+        "washed fabric",
+        text,
+        flags=re.IGNORECASE,
+    )
+    return clean_text(text)
 
 
 def clean_search_terms(value: str) -> str:
@@ -326,7 +491,14 @@ def save_uploaded_listing_file(uploaded_file) -> Tuple[str, str]:
     return relative_path.replace("\\", "/"), file_path
 
 
-def create_job_from_excel(uploaded_file, user) -> ListingOptimizationJob:
+def create_job_from_excel(
+    uploaded_file,
+    user,
+    prompt_profile: Optional[str] = None,
+    ai_model: Optional[str] = None,
+) -> ListingOptimizationJob:
+    prompt_profile = validate_prompt_profile(prompt_profile)
+    ai_model = validate_ai_model(ai_model)
     relative_path, full_path = save_uploaded_listing_file(uploaded_file)
     rows = read_listing_rows(full_path)
 
@@ -335,6 +507,8 @@ def create_job_from_excel(uploaded_file, user) -> ListingOptimizationJob:
             created_by=user,
             original_filename=uploaded_file.name,
             original_file_path=relative_path,
+            prompt_profile=prompt_profile,
+            ai_model=ai_model,
             status=ListingOptimizationJob.STATUS_PENDING,
             total_rows=len(rows),
         )
@@ -423,6 +597,43 @@ def pause_listing_optimization_job(job: ListingOptimizationJob) -> ListingOptimi
     return job
 
 
+def retry_failed_listing_rows(
+    job: ListingOptimizationJob,
+    row_ids: Optional[Iterable[int]] = None,
+) -> Tuple[ListingOptimizationJob, int, bool]:
+    if job.status in {ListingOptimizationJob.STATUS_PENDING, ListingOptimizationJob.STATUS_PROCESSING}:
+        raise ListingValidationError("任务正在优化中，请先等待完成或暂停后再重试失败行。")
+
+    failed_rows = ListingOptimizationRow.objects.filter(
+        job=job,
+        status=ListingOptimizationRow.STATUS_FAILED,
+    )
+    if row_ids is not None:
+        failed_rows = failed_rows.filter(id__in=list(row_ids))
+
+    retry_count = failed_rows.update(
+        status=ListingOptimizationRow.STATUS_PENDING,
+        error_message="",
+        updated_at=timezone.now(),
+    )
+    if retry_count == 0:
+        return job, 0, False
+
+    _refresh_job_progress(job.id)
+    update_values = {
+        "error_message": "",
+        "completed_at": None,
+        "output_file_path": "",
+        "updated_at": timezone.now(),
+    }
+    should_start = job.status != ListingOptimizationJob.STATUS_PAUSED
+    if should_start:
+        update_values["status"] = ListingOptimizationJob.STATUS_PENDING
+    ListingOptimizationJob.objects.filter(id=job.id).update(**update_values)
+    job.refresh_from_db()
+    return job, retry_count, should_start
+
+
 def _run_listing_optimization_job(job_id: int) -> None:
     close_old_connections()
     try:
@@ -441,7 +652,10 @@ def _run_listing_optimization_job(job_id: int) -> None:
                 job.started_at = timezone.now()
             job.save(update_fields=["status", "started_at", "updated_at"])
 
-        optimizer = QwenAmazonListingOptimizer()
+        optimizer = QwenAmazonListingOptimizer(
+            model=job.ai_model,
+            prompt_profile=job.prompt_profile,
+        )
         pending_rows = ListingOptimizationRow.objects.filter(
             job_id=job_id,
             status=ListingOptimizationRow.STATUS_PENDING,
@@ -518,7 +732,13 @@ def update_row_optimized_data(row: ListingOptimizationRow, optimized_data: Dict[
         if key == MAIN_IMAGE_KEY:
             cleaned[key] = row.source_data.get(MAIN_IMAGE_KEY, "")
         else:
-            cleaned[key] = clean_text(optimized_data.get(key, base_data.get(key, "")))
+            cleaned[key] = clean_listing_output_text(optimized_data.get(key, base_data.get(key, "")))
+
+    for listing_key in TRANSLATABLE_KEYS:
+        original_translation_key = f"{listing_key}原文中文"
+        if not cleaned.get(original_translation_key):
+            cleaned[original_translation_key] = clean_text(base_data.get(original_translation_key, ""))
+
     cleaned[TITLE_KEY] = clip_at_word(cleaned[TITLE_KEY], 125)
     cleaned[SEARCH_TERMS_KEY] = clip_at_word(clean_search_terms(cleaned[SEARCH_TERMS_KEY]), 250)
     row.optimized_data = cleaned
@@ -574,6 +794,10 @@ def serialize_job(job: ListingOptimizationJob, include_rows: bool = False) -> Di
     data = {
         "id": job.id,
         "original_filename": job.original_filename,
+        "prompt_profile": job.prompt_profile,
+        "prompt_profile_label": get_prompt_profile_label(job.prompt_profile),
+        "ai_model": job.ai_model,
+        "ai_model_label": get_ai_model_label(job.ai_model),
         "status": job.status,
         "status_display": job.get_status_display(),
         "total_rows": job.total_rows,

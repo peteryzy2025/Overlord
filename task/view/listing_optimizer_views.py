@@ -16,7 +16,9 @@ from task.services.listing_optimizer_service import (
     create_job_from_excel,
     ensure_listing_job_running,
     generate_optimized_excel,
+    get_listing_optimizer_config,
     pause_listing_optimization_job,
+    retry_failed_listing_rows,
     serialize_job,
     start_listing_optimization_job,
     update_row_optimized_data,
@@ -28,6 +30,7 @@ def listing_optimizer_page(request):
     return render(request, "listing_optimizer.html", {
         "active_nav": "task",
         "active_page": "listing_optimizer_page",
+        "optimizer_config": get_listing_optimizer_config(),
     })
 
 
@@ -48,7 +51,12 @@ def listing_optimizer_upload_api(request):
         return JsonResponse({"success": False, "message": "未找到上传文件。"}, status=400)
 
     try:
-        job = create_job_from_excel(request.FILES["file"], request.user)
+        job = create_job_from_excel(
+            request.FILES["file"],
+            request.user,
+            prompt_profile=request.POST.get("prompt_profile", ""),
+            ai_model=request.POST.get("ai_model", ""),
+        )
         transaction.on_commit(lambda: start_listing_optimization_job(job.id))
         job = ListingOptimizationJob.objects.prefetch_related("rows").get(id=job.id)
         return JsonResponse({
@@ -90,6 +98,91 @@ def listing_optimizer_pause_api(request, job_id):
         "message": "已暂停。当前正在请求中的行可能会完成，但不会继续优化下一行。",
         "data": serialize_job(job),
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def listing_optimizer_resume_api(request, job_id):
+    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    if job.status != ListingOptimizationJob.STATUS_PAUSED:
+        return JsonResponse({
+            "success": False,
+            "message": "只有已暂停的任务可以继续优化。",
+        }, status=400)
+
+    job.status = ListingOptimizationJob.STATUS_PENDING
+    job.save(update_fields=["status", "updated_at"])
+    transaction.on_commit(lambda: start_listing_optimization_job(job.id))
+    job.refresh_from_db()
+    return JsonResponse({
+        "success": True,
+        "message": "已继续优化，将从未完成的行接着处理。",
+        "data": serialize_job(job),
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def listing_optimizer_retry_failed_api(request, job_id):
+    job = get_object_or_404(ListingOptimizationJob, id=job_id, created_by=request.user)
+    try:
+        job, retry_count, should_start = retry_failed_listing_rows(job)
+        if retry_count == 0:
+            return JsonResponse({
+                "success": False,
+                "message": "没有失败行需要重试。",
+            }, status=400)
+
+        if should_start:
+            transaction.on_commit(lambda: start_listing_optimization_job(job.id))
+            message = f"已重新提交 {retry_count} 行失败数据，后台正在重试。"
+        else:
+            message = f"已将 {retry_count} 行失败数据放回待优化，点击继续优化后会处理。"
+
+        job = ListingOptimizationJob.objects.prefetch_related("rows").get(id=job.id)
+        return JsonResponse({
+            "success": True,
+            "message": message,
+            "data": serialize_job(job, include_rows=True),
+        })
+    except ListingValidationError as exc:
+        return JsonResponse({"success": False, "message": str(exc)}, status=400)
+    except Exception as exc:
+        return JsonResponse({"success": False, "message": f"重试失败行失败: {str(exc)}"}, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def listing_optimizer_row_retry_api(request, row_id):
+    row = get_object_or_404(
+        ListingOptimizationRow.objects.select_related("job"),
+        id=row_id,
+        job__created_by=request.user,
+    )
+    try:
+        job, retry_count, should_start = retry_failed_listing_rows(row.job, row_ids=[row.id])
+        if retry_count == 0:
+            return JsonResponse({
+                "success": False,
+                "message": "这一行不是失败状态，不能重试。",
+            }, status=400)
+
+        if should_start:
+            transaction.on_commit(lambda: start_listing_optimization_job(job.id))
+            message = "已重新提交本行，后台正在重试。"
+        else:
+            message = "已将本行放回待优化，点击继续优化后会处理。"
+
+        job = ListingOptimizationJob.objects.prefetch_related("rows").get(id=job.id)
+        return JsonResponse({
+            "success": True,
+            "message": message,
+            "data": serialize_job(job, include_rows=True),
+        })
+    except ListingValidationError as exc:
+        return JsonResponse({"success": False, "message": str(exc)}, status=400)
+    except Exception as exc:
+        return JsonResponse({"success": False, "message": f"重试本行失败: {str(exc)}"}, status=500)
 
 
 @login_required

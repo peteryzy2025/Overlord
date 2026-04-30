@@ -102,9 +102,12 @@ urlpatterns = [
     path('api/tasks/listing-optimizer/upload/', listing_optimizer_views.listing_optimizer_upload_api, name='listing_optimizer_upload'),
     path('api/tasks/listing-optimizer/jobs/<int:job_id>/', listing_optimizer_views.listing_optimizer_job_detail_api, name='listing_optimizer_job_detail'),
     path('api/tasks/listing-optimizer/jobs/<int:job_id>/pause/', listing_optimizer_views.listing_optimizer_pause_api, name='listing_optimizer_pause'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/resume/', listing_optimizer_views.listing_optimizer_resume_api, name='listing_optimizer_resume'),
+    path('api/tasks/listing-optimizer/jobs/<int:job_id>/retry-failed/', listing_optimizer_views.listing_optimizer_retry_failed_api, name='listing_optimizer_retry_failed'),
     path('api/tasks/listing-optimizer/jobs/<int:job_id>/generate/', listing_optimizer_views.listing_optimizer_generate_api, name='listing_optimizer_generate'),
     path('api/tasks/listing-optimizer/jobs/<int:job_id>/download/', listing_optimizer_views.listing_optimizer_download_api, name='listing_optimizer_download'),
     path('api/tasks/listing-optimizer/rows/<int:row_id>/save/', listing_optimizer_views.listing_optimizer_row_save_api, name='listing_optimizer_row_save'),
+    path('api/tasks/listing-optimizer/rows/<int:row_id>/retry/', listing_optimizer_views.listing_optimizer_row_retry_api, name='listing_optimizer_row_retry'),
 
     # ===== 任务详情页（新增）=====
     # 页面路由

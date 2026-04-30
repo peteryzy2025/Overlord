@@ -32,9 +32,57 @@
         color: var(--text-secondary);
     }
 
+    /* 上传区按钮 - 覆盖 general_style_1.css，保持和 task_create.css 一致 */
+    .listing-upload-dropzone .btn-secondary {
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .listing-upload-dropzone .btn-secondary:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
     .listing-upload-copy {
         color: var(--text-secondary);
         font-size: 0.95rem;
+    }
+
+    .listing-upload-dropzone .listing-upload-btn {
+        height: 38px;
+        padding: 0 0.9rem;
+        font-size: 0.86rem;
+    }
+
+    .listing-config-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .listing-config-select {
+        width: 100%;
+        height: 40px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        padding: 0 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .listing-config-select option:disabled {
+        color: var(--text-tertiary);
     }
 
     .listing-history-grid {
@@ -118,6 +166,13 @@
         word-break: break-word;
     }
 
+    .summary-subvalue {
+        margin-top: 0.35rem;
+        color: var(--text-tertiary);
+        font-size: 0.78rem;
+        font-weight: 400;
+    }
+
     .listing-progress-track {
         height: 8px;
         border-radius: 999px;
@@ -157,6 +212,8 @@
 
     .listing-row .subtask-header {
         cursor: pointer;
+        justify-content: space-between;
+        gap: 0.75rem;
     }
 
     .listing-row-title {
@@ -182,8 +239,7 @@
     }
 
     .listing-field-label {
-        display: flex;
-        justify-content: space-between;
+        display: inline-flex;
         align-items: center;
         gap: 0.75rem;
         margin-bottom: 0.5rem;
@@ -193,6 +249,18 @@
 
     .listing-field-label strong {
         color: var(--text-primary);
+        font-weight: 600;
+    }
+
+    .field-mode-tag {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 0.55rem;
+        border-radius: 4px;
+        background: rgba(59, 130, 246, 0.08);
+        color: var(--accent-color);
+        font-size: 0.75rem;
         font-weight: 600;
     }
 
@@ -235,6 +303,52 @@
     .translated-preview {
         background: var(--bg-primary);
         color: var(--text-secondary);
+    }
+
+    .source-translation-preview {
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .optimized-translation-box {
+        display: grid;
+        gap: 0.5rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        padding: 0.55rem 0.7rem;
+    }
+
+    .optimized-translation-box .listing-textarea {
+        border: none;
+        padding: 0;
+        min-height: 42px;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    .optimized-translation-box .listing-textarea:focus {
+        border: none;
+        box-shadow: none;
+    }
+
+    .optimized-translation-box .translation-line {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 0.5rem;
+        color: var(--text-secondary);
+        font-size: 0.78rem;
+        line-height: 1.45;
+    }
+
+    .source-translation-preview .source-line + .source-line {
+        border-top: 1px dashed var(--border-color);
+        padding-top: 0.45rem;
+    }
+
+    .source-label {
+        color: var(--text-secondary);
+        font-weight: 600;
+        margin-right: 0.25rem;
     }
 
     .listing-row-footer {
@@ -291,6 +405,43 @@
         .listing-row-title {
             max-width: 560px;
         }
+
+        .listing-row-title-cn {
+            max-width: 560px;
+        }
+
+        .listing-config-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .listing-title-stack {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .listing-row-title-cn {
+        color: #e53e3e;
+        font-size: 0.86rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 980px;
+    }
+
+    .listing-row-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 0 0 auto;
+    }
+
+    .listing-row-actions .btn {
+        height: 32px;
+        padding: 0 0.75rem;
+        font-size: 0.8rem;
     }
 </style>
 {% endblock %}
@@ -323,13 +474,35 @@
                 </div>
             </div>
             <div class="subtask-edit-form">
+                <div class="listing-config-grid">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">提示词</label>
+                        <select class="listing-config-select" id="promptProfileSelect">
+                            {% for option in optimizer_config.prompt_profiles %}
+                                <option value="{{ option.value }}" {% if option.value == optimizer_config.defaults.prompt_profile %}selected{% endif %} {% if not option.enabled %}disabled{% endif %}>
+                                    {{ option.label }}{% if not option.enabled %}（暂未开放）{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label">AI模型</label>
+                        <select class="listing-config-select" id="aiModelSelect">
+                            {% for option in optimizer_config.ai_models %}
+                                <option value="{{ option.value }}" {% if option.value == optimizer_config.defaults.ai_model %}selected{% endif %} {% if not option.enabled %}disabled{% endif %}>
+                                    {{ option.label }}{% if not option.enabled %}（暂未开放）{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label class="form-label">上传文件 (Excel) <span style="color: var(--danger-color);">*</span></label>
                     <div class="listing-upload-dropzone" id="uploadArea">
                         <i class="fas fa-cloud-upload-alt"></i>
                         <div class="listing-upload-copy">拖拽 xlsx 文件到此处或点击上传</div>
                         <input type="file" id="listingFileInput" accept=".xlsx,.xlsm" style="display: none;">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('listingFileInput').click()">
+                        <button type="button" class="btn btn-secondary listing-upload-btn" onclick="document.getElementById('listingFileInput').click()">
                             <i class="fas fa-plus"></i> 选择文件
                         </button>
                     </div>
@@ -379,14 +552,14 @@
 
 <script>
     const FIELD_GROUPS = [
-        {key: 'Product Name（标题）', zh: 'Product Name（标题）中文', label: '标题', rows: 2},
-        {key: 'Product Description（描述）', zh: 'Product Description（描述）中文', label: '产品描述', rows: 5},
-        {key: 'Key Product Features 1（五点1）', zh: 'Key Product Features 1（五点1）中文', label: '五点1', rows: 2},
-        {key: 'Key Product Features 2（五点2）', zh: 'Key Product Features 2（五点2）中文', label: '五点2', rows: 2},
-        {key: 'Key Product Features 3（五点3）', zh: 'Key Product Features 3（五点3）中文', label: '五点3', rows: 2},
-        {key: 'Key Product Features 4（五点4）', zh: 'Key Product Features 4（五点4）中文', label: '五点4', rows: 2},
-        {key: 'Key Product Features 5（五点5）', zh: 'Key Product Features 5（五点5）中文', label: '五点5', rows: 2},
-        {key: 'Search Terms（后台关键词）', zh: 'Search Terms（后台关键词）中文', label: '后台关键词', rows: 2}
+        {key: 'Product Name（标题）', zh: 'Product Name（标题）中文', originalZh: 'Product Name（标题）原文中文', label: '标题', rows: 2},
+        {key: 'Product Description（描述）', zh: 'Product Description（描述）中文', originalZh: 'Product Description（描述）原文中文', label: '产品描述', rows: 5},
+        {key: 'Key Product Features 1（五点1）', zh: 'Key Product Features 1（五点1）中文', originalZh: 'Key Product Features 1（五点1）原文中文', label: '五点1', rows: 2},
+        {key: 'Key Product Features 2（五点2）', zh: 'Key Product Features 2（五点2）中文', originalZh: 'Key Product Features 2（五点2）原文中文', label: '五点2', rows: 2},
+        {key: 'Key Product Features 3（五点3）', zh: 'Key Product Features 3（五点3）中文', originalZh: 'Key Product Features 3（五点3）原文中文', label: '五点3', rows: 2},
+        {key: 'Key Product Features 4（五点4）', zh: 'Key Product Features 4（五点4）中文', originalZh: 'Key Product Features 4（五点4）原文中文', label: '五点4', rows: 2},
+        {key: 'Key Product Features 5（五点5）', zh: 'Key Product Features 5（五点5）中文', originalZh: 'Key Product Features 5（五点5）原文中文', label: '五点5', rows: 2},
+        {key: 'Search Terms（后台关键词）', zh: 'Search Terms（后台关键词）中文', originalZh: 'Search Terms（后台关键词）原文中文', label: '后台关键词', rows: 2}
     ];
     const MAIN_IMAGE_KEY = 'Main Image URL（主图）';
 
@@ -452,6 +625,8 @@
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('prompt_profile', document.getElementById('promptProfileSelect')?.value || 'amazon_grammar_tyrant');
+        formData.append('ai_model', document.getElementById('aiModelSelect')?.value || 'qwen-flash');
         setJobDetailLoading(`正在上传 ${escapeHtml(file.name)}...`);
 
         try {
@@ -511,7 +686,7 @@
                 </span>
                 <span class="history-file-meta">
                     <span>${escapeHtml(job.created_at)}</span>
-                    <span>${job.failed_rows ? `失败 ${job.failed_rows}` : ' '}</span>
+                    <span>${escapeHtml(job.ai_model_label || job.ai_model || '')}${job.failed_rows ? ` · 失败 ${job.failed_rows}` : ''}</span>
                 </span>
             </button>
         `).join('');
@@ -542,6 +717,8 @@
         const progress = total ? Math.round((completed / total) * 100) : 0;
         const canGenerate = total > 0 && !['pending', 'processing'].includes(job.status);
         const canPause = ['pending', 'processing'].includes(job.status);
+        const canResume = job.status === 'paused';
+        const canRetryFailed = Number(job.failed_rows || 0) > 0 && !['pending', 'processing'].includes(job.status);
         const detailEl = document.getElementById('jobDetail');
         const rowsHtml = (job.rows || []).map(row => renderOrReuseRow(row)).join('');
         document.getElementById('resultHint').textContent = `${job.optimized_rows || 0}/${job.total_rows || 0} 已完成，${job.failed_rows || 0} 行失败`;
@@ -550,7 +727,10 @@
             <div class="listing-summary-grid">
                 <div class="summary-box">
                     <div class="summary-label">文件</div>
-                    <div class="summary-value">${escapeHtml(job.original_filename)}</div>
+                    <div class="summary-value">
+                        ${escapeHtml(job.original_filename)}
+                        <div class="summary-subvalue">${escapeHtml(job.prompt_profile_label || job.prompt_profile || '')} · ${escapeHtml(job.ai_model_label || job.ai_model || '')}</div>
+                    </div>
                 </div>
                 <div class="summary-box">
                     <div class="summary-label">状态</div>
@@ -579,6 +759,16 @@
                     ${canPause ? `
                         <button type="button" class="btn btn-secondary" onclick="pauseCurrentJob()">
                             <i class="fas fa-pause"></i> 暂停优化
+                        </button>
+                    ` : ''}
+                    ${canResume ? `
+                        <button type="button" class="btn btn-secondary" onclick="resumeCurrentJob()">
+                            <i class="fas fa-play"></i> 继续优化
+                        </button>
+                    ` : ''}
+                    ${canRetryFailed ? `
+                        <button type="button" class="btn btn-secondary" onclick="retryFailedRows()">
+                            <i class="fas fa-rotate-right"></i> 重试失败行
                         </button>
                     ` : ''}
                     <button type="button" class="btn btn-primary" onclick="generateCurrentJob()" ${canGenerate ? '' : 'disabled'}>
@@ -611,10 +801,12 @@
         const source = row.source_data || {};
         const optimized = row.optimized_data || {};
         const title = optimized['Product Name（标题）'] || source['Product Name（标题）'] || `Excel 行 ${row.row_number}`;
+        const titleCn = optimized['Product Name（标题）中文'] || '';
         const imageUrl = source[MAIN_IMAGE_KEY] || optimized[MAIN_IMAGE_KEY] || '';
         const expandedClass = expandedRows.has(String(row.id)) ? 'is-expanded' : 'is-collapsed';
         const displayNumber = row.display_number || Math.max((Number(row.row_number) || 4) - 3, 1);
         const thumbHtml = imageUrl ? `<img class="listing-row-thumb" src="${escapeAttr(imageUrl)}" alt="主图" loading="lazy" onerror="this.style.display='none'">` : '';
+        const canRetryRow = row.status === 'failed' && currentJob && !['pending', 'processing'].includes(currentJob.status);
 
         return `
             <article class="subtask-item listing-row ${expandedClass}" data-row-id="${row.id}">
@@ -624,7 +816,17 @@
                         <span class="subtask-number">#${displayNumber}</span>
                         ${thumbHtml}
                         <span class="subtask-type">${statusBadge(row.status, row.status_display)}</span>
-                        <span class="listing-row-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
+                        <span class="listing-title-stack">
+                            <span class="listing-row-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
+                            ${titleCn ? `<span class="listing-row-title-cn" title="${escapeAttr(titleCn)}">${escapeHtml(titleCn)}</span>` : ''}
+                        </span>
+                    </div>
+                    <div class="listing-row-actions">
+                        ${canRetryRow ? `
+                            <button type="button" class="btn btn-secondary" onclick="retryRow(${row.id}, event)">
+                                <i class="fas fa-rotate-right"></i> 重试本行
+                            </button>
+                        ` : ''}
                     </div>
                 </div>
                 <div class="subtask-edit-form">
@@ -651,15 +853,21 @@
         const englishValue = optimized[field.key] || source[field.key] || '';
         const chineseValue = optimized[field.zh] || '等待 AI 返回中文意思';
         const originalValue = source[field.key] || '';
+        const originalChineseValue = optimized[field.originalZh] || '暂无原文翻译';
         return `
             <div class="listing-field-block">
                 <div class="listing-field-label">
                     <strong>${escapeHtml(field.label)}</strong>
-                    <span>优化后英文</span>
+                    <span class="field-mode-tag">优化后英文</span>
                 </div>
-                <textarea class="form-control listing-textarea" rows="${field.rows}" data-field="${escapeAttr(field.key)}" oninput="scheduleSaveRow(${rowId})">${escapeHtml(englishValue)}</textarea>
-                <div class="original-preview translated-preview">中文意思：${escapeHtml(chineseValue)}</div>
-                <div class="original-preview">原文：${escapeHtml(originalValue)}</div>
+                <div class="optimized-translation-box">
+                    <textarea class="form-control listing-textarea" rows="${field.rows}" data-field="${escapeAttr(field.key)}" oninput="scheduleSaveRow(${rowId})">${escapeHtml(englishValue)}</textarea>
+                    <div class="translation-line"><span class="source-label">中文意思：</span>${escapeHtml(chineseValue)}</div>
+                </div>
+                <div class="original-preview source-translation-preview">
+                    <div class="source-line"><span class="source-label">原文：</span>${escapeHtml(originalValue)}</div>
+                    <div class="source-line"><span class="source-label">原文翻译：</span>${escapeHtml(originalChineseValue)}</div>
+                </div>
             </div>
         `;
     }
@@ -772,6 +980,62 @@
             stopPolling();
             await loadJob(currentJobId);
             notify(result.message || '已暂停优化', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function resumeCurrentJob() {
+        if (!currentJobId) return;
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/resume/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '继续优化失败');
+            await loadJob(currentJobId);
+            startPolling();
+            notify(result.message || '已继续优化', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function retryFailedRows() {
+        if (!currentJobId) return;
+        if (!confirm('确定重新优化所有失败行吗？已完成的行不会重跑。')) return;
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/retry-failed/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '重试失败行失败');
+            await loadJob(currentJobId);
+            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            notify(result.message || '已提交失败行重试', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+        }
+    }
+
+    async function retryRow(rowId, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/rows/${rowId}/retry/`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': getCsrfToken()}
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '重试本行失败');
+            currentJobId = result.data.id;
+            await loadJob(currentJobId);
+            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            notify(result.message || '已提交本行重试', 'success');
         } catch (error) {
             notify(error.message, 'error');
         }
