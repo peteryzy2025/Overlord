@@ -69,7 +69,7 @@ DEFAULT_AI_MODEL = "qwen-flash"
 PROMPT_PROFILE_OPTIONS = [
     {
         "value": DEFAULT_PROMPT_PROFILE,
-        "label": "亚马逊语法暴君",
+        "label": "是关中王来了",
         "enabled": True,
     },
     {
