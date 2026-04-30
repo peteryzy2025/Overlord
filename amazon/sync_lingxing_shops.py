@@ -146,6 +146,16 @@ def sync_lingxing_shops(data_list):
 
     sid_set = {row["sid"] for row in rows}
     account_names = {row["account_name"] for row in rows if row.get("account_name")}
+    # 收集 name 去掉尾缀后的备选匹配名
+    fallback_names = set()
+    for row in rows:
+        name = row.get("name", "")
+        if name and "-" in name:
+            # 去掉最后一个 - 及之后的尾缀，如 "惠城项目-11李嘉华-US" -> "惠城项目-11李嘉华"
+            fallback_name = name.rsplit("-", 1)[0]
+            if fallback_name:
+                fallback_names.add(fallback_name)
+
     existing_map = {
         shop.sid: shop
         for shop in LingXingAmazonShop.objects.filter(sid__in=sid_set)
@@ -153,6 +163,11 @@ def sync_lingxing_shops(data_list):
     amazon_shop_map = {
         shop.shop_name: shop
         for shop in AmazonShop.objects.filter(shop_name__in=account_names)
+    }
+    # 备选匹配：用 name 去掉尾缀后的名字
+    amazon_shop_fallback_map = {
+        shop.shop_name: shop
+        for shop in AmazonShop.objects.filter(shop_name__in=fallback_names)
     }
 
     create_objs = []
@@ -177,6 +192,15 @@ def sync_lingxing_shops(data_list):
     missing_bind_shops = []  # 记录未匹配的店铺
     for row in rows:
         amazon_shop = amazon_shop_map.get(row.get("account_name"))
+        matched_by = "account_name"
+        if not amazon_shop:
+            # 备选匹配：用 name 去掉尾缀
+            name = row.get("name", "")
+            if name and "-" in name:
+                fallback_name = name.rsplit("-", 1)[0]
+                amazon_shop = amazon_shop_fallback_map.get(fallback_name)
+                if amazon_shop:
+                    matched_by = "name_fallback"
         if amazon_shop:
             amazon_shop_ids_to_mark.add(amazon_shop.id)
         else:
@@ -236,11 +260,9 @@ def sync_lingxing_shops(data_list):
         f"标记 ling_xing_if {marked_count}，跳过无效记录 {skipped_no_sid}"
     )
     if missing_bind_shops:
-        print("⚠️ 以下领星店铺未匹配到本地 AmazonShop：")
-        for shop in missing_bind_shops[:20]:
+        print("[!] 以下领星店铺未匹配到本地 AmazonShop：")
+        for shop in missing_bind_shops:
             print(f"   - sid={shop['sid']}, account_name={shop['account_name']}, name={shop['name']}")
-        if len(missing_bind_shops) > 20:
-            print(f"   ... 还有 {len(missing_bind_shops) - 20} 条未显示")
 
 
 def sync_lingxing_temu_shops(data_list):
@@ -351,11 +373,9 @@ def sync_lingxing_temu_shops(data_list):
         f"跳过无效记录 {skipped_no_store_id}"
     )
     if missing_bind_shops_temu:
-        print("⚠️ 以下领星Temu店铺未匹配到本地 TemuShop：")
-        for shop in missing_bind_shops_temu[:20]:
+        print("[!] 以下领星Temu店铺未匹配到本地 TemuShop：")
+        for shop in missing_bind_shops_temu:
             print(f"   - store_id={shop['store_id']}, store_name={shop['store_name']}, 匹配名={shop['shop_name_to_match']}")
-        if len(missing_bind_shops_temu) > 20:
-            print(f"   ... 还有 {len(missing_bind_shops_temu) - 20} 条未显示")
 
 
 def lx_shop_main(project_id=None, project_name=None):
