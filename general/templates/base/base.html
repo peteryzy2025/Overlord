@@ -773,6 +773,15 @@
                                 <p>店铺基础信息配置管理</p>
                             </div>
                         </a>
+                        {% if 5555 in user_permissions %}
+                        <a href="{% url 'general:project_management' %}" class="nav-dropdown-card">
+                            <div class="nav-card-icon"><i class="fas fa-layer-group"></i></div>
+                            <div class="nav-card-content">
+                                <h4>项目管理</h4>
+                                <p>项目凭证与领星物流编码</p>
+                            </div>
+                        </a>
+                        {% endif %}
                         <a href="{% url 'general:temu_management' %}" class="nav-dropdown-card">
                             <div class="nav-card-icon"><i class="fas fa-store"></i></div>
                             <div class="nav-card-content">

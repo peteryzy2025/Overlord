@@ -201,6 +201,82 @@ class Project(models.Model):
                 raise ValidationError({'name': '该公司下已存在同名项目'})
 
 
+class ProjectLingxingLogisticsCode(models.Model):
+    """
+    项目级领星物流编码配置。
+
+    同一个物流渠道在不同领星账号里可能使用不同 logistics_type_id，
+    自动发货时按订单所属项目查这里的配置。
+    """
+
+    class LogisticsKey(models.TextChoices):
+        USPS = 'USPS', 'USPS'
+        FEDEX = 'FEDEX', 'FedEx'
+        DHL = 'DHL', 'DHL'
+        UNIUNI = 'UNIUNI', 'UniUni'
+        GOFO = 'GOFO', 'GOFO'
+        GOFO_US_WEST = 'GOFO_US_WEST', '美西 GOFO'
+        SF_CD = 'SF_CD', '顺丰国际电商专递-CD'
+        SF_STANDARD = 'SF_STANDARD', '顺丰国际电商专递-标准'
+        WEISUYI_US_SMALL = 'WEISUYI_US_SMALL', '威速易美国小货专线'
+        YUNTU_GLOBAL_REGISTERED = 'YUNTU_GLOBAL_REGISTERED', '云途全球专线挂号（标快普货）'
+        JD_IE_STANDARD = 'JD_IE_STANDARD', '京东普货标准专线-IE-01'
+        ES_FEDEX_GROUND_US_WEST = 'ES_FEDEX_GROUND_US_WEST', 'ES-FEDEX GROUND（美西）'
+        ES_FEDEX_HD_US_WEST = 'ES_FEDEX_HD_US_WEST', 'ES-FEDEX HD（美西）'
+        ES_USPS_GA_US_WEST = 'ES_USPS_GA_US_WEST', 'ES-USPS GA（美西）'
+        ES_USPS_PM_US_WEST = 'ES_USPS_PM_US_WEST', 'ES-USPS PM（美西）'
+        SWIFTX_US_WEST = 'SWIFTX_US_WEST', 'SWIFTX EXPRESS（美西）'
+
+    id = models.BigAutoField(primary_key=True, verbose_name='主键')
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='lingxing_logistics_codes',
+        verbose_name='项目',
+        db_comment='所属项目'
+    )
+    logistics_key = models.CharField(
+        '物流识别键',
+        max_length=64,
+        choices=LogisticsKey.choices,
+        db_comment='系统根据DIVI物流方式和单号识别出的物流键'
+    )
+    logistics_name = models.CharField(
+        '物流名称',
+        max_length=100,
+        blank=True,
+        db_comment='展示用名称，可与领星后台名称保持一致'
+    )
+    logistics_type_id = models.CharField(
+        '领星物流编码',
+        max_length=64,
+        db_comment='领星 fastOutbound 接口需要的 logistics_type_id'
+    )
+    enabled = models.BooleanField('是否启用', default=True)
+    remark = models.TextField('备注', blank=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        db_table = 'project_lingxing_logistics_codes'
+        verbose_name = '项目领星物流编码'
+        verbose_name_plural = '项目领星物流编码'
+        ordering = ['project', 'logistics_key']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'logistics_key'],
+                name='uniq_project_lx_logistics_key'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['project', 'enabled'], name='idx_project_lx_logi_enabled'),
+        ]
+
+    def __str__(self):
+        name = self.logistics_name or self.get_logistics_key_display()
+        return f"{self.project.name} / {name} -> {self.logistics_type_id}"
+
+
 class User(AbstractUser):
     """
     自定义用户模型，继承Django AbstractUser
@@ -1182,3 +1258,6 @@ class ShopChannelRisk(models.Model):
 
     def __str__(self):
         return f"{self.channel_name}"
+    
+    
+    

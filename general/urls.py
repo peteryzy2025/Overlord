@@ -4,6 +4,7 @@ from general import (
     views,
     views_amazon_management,
     views_temu_management,
+    views_project_management,
     views_performance,
     views_announcement_management,
     views_profile
@@ -102,6 +103,20 @@ urlpatterns = [
     path('api/operators/', views_amazon_management.get_all_operators_api, name='get_operators_api'),
     path('api/ops-groups/', views_amazon_management.get_all_ops_groups_api, name='get_ops_groups_api'),
     path('api/customers/', views_amazon_management.get_customers_api, name='get_customers_api'),
+
+    # ========== 项目管理 ==========
+    path('management/projects/', views_project_management.project_management_view, name='project_management'),
+    path('api/projects/', views_project_management.get_projects_api, name='get_projects_api'),
+    path('api/projects/logistics-choices/', views_project_management.get_logistics_choices_api,
+         name='get_project_logistics_choices_api'),
+    path('api/projects/create/', views_project_management.create_project_api, name='create_project_api'),
+    path('api/projects/<int:project_id>/update/', views_project_management.update_project_api,
+         name='update_project_api'),
+    path('api/projects/<int:project_id>/logistics-codes/', views_project_management.save_project_logistics_codes_api,
+         name='save_project_logistics_codes_api'),
+    path('api/projects/<int:project_id>/logistics-codes/copy/',
+         views_project_management.copy_project_logistics_codes_api,
+         name='copy_project_logistics_codes_api'),
 
     # ========== Temu管理 ==========
     path('management/temu/', views_temu_management.temu_management_view, name='temu_management'),  # 移到人员管理下避免循环导入问题

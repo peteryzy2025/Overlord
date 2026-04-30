@@ -93,7 +93,7 @@ MODULES: List[ModuleConfig] = [
     # 店铺同步在模块内部按启用项目的领星凭证去重循环；同步前还没有本地 sid 可分组。
     ModuleConfig('lx_shop', lx_shop_main, project_scoped=False, run_interval=SHOP_SYNC_INTERVAL),
     ModuleConfig('lx_shop2', lx_shop_main2, project_scoped=False, run_interval=SHOP_SYNC_INTERVAL),
-    ModuleConfig('lx_order', lx_order_main, project_scoped=False),
+    ModuleConfig('lx_order', lx_order_main),
     ModuleConfig('lx_zf', lx_zf_main, is_async=True),
     ModuleConfig('lx_order_info', lx_order_info_main, is_async=True, project_scoped=False),
     # divi_process_orders 单独处理（需要动态日期）
