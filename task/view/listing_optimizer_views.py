@@ -20,6 +20,7 @@ from task.services.listing_optimizer_service import (
     pause_listing_optimization_job,
     retry_failed_listing_rows,
     serialize_job,
+    start_listing_infringement_check_job,
     start_listing_optimization_job,
     update_row_optimized_data,
 )
@@ -90,6 +91,7 @@ def listing_optimizer_upload_api(request):
             request.user,
             prompt_profile=request.POST.get("prompt_profile", ""),
             ai_model=request.POST.get("ai_model", ""),
+            enable_infringement_check=_truthy(request.POST.get("enable_infringement_check")),
         )
         transaction.on_commit(lambda: start_listing_optimization_job(job.id))
         job = ListingOptimizationJob.objects.prefetch_related("rows").get(id=job.id)
@@ -257,6 +259,43 @@ def listing_optimizer_generate_api(request, job_id):
 
 
 @login_required
+@require_http_methods(["POST"])
+def listing_optimizer_infringement_check_api(request, job_id):
+    job = _get_accessible_listing_job(request.user, job_id)
+    if job.status in {ListingOptimizationJob.STATUS_PENDING, ListingOptimizationJob.STATUS_PROCESSING}:
+        return JsonResponse({
+            "success": False,
+            "message": "任务还在优化中，请等优化结束后再做侵权检测。",
+        }, status=400)
+
+    try:
+        body = _json_body(request)
+        rows_payload = body.get("rows", [])
+        if rows_payload:
+            _save_rows_payload(job, rows_payload)
+
+        completed_count = ListingOptimizationRow.objects.filter(
+            job=job,
+            status=ListingOptimizationRow.STATUS_COMPLETED,
+        ).count()
+        if completed_count == 0:
+            return JsonResponse({
+                "success": False,
+                "message": "没有已完成的优化行可检测。",
+            }, status=400)
+
+        started = start_listing_infringement_check_job(job.id)
+        job = ListingOptimizationJob.objects.prefetch_related("rows").get(id=job.id)
+        return JsonResponse({
+            "success": True,
+            "message": "侵权检测已提交，后台正在按组词方式检测。" if started else "侵权检测正在进行中，请稍候。",
+            "data": serialize_job(job, include_rows=True, include_owner=_can_view_all_listing_jobs(request.user)),
+        })
+    except Exception as exc:
+        return JsonResponse({"success": False, "message": f"侵权检测提交失败: {str(exc)}"}, status=500)
+
+
+@login_required
 @require_http_methods(["GET"])
 def listing_optimizer_download_api(request, job_id):
     job = _get_accessible_listing_job(request.user, job_id)
@@ -279,6 +318,10 @@ def _json_body(request):
     if not request.body:
         return {}
     return json.loads(request.body.decode("utf-8"))
+
+
+def _truthy(value) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on", "y"}
 
 
 def _save_rows_payload(job: ListingOptimizationJob, rows_payload):

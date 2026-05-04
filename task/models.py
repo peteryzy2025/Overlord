@@ -931,6 +931,20 @@ class ListingOptimizationJob(models.Model):
         (STATUS_FAILED, '有失败'),
     ]
 
+    INFRINGEMENT_STATUS_NONE = 'none'
+    INFRINGEMENT_STATUS_PENDING = 'pending'
+    INFRINGEMENT_STATUS_CHECKING = 'checking'
+    INFRINGEMENT_STATUS_COMPLETED = 'completed'
+    INFRINGEMENT_STATUS_FAILED = 'failed'
+
+    INFRINGEMENT_STATUS_CHOICES = [
+        (INFRINGEMENT_STATUS_NONE, '未检测'),
+        (INFRINGEMENT_STATUS_PENDING, '待检测'),
+        (INFRINGEMENT_STATUS_CHECKING, '检测中'),
+        (INFRINGEMENT_STATUS_COMPLETED, '已检测'),
+        (INFRINGEMENT_STATUS_FAILED, '检测失败'),
+    ]
+
     id = models.BigAutoField(primary_key=True, verbose_name='主键ID')
     created_by = models.ForeignKey(
         'general.User',
@@ -943,6 +957,15 @@ class ListingOptimizationJob(models.Model):
     output_file_path = models.CharField('输出文件路径', max_length=500, blank=True, default='')
     prompt_profile = models.CharField('提示词方案', max_length=80, default='amazon_grammar_tyrant')
     ai_model = models.CharField('AI模型', max_length=120, default='qwen-flash')
+    enable_infringement_check = models.BooleanField('是否侵权检测', default=False)
+    infringement_status = models.CharField(
+        '侵权检测状态',
+        max_length=20,
+        choices=INFRINGEMENT_STATUS_CHOICES,
+        default=INFRINGEMENT_STATUS_NONE,
+    )
+    infringement_error_message = models.TextField('侵权检测错误信息', blank=True, default='')
+    infringement_checked_at = models.DateTimeField('侵权检测时间', null=True, blank=True)
     status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     total_rows = models.IntegerField('总行数', default=0)
     optimized_rows = models.IntegerField('已优化行数', default=0)
@@ -993,6 +1016,8 @@ class ListingOptimizationRow(models.Model):
     status = models.CharField('状态', max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     source_data = models.JSONField('原始数据', default=dict)
     optimized_data = models.JSONField('优化后数据', default=dict, blank=True)
+    infringement_data = models.JSONField('侵权检测数据', default=dict, blank=True)
+    infringement_error_message = models.TextField('侵权检测错误信息', blank=True, default='')
     error_message = models.TextField('错误信息', blank=True, default='')
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)

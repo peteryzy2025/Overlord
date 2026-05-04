@@ -86,6 +86,31 @@
         color: var(--text-tertiary);
     }
 
+    .listing-config-extra {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: -0.2rem 0 1rem;
+        color: var(--text-secondary);
+    }
+
+    .listing-config-extra .form-switch {
+        min-height: 34px;
+    }
+
+    .listing-config-extra .switch-label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+        line-height: 1.25;
+    }
+
+    .listing-config-extra .switch-label small {
+        color: var(--text-tertiary);
+        font-size: 0.76rem;
+        font-weight: 400;
+    }
+
     .listing-upload-actions {
         display: flex;
         align-items: center;
@@ -362,6 +387,94 @@
         box-shadow: none;
     }
 
+    .listing-highlight-wrap {
+        position: relative;
+        min-height: 42px;
+    }
+
+    .listing-highlight-layer,
+    .listing-highlight-wrap .listing-textarea {
+        width: 100%;
+        min-height: 42px;
+        margin: 0;
+        border: 0;
+        padding: 0;
+        font: inherit;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        letter-spacing: 0;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        box-sizing: border-box;
+    }
+
+    .listing-highlight-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        overflow: auto;
+        color: var(--text-secondary);
+        pointer-events: none;
+        scrollbar-width: none;
+    }
+
+    .listing-highlight-layer::-webkit-scrollbar {
+        display: none;
+    }
+
+    .listing-highlight-wrap .listing-textarea {
+        position: relative;
+        z-index: 2;
+    }
+
+    .listing-highlight-wrap .listing-textarea.has-risk-highlight {
+        color: transparent;
+        caret-color: var(--text-primary);
+        -webkit-text-fill-color: transparent;
+    }
+
+    .listing-highlight-wrap .listing-textarea.has-risk-highlight::selection {
+        background: rgba(59, 130, 246, 0.24);
+        -webkit-text-fill-color: transparent;
+    }
+
+    .listing-highlight-wrap.is-editing .listing-highlight-layer {
+        display: none;
+    }
+
+    .listing-highlight-wrap.is-editing .listing-textarea.has-risk-highlight {
+        color: var(--text-secondary);
+        caret-color: var(--text-primary);
+        -webkit-text-fill-color: currentColor;
+    }
+
+    .listing-highlight-wrap.is-editing .listing-textarea.has-risk-highlight::selection {
+        background: rgba(59, 130, 246, 0.24);
+        -webkit-text-fill-color: currentColor;
+    }
+
+    .listing-highlight-mark {
+        border-radius: 4px;
+        padding: 0;
+        font: inherit;
+    }
+
+    .listing-highlight-mark.high {
+        background: rgba(239, 68, 68, 0.14);
+        color: #dc2626;
+    }
+
+    .listing-highlight-mark.medium {
+        background: rgba(245, 158, 11, 0.16);
+        color: #b45309;
+    }
+
+    .listing-highlight-mark.low {
+        background: rgba(34, 197, 94, 0.13);
+        color: #15803d;
+    }
+
     .optimized-translation-box .translation-line {
         border-top: 1px dashed var(--border-color);
         padding-top: 0.5rem;
@@ -490,6 +603,68 @@
         max-height: 260px;
         overflow: auto;
     }
+
+    .listing-infringement-panel {
+        display: grid;
+        gap: 0.55rem;
+        margin-top: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: var(--bg-primary);
+        padding: 0.7rem;
+    }
+
+    .listing-infringement-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-primary);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .listing-risk-tags {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+    }
+
+    .listing-risk-tag {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        padding: 0.24rem 0.58rem;
+        font-size: 0.76rem;
+        line-height: 1.25;
+        cursor: help;
+        word-break: break-word;
+    }
+
+    .listing-risk-tag.high {
+        background: rgba(239, 68, 68, 0.12);
+        border-color: rgba(239, 68, 68, 0.35);
+        color: #dc2626;
+    }
+
+    .listing-risk-tag.medium {
+        background: rgba(245, 158, 11, 0.14);
+        border-color: rgba(245, 158, 11, 0.36);
+        color: #b45309;
+    }
+
+    .listing-risk-tag.low {
+        background: rgba(34, 197, 94, 0.12);
+        border-color: rgba(34, 197, 94, 0.34);
+        color: #15803d;
+    }
+
+    .listing-risk-empty {
+        color: var(--text-tertiary);
+        font-size: 0.8rem;
+    }
 </style>
 {% endblock %}
 
@@ -522,6 +697,16 @@
                     <label class="form-label">AI模型</label>
                     <div id="aiModelSelect" class="searchable-select single" data-placeholder="请选择AI模型"></div>
                 </div>
+            </div>
+            <div class="listing-config-extra">
+                <label class="form-switch" for="enableInfringementCheck">
+                    <input type="checkbox" class="switch-input" id="enableInfringementCheck">
+                    <span class="switch-slider"></span>
+                    <span class="switch-label">
+                        是否侵权检测
+                        <small>默认否；开启后优化完成自动按组词方式检测</small>
+                    </span>
+                </label>
             </div>
             {{ optimizer_config|json_script:"optimizerConfig" }}
             <div class="form-group">
@@ -594,6 +779,7 @@
         {key: 'Search Terms（后台关键词）', zh: 'Search Terms（后台关键词）中文', originalZh: 'Search Terms（后台关键词）原文中文', label: '后台关键词', rows: 2}
     ];
     const MAIN_IMAGE_KEY = 'Main Image URL（主图）';
+    const RISK_PRIORITY = {high: 3, medium: 2, low: 1, none: 0};
 
     let currentJobId = null;
     let currentJob = null;
@@ -734,6 +920,7 @@
         formData.append('file', file);
         formData.append('prompt_profile', SearchableSelect.getInstance('#promptProfileSelect')?.getValue() || 'amazon_grammar_tyrant');
         formData.append('ai_model', SearchableSelect.getInstance('#aiModelSelect')?.getValue() || 'qwen-flash');
+        formData.append('enable_infringement_check', document.getElementById('enableInfringementCheck')?.checked ? '1' : '0');
         setJobDetailLoading(`正在上传 ${escapeHtml(file.name)}...`);
         setUploadSubmitting(true);
 
@@ -785,7 +972,7 @@
             return;
         }
         listEl.innerHTML = jobs.map(job => `
-            <button type="button" class="history-file-card ${job.id === currentJobId ? 'active' : ''}" onclick="loadJob(${job.id})">
+            <button type="button" class="history-file-card ${job.id === currentJobId ? 'active' : ''}" onclick="loadJob(${job.id}, true)">
                 <span class="history-file-name">
                     <i class="fas fa-file-excel"></i>
                     <span>
@@ -805,7 +992,10 @@
         `).join('');
     }
 
-    async function loadJob(jobId) {
+    async function loadJob(jobId, showLoading = false) {
+        if (showLoading) {
+            setJobDetailLoading('正在加载历史文件...');
+        }
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/jobs/${jobId}/`);
             const result = await response.json();
@@ -813,7 +1003,7 @@
             currentJobId = result.data.id;
             renderJobDetail(result.data);
             loadJobs(false);
-            if (['pending', 'processing'].includes(result.data.status)) {
+            if (shouldPollJob(result.data)) {
                 startPolling();
             } else {
                 stopPolling();
@@ -821,6 +1011,11 @@
         } catch (error) {
             notify(error.message, 'error');
         }
+    }
+
+    function shouldPollJob(job) {
+        return ['pending', 'processing'].includes(job?.status)
+            || job?.infringement_status === 'checking';
     }
 
     function renderJobDetail(job) {
@@ -832,6 +1027,19 @@
         const canPause = ['pending', 'processing'].includes(job.status);
         const canResume = job.status === 'paused';
         const canRetryFailed = Number(job.failed_rows || 0) > 0 && !['pending', 'processing'].includes(job.status);
+        const infringementStatus = job.infringement_status || 'none';
+        const infringementChecking = infringementStatus === 'checking';
+        const canRunInfringement = Number(job.optimized_rows || 0) > 0
+            && !['pending', 'processing'].includes(job.status)
+            && !infringementChecking;
+        const infringementButtonTitle = infringementChecking
+            ? '侵权检测正在进行中'
+            : Number(job.optimized_rows || 0) <= 0
+                ? '没有已完成的优化行可检测'
+                : ['pending', 'processing'].includes(job.status)
+                    ? '任务还在优化中，完成后可检测'
+                    : '检测优化后的英文 listing 是否命中侵权词';
+        const infringementNote = renderInfringementStatusText(job);
         const detailEl = document.getElementById('jobDetail');
         const rowsHtml = (job.rows || []).map(row => renderOrReuseRow(row)).join('');
         const ownerLine = job.created_by_name ? `${escapeHtml(job.created_by_name)} · ` : '';
@@ -848,7 +1056,10 @@
                 </div>
                 <div class="summary-box">
                     <div class="summary-label">状态</div>
-                    <div class="summary-value">${statusBadge(job.status, job.status_display)}</div>
+                    <div class="summary-value">
+                        ${statusBadge(job.status, job.status_display)}
+                        ${infringementNote ? `<div class="summary-subvalue">${escapeHtml(infringementNote)}</div>` : ''}
+                    </div>
                 </div>
                 <div class="summary-box">
                     <div class="summary-label">进度</div>
@@ -863,7 +1074,7 @@
                 <div class="listing-progress-bar" style="width: ${progress}%"></div>
             </div>
             <div class="listing-toolbar">
-                <span class="listing-toolbar-note">${job.error_message ? escapeHtml(job.error_message) : `最后更新：${escapeHtml(job.updated_at || '')}`}</span>
+                <span class="listing-toolbar-note">${job.error_message ? escapeHtml(job.error_message) : `最后更新：${escapeHtml(job.updated_at || '')}`}${job.infringement_error_message ? ` · 侵权检测：${escapeHtml(job.infringement_error_message)}` : ''}</span>
                 <div class="header-actions">
                     ${job.download_url ? `
                         <button type="button" class="btn btn-secondary" onclick="downloadCurrentJob()">
@@ -871,21 +1082,24 @@
                         </button>
                     ` : ''}
                     ${canPause ? `
-                        <button type="button" class="btn btn-secondary" onclick="pauseCurrentJob()">
+                        <button type="button" class="btn btn-secondary" onclick="pauseCurrentJob(this)">
                             <i class="fas fa-pause"></i> 暂停优化
                         </button>
                     ` : ''}
                     ${canResume ? `
-                        <button type="button" class="btn btn-secondary" onclick="resumeCurrentJob()">
+                        <button type="button" class="btn btn-secondary" onclick="resumeCurrentJob(this)">
                             <i class="fas fa-play"></i> 继续优化
                         </button>
                     ` : ''}
                     ${canRetryFailed ? `
-                        <button type="button" class="btn btn-secondary" onclick="retryFailedRows()">
+                        <button type="button" class="btn btn-secondary" onclick="retryFailedRows(this)">
                             <i class="fas fa-rotate-right"></i> 重试失败行
                         </button>
                     ` : ''}
-                    <button type="button" class="btn btn-primary" onclick="generateCurrentJob()" ${canGenerate ? '' : 'disabled'}>
+                    <button type="button" class="btn btn-secondary" onclick="runInfringementCheck(this)" ${canRunInfringement ? '' : 'disabled'} title="${escapeAttr(infringementButtonTitle)}">
+                        <i class="fas ${infringementChecking ? 'fa-spinner fa-spin' : 'fa-shield-alt'}"></i> ${infringementChecking ? '侵权检测中' : '侵权检测'}
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="generateCurrentJob(this)" ${canGenerate ? '' : 'disabled'}>
                         <i class="fas fa-file-export"></i> 确定并生成文件
                     </button>
                 </div>
@@ -899,6 +1113,13 @@
                 `}
             </div>
         `;
+    }
+
+    function renderInfringementStatusText(job) {
+        if (!job?.enable_infringement_check && (!job?.infringement_status || job.infringement_status === 'none')) return '';
+        const label = job.infringement_status_display || '';
+        if (job.infringement_checked_at) return `侵权检测：${label} · ${job.infringement_checked_at}`;
+        return label ? `侵权检测：${label}` : '';
     }
 
     function renderOrReuseRow(row) {
@@ -921,6 +1142,7 @@
         const displayNumber = row.display_number || Math.max((Number(row.row_number) || 4) - 3, 1);
         const thumbHtml = imageUrl ? `<img class="listing-row-thumb" src="${escapeAttr(imageUrl)}" alt="主图" loading="lazy" onerror="this.style.display='none'">` : '';
         const canRetryRow = row.status === 'failed' && currentJob && !['pending', 'processing'].includes(currentJob.status);
+        const riskSummaryHtml = renderRiskSummaryBadge(row);
 
         return `
             <article class="subtask-item listing-row ${expandedClass}" data-row-id="${row.id}">
@@ -930,6 +1152,7 @@
                         <span class="subtask-number">#${displayNumber}</span>
                         ${thumbHtml}
                         <span class="subtask-type">${statusBadge(row.status, row.status_display)}</span>
+                        ${riskSummaryHtml}
                         <span class="listing-title-stack">
                             <span class="listing-row-title" title="${escapeAttr(title)}">${escapeHtml(title)}</span>
                             ${titleCn ? `<span class="listing-row-title-cn" title="${escapeAttr(titleCn)}">${escapeHtml(titleCn)}</span>` : ''}
@@ -944,7 +1167,7 @@
                     </div>
                 </div>
                 <div class="subtask-edit-form">
-                    ${FIELD_GROUPS.map(field => renderFieldGroup(field, source, optimized, row.id)).join('')}
+                    ${FIELD_GROUPS.map(field => renderFieldGroup(field, source, optimized, row.id, row)).join('')}
                     <div class="original-preview listing-image-preview">
                         ${imageUrl ? `
                             <img src="${escapeAttr(imageUrl)}" alt="主图" loading="lazy">
@@ -952,6 +1175,7 @@
                         ` : '主图：无'}
                     </div>
                     ${row.error_message ? `<div class="original-preview listing-error-preview">${escapeHtml(row.error_message)}</div>` : ''}
+                    ${renderInfringementPanel(row)}
                     <div class="listing-row-footer">
                         <span class="save-state" id="save-state-${row.id}">最后更新：${escapeHtml(row.updated_at || '')}</span>
                         <button type="button" class="btn btn-secondary" onclick="saveRow(${row.id})">
@@ -963,11 +1187,185 @@
         `;
     }
 
-    function renderFieldGroup(field, source, optimized, rowId) {
+    function renderRiskSummaryBadge(row) {
+        const data = row.infringement_data || {};
+        if (!data.status || data.status === 'none') return '';
+        if (data.status === 'checking' || data.status === 'pending') {
+            return '<span class="status-badge status-processing"><i class="fas fa-spinner fa-spin"></i>侵权检测中</span>';
+        }
+        if (row.infringement_error_message) {
+            return '<span class="status-badge status-failed"><i class="fas fa-circle-exclamation"></i>检测失败</span>';
+        }
+        const level = data.risk_level || 'none';
+        if (level === 'none') {
+            return '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i>无命中</span>';
+        }
+        return `<span class="listing-risk-tag ${escapeAttr(level)}" title="${escapeAttr((data.keywords || []).map(item => item.reason).filter(Boolean).join('；'))}">
+            ${escapeHtml(data.risk_text || level)}
+        </span>`;
+    }
+
+    function renderInfringementPanel(row) {
+        const data = row.infringement_data || {};
+        if (row.infringement_error_message) {
+            return `<div class="listing-infringement-panel">
+                <div class="listing-infringement-title"><i class="fas fa-shield-alt"></i> 侵权检测</div>
+                <div class="listing-error-preview">${escapeHtml(row.infringement_error_message)}</div>
+            </div>`;
+        }
+        if (!data.status || data.status === 'none') return '';
+        if (data.status === 'checking' || data.status === 'pending') {
+            return `<div class="listing-infringement-panel">
+                <div class="listing-infringement-title"><i class="fas fa-spinner fa-spin"></i> 侵权检测中</div>
+                <div class="listing-risk-empty">正在按组词方式提炼并检测优化后的英文内容。</div>
+            </div>`;
+        }
+
+        const keywords = data.keywords || [];
+        if (!keywords.length) {
+            return `<div class="listing-infringement-panel">
+                <div class="listing-infringement-title"><i class="fas fa-shield-alt"></i> 侵权检测</div>
+                <div class="listing-risk-empty">无命中${data.checked_at ? ` · ${escapeHtml(data.checked_at)}` : ''}</div>
+            </div>`;
+        }
+
+        return `<div class="listing-infringement-panel">
+            <div class="listing-infringement-title">
+                <i class="fas fa-shield-alt"></i> 侵权检测
+                <span class="field-mode-tag">${escapeHtml(data.risk_text || '')}</span>
+                ${data.checked_at ? `<span class="listing-risk-empty">${escapeHtml(data.checked_at)}</span>` : ''}
+            </div>
+            <div class="listing-risk-tags">
+                ${keywords.map(item => `
+                    <span class="listing-risk-tag ${escapeAttr(item.level || 'low')}" title="${escapeAttr(item.reason || '')}">
+                        ${escapeHtml(item.word || '')}
+                    </span>
+                `).join('')}
+            </div>
+        </div>`;
+    }
+
+    function getFieldRiskKeywords(row, text) {
+        const keywords = row?.infringement_data?.keywords || [];
+        if (!keywords.length || !text) return [];
+        return keywords
+            .filter(item => item?.word && buildKeywordRegex(item.word)?.test(text))
+            .sort(compareRiskKeywords);
+    }
+
+    function compareRiskKeywords(a, b) {
+        const riskDiff = (RISK_PRIORITY[b?.level] || 0) - (RISK_PRIORITY[a?.level] || 0);
+        if (riskDiff !== 0) return riskDiff;
+        const wordCountDiff = String(b?.word || '').split(/\s+/).length - String(a?.word || '').split(/\s+/).length;
+        if (wordCountDiff !== 0) return wordCountDiff;
+        return String(b?.word || '').length - String(a?.word || '').length;
+    }
+
+    function renderHighlightedText(text, keywords) {
+        const value = String(text || '');
+        if (!value || !keywords.length) return escapeHtml(value);
+        const matches = buildHighlightMatches(value, keywords);
+        if (!matches.length) return escapeHtml(value);
+
+        let html = '';
+        let cursor = 0;
+        matches.forEach(match => {
+            html += escapeHtml(value.slice(cursor, match.start));
+            const markedText = value.slice(match.start, match.end);
+            html += `<mark class="listing-highlight-mark ${escapeAttr(match.level)}">${escapeHtml(markedText)}</mark>`;
+            cursor = match.end;
+        });
+        html += escapeHtml(value.slice(cursor));
+        return html;
+    }
+
+    function buildHighlightMatches(text, keywords) {
+        const value = String(text || '');
+        const occupied = new Array(value.length).fill(false);
+        const matches = [];
+        keywords.slice().sort(compareRiskKeywords).forEach(keyword => {
+            const regex = buildKeywordRegex(keyword.word);
+            if (!regex) return;
+            let match;
+            while ((match = regex.exec(value)) !== null) {
+                const prefixLength = match[1] ? match[1].length : 0;
+                const matchedText = match[2] || match[0];
+                const start = match.index + prefixLength;
+                const end = start + matchedText.length;
+                if (start >= end || hasOccupiedRange(occupied, start, end)) continue;
+                for (let i = start; i < end; i += 1) occupied[i] = true;
+                matches.push({
+                    start,
+                    end,
+                    level: keyword.level || 'low'
+                });
+            }
+        });
+        return matches.sort((a, b) => a.start - b.start || b.end - a.end);
+    }
+
+    function hasOccupiedRange(occupied, start, end) {
+        for (let i = start; i < end; i += 1) {
+            if (occupied[i]) return true;
+        }
+        return false;
+    }
+
+    function buildKeywordRegex(word) {
+        const parts = String(word || '').trim().split(/\s+/).filter(Boolean).map(escapeRegExp);
+        if (!parts.length) return null;
+        return new RegExp(`(^|[^A-Za-z0-9])(${parts.join('\\s+')})(?=$|[^A-Za-z0-9])`, 'gi');
+    }
+
+    function handleListingInput(textarea, rowId) {
+        updateHighlightLayer(textarea);
+        scheduleSaveRow(rowId);
+    }
+
+    function enterListingEditMode(textarea) {
+        textarea?.closest('.listing-highlight-wrap')?.classList.add('is-editing');
+        syncHighlightScroll(textarea);
+    }
+
+    function exitListingEditMode(textarea) {
+        textarea?.closest('.listing-highlight-wrap')?.classList.remove('is-editing');
+        updateHighlightLayer(textarea);
+    }
+
+    function updateHighlightLayer(textarea) {
+        const layer = textarea?.closest('.listing-highlight-wrap')?.querySelector('.listing-highlight-layer');
+        if (!layer) return;
+        const keywords = getTextareaRiskKeywords(textarea);
+        const matches = buildHighlightMatches(textarea.value, keywords);
+        layer.innerHTML = matches.length ? renderHighlightedText(textarea.value, keywords) : escapeHtml(textarea.value);
+        textarea.classList.toggle('has-risk-highlight', matches.length > 0);
+        syncHighlightScroll(textarea);
+    }
+
+    function getTextareaRiskKeywords(textarea) {
+        try {
+            const keywords = JSON.parse(textarea.dataset.riskKeywords || '[]');
+            return Array.isArray(keywords) ? keywords : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function syncHighlightScroll(textarea) {
+        const layer = textarea?.closest('.listing-highlight-wrap')?.querySelector('.listing-highlight-layer');
+        if (!layer) return;
+        layer.scrollTop = textarea.scrollTop;
+        layer.scrollLeft = textarea.scrollLeft;
+    }
+
+    function renderFieldGroup(field, source, optimized, rowId, row) {
         const englishValue = optimized[field.key] || source[field.key] || '';
         const chineseValue = optimized[field.zh] || '等待 AI 返回中文意思';
         const originalValue = source[field.key] || '';
         const originalChineseValue = optimized[field.originalZh] || '暂无原文翻译';
+        const riskKeywords = getFieldRiskKeywords(row, englishValue);
+        const riskKeywordsJson = JSON.stringify(riskKeywords);
+        const hasRisk = riskKeywords.length > 0;
         return `
             <div class="listing-field-block">
                 <div class="listing-field-label">
@@ -975,7 +1373,10 @@
                     <span class="field-mode-tag">优化后英文</span>
                 </div>
                 <div class="optimized-translation-box">
-                    <textarea class="form-control listing-textarea" rows="${field.rows}" data-field="${escapeAttr(field.key)}" oninput="scheduleSaveRow(${rowId})">${escapeHtml(englishValue)}</textarea>
+                    <div class="listing-highlight-wrap">
+                        <div class="listing-highlight-layer" aria-hidden="true">${renderHighlightedText(englishValue, riskKeywords)}</div>
+                        <textarea class="form-control listing-textarea ${hasRisk ? 'has-risk-highlight' : ''}" rows="${field.rows}" data-field="${escapeAttr(field.key)}" data-risk-keywords="${escapeAttr(riskKeywordsJson)}" onmousedown="enterListingEditMode(this)" oninput="handleListingInput(this, ${rowId})" onscroll="syncHighlightScroll(this)" onfocus="enterListingEditMode(this)" onblur="exitListingEditMode(this)">${escapeHtml(englishValue)}</textarea>
+                    </div>
                     <div class="translation-line"><span class="source-label">中文意思：</span>${escapeHtml(chineseValue)}</div>
                 </div>
                 <div class="original-preview source-translation-preview">
@@ -1049,12 +1450,23 @@
         return data;
     }
 
-    async function generateCurrentJob() {
+    function setButtonLoading(button, label) {
+        if (!button) return () => {};
+        const originalHtml = button.innerHTML;
+        const originalDisabled = button.disabled;
+        button.disabled = true;
+        button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${escapeHtml(label)}`;
+        return () => {
+            if (!button.isConnected) return;
+            button.disabled = originalDisabled;
+            button.innerHTML = originalHtml;
+        };
+    }
+
+    async function generateCurrentJob(button) {
         if (!currentJobId) return;
-        const rows = Array.from(document.querySelectorAll('.listing-row')).map(rowEl => ({
-            id: Number(rowEl.dataset.rowId),
-            optimized_data: collectRowData(rowEl)
-        }));
+        const restoreButton = setButtonLoading(button, '生成中...');
+        const rows = collectRowsPayload();
 
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/generate/`, {
@@ -1072,6 +1484,40 @@
             notify('文件已生成，可以下载', 'success');
         } catch (error) {
             notify(error.message, 'error');
+            restoreButton();
+        }
+    }
+
+    function collectRowsPayload() {
+        return Array.from(document.querySelectorAll('.listing-row')).map(rowEl => ({
+            id: Number(rowEl.dataset.rowId),
+            optimized_data: collectRowData(rowEl)
+        }));
+    }
+
+    async function runInfringementCheck(button) {
+        if (!currentJobId) return;
+        const restoreButton = setButtonLoading(button, '提交检测...');
+        const rows = collectRowsPayload();
+
+        try {
+            const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/infringement-check/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({rows})
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message || '侵权检测提交失败');
+            currentJob = result.data;
+            renderJobDetail(result.data);
+            startPolling();
+            notify(result.message || '侵权检测已提交', 'success');
+        } catch (error) {
+            notify(error.message, 'error');
+            restoreButton();
         }
     }
 
@@ -1081,9 +1527,10 @@
         }
     }
 
-    async function pauseCurrentJob() {
+    async function pauseCurrentJob(button) {
         if (!currentJobId) return;
         if (!confirm('确定暂停这个文件的后续优化吗？当前正在请求中的一行可能会完成，但不会继续优化下一行。')) return;
+        const restoreButton = setButtonLoading(button, '暂停中...');
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/pause/`, {
                 method: 'POST',
@@ -1096,11 +1543,13 @@
             notify(result.message || '已暂停优化', 'success');
         } catch (error) {
             notify(error.message, 'error');
+            restoreButton();
         }
     }
 
-    async function resumeCurrentJob() {
+    async function resumeCurrentJob(button) {
         if (!currentJobId) return;
+        const restoreButton = setButtonLoading(button, '继续中...');
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/resume/`, {
                 method: 'POST',
@@ -1113,12 +1562,14 @@
             notify(result.message || '已继续优化', 'success');
         } catch (error) {
             notify(error.message, 'error');
+            restoreButton();
         }
     }
 
-    async function retryFailedRows() {
+    async function retryFailedRows(button) {
         if (!currentJobId) return;
         if (!confirm('确定重新优化所有失败行吗？已完成的行不会重跑。')) return;
+        const restoreButton = setButtonLoading(button, '提交重试...');
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/jobs/${currentJobId}/retry-failed/`, {
                 method: 'POST',
@@ -1127,18 +1578,21 @@
             const result = await response.json();
             if (!result.success) throw new Error(result.message || '重试失败行失败');
             await loadJob(currentJobId);
-            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            if (shouldPollJob(result.data)) startPolling();
             notify(result.message || '已提交失败行重试', 'success');
         } catch (error) {
             notify(error.message, 'error');
+            restoreButton();
         }
     }
 
     async function retryRow(rowId, event) {
+        const button = event?.currentTarget || null;
         if (event) {
             event.preventDefault();
             event.stopPropagation();
         }
+        const restoreButton = setButtonLoading(button, '重试中...');
         try {
             const response = await fetch(`/api/tasks/listing-optimizer/rows/${rowId}/retry/`, {
                 method: 'POST',
@@ -1148,10 +1602,11 @@
             if (!result.success) throw new Error(result.message || '重试本行失败');
             currentJobId = result.data.id;
             await loadJob(currentJobId);
-            if (['pending', 'processing'].includes(result.data.status)) startPolling();
+            if (shouldPollJob(result.data)) startPolling();
             notify(result.message || '已提交本行重试', 'success');
         } catch (error) {
             notify(error.message, 'error');
+            restoreButton();
         }
     }
 
@@ -1207,6 +1662,10 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function escapeRegExp(value) {
+        return String(value ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     function escapeAttr(value) {

@@ -10,14 +10,24 @@ import urllib.request
 import warnings
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from django.conf import settings
 from django.db import close_old_connections, transaction
+from django.db.models.functions import Lower
 from django.utils import timezone
 from openpyxl import load_workbook
 
 from task.models import ListingOptimizationJob, ListingOptimizationRow
+from theme.models import TrademarkInfo, TroTable
+from theme.view.views_trend import (
+    HIGH_RISK_NAME_TYPES,
+    LOW_RISK_NAME_TYPES,
+    MEDIUM_RISK_STATUS_CODES,
+    SPECIAL_INTL_CLASSES,
+    get_ngram_phrases,
+    should_skip_word,
+)
 
 
 TITLE_KEY = "Product Name（标题）"
@@ -65,6 +75,29 @@ DATA_START_ROW = 4
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 DEFAULT_PROMPT_PROFILE = "amazon_grammar_tyrant"
 DEFAULT_AI_MODEL = "qwen-flash"
+INFRINGING_TEXT_KEYS = TRANSLATABLE_KEYS
+INFRINGING_QUERY_CHUNK_SIZE = 500
+
+RISK_LEVEL_ORDER = {"high": 3, "medium": 2, "low": 1, "none": 0}
+RISK_LEVEL_LABELS = {
+    "high": "高风险",
+    "medium": "中风险",
+    "low": "低风险",
+    "none": "无命中",
+}
+NAME_TYPE_LABELS = {
+    1: "系统白名单",
+    2: "用户未指定",
+    3: "观察名单",
+    4: "亚马逊涉嫌侵权",
+    5: "律师函",
+    6: "权利人投诉",
+    7: "违禁词",
+    8: "商标侵权",
+    9: "自定义白名单",
+    10: "知名IP",
+    11: "版权图片",
+}
 
 PROMPT_PROFILE_OPTIONS = [
     {
@@ -139,6 +172,7 @@ AI_MODEL_OPTIONS = [
 ]
 
 _active_jobs = set()
+_active_infringement_jobs = set()
 _worker_lock = threading.Lock()
 
 
@@ -546,11 +580,17 @@ def create_job_from_excel(
     user,
     prompt_profile: Optional[str] = None,
     ai_model: Optional[str] = None,
+    enable_infringement_check: bool = False,
 ) -> ListingOptimizationJob:
     prompt_profile = validate_prompt_profile(prompt_profile)
     ai_model = validate_ai_model(ai_model)
     relative_path, full_path = save_uploaded_listing_file(uploaded_file)
     rows = read_listing_rows(full_path)
+    infringement_status = (
+        ListingOptimizationJob.INFRINGEMENT_STATUS_PENDING
+        if enable_infringement_check
+        else ListingOptimizationJob.INFRINGEMENT_STATUS_NONE
+    )
 
     with transaction.atomic():
         job = ListingOptimizationJob.objects.create(
@@ -559,6 +599,8 @@ def create_job_from_excel(
             original_file_path=relative_path,
             prompt_profile=prompt_profile,
             ai_model=ai_model,
+            enable_infringement_check=enable_infringement_check,
+            infringement_status=infringement_status,
             status=ListingOptimizationJob.STATUS_PENDING,
             total_rows=len(rows),
         )
@@ -664,6 +706,8 @@ def retry_failed_listing_rows(
     retry_count = failed_rows.update(
         status=ListingOptimizationRow.STATUS_PENDING,
         error_message="",
+        infringement_data={},
+        infringement_error_message="",
         updated_at=timezone.now(),
     )
     if retry_count == 0:
@@ -674,6 +718,13 @@ def retry_failed_listing_rows(
         "error_message": "",
         "completed_at": None,
         "output_file_path": "",
+        "infringement_status": (
+            ListingOptimizationJob.INFRINGEMENT_STATUS_PENDING
+            if job.enable_infringement_check
+            else ListingOptimizationJob.INFRINGEMENT_STATUS_NONE
+        ),
+        "infringement_error_message": "",
+        "infringement_checked_at": None,
         "updated_at": timezone.now(),
     }
     should_start = job.status != ListingOptimizationJob.STATUS_PAUSED
@@ -722,9 +773,18 @@ def _run_listing_optimization_job(job_id: int) -> None:
             try:
                 optimized = optimizer.optimize(row.source_data)
                 row.optimized_data = optimized
+                row.infringement_data = {}
+                row.infringement_error_message = ""
                 row.status = ListingOptimizationRow.STATUS_COMPLETED
                 row.error_message = ""
-                row.save(update_fields=["optimized_data", "status", "error_message", "updated_at"])
+                row.save(update_fields=[
+                    "optimized_data",
+                    "infringement_data",
+                    "infringement_error_message",
+                    "status",
+                    "error_message",
+                    "updated_at",
+                ])
             except Exception as exc:
                 row.status = ListingOptimizationRow.STATUS_FAILED
                 row.error_message = str(exc)[:6000]
@@ -773,11 +833,355 @@ def _finish_job(job_id: int) -> None:
         completed_at=timezone.now(),
         updated_at=timezone.now(),
     )
+    if job.enable_infringement_check and job.optimized_rows > 0:
+        start_listing_infringement_check_job(job_id)
+
+
+def start_listing_infringement_check_job(job_id: int) -> bool:
+    with _worker_lock:
+        if job_id in _active_infringement_jobs:
+            return False
+        _active_infringement_jobs.add(job_id)
+
+    ListingOptimizationJob.objects.filter(id=job_id).update(
+        enable_infringement_check=True,
+        infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_CHECKING,
+        infringement_error_message="",
+        updated_at=timezone.now(),
+    )
+    worker = threading.Thread(
+        target=_run_listing_infringement_check_job,
+        args=(job_id,),
+        daemon=True,
+        name=f"listing-infringement-check-{job_id}",
+    )
+    worker.start()
+    return True
+
+
+def _run_listing_infringement_check_job(job_id: int) -> None:
+    close_old_connections()
+    try:
+        run_listing_infringement_check(job_id)
+    except Exception as exc:
+        ListingOptimizationJob.objects.filter(id=job_id).update(
+            infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_FAILED,
+            infringement_error_message=str(exc)[:6000],
+            infringement_checked_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
+    finally:
+        with _worker_lock:
+            _active_infringement_jobs.discard(job_id)
+        close_old_connections()
+
+
+def run_listing_infringement_check(job_id: int) -> None:
+    job = ListingOptimizationJob.objects.get(id=job_id)
+    rows = list(
+        ListingOptimizationRow.objects.filter(
+            job=job,
+            status=ListingOptimizationRow.STATUS_COMPLETED,
+        ).order_by("row_number")
+    )
+    now = timezone.now()
+    ListingOptimizationJob.objects.filter(id=job_id).update(
+        enable_infringement_check=True,
+        infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_CHECKING,
+        infringement_error_message="",
+        infringement_checked_at=None,
+        updated_at=now,
+    )
+    ListingOptimizationRow.objects.filter(
+        job=job,
+        status=ListingOptimizationRow.STATUS_COMPLETED,
+    ).update(
+        infringement_data={"status": ListingOptimizationJob.INFRINGEMENT_STATUS_CHECKING},
+        infringement_error_message="",
+        updated_at=now,
+    )
+
+    if not rows:
+        ListingOptimizationJob.objects.filter(id=job_id).update(
+            infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_COMPLETED,
+            infringement_error_message="没有已完成的优化行可检测。",
+            infringement_checked_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
+        return
+
+    row_tokens: Dict[int, Dict[str, str]] = {}
+    global_tokens: Dict[str, str] = {}
+    for row in rows:
+        tokens = extract_infringement_tokens(row.optimized_data or {})
+        row_tokens[row.id] = tokens
+        for token_lower, token_display in tokens.items():
+            global_tokens.setdefault(token_lower, token_display)
+
+    risk_map = build_infringement_risk_map(global_tokens)
+    checked_at = timezone.now()
+    checked_at_text = checked_at.strftime("%Y-%m-%d %H:%M:%S")
+    row_updates = []
+    for row in rows:
+        keywords = [
+            deepcopy(risk_map[token_lower])
+            for token_lower in row_tokens.get(row.id, {})
+            if token_lower in risk_map
+        ]
+        keywords.sort(key=infringement_keyword_sort_key)
+        risk_level = get_highest_risk_level(keywords)
+        row.infringement_data = {
+            "status": ListingOptimizationJob.INFRINGEMENT_STATUS_COMPLETED,
+            "risk_level": risk_level,
+            "risk_text": RISK_LEVEL_LABELS.get(risk_level, "无命中"),
+            "keywords": keywords,
+            "checked_at": checked_at_text,
+        }
+        row.infringement_error_message = ""
+        row.updated_at = checked_at
+        row_updates.append(row)
+
+    ListingOptimizationRow.objects.bulk_update(
+        row_updates,
+        ["infringement_data", "infringement_error_message", "updated_at"],
+        batch_size=200,
+    )
+    ListingOptimizationJob.objects.filter(id=job_id).update(
+        infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_COMPLETED,
+        infringement_error_message="",
+        infringement_checked_at=checked_at,
+        updated_at=checked_at,
+    )
+
+
+def extract_infringement_tokens(listing_data: Dict[str, Any]) -> Dict[str, str]:
+    tokens: Dict[str, str] = {}
+    for field_key in INFRINGING_TEXT_KEYS:
+        text = clean_text(listing_data.get(field_key, ""))
+        if not text:
+            continue
+        for phrase in get_ngram_phrases(text):
+            phrase = clean_text(phrase)
+            if should_skip_word(phrase):
+                continue
+            token_display = phrase.upper()
+            token_lower = token_display.lower()
+            tokens.setdefault(token_lower, token_display)
+    return tokens
+
+
+def build_infringement_risk_map(token_display_by_lower: Dict[str, str]) -> Dict[str, Dict[str, Any]]:
+    if not token_display_by_lower:
+        return {}
+
+    tro_records = load_tro_records(token_display_by_lower.keys())
+    low_whitelist = {
+        token_lower
+        for token_lower, record in tro_records.items()
+        if coerce_int(record.get("name_type")) in LOW_RISK_NAME_TYPES
+    }
+    uspto_records = load_trademark_records(
+        [
+            token_display.upper()
+            for token_lower, token_display in token_display_by_lower.items()
+            if token_lower not in low_whitelist
+        ]
+    )
+
+    risk_map: Dict[str, Dict[str, Any]] = {}
+    for token_lower, token_display in token_display_by_lower.items():
+        tro_record = tro_records.get(token_lower)
+        trademark_records = uspto_records.get(token_lower, [])
+        risk_item = build_keyword_risk_item(token_display, tro_record, trademark_records)
+        if risk_item:
+            risk_map[token_lower] = risk_item
+    return risk_map
+
+
+def load_tro_records(token_lowers: Iterable[str]) -> Dict[str, Dict[str, Any]]:
+    records: Dict[str, Dict[str, Any]] = {}
+    for chunk in chunked(sorted(set(token_lowers)), INFRINGING_QUERY_CHUNK_SIZE):
+        queryset = (
+            TroTable.objects.annotate(theme_lower=Lower("theme_name"))
+            .filter(theme_lower__in=chunk)
+            .values("theme_name", "replacement_word", "name_type")
+        )
+        for record in queryset:
+            theme_name = clean_text(record.get("theme_name", ""))
+            if theme_name:
+                records[theme_name.lower()] = record
+    return records
+
+
+def load_trademark_records(token_uppers: Iterable[str]) -> Dict[str, List[Dict[str, Any]]]:
+    records: Dict[str, List[Dict[str, Any]]] = {}
+    for chunk in chunked(sorted(set(token_uppers)), INFRINGING_QUERY_CHUNK_SIZE):
+        queryset = TrademarkInfo.objects.filter(word_mark__in=chunk).values(
+            "word_mark",
+            "serial_number",
+            "intl_class",
+            "status_code",
+            "mark_drawing_type__description_cn",
+        )
+        for record in queryset:
+            word_mark = clean_text(record.get("word_mark", ""))
+            if word_mark:
+                records.setdefault(word_mark.lower(), []).append(record)
+    return records
+
+
+def build_keyword_risk_item(
+    token_display: str,
+    tro_record: Optional[Dict[str, Any]],
+    trademark_records: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    name_type = coerce_int(tro_record.get("name_type")) if tro_record else None
+    is_whitelist = name_type in LOW_RISK_NAME_TYPES
+    is_high_tro = name_type in HIGH_RISK_NAME_TYPES
+    uspto_summary = summarize_uspto_records(trademark_records)
+
+    if not tro_record and not trademark_records:
+        return None
+
+    if is_whitelist:
+        return {
+            "word": clean_text(tro_record.get("theme_name")) or token_display,
+            "level": "low",
+            "level_text": RISK_LEVEL_LABELS["low"],
+            "source": "tro",
+            "reason": f"侵权词库白名单：{NAME_TYPE_LABELS.get(name_type, '白名单')}",
+            "name_type": name_type,
+            "name_type_text": NAME_TYPE_LABELS.get(name_type, ""),
+            "status_codes": [],
+            "intl_classes": [],
+            "serial_numbers": [],
+            "has_special_class": False,
+        }
+
+    reason_parts = []
+    source_parts = []
+    if tro_record:
+        source_parts.append("tro")
+        name_type_text = NAME_TYPE_LABELS.get(name_type, "未知类型")
+        tro_reason = f"侵权词库命中：{name_type_text}"
+        replacement = clean_text(tro_record.get("replacement_word", ""))
+        if replacement:
+            tro_reason = f"{tro_reason}；建议替换为 {replacement}"
+        reason_parts.append(tro_reason)
+    if trademark_records:
+        source_parts.append("uspto")
+        reason_parts.append(format_uspto_reason(uspto_summary))
+
+    if is_high_tro:
+        level = "high"
+    elif trademark_records and set(uspto_summary["status_codes"]).intersection(MEDIUM_RISK_STATUS_CODES):
+        level = "medium"
+    else:
+        level = "low"
+
+    display_word = (
+        clean_text(tro_record.get("theme_name")) if tro_record else ""
+    ) or clean_text(uspto_summary.get("word")) or token_display
+    return {
+        "word": display_word,
+        "level": level,
+        "level_text": RISK_LEVEL_LABELS[level],
+        "source": ",".join(dict.fromkeys(source_parts)),
+        "reason": "；".join(reason_parts) or RISK_LEVEL_LABELS[level],
+        "name_type": name_type,
+        "name_type_text": NAME_TYPE_LABELS.get(name_type, "") if name_type is not None else "",
+        "status_codes": uspto_summary["status_codes"],
+        "intl_classes": uspto_summary["intl_classes"],
+        "serial_numbers": uspto_summary["serial_numbers"],
+        "has_special_class": uspto_summary["has_special_class"],
+    }
+
+
+def summarize_uspto_records(records: List[Dict[str, Any]]) -> Dict[str, Any]:
+    status_codes: Set[int] = set()
+    intl_classes: Set[str] = set()
+    serial_numbers: List[str] = []
+    word = ""
+    for record in records:
+        word = word or clean_text(record.get("word_mark", ""))
+        status_code = coerce_int(record.get("status_code"))
+        if status_code is not None:
+            status_codes.add(status_code)
+        for class_code in parse_intl_classes(record.get("intl_class", "")):
+            intl_classes.add(class_code)
+        serial = clean_text(record.get("serial_number", ""))
+        if serial and serial not in serial_numbers:
+            serial_numbers.append(serial)
+
+    sorted_intl_classes = sorted(intl_classes)
+    return {
+        "word": word,
+        "status_codes": sorted(status_codes),
+        "intl_classes": sorted_intl_classes,
+        "serial_numbers": serial_numbers[:8],
+        "has_special_class": any(class_code in SPECIAL_INTL_CLASSES for class_code in sorted_intl_classes),
+    }
+
+
+def format_uspto_reason(summary: Dict[str, Any]) -> str:
+    parts = ["美标网命中"]
+    if summary.get("status_codes"):
+        parts.append(f"状态码 {', '.join(str(code) for code in summary['status_codes'])}")
+    if summary.get("intl_classes"):
+        parts.append(f"国际类 {', '.join(summary['intl_classes'])}")
+    if summary.get("serial_numbers"):
+        parts.append(f"序列号 {', '.join(summary['serial_numbers'])}")
+    if summary.get("has_special_class"):
+        parts.append("包含重点类目")
+    return "：".join([parts[0], "；".join(parts[1:])]) if len(parts) > 1 else parts[0]
+
+
+def parse_intl_classes(value: Any) -> List[str]:
+    return re.findall(r"\d{3}", str(value or ""))
+
+
+def get_highest_risk_level(keywords: List[Dict[str, Any]]) -> str:
+    risk_level = "none"
+    for keyword in keywords:
+        level = keyword.get("level", "none")
+        if RISK_LEVEL_ORDER.get(level, 0) > RISK_LEVEL_ORDER.get(risk_level, 0):
+            risk_level = level
+    return risk_level
+
+
+def infringement_keyword_sort_key(keyword: Dict[str, Any]) -> Tuple[int, int, str]:
+    word = keyword.get("word", "")
+    return (
+        -RISK_LEVEL_ORDER.get(keyword.get("level", "none"), 0),
+        -len(str(word).split()),
+        str(word).lower(),
+    )
+
+
+def coerce_int(value: Any) -> Optional[int]:
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def chunked(values: Iterable[Any], size: int) -> Iterable[List[Any]]:
+    chunk: List[Any] = []
+    for value in values:
+        chunk.append(value)
+        if len(chunk) >= size:
+            yield chunk
+            chunk = []
+    if chunk:
+        yield chunk
 
 
 def update_row_optimized_data(row: ListingOptimizationRow, optimized_data: Dict[str, Any]) -> ListingOptimizationRow:
     cleaned = {}
-    base_data = row.optimized_data or row.source_data or {}
+    previous_data = row.optimized_data or {}
+    base_data = previous_data or row.source_data or {}
     for key in OUTPUT_KEYS:
         if key == MAIN_IMAGE_KEY:
             cleaned[key] = row.source_data.get(MAIN_IMAGE_KEY, "")
@@ -791,8 +1195,24 @@ def update_row_optimized_data(row: ListingOptimizationRow, optimized_data: Dict[
 
     cleaned[TITLE_KEY] = clip_at_word(cleaned[TITLE_KEY], 125)
     cleaned[SEARCH_TERMS_KEY] = clip_at_word(clean_search_terms(cleaned[SEARCH_TERMS_KEY]), 250)
+    listing_text_changed = any(
+        cleaned.get(key, "") != clean_listing_output_text(previous_data.get(key, ""))
+        for key in TRANSLATABLE_KEYS
+    )
     row.optimized_data = cleaned
-    row.save(update_fields=["optimized_data", "updated_at"])
+    update_fields = ["optimized_data", "updated_at"]
+    if listing_text_changed:
+        row.infringement_data = {}
+        row.infringement_error_message = ""
+        update_fields.extend(["infringement_data", "infringement_error_message"])
+        if getattr(row.job, "enable_infringement_check", False):
+            ListingOptimizationJob.objects.filter(id=row.job_id).update(
+                infringement_status=ListingOptimizationJob.INFRINGEMENT_STATUS_PENDING,
+                infringement_error_message="",
+                infringement_checked_at=None,
+                updated_at=timezone.now(),
+            )
+    row.save(update_fields=update_fields)
     return row
 
 
@@ -854,6 +1274,15 @@ def serialize_job(
         "prompt_profile_label": get_prompt_profile_label(job.prompt_profile),
         "ai_model": job.ai_model,
         "ai_model_label": get_ai_model_label(job.ai_model),
+        "enable_infringement_check": job.enable_infringement_check,
+        "infringement_status": job.infringement_status,
+        "infringement_status_display": job.get_infringement_status_display(),
+        "infringement_error_message": job.infringement_error_message,
+        "infringement_checked_at": (
+            job.infringement_checked_at.strftime("%Y-%m-%d %H:%M:%S")
+            if job.infringement_checked_at
+            else ""
+        ),
         "status": job.status,
         "status_display": job.get_status_display(),
         "total_rows": job.total_rows,
@@ -882,6 +1311,8 @@ def serialize_row(row: ListingOptimizationRow) -> Dict[str, Any]:
         "status_display": row.get_status_display(),
         "source_data": row.source_data or {},
         "optimized_data": row.optimized_data or {},
+        "infringement_data": row.infringement_data or {},
+        "infringement_error_message": row.infringement_error_message,
         "error_message": row.error_message,
         "updated_at": row.updated_at.strftime("%Y-%m-%d %H:%M:%S") if row.updated_at else "",
     }
