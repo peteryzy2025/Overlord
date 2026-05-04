@@ -65,6 +65,7 @@ urlpatterns = [
     # ========== 基础系统 ==========
     path('test-error/', views.test_error, name='test_error'),
     path('', views.main_page),
+    path('login-v2/', views.user_login_v2, name='login_v2'),
     path('login/', views.user_login, name='login'),
     path('logout/', views.user_logout, name='logout'),
     path('main/', views.main_page, name='main'),
