@@ -16,6 +16,7 @@ class LoginRequiredMiddleware:
         # 白名单：不需要登录即可访问的 URL
         self.white_list = [
             reverse('general:login'),
+            reverse('general:login_v2'),
             reverse('general:csrf_token'),
             '/admin/',  # 保留 admin 的独立认证
             '/inventory/api/import/',  # 库存上传接口白名单

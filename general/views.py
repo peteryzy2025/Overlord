@@ -88,6 +88,57 @@ def user_login(request):
         }, status=401)
 
 
+@ensure_csrf_cookie
+def user_login_v2(request):
+    if request.method == 'GET':
+        return render(request, 'login_v2.html')
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body or '{}')
+            if not isinstance(data, dict):
+                data = {}
+        except json.JSONDecodeError:
+            data = {}
+
+        username = str(data.get('username') or request.POST.get('username', '')).strip()
+        password = str(data.get('password') or request.POST.get('password', '')).strip()
+
+        if not username or not password:
+            return JsonResponse({
+                'success': False,
+                'message': '用户名和密码不能为空'
+            }, status=400)
+
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            if not user.is_active:
+                return JsonResponse({
+                    'success': False,
+                    'message': '用户账号已停用'
+                }, status=403)
+
+            login(request, user)
+
+            user_data = model_to_dict(user, fields=['id', 'username', 'email', 'first_name', 'last_name'])
+            return JsonResponse({
+                'success': True,
+                'redirect_url': '/main/',
+                'user': user_data
+            })
+
+        return JsonResponse({
+            'success': False,
+            'message': '用户名或密码错误'
+        }, status=401)
+
+    return JsonResponse({
+        'success': False,
+        'message': '请求方法不支持'
+    }, status=405)
+
+
 @login_required
 def user_logout(request):
     logout(request)
